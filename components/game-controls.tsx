@@ -2,17 +2,19 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { RotateCcw, Play, Pause, Undo2 } from "lucide-react"
+import { RotateCcw, Play, Pause, Undo2, Redo2 } from "lucide-react"
 
 interface GameControlsProps {
   onReset: () => void
   onUndo: () => void
   canUndo: boolean
+  onRedo: () => void
+  canRedo: boolean
   isPlaying: boolean
   onTogglePlay: () => void
 }
 
-export function GameControls({ onReset, onUndo, canUndo, isPlaying, onTogglePlay }: GameControlsProps) {
+export function GameControls({ onReset, onUndo, canUndo, onRedo, canRedo, isPlaying, onTogglePlay }: GameControlsProps) {
   return (
     <Card className="border-border bg-card/80 backdrop-blur-sm">
       <CardContent className="p-3 md:p-4">
@@ -25,6 +27,11 @@ export function GameControls({ onReset, onUndo, canUndo, isPlaying, onTogglePlay
           <Button variant="outline" size="sm" onClick={onUndo} disabled={!canUndo} className="gap-2 bg-transparent">
             <Undo2 className="w-4 h-4" />
             <span className="hidden sm:inline">Undo</span>
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={onRedo} disabled={!canRedo} className="gap-2 bg-transparent">
+            <Redo2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Redo</span>
           </Button>
 
           <div className="w-px h-6 bg-border hidden sm:block" />

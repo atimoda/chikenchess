@@ -11,6 +11,8 @@ export class AudioEngine {
   private scheduledNodes: AudioScheduledSourceNode[] = []
   private intervalId: number | null = null
   private currentPattern: ParsedPattern | null = null
+  private ambienceNodes: AudioScheduledSourceNode[] = []
+  private ambienceGain: GainNode | null = null
 
   // Sound parameters
   private bpm = 120
@@ -92,41 +94,149 @@ export class AudioEngine {
     this.scheduledNodes = []
   }
 
+  async startAmbience(scale: string[], cityId: string) {
+    if (!this.audioContext) await this.init()
+    if (!this.audioContext || !this.masterGain) return
+    await this.resume()
+
+    // Stop existing ambience
+    this.stopAmbience()
+
+    this.ambienceGain = this.audioContext.createGain()
+    this.ambienceGain.gain.value = 0.03 // Lower volume as requested
+    this.ambienceGain.connect(this.masterGain)
+
+    // Ambience Settings based on City
+    let wave1: OscillatorType = "triangle"
+    let wave2: OscillatorType = "sine"
+    let filterFreq = 200
+
+    switch (cityId) {
+      case "nyc": // Gritty
+        wave1 = "sawtooth"
+        wave2 = "square"
+        filterFreq = 150
+        break
+      case "london": // Dark
+        wave1 = "sine"
+        wave2 = "sawtooth"
+        filterFreq = 100
+        break
+      case "tokyo": // Neon
+        wave1 = "square"
+        wave2 = "sine"
+        filterFreq = 400
+        break
+      case "paris": // Smooth
+        wave1 = "sine"
+        wave2 = "triangle"
+        filterFreq = 300
+        break
+      case "berlin": // Cold
+        wave1 = "sawtooth"
+        wave2 = "sawtooth"
+        filterFreq = 80
+        break
+      default:
+        wave1 = "triangle"
+        wave2 = "sine"
+    }
+
+    const rootNote = noteToFrequency(scale[0])
+    const fifthNote = noteToFrequency(scale[4] || scale[0])
+
+    // Drone 1
+    const osc1 = this.audioContext.createOscillator()
+    osc1.type = wave1
+    osc1.frequency.value = rootNote / 2
+
+    // Lowpass filter for drone
+    const filter = this.audioContext.createBiquadFilter()
+    filter.type = "lowpass"
+    filter.frequency.value = filterFreq
+
+    // Drone 2
+    const osc2 = this.audioContext.createOscillator()
+    osc2.type = wave2
+    osc2.frequency.value = fifthNote / 2
+
+    // LFO for movement (Unique speed per city)
+    const lfo = this.audioContext.createOscillator()
+    lfo.frequency.value = 0.1 + (cityId.length * 0.02)
+    const lfoGain = this.audioContext.createGain()
+    lfoGain.gain.value = 10
+
+    lfo.connect(lfoGain)
+    lfoGain.connect(osc1.frequency)
+
+    osc1.connect(filter)
+    osc2.connect(filter)
+    filter.connect(this.ambienceGain)
+
+    osc1.start()
+    osc2.start()
+    lfo.start()
+
+    this.ambienceNodes = [osc1, osc2, lfo]
+  }
+
+  stopAmbience() {
+    this.ambienceNodes.forEach(node => {
+      try { node.stop() } catch { }
+    })
+    this.ambienceNodes = []
+    if (this.ambienceGain) {
+      this.ambienceGain.disconnect()
+      this.ambienceGain = null
+    }
+  }
+
   private playStep(step: number, time: number) {
     if (!this.currentPattern || !this.audioContext || !this.masterGain) return
 
-    const { kick, snare, hihat, bass, pad, lead, effects } = this.currentPattern
+    const { kick, snare, hihat, bass, pad, lead, effects, swing } = this.currentPattern
 
-    // Kick drum (on 1, 5, 9, 13 - typical house pattern)
-    if (kick.pattern[step % kick.pattern.length]) {
-      this.playKick(time, kick.gain)
+    // Apply Swing: delay off-beat 16th notes
+    const swingDelay = (step % 2 !== 0) ? (swing || 0) * (this.stepTime / 3) : 0
+    const triggerTime = time + swingDelay
+
+    // Humanize: tiny random offset (0-10ms)
+    const humanize = () => (Math.random() * 0.01)
+
+    // Helper: Stochastic trigger
+    const shouldPlay = (prob: number = 1) => Math.random() <= (prob ?? 1)
+
+    // Kick
+    if (kick.pattern[step % 16] && shouldPlay(kick.probability)) {
+      this.playKick(triggerTime + humanize(), kick.gain)
     }
 
-    // Snare (on 5, 13)
-    if (snare.pattern[step % snare.pattern.length]) {
-      this.playSnare(time, snare.gain)
+    // Snare
+    if (snare.pattern[step % 16] && shouldPlay(snare.probability)) {
+      this.playSnare(triggerTime + humanize(), snare.gain)
     }
 
     // Hi-hat
-    if (hihat.pattern[step % hihat.pattern.length]) {
-      this.playHihat(time, hihat.gain)
+    if (hihat.pattern[step % 16] && shouldPlay(hihat.probability)) {
+      this.playHihat(triggerTime + humanize() + (Math.random() * 0.02), hihat.gain)
     }
 
-    // Bass (every 4 steps)
-    if (step % 4 === 0 && bass.notes.length > 0) {
-      const noteIndex = Math.floor(step / 4) % bass.notes.length
-      this.playBass(time, bass.notes[noteIndex], bass.cutoff, bass.resonance, bass.gain)
+    // Bass
+    const bassNote = bass.pattern[step % 16]
+    if (bassNote !== null && shouldPlay(bass.probability)) {
+      this.playBass(triggerTime, bassNote, bass.cutoff, bass.resonance, bass.gain, bass.adsr)
     }
 
-    // Pad (sustained, retriggered every 8 steps)
-    if (step % 8 === 0 && pad.notes.length > 0) {
-      this.playPad(time, pad.notes, pad.pan, pad.reverb, pad.gain)
+    // Pad
+    const padNotes = pad.pattern[step % 16]
+    if (padNotes !== null && padNotes.length > 0 && shouldPlay(pad.probability)) {
+      this.playPad(triggerTime, padNotes, pad.pan, pad.reverb, pad.gain, pad.adsr)
     }
 
-    // Lead (every 2 steps if notes exist)
-    if (step % 2 === 0 && lead.notes.length > 0) {
-      const noteIndex = Math.floor(step / 2) % lead.notes.length
-      this.playLead(time, lead.notes[noteIndex], effects.distort, lead.gain)
+    // Lead
+    const leadNote = lead.pattern[step % 16]
+    if (leadNote !== null && shouldPlay(lead.probability)) {
+      this.playLead(triggerTime, leadNote, effects.distort, lead.gain, lead.adsr, lead.detune)
     }
   }
 
@@ -228,8 +338,11 @@ export class AudioEngine {
     this.scheduledNodes.push(noise)
   }
 
-  private playBass(time: number, note: number, cutoff: number, resonance: number, gain: number) {
+  private playBass(time: number, note: number, cutoff: number, resonance: number, gain: number, adsr: [number, number, number, number]) {
     if (!this.audioContext || !this.masterGain) return
+
+    const [att, dec, sus, rel] = adsr
+    // Duration inferred from pattern for now, but ADSR controls shape
 
     const osc = this.audioContext.createOscillator()
     osc.type = "sawtooth"
@@ -241,25 +354,36 @@ export class AudioEngine {
     filter.Q.value = resonance
 
     const gainNode = this.audioContext.createGain()
-    gainNode.gain.setValueAtTime(gain * 0.5, time)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.4)
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain * 0.5, time + att)
+    const targetGain = Math.max(gain * sus * 0.5, 0.001)
+    gainNode.gain.exponentialRampToValueAtTime(targetGain, time + att + dec)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + att + dec + rel)
 
     osc.connect(filter)
     filter.connect(gainNode)
     gainNode.connect(this.masterGain)
 
     osc.start(time)
-    osc.stop(time + 0.4)
+    osc.stop(time + att + dec + rel + 0.1)
     this.scheduledNodes.push(osc)
   }
 
-  private playPad(time: number, notes: number[], pan: number, reverb: number, gain: number) {
+  private playPad(time: number, notes: number[], pan: number, reverb: number, gain: number, adsr: [number, number, number, number]) {
     if (!this.audioContext || !this.masterGain) return
+
+    const [att, dec, sus, rel] = adsr
+    const duration = 2 // Fixed approximate bar duration for pads
 
     const merger = this.audioContext.createChannelMerger(2)
     const gainNode = this.audioContext.createGain()
-    gainNode.gain.setValueAtTime(gain * 0.2, time)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 2)
+
+    // ADSR Envelope
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain * 0.2, time + att)
+    const targetGain = Math.max(gain * sus * 0.2, 0.001)
+    gainNode.gain.exponentialRampToValueAtTime(targetGain, time + att + dec)
+    gainNode.gain.linearRampToValueAtTime(0.01, time + duration + rel) // Release
 
     // Pan node
     const panner = this.audioContext.createStereoPanner()
@@ -275,11 +399,11 @@ export class AudioEngine {
       const osc = this.audioContext!.createOscillator()
       osc.type = "sine"
       osc.frequency.value = freq
-      osc.detune.value = (i - notes.length / 2) * 10 // Slight detuning for richness
+      osc.detune.value = (i - notes.length / 2) * 10
 
       osc.connect(gainNode)
       osc.start(time)
-      osc.stop(time + 2)
+      osc.stop(time + duration + rel + 0.5)
       this.scheduledNodes.push(osc)
     })
 
@@ -293,21 +417,27 @@ export class AudioEngine {
     delay.connect(this.masterGain)
   }
 
-  private playLead(time: number, note: number, distort: number, gain: number) {
+  private playLead(time: number, note: number, distort: number, gain: number, adsr: [number, number, number, number], detune: number) {
     if (!this.audioContext || !this.masterGain) return
+
+    const [att, dec, sus, rel] = adsr
 
     const osc = this.audioContext.createOscillator()
     osc.type = "square"
     osc.frequency.value = note
+    osc.detune.value = detune
 
     const filter = this.audioContext.createBiquadFilter()
     filter.type = "lowpass"
     filter.frequency.setValueAtTime(2000, time)
-    filter.frequency.exponentialRampToValueAtTime(500, time + 0.2)
+    filter.frequency.exponentialRampToValueAtTime(500, time + att + dec)
 
     const gainNode = this.audioContext.createGain()
-    gainNode.gain.setValueAtTime(gain * 0.4, time)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.3)
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain * 0.4, time + att)
+    const targetGain = Math.max(gain * sus * 0.4, 0.001)
+    gainNode.gain.exponentialRampToValueAtTime(targetGain, time + att + dec)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + att + dec + rel)
 
     // Simple distortion using waveshaper
     if (distort > 0) {
@@ -324,7 +454,7 @@ export class AudioEngine {
     gainNode.connect(this.masterGain)
 
     osc.start(time)
-    osc.stop(time + 0.3)
+    osc.stop(time + att + dec + rel + 0.1)
     this.scheduledNodes.push(osc)
   }
 
@@ -348,12 +478,34 @@ export class AudioEngine {
 // Parsed pattern structure
 export interface ParsedPattern {
   bpm: number
-  kick: { pattern: boolean[]; gain: number }
-  snare: { pattern: boolean[]; gain: number }
-  hihat: { pattern: boolean[]; gain: number }
-  bass: { notes: number[]; cutoff: number; resonance: number; gain: number }
-  pad: { notes: number[]; pan: number; reverb: number; gain: number }
-  lead: { notes: number[]; gain: number }
+  swing: number // 0 to 1
+  kick: { pattern: boolean[]; gain: number; probability?: number }
+  snare: { pattern: boolean[]; gain: number; probability?: number }
+  hihat: { pattern: boolean[]; gain: number; probability?: number }
+  bass: {
+    pattern: (number | null)[];
+    cutoff: number;
+    resonance: number;
+    gain: number;
+    probability?: number;
+    adsr: [number, number, number, number];
+  }
+  pad: {
+    pattern: (number[] | null)[];
+    pan: number;
+    reverb: number;
+    gain: number;
+    probability?: number;
+    adsr: [number, number, number, number];
+  }
+  lead: {
+    pattern: (number | null)[];
+    gain: number;
+    detune: number;
+    probability?: number;
+    adsr: [number, number, number, number];
+    delay: number;
+  }
   effects: { distort: number; delay: number }
 }
 

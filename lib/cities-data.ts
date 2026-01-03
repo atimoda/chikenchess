@@ -20,206 +20,251 @@ export interface CityData {
 }
 
 export const cities: CityData[] = [
+  // 1. Düsseldorf (1970)
+  {
+    id: "dusseldorf",
+    name: "Düsseldorf",
+    country: "Germany",
+    year: 1970,
+    genre: "Krautrock / Electro Pop",
+    description: "Robotic rhythms, synthesized vocoders, the blueprint of electronic music.",
+    bpm: 118,
+    scale: ["C4", "D4", "E4", "G4", "A4"], // Major Pentatonic (Kraftwerk-ish)
+    coordinates: { x: 48, y: 24 }, // Düsseldorf
+    color: "#ff3333", // Red (Man Machine)
+    samples: {
+      kick: "bd:0", // Kraftwerk style tightly gated
+      snare: "sd:5", // Electronic snap
+      hihat: "hh:5", // Ticked machine hat
+      bass: "bass:6", // Sine bass
+      pad: "pad:6", // Synth strings
+      lead: "synth:5", // Sine/Square lead
+    },
+  },
+  // 2. New York City (1977)
+  {
+    id: "nyc",
+    name: "New York City",
+    country: "USA",
+    year: 1977,
+    genre: "Disco / Garage",
+    description: "Four-on-the-floor, orchestral stabs, soul vocals, the birth of club culture.",
+    bpm: 120,
+    scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Funk/Soul roots)
+    coordinates: { x: 29, y: 28 }, // NYC
+    color: "#a020f0", // Purple (Studio 54 / Nightclub)
+    samples: {
+      kick: "bd:5", // Acoust-electric disco kick
+      snare: "sd:4", // Clap/Snare layered
+      hihat: "hh:2", // Open hats
+      bass: "bass:5", // Funk bass
+      pad: "pad:4", // Strings
+      lead: "piano:0", // Electric Piano
+    },
+  },
+  // 3. Chicago (1984)
   {
     id: "chicago",
     name: "Chicago",
     country: "USA",
     year: 1984,
     genre: "Classic House",
-    description: "Piano chords, Roland TR-909, Jacking grooves",
-    bpm: 122,
+    description: "Jack your body. TR-909 rhythms, piano stabs, soulful vocals.",
+    bpm: 124,
     scale: ["C4", "D4", "E4", "G4", "A4"],
-    coordinates: { x: 22, y: 38 },
-    color: "#00ffaa",
+    coordinates: { x: 25, y: 27 }, // Chicago
+    color: "#00ffaa", // Neon Green/Cyan (Acid/House vibe)
     samples: {
-      kick: "bd:0",
-      snare: "sd:1",
-      hihat: "hh:0",
-      bass: "bass:0",
-      pad: "pad:0",
-      lead: "piano:0",
+      kick: "bd:0", // 909 Kick
+      snare: "sd:1", // 909 Snare/Clap
+      hihat: "hh:0", // 909 Hats
+      bass: "bass:0", // FM Bass
+      pad: "pad:0", // Deep Pad
+      lead: "piano:0", // House Piano
     },
   },
+  // 4. Detroit (1986)
   {
     id: "detroit",
     name: "Detroit",
     country: "USA",
-    year: 1985,
-    genre: "Techno Origins",
-    description: "Industrial sounds, TR-808, cold futuristic synths",
-    bpm: 130,
+    year: 1986,
+    genre: "Techno",
+    description: "Hi-tech jazz. Industrial soul. The Belleville Three.",
+    bpm: 132,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
-    coordinates: { x: 24, y: 36 },
-    color: "#ff6600",
+    coordinates: { x: 26, y: 27 }, // Detroit
+    color: "#ff6600", // Industrial Orange
     samples: {
-      kick: "bd:1",
-      snare: "cp:0",
-      hihat: "hh:1",
-      bass: "bass:1",
-      pad: "pad:1",
-      lead: "synth:0",
+      kick: "bd:1", // 909 Distorted
+      snare: "cp:0", // 909 Clap
+      hihat: "hh:1", // Metallic Hats
+      bass: "bass:1", // Analog Bass
+      pad: "pad:1", // Cold Strings
+      lead: "synth:0", // Detroit Stabs
     },
   },
+  // 5. Ibiza (1986)
+  {
+    id: "ibiza",
+    name: "Ibiza",
+    country: "Spain",
+    year: 1986,
+    genre: "Balearic Beat",
+    description: "Sunset moods, eclectic blends, psychedelic dance.",
+    bpm: 110,
+    scale: ["C4", "E4", "F4", "G4", "B4"], // Lydian (Dreamy)
+    coordinates: { x: 50.5, y: 29 }, // Ibiza (South of Europe, North of Africa)
+    color: "#ffaa00", // Sunset Gold
+    samples: {
+      kick: "bd:4", // Softer kick
+      snare: "sd:3",
+      hihat: "hh:4", // Shaker
+      bass: "bass:4",
+      pad: "pad:4", // Warm Pad
+      lead: "synth:3", // Flute/Synth
+    },
+  },
+  // 6. Manchester (1988)
+  {
+    id: "manchester",
+    name: "Manchester",
+    country: "UK",
+    year: 1988,
+    genre: "Acid House / Rave",
+    description: "The Haçienda, smiley faces, TB-303 squelches, sirens.",
+    bpm: 128,
+    scale: ["C4", "Eb4", "F4", "Gb4", "Bb4"], // Blues/Acid scale
+    coordinates: { x: 49, y: 21 }, // Manchester
+    color: "#ffff00", // Acid Yellow (Smiley)
+    samples: {
+      kick: "bd:2", // Rave Kick
+      snare: "sd:2", // Breakbeat Snare
+      hihat: "hh:2",
+      bass: "bass:2", // 303 Bass
+      pad: "pad:2", // Rave Hoover
+      lead: "synth:1", // 303 Acid Lead
+    },
+  },
+  // 7. Berlin (1991)
+  {
+    id: "berlin",
+    name: "Berlin",
+    country: "Germany",
+    year: 1991,
+    genre: "Techno (Post-Wall)",
+    description: "Tresor, E-Werk. Concrete, darkness, relentless strobe loops.",
+    bpm: 140,
+    scale: ["C4", "Db4", "E4", "F4", "G4", "Ab4", "B4"], // Phrygian Dominant (Dark/Tension)
+    coordinates: { x: 53.7, y: 21 }, // Berlin
+    color: "#00ccff", // Cold Blue
+    samples: {
+      kick: "bd:3", // Rumble Kick
+      snare: "rim:0", // Industrial Rim
+      hihat: "hh:3", // Fast 909 Hats
+      bass: "bass:3", // Sub Rumble
+      pad: "pad:3", // Dark Drone
+      lead: "synth:2", // Metallic Stab
+    },
+  },
+  // 8. Tokyo (1991)
+  {
+    id: "tokyo",
+    name: "Tokyo",
+    country: "Japan",
+    year: 1991,
+    genre: "Minimal / Experimental",
+    description: "Precision, glitch aesthetics, yellow magic electronics.",
+    bpm: 130,
+    scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
+    coordinates: { x: 92, y: 32 }, // Tokyo (On the new Island path)
+    color: "#ff00ff", // Neon Pink/Cyberpunk
+    samples: {
+      kick: "bd:6", // Clicky Kick
+      snare: "sd:5", // Glitch Snare
+      hihat: "hh:6", // Glitch Hats
+      bass: "bass:6", // Sine Bass
+      pad: "pad:6", // Sine Pad
+      lead: "synth:5", // Pure Wave
+    },
+  },
+  // 9. London (1992)
   {
     id: "london",
     name: "London",
     country: "UK",
     year: 1992,
-    genre: "Breakbeat / Jungle",
-    description: "Broken beats, deep sub-bass, reggae/dub samples",
-    bpm: 160,
-    scale: ["C4", "D4", "F4", "G4", "Bb4"],
-    coordinates: { x: 48, y: 32 },
-    color: "#ff00ff",
+    genre: "Jungle / DnB",
+    description: "Amen breaks chopped at high speed, deep reggae basslines.",
+    bpm: 165,
+    scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
+    coordinates: { x: 45, y: 21 }, // London (On the new UK path)
+    color: "#33ff00", // Jungle Green
     samples: {
-      kick: "bd:2",
-      snare: "sd:2",
-      hihat: "hh:2",
-      bass: "bass:2",
-      pad: "pad:2",
-      lead: "synth:1",
+      kick: "bd:7", // Jungle Kick
+      snare: "sd:6", // Amen Snare
+      hihat: "hh:7", // Amen Hats
+      bass: "bass:7", // Reese Bass
+      pad: "pad:7", // Dark Pad
+      lead: "synth:6", // Siren/Dub
     },
   },
+  // 10. São Paulo (1993)
   {
-    id: "berlin",
-    name: "Berlin",
-    country: "Germany",
-    year: 1994,
-    genre: "Minimal / Hard Techno",
-    description: "Concrete aesthetics, hypnotic loops, metallic percussion",
-    bpm: 138,
-    scale: ["C4", "D4", "E4", "F#4", "A4"],
-    coordinates: { x: 52, y: 30 },
-    color: "#00ccff",
+    id: "saopaulo",
+    name: "São Paulo",
+    country: "Brazil",
+    year: 1993,
+    genre: "Underground / Hard Techno",
+    description: "Hell's Club, A Lôca. Intense, industrial, tropical concrete jungle.",
+    bpm: 145,
+    scale: ["C4", "Db4", "F4", "G4", "Ab4"],
+    coordinates: { x: 37, y: 63 }, // São Paulo (South America)
+    color: "#ccff00", // Lime/Electric Green
     samples: {
       kick: "bd:3",
-      snare: "rim:0",
+      snare: "sd:2",
       hihat: "hh:3",
       bass: "bass:3",
       pad: "pad:3",
       lead: "synth:2",
     },
   },
+  // 11. Paris (1995)
   {
-    id: "ibiza",
-    name: "Ibiza",
-    country: "Spain",
-    year: 1998,
-    genre: "Balearic / Trance",
-    description: "Ethereal pads, solar atmospheres, rising synth melodies",
-    bpm: 140,
-    scale: ["C4", "E4", "F4", "G4", "B4"],
-    coordinates: { x: 49, y: 42 },
-    color: "#ffaa00",
+    id: "paris",
+    name: "Paris",
+    country: "France",
+    year: 1995,
+    genre: "French House",
+    description: "Filtered loops, phasers, disco samples. The French Touch.",
+    bpm: 126,
+    scale: ["C4", "D4", "E4", "F#4", "G4", "A4"],
+    coordinates: { x: 47, y: 25 }, // Paris
+    color: "#3366ff", // French Blue
     samples: {
-      kick: "bd:4",
-      snare: "sd:3",
-      hihat: "hh:4",
-      bass: "bass:4",
-      pad: "pad:4",
-      lead: "synth:3",
+      kick: "bd:0",
+      snare: "cp:0",
+      hihat: "hh:0",
+      bass: "bass:5", // Funk/Filter Bass
+      pad: "pad:4", // Filtered Strings
+      lead: "synth:4", // Filtered Lead
     },
   },
-  {
-    id: "miami",
-    name: "Miami",
-    country: "USA",
-    year: 1988,
-    genre: "Electro / Miami Bass",
-    description: "Explosive 808 kicks, vocoders, fast party beats",
-    bpm: 125,
-    scale: ["C4", "D4", "F4", "G4", "A4"],
-    coordinates: { x: 23, y: 48 },
-    color: "#ff0066",
-    samples: {
-      kick: "bd:5",
-      snare: "sd:4",
-      hihat: "hh:5",
-      bass: "bass:5",
-      pad: "pad:5",
-      lead: "synth:4",
-    },
-  },
-  {
-    id: "tokyo",
-    name: "Tokyo",
-    country: "Japan",
-    year: 2000,
-    genre: "Minimal / Glitch",
-    description: "Clean digital sounds, sine beeps, micro-surgical rhythm",
-    bpm: 128,
-    scale: ["C4", "D#4", "F4", "G#4", "A#4"],
-    coordinates: { x: 85, y: 38 },
-    color: "#ff3366",
-    samples: {
-      kick: "bd:6",
-      snare: "sd:5",
-      hihat: "hh:6",
-      bass: "bass:6",
-      pad: "pad:6",
-      lead: "synth:5",
-    },
-  },
-  {
-    id: "amsterdam",
-    name: "Amsterdam",
-    country: "Netherlands",
-    year: 2010,
-    genre: "Big Room / Hardstyle",
-    description: "Distorted kicks, supersaw leads, festival energy",
-    bpm: 150,
-    scale: ["C4", "D4", "E4", "G4", "A4"],
-    coordinates: { x: 50, y: 29 },
-    color: "#ff6633",
-    samples: {
-      kick: "bd:7",
-      snare: "sd:6",
-      hihat: "hh:7",
-      bass: "bass:7",
-      pad: "pad:7",
-      lead: "synth:6",
-    },
-  },
-  {
-    id: "losangeles",
-    name: "Los Angeles",
-    country: "USA",
-    year: 2015,
-    genre: "Synthwave / Future Bass",
-    description: "Neon sunset aesthetics, bright modulated synth chords",
-    bpm: 110,
-    scale: ["C4", "D4", "E4", "F#4", "A4"],
-    coordinates: { x: 12, y: 40 },
-    color: "#ff00aa",
-    samples: {
-      kick: "bd:8",
-      snare: "sd:7",
-      hihat: "hh:8",
-      bass: "bass:8",
-      pad: "pad:8",
-      lead: "synth:7",
-    },
-  },
-  {
-    id: "lasvegas",
-    name: "Las Vegas",
-    country: "USA",
-    year: 2020,
-    genre: "Commercial EDM",
-    description: "Crystal-clear production, intense drops, cinematic FX",
-    bpm: 128,
-    scale: ["C4", "E4", "F4", "G4", "B4"],
-    coordinates: { x: 15, y: 42 },
-    color: "#ffcc00",
-    samples: {
-      kick: "bd:9",
-      snare: "sd:8",
-      hihat: "hh:9",
-      bass: "bass:9",
-      pad: "pad:9",
-      lead: "synth:8",
-    },
-  },
+]
+
+export const FUTURE_CITIES = [
+  "Frankfurt",
+  "Amsterdam",
+  "Rotterdam",
+  "LosAngeles",
+  "Miami",
+  "Brussels",
+  "Sheffield",
+  "Reykjavik",
+  "Melbourne",
+  "Vienna",
+  "Bristol",
 ]
 
 export function getCitiesForDecade(year: number): CityData[] {

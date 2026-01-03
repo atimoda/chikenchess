@@ -12,6 +12,8 @@ import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Volume2, VolumeX, Settings2 } from "lucide-react"
+import { toast } from "sonner"
+import { unlockNextCity } from "@/lib/game-progression"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,16 +34,18 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [moveHistory, setMoveHistory] = useState<string[]>([])
+  const [redoStack, setRedoStack] = useState<string[]>([]) // Stack of SAN moves to redo
   const [gameStatus, setGameStatus] = useState<string>("Your move")
   const [aiDepth, setAiDepth] = useState(10)
   const [capturedPieces, setCapturedPieces] = useState<{ white: string[]; black: string[] }>({
     white: [],
     black: [],
   })
+  const [activeSquares, setActiveSquares] = useState<Set<string>>(new Set())
   const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
 
-  const { togglePlayback } = useAudio(game, city, isPlaying)
+  const { togglePlayback } = useAudio(game, city, isPlaying, activeSquares)
 
   // Keep ref in sync
   useEffect(() => {
@@ -72,13 +76,31 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   // Update pattern when board changes
   useEffect(() => {
-    const pattern = generateStrudelPattern(game, city)
+    const pattern = generateStrudelPattern(game, city, activeSquares)
     setCurrentPattern(pattern)
 
     // Update game status
     if (game.isCheckmate()) {
-      setGameStatus(game.turn() === "w" ? "CHECKMATE - Black wins!" : "CHECKMATE - White wins!")
+      const winner = game.turn() === "w" ? "Black" : "White"
+      setGameStatus(`CHECKMATE - ${winner} wins!`)
       setIsPlaying(false)
+
+      // If White (Player) won
+      if (winner === "White") {
+        unlockNextCity(city.id)
+        toast.success("CITY CONQUERED! 🎵", {
+          description: "Next arena unlocked. Ready for the next era?",
+          duration: Infinity,
+          action: {
+            label: "RETURN TO MAP",
+            onClick: onBack
+          }
+        })
+      } else {
+        toast.error("DEFEAT!", {
+          description: "Try again to unlock the next city."
+        })
+      }
     } else if (game.isCheck()) {
       setGameStatus("CHECK!")
     } else if (game.isDraw()) {
@@ -88,7 +110,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "AI analyzing...")
     }
-  }, [game, city])
+  }, [game, city, activeSquares])
 
   // Track captured pieces
   const updateCapturedPieces = useCallback((move: Move) => {
@@ -122,6 +144,19 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           setGame(gameCopy)
           setMoveHistory((prev) => [...prev, move.san])
           updateCapturedPieces(move)
+
+          // Update active squares for AI
+          setActiveSquares(prev => {
+            const next = new Set(prev)
+            next.delete(move.from)
+            next.add(move.to)
+            // Handle castling
+            if (move.san === "O-O" || move.san === "O-O-O") {
+              if (move.to === "g8") { next.delete("h8"); next.add("f8"); } // Black Kingside
+              if (move.to === "c8") { next.delete("a8"); next.add("d8"); } // Black Queenside
+            }
+            return next
+          })
         }
       } catch (e) {
         console.error("Invalid AI move:", moveStr, e)
@@ -133,7 +168,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const handlePlayerMove = useCallback(
     (move: Move) => {
       setMoveHistory((prev) => [...prev, move.san])
+      setRedoStack([]) // Clear redo stack on new move
       updateCapturedPieces(move)
+
+      // Auto-start music on first move
+      if (!isPlaying) {
+        setIsPlaying(true)
+        togglePlayback()
+      }
 
       // Undo to get the clean state, then redo
       const gameCopy = new Chess(game.fen())
@@ -147,25 +189,122 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           stockfishRef.current?.postMessage(`go depth ${aiDepth}`)
         }, 300)
       }
+
+      // Update active squares for Player
+      setActiveSquares(prev => {
+        const next = new Set(prev)
+        next.delete(move.from)
+        next.add(move.to)
+        // Handle castling
+        if (move.san === "O-O" || move.san === "O-O-O") {
+          if (move.to === "g1") { next.delete("h1"); next.add("f1"); } // White Kingside
+          if (move.to === "c1") { next.delete("a1"); next.add("d1"); } // White Queenside
+        }
+        return next
+      })
     },
-    [game, aiDepth, updateCapturedPieces],
+    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback],
   )
 
   const resetGame = useCallback(() => {
     setGame(new Chess())
     setMoveHistory([])
+    setRedoStack([])
     setIsThinking(false)
     setCapturedPieces({ white: [], black: [] })
+    setActiveSquares(new Set())
   }, [])
 
   const undoMove = useCallback(() => {
     if (moveHistory.length < 2) return
+
+    // Replay game from start to get correct state
+    const newGame = new Chess()
+    const newHistory = moveHistory.slice(0, -2) // Remove last 2 moves (Player + AI)
+    const newCapturedPieces: { white: string[], black: string[] } = { white: [], black: [] }
+    const newActiveSquares = new Set<string>()
+
+    // Replay all moves to rebuild state
+    newHistory.forEach(san => {
+      const move = newGame.move(san)
+      if (move) {
+        // Update captured
+        if (move.captured) {
+          if (move.color === "w") newCapturedPieces.white.push(move.captured)
+          else newCapturedPieces.black.push(move.captured)
+        }
+
+        // Update active squares
+        newActiveSquares.delete(move.from)
+        newActiveSquares.add(move.to)
+        // Handle castling
+        if (move.san === "O-O" || move.san === "O-O-O") {
+          if (move.color === 'w') {
+            if (move.to === "g1") { newActiveSquares.delete("h1"); newActiveSquares.add("f1"); }
+            if (move.to === "c1") { newActiveSquares.delete("a1"); newActiveSquares.add("d1"); }
+          } else {
+            if (move.to === "g8") { newActiveSquares.delete("h8"); newActiveSquares.add("f8"); }
+            if (move.to === "c8") { newActiveSquares.delete("a8"); newActiveSquares.add("d8"); }
+          }
+        }
+      }
+    })
+
+    // Save undone moves to stack
+    const movesToUndo = moveHistory.slice(-2)
+    setRedoStack(prev => [...prev, ...movesToUndo])
+
+    setGame(newGame)
+    setMoveHistory(newHistory)
+    setCapturedPieces(newCapturedPieces as { white: string[], black: string[] })
+    setActiveSquares(newActiveSquares)
+  }, [moveHistory])
+
+  const redoMove = useCallback(() => {
+    if (redoStack.length < 2) return
+
+    // Redo last 2 moves
+    const movesToRedo = redoStack.slice(-2)
+    const newRedoStack = redoStack.slice(0, -2)
+
+    // Apply moves to current game state (which is 'game')
+    // We need to mutate a copy to set state
     const gameCopy = new Chess(game.fen())
-    gameCopy.undo() // Undo AI move
-    gameCopy.undo() // Undo player move
+
+    // We need to track captured pieces and active squares incrementally
+    const nextCaptured = { white: [...capturedPieces.white], black: [...capturedPieces.black] }
+    const nextActiveSquares = new Set(activeSquares)
+
+    movesToRedo.forEach(san => {
+      const move = gameCopy.move(san)
+      if (move) {
+        // Update captured
+        if (move.captured) {
+          if (move.color === "w") nextCaptured.white.push(move.captured)
+          else nextCaptured.black.push(move.captured)
+        }
+        // Update active squares
+        nextActiveSquares.delete(move.from)
+        nextActiveSquares.add(move.to)
+        // Handle castling
+        if (move.san === "O-O" || move.san === "O-O-O") {
+          if (move.color === 'w') {
+            if (move.to === "g1") { nextActiveSquares.delete("h1"); nextActiveSquares.add("f1"); }
+            if (move.to === "c1") { nextActiveSquares.delete("a1"); nextActiveSquares.add("d1"); }
+          } else {
+            if (move.to === "g8") { nextActiveSquares.delete("h8"); nextActiveSquares.add("f8"); }
+            if (move.to === "c8") { nextActiveSquares.delete("a8"); nextActiveSquares.add("d8"); }
+          }
+        }
+      }
+    })
+
     setGame(gameCopy)
-    setMoveHistory((prev) => prev.slice(0, -2))
-  }, [game, moveHistory])
+    setMoveHistory(prev => [...prev, ...movesToRedo])
+    setRedoStack(newRedoStack)
+    setCapturedPieces(nextCaptured)
+    setActiveSquares(nextActiveSquares)
+  }, [redoStack, game, activeSquares, capturedPieces])
 
   const handleTogglePlay = useCallback(async () => {
     await togglePlayback()
@@ -204,9 +343,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <h1 className="font-mono font-bold text-base md:text-lg flex items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
               <span style={{ color: city.color }}>{city.name.toUpperCase()}</span>
+              <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground opacity-50">v0.2.1</span>
             </h1>
             <p className="text-xs text-muted-foreground hidden sm:block">
-              {city.genre} • {city.bpm} BPM • {city.year}
+              {city.genre} • {city.bpm} BPM • Lvl {aiDepth / 5}
             </p>
           </div>
         </div>
@@ -214,9 +354,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         <div className="flex items-center gap-2 md:gap-4">
           {/* Status */}
           <div
-            className={`text-xs md:text-sm font-mono px-3 py-1 rounded-full ${
-              gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "animate-pulse" : ""
-            }`}
+            className={`text-xs md:text-sm font-mono px-3 py-1 rounded-full ${gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "animate-pulse" : ""
+              }`}
             style={{
               backgroundColor:
                 gameStatus.includes("CHECK") || gameStatus.includes("MATE")
@@ -250,6 +389,28 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           <Button variant="outline" size="icon" onClick={handleTogglePlay}>
             {isPlaying ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </Button>
+
+          {/* DEBUG: Force Win Button */}
+          <Button
+            variant="destructive"
+            size="sm"
+            className="hidden md:flex text-[10px] h-7 px-2"
+            onClick={() => {
+              setGameStatus("CHECKMATE - White wins!")
+              setIsPlaying(false)
+              unlockNextCity(city.id)
+              toast.success("CITY CONQUERED! 🎵", {
+                description: "Next arena unlocked. Ready for the next era?",
+                duration: Infinity,
+                action: {
+                  label: "RETURN TO MAP",
+                  onClick: onBack
+                }
+              })
+            }}
+          >
+            WIN
+          </Button>
         </div>
       </header>
 
@@ -279,6 +440,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             onReset={resetGame}
             onUndo={undoMove}
             canUndo={moveHistory.length >= 2 && !isThinking}
+            onRedo={redoMove}
+            canRedo={redoStack.length >= 2 && !isThinking}
             isPlaying={isPlaying}
             onTogglePlay={handleTogglePlay}
           />

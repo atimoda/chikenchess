@@ -11,205 +11,30 @@ interface PiecePosition {
 }
 
 // Generate both the display pattern (Strudel-like code) and the parsed pattern for audio
-export function generateStrudelPattern(game: Chess, city: CityData): string {
+export function generateStrudelPattern(game: Chess, city: CityData, activeSquares: Set<string>): string {
+  // We reuse the logic from parsePatternForAudio to ensure what you see is what you hear
+  // However, since parsePattern return frequencies, we need to map back to note names or just use frequencies
+  // Ideally we would refactor to share the logic source. 
+  // For now, let's replicate the structure but output string notation.
+
   const board = game.board()
   const pieces: PiecePosition[] = []
-  const inCheck = game.isCheck()
 
-  // Collect all pieces
   const files = ["a", "b", "c", "d", "e", "f", "g", "h"]
   for (let rank = 0; rank < 8; rank++) {
     for (let file = 0; file < 8; file++) {
       const piece = board[rank][file]
       if (piece) {
-        pieces.push({
-          type: piece.type,
-          color: piece.color,
-          square: `${files[file]}${8 - rank}` as Square,
-          file,
-          rank: 7 - rank,
-        })
-      }
-    }
-  }
-
-  // Separate by piece type
-  const pawns = pieces.filter((p) => p.type === "p")
-  const knights = pieces.filter((p) => p.type === "n")
-  const bishops = pieces.filter((p) => p.type === "b")
-  const rooks = pieces.filter((p) => p.type === "r")
-  const queens = pieces.filter((p) => p.type === "q")
-
-  const layers: string[] = []
-
-  // Header
-  layers.push(`// ═══════════════════════════════════════`)
-  layers.push(`// ${city.name.toUpperCase()} - ${city.genre}`)
-  layers.push(`// ═══════════════════════════════════════`)
-  layers.push(``)
-  layers.push(`setcps(${(city.bpm / 60 / 2).toFixed(3)})  // ${city.bpm} BPM`)
-  layers.push(``)
-  layers.push(`stack(`)
-
-  // PAWNS -> Rhythm Section
-  if (pawns.length > 0) {
-    const whitePawns = pawns.filter((p) => p.color === "w")
-    const blackPawns = pawns.filter((p) => p.color === "b")
-
-    layers.push(`  // ♟ PAWNS → Rhythm Engine`)
-
-    // Kicks from left-side pawns
-    const kickPawns = whitePawns.filter((p) => p.file < 4)
-    if (kickPawns.length > 0) {
-      const kickPattern = generateKickPattern(kickPawns)
-      layers.push(`  s("bd:${city.id === "detroit" ? "3" : "0"}*4")`)
-      layers.push(`    .struct("${kickPattern}")`)
-      layers.push(`    .gain(0.8),`)
-    }
-
-    // Snares from right-side pawns
-    const snarePawns = whitePawns.filter((p) => p.file >= 4)
-    if (snarePawns.length > 0) {
-      const snarePattern = generateSnarePattern(snarePawns)
-      layers.push(`  s("sd:${city.id === "berlin" ? "2" : "1"}")`)
-      layers.push(`    .struct("${snarePattern}")`)
-      layers.push(`    .gain(0.7),`)
-    }
-
-    // Hi-hats from black pawns
-    if (blackPawns.length > 0) {
-      const hihatDensity = Math.min(blackPawns.length * 2, 16)
-      const hihatPattern = generateHihatPattern(blackPawns, hihatDensity)
-      layers.push(`  s("hh*${hihatDensity}")`)
-      layers.push(`    .struct("${hihatPattern}")`)
-      layers.push(`    .gain(0.35),`)
-    }
-
-    layers.push(``)
-  }
-
-  // KNIGHTS -> Bass & Acid lines
-  if (knights.length > 0) {
-    layers.push(`  // ♞ KNIGHTS → Bass Synth`)
-
-    const notes = knights.map((k) => {
-      const noteIndex = (k.file + k.rank * 2) % city.scale.length
-      return city.scale[noteIndex].replace("4", "3") // Lower octave for bass
-    })
-
-    const whiteKnight = knights.find((k) => k.color === "w")
-    const blackKnight = knights.find((k) => k.color === "b")
-
-    const cutoff = whiteKnight ? 300 + whiteKnight.rank * 150 : 800
-    const resonance = blackKnight ? 3 + blackKnight.file * 2 : 8
-
-    layers.push(`  note("${notes.join(" ")}")`)
-    layers.push(`    .s("sawtooth")`)
-    layers.push(`    .cutoff(${cutoff})`)
-    layers.push(`    .resonance(${resonance})`)
-    layers.push(`    .decay(0.2)`)
-    layers.push(`    .gain(0.5),`)
-    layers.push(``)
-  }
-
-  // BISHOPS -> Arpeggios
-  if (bishops.length > 0) {
-    layers.push(`  // ♝ BISHOPS → Arpeggios`)
-
-    const arpeggioNotes = bishops.flatMap((b) => {
-      const baseIndex = b.file % city.scale.length
-      const direction = b.color === "w" ? 1 : -1
-      return [
-        city.scale[baseIndex],
-        city.scale[(baseIndex + direction + city.scale.length) % city.scale.length],
-        city.scale[(baseIndex + direction * 2 + city.scale.length) % city.scale.length],
-      ]
-    })
-
-    layers.push(`  note("${arpeggioNotes.join(" ")}")`)
-    layers.push(`    .s("triangle")`)
-    layers.push(`    .delay(0.3)`)
-    layers.push(`    .gain(0.4),`)
-    layers.push(``)
-  }
-
-  // ROOKS -> Atmosphere/Pads
-  if (rooks.length > 0) {
-    layers.push(`  // ♜ ROOKS → Pad Layer`)
-
-    const panValue = rooks.reduce((sum, r) => sum + (r.file - 3.5) / 3.5, 0) / rooks.length
-    const reverbValue = rooks.reduce((sum, r) => sum + r.rank / 7, 0) / rooks.length
-
-    const padChord = city.scale.slice(0, 3).join(" ")
-
-    layers.push(`  note("<${padChord}>")`)
-    layers.push(`    .s("sine")`)
-    layers.push(`    .pan(${panValue.toFixed(2)})`)
-    layers.push(`    .room(${reverbValue.toFixed(2)})`)
-    layers.push(`    .gain(0.25),`)
-    layers.push(``)
-  }
-
-  // QUEENS -> Lead melody
-  if (queens.length > 0) {
-    layers.push(`  // ♛ QUEENS → Lead Synth`)
-
-    const queenNotes = queens.flatMap((q) => {
-      const baseNote = city.scale[(q.file + q.rank) % city.scale.length]
-      return [baseNote, city.scale[(q.file + q.rank + 2) % city.scale.length]]
-    })
-
-    layers.push(`  note("${queenNotes.join(" ")}")`)
-    layers.push(`    .s("square")`)
-    layers.push(`    .lpf(1200)`)
-    layers.push(`    .delay(0.2)`)
-    layers.push(`    .room(0.4)`)
-    layers.push(`    .gain(0.5),`)
-    layers.push(``)
-  }
-
-  // CHECK effects
-  if (inCheck) {
-    layers.push(`  // ⚠️ CHECK! → Distortion Active`)
-    layers.push(`  s("hh*16")`)
-    layers.push(`    .speed(2)`)
-    layers.push(`    .distort(0.6)`)
-    layers.push(`    .gain(0.3),`)
-    layers.push(``)
-  }
-
-  // CHECKMATE effect
-  if (game.isCheckmate()) {
-    layers.push(`  // ☠️ CHECKMATE → Final Drop`)
-    layers.push(`  s("bd:0 ~ ~ ~")`)
-    layers.push(`    .room(0.99)`)
-    layers.push(`    .gain(1),`)
-  }
-
-  layers.push(`)`)
-
-  return layers.join("\n")
-}
-
-// Parse the board state into an audio-playable pattern
-export function parsePatternForAudio(game: Chess, city: CityData): ParsedPattern {
-  const board = game.board()
-  const pieces: PiecePosition[] = []
-  const inCheck = game.isCheck()
-
-  // Collect all pieces
-  const files = ["a", "b", "c", "d", "e", "f", "g", "h"]
-  for (let rank = 0; rank < 8; rank++) {
-    for (let file = 0; file < 8; file++) {
-      const piece = board[rank][file]
-      if (piece) {
-        pieces.push({
-          type: piece.type,
-          color: piece.color,
-          square: `${files[file]}${8 - rank}` as Square,
-          file,
-          rank: 7 - rank,
-        })
+        const square = `${files[file]}${8 - rank}` as Square
+        if (activeSquares.has(square)) {
+          pieces.push({
+            type: piece.type,
+            color: piece.color,
+            square: square,
+            file,
+            rank: 7 - rank,
+          })
+        }
       }
     }
   }
@@ -223,7 +48,198 @@ export function parsePatternForAudio(game: Chess, city: CityData): ParsedPattern
   const whitePawns = pawns.filter((p) => p.color === "w")
   const blackPawns = pawns.filter((p) => p.color === "b")
 
-  // Generate kick pattern (16 steps)
+  const layers: string[] = []
+
+  // Header (Safe ASCII)
+  layers.push(`// =======================================`)
+  layers.push(`// ${city.name.toUpperCase()} - ${city.genre}`)
+  layers.push(`// =======================================`)
+  layers.push(``)
+  layers.push(`setcps(${(city.bpm / 60 / 2).toFixed(3)})`)
+  layers.push(``)
+  layers.push(`stack(`)
+
+  // 1. KICK (Pawns)
+  if (whitePawns.length > 0) {
+    const pattern = new Array(16).fill(0)
+    // Base House
+    pattern[0] = 1; pattern[4] = 1; pattern[8] = 1; pattern[12] = 1;
+    // Variations
+    whitePawns.forEach(p => {
+      if (p.file < 4 && p.rank > 2) {
+        const step = (p.file * 4 + 2) % 16
+        pattern[step] = 1
+      }
+    })
+
+    // Convert to hex-string or mini-notation
+    const str = patternToMini(pattern)
+    layers.push(`  // Kick`)
+    layers.push(`  s("${city.samples.kick}")`)
+    layers.push(`    .struct("${str}")`)
+    layers.push(`    .gain(0.8),`)
+  }
+
+  // 2. SNARE
+  if (whitePawns.some(p => p.file >= 4)) {
+    const pattern = new Array(16).fill(0)
+    pattern[4] = 1; pattern[12] = 1;
+    whitePawns.forEach(p => {
+      if (p.file >= 4 && p.rank > 3) {
+        const step = (p.file * 3 + 15) % 16
+        pattern[step] = 1
+      }
+    })
+    layers.push(`  // Snare`)
+    layers.push(`  s("${city.samples.snare}")`)
+    layers.push(`    .struct("${patternToMini(pattern)}")`)
+    layers.push(`    .gain(0.7),`)
+  }
+
+  const inCheck = game.isCheck()
+
+  // 3. HIHAT (Black Pawns)
+  if (blackPawns.length > 0) {
+    const pattern = new Array(16).fill(0)
+    blackPawns.forEach((p) => {
+      const baseStep = (p.file * 2) % 16
+      pattern[baseStep] = 1
+      if (p.rank < 5) pattern[(baseStep + 1) % 16] = 1
+    })
+    layers.push(`  // Hihat (Probabilistic 80%)`)
+    layers.push(`  s("${city.samples.hihat}")`)
+    layers.push(`    .struct("${patternToMini(pattern)}")`)
+    layers.push(`    .gain(0.4 * "0.8?"),`) // Strudel probability notation
+  }
+
+  // 4. BASS (Knights)
+  if (knights.length > 0) {
+    const notes = new Array(16).fill("~")
+    knights.forEach(k => {
+      const idx = (k.file + k.rank * 2) % city.scale.length
+      const note = city.scale[idx].replace("4", "3")
+      let step = 0
+      if (k.file < 3) step = (k.file * 4) % 16
+      else if (k.file < 6) step = ((k.file - 3) * 4 + 2) % 16
+      else step = ((k.file - 6) * 4 + 7) % 16
+      step = (step + k.rank) % 16
+      notes[step] = note
+    })
+
+    layers.push(`  // Bass (Knights)`)
+    layers.push(`  note("${notes.join(" ")}")`)
+    layers.push(`    .s("${city.samples.bass}")`)
+    layers.push(`    .decay(0.2).gain(0.5 * "0.9?"),`)
+  }
+
+  // 5. LEAD / MELODY
+  if (bishops.length > 0 || queens.length > 0) {
+    const count = bishops.length + queens.length
+    const pulses = Math.min(count + 2, 7)
+
+    const noteList = queens.length > 0 ? `"${city.scale[0]} ${city.scale[2]} ${city.scale[4]}"` : `"${city.scale[0]} ${city.scale[3]}"`
+
+    layers.push(`  // Melody (Euclidean Structure)`)
+    if (inCheck) layers.push(`  // ⚠️ TENSION SCALE ACTIVATED `)
+
+    layers.push(`  note(${noteList})`)
+    layers.push(`    .s("${city.samples.lead}")`)
+    layers.push(`    .struct("x(${pulses},16)")`)
+    layers.push(`    .gain(0.5 * "0.6?").delay(0.3),`)
+  }
+
+  // 6. PADS (Rooks)
+  if (rooks.length > 0) {
+    const chord = city.scale.slice(0, 3).join(" ") // Simple triadic chord
+    layers.push(`  // Pads (Rooks)`)
+    layers.push(`  note("<${chord}>")`) // Cycle chord
+    layers.push(`    .s("${city.samples.pad}")`)
+    layers.push(`    .slow(2).gain(0.25),`)
+  }
+
+  layers.push(`)`)
+  return layers.join("\n")
+}
+
+// Parse the board state into an audio-playable pattern
+export function parsePatternForAudio(game: Chess, city: CityData, activeSquares: Set<string>): ParsedPattern {
+  const board = game.board()
+  const pieces: PiecePosition[] = []
+  const inCheck = game.isCheck()
+
+  // Collect all pieces
+  const files = ["a", "b", "c", "d", "e", "f", "g", "h"]
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const piece = board[rank][file]
+      if (piece) {
+        const square = `${files[file]}${8 - rank}` as Square
+        if (activeSquares.has(square)) {
+          pieces.push({
+            type: piece.type,
+            color: piece.color,
+            square: square,
+            file,
+            rank: 7 - rank,
+          })
+        }
+      }
+    }
+  }
+
+  const pawns = pieces.filter((p) => p.type === "p")
+  const knights = pieces.filter((p) => p.type === "n")
+  const bishops = pieces.filter((p) => p.type === "b")
+  const rooks = pieces.filter((p) => p.type === "r")
+  const queens = pieces.filter((p) => p.type === "q")
+
+  const whitePawns = pawns.filter((p) => p.color === "w")
+  const blackPawns = pawns.filter((p) => p.color === "b")
+
+  // --- ORGANIC PARAMETERS ---
+  // Swing based on BPM/Genre
+  let swing = 0
+  if (city.bpm >= 120 && city.bpm < 130) swing = 0.2 // House/Garage swing
+  if (city.id === "nyc") swing = 0.25 // Heavy Disco Swing
+  if (city.id === "london") swing = 0.15 // Jungle Shuffle
+
+  // --- VARIATION LOGIC ---
+
+  // 1. Scale Variation on CHECK
+  let currentScale = city.scale
+  if (inCheck) {
+    // Diminished / Tension Scale logic
+    // Flatten the 2nd, 3rd, 5th, 6th to create dark tension
+    currentScale = currentScale.map(note => {
+      if (note.includes("#")) return note.replace("#", "") // Simplify sharp to natural (minor-ish)
+      return note + "b" // Flatten natural
+    })
+  }
+
+  // Helper: Euclidean Rhythm Generator
+  const euclidean = (k: number, n: number): boolean[] => {
+    const pattern = new Array(n).fill(false)
+    let bucket = 0
+    for (let i = 0; i < n; i++) {
+      bucket += k
+      if (bucket >= n) {
+        bucket -= n
+        pattern[i] = true
+      }
+    }
+    return pattern
+  }
+
+  // ADSR Presets [Attack, Decay, Sustain, Release]
+  const bassAdsr: [number, number, number, number] = city.id === "manchester"
+    ? [0.01, 0.2, 0.4, 0.1] // Acid: Short, punchy
+    : [0.05, 0.3, 0.6, 0.2] // Normal bass
+
+  const padAdsr: [number, number, number, number] = [0.5 + Math.random() * 0.5, 0.5, 0.8, 1.0] // Breathing pads
+
+  const leadAdsr: [number, number, number, number] = [0.01, 0.3, 0.2, 0.5] // Plucky FM envelope
+
+  // Generate kick pattern with variations
   const kickPawns = whitePawns.filter((p) => p.file < 4)
   const kickPattern = new Array(16).fill(false)
   if (kickPawns.length > 0) {
@@ -231,9 +247,9 @@ export function parsePatternForAudio(game: Chess, city: CityData): ParsedPattern
     kickPattern[4] = true
     kickPattern[8] = true
     kickPattern[12] = true
-    // Add variations based on pawn positions
+    // Variation: Extra kicks based on positions, but masked randomly
     kickPawns.forEach((p) => {
-      if (p.rank > 2) {
+      if (p.rank > 2 && Math.random() > 0.4) { // 60% chance to add ghost kick
         kickPattern[2] = true
         kickPattern[10] = true
       }
@@ -246,63 +262,110 @@ export function parsePatternForAudio(game: Chess, city: CityData): ParsedPattern
   if (snarePawns.length > 0) {
     snarePattern[4] = true
     snarePattern[12] = true
+    // Ghost snares
+    if (snarePawns.length > 2 && Math.random() > 0.6) {
+      snarePattern[15] = true
+    }
   }
 
-  // Generate hihat pattern
+  // Generate hihat pattern (Masking heavily applied here)
   const hihatPattern = new Array(16).fill(false)
   blackPawns.forEach((p, i) => {
     // Fill based on number of pawns
     for (let j = 0; j < 16; j += Math.max(1, Math.floor(8 / (blackPawns.length + 1)))) {
-      hihatPattern[j] = true
+      // Masking: Randomly drop hits to create "breathing" rhythm
+      if (Math.random() > 0.2) {
+        hihatPattern[j] = true
+      }
     }
   })
 
-  // Bass notes from knights
-  const bassNotes = knights.map((k) => {
-    const noteIndex = (k.file + k.rank * 2) % city.scale.length
-    const note = city.scale[noteIndex].replace("4", "3")
-    return noteToFrequency(note)
+  // Bass notes from knights (Converted to Pattern Array)
+  const bassPattern: (number | null)[] = new Array(16).fill(null)
+  knights.forEach(k => {
+    // Determine note
+    const noteIndex = (k.file + k.rank * 2) % currentScale.length
+    const freq = noteToFrequency(currentScale[noteIndex].replace("4", "3"))
+
+    // Determine Timing based on File
+    let step = 0
+    if (k.file < 3) step = (k.file * 4) % 16
+    else if (k.file < 6) step = ((k.file - 3) * 4 + 2) % 16
+    else step = ((k.file - 6) * 4 + 7) % 16 // Syncopation
+
+    // Shift by rank to vary pattern if sitting still
+    step = (step + k.rank) % 16
+
+    bassPattern[step] = freq
   })
 
   const whiteKnight = knights.find((k) => k.color === "w")
   const blackKnight = knights.find((k) => k.color === "b")
 
-  // Pad notes from rooks/bishops
-  const padNotes = city.scale.slice(0, Math.min(3, rooks.length + 1)).map((n) => noteToFrequency(n))
+  // Pad notes from rooks (Converted to Pattern Array)
+  const padPattern: (number[] | null)[] = new Array(16).fill(null)
+  if (rooks.length > 0) {
+    const chord = currentScale.slice(0, Math.min(3, rooks.length + 1)).map((n) => noteToFrequency(n))
 
-  // Lead notes from queens/bishops
-  const leadNotes = queens.flatMap((q) => {
-    const baseNote = city.scale[(q.file + q.rank) % city.scale.length]
-    return [noteToFrequency(baseNote)]
-  })
+    // Only retrigger pad on step 0 and 8 (main pulses)
+    padPattern[0] = chord
+    // If rooks are active/advanced, add texture on step 8
+    if (rooks.some(r => r.rank > 0 && r.rank < 7)) {
+      padPattern[8] = chord
+    }
+  }
 
-  if (leadNotes.length === 0 && bishops.length > 0) {
-    bishops.forEach((b) => {
-      const noteIndex = b.file % city.scale.length
-      leadNotes.push(noteToFrequency(city.scale[noteIndex]))
+  // Lead notes from queens/bishops (Euclidean Logic)
+  const leadPattern: (number | null)[] = new Array(16).fill(null)
+
+  if (queens.length > 0 || bishops.length > 0) {
+    // Create a complex Euclidean pattern based on number of active melody pieces
+    const activeMelodyCount = queens.length + bishops.length
+    const pulses = Math.min(activeMelodyCount + 2, 7) // 3 to 7 pulses
+    const struct = euclidean(pulses, 16)
+
+    let melodyIndex = 0
+    const allMelodyPieces = [...queens, ...bishops]
+
+    struct.forEach((isActive, step) => {
+      if (isActive) {
+        const piece = allMelodyPieces[melodyIndex % allMelodyPieces.length]
+        const idx = (piece.file + piece.rank + step) % currentScale.length
+        leadPattern[step] = noteToFrequency(currentScale[idx])
+        melodyIndex++
+      }
     })
   }
 
   return {
     bpm: city.bpm,
-    kick: { pattern: kickPattern, gain: kickPawns.length > 0 ? 0.8 : 0 },
-    snare: { pattern: snarePattern, gain: snarePawns.length > 0 ? 0.7 : 0 },
-    hihat: { pattern: hihatPattern, gain: blackPawns.length > 0 ? 0.4 : 0 },
+    swing,
+    kick: { pattern: kickPattern, gain: kickPawns.length > 0 ? 0.8 : 0, probability: 1 },
+    snare: { pattern: snarePattern, gain: snarePawns.length > 0 ? 0.7 : 0, probability: 1 },
+    hihat: { pattern: hihatPattern, gain: blackPawns.length > 0 ? 0.4 : 0, probability: 0.8 },
     bass: {
-      notes: bassNotes,
+      pattern: bassPattern,
       cutoff: whiteKnight ? 300 + whiteKnight.rank * 150 : 800,
       resonance: blackKnight ? 3 + blackKnight.file * 2 : 8,
       gain: knights.length > 0 ? 0.5 : 0,
+      probability: 0.9,
+      adsr: bassAdsr
     },
     pad: {
-      notes: padNotes,
+      pattern: padPattern, // Fixed: now passing array of arrays
       pan: rooks.length > 0 ? rooks.reduce((sum, r) => sum + (r.file - 3.5) / 3.5, 0) / rooks.length : 0,
       reverb: rooks.length > 0 ? rooks.reduce((sum, r) => sum + r.rank / 7, 0) / rooks.length : 0.3,
       gain: rooks.length > 0 ? 0.25 : 0,
+      probability: 1,
+      adsr: padAdsr
     },
     lead: {
-      notes: leadNotes,
-      gain: leadNotes.length > 0 ? 0.5 : 0,
+      pattern: leadPattern, // Fixed: now passing step-based pattern
+      gain: (bishops.length > 0 || queens.length > 0) ? 0.5 : 0,
+      detune: Math.random() * 8 - 4,
+      probability: 0.6,
+      adsr: leadAdsr,
+      delay: 0.3
     },
     effects: {
       distort: inCheck ? 0.6 : 0,
@@ -311,29 +374,7 @@ export function parsePatternForAudio(game: Chess, city: CityData): ParsedPattern
   }
 }
 
-function generateKickPattern(pawns: PiecePosition[]): string {
-  // House-style kick pattern, modified by pawn positions
-  const base = ["1", "0", "0", "0", "1", "0", "0", "0"]
-
-  pawns.forEach((p) => {
-    if (p.rank >= 4) {
-      base[2] = "1" // Add offbeat kick for advanced pawns
-      base[6] = "1"
-    }
-  })
-
-  return base.slice(0, 4).join(" ")
-}
-
-function generateSnarePattern(pawns: PiecePosition[]): string {
-  // Standard backbeat
-  return "0 0 1 0"
-}
-
-function generateHihatPattern(pawns: PiecePosition[], density: number): string {
-  const pattern = []
-  for (let i = 0; i < Math.min(8, density); i++) {
-    pattern.push(i % 2 === 0 ? "1" : pawns.length > 4 ? "1" : "0")
-  }
-  return pattern.join(" ")
+// Helper to convert binary array to Strudel hex string or mini notation
+function patternToMini(arr: number[]): string {
+  return arr.join(" ")
 }
