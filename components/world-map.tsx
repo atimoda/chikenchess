@@ -106,43 +106,19 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         style={{ height: "calc(100vh - 280px)" }}
       >
         {/* World Map SVG Background */}
-        <svg
-          viewBox="0 0 200 100"
-          className="absolute inset-0 w-full h-full opacity-20"
-          preserveAspectRatio="none"
-        >
-          {/* North America */}
-          <path d="M15,10 L45,5 L65,5 L80,15 L60,30 L55,45 L40,40 L30,45 L25,35 L10,30 L5,20 Z" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-primary" />
-
-          {/* South America */}
-          <path d="M55,48 L75,55 L70,85 L55,95 L45,80 L35,65 Z" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-primary" />
-
-          {/* Europe */}
-          <path d="M85,15 L110,12 L120,25 L105,30 L95,25 L90,20 Z" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-primary" />
-
-          {/* Africa */}
-          <path d="M90,32 L115,32 L125,45 L110,75 L95,65 L80,45 Z" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-primary" />
-
-          {/* Asia */}
-          <path d="M125,12 L150,10 L180,10 L190,25 L170,55 L150,50 L130,40 L125,25 Z" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-primary" />
-
-          {/* Australia */}
-          <path d="M155,65 L180,65 L175,85 L155,80 Z" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-primary" />
-
-          {/* Grid Lines for Tech Feel */}
-          <path d="M0,50 L200,50" stroke="currentColor" strokeWidth="0.1" strokeDasharray="2 2" className="text-muted-foreground" />
-          <path d="M100,0 L100,100" stroke="currentColor" strokeWidth="0.1" strokeDasharray="2 2" className="text-muted-foreground" />
-        </svg>
+        <img
+          src="/world_map_with_points.svg"
+          alt="World Map"
+          className="absolute inset-0 w-full h-full object-contain object-center opacity-40 select-none pointer-events-none"
+        />
 
         {/* City Markers */}
         {cities.map((city) => {
-          // A city is "visible" in the timeline if its year <= selectedYear OR if it's unlocked (so you can see past conquests)
-          // Actually, let's show ALL cities, but lock condition depends on campaign state.
           const isUnlocked = unlockedCities.includes(city.id)
           const isHovered = hoveredCity === city.id
 
-          // Only fully visible/interactive if unlocked. 
-          // Locked cities are visible as ghosts.
+          // Determine tooltip position based on vertical position (to avoid clipping at top)
+          const isTopCity = city.coordinates.y < 30 // If in top 30% of screen
 
           return (
             <button
@@ -197,8 +173,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               {isHovered && (
                 <div
                   className={cn(
-                    "absolute left-1/2 -translate-x-1/2 bottom-full mb-4 w-64 p-4 rounded-lg border bg-card/95 backdrop-blur-sm z-50 text-left transition-opacity",
-                    !isUnlocked && "opacity-80 grayscale-[0.5]"
+                    "absolute left-1/2 -translate-x-1/2 w-64 p-4 rounded-lg border bg-card/95 backdrop-blur-sm z-50 text-left transition-opacity",
+                    !isUnlocked && "opacity-80 grayscale-[0.5]",
+                    // Position tooltip below if it's a top city, otherwise above
+                    isTopCity ? "top-full mt-4" : "bottom-full mb-4"
                   )}
                   style={{
                     boxShadow: isUnlocked ? `0 0 30px ${city.color}40` : 'none',

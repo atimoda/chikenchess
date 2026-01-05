@@ -18,6 +18,8 @@ export class AudioEngine {
   private bpm = 120
   private stepTime = 0.125 // 16th note duration
 
+  private analyser: AnalyserNode | null = null
+
   constructor() {
     if (typeof window !== "undefined") {
       this.init()
@@ -27,12 +29,26 @@ export class AudioEngine {
   private async init() {
     try {
       this.audioContext = new AudioContext()
+
+      this.analyser = this.audioContext.createAnalyser()
+      this.analyser.fftSize = 256
+
       this.masterGain = this.audioContext.createGain()
       this.masterGain.gain.value = 0.7
-      this.masterGain.connect(this.audioContext.destination)
+
+      // Connect: masterGain -> analyser -> destination
+      this.masterGain.connect(this.analyser)
+      this.analyser.connect(this.audioContext.destination)
+
       this.isInitialized = true
     } catch (e) {
       console.error("Failed to initialize audio:", e)
+    }
+  }
+
+  getFrequencyData(dataArray: Uint8Array) {
+    if (this.analyser) {
+      this.analyser.getByteFrequencyData(dataArray)
     }
   }
 
