@@ -8,7 +8,9 @@ export interface CityData {
   bpm: number
   scale: string[]
   coordinates: { x: number; y: number }
+  geoCoordinates: { lat: number; lng: number }
   color: string
+  image: string
   samples: {
     kick: string
     snare: string
@@ -31,7 +33,9 @@ export const cities: CityData[] = [
     bpm: 118,
     scale: ["C4", "D4", "E4", "G4", "A4"], // Major Pentatonic (Kraftwerk-ish)
     coordinates: { x: 48, y: 24 }, // Düsseldorf
+    geoCoordinates: { lat: 51.2277, lng: 6.7735 },
     color: "#ff3333", // Red (Man Machine)
+    image: "https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:0", // Kraftwerk style tightly gated
       snare: "sd:5", // Electronic snap
@@ -52,7 +56,9 @@ export const cities: CityData[] = [
     bpm: 120,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Funk/Soul roots)
     coordinates: { x: 29, y: 28 }, // NYC
+    geoCoordinates: { lat: 40.7128, lng: -74.0060 },
     color: "#a020f0", // Purple (Studio 54 / Nightclub)
+    image: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:5", // Acoust-electric disco kick
       snare: "sd:4", // Clap/Snare layered
@@ -73,7 +79,9 @@ export const cities: CityData[] = [
     bpm: 124,
     scale: ["C4", "D4", "E4", "G4", "A4"],
     coordinates: { x: 25, y: 27 }, // Chicago
+    geoCoordinates: { lat: 41.8781, lng: -87.6298 },
     color: "#00ffaa", // Neon Green/Cyan (Acid/House vibe)
+    image: "https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:0", // 909 Kick
       snare: "sd:1", // 909 Snare/Clap
@@ -94,7 +102,9 @@ export const cities: CityData[] = [
     bpm: 132,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
     coordinates: { x: 26, y: 27 }, // Detroit
+    geoCoordinates: { lat: 42.3314, lng: -83.0458 },
     color: "#ff6600", // Industrial Orange
+    image: "https://images.unsplash.com/photo-1610486333342-8c464a78189c?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:1", // 909 Distorted
       snare: "cp:0", // 909 Clap
@@ -115,7 +125,9 @@ export const cities: CityData[] = [
     bpm: 110,
     scale: ["C4", "E4", "F4", "G4", "B4"], // Lydian (Dreamy)
     coordinates: { x: 50.5, y: 29 }, // Ibiza (South of Europe, North of Africa)
+    geoCoordinates: { lat: 38.9067, lng: 1.4206 },
     color: "#ffaa00", // Sunset Gold
+    image: "https://images.unsplash.com/photo-1561066738-922646733276?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:4", // Softer kick
       snare: "sd:3",
@@ -136,7 +148,9 @@ export const cities: CityData[] = [
     bpm: 128,
     scale: ["C4", "Eb4", "F4", "Gb4", "Bb4"], // Blues/Acid scale
     coordinates: { x: 49, y: 21 }, // Manchester
+    geoCoordinates: { lat: 53.4808, lng: -2.2426 },
     color: "#ffff00", // Acid Yellow (Smiley)
+    image: "https://images.unsplash.com/photo-1571506165871-ee72a35bc9d4?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:2", // Rave Kick
       snare: "sd:2", // Breakbeat Snare
@@ -157,7 +171,9 @@ export const cities: CityData[] = [
     bpm: 140,
     scale: ["C4", "Db4", "E4", "F4", "G4", "Ab4", "B4"], // Phrygian Dominant (Dark/Tension)
     coordinates: { x: 53.7, y: 21 }, // Berlin
+    geoCoordinates: { lat: 52.5200, lng: 13.4050 },
     color: "#00ccff", // Cold Blue
+    image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:3", // Rumble Kick
       snare: "rim:0", // Industrial Rim
@@ -178,7 +194,9 @@ export const cities: CityData[] = [
     bpm: 130,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
     coordinates: { x: 92, y: 32 }, // Tokyo (On the new Island path)
+    geoCoordinates: { lat: 35.6762, lng: 139.6503 },
     color: "#ff00ff", // Neon Pink/Cyberpunk
+    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:6", // Clicky Kick
       snare: "sd:5", // Glitch Snare
@@ -198,8 +216,10 @@ export const cities: CityData[] = [
     description: "Amen breaks chopped at high speed, deep reggae basslines.",
     bpm: 165,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
-    coordinates: { x: 45, y: 21 }, // London (On the new UK path)
+    coordinates: { x: 45, y: 21 }, // London
+    geoCoordinates: { lat: 51.5074, lng: -0.1278 },
     color: "#33ff00", // Jungle Green
+    image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:7", // Jungle Kick
       snare: "sd:6", // Amen Snare
@@ -220,7 +240,9 @@ export const cities: CityData[] = [
     bpm: 145,
     scale: ["C4", "Db4", "F4", "G4", "Ab4"],
     coordinates: { x: 37, y: 63 }, // São Paulo (South America)
+    geoCoordinates: { lat: -23.5505, lng: -46.6333 },
     color: "#ccff00", // Lime/Electric Green
+    image: "https://images.unsplash.com/photo-1578002171601-902a5a7e9300?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:3",
       snare: "sd:2",
@@ -241,7 +263,9 @@ export const cities: CityData[] = [
     bpm: 126,
     scale: ["C4", "D4", "E4", "F#4", "G4", "A4"],
     coordinates: { x: 47, y: 25 }, // Paris
+    geoCoordinates: { lat: 48.8566, lng: 2.3522 },
     color: "#3366ff", // French Blue
+    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=800&auto=format&fit=crop",
     samples: {
       kick: "bd:0",
       snare: "cp:0",
