@@ -27,16 +27,16 @@ const getCityPosition = (city: CityData) => {
   // Normalize longitude (-180 to 180) to 0-1 range
   const lngPercent = (lng + 180) / 360
   
-  // Normalize latitude (90 to -90) to 0-1 range
-  // Note: SVG Y coordinates go from top (0) to bottom (height)
-  // So 90deg N is 0, -90deg S is 1
-  const latPercent = (90 - lat) / 180
+  // Normalize latitude using Gall-Peters projection (Cylindrical Equal-Area)
+  // Formula: y is proportional to sin(latitude) instead of latitude itself
+  // Range: sin(90) = 1 (Top), sin(-90) = -1 (Bottom)
+  // Map to 0-1 range: (1 - sin(lat)) / 2
+  const latRad = lat * (Math.PI / 180)
+  const latPercent = (1 - Math.sin(latRad)) / 2
 
-  // Calibration Offsets (Based on user feedback: "shifted right and up")
-  // To fix "shifted right", we subtract from X
-  // To fix "shifted up", we add to Y
-  const OFFSET_X = -7.5
-  const OFFSET_Y = 13.5
+  // Calibration Offsets (fine-tuning based on map image)
+  const OFFSET_X = -5
+  const OFFSET_Y = 10
 
   return {
     x: (lngPercent * 100) + OFFSET_X,
