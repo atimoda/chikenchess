@@ -10,6 +10,12 @@ interface WorldMapProps {
   onCitySelect: (city: CityData) => void
 }
 
+const CITY_OFFSETS: Record<string, { dx: number; dy: number }> = {
+  saopaulo: { dx: -1, dy: 1 },
+  ibiza: { dx: -0.8, dy: -0.6 },
+  tokyo: { dx: 1.5, dy: -0.8 },
+}
+
 // Helper to convert lat/long to x/y percentages (Equirectangular projection)
 const getCityPosition = (city: CityData) => {
   // If geoCoordinates are missing, fallback to manual coordinates
@@ -38,9 +44,10 @@ const getCityPosition = (city: CityData) => {
   const OFFSET_X = -5
   const OFFSET_Y = 10
 
+  const o = CITY_OFFSETS[city.id] ?? { dx: 0, dy: 0 }
   return {
-    x: (lngPercent * 100) + OFFSET_X,
-    y: (latPercent * 100) + OFFSET_Y
+    x: (lngPercent * 100) + OFFSET_X + o.dx,
+    y: (latPercent * 100) + OFFSET_Y + o.dy
   }
 }
 
@@ -237,8 +244,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                   isUnlocked ? "cursor-pointer z-10" : "cursor-not-allowed opacity-40 z-0",
                 )}
                 style={{
-                  left: `${pos.x}%`,
-                  top: `${pos.y}%`,
+                  left: `${Math.round(pos.x * 10000) / 10000}%`,
+                  top: `${Math.round(pos.y * 10000) / 10000}%`,
                   transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(scale)})`
                 }}
                 onMouseEnter={() => handleCityHover(city.id)}

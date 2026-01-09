@@ -34,8 +34,8 @@ export const cities: CityData[] = [
     scale: ["C4", "D4", "E4", "G4", "A4"], // Major Pentatonic (Kraftwerk-ish)
     coordinates: { x: 48, y: 24 }, // Düsseldorf
     geoCoordinates: { lat: 51.2277, lng: 6.7735 },
-    color: "#ff3333", // Red (Man Machine)
-    image: "https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=800&auto=format&fit=crop",
+    color: "#ff3333",
+    image: "https://unsplash.com/photos/qpWvN7L0t7I/download?force=true&w=800",
     samples: {
       kick: "bd:0", // Kraftwerk style tightly gated
       snare: "sd:5", // Electronic snap
@@ -103,8 +103,8 @@ export const cities: CityData[] = [
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
     coordinates: { x: 26, y: 27 }, // Detroit
     geoCoordinates: { lat: 42.3314, lng: -83.0458 },
-    color: "#ff6600", // Industrial Orange
-    image: "https://images.unsplash.com/photo-1610486333342-8c464a78189c?q=80&w=800&auto=format&fit=crop",
+    color: "#ff6600",
+    image: "https://unsplash.com/photos/1SmpGvlKq2U/download?force=true&w=800",
     samples: {
       kick: "bd:1", // 909 Distorted
       snare: "cp:0", // 909 Clap
@@ -126,8 +126,8 @@ export const cities: CityData[] = [
     scale: ["C4", "E4", "F4", "G4", "B4"], // Lydian (Dreamy)
     coordinates: { x: 50.5, y: 29 }, // Ibiza (South of Europe, North of Africa)
     geoCoordinates: { lat: 38.9067, lng: 1.4206 },
-    color: "#ffaa00", // Sunset Gold
-    image: "https://images.unsplash.com/photo-1561066738-922646733276?q=80&w=800&auto=format&fit=crop",
+    color: "#ffaa00",
+    image: "https://unsplash.com/photos/sqgDlmZM8sc/download?force=true&w=800",
     samples: {
       kick: "bd:4", // Softer kick
       snare: "sd:3",
@@ -149,8 +149,8 @@ export const cities: CityData[] = [
     scale: ["C4", "Eb4", "F4", "Gb4", "Bb4"], // Blues/Acid scale
     coordinates: { x: 49, y: 21 }, // Manchester
     geoCoordinates: { lat: 53.4808, lng: -2.2426 },
-    color: "#ffff00", // Acid Yellow (Smiley)
-    image: "https://images.unsplash.com/photo-1571506165871-ee72a35bc9d4?q=80&w=800&auto=format&fit=crop",
+    color: "#ffff00",
+    image: "https://unsplash.com/photos/pRc34iEHRmo/download?force=true&w=800",
     samples: {
       kick: "bd:2", // Rave Kick
       snare: "sd:2", // Breakbeat Snare
@@ -241,8 +241,8 @@ export const cities: CityData[] = [
     scale: ["C4", "Db4", "F4", "G4", "Ab4"],
     coordinates: { x: 37, y: 63 }, // São Paulo (South America)
     geoCoordinates: { lat: -23.5505, lng: -46.6333 },
-    color: "#ccff00", // Lime/Electric Green
-    image: "https://images.unsplash.com/photo-1578002171601-902a5a7e9300?q=80&w=800&auto=format&fit=crop",
+    color: "#ccff00",
+    image: "https://unsplash.com/photos/X1PncKPKDQI/download?force=true&w=800",
     samples: {
       kick: "bd:3",
       snare: "sd:2",
