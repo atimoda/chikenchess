@@ -31,7 +31,7 @@ export const cities: CityData[] = [
     genre: "Krautrock / Electro Pop",
     description: "Robotic rhythms, synthesized vocoders, the blueprint of electronic music.",
     bpm: 118,
-    scale: ["C4", "D4", "E4", "G4", "A4"], // Major Pentatonic (Kraftwerk-ish)
+    scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Updated per user request)
     coordinates: { x: 48, y: 24 }, // Düsseldorf
     geoCoordinates: { lat: 51.2277, lng: 6.7735 },
     color: "#ff3333",

@@ -45,7 +45,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
 
-  const { togglePlayback } = useAudio(game, city, isPlaying, activeSquares)
+  const { togglePlayback, playCheckmate } = useAudio(game, city, isPlaying, activeSquares)
 
   // Keep ref in sync
   useEffect(() => {
@@ -84,6 +84,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       const winner = game.turn() === "w" ? "Black" : "White"
       setGameStatus(`CHECKMATE - ${winner} wins!`)
       setIsPlaying(false)
+      playCheckmate() // Play checkmate sound
 
       // If White (Player) won
       if (winner === "White") {
@@ -128,11 +129,27 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const makeAIMove = useCallback(
     (moveStr: string) => {
       const currentGame = gameRef.current
+      
+      // Prevent stale moves (e.g. from previous game after reset)
+      // If it's White's turn, AI (Black) shouldn't be moving
+      if (currentGame.turn() === 'w') {
+        return
+      }
+
       const gameCopy = new Chess(currentGame.fen())
       try {
         const from = moveStr.slice(0, 2)
         const to = moveStr.slice(2, 4)
         const promotion = moveStr.length > 4 ? moveStr[4] : undefined
+
+        // Validate move legality to prevent errors
+        const legalMoves = gameCopy.moves({ verbose: true })
+        const isLegal = legalMoves.some(m => m.from === from && m.to === to && (promotion ? m.promotion === promotion : true))
+
+        if (!isLegal) {
+          console.warn("Ignored illegal AI move:", moveStr)
+          return
+        }
 
         const move = gameCopy.move({
           from,
@@ -159,7 +176,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           })
         }
       } catch (e) {
-        console.error("Invalid AI move:", moveStr, e)
+        console.warn("Failed to apply AI move:", moveStr, e)
       }
     },
     [updateCapturedPieces],
@@ -207,6 +224,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   )
 
   const resetGame = useCallback(() => {
+    stockfishRef.current?.postMessage("stop")
     setGame(new Chess())
     setMoveHistory([])
     setRedoStack([])
@@ -334,9 +352,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       />
 
       {/* Header */}
-      <header className="relative z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
+      <header 
+        className="relative z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-border bg-card/80 backdrop-blur-sm"
+        style={{ "--city-neon": city.color } as React.CSSProperties}
+      >
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onBack} 
+            className="shrink-0 hover:text-[var(--city-neon)] hover:bg-transparent transition-colors"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -344,6 +370,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
               <span style={{ color: city.color }}>{city.name.toUpperCase()}</span>
               <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground opacity-50">v0.2.1</span>
+              <span className="text-[10px] text-muted-foreground opacity-50">Audio Engine: Strudel.cc</span>
             </h1>
             <p className="text-xs text-muted-foreground hidden sm:block">
               {city.genre} • {city.bpm} BPM • Lvl {aiDepth / 5}
@@ -414,7 +441,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row gap-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
+      <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-8 p-4 lg:p-6 mx-auto">
         {/* Left Panel - Game Info */}
         <div className="lg:w-64 order-2 lg:order-1">
           <GameInfo
@@ -426,25 +453,28 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
 
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col gap-4 order-1 lg:order-2">
-          {/* Audio Visualizer */}
-          <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} />
+        <div className="flex flex-col gap-4 order-1 lg:order-2 items-center shrink-0">
+          <div className="w-full max-w-[calc(8*3rem)] sm:max-w-[calc(8*3.5rem)] md:max-w-[calc(8*4rem)] flex flex-col gap-4">
+            {/* Audio Visualizer */}
+            <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} />
 
-          {/* Chess Board */}
-          <div className="flex justify-center">
-            <ChessgroundBoard game={game} onMove={handlePlayerMove} cityColor={city.color} isThinking={isThinking} />
+            {/* Chess Board */}
+            <div className="flex justify-center">
+              <ChessgroundBoard game={game} onMove={handlePlayerMove} cityColor={city.color} isThinking={isThinking} />
+            </div>
+
+            {/* Game Controls */}
+            <GameControls
+              onReset={resetGame}
+              onUndo={undoMove}
+              canUndo={moveHistory.length >= 2 && !isThinking}
+              onRedo={redoMove}
+              canRedo={redoStack.length >= 2 && !isThinking}
+              isPlaying={isPlaying}
+              onTogglePlay={handleTogglePlay}
+              cityColor={city.color}
+            />
           </div>
-
-          {/* Game Controls */}
-          <GameControls
-            onReset={resetGame}
-            onUndo={undoMove}
-            canUndo={moveHistory.length >= 2 && !isThinking}
-            onRedo={redoMove}
-            canRedo={redoStack.length >= 2 && !isThinking}
-            isPlaying={isPlaying}
-            onTogglePlay={handleTogglePlay}
-          />
         </div>
 
         {/* Right Panel - Live Code */}

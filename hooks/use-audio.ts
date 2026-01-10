@@ -53,5 +53,9 @@ export function useAudio(game: Chess, city: CityData, isPlaying: boolean, active
     await engineRef.current.resume()
   }, [])
 
-  return { togglePlayback, isInitialized }
+  const playCheckmate = useCallback(() => {
+    engineRef.current?.playCheckmate()
+  }, [])
+
+  return { togglePlayback, isInitialized, playCheckmate }
 }

@@ -18,7 +18,7 @@ interface AudioVisualizerProps {
 
 export function AudioVisualizer({ isPlaying, color, pattern }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
   // dataArray reused to avoid GC
   const dataArrayRef = useRef<Uint8Array>(new Uint8Array(128)) // Half of fftSize (256)
 
@@ -117,7 +117,7 @@ export function AudioVisualizer({ isPlaying, color, pattern }: AudioVisualizerPr
   }, [animate])
 
   return (
-    <div className="relative h-28 rounded-lg overflow-hidden border border-border bg-card/30 backdrop-blur-sm">
+    <div className="relative h-28 rounded-lg overflow-hidden border border-border bg-card/30 backdrop-blur-sm fade-transparency">
       <canvas ref={canvasRef} className="w-full h-full" style={{ display: "block" }} />
 
       {/* Overlay info */}

@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import { cities, type CityData } from "@/lib/cities-data"
-import { getCampaignState, getLastUnlockedYear, resetCampaign } from "@/lib/game-progression"
-import { Slider } from "@/components/ui/slider"
+import { getCampaignState, resetCampaign } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
 
 interface WorldMapProps {
@@ -52,8 +51,6 @@ const getCityPosition = (city: CityData) => {
 }
 
 export function WorldMap({ onCitySelect }: WorldMapProps) {
-  const [maxUnlockedYear, setMaxUnlockedYear] = useState(1970)
-  const [selectedYear, setSelectedYear] = useState(1970)
   const [hoveredCity, setHoveredCity] = useState<string | null>(null)
   const [hoverProgress, setHoverProgress] = useState(0)
   const [unlockedCities, setUnlockedCities] = useState<string[]>([])
@@ -66,10 +63,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   // Load campaign state
   useEffect(() => {
-    const lastYear = getLastUnlockedYear()
     const state = getCampaignState()
-    setMaxUnlockedYear(lastYear)
-    setSelectedYear(lastYear) // Start at the latest unlocked
     setUnlockedCities(state.unlockedCityIds)
   }, [])
 
@@ -164,7 +158,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       />
 
       {/* Header */}
-      <header className="relative z-20 flex items-center justify-between px-8 py-6 pointer-events-none">
+      <header className="absolute top-0 left-0 w-full z-20 flex items-center justify-between px-8 py-6 pointer-events-none">
         <div className="flex items-center gap-4 pointer-events-auto">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-primary rounded-full animate-pulse-glow" style={{ color: "var(--neon-cyan)" }} />
@@ -176,36 +170,11 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         <div className="text-muted-foreground font-mono text-sm">CAMPAIGN MODE</div>
       </header>
 
-      {/* Time Slider */}
-      <div className="relative z-20 px-8 py-4 pointer-events-none">
-        <div className="max-w-4xl mx-auto pointer-events-auto">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-sm text-muted-foreground">1970</span>
-            <span className="font-mono text-2xl font-bold text-primary">{selectedYear}</span>
-            <span className="font-mono text-sm text-muted-foreground">2025</span>
-          </div>
-          <Slider
-            value={[selectedYear]}
-            onValueChange={(value) => setSelectedYear(Math.min(value[0], maxUnlockedYear))}
-            min={1970}
-            max={2025}
-            step={1}
-            className="w-full"
-          />
-          <div className="flex justify-between mt-2 text-xs text-muted-foreground font-mono">
-            <span>KRAUTROCK</span>
-            <span>DISCO</span>
-            <span>HOUSE</span>
-            <span>TECHNO</span>
-            <span>JUNGLE</span>
-            <span>EDM</span>
-          </div>
-        </div>
-      </div>
-
+      {/* Time Slider - REMOVED */}
+      
       {/* Map Container */}
       <div 
-        className="flex-1 flex items-center justify-center p-0 overflow-hidden relative z-10 cursor-move active:cursor-grabbing"
+        className="absolute inset-0 flex items-center justify-center p-0 overflow-hidden z-10 cursor-move active:cursor-grabbing"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -421,22 +390,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           </div>
         </div>
 
-        {/* Reset Button (Fixed Bottom Right) */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            if (confirm("Reset Campaign Progress?")) {
-              resetCampaign()
-            }
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="absolute bottom-4 right-4 px-3 py-1 text-[10px] font-mono text-muted-foreground opacity-50 hover:opacity-100 border border-transparent hover:border-border rounded transition-all pointer-events-auto"
-        >
-          RESET SAVE
-        </button>
-
         {/* Zoom Controls (Fixed Bottom Right) */}
-        <div className="absolute bottom-8 right-8 flex flex-col gap-2 z-50 pointer-events-auto mb-8">
+        <div className="absolute bottom-20 right-8 flex flex-col gap-2 z-50 pointer-events-auto">
           <button 
             className="w-8 h-8 flex items-center justify-center bg-card border border-border rounded hover:bg-accent"
             onClick={() => setScale(s => Math.min(s * 1.2, 8))}
@@ -456,22 +411,32 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             R
           </button>
         </div>
-      </div>
 
-      {/* Footer Status */}
-      <footer className="relative z-20 px-8 py-4 flex items-center justify-between border-t border-border pointer-events-none bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground pointer-events-auto">
-          <span>
-            CURRENT ERA: {Math.floor(selectedYear / 10) * 10}s
-          </span>
-          <span className="text-primary">|</span>
-          <span>AUDIO ENGINE: STRUDEL.CC</span>
+        {/* Bottom Right Info & Controls */}
+        <div className="absolute bottom-4 right-4 flex items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
+          <span className="text-[10px] font-mono text-muted-foreground">AUDIO ENGINE: STRUDEL.CC</span>
+          
+          <div className="flex items-center gap-2">
+             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+             <span className="text-[10px] font-mono text-muted-foreground">v0.2.2 (PIANO BISHOPS)</span>
+          </div>
+
+          <div className="h-4 w-px bg-border" />
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (confirm("Reset Campaign Progress?")) {
+                resetCampaign()
+              }
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="px-3 py-1 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-white/10 border border-transparent hover:border-white/10 rounded transition-all"
+          >
+            RESET SAVE
+          </button>
         </div>
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs font-mono text-muted-foreground outline-dotted outline-1 px-1 rounded hover:bg-white/10" title="Version Control">v0.2.1 (EUCLIDEAN + AMBIENCE)</span>
-        </div>
-      </footer>
+      </div>
     </div>
   )
 }

@@ -272,7 +272,7 @@ export function ChessgroundBoard({
 
       <div
         ref={boardRef}
-        className="grid grid-cols-8 rounded-lg overflow-hidden relative"
+        className="grid grid-cols-8 rounded-lg overflow-hidden relative fade-transparency"
         style={{
           border: `2px solid ${cityColor}`,
           boxShadow: `0 0 40px ${cityColor}40, inset 0 0 20px ${cityColor}10`,

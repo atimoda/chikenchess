@@ -149,8 +149,25 @@
   }
 }
 
+@keyframes fadeBox {
+  0% {
+    background-color: var(--card);
+    border-color: var(--border);
+  }
+  100% {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.fade-transparency {
+  animation: fadeBox 1s ease-in-out 5s forwards;
 }
 
 .scanline::after {
