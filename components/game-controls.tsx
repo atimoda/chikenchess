@@ -28,30 +28,6 @@ export function GameControls({ onReset, onUndo, canUndo, onRedo, canRedo, isPlay
       }`}
       style={buttonStyle}
     >
-      <div className="flex gap-2 w-full">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={onUndo} 
-          disabled={!canUndo} 
-          className="flex-1 gap-2 bg-transparent h-16 hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
-        >
-          <Undo2 className="w-5 h-5" />
-          <span className="hidden sm:inline">Undo</span>
-        </Button>
-
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={onRedo} 
-          disabled={!canRedo} 
-          className="flex-1 gap-2 bg-transparent h-16 hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
-        >
-          <Redo2 className="w-5 h-5" />
-          <span className="hidden sm:inline">Redo</span>
-        </Button>
-      </div>
-
       <Button 
         variant="outline" 
         size="sm" 

@@ -22,7 +22,7 @@ export function SynthControlPanel({
   
   const headerText = selectedSquare 
     ? `${selectedSquare.toUpperCase()} - ${selectedPieceInfo || "Empty"}`
-    : "SELECT A SQUARE TO EDIT"
+    : ""
 
   const panelStyle = {
     "--city-neon": cityColor,
@@ -32,13 +32,17 @@ export function SynthControlPanel({
     <div className="mb-4" style={panelStyle}>
       <div className="">
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-border pb-2">
+          {/* Header hidden as per request */}
+          {/* <div className="flex items-center justify-between border-b border-border pb-2 min-h-[2.5rem]">
             <h3 className="font-mono text-sm font-bold tracking-wider flex items-center gap-2">
-              <div className={cn("w-2 h-2 rounded-full", selectedSquare ? "bg-[var(--city-neon)] animate-pulse" : "bg-muted")} />
-              {headerText}
+              {selectedSquare && (
+                <>
+                   <div className="w-2 h-2 rounded-full bg-[var(--city-neon)] animate-pulse" />
+                   {headerText}
+                </>
+              )}
             </h3>
-            <span className="text-[10px] text-muted-foreground font-mono">SYNTH CONTROLS</span>
-          </div>
+          </div> */}
           
           <div className={cn("flex items-center justify-between gap-2 overflow-x-hidden py-2", !selectedSquare && "opacity-50 pointer-events-none grayscale")}>
             <style jsx global>{`

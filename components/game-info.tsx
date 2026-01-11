@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { CityData } from "@/lib/cities-data"
+import { cn } from "@/lib/utils"
 
 interface GameInfoProps {
   moveHistory: string[]
@@ -16,10 +17,13 @@ export function GameInfo({ moveHistory, city, turn, aiDepth }: GameInfoProps) {
   const hasStarted = moveHistory.length > 0
   
   // Create a box class that handles the fade out
-  const boxClass = `border border-border rounded-lg transition-all duration-[3000ms] ${hasStarted ? "bg-transparent border-transparent" : "bg-card/80 backdrop-blur-sm"}`
+  const boxClass = cn(
+    "border border-border rounded-lg transition-all duration-[3000ms]",
+    hasStarted ? "bg-transparent border-transparent opacity-30 hover:opacity-100 hover:duration-300" : "bg-card/80 backdrop-blur-sm"
+  )
   
   // Box for Genre/BPM/Scale - moved out of Piece > Sound
-  const infoBoxClass = `border border-border rounded-lg transition-all duration-[3000ms] ${hasStarted ? "bg-transparent border-transparent" : "bg-card/80 backdrop-blur-sm"}`
+  const infoBoxClass = boxClass
 
   return (
     <div className="flex flex-col gap-4">

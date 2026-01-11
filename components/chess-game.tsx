@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Chess, type Move, type Square } from "chess.js"
+import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
 import { ChessgroundBoard, PiecesSVG } from "./chessground-board"
 import { LiveCodeOverlay } from "./live-code-overlay"
@@ -14,7 +15,7 @@ import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS } from "@/lib/types"
-import { ArrowLeft, Volume2, VolumeX, Settings2 } from "lucide-react"
+import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2 } from "lucide-react"
 import { toast } from "sonner"
 import { unlockNextCity } from "@/lib/game-progression"
 import {
@@ -244,28 +245,32 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }, [])
 
   const undoMove = useCallback(() => {
-    if (moveHistory.length < 2) return
+    if (moveHistory.length === 0) return
 
-    // Replay game from start to get correct state
+    // Determine how many steps to undo
+    // If AI is thinking (odd moves), undo 1 (player's move) to cancel.
+    // If player's turn (even moves), undo 2 (AI + Player) to go back to previous turn.
+    const isAiThinking = moveHistory.length % 2 !== 0
+    const stepsToUndo = isAiThinking ? 1 : 2
+    
+    if (moveHistory.length < stepsToUndo) return
+
+    const newHistory = moveHistory.slice(0, -stepsToUndo)
+    
+    // Rebuild state from scratch for safety
     const newGame = new Chess()
-    const newHistory = moveHistory.slice(0, -2) // Remove last 2 moves (Player + AI)
     const newCapturedPieces: { white: string[], black: string[] } = { white: [], black: [] }
     const newActiveSquares = new Set<string>()
 
-    // Replay all moves to rebuild state
     newHistory.forEach(san => {
       const move = newGame.move(san)
       if (move) {
-        // Update captured
         if (move.captured) {
           if (move.color === "w") newCapturedPieces.white.push(move.captured)
           else newCapturedPieces.black.push(move.captured)
         }
-
-        // Update active squares
         newActiveSquares.delete(move.from)
         newActiveSquares.add(move.to)
-        // Handle castling
         if (move.san === "O-O" || move.san === "O-O-O") {
           if (move.color === 'w') {
             if (move.to === "g1") { newActiveSquares.delete("h1"); newActiveSquares.add("f1"); }
@@ -278,8 +283,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }
     })
 
-    // Save undone moves to stack
-    const movesToUndo = moveHistory.slice(-2)
+    // Stop AI if thinking
+    if (isAiThinking) {
+        setIsThinking(false)
+        stockfishRef.current?.postMessage("stop")
+    }
+
+    // Save undone moves to stack in reverse order (LIFO for redo)
+    const movesToUndo = moveHistory.slice(-stepsToUndo).reverse()
     setRedoStack(prev => [...prev, ...movesToUndo])
 
     setGame(newGame)
@@ -289,32 +300,24 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }, [moveHistory])
 
   const redoMove = useCallback(() => {
-    if (redoStack.length < 2) return
+    if (redoStack.length === 0) return
 
-    // Redo last 2 moves
-    const movesToRedo = redoStack.slice(-2)
-    const newRedoStack = redoStack.slice(0, -2)
+    // Pop one move from the stack
+    const moveSan = redoStack[redoStack.length - 1]
+    const newRedoStack = redoStack.slice(0, -1)
 
-    // Apply moves to current game state (which is 'game')
-    // We need to mutate a copy to set state
     const gameCopy = new Chess(game.fen())
-
-    // We need to track captured pieces and active squares incrementally
     const nextCaptured = { white: [...capturedPieces.white], black: [...capturedPieces.black] }
     const nextActiveSquares = new Set(activeSquares)
 
-    movesToRedo.forEach(san => {
-      const move = gameCopy.move(san)
-      if (move) {
-        // Update captured
+    const move = gameCopy.move(moveSan)
+    if (move) {
         if (move.captured) {
           if (move.color === "w") nextCaptured.white.push(move.captured)
           else nextCaptured.black.push(move.captured)
         }
-        // Update active squares
         nextActiveSquares.delete(move.from)
         nextActiveSquares.add(move.to)
-        // Handle castling
         if (move.san === "O-O" || move.san === "O-O-O") {
           if (move.color === 'w') {
             if (move.to === "g1") { nextActiveSquares.delete("h1"); nextActiveSquares.add("f1"); }
@@ -324,14 +327,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             if (move.to === "c8") { nextActiveSquares.delete("a8"); nextActiveSquares.add("d8"); }
           }
         }
-      }
-    })
-
-    setGame(gameCopy)
-    setMoveHistory(prev => [...prev, ...movesToRedo])
-    setRedoStack(newRedoStack)
-    setCapturedPieces(nextCaptured)
-    setActiveSquares(nextActiveSquares)
+        
+        setGame(gameCopy)
+        setMoveHistory(prev => [...prev, moveSan])
+        setRedoStack(newRedoStack)
+        setCapturedPieces(nextCaptured)
+        setActiveSquares(nextActiveSquares)
+    }
   }, [redoStack, game, activeSquares, capturedPieces])
 
   const handleTogglePlay = useCallback(async () => {
@@ -466,18 +468,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-8 p-4 lg:p-6 mx-auto">
         {/* Left Panel - Game Info & Controls */}
         <div className="lg:w-64 order-2 lg:order-1 flex flex-col gap-4">
-          <GameInfo
-            moveHistory={moveHistory}
-            city={city}
-            turn={game.turn()}
-            aiDepth={aiDepth}
-          />
+          <div>
+            <GameInfo
+              moveHistory={moveHistory}
+              city={city}
+              turn={game.turn()}
+              aiDepth={aiDepth}
+            />
+          </div>
           <GameControls 
             onReset={resetGame}
-            onUndo={undoMove}
-            canUndo={moveHistory.length >= 2}
-            onRedo={redoMove}
-            canRedo={redoStack.length >= 2}
             isPlaying={isPlaying}
             onTogglePlay={handleTogglePlay}
             cityColor={city.color}
@@ -536,7 +536,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 {capturedPieces.black.map((p, i) => (
                     <div 
                         key={i} 
-                        className="w-3 h-3 sm:w-4 sm:h-4 opacity-70"
+                        className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
                         dangerouslySetInnerHTML={{ 
                             __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG] 
                         }} 
@@ -545,21 +545,24 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             </div>
 
             {/* Chess Board */}
-            <div className="flex justify-center">
-              <ChessgroundBoard 
-                game={game} 
-                onMove={handlePlayerMove} 
-                cityColor={city.color} 
-                isThinking={isThinking} 
-                synthSelectedSquare={synthSelectedSquare as Square | null}
-                onBoardClick={(square) => {
-                  setSynthSelectedSquare(square)
-                  // If empty, play sample
-                  if (!game.get(square as Square)) {
-                    playSquareSample(square)
-                  }
-                }}
-              />
+            <div className="flex-1 flex flex-col items-center justify-start min-h-[400px]">
+              <div className="w-full max-w-[calc(100vh-10rem)] aspect-square relative">
+                <ChessgroundBoard 
+                  game={game} 
+                  onMove={handlePlayerMove} 
+                  cityColor={city.color} 
+                  isThinking={isThinking} 
+                  synthSelectedSquare={synthSelectedSquare as Square | null}
+                  activeSquares={activeSquares}
+                  onBoardClick={(square) => {
+                    setSynthSelectedSquare(square)
+                    // If empty, play sample
+                    if (!game.get(square as Square)) {
+                      playSquareSample(square)
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             {/* Captured Pieces (Bottom - Black pieces captured by White) */}
@@ -567,7 +570,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 {capturedPieces.white.map((p, i) => (
                     <div 
                         key={i} 
-                        className="w-3 h-3 sm:w-4 sm:h-4 opacity-70"
+                        className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
+                        style={{ 
+                            "--city-neon": city.color,
+                            filter: "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))"
+                        } as React.CSSProperties}
                         dangerouslySetInnerHTML={{ 
                             __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG] 
                         }} 
@@ -575,16 +582,43 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 ))}
             </div>
 
-            {/* Audio Visualizer */}
-            <div className="w-full h-16 md:h-24">
-              <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} hasStarted={hasStarted} />
+            {/* Undo/Redo Buttons */}
+            <div className="flex justify-center gap-4 mt-2 relative z-50">
+                <Button 
+                  variant="ghost" 
+                  size="default" 
+                  onClick={undoMove} 
+                  disabled={moveHistory.length === 0} 
+                  className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                  style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                  <Undo2 className="w-10 h-10" />
+                </Button>
+
+                <Button 
+                  variant="ghost" 
+                  size="default" 
+                  onClick={redoMove} 
+                  disabled={redoStack.length === 0} 
+                  className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                  style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                  <Redo2 className="w-10 h-10" />
+                </Button>
             </div>
           </div>
         </div>
 
         {/* Right Panel - Live Code */}
         <div className="lg:w-96 order-3 flex flex-col gap-4 lg:h-[calc(100vh-6rem)]">
-          <LiveCodeOverlay pattern={currentPattern} city={city} isPlaying={isPlaying} />
+           <div className={cn("transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
+             <div className="w-full h-16 md:h-24">
+               <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} hasStarted={hasStarted} />
+             </div>
+           </div>
+           <div className={cn("flex-1 transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
+             <LiveCodeOverlay pattern={currentPattern} city={city} isPlaying={isPlaying} />
+           </div>
         </div>
       </div>
     </div>

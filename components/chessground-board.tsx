@@ -430,7 +430,9 @@ export function ChessgroundBoard({
                   <div
                     className={cn("w-[85%] h-[85%] transition-transform duration-150", isSelected && "scale-105")}
                     style={{
-                      filter: isSelected ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
+                      filter: isSelected 
+                        ? `drop-shadow(0 0 8px ${cityColor})` 
+                        : (piece.color === 'b' ? `drop-shadow(0 0 1px ${cityColor})` : undefined),
                     }}
                     dangerouslySetInnerHTML={{
                       __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "",

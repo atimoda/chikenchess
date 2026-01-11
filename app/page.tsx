@@ -1,16 +1,46 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { WorldMap } from "@/components/world-map"
 import { ChessGame } from "@/components/chess-game"
-import type { CityData } from "@/lib/cities-data"
+import { type CityData, getCityById } from "@/lib/cities-data"
 
 export default function Home() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [selectedCity, setSelectedCity] = useState<CityData | null>(null)
+  
+  // Sync state with URL on mount and when URL changes
+  useEffect(() => {
+    const cityId = searchParams.get("city")
+    if (cityId) {
+      const city = getCityById(cityId)
+      if (city) {
+        setSelectedCity(city)
+      } else {
+        // Invalid city ID, reset URL
+        router.replace("/")
+        setSelectedCity(null)
+      }
+    } else {
+      setSelectedCity(null)
+    }
+  }, [searchParams, router])
 
-  if (selectedCity) {
-    return <ChessGame city={selectedCity} onBack={() => setSelectedCity(null)} />
+  const handleCitySelect = (city: CityData) => {
+    setSelectedCity(city)
+    router.push(`?city=${city.id}`)
   }
 
-  return <WorldMap onCitySelect={setSelectedCity} />
+  const handleBack = () => {
+    setSelectedCity(null)
+    router.push("/")
+  }
+
+  if (selectedCity) {
+    return <ChessGame city={selectedCity} onBack={handleBack} />
+  }
+
+  return <WorldMap onCitySelect={handleCitySelect} />
 }

@@ -132,17 +132,18 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
     })
   }
   
-  // 3. KING (Queen's Sound)
-  // "substitua o som do rei com o da rainha"
+  // 3. KING (Woodblock / Melodic Tom)
+  // "substitua o instrumento do rei ("sawtooth") por "gm_woodblock". quando ele estiver em cheque, substitua por "gm_melodic_tom"."
   const king = pieces.find(p => p.type === 'k')
   if (king) {
-    const sound = king.color === 'b' ? "darbuka" : "synth"
-    layers.push(`  // King (${sound})`)
-    layers.push(`  n("0 [2 4] <3 5> [~ <4 1>]".add("<0 [0,2,4]>"))`)
-    layers.push(`    .scale("${city.scale[0]}5:minor")`) 
-    layers.push(`    .sound("${sound}")`)
-    layers.push(`    .slow(2)`)
-    layers.push(`    .room(.4).delay(.125),`)
+    const soundName = inCheck ? "gm_melodic_tom" : "gm_woodblock"
+    const notePattern = inCheck ? "c2 [eb2,g2] " : "c2 "
+    
+    layers.push(`  // King (${soundName})`)
+    layers.push(`  setcpm(60)`)
+    layers.push(`  note("${notePattern}".add("<0 <1 -1>>"))`)
+    layers.push(`    .sound("${soundName}")`) 
+    layers.push(`    .room(.5),`)
   }
 
   // 4. KNIGHTS (Acoustic Bass)
@@ -175,28 +176,32 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
     layers.push(`    .slow(2).gain(0.25),`)
   }
 
-  // 5. QUEENS (Now uses previous Bishop Logic - Lead/Synth)
+  // 5. QUEENS (Lead Voice with specific pattern)
   if (queens.length > 0) {
     queens.forEach(q => {
-      // Euclidean rhythm for melody
-      const pulses = 3 + (q.rank % 4)
-      const struct = euclidean(pulses, 16)
-      const miniStruct = struct.map(x => x ? "x" : ".").join("")
+      // User request: note("c2 g2!2 d2 f1").s(wchoose(["sine",10], ["triangle",1], ["bd:6",1]))
+      // Variation: Transpose slightly based on rank/file
       
-      // Note selection
-      const noteIdx = (q.file + q.rank * 2) % city.scale.length
-      const note = city.scale[noteIdx]
-
-      // Position Pan
+      const offset = (q.file + q.rank) % 5
+      // Representing offset in code as a transformation or just modifying the notes string?
+      // "pode alterar as notas conforme ela anda"
+      // Let's modify the notes string to be accurate to what is playing.
+      // Or just show the base pattern with a comment about variation?
+      // The user wants to SEE the code.
+      // "note("c2 g2!2 d2 f1")"
+      
+      // I'll construct the string with offset if possible, or just use |+ offset logic
+      // Strudel: note("c2...").|+ (offset)
+      
+      const patternStr = `"c2 g2!2 d2 f1"`
+      const transformation = offset > 0 ? `.|+ ${offset}` : ""
+      
       const posPan = (1 - (q.file / 7)).toFixed(2)
 
       layers.push(`  // Queen ${q.square}`)
-      layers.push(`  note("${note}")`)
-      layers.push(`    .s("<sawtooth square triangle sine>")`)
-      layers.push(`    .struct("${miniStruct}")`)
-      layers.push(`    .slow(4)`)
-      layers.push(`    .release(1).pan(${posPan})`) 
-      layers.push(`    .gain("sine").decay(0.2).sustain(1.25).gain(.6),`)
+      layers.push(`  note(${patternStr})${transformation}`)
+      layers.push(`    .s(wchoose(["sine",10], ["triangle",1], ["bd:6",1]))`)
+      layers.push(`    .pan(${posPan}),`)
     })
   }
 
@@ -292,27 +297,38 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     }
   })
 
-  // --- QUEEN LOGIC (Old Bishop Synth: Triangle + Tremolo) ---
+  // --- QUEEN LOGIC (Random Low Octave Pattern) ---
+  // "note("c2 g2!2 d2 f1").s(wchoose(["sine",10], ["triangle",1], ["bd:6",1]))"
   const queenLayers = queens.map(q => {
-    const pulses = 3 + (q.rank % 4)
-    const struct = euclidean(pulses, 16)
-    
-    const noteIdx = (q.file + q.rank * 2) % city.scale.length
-    const freq = noteToFrequency(city.scale[noteIdx])
-
     const pattern = new Array(16).fill(null)
-    
-    // Apply Pitch Effect
     const fx = getEffects(q.square)
     const pitchMult = fx.pitch ?? 1
+    
+    // Base notes frequencies
+    // Variation: Transpose by (file + rank) % 5 semitones to keep it subtle and low
+    const offset = (q.file + q.rank) % 5
+    const ratio = Math.pow(2, offset / 12)
 
-    struct.forEach((isActive, i) => {
-      if (isActive) pattern[i] = freq * pitchMult
-    })
+    const c2 = noteToFrequency("c2") * ratio * pitchMult
+    const g2 = noteToFrequency("g2") * ratio * pitchMult
+    const d2 = noteToFrequency("d2") * ratio * pitchMult
+    const f1 = noteToFrequency("f1") * ratio * pitchMult
 
-    // Position Pan
+    // Pattern: c2 g2!2 d2 f1
+    // Mapping to 16 steps (4 beats):
+    // Beat 0 (0): c2
+    // Beat 1 (4): g2!2 -> g2 at 4, g2 at 6 (subdivision)
+    // Beat 2 (8): d2
+    // Beat 3 (12): f1
+
+    pattern[0] = c2
+    pattern[4] = g2
+    pattern[6] = g2
+    pattern[8] = d2
+    pattern[12] = f1
+    
     let pan = (q.file / 7) * 2 - 1
-    let gain = 0.5
+    let gain = 0.6
     
     if (fx.gain !== undefined) gain *= fx.gain
     if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
@@ -321,8 +337,8 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       pattern,
       gain,
       pan,
-      adsr: [0.01, 0.2, 1.25, 1.0] as [number, number, number, number],
-      lfo: true, // Use LFO for Tremolo
+      sound: "gm_queen_random" as const, // New sound type
+      adsr: [0.01, 0.1, 0.5, 0.5] as [number, number, number, number],
       color: q.color,
       delay: fx.delay,
       reverb: fx.reverb,
@@ -388,22 +404,38 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     }
   })
 
-  // --- KING LOGIC (Queen's Sound) ---
+  // --- KING LOGIC (Woodblock / Melodic Tom) ---
   const kingLayers = pieces.filter(p => p.type === 'k').map(k => {
-      // ... same pattern logic ...
       const pattern = new Array(16).fill(null)
       const fx = getEffects(k.square)
       const pitchMult = fx.pitch ?? 1
       
-      const getFreq = (scaleIdx: number) => {
-          const idx = scaleIdx % city.scale.length
-          return noteToFrequency(city.scale[idx]) * pitchMult
+      // Pattern logic matching display:
+      // Normal: "c2 "
+      // Check: "c2 [eb2,g2]"
+      // Plus the <0 <1 -1>> variation logic
+      
+      const offsets = [0, 1, -1]
+      const offset = offsets[(k.file + k.rank) % 3]
+      const semitoneRatio = Math.pow(2, offset / 12)
+
+      // Use frequencies appropriate for the instruments
+      // Woodblock uses internal fixed freq in AudioEngine, but Tom needs input freq.
+      // C2 is approx 65Hz. For Tom, maybe higher is better? 
+      // User requested "gm_melodic_tom".
+      
+      const c2 = noteToFrequency("c2") * pitchMult * semitoneRatio
+      const eb2 = noteToFrequency("eb2") * pitchMult * semitoneRatio
+      const g2 = noteToFrequency("g2") * pitchMult * semitoneRatio
+      
+      const soundName = inCheck ? "gm_melodic_tom" : "gm_woodblock"
+
+      pattern[0] = c2
+      if (inCheck) {
+         pattern[8] = [eb2, g2] // Add extra hit for check tension
+      } else {
+         // Maybe just simple beat for woodblock
       }
-      pattern[0] = getFreq(0)  
-      pattern[2] = getFreq(2)  
-      pattern[3] = getFreq(4)
-      pattern[4] = getFreq(3)
-      pattern[6] = getFreq(5)
 
       let pan = (k.file / 7) * 2 - 1
       let gain = 0.8
@@ -415,10 +447,11 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
           pattern,
           gain,
           pan,
-          sound: k.color === 'b' ? "darbuka" : "synth",
+          sound: soundName, // Dynamic sound name
           color: k.color,
+          adsr: [0.1, 0, 0.2, 1.0] as [number, number, number, number],
+          room: 0.5,
           delay: fx.delay,
-          reverb: fx.reverb,
           decay: fx.decay
       }
   })
@@ -467,9 +500,9 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     bpm: city.bpm,
     swing: 0,
     pawns: pawnLayers,
-    queens: queenLayers.map(q => ({...q, sound: q.color === 'b' ? "darbuka" : "synth" as "darbuka" | "synth"})), 
+    queens: queenLayers, 
     bishops: pianoLayers, // Renamed 'piano' to 'bishops'
-    kings: kingLayers.map(k => ({...k, sound: "synth" as "synth" | "xylophone"})), 
+    kings: kingLayers, 
     knights: knightLayers.map(k => ({...k, sound: "gm_acoustic_bass" as "gm_acoustic_bass" | "bass"})),
     bass: {
       pattern: bassPattern,

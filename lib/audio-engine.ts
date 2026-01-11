@@ -319,17 +319,17 @@ export class AudioEngine {
     // QUEENS (Synth or Darbuka)
     if (queens) {
       queens.forEach(q => {
-        const note = q.pattern[step % 16]
-        if (note !== null) {
+        const freq = q.pattern[step % 16]
+        if (freq && freq > 0) {
           if (q.sound === "darbuka") {
             this.playDarbuka(triggerTime, q.gain, q.pan, q.delay, q.reverb)
+          } else if (q.sound === "gm_lead_6_voice") {
+            this.playLead6Voice(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
+          } else if (q.sound === "gm_queen_random") {
+            this.playQueenRandom(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
           } else {
-            // Cycle waveforms: Sawtooth, Square, Triangle, Sine
-            const waveforms: OscillatorType[] = ["sawtooth", "square", "triangle", "sine"]
-            // Use a random offset based on step to ensure variety even if pattern repeats
-            const variation = Math.floor(step / 4) + step 
-            const waveform = waveforms[variation % 4]
-            this.playBishop(triggerTime, note, q.gain, q.pan, q.adsr, q.lfo || false, q.delay, waveform, q.reverb)
+            // Default Synth
+            this.playBishop(triggerTime, freq, q.gain, q.pan, q.adsr, !!q.lfo, q.delay, "triangle", q.reverb)
           }
         }
       })
@@ -347,13 +347,35 @@ export class AudioEngine {
       })
     }
     
-    // KINGS (Now using Queen's Synth or Darbuka)
+    // KINGS (Now using Queen's Synth or Darbuka or Custom)
     if (kings) {
       kings.forEach(k => {
         const note = k.pattern[step % 16]
         if (note !== null) {
           if (k.sound === "darbuka") {
              this.playDarbuka(triggerTime, k.gain, k.pan, k.delay, k.reverb)
+          } else if (k.sound === "gm_woodblock") {
+             // Woodblock: high pitch, short decay
+             this.playWoodblock(triggerTime, k.gain, k.pan, k.delay, k.reverb)
+          } else if (k.sound === "gm_melodic_tom") {
+             const notes = Array.isArray(note) ? note : [note]
+             notes.forEach(n => {
+                if (Number.isFinite(n)) {
+                    // Transpose up if needed, C2 is low for toms, maybe OK for floor tom
+                    // Multiply by 2 or 4 to bring into better tom range if needed
+                    this.playMelodicTom(triggerTime, n * 2, k.gain, k.pan, k.delay, k.reverb)
+                }
+             })
+          } else if (k.sound === "gm_acoustic_bass") {
+             // Handle both single notes and chords (arrays)
+             const notes = Array.isArray(note) ? note : [note]
+             const adsr = (k as any).adsr || [0.1, 0, 0.2, 1.0]
+             
+             notes.forEach(n => {
+                if (Number.isFinite(n)) {
+                    this.playAcousticBass(triggerTime, n, k.gain, k.pan, adsr, (k as any).room || 0.5, k.delay, k.reverb)
+                }
+             })
           } else if (k.sound === "synth") {
              // King using Queen's Synth - Match Queen's waveform cycling
              const waveforms: OscillatorType[] = ["sawtooth", "square", "triangle", "sine"]
@@ -370,7 +392,7 @@ export class AudioEngine {
     if (knights) {
       knights.forEach(k => {
         const note = k.pattern[step % 16]
-        if (note !== null) {
+        if (note !== null && Number.isFinite(note)) {
           if (k.sound === "gm_acoustic_bass") {
             this.playAcousticBass(triggerTime, note, k.gain, k.pan, k.adsr, k.room, k.delay, k.reverb)
           } else {
@@ -787,6 +809,62 @@ export class AudioEngine {
     oscHigh.start(time); oscHigh.stop(time + 0.1)
   }
 
+  private playWoodblock(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+    if (!this.audioContext || !this.masterGain) return
+    
+    // Woodblock: High pitch sine/square mix with very fast decay
+    const osc = this.audioContext.createOscillator()
+    osc.type = "sine"
+    osc.frequency.setValueAtTime(800, time)
+    
+    const osc2 = this.audioContext.createOscillator()
+    osc2.type = "square"
+    osc2.frequency.setValueAtTime(1200, time) // Overtone
+    
+    const gain2 = this.audioContext.createGain()
+    gain2.gain.value = 0.2
+
+    const gainNode = this.audioContext.createGain()
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain, time + 0.001)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.05) // Short click
+    
+    const panner = this.audioContext.createStereoPanner()
+    panner.pan.value = pan
+    
+    osc.connect(gainNode)
+    osc2.connect(gain2).connect(gainNode)
+    gainNode.connect(panner)
+    
+    this.applyEffects(panner, delay, reverb)
+    
+    osc.start(time); osc.stop(time + 0.1)
+    osc2.start(time); osc2.stop(time + 0.1)
+  }
+
+  private playMelodicTom(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+    if (!this.audioContext || !this.masterGain) return
+    
+    const osc = this.audioContext.createOscillator()
+    osc.type = "sine"
+    osc.frequency.setValueAtTime(freq, time)
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, time + 0.2) // Pitch dive
+    
+    const gainNode = this.audioContext.createGain()
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain, time + 0.005)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.3)
+    
+    const panner = this.audioContext.createStereoPanner()
+    panner.pan.value = pan
+    
+    osc.connect(gainNode).connect(panner)
+    
+    this.applyEffects(panner, delay, reverb)
+    
+    osc.start(time); osc.stop(time + 0.4)
+  }
+
   private playAcousticBass(time: number, freq: number, gain: number, pan: number, adsr: [number, number, number, number], roomAmount: number = 0.3, delay: number = 0, reverb: number = 0) {
     if (!this.audioContext || !this.masterGain) return
     const [att, dec, sus, rel] = adsr
@@ -846,7 +924,14 @@ export class AudioEngine {
     
     const osc = this.audioContext.createOscillator()
     osc.type = waveform
-    osc.frequency.value = note
+    
+    // Safety check for finite frequency
+    if (Number.isFinite(note) && note > 0) {
+        osc.frequency.value = note
+    } else {
+        // Fallback to avoid error
+        osc.frequency.value = 440
+    }
 
     const gainNode = this.audioContext.createGain()
     
@@ -889,6 +974,76 @@ export class AudioEngine {
     osc.connect(gainNode)
     osc.start(time)
     osc.stop(time + att + dec + rel + 0.1)
+  }
+
+  private playQueenRandom(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+    if (!this.audioContext || !this.masterGain) return
+
+    // wchoose(["sine",10], ["triangle",1], ["bd:6",1])
+    // Weights: 10 (sine), 1 (triangle), 1 (bd) -> Total 12
+    const rand = Math.random() * 12
+    
+    if (rand < 10) {
+        // Sine: High weight
+        this.playBishop(time, freq, gain, pan, [0.01, 0.1, 0.5, 0.5], false, delay, "sine", reverb)
+    } else if (rand < 11) {
+        // Triangle: Low weight
+        this.playBishop(time, freq, gain, pan, [0.01, 0.1, 0.5, 0.5], false, delay, "triangle", reverb)
+    } else {
+        // BD:6 (Bass Drum): Low weight
+        // Using playKick. Pitch multiplier 1.0.
+        // We might want to use freq to tune the kick, but kicks are usually fixed pitch.
+        // However, to respect "notes", we can try to tune it? 
+        // playKick uses pitch multiplier. 
+        // Let's just play a standard kick as requested "bd:6".
+        this.playKick(time, gain * 1.5, pan, delay, reverb) 
+    }
+  }
+
+  private playLead6Voice(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+    if (!this.audioContext || !this.masterGain) return
+
+    // "Voice" Lead: 2 detuned sawtooths + 1 square + filter sweep
+    const osc1 = this.audioContext.createOscillator()
+    osc1.type = "sawtooth"
+    osc1.frequency.value = freq
+    osc1.detune.value = -12
+
+    const osc2 = this.audioContext.createOscillator()
+    osc2.type = "sawtooth"
+    osc2.frequency.value = freq
+    osc2.detune.value = 12
+
+    const osc3 = this.audioContext.createOscillator()
+    osc3.type = "square"
+    osc3.frequency.value = freq
+    
+    const filter = this.audioContext.createBiquadFilter()
+    filter.type = "lowpass"
+    filter.Q.value = 5
+    filter.frequency.setValueAtTime(freq * 1.5, time)
+    filter.frequency.exponentialRampToValueAtTime(freq * 3, time + 0.2) // "Wah"
+    filter.frequency.exponentialRampToValueAtTime(freq * 1.5, time + 0.5)
+
+    const gainNode = this.audioContext.createGain()
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain * 0.25, time + 0.1) // Soft attack
+    gainNode.gain.exponentialRampToValueAtTime(gain * 0.2, time + 0.3)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.8)
+
+    const panner = this.audioContext.createStereoPanner()
+    panner.pan.value = pan
+
+    osc1.connect(filter)
+    osc2.connect(filter)
+    osc3.connect(filter)
+    filter.connect(gainNode).connect(panner)
+
+    this.applyEffects(panner, delay, reverb)
+
+    osc1.start(time); osc1.stop(time + 0.8)
+    osc2.start(time); osc2.stop(time + 0.8)
+    osc3.start(time); osc3.stop(time + 0.8)
   }
 
   private playKick(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1) {
@@ -1139,9 +1294,9 @@ export interface ParsedPattern {
   
   // Layers
   pawns?: { sample: string; pattern: boolean[]; gain: number; pan: number; color: "w" | "b"; pitch?: number; delay?: number; reverb?: number; decay?: number }[]
-  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka"; lfo?: boolean; delay?: number; reverb?: number; decay?: number }[]
+  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka" | "gm_lead_6_voice"; lfo?: boolean; delay?: number; reverb?: number; decay?: number }[]
   bishops?: { pattern: (number | number[] | null)[]; gain: number; pan: number; lfo?: "siren" | "sine" | null; delay?: number; reverb?: number; decay?: number }[] // Piano
-  kings?: { pattern: (number | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka"; delay?: number; reverb?: number; decay?: number }[]
+  kings?: { pattern: (number | number[] | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka" | "gm_acoustic_bass" | "gm_woodblock" | "gm_melodic_tom"; delay?: number; reverb?: number; decay?: number }[]
   knights?: { pattern: (number | null)[]; gain: number; pan: number; sound: "bass" | "gm_acoustic_bass"; adsr: [number, number, number, number]; room?: number; delay?: number; reverb?: number; decay?: number }[]
   rooks?: { pattern: (number[] | null)[]; gain: number; pan: number; delay?: number; reverb?: number; decay?: number }[]
   
@@ -1261,7 +1416,7 @@ const NOTE_FREQUENCIES: Record<string, number> = {
 }
 
 export function noteToFrequency(note: string): number {
-  return NOTE_FREQUENCIES[note] || 440
+  return NOTE_FREQUENCIES[note.toUpperCase()] || NOTE_FREQUENCIES[note] || 440
 }
 
 // Singleton audio engine instance
