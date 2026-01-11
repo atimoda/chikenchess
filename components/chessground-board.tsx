@@ -9,16 +9,18 @@ import { cn } from "@/lib/utils"
 interface ChessgroundBoardProps {
   game: Chess
   onMove: (move: Move) => void
+  onBoardClick?: (square: Square) => void
   cityColor: string
   isThinking: boolean
   orientation?: "white" | "black"
+  synthSelectedSquare?: Square | null
 }
 
 const COLUMNS = ["a", "b", "c", "d", "e", "f", "g", "h"]
 const ROWS = ["8", "7", "6", "5", "4", "3", "2", "1"]
 
 // Custom SVG pieces with neon glow effect
-const PiecesSVG = {
+export const PiecesSVG = {
   wK: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fillRule="evenodd" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22.5 11.63V6M20 8h5" strokeWidth="1.5"/><path d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#fff" strokeLinecap="butt"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-3.5-7.5-13-10.5-16-4-3 6 5 10 5 10V37z" fill="#fff"/><path d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0"/></g></svg>`,
   wQ: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fillRule="evenodd" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="12" r="2.75"/><circle cx="14" cy="9" r="2.75"/><circle cx="22.5" cy="8" r="2.75"/><circle cx="31" cy="9" r="2.75"/><circle cx="39" cy="12" r="2.75"/><path d="M9 26c8.5-1.5 21-1.5 27 0l2.5-12.5L31 25l-.3-14.1-5.2 13.6-3-14.5-3 14.5-5.2-13.6L14 25 6.5 13.5 9 26z" strokeLinecap="butt"/><path d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z" strokeLinecap="butt"/><path d="M11 38.5a35 35 1 0 0 23 0" fill="none" strokeLinecap="butt"/><path d="M11 29a35 35 1 0 1 23 0m-21.5 2.5h20m-21 3a35 35 1 0 0 22 0" fill="none" stroke="#000"/></g></svg>`,
   wR: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fillRule="evenodd" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 39h27v-3H9v3zm3-3v-4h21v4H12zm-1-22V9h4v2h5V9h5v2h5V9h4v5" strokeLinecap="butt"/><path d="M34 14l-3 3H14l-3-3"/><path d="M31 17v12.5H14V17" strokeLinecap="butt" strokeLinejoin="miter"/><path d="M31 29.5l1.5 2.5h-20l1.5-2.5"/><path d="M11 14h23" fill="none" strokeLinejoin="miter"/></g></svg>`,
@@ -41,11 +43,14 @@ export function ChessgroundBoard({
   cityColor,
   isThinking,
   orientation = "white",
+  onBoardClick,
+  synthSelectedSquare,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [legalMoves, setLegalMoves] = useState<Square[]>([])
-  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null)
+  const [lastMoveWhite, setLastMoveWhite] = useState<{ from: Square; to: Square } | null>(null)
+  const [lastMoveBlack, setLastMoveBlack] = useState<{ from: Square; to: Square } | null>(null)
   const [premove, setPremove] = useState<{ from: Square; to: Square } | null>(null)
   const [dragPiece, setDragPiece] = useState<{
     piece: string
@@ -57,6 +62,67 @@ export function ChessgroundBoard({
   const board = game.board()
   const inCheck = game.isCheck()
   const turn = game.turn()
+
+  // Handle last move updates from props
+  useEffect(() => {
+    if (game) {
+      const history = game.history({ verbose: true })
+      
+      // Find last white move
+      // findLast is not available in all environments, so we iterate backwards
+      let lastW = null
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].color === 'w') {
+          lastW = history[i]
+          break
+        }
+      }
+
+      // Find last black move
+      let lastB = null
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].color === 'b') {
+          lastB = history[i]
+          break
+        }
+      }
+
+      setLastMoveWhite(lastW ? { from: lastW.from, to: lastW.to } : null)
+      setLastMoveBlack(lastB ? { from: lastB.from, to: lastB.to } : null)
+    }
+  }, [game, game.fen()]) // Added fen dependency to update on history navigation
+
+  // Calculate opposite color for last move highlight
+  // We need a complementary color to the neon city color
+  // Simple approach: parse hex or use HSL rotation if possible, but for now let's just use a contrasting static color or simple logic.
+  // The user asked for "contrary" color.
+  // If cityColor is passed as hex, we can try to find a complementary one.
+  // Or simpler: if it's warm, use cool, etc.
+  // But let's try to be more precise if we can. 
+  // Since cityColor comes from props and is a hex string (usually).
+  
+  const getComplementaryColor = (hex: string) => {
+    // Basic hex to rgb
+    let r = 0, g = 0, b = 0;
+    if (hex.startsWith('#')) {
+      if (hex.length === 4) {
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
+      } else if (hex.length === 7) {
+        r = parseInt(hex[1] + hex[2], 16);
+        g = parseInt(hex[3] + hex[4], 16);
+        b = parseInt(hex[5] + hex[6], 16);
+      }
+    }
+    // Invert
+    const compR = 255 - r;
+    const compG = 255 - g;
+    const compB = 255 - b;
+    return `rgba(${compR}, ${compG}, ${compB}, 0.3)`;
+  }
+
+  const lastMoveColor = getComplementaryColor(cityColor);
 
   // Find king position for check highlight
   const findKingSquare = useCallback((): Square | null => {
@@ -75,6 +141,11 @@ export function ChessgroundBoard({
 
   const handleSquareClick = useCallback(
     (square: Square) => {
+      // Notify parent of click (for synth/pad functionality)
+      if (onBoardClick) {
+        onBoardClick(square)
+      }
+
       if (isThinking && turn === "b") {
         // Allow premoves while AI is thinking
         if (selectedSquare) {
@@ -106,7 +177,11 @@ export function ChessgroundBoard({
           })
 
           if (move) {
-            setLastMove({ from: selectedSquare, to: square })
+            if (move.color === 'w') {
+              setLastMoveWhite({ from: selectedSquare, to: square })
+            } else {
+              setLastMoveBlack({ from: selectedSquare, to: square })
+            }
             onMove(move)
             setSelectedSquare(null)
             setLegalMoves([])
@@ -117,14 +192,33 @@ export function ChessgroundBoard({
         }
       }
 
-      // Select a piece
-      if (piece && piece.color === "w") {
+      // If square is occupied, select it (white border will be applied by isSynthSelected logic)
+      // The user requested: "quando o usuário clica numa peça, selecione a casa desta peça"
+      if (piece) {
         setSelectedSquare(square)
-        const moves = game.moves({ square, verbose: true })
-        setLegalMoves(moves.map((m) => m.to as Square))
+        // Calculate legal moves for this piece if it's our turn
+        if (piece.color === turn) {
+          try {
+            const moves = game.moves({ square, verbose: true })
+            setLegalMoves(moves.map((m) => m.to as Square))
+          } catch (e) {
+            setLegalMoves([])
+          }
+        } else {
+          setLegalMoves([])
+        }
+
+        // Notify parent for synth control
+        if (onBoardClick) {
+          onBoardClick(square)
+        }
       } else {
+        // Empty square logic (for Pad Kontrol) handled by parent via onBoardClick
         setSelectedSquare(null)
         setLegalMoves([])
+        if (onBoardClick) {
+          onBoardClick(square)
+        }
       }
     },
     [game, selectedSquare, turn, isThinking, onMove],
@@ -194,7 +288,11 @@ export function ChessgroundBoard({
           })
 
           if (move) {
-            setLastMove({ from: dragPiece.from, to: targetSquare })
+            if (dragPiece.piece.startsWith('w')) {
+              setLastMoveWhite({ from: dragPiece.from, to: targetSquare })
+            } else {
+              setLastMoveBlack({ from: dragPiece.from, to: targetSquare })
+            }
             onMove(move)
           }
         } catch {
@@ -236,7 +334,7 @@ export function ChessgroundBoard({
           promotion: "q",
         })
         if (move) {
-          setLastMove(premove)
+          setLastMoveWhite(premove)
           onMove(move)
         }
       } catch {
@@ -248,20 +346,7 @@ export function ChessgroundBoard({
 
   return (
     <div className="relative select-none">
-      {/* Thinking indicator */}
-      {isThinking && (
-        <div
-          className="absolute -top-10 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-xs font-mono z-20 flex items-center gap-2"
-          style={{
-            backgroundColor: `${cityColor}20`,
-            color: cityColor,
-            border: `1px solid ${cityColor}`,
-          }}
-        >
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: cityColor }} />
-          STOCKFISH ANALYZING...
-        </div>
-      )}
+      {/* Thinking indicator - REMOVED per user request */}
 
       {/* Premove indicator */}
       {premove && (
@@ -286,9 +371,18 @@ export function ChessgroundBoard({
             const isSelected = selectedSquare === square
             const isLegalMove = legalMoves.includes(square)
             const isKingInCheck = kingSquare === square
-            const isLastMove = lastMove?.from === square || lastMove?.to === square
+            const isLastMoveWhite = lastMoveWhite && (lastMoveWhite.from === square || lastMoveWhite.to === square)
+            const isLastMoveBlack = lastMoveBlack && (lastMoveBlack.from === square || lastMoveBlack.to === square)
+            const isLastMove = isLastMoveWhite || isLastMoveBlack
             const isPremoveSquare = premove?.from === square || premove?.to === square
             const isDragging = dragPiece?.from === square
+            const isSynthSelected = synthSelectedSquare === square
+
+            // Calculate complementary color for last move
+            // We'll use a CSS filter hue-rotate(180deg) to get complementary color
+            // But we can't apply it to background directly without affecting children
+            // So we'll handle it via style injection or a separate div layer if needed.
+            // Actually, we can just use the hue-rotate on the background div layer.
 
             return (
               <button
@@ -296,20 +390,21 @@ export function ChessgroundBoard({
                 className={cn(
                   "relative aspect-square flex items-center justify-center transition-colors duration-150",
                   "w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16",
+                  (isSynthSelected || (piece && isSynthSelected)) && "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]"
                 )}
                 style={{
-                  backgroundColor: isKingInCheck
-                    ? "rgba(239, 68, 68, 0.6)"
-                    : isSelected
-                      ? `${cityColor}40`
-                      : isLastMove
-                        ? `${cityColor}25`
-                        : isPremoveSquare
-                          ? "rgba(59, 130, 246, 0.3)"
-                          : isLight
-                            ? `${cityColor}40` // Light squares: increased opacity
-                            : `${cityColor}25`, // Dark squares: increased opacity for better visibility
-                }}
+            backgroundColor: isKingInCheck
+              ? "rgba(239, 68, 68, 0.6)"
+              : isSelected
+                ? `${cityColor}40`
+                : isPremoveSquare
+                  ? "rgba(59, 130, 246, 0.3)"
+                  : isLastMove
+                    ? lastMoveColor
+                    : isLight
+                      ? `${cityColor}40` // Light squares: increased opacity
+                      : `${cityColor}25`, // Dark squares: increased opacity for better visibility
+          }}
                 onClick={() => handleSquareClick(square)}
                 onMouseDown={(e) => handleDragStart(e, square)}
                 onTouchStart={(e) => handleDragStart(e, square)}

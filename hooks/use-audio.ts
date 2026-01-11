@@ -5,8 +5,15 @@ import type { Chess } from "chess.js"
 import type { CityData } from "@/lib/cities-data"
 import { getAudioEngine, type AudioEngine } from "@/lib/audio-engine"
 import { parsePatternForAudio } from "@/lib/strudel-engine"
+import type { SquareEffectMap } from "@/lib/types"
 
-export function useAudio(game: Chess, city: CityData, isPlaying: boolean, activeSquares: Set<string>) {
+export function useAudio(
+  game: Chess, 
+  city: CityData, 
+  isPlaying: boolean, 
+  activeSquares: Set<string>,
+  squareEffects: SquareEffectMap = {}
+) {
   const engineRef = useRef<AudioEngine | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
 
@@ -21,13 +28,19 @@ export function useAudio(game: Chess, city: CityData, isPlaying: boolean, active
     }
   }, [])
 
-  // Update pattern when game OR activeSquares changes
+  // Update pattern when game OR activeSquares OR squareEffects changes
   useEffect(() => {
     if (!engineRef.current || !isInitialized) return
 
-    const pattern = parsePatternForAudio(game, city, activeSquares)
+    const pattern = parsePatternForAudio(game, city, activeSquares, squareEffects)
     engineRef.current.setPattern(pattern)
-  }, [game, city, isInitialized, activeSquares])
+  }, [game, city, isInitialized, activeSquares, squareEffects])
+
+  // Update square effects when they change
+  useEffect(() => {
+    if (!engineRef.current || !isInitialized) return
+    engineRef.current.setSquareEffects(squareEffects)
+  }, [squareEffects, isInitialized])
 
   // Control playback (Pattern + Ambience)
   useEffect(() => {
@@ -57,5 +70,9 @@ export function useAudio(game: Chess, city: CityData, isPlaying: boolean, active
     engineRef.current?.playCheckmate()
   }, [])
 
-  return { togglePlayback, isInitialized, playCheckmate }
+  const playSquareSample = useCallback((square: string) => {
+    engineRef.current?.playSquareSample(square)
+  }, [])
+
+  return { togglePlayback, isInitialized, playCheckmate, playSquareSample }
 }

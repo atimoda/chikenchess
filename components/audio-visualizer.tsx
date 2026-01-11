@@ -14,9 +14,10 @@ interface AudioVisualizerProps {
   isPlaying: boolean
   color: string
   pattern: string
+  hasStarted: boolean
 }
 
-export function AudioVisualizer({ isPlaying, color, pattern }: AudioVisualizerProps) {
+export function AudioVisualizer({ isPlaying, color, pattern, hasStarted }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
   // dataArray reused to avoid GC
@@ -117,7 +118,7 @@ export function AudioVisualizer({ isPlaying, color, pattern }: AudioVisualizerPr
   }, [animate])
 
   return (
-    <div className="relative h-28 rounded-lg overflow-hidden border border-border bg-card/30 backdrop-blur-sm fade-transparency">
+    <div className={`relative h-full rounded-lg overflow-hidden border transition-all duration-[3000ms] ${hasStarted ? "bg-transparent border-transparent" : "bg-card/30 border-border backdrop-blur-sm"} fade-transparency`}>
       <canvas ref={canvasRef} className="w-full h-full" style={{ display: "block" }} />
 
       {/* Overlay info */}

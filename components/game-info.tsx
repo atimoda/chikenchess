@@ -2,119 +2,60 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import type { CityData } from "@/lib/cities-data"
 
 interface GameInfoProps {
   moveHistory: string[]
-  capturedPieces: { white: string[]; black: string[] }
-  cityColor: string
+  city: CityData
   turn: "w" | "b"
+  aiDepth: number
 }
 
-const pieceValues: Record<string, number> = {
-  p: 1,
-  n: 3,
-  b: 3,
-  r: 5,
-  q: 9,
-}
-
-const pieceDisplay: Record<string, string> = {
-  p: "♟",
-  n: "♞",
-  b: "♝",
-  r: "♜",
-  q: "♛",
-}
-
-export function GameInfo({ moveHistory, capturedPieces, cityColor, turn }: GameInfoProps) {
-  const whiteMaterial = capturedPieces.white.reduce((sum, p) => sum + (pieceValues[p] || 0), 0)
-  const blackMaterial = capturedPieces.black.reduce((sum, p) => sum + (pieceValues[p] || 0), 0)
-  const materialDiff = whiteMaterial - blackMaterial
+export function GameInfo({ moveHistory, city, turn, aiDepth }: GameInfoProps) {
+  const cityColor = city.color
+  const hasStarted = moveHistory.length > 0
+  
+  // Create a box class that handles the fade out
+  const boxClass = `border border-border rounded-lg transition-all duration-[3000ms] ${hasStarted ? "bg-transparent border-transparent" : "bg-card/80 backdrop-blur-sm"}`
+  
+  // Box for Genre/BPM/Scale - moved out of Piece > Sound
+  const infoBoxClass = `border border-border rounded-lg transition-all duration-[3000ms] ${hasStarted ? "bg-transparent border-transparent" : "bg-card/80 backdrop-blur-sm"}`
 
   return (
-    <div className="space-y-4">
-      {/* Material */}
-      <Card className="border-border bg-card/80 backdrop-blur-sm">
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-xs font-mono text-muted-foreground">CAPTURED</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 pt-0 space-y-2">
-          {/* White captured (black pieces) */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">White:</span>
-              <span className="text-lg">
-                {capturedPieces.white.map((p, i) => (
-                  <span key={i} className="text-foreground/80">
-                    {pieceDisplay[p]}
-                  </span>
-                ))}
-              </span>
+    <div className="flex flex-col gap-4">
+      {/* Info Box */}
+      <div className={infoBoxClass}>
+        <div className="px-4 pb-2 pt-4 space-y-4">
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">GENRE</span>
+              <span style={{ color: cityColor }}>{city.genre}</span>
             </div>
-            {materialDiff > 0 && (
-              <span className="text-xs font-mono" style={{ color: cityColor }}>
-                +{materialDiff}
-              </span>
-            )}
-          </div>
-          {/* Black captured (white pieces) */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">Black:</span>
-              <span className="text-lg">
-                {capturedPieces.black.map((p, i) => (
-                  <span key={i} className="text-foreground/40">
-                    {pieceDisplay[p]}
-                  </span>
-                ))}
-              </span>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">BPM</span>
+              <span style={{ color: cityColor }}>{city.bpm}</span>
             </div>
-            {materialDiff < 0 && <span className="text-xs font-mono text-destructive">+{Math.abs(materialDiff)}</span>}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">SCALE</span>
+              <span style={{ color: cityColor }}>{city.scale}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">IA Level</span>
+              <span style={{ color: cityColor }}>{aiDepth / 5}</span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-[10px] text-muted-foreground font-mono mt-2 border-t border-border/50 pt-2">
+            {city.description}
+          </div>
+        </div>
+      </div>
 
-      {/* Move History */}
-      <Card className="border-border bg-card/80 backdrop-blur-sm">
-        <CardHeader className="py-3 px-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-mono text-muted-foreground">MOVES</CardTitle>
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full ${turn === "w" ? "animate-pulse" : ""}`}
-                style={{ backgroundColor: turn === "w" ? cityColor : "#666" }}
-              />
-              <span className="text-xs font-mono text-muted-foreground">{turn === "w" ? "WHITE" : "BLACK"}</span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 pt-0">
-          <ScrollArea className="h-48">
-            {moveHistory.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No moves yet. You play white.</p>
-            ) : (
-              <div className="space-y-1 font-mono text-xs">
-                {Array.from({ length: Math.ceil(moveHistory.length / 2) }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-muted-foreground w-6">{i + 1}.</span>
-                    <span className="w-12" style={{ color: cityColor }}>
-                      {moveHistory[i * 2]}
-                    </span>
-                    <span className="w-12 text-foreground/70">{moveHistory[i * 2 + 1] || ""}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        </CardContent>
-      </Card>
-
-      {/* Legend */}
-      <Card className="border-border bg-card/80 backdrop-blur-sm">
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-xs font-mono text-muted-foreground">PIECE → SOUND</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 pt-0">
+      {/* Legend (Piece -> Sound) */}
+      <div className={boxClass}>
+        <div className="py-2 px-4 border-b border-border/50">
+          <span className="text-xs font-mono text-muted-foreground font-bold">PIECE → SOUND</span>
+        </div>
+        <div className="px-4 pb-2 pt-2 space-y-4">
           <div className="space-y-1 text-xs">
             <div className="flex justify-between">
               <span className="text-muted-foreground">♟ Pawns</span>
@@ -141,8 +82,52 @@ export function GameInfo({ moveHistory, capturedPieces, cityColor, turn }: GameI
               <span className="text-destructive">Distortion</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Moves box */}
+      <div className={boxClass}>
+        <div className="py-2 px-4 border-b border-border/50">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono text-muted-foreground font-bold">MOVES</span>
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${turn === "w" ? "animate-pulse" : ""}`}
+                style={{ backgroundColor: turn === "w" ? cityColor : "#666" }}
+              />
+              <span className="text-xs font-mono text-muted-foreground">{turn === "w" ? "WHITE" : "BLACK"}</span>
+            </div>
+          </div>
+        </div>
+        <div className="px-4 pb-2 pt-2">
+          <div className="h-32 overflow-y-auto scrollbar-hide">
+            <style jsx global>{`
+              .scrollbar-hide::-webkit-scrollbar {
+                  display: none;
+              }
+              .scrollbar-hide {
+                  -ms-overflow-style: none;
+                  scrollbar-width: none;
+              }
+            `}</style>
+            {moveHistory.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No moves yet. You play white.</p>
+            ) : (
+              <div className="space-y-1 font-mono text-xs">
+                {Array.from({ length: Math.ceil(moveHistory.length / 2) }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-muted-foreground w-6">{i + 1}.</span>
+                    <span className="w-12" style={{ color: cityColor }}>
+                      {moveHistory[i * 2]}
+                    </span>
+                    <span className="w-12 text-foreground/70">{moveHistory[i * 2 + 1] || ""}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

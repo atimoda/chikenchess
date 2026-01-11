@@ -1,16 +1,19 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Chess, type Move } from "chess.js"
+import { Chess, type Move, type Square } from "chess.js"
 import type { CityData } from "@/lib/cities-data"
-import { ChessgroundBoard } from "./chessground-board"
+import { ChessgroundBoard, PiecesSVG } from "./chessground-board"
 import { LiveCodeOverlay } from "./live-code-overlay"
 import { AudioVisualizer } from "./audio-visualizer"
 import { GameControls } from "./game-controls"
 import { GameInfo } from "./game-info"
+import { SynthControlPanel } from "./synth-control-panel"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
+import type { SquareEffectMap } from "@/lib/types"
+import { DEFAULT_EFFECTS } from "@/lib/types"
 import { ArrowLeft, Volume2, VolumeX, Settings2 } from "lucide-react"
 import { toast } from "sonner"
 import { unlockNextCity } from "@/lib/game-progression"
@@ -42,10 +45,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     black: [],
   })
   const [activeSquares, setActiveSquares] = useState<Set<string>>(new Set())
+  const [synthSelectedSquare, setSynthSelectedSquare] = useState<string | null>(null)
+  const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
+  
   const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
 
-  const { togglePlayback, playCheckmate } = useAudio(game, city, isPlaying, activeSquares)
+  const { togglePlayback, playCheckmate, playSquareSample } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
 
   // Keep ref in sync
   useEffect(() => {
@@ -76,7 +82,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   // Update pattern when board changes
   useEffect(() => {
-    const pattern = generateStrudelPattern(game, city, activeSquares)
+    const pattern = generateStrudelPattern(game, city, activeSquares, squareEffects)
     setCurrentPattern(pattern)
 
     // Update game status
@@ -161,6 +167,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           setGame(gameCopy)
           setMoveHistory((prev) => [...prev, move.san])
           updateCapturedPieces(move)
+          setSynthSelectedSquare(null) // Clear selection on AI move
 
           // Update active squares for AI
           setActiveSquares(prev => {
@@ -187,6 +194,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setMoveHistory((prev) => [...prev, move.san])
       setRedoStack([]) // Clear redo stack on new move
       updateCapturedPieces(move)
+      setSynthSelectedSquare(null) // Clear selection on player move
 
       // Auto-start music on first move
       if (!isPlaying) {
@@ -231,6 +239,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setIsThinking(false)
     setCapturedPieces({ white: [], black: [] })
     setActiveSquares(new Set())
+    setSynthSelectedSquare(null)
+    setSquareEffects({})
   }, [])
 
   const undoMove = useCallback(() => {
@@ -329,6 +339,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setIsPlaying((prev) => !prev)
   }, [togglePlayback])
 
+  const hasStarted = moveHistory.length > 0
+  const visualizerClass = "w-full h-16 md:h-24"
+
   return (
     <div
       className="relative w-full min-h-screen bg-background overflow-hidden"
@@ -370,11 +383,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
               <span style={{ color: city.color }}>{city.name.toUpperCase()}</span>
               <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground opacity-50">v0.2.1</span>
-              <span className="text-[10px] text-muted-foreground opacity-50">Audio Engine: Strudel.cc</span>
             </h1>
-            <p className="text-xs text-muted-foreground hidden sm:block">
-              {city.genre} • {city.bpm} BPM • Lvl {aiDepth / 5}
-            </p>
           </div>
         </div>
 
@@ -398,7 +407,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           {/* Settings */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="hidden md:flex bg-transparent">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="hidden md:flex bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white"
+                style={{
+                    "--hover-color": city.color
+                } as React.CSSProperties}
+              >
                 <Settings2 className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -413,7 +429,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           </DropdownMenu>
 
           {/* Audio toggle */}
-          <Button variant="outline" size="icon" onClick={handleTogglePlay}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={handleTogglePlay} 
+            className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
+            style={{ "--city-neon": city.color } as React.CSSProperties}
+          >
             {isPlaying ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </Button>
 
@@ -442,43 +464,126 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       </header>
 
       <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-8 p-4 lg:p-6 mx-auto">
-        {/* Left Panel - Game Info */}
-        <div className="lg:w-64 order-2 lg:order-1">
+        {/* Left Panel - Game Info & Controls */}
+        <div className="lg:w-64 order-2 lg:order-1 flex flex-col gap-4">
           <GameInfo
             moveHistory={moveHistory}
-            capturedPieces={capturedPieces}
-            cityColor={city.color}
+            city={city}
             turn={game.turn()}
+            aiDepth={aiDepth}
+          />
+          <GameControls 
+            onReset={resetGame}
+            onUndo={undoMove}
+            canUndo={moveHistory.length >= 2}
+            onRedo={redoMove}
+            canRedo={redoStack.length >= 2}
+            isPlaying={isPlaying}
+            onTogglePlay={handleTogglePlay}
+            cityColor={city.color}
+            hasStarted={hasStarted}
           />
         </div>
 
         {/* Main Game Area */}
         <div className="flex flex-col gap-4 order-1 lg:order-2 items-center shrink-0">
           <div className="w-full max-w-[calc(8*3rem)] sm:max-w-[calc(8*3.5rem)] md:max-w-[calc(8*4rem)] flex flex-col gap-4">
-            {/* Audio Visualizer */}
-            <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} />
+            {/* Synth Control Panel */}
+            <SynthControlPanel 
+                selectedSquare={synthSelectedSquare as Square | null}
+                selectedPieceInfo={(() => {
+                  if (!synthSelectedSquare) return null
+                  // @ts-ignore
+                    const piece = game.get(synthSelectedSquare as Square)
+                  if (!piece) return "Empty"
+                  
+                  const instrumentMap: Record<string, string> = {
+                      p: "Drums",
+                      n: "Bass",
+                      b: "Piano",
+                      r: "Pad",
+                      q: "Lead",
+                      k: "Lead"
+                  }
+                  
+                  const pieceNameMap: Record<string, string> = {
+                      p: "Pawn",
+                      n: "Knight",
+                      b: "Bishop",
+                      r: "Rook",
+                      q: "Queen",
+                      k: "King"
+                  }
+
+                  return `${piece.color === "w" ? "White" : "Black"} ${pieceNameMap[piece.type]} - ${instrumentMap[piece.type]}`
+                })()}
+                effects={synthSelectedSquare ? (squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS) : DEFAULT_EFFECTS}
+                onEffectChange={(key, value) => {
+                  if (!synthSelectedSquare) return
+                  setSquareEffects(prev => ({
+                    ...prev,
+                    [synthSelectedSquare]: {
+                      ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS),
+                      [key]: value
+                    }
+                  }))
+                }}
+                cityColor={city.color}
+              />
+
+            {/* Captured Pieces (Top - White pieces captured by Black) */}
+            <div className="flex justify-center gap-1 min-h-[1rem]">
+                {capturedPieces.black.map((p, i) => (
+                    <div 
+                        key={i} 
+                        className="w-3 h-3 sm:w-4 sm:h-4 opacity-70"
+                        dangerouslySetInnerHTML={{ 
+                            __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG] 
+                        }} 
+                    />
+                ))}
+            </div>
 
             {/* Chess Board */}
             <div className="flex justify-center">
-              <ChessgroundBoard game={game} onMove={handlePlayerMove} cityColor={city.color} isThinking={isThinking} />
+              <ChessgroundBoard 
+                game={game} 
+                onMove={handlePlayerMove} 
+                cityColor={city.color} 
+                isThinking={isThinking} 
+                synthSelectedSquare={synthSelectedSquare as Square | null}
+                onBoardClick={(square) => {
+                  setSynthSelectedSquare(square)
+                  // If empty, play sample
+                  if (!game.get(square as Square)) {
+                    playSquareSample(square)
+                  }
+                }}
+              />
             </div>
 
-            {/* Game Controls */}
-            <GameControls
-              onReset={resetGame}
-              onUndo={undoMove}
-              canUndo={moveHistory.length >= 2 && !isThinking}
-              onRedo={redoMove}
-              canRedo={redoStack.length >= 2 && !isThinking}
-              isPlaying={isPlaying}
-              onTogglePlay={handleTogglePlay}
-              cityColor={city.color}
-            />
+            {/* Captured Pieces (Bottom - Black pieces captured by White) */}
+            <div className="flex justify-center gap-1 min-h-[1rem]">
+                {capturedPieces.white.map((p, i) => (
+                    <div 
+                        key={i} 
+                        className="w-3 h-3 sm:w-4 sm:h-4 opacity-70"
+                        dangerouslySetInnerHTML={{ 
+                            __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG] 
+                        }} 
+                    />
+                ))}
+            </div>
+
+            {/* Audio Visualizer */}
+            <div className="w-full h-16 md:h-24">
+              <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} hasStarted={hasStarted} />
+            </div>
           </div>
         </div>
 
         {/* Right Panel - Live Code */}
-        <div className="lg:w-96 order-3">
+        <div className="lg:w-96 order-3 flex flex-col gap-4 lg:h-[calc(100vh-6rem)]">
           <LiveCodeOverlay pattern={currentPattern} city={city} isPlaying={isPlaying} />
         </div>
       </div>

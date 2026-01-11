@@ -1,6 +1,7 @@
 import type { Chess, PieceSymbol, Square } from "chess.js"
 import type { CityData } from "./cities-data"
 import { type ParsedPattern, noteToFrequency } from "./audio-engine"
+import type { SquareEffectMap } from "./types"
 
 interface PiecePosition {
   type: PieceSymbol
@@ -11,7 +12,7 @@ interface PiecePosition {
 }
 
 // Generate both the display pattern (Strudel-like code) and the parsed pattern for audio
-export function generateStrudelPattern(game: Chess, city: CityData, activeSquares: Set<string>): string {
+export function generateStrudelPattern(game: Chess, city: CityData, activeSquares: Set<string>, squareEffects: SquareEffectMap = {}): string {
   const board = game.board()
   const pieces: PiecePosition[] = []
 
@@ -176,27 +177,26 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
 
   // 5. QUEENS (Now uses previous Bishop Logic - Lead/Synth)
   if (queens.length > 0) {
-    queens.forEach((q, i) => {
-       // Euclidean rhythm for melody
-       const pulses = 3 + (q.rank % 4)
-       const struct = euclidean(pulses, 16)
-       const miniStruct = struct.map(x => x ? "x" : ".").join("")
-       
-       // Note selection
-       const noteIdx = (q.file + q.rank * 2) % city.scale.length
-       const note = city.scale[noteIdx]
- 
-       // Position Pan
-       const posPan = (1 - (q.file / 7)).toFixed(2)
-       const sound = q.color === 'b' ? "darbuka" : "synth"
+    queens.forEach(q => {
+      // Euclidean rhythm for melody
+      const pulses = 3 + (q.rank % 4)
+      const struct = euclidean(pulses, 16)
+      const miniStruct = struct.map(x => x ? "x" : ".").join("")
+      
+      // Note selection
+      const noteIdx = (q.file + q.rank * 2) % city.scale.length
+      const note = city.scale[noteIdx]
 
-       layers.push(`  // Queen ${q.square}`)
-       layers.push(`  note("${note}")`)
-       layers.push(`    .s("${sound}")`)
-       layers.push(`    .struct("${miniStruct}")`)
-       layers.push(`    .slow(4)`)
-       layers.push(`    .release(1).pan(${posPan})`) 
-       layers.push(`    .gain("sine").decay(0.2).sustain(1.25).gain(.6),`)
+      // Position Pan
+      const posPan = (1 - (q.file / 7)).toFixed(2)
+
+      layers.push(`  // Queen ${q.square}`)
+      layers.push(`  note("${note}")`)
+      layers.push(`    .s("<sawtooth square triangle sine>")`)
+      layers.push(`    .struct("${miniStruct}")`)
+      layers.push(`    .slow(4)`)
+      layers.push(`    .release(1).pan(${posPan})`) 
+      layers.push(`    .gain("sine").decay(0.2).sustain(1.25).gain(.6),`)
     })
   }
 
@@ -224,7 +224,7 @@ function patternToMini(arr: number[]): string {
 }
 
 // Parse the board state into an audio-playable pattern
-export function parsePatternForAudio(game: Chess, city: CityData, activeSquares: Set<string>): ParsedPattern {
+export function parsePatternForAudio(game: Chess, city: CityData, activeSquares: Set<string>, squareEffects: SquareEffectMap = {}): ParsedPattern {
   const board = game.board()
   const pieces: PiecePosition[] = []
   const inCheck = game.isCheck()
@@ -254,6 +254,9 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
   const rooks = pieces.filter((p) => p.type === "r")
   const queens = pieces.filter((p) => p.type === "q")
 
+  // Helper to apply effects
+  const getEffects = (square: string) => squareEffects[square] || {}
+
   // --- PAWN LOGIC (8 Layers, Gain, Pan) ---
   const pawnLayers = pawns.slice(0, 8).map(p => {
     const drumSamples = ["bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy"]
@@ -267,50 +270,25 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     }
 
     const advancement = p.color === 'w' ? Math.max(0, p.rank - 1) : Math.max(0, 6 - p.rank)
-    const gain = Math.min(1.0, 0.5 + advancement * 0.1)
-    const pan = 1 - (p.file / 7) // Left=1, Right=0 (Strudel usually -1 to 1, but respecting user's 0-1 scale)
-    // Actually WebAudio StereoPanner is -1 (Left) to 1 (Right).
-    // User said: "Esquerda (1) ou Direita (0)".
-    // We need to map 1 -> -1 (Left) and 0 -> 1 (Right)? Or is it 0..1 range?
-    // Let's assume user means 0-1 range where 0 is Right and 1 is Left.
-    // Map to WebAudio (-1 to 1): 
-    // Val 1 (Left) -> -1
-    // Val 0 (Right) -> 1
-    // Formula: (1 - val) * 2 - 1 ? 
-    // If val=1: 0*2 -1 = -1 (Left). Correct.
-    // If val=0: 1*2 -1 = 1 (Right). Correct.
-    // So webAudioPan = (1 - pan) * 2 - 1 = (p.file/7) * 2 - 1.
-    // Wait, simpler: p.file/7 is 0 (Left) to 1 (Right).
-    // User wants Left=1. So userPan = 1 - (p.file/7).
-    // WebAudio wants Left=-1.
-    // So if file=0 (Left), userPan=1. WebAudio should be -1.
-    // If file=7 (Right), userPan=0. WebAudio should be 1.
-    // Map userPan [1...0] to [-1...1].
-    // -1 + (1 - userPan) * 2
-    // If userPan=1: -1 + 0 = -1.
-    // If userPan=0: -1 + 2 = 1.
-    // Correct.
+    let gain = Math.min(1.0, 0.5 + advancement * 0.1)
     
-    // BUT, let's stick to what we pass to audio engine. If audio engine expects -1 to 1, we convert.
-    // If audio engine expects 0 to 1, we pass 0 to 1.
-    // Existing audio engine uses `panner.pan.value = pan`. StereoPanner is -1 to 1.
-    // So we need to calculate the final pan value here.
-    // File 0 (Left) -> -0.8
-    // File 7 (Right) -> 0.8
-    const webAudioPan = ((p.file / 7) * 2 - 1) * -1 // Invert to match user's Left=1 preference?
-    // Wait, user: "esquerda (1)".
-    // Standard: Left is -1.
-    // So if user wants "1" to mean left, I should probably just pass the value derived from file to match "leftness".
-    // File 0 is Left. Pan should be -1.
-    // File 7 is Right. Pan should be 1.
-    // Let's use (p.file / 7) * 2 - 1.
+    // Pan: Left(-1) to Right(1)
+    let pan = (p.file / 7) * 2 - 1
+    
+    // Apply Effects
+    const fx = getEffects(p.square)
+    if (fx.gain !== undefined) gain *= fx.gain
+    if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
 
     return {
       sample,
       pattern,
       gain,
-      pan: (p.file / 7) * 2 - 1, // -1 (Left/File 0) to 1 (Right/File 7)
-      color: p.color
+      pan,
+      color: p.color,
+      delay: fx.delay,
+      reverb: fx.reverb,
+      pitch: fx.pitch
     }
   })
 
@@ -323,20 +301,32 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     const freq = noteToFrequency(city.scale[noteIdx])
 
     const pattern = new Array(16).fill(null)
+    
+    // Apply Pitch Effect
+    const fx = getEffects(q.square)
+    const pitchMult = fx.pitch ?? 1
+
     struct.forEach((isActive, i) => {
-      if (isActive) pattern[i] = freq
+      if (isActive) pattern[i] = freq * pitchMult
     })
 
     // Position Pan
-    const pan = (q.file / 7) * 2 - 1
+    let pan = (q.file / 7) * 2 - 1
+    let gain = 0.5
+    
+    if (fx.gain !== undefined) gain *= fx.gain
+    if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
 
     return {
       pattern,
-      gain: 0.5,
+      gain,
       pan,
       adsr: [0.01, 0.2, 1.25, 1.0] as [number, number, number, number],
       lfo: true, // Use LFO for Tremolo
-      color: q.color
+      color: q.color,
+      delay: fx.delay,
+      reverb: fx.reverb,
+      decay: fx.decay
     }
   })
 
@@ -356,6 +346,9 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     const shift = b.rank
     const shiftedIndices = baseIndices.map(idx => idx + shift)
     
+    const fx = getEffects(b.square)
+    const pitchMult = fx.pitch ?? 1
+
     const notes = shiftedIndices.map(idx => {
       const scaleLen = city.scale.length
       const octaveOffset = Math.floor(idx / scaleLen)
@@ -368,7 +361,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       // Apply octave offset (multiply frequency by 2^offset)
       if (octaveOffset > 0) freq *= Math.pow(2, octaveOffset)
       
-      return freq
+      return freq * pitchMult
     })
 
     // Create pattern based on slowFactor
@@ -378,12 +371,20 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     // Trigger on first step
     pattern[0] = notes
 
+    let pan = (b.file / 7) * 2 - 1
+    let gain = 0.3 // Reduced gain as requested
+    
+    if (fx.gain !== undefined) gain *= fx.gain
+    if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
+
     return {
       pattern,
-      gain: 0.3, // Reduced gain as requested
-      pan: (b.file / 7) * 2 - 1,
+      gain,
+      pan,
       lfo: null,
-      delay: 0.4
+      delay: fx.delay ?? 0.4,
+      reverb: fx.reverb,
+      decay: fx.decay
     }
   })
 
@@ -391,9 +392,12 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
   const kingLayers = pieces.filter(p => p.type === 'k').map(k => {
       // ... same pattern logic ...
       const pattern = new Array(16).fill(null)
+      const fx = getEffects(k.square)
+      const pitchMult = fx.pitch ?? 1
+      
       const getFreq = (scaleIdx: number) => {
           const idx = scaleIdx % city.scale.length
-          return noteToFrequency(city.scale[idx])
+          return noteToFrequency(city.scale[idx]) * pitchMult
       }
       pattern[0] = getFreq(0)  
       pattern[2] = getFreq(2)  
@@ -401,12 +405,21 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       pattern[4] = getFreq(3)
       pattern[6] = getFreq(5)
 
+      let pan = (k.file / 7) * 2 - 1
+      let gain = 0.8
+      
+      if (fx.gain !== undefined) gain *= fx.gain
+      if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
+
       return {
           pattern,
-          gain: 0.8,
-          pan: (k.file / 7) * 2 - 1,
+          gain,
+          pan,
           sound: k.color === 'b' ? "darbuka" : "synth",
-          color: k.color
+          color: k.color,
+          delay: fx.delay,
+          reverb: fx.reverb,
+          decay: fx.decay
       }
   })
 
@@ -415,18 +428,29 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     const pattern = new Array(16).fill(null)
     const idx = (k.file + k.rank * 2) % city.scale.length
     const noteName = city.scale[idx].replace(/[0-9]/, '2')
-    const freq = noteToFrequency(noteName)
+    const fx = getEffects(k.square)
+    const pitchMult = fx.pitch ?? 1
+    const freq = noteToFrequency(noteName) * pitchMult
     
     let step = (k.file * 4 + k.rank) % 16
     pattern[step] = freq
     
+    let pan = (k.file / 7) * 2 - 1
+    let gain = 0.5
+    
+    if (fx.gain !== undefined) gain *= fx.gain
+    if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
+
     return {
       pattern,
-      gain: 0.5,
-      pan: (k.file / 7) * 2 - 1,
+      gain,
+      pan,
       sound: "gm_acoustic_bass",
       adsr: [0.1, 0.2, 1.0, 0.1] as [number, number, number, number],
-      room: 0.5
+      room: 0.5,
+      delay: fx.delay,
+      reverb: fx.reverb,
+      decay: fx.decay
     }
   })
   

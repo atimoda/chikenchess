@@ -414,11 +414,9 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
         {/* Bottom Right Info & Controls */}
         <div className="absolute bottom-4 right-4 flex items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
-          <span className="text-[10px] font-mono text-muted-foreground">AUDIO ENGINE: STRUDEL.CC</span>
-          
           <div className="flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-             <span className="text-[10px] font-mono text-muted-foreground">v0.2.2 (PIANO BISHOPS)</span>
+             <span className="text-[10px] font-mono text-muted-foreground">v0.2.2</span>
           </div>
 
           <div className="h-4 w-px bg-border" />
