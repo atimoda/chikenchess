@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { WorldMap } from "@/components/world-map"
 import { ChessGame } from "@/components/chess-game"
 import { type CityData, getCityById } from "@/lib/cities-data"
 
-export default function Home() {
+function GameContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedCity, setSelectedCity] = useState<CityData | null>(null)
@@ -43,4 +43,12 @@ export default function Home() {
   }
 
   return <WorldMap onCitySelect={handleCitySelect} />
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="w-full h-screen bg-black" />}>
+      <GameContent />
+    </Suspense>
+  )
 }

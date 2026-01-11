@@ -322,20 +322,20 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     <div ref={containerRef} className="relative w-full h-screen bg-background overflow-hidden flex flex-col">
       <style jsx global>{`
         @keyframes drawLine {
-          from { stroke-dashoffset: 1000; }
+          from { stroke-dashoffset: 4000; }
           to { stroke-dashoffset: 0; }
         }
         @keyframes drawLineReverse {
           from { stroke-dashoffset: 0; }
-          to { stroke-dashoffset: 1000; }
+          to { stroke-dashoffset: 4000; }
         }
         .animate-line {
-          stroke-dasharray: 1000;
-          stroke-dashoffset: 1000;
+          stroke-dasharray: 4000;
+          stroke-dashoffset: 4000;
           animation: drawLine 0.4s ease-out forwards;
         }
         .animate-line-exit {
-          stroke-dasharray: 1000;
+          stroke-dasharray: 4000;
           stroke-dashoffset: 0;
           animation: drawLineReverse 0.4s ease-in forwards;
         }
