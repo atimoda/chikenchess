@@ -1,3 +1,5 @@
+import { cityCoordinates } from "./city-coordinates"
+
 export interface CityData {
   id: string
   name: string
@@ -21,7 +23,7 @@ export interface CityData {
   }
 }
 
-export const cities: CityData[] = [
+const rawCities: Omit<CityData, "coordinates">[] = [
   // 1. Düsseldorf (1970)
   {
     id: "dusseldorf",
@@ -32,7 +34,6 @@ export const cities: CityData[] = [
     description: "Robotic rhythms, synthesized vocoders, the blueprint of electronic music.",
     bpm: 118,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Updated per user request)
-    coordinates: { x: 48, y: 24 }, // Düsseldorf
     geoCoordinates: { lat: 51.2277, lng: 6.7735 },
     color: "#ff3333",
     image: "https://unsplash.com/photos/qpWvN7L0t7I/download?force=true&w=800",
@@ -55,7 +56,6 @@ export const cities: CityData[] = [
     description: "Four-on-the-floor, orchestral stabs, soul vocals, the birth of club culture.",
     bpm: 120,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Funk/Soul roots)
-    coordinates: { x: 29, y: 28 }, // NYC
     geoCoordinates: { lat: 40.7128, lng: -74.0060 },
     color: "#a020f0", // Purple (Studio 54 / Nightclub)
     image: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop",
@@ -78,7 +78,6 @@ export const cities: CityData[] = [
     description: "Jack your body. TR-909 rhythms, piano stabs, soulful vocals.",
     bpm: 124,
     scale: ["C4", "D4", "E4", "G4", "A4"],
-    coordinates: { x: 25, y: 27 }, // Chicago
     geoCoordinates: { lat: 41.8781, lng: -87.6298 },
     color: "#00ffaa", // Neon Green/Cyan (Acid/House vibe)
     image: "https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop",
@@ -101,7 +100,6 @@ export const cities: CityData[] = [
     description: "Hi-tech jazz. Industrial soul. The Belleville Three.",
     bpm: 132,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
-    coordinates: { x: 26, y: 27 }, // Detroit
     geoCoordinates: { lat: 42.3314, lng: -83.0458 },
     color: "#ff6600",
     image: "https://unsplash.com/photos/1SmpGvlKq2U/download?force=true&w=800",
@@ -124,7 +122,6 @@ export const cities: CityData[] = [
     description: "Sunset moods, eclectic blends, psychedelic dance.",
     bpm: 110,
     scale: ["C4", "E4", "F4", "G4", "B4"], // Lydian (Dreamy)
-    coordinates: { x: 50.5, y: 29 }, // Ibiza (South of Europe, North of Africa)
     geoCoordinates: { lat: 38.9067, lng: 1.4206 },
     color: "#ffaa00",
     image: "https://unsplash.com/photos/sqgDlmZM8sc/download?force=true&w=800",
@@ -147,7 +144,6 @@ export const cities: CityData[] = [
     description: "The Haçienda, smiley faces, TB-303 squelches, sirens.",
     bpm: 128,
     scale: ["C4", "Eb4", "F4", "Gb4", "Bb4"], // Blues/Acid scale
-    coordinates: { x: 49, y: 21 }, // Manchester
     geoCoordinates: { lat: 53.4808, lng: -2.2426 },
     color: "#ffff00",
     image: "https://unsplash.com/photos/pRc34iEHRmo/download?force=true&w=800",
@@ -170,7 +166,6 @@ export const cities: CityData[] = [
     description: "Tresor, E-Werk. Concrete, darkness, relentless strobe loops.",
     bpm: 140,
     scale: ["C4", "Db4", "E4", "F4", "G4", "Ab4", "B4"], // Phrygian Dominant (Dark/Tension)
-    coordinates: { x: 53.7, y: 21 }, // Berlin
     geoCoordinates: { lat: 52.5200, lng: 13.4050 },
     color: "#00ccff", // Cold Blue
     image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?q=80&w=800&auto=format&fit=crop",
@@ -193,7 +188,6 @@ export const cities: CityData[] = [
     description: "Precision, glitch aesthetics, yellow magic electronics.",
     bpm: 130,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
-    coordinates: { x: 92, y: 32 }, // Tokyo (On the new Island path)
     geoCoordinates: { lat: 35.6762, lng: 139.6503 },
     color: "#ff00ff", // Neon Pink/Cyberpunk
     image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=800&auto=format&fit=crop",
@@ -216,7 +210,6 @@ export const cities: CityData[] = [
     description: "Amen breaks chopped at high speed, deep reggae basslines.",
     bpm: 165,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
-    coordinates: { x: 45, y: 21 }, // London
     geoCoordinates: { lat: 51.5074, lng: -0.1278 },
     color: "#33ff00", // Jungle Green
     image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=800&auto=format&fit=crop",
@@ -239,7 +232,6 @@ export const cities: CityData[] = [
     description: "Hell's Club, A Lôca. Intense, industrial, tropical concrete jungle.",
     bpm: 145,
     scale: ["C4", "Db4", "F4", "G4", "Ab4"],
-    coordinates: { x: 37, y: 63 }, // São Paulo (South America)
     geoCoordinates: { lat: -23.5505, lng: -46.6333 },
     color: "#ccff00",
     image: "https://unsplash.com/photos/X1PncKPKDQI/download?force=true&w=800",
@@ -262,7 +254,6 @@ export const cities: CityData[] = [
     description: "Filtered loops, phasers, disco samples. The French Touch.",
     bpm: 126,
     scale: ["C4", "D4", "E4", "F#4", "G4", "A4"],
-    coordinates: { x: 47, y: 25 }, // Paris
     geoCoordinates: { lat: 48.8566, lng: 2.3522 },
     color: "#3366ff", // French Blue
     image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=800&auto=format&fit=crop",
@@ -276,6 +267,11 @@ export const cities: CityData[] = [
     },
   },
 ]
+
+export const cities: CityData[] = rawCities.map(city => ({
+  ...city,
+  coordinates: cityCoordinates[city.id] || { x: 50, y: 50 } // Fallback
+}))
 
 export const FUTURE_CITIES = [
   "Frankfurt",

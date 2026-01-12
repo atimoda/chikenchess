@@ -298,14 +298,14 @@ export class AudioEngine {
     }
 
     // Hi-hat (Legacy/Fallback)
-    if (hihat && hihat.pattern[step % 16] && shouldPlay(hihat.probability)) {
+    if (hihat && hihat.pattern[step % (hihat.pattern.length || 16)] && shouldPlay(hihat.probability)) {
       this.playHihat(triggerTime + humanize() + (Math.random() * 0.02), hihat.gain, 0)
     }
 
     // PAWNS (New Drum Layers)
     if (pawns) {
       pawns.forEach(p => {
-        if (p.pattern[step % 16]) {
+        if (p.pattern[step % (p.pattern.length || 16)]) {
           // Pass delay, reverb, pitch from pattern if available (populated by strudel-engine from squareEffects)
           const delay = p.delay || 0
           const reverb = p.reverb || 0
@@ -319,7 +319,7 @@ export class AudioEngine {
     // QUEENS (Synth or Darbuka)
     if (queens) {
       queens.forEach(q => {
-        const freq = q.pattern[step % 16]
+        const freq = q.pattern[step % (q.pattern.length || 16)]
         if (freq && freq > 0) {
           if (q.sound === "darbuka") {
             this.playDarbuka(triggerTime, q.gain, q.pan, q.delay, q.reverb)
@@ -335,14 +335,27 @@ export class AudioEngine {
       })
     }
 
-    // BISHOPS (Piano)
+    // BISHOPS (Piano or Xylophone)
     if (bishops) {
       bishops.forEach(b => {
-        const rawNotes = b.pattern[step % 16]
+        const patternLen = b.pattern.length || 16
+        const rawNotes = b.pattern[step % patternLen]
         if (rawNotes !== null) {
           const notes = Array.isArray(rawNotes) ? rawNotes : [rawNotes]
-          // Apply gain reduction here if not done in pattern
-          this.playPiano(triggerTime, notes, b.gain, b.pan, b.lfo, b.delay, b.reverb)
+          // Apply velocity from pattern if available
+          const velocity = (b.velocities && b.velocities[step % patternLen] !== null) 
+            ? (b.velocities[step % patternLen] as number) 
+            : 1
+            
+          if (b.sound === "xylophone" || b.sound === "gm_xylophone") {
+              notes.forEach(n => {
+                if (typeof n === 'number') {
+                    this.playXylophone(triggerTime, n, b.gain * velocity, b.pan, b.delay, b.reverb)
+                }
+              })
+          } else {
+              this.playPiano(triggerTime, notes, b.gain * velocity, b.pan, b.lfo, b.delay, b.reverb)
+          }
         }
       })
     }
@@ -350,7 +363,7 @@ export class AudioEngine {
     // KINGS (Now using Queen's Synth or Darbuka or Custom)
     if (kings) {
       kings.forEach(k => {
-        const note = k.pattern[step % 16]
+        const note = k.pattern[step % (k.pattern.length || 16)]
         if (note !== null) {
           if (k.sound === "darbuka") {
              this.playDarbuka(triggerTime, k.gain, k.pan, k.delay, k.reverb)
@@ -380,9 +393,19 @@ export class AudioEngine {
              // King using Queen's Synth - Match Queen's waveform cycling
              const waveforms: OscillatorType[] = ["sawtooth", "square", "triangle", "sine"]
              const waveform = waveforms[step % 4]
-             this.playBishop(triggerTime, note, k.gain, k.pan, [0.01, 0.2, 1.25, 1.0], true, k.delay, waveform, k.reverb)
+             const notes = Array.isArray(note) ? note : [note]
+             notes.forEach(n => {
+                 if (typeof n === 'number') {
+                    this.playBishop(triggerTime, n, k.gain, k.pan, [0.01, 0.2, 1.25, 1.0], true, k.delay, waveform, k.reverb)
+                 }
+             })
           } else {
-             this.playXylophone(triggerTime, note, k.gain, k.pan, k.delay, k.reverb)
+             const notes = Array.isArray(note) ? note : [note]
+             notes.forEach(n => {
+                 if (typeof n === 'number') {
+                    this.playXylophone(triggerTime, n, k.gain, k.pan, k.delay, k.reverb)
+                 }
+             })
           }
         }
       })
@@ -391,7 +414,7 @@ export class AudioEngine {
     // KNIGHTS (Acoustic Bass)
     if (knights) {
       knights.forEach(k => {
-        const note = k.pattern[step % 16]
+        const note = k.pattern[step % (k.pattern.length || 16)]
         if (note !== null && Number.isFinite(note)) {
           if (k.sound === "gm_acoustic_bass") {
             this.playAcousticBass(triggerTime, note, k.gain, k.pan, k.adsr, k.room, k.delay, k.reverb)
@@ -406,7 +429,7 @@ export class AudioEngine {
     // ROOKS (Pads)
     if (rooks) {
       rooks.forEach((r: any) => {
-        const chord = r.pattern[step % 16]
+        const chord = r.pattern[step % (r.pattern.length || 16)]
         if (chord !== null && chord.length > 0) {
           this.playPad(triggerTime, chord, r.pan, r.gain, [0.5, 0.5, 0.8, 1.0], r.delay, r.reverb)
         }
@@ -1294,9 +1317,9 @@ export interface ParsedPattern {
   
   // Layers
   pawns?: { sample: string; pattern: boolean[]; gain: number; pan: number; color: "w" | "b"; pitch?: number; delay?: number; reverb?: number; decay?: number }[]
-  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka" | "gm_lead_6_voice"; lfo?: boolean; delay?: number; reverb?: number; decay?: number }[]
-  bishops?: { pattern: (number | number[] | null)[]; gain: number; pan: number; lfo?: "siren" | "sine" | null; delay?: number; reverb?: number; decay?: number }[] // Piano
-  kings?: { pattern: (number | number[] | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka" | "gm_acoustic_bass" | "gm_woodblock" | "gm_melodic_tom"; delay?: number; reverb?: number; decay?: number }[]
+  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka" | "gm_lead_6_voice" | "gm_queen_random"; lfo?: boolean; delay?: number; reverb?: number; decay?: number }[]
+  bishops?: { pattern: (number | number[] | null)[]; velocities?: (number | null)[]; gain: number; pan: number; sound?: "piano" | "xylophone" | "gm_xylophone"; lfo?: "siren" | "sine" | null; delay?: number; reverb?: number; decay?: number }[] // Piano
+  kings?: { pattern: (number | number[] | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka" | "gm_acoustic_bass" | "gm_woodblock" | "gm_melodic_tom"; delay?: number; reverb?: number; decay?: number; adsr?: [number, number, number, number]; room?: number; color?: "w" | "b" }[]
   knights?: { pattern: (number | null)[]; gain: number; pan: number; sound: "bass" | "gm_acoustic_bass"; adsr: [number, number, number, number]; room?: number; delay?: number; reverb?: number; decay?: number }[]
   rooks?: { pattern: (number[] | null)[]; gain: number; pan: number; delay?: number; reverb?: number; decay?: number }[]
   
@@ -1416,7 +1439,31 @@ const NOTE_FREQUENCIES: Record<string, number> = {
 }
 
 export function noteToFrequency(note: string): number {
-  return NOTE_FREQUENCIES[note.toUpperCase()] || NOTE_FREQUENCIES[note] || 440
+  // Try lookup first for speed/legacy
+  if (NOTE_FREQUENCIES[note]) return NOTE_FREQUENCIES[note]
+  if (NOTE_FREQUENCIES[note.toUpperCase()]) return NOTE_FREQUENCIES[note.toUpperCase()]
+
+  // Calculate if not found (supports all octaves)
+  const match = note.match(/^([a-gA-G])(#|b)?(\d+)$/)
+  if (!match) return 440
+  
+  const noteName = match[1].toUpperCase()
+  const accidental = match[2] || ""
+  const octave = parseInt(match[3])
+  
+  const semitones: Record<string, number> = {
+    C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2
+  }
+  
+  let offset = semitones[noteName]
+  if (accidental === "#") offset += 1
+  if (accidental === "b") offset -= 1
+  
+  // A4 is reference
+  const octaveOffset = (octave - 4) * 12
+  const totalSemitones = offset + octaveOffset
+  
+  return 440 * Math.pow(2, totalSemitones / 12)
 }
 
 // Singleton audio engine instance

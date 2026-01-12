@@ -9,45 +9,12 @@ interface WorldMapProps {
   onCitySelect: (city: CityData) => void
 }
 
-const CITY_OFFSETS: Record<string, { dx: number; dy: number }> = {
-  saopaulo: { dx: -1, dy: 1 },
-  ibiza: { dx: -0.8, dy: -0.6 },
-  tokyo: { dx: 1.5, dy: -0.8 },
-}
+const CITY_OFFSETS: Record<string, { dx: number; dy: number }> = {}
 
 // Helper to convert lat/long to x/y percentages (Equirectangular projection)
 const getCityPosition = (city: CityData) => {
-  // If geoCoordinates are missing, fallback to manual coordinates
-  if (!city.geoCoordinates) {
-    return { x: city.coordinates.x, y: city.coordinates.y }
-  }
-
-  // Map dimensions (from SVG viewBox)
-  // viewBox="0 0 201 97"
-  // Longitude: -180 to 180 maps to 0 to 201
-  // Latitude: 90 to -90 maps to 0 to 97
-
-  const { lat, lng } = city.geoCoordinates
-  
-  // Normalize longitude (-180 to 180) to 0-1 range
-  const lngPercent = (lng + 180) / 360
-  
-  // Normalize latitude using Gall-Peters projection (Cylindrical Equal-Area)
-  // Formula: y is proportional to sin(latitude) instead of latitude itself
-  // Range: sin(90) = 1 (Top), sin(-90) = -1 (Bottom)
-  // Map to 0-1 range: (1 - sin(lat)) / 2
-  const latRad = lat * (Math.PI / 180)
-  const latPercent = (1 - Math.sin(latRad)) / 2
-
-  // Calibration Offsets (fine-tuning based on map image)
-  const OFFSET_X = -5
-  const OFFSET_Y = 10
-
-  const o = CITY_OFFSETS[city.id] ?? { dx: 0, dy: 0 }
-  return {
-    x: (lngPercent * 100) + OFFSET_X + o.dx,
-    y: (latPercent * 100) + OFFSET_Y + o.dy
-  }
+  // Always prefer manual coordinates from the visual editor
+  return { x: city.coordinates.x, y: city.coordinates.y }
 }
 
 export function WorldMap({ onCitySelect }: WorldMapProps) {
@@ -91,23 +58,6 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             if (!Ctx) return
             const ctx = new Ctx()
             audioContextRef.current = ctx
-
-            const loadSample = async (name: string, url: string) => {
-                try {
-                    const res = await fetch(url)
-                    const arrayBuffer = await res.arrayBuffer()
-                    const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-                    buffersRef.current[name] = audioBuffer
-                } catch (e) {
-                    console.warn(`Failed to load sample ${name}`, e)
-                }
-            }
-
-            await Promise.all([
-                loadSample("bd", "/samples/bd.wav"),
-                loadSample("sd", "/samples/sd.wav"),
-                loadSample("cr", "/samples/cy.wav") // Using Cymbal for Crash
-            ])
         } catch (e) {
             console.error("Audio init failed", e)
         }
@@ -119,26 +69,333 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     }
   }, [])
 
-  const playMapSound = (type: "bd" | "sd" | "cr") => {
+  // Audio refs for looping sounds
+  const whistleLoopRef = useRef<{ osc: OscillatorNode, gain: GainNode, panner: StereoPannerNode, lfo: OscillatorNode } | null>(null)
+  const padSoundRef = useRef<{ osc1: OscillatorNode, osc2: OscillatorNode, gain: GainNode, filter: BiquadFilterNode } | null>(null)
+
+  const startWhistleLoop = () => {
+    const ctx = audioContextRef.current
+    if (!ctx || whistleLoopRef.current) return
+
+    if (ctx.state === "suspended") ctx.resume()
+
+    const t = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const panner = ctx.createStereoPanner()
+    const lfo = ctx.createOscillator()
+    const lfoGain = ctx.createGain()
+
+    // Whistle FX: Sine wave with vibrato
+    osc.type = "sine"
+    osc.frequency.value = 75 // Lower pitch (approx 2 octaves down from 300)
+
+    lfo.type = "sine"
+    lfo.frequency.value = 6 // Vibrato speed
+    lfoGain.gain.value = 15 // Vibrato depth
+
+    lfo.connect(lfoGain)
+    lfoGain.connect(osc.frequency)
+
+    gain.gain.setValueAtTime(0, t)
+    gain.gain.linearRampToValueAtTime(0.0125, t + 0.1) // Reduced volume (50% of previous 0.025)
+
+    osc.connect(gain)
+    gain.connect(panner)
+    panner.connect(ctx.destination)
+
+    osc.start(t)
+    lfo.start(t)
+
+    whistleLoopRef.current = { osc, gain, panner, lfo }
+  }
+
+  const stopWhistleLoop = () => {
+    const ctx = audioContextRef.current
+    if (!ctx || !whistleLoopRef.current) return
+    
+    const { osc, gain, lfo } = whistleLoopRef.current
+    const t = ctx.currentTime
+    
+    // Fade out
+    gain.gain.cancelScheduledValues(t)
+    gain.gain.setValueAtTime(gain.gain.value, t)
+    gain.gain.linearRampToValueAtTime(0, t + 0.1)
+    
+    osc.stop(t + 0.1)
+    lfo.stop(t + 0.1)
+    
+    whistleLoopRef.current = null
+  }
+
+  const startPadSound = () => {
+    const ctx = audioContextRef.current
+    if (!ctx || padSoundRef.current) return
+    if (ctx.state === "suspended") ctx.resume()
+
+    const t = ctx.currentTime
+    const osc1 = ctx.createOscillator()
+    const osc2 = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const filter = ctx.createBiquadFilter()
+
+    osc1.type = "sawtooth"
+    osc2.type = "square"
+    osc2.detune.value = 10 
+
+    filter.type = "lowpass"
+    filter.Q.value = 5
+    filter.frequency.value = 2000 // Initial cutoff
+
+    osc1.frequency.value = 400
+    osc2.frequency.value = 400
+
+    gain.gain.setValueAtTime(0, t)
+    gain.gain.linearRampToValueAtTime(0.00625, t + 0.1) // Reduced volume (25% of original)
+
+    osc1.connect(filter)
+    osc2.connect(filter)
+    filter.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc1.start(t)
+    osc2.start(t)
+
+    padSoundRef.current = { osc1, osc2, gain, filter }
+  }
+
+  const updatePadSound = (x: number, width: number) => {
+    const ctx = audioContextRef.current
+    if (!ctx || !padSoundRef.current) return
+    
+    const ratio = Math.max(0, Math.min(1, x / width))
+    // Pitch: 200Hz to 600Hz
+    const freq = 200 + ratio * 400 
+    // Filter: 500Hz to 4500Hz
+    const cutoff = 500 + ratio * 4000
+
+    const { osc1, osc2, filter } = padSoundRef.current
+    const t = ctx.currentTime
+    
+    osc1.frequency.setTargetAtTime(freq, t, 0.1)
+    osc2.frequency.setTargetAtTime(freq * 1.01, t, 0.1)
+    filter.frequency.setTargetAtTime(cutoff, t, 0.1)
+  }
+
+  const stopPadSound = () => {
+    const ctx = audioContextRef.current
+    if (!ctx || !padSoundRef.current) return
+
+    const { osc1, osc2, gain } = padSoundRef.current
+    const t = ctx.currentTime
+
+    gain.gain.cancelScheduledValues(t)
+    gain.gain.setValueAtTime(gain.gain.value, t)
+    gain.gain.linearRampToValueAtTime(0, t + 0.2)
+
+    osc1.stop(t + 0.2)
+    osc2.stop(t + 0.2)
+    
+    padSoundRef.current = null
+  }
+
+  const playMapSound = (type: string, forceResume = false) => {
       const ctx = audioContextRef.current
-      const buffer = buffersRef.current[type]
-      if (!ctx || !buffer) return
+      if (!ctx) return
 
-      if (ctx.state === "suspended") ctx.resume()
-
-      const src = ctx.createBufferSource()
-      src.buffer = buffer
+      if (ctx.state === "suspended") {
+          if (forceResume) {
+              ctx.resume().catch(() => {})
+          } else {
+              return
+          }
+      }
       
-      // Random pitch variation (small)
-      const rate = 0.95 + Math.random() * 0.1
-      src.playbackRate.value = rate
+      const t = ctx.currentTime
+      // Pitch variation: +/- 10%
+      const pitchVar = 0.9 + Math.random() * 0.2
 
-      const gain = ctx.createGain()
-      gain.gain.value = 0.3 // Volume
+      if (type === "bd") {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.frequency.setValueAtTime(150 * pitchVar, t)
+          osc.frequency.exponentialRampToValueAtTime(40 * pitchVar, t + 0.1)
+          gain.gain.setValueAtTime(0.5, t)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1)
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.start(t)
+          osc.stop(t + 0.1)
+      } else if (type === "bossdr220_lt") {
+          // Low Tom
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.frequency.setValueAtTime(200 * pitchVar, t)
+          osc.frequency.exponentialRampToValueAtTime(50 * pitchVar, t + 0.2)
+          gain.gain.setValueAtTime(0.6, t)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2)
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.start(t)
+          osc.stop(t + 0.2)
+      } else if (type === "trainwhistle") {
+          // Train whistle
+          const osc1 = ctx.createOscillator()
+          const osc2 = ctx.createOscillator()
+          const gain = ctx.createGain()
+          
+          osc1.type = "triangle"
+          osc2.type = "triangle"
+          
+          osc1.frequency.value = 800 * pitchVar
+          osc2.frequency.value = 950 * pitchVar 
 
-      src.connect(gain)
-      gain.connect(ctx.destination)
-      src.start(0)
+          osc1.connect(gain)
+          osc2.connect(gain)
+          
+          gain.gain.setValueAtTime(0, t)
+          gain.gain.linearRampToValueAtTime(0.2, t + 0.1)
+          gain.gain.linearRampToValueAtTime(0, t + 0.6)
+          
+          gain.connect(ctx.destination)
+          
+          osc1.start(t)
+          osc2.start(t)
+          osc1.stop(t + 0.6)
+          osc2.stop(t + 0.6)
+      } else if (type === "tubularbells2") {
+          // FM Bell
+          const carrier = ctx.createOscillator()
+          const modulator = ctx.createOscillator()
+          const modGain = ctx.createGain()
+          const masterGain = ctx.createGain()
+
+          const freq = 523.25 * pitchVar // C5
+          carrier.frequency.value = freq
+          modulator.frequency.value = freq * 1.414 
+
+          modGain.gain.value = 1000 
+          modGain.gain.exponentialRampToValueAtTime(1, t + 1.5)
+
+          modulator.connect(modGain)
+          modGain.connect(carrier.frequency)
+
+          masterGain.gain.setValueAtTime(0, t)
+          masterGain.gain.linearRampToValueAtTime(0.3, t + 0.02)
+          masterGain.gain.exponentialRampToValueAtTime(0.01, t + 2.0)
+
+          carrier.connect(masterGain)
+          masterGain.connect(ctx.destination)
+
+          carrier.start(t)
+          modulator.start(t)
+          carrier.stop(t + 2.0)
+          modulator.stop(t + 2.0)
+      } else if (type === "d110_sh") {
+          // Roland D-110 Shaker style (Noise burst)
+          const bufferSize = ctx.sampleRate * 0.1 // 100ms
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2)) // Decay
+          }
+          
+          const source = ctx.createBufferSource()
+          source.buffer = buffer
+          
+          const filter = ctx.createBiquadFilter()
+          filter.type = "highpass"
+          filter.frequency.value = 6000
+          
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0.3, t)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1)
+          
+          source.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          
+          source.start(t)
+      } else if (type === "kr55_hh") {
+          // Hi-hat
+          const bufferSize = ctx.sampleRate * 0.1
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+          
+          const noise = ctx.createBufferSource()
+          noise.buffer = buffer
+          
+          const filter = ctx.createBiquadFilter()
+          filter.type = "highpass"
+          filter.frequency.value = 8000 * pitchVar
+
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0.2, t)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05)
+
+          noise.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          
+          noise.start(t)
+      } else if (type === "gm_reverse_cymbal") {
+          // Reverse cymbal
+          const dur = 1.0
+          const bufferSize = ctx.sampleRate * dur
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+          
+          const noise = ctx.createBufferSource()
+          noise.buffer = buffer
+          
+          const filter = ctx.createBiquadFilter()
+          filter.type = "bandpass"
+          filter.frequency.value = 4000 * pitchVar
+          filter.Q.value = 1
+
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0.005, t)
+          gain.gain.exponentialRampToValueAtTime(0.1, t + dur - 0.1)
+          gain.gain.linearRampToValueAtTime(0, t + dur)
+
+          noise.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          
+          noise.start(t)
+      } else {
+          // Fallback / Noise for sd/cr
+          const isSd = type === "sd"
+          const dur = isSd ? 0.1 : 0.5
+          const bufferSize = ctx.sampleRate * dur
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+          
+          const noise = ctx.createBufferSource()
+          noise.buffer = buffer
+          
+          const noiseGain = ctx.createGain()
+          noiseGain.gain.setValueAtTime(isSd ? 0.3 : 0.2, t)
+          noiseGain.gain.exponentialRampToValueAtTime(0.01, t + dur)
+          
+          if (type === "cr") {
+             // Highpass for cymbal
+             const filter = ctx.createBiquadFilter()
+             filter.type = "highpass"
+             filter.frequency.value = 5000 * pitchVar
+             noise.connect(filter)
+             filter.connect(noiseGain)
+          } else {
+             noise.connect(noiseGain)
+          }
+
+          noiseGain.connect(ctx.destination)
+          noise.start(t)
+      }
   }
 
   const bringToFront = (cityId: string) => {
@@ -150,7 +407,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   }
 
   const closePopup = (cityId: string) => {
-    playMapSound("cr")
+    playMapSound("d110_sh", true)
     setOpenPopups(prev => ({
       ...prev,
       [cityId]: { ...prev[cityId], isClosing: true }
@@ -162,29 +419,30 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         delete next[cityId]
         return next
       })
-    }, 500)
+    }, 700)
   }
 
   const handleCityClick = (city: CityData) => {
-    playMapSound("sd")
+    playMapSound("bossdr220_lt", true)
     if (openPopups[city.id] && !openPopups[city.id].isClosing) {
       bringToFront(city.id)
       return
     }
 
+    // Play entry sound
+    playMapSound("gm_reverse_cymbal", true)
+
     const w = typeof window !== 'undefined' ? window.innerWidth : 1024
     const h = typeof window !== 'undefined' ? window.innerHeight : 768
     
-    // Position randomly near bottom corners (left or right side)
-    const isLeft = Math.random() > 0.5
-    
-    // X: random offset from left or right edge
-    let x = isLeft 
-      ? 50 + Math.random() * (w * 0.2) // 50px to 20% width
-      : w - 350 - Math.random() * (w * 0.2) // Right side
+    // X: centered random distribution
+    let x = (w / 2) - 150 + (Math.random() - 0.5) * (w * 0.4)
       
     // Y: random offset from bottom (concentrated near bottom)
-    let y = h - 250 - Math.random() * (h * 0.1)
+    // Random between 50 and 350 pixels variation from a base offset
+    const baseOffset = 150
+    const variation = 50 + Math.random() * 300 
+    let y = h - baseOffset - variation
 
     // Constrain to screen boundaries (assuming popup width ~300px, height ~400px)
     const popupWidth = 300
@@ -235,6 +493,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   // Mouse event handlers for panning
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true)
+    setTransitionDuration(0) // Remove easing for instant drag response
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
   }
 
@@ -248,6 +507,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   const handleMouseUp = () => {
     setIsDragging(false)
+    setTransitionDuration(300) // Restore smoothing
   }
 
   // Wheel handler for zooming with mouse focus
@@ -288,38 +548,98 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   const [lineEnds, setLineEnds] = useState<Record<string, {x: number, y: number}>>({})
 
-  // Update line positions for all open popups
+  // Zoom on popup open/close
+  const hasOpenPopups = Object.keys(openPopups).length > 0
+  
   useEffect(() => {
-    if (Object.keys(openPopups).length === 0 || !mapRef.current || !containerRef.current) return
+    if (isIntro) return
+
+    const baseScale = isMobile ? 1.2 : 1.44
+    let t: NodeJS.Timeout
+
+    if (hasOpenPopups) {
+        // Zoom out with delay
+        t = setTimeout(() => {
+            setTransitionDuration(800)
+            setScale(baseScale * 0.85)
+        }, 400)
+    } else {
+        // Restore immediately
+        setTransitionDuration(800)
+        setScale(baseScale)
+    }
+    return () => clearTimeout(t)
+  }, [hasOpenPopups, isMobile, isIntro])
+
+  // Continuous line update loop to handle zoom animations
+  useEffect(() => {
+    if (!hasOpenPopups) return
+
+    let animationFrameId: number
 
     const updateLines = () => {
+        if (!mapRef.current || !containerRef.current) return
+
         const nextEnds: Record<string, {x: number, y: number}> = {}
+        let hasChanges = false
+
         Object.keys(openPopups).forEach(cityId => {
             const pinElement = document.getElementById(`city-pin-${cityId}`)
             if (pinElement && containerRef.current) {
                 const pinRect = pinElement.getBoundingClientRect()
                 const containerRect = containerRef.current.getBoundingClientRect()
-                nextEnds[cityId] = {
-                    x: pinRect.left + pinRect.width / 2 - containerRect.left,
-                    y: pinRect.top + pinRect.height / 2 - containerRect.top
-                }
+                const newX = pinRect.left + pinRect.width / 2 - containerRect.left
+                const newY = pinRect.top + pinRect.height / 2 - containerRect.top
+                
+                // Only update if changed significantly to avoid thrashing (though React handles equality check on state setter mostly)
+                // Actually we just calculate and set. React batching is fine.
+                nextEnds[cityId] = { x: newX, y: newY }
             }
         })
+
+        // We set state every frame. This might be heavy but ensures stickiness.
+        // Optimization: compare with previous values ref?
         setLineEnds(nextEnds)
+        animationFrameId = requestAnimationFrame(updateLines)
     }
 
     updateLines()
-  }, [openPopups, scale, position, cities]) 
+
+    return () => {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId)
+    }
+  }, [hasOpenPopups, openPopups]) // Re-start loop if popups change structure 
 
   const updatePopupPosition = (cityId: string, x: number, y: number) => {
     setOpenPopups(prev => ({
       ...prev,
       [cityId]: { ...prev[cityId], x, y }
     }))
+
+    // Audio Feedback for dragging
+    if (whistleLoopRef.current && typeof window !== 'undefined') {
+        const { osc, panner } = whistleLoopRef.current
+        const w = window.innerWidth
+        const h = window.innerHeight
+        
+        // Pan: Left (-1) to Right (1)
+        const panVal = Math.max(-1, Math.min(1, (x / w) * 2 - 1))
+        panner.pan.setTargetAtTime(panVal, audioContextRef.current!.currentTime, 0.1)
+
+        // Pitch: Top (+3 tones) to Bottom (-3 tones)
+        // +3 tones = +6 semitones, -3 tones = -6 semitones
+        // y=0 -> +6 semitones
+        // y=h -> -6 semitones
+        const semitones = 6 - 12 * (y / h)
+        const baseFreq = 300
+        const freq = baseFreq * Math.pow(2, semitones / 12)
+        
+        osc.frequency.setTargetAtTime(freq, audioContextRef.current!.currentTime, 0.1)
+    }
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-screen bg-background overflow-hidden flex flex-col">
+    <div ref={containerRef} className="relative w-full h-screen bg-neutral-900 overflow-hidden flex flex-col">
       <style jsx global>{`
         @keyframes drawLine {
           from { stroke-dashoffset: 4000; }
@@ -332,27 +652,39 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         .animate-line {
           stroke-dasharray: 4000;
           stroke-dashoffset: 4000;
-          animation: drawLine 0.4s ease-out forwards;
+          animation: drawLine 1.5s ease-out forwards;
         }
         .animate-line-exit {
           stroke-dasharray: 4000;
           stroke-dashoffset: 0;
-          animation: drawLineReverse 0.4s ease-in forwards;
+          animation: drawLineReverse 0.3s ease-in forwards;
         }
         @keyframes popupEnter {
           0% { opacity: 0; transform: perspective(1000px) rotateX(10deg) translate(var(--enter-x), 100vh) rotate(var(--enter-rot)) scale(0.5); }
+          60% { opacity: 1; transform: perspective(1000px) rotateX(-5deg) translate(0, -20px) rotate(0) scale(1.05); }
+          80% { transform: perspective(1000px) rotateX(2deg) translate(0, 5px) scale(0.98); }
           100% { opacity: 1; transform: perspective(1000px) rotateX(0) translate(0, 0) rotate(0) scale(1); }
         }
         @keyframes popupExit {
           0% { opacity: 1; transform: translateY(0) rotate(0); }
-          100% { opacity: 0; transform: translateY(100vh) rotate(15deg); }
+          100% { opacity: 1; transform: translateY(100vh) rotate(15deg); }
+        }
+        @keyframes pulseSize {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.5); }
+          100% { transform: scale(1); }
+        }
+        @keyframes pulseSizeOnce {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.5); }
+          100% { transform: scale(1); }
         }
         .animate-popup {
           opacity: 0;
-          animation: popupEnter 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s forwards;
+          animation: popupEnter 0.8s ease-out 0.3s forwards;
         }
         .animate-popup-exit {
-          animation: popupExit 0.5s cubic-bezier(0.6, 0.04, 0.98, 0.335) forwards;
+          animation: popupExit 0.64s cubic-bezier(0.8, 0, 1, 0.5) forwards;
         }
         @keyframes contentFade {
           from { opacity: 0; transform: translateY(10px); }
@@ -364,18 +696,12 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         .animate-content-4 { opacity: 0; animation: contentFade 0.5s ease-out 0.8s forwards; }
       `}</style>
 
-      {/* Scanline overlay */}
-      <div className="absolute inset-0 pointer-events-none scanline opacity-20 z-50" />
-
       {/* Grid background */}
       <div
-        className="absolute inset-0 opacity-10 pointer-events-none"
+        className="absolute inset-0 opacity-20 pointer-events-none"
         style={{
-          backgroundImage: `
-            linear-gradient(rgba(0, 255, 170, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 255, 170, 0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: "50px 50px",
+          backgroundImage: "linear-gradient(#444 1px, transparent 1px), linear-gradient(90deg, #444 1px, transparent 1px)",
+          backgroundSize: "5% 10%",
         }}
       />
 
@@ -446,7 +772,11 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        onClick={() => {}}
+        onClick={() => {
+            if (audioContextRef.current?.state === "suspended") {
+                audioContextRef.current.resume().catch(() => {})
+            }
+        }}
       >
         <div 
           ref={mapRef}
@@ -462,7 +792,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           <img
             src="/world_map_tech.svg"
             alt="World Map"
-            className="absolute inset-0 w-full h-full object-fill select-none pointer-events-none"
+            className="absolute inset-0 w-full h-full object-fill select-none pointer-events-none opacity-50"
             draggable={false}
           />
 
@@ -477,7 +807,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                 key={city.id}
                 id={`city-pin-${city.id}`}
                 className={cn(
-                  "absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 group focus:outline-none",
+                  "absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-150 group focus:outline-none",
                   "cursor-pointer z-10"
                 )}
                 style={{
@@ -499,7 +829,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                 {/* Pulse ring */}
                 {isUnlocked && (
                   <div
-                    className="absolute inset-0 rounded-full animate-ping"
+                    className="absolute inset-0 rounded-full animate-ping pointer-events-none"
                     style={{
                       backgroundColor: city.color,
                       opacity: 0.3,
@@ -520,6 +850,9 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                   style={{
                     borderColor: (isUnlocked || hoveredCityId === city.id || isSelected) ? city.color : "#666",
                     boxShadow: (isUnlocked || hoveredCityId === city.id || isSelected) ? `0 0 20px ${city.color}` : "none",
+                    animation: isSelected 
+                      ? "pulseSize 1s infinite ease-in-out" 
+                      : (hoveredCityId === city.id ? "pulseSizeOnce 0.6s ease-out forwards" : "none")
                   }}
                 >
                   <div 
@@ -547,14 +880,27 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
              const city = cities.find(c => c.id === cityId)
              const start = lineEnds[cityId]
              if (!city || !start) return null
+
+             const isPressed = pressedPopupState?.id === cityId
+             const endX = popup.x + 144
+             const endY = popup.y + (isPressed ? 10 : 0)
+             
+             // Organic curve calculation (Quadratic Bezier)
+             const dist = Math.sqrt(Math.pow(endX - start.x, 2) + Math.pow(endY - start.y, 2))
+             const arcHeight = Math.min(50, dist * 0.2)
+             const midX = (start.x + endX) / 2
+             const midY = (start.y + endY) / 2
+             const cpX = midX
+             const cpY = midY + arcHeight * 0.5
+
              return (
                <g key={`line-${cityId}-${popup.timestamp || 0}`}>
-                 <line 
-                   x1={start.x} y1={start.y} 
-                   x2={popup.x + 144} 
-                   y2={popup.y + 64} 
+                 <path 
+                   d={`M ${start.x} ${start.y} Q ${cpX} ${cpY} ${endX} ${endY}`}
                    stroke={city.color} 
-                   strokeWidth="2" strokeDasharray="4 4"
+                   strokeWidth="2" 
+                   strokeDasharray="4 4"
+                   fill="none"
                    className={cn("opacity-80", popup.isClosing ? "animate-line-exit" : "animate-line")}
                  />
                  <circle cx={start.x} cy={start.y} r="3" fill={city.color} />
@@ -602,17 +948,28 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               >
                 {/* Close Button */}
                 <button 
-                  className="absolute -top-3 -right-3 w-8 h-8 bg-background border rounded-full flex items-center justify-center text-muted-foreground transition-colors z-50 shadow-md group hover:cursor-pointer hover:text-black"
+                  className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-background border rounded-full flex items-center justify-center text-muted-foreground transition-all z-50 shadow-md group hover:cursor-pointer hover:text-black"
                   style={{ borderColor: city.color }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = city.color;
+                    playMapSound("kr55_hh");
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = '';
                   }}
                   onClick={(e) => { e.stopPropagation(); closePopup(cityId); }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="16" height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    className={cn("transition-transform duration-500", popup.isClosing && "rotate-180")}
+                  >
+                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                  </svg>
                 </button>
 
                 {/* Decorative Header Line */}
@@ -624,6 +981,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                   onMouseDown={(e) => {
                      e.stopPropagation()
                      bringToFront(cityId)
+                     startWhistleLoop()
                      const rot = (Math.random() * 6) - 3
                      setPressedPopupState({ id: cityId, rotation: rot })
                      const startX = e.clientX
@@ -635,6 +993,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                        updatePopupPosition(cityId, startLeft + (mv.clientX - startX), startTop + (mv.clientY - startY))
                      }
                      const onUp = () => {
+                       stopWhistleLoop()
                        setPressedPopupState(null)
                        window.removeEventListener('mousemove', onMove)
                        window.removeEventListener('mouseup', onUp)
@@ -679,12 +1038,22 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                         onMouseEnter={(e) => {
                             e.currentTarget.style.color = 'white';
                             e.currentTarget.style.boxShadow = `0 0 15px ${city.color}`;
+                            startPadSound();
+                        }}
+                        onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            updatePadSound(e.clientX - rect.left, rect.width);
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.color = city.color;
                             e.currentTarget.style.boxShadow = 'none';
+                            stopPadSound();
                         }}
-                        onClick={() => onCitySelect(city)}
+                        onClick={() => {
+                          stopPadSound();
+                          playMapSound("tubularbells2", true);
+                          onCitySelect(city);
+                        }}
                       >
                         ENTER ARENA
                       </button>

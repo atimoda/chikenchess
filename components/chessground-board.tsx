@@ -14,6 +14,7 @@ interface ChessgroundBoardProps {
   isThinking: boolean
   orientation?: "white" | "black"
   synthSelectedSquare?: Square | null
+  activeSquares?: Set<string>
 }
 
 const COLUMNS = ["a", "b", "c", "d", "e", "f", "g", "h"]
@@ -45,6 +46,7 @@ export function ChessgroundBoard({
   orientation = "white",
   onBoardClick,
   synthSelectedSquare,
+  activeSquares,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -377,6 +379,7 @@ export function ChessgroundBoard({
             const isPremoveSquare = premove?.from === square || premove?.to === square
             const isDragging = dragPiece?.from === square
             const isSynthSelected = synthSelectedSquare === square
+            const isActive = activeSquares?.has(square)
 
             // Calculate complementary color for last move
             // We'll use a CSS filter hue-rotate(180deg) to get complementary color
@@ -393,6 +396,7 @@ export function ChessgroundBoard({
                   (isSynthSelected || (piece && isSynthSelected)) && "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]"
                 )}
                 style={{
+            boxShadow: isActive ? `inset 0 0 0 2px ${cityColor}, 0 0 10px ${cityColor}80` : undefined,
             backgroundColor: isKingInCheck
               ? "rgba(239, 68, 68, 0.6)"
               : isSelected

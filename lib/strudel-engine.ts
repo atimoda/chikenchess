@@ -96,38 +96,26 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
 
   const inCheck = game.isCheck()
 
-  // 2. BISHOPS (Piano with specific patterns)
-  // "cada bispo será um piano diferente"
-  // "Pattern: note('c1, eb3 g3 [bb3 c4]').s('piano').slow(10).gain(siren)"
+  // --- BISHOP LOGIC (Piano with specific patterns) ---
+  // "n("0 [2 4] <3 5> [~ <4 1>]".add("<0 [0,2,4]>")) .scale("C5:minor")"
   if (bishops.length > 0) {
     bishops.forEach((b, i) => {
-      // Base scale indices: [0, 1, 3, 4, 5] (C, Eb, G, Bb, C)
-      const baseIndices = [0, 1, 3, 4, 5]
-      const shift = b.rank
-      const shiftedIndices = baseIndices.map(idx => idx + shift)
+      // Calculate Scale based on position
+      // Roots: C, D, Eb, F, G, Ab, Bb (Minor scale degrees)
+      const roots = ["C", "D", "Eb", "F", "G", "Ab", "Bb"]
+      const root = roots[b.file % roots.length]
+      const scaleName = `${root}5:minor`
       
-      const noteStr = shiftedIndices.map(idx => {
-        const octaveOffset = Math.floor(idx / 5)
-        const scaleIdx = idx % 5
-        const note = city.scale[scaleIdx]
-        // Hacky way to add octave to note string if needed, 
-        // but for display we'll just show the base note or try to format it.
-        // Actually, let's just use the note names from the scale.
-        return note
-      })
-
-      // Construct sequence string: "n1, n2 n3 [n4 n5]"
-      // We have 5 notes.
-      const patternNote = `"${noteStr[0]}, ${noteStr[1]} ${noteStr[2]} [${noteStr[3]} ${noteStr[4]}]"`
-
-      const posPan = (1 - (b.file / 7)).toFixed(2)
-      const slowFactor = (i % 2 === 0) ? 10 : 1
-
-      layers.push(`  // Bishop ${b.square} (Piano)`)
+      const patternNote = `"0 [2 4] <3 5> [~ <4 1>]".add("<0 [0,2,4]>")`
+      
+      // Pan: -1 (Left/File 0) to 1 (Right/File 7)
+      const posPan = ((b.file / 7) * 2 - 1).toFixed(2)
+      
+      layers.push(`  // Bishop ${b.square} (${scaleName})`)
       layers.push(`  note(${patternNote})`)
-      layers.push(`    .s("piano")`)
-      layers.push(`    .slow(${slowFactor})`)
-      layers.push(`    .gain("siren").mul(0.3)`)
+      layers.push(`    .scale("${scaleName}")`)
+      layers.push(`    .sound("gm_xylophone")`)
+      layers.push(`    .room(.4).delay(.125).slow(2)`)
       layers.push(`    .pan(${posPan}),`)
     })
   }
@@ -346,60 +334,54 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     }
   })
 
-  // --- BISHOP LOGIC (Piano with Third Progression) ---
+  // --- BISHOP LOGIC (Xylophone Pattern) ---
   const pianoLayers = bishops.map((b, i) => {
-    // "cada bispo será um piano diferente"
-    // "Pattern 1: slow(2.5)" (Bishop 1)
-    // "Pattern 2: slow(1)" (Bishop 2)
-    const isFirst = i % 2 === 0
-    const slowFactor = isFirst ? 2.5 : 1
-    
-    // Base chord indices in the scale (C, Eb, G, Bb, C) -> [0, 1, 3, 4, 5]
-    const baseIndices = [0, 1, 3, 4, 5] 
-    
-    // "a cada casa que o bispo anda para a frente, sobe uma 'terça'"
-    // We shift the scale index by 1 per rank (approx a third/fourth in pentatonic)
-    const shift = b.rank
-    const shiftedIndices = baseIndices.map(idx => idx + shift)
-    
     const fx = getEffects(b.square)
     const pitchMult = fx.pitch ?? 1
 
-    const notes = shiftedIndices.map(idx => {
-      const scaleLen = city.scale.length
-      const octaveOffset = Math.floor(idx / scaleLen)
-      const scaleIdx = idx % scaleLen
-      
-      // Get base frequency of note in scale
-      const baseNote = city.scale[scaleIdx]
-      let freq = noteToFrequency(baseNote)
-      
-      // Apply octave offset (multiply frequency by 2^offset)
-      if (octaveOffset > 0) freq *= Math.pow(2, octaveOffset)
-      
-      return freq * pitchMult
-    })
-
-    // Create pattern based on slowFactor
-    // If slow(1), it plays once per bar (16 steps).
+    // Use current chord tones (1, 3, 5 of scale) based on file
+    // Scale usually has 5 or 7 notes. We pick indices 0, 2, 4 (Triad)
+    const chordIndices = [0, 2, 4]
+    // Map file (0-7) to these indices cyclically
+    const noteIndex = chordIndices[b.file % chordIndices.length]
+    // Get note name from city scale (fallback to C4 if missing)
+    const noteName = city.scale[noteIndex % city.scale.length] || "C4"
+    
+    // Convert to frequency and lower by 1 octave (/ 2)
+    const freq = (noteToFrequency(noteName) / 2) * pitchMult
     
     const pattern = new Array(16).fill(null)
-    // Trigger on first step
-    pattern[0] = notes
+    
+    // Create a pattern based on file/rank to avoid unison
+    // Simple Arpeggio-like pattern
+    // File 0: [x, ., ., .]
+    // File 1: [., x, ., .]
+    // etc.
+    let step = (b.file * 2 + b.rank) % 16
+    pattern[step] = freq
+    // Add a second hit for rhythm
+    pattern[(step + 8) % 16] = freq
 
     let pan = (b.file / 7) * 2 - 1
-    let gain = 0.3 // Reduced gain as requested
+    // Invert pan as per previous request? Or keep standard?
+    // "Invert Bishop audio panning to match user perception" was a previous task.
+    // If left bishop is on left side of board (File A -> 0), pan should be -1 (Left).
+    // (0/7)*2 - 1 = -1. Correct.
+    
+    let gain = 0.5 // Reduced volume by 50% (Base was implicit 1.0 or high)
     
     if (fx.gain !== undefined) gain *= fx.gain
     if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
 
     return {
       pattern,
+      velocities: new Array(16).fill(1),
       gain,
       pan,
+      sound: "gm_xylophone" as const,
       lfo: null,
-      delay: fx.delay ?? 0.4,
-      reverb: fx.reverb,
+      delay: fx.delay ?? 0.125,
+      reverb: fx.reverb ?? 0.4,
       decay: fx.decay
     }
   })
@@ -447,7 +429,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
           pattern,
           gain,
           pan,
-          sound: soundName, // Dynamic sound name
+          sound: soundName as "gm_melodic_tom" | "gm_woodblock", // Dynamic sound name
           color: k.color,
           adsr: [0.1, 0, 0.2, 1.0] as [number, number, number, number],
           room: 0.5,

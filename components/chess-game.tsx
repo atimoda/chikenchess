@@ -482,6 +482,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             onTogglePlay={handleTogglePlay}
             cityColor={city.color}
             hasStarted={hasStarted}
+            onUndo={undoMove}
+            canUndo={moveHistory.length > 0}
+            onRedo={redoMove}
+            canRedo={redoStack.length > 0}
           />
         </div>
 
