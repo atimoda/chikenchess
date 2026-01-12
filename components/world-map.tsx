@@ -422,7 +422,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     }, 700)
   }
 
-  const handleCityClick = (city: CityData) => {
+  const handleCityClick = (city: CityData, e?: React.MouseEvent) => {
     playMapSound("bossdr220_lt", true)
     if (openPopups[city.id] && !openPopups[city.id].isClosing) {
       bringToFront(city.id)
@@ -434,21 +434,42 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
     const w = typeof window !== 'undefined' ? window.innerWidth : 1024
     const h = typeof window !== 'undefined' ? window.innerHeight : 768
-    
-    // X: centered random distribution
-    let x = (w / 2) - 150 + (Math.random() - 0.5) * (w * 0.4)
-      
-    // Y: random offset from bottom (concentrated near bottom)
-    // Random between 50 and 350 pixels variation from a base offset
-    const baseOffset = 150
-    const variation = 50 + Math.random() * 300 
-    let y = h - baseOffset - variation
-
-    // Constrain to screen boundaries (assuming popup width ~300px, height ~400px)
     const popupWidth = 300
     const popupHeight = 450
+    
+    // Y Position: Bottom of screen with random variation (10-50px from lowest position)
+    const bottomPadding = 40
+    const maxTop = h - popupHeight - bottomPadding 
+    const yVariation = 10 + Math.random() * 40
+    let y = maxTop - yVariation
+
+    // X Position
+    let x: number
+    
+    if (e && !isMobile) {
+        // Desktop: Position relative to click (Pin) to ensure line visibility
+        const pinX = e.clientX
+        const minGap = 100 // Minimum space between pin and popup
+        
+        if (pinX < w / 2) {
+             // Pin is left -> Popup Right
+             x = pinX + minGap
+        } else {
+             // Pin is right -> Popup Left
+             x = pinX - popupWidth - minGap
+        }
+        
+        // Add slight randomness to X (±20px)
+        x += (Math.random() - 0.5) * 40
+        
+    } else {
+        // Mobile or no event: Centered random
+        x = (w / 2) - (popupWidth / 2) + (Math.random() - 0.5) * (w * 0.2)
+    }
+
+    // Constraints
     x = Math.max(20, Math.min(x, w - popupWidth - 20))
-    y = Math.max(80, Math.min(y, h - popupHeight - 20)) // Top 80 to avoid header
+    y = Math.max(80, Math.min(y, h - popupHeight - 20))
     
     setOpenPopups(prev => ({
       ...prev,
@@ -508,6 +529,79 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const handleMouseUp = () => {
     setIsDragging(false)
     setTransitionDuration(300) // Restore smoothing
+  }
+
+  // Touch handlers for mobile (Pan & Pinch-to-Zoom)
+  const lastTouchRef = useRef<{ x: number, y: number } | null>(null)
+  const lastDistRef = useRef<number | null>(null)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      // Pan start
+      const touch = e.touches[0]
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY }
+      setIsDragging(true)
+      setTransitionDuration(0)
+    } else if (e.touches.length === 2) {
+      // Pinch start
+      const t1 = e.touches[0]
+      const t2 = e.touches[1]
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
+      lastDistRef.current = dist
+      setTransitionDuration(0)
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && lastTouchRef.current && isDragging) {
+      // Pan move
+      const touch = e.touches[0]
+      const dx = touch.clientX - lastTouchRef.current.x
+      const dy = touch.clientY - lastTouchRef.current.y
+      
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }))
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY }
+    } else if (e.touches.length === 2 && lastDistRef.current) {
+      // Pinch zoom
+      const t1 = e.touches[0]
+      const t2 = e.touches[1]
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
+      
+      // Calculate scale factor
+      const scaleFactor = dist / lastDistRef.current
+      
+      // Calculate center of pinch
+      const cx = (t1.clientX + t2.clientX) / 2
+      const cy = (t1.clientY + t2.clientY) / 2
+      
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      
+      // Center relative to container
+      const centerOffsetX = rect.width / 2
+      const centerOffsetY = rect.height / 2
+      const mouseX = cx - rect.left - centerOffsetX
+      const mouseY = cy - rect.top - centerOffsetY
+
+      const newScale = Math.min(Math.max(scale * scaleFactor, 0.5), 8)
+      
+      if (newScale !== scale) {
+         const scaleRatio = newScale / scale
+         const newX = mouseX - (mouseX - position.x) * scaleRatio
+         const newY = mouseY - (mouseY - position.y) * scaleRatio
+         
+         setScale(newScale)
+         setPosition({ x: newX, y: newY })
+         lastDistRef.current = dist
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
+    lastTouchRef.current = null
+    lastDistRef.current = null
+    setTransitionDuration(300)
   }
 
   // Wheel handler for zooming with mouse focus
@@ -766,11 +860,14 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
       {/* Map Container */}
       <div 
-        className="absolute inset-0 flex items-center justify-center p-0 overflow-hidden z-10 cursor-grab active:cursor-grabbing"
+        className="absolute inset-0 flex items-center justify-center p-0 overflow-hidden z-10 cursor-grab active:cursor-grabbing touch-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
         onClick={() => {
             if (audioContextRef.current?.state === "suspended") {
@@ -818,7 +915,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                 onMouseDown={(e) => e.stopPropagation()} 
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleCityClick(city);
+                  handleCityClick(city, e);
                 }}
                 onMouseEnter={() => {
                   setHoveredCityId(city.id)
