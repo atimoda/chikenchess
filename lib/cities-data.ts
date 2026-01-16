@@ -266,6 +266,28 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       lead: "synth:4", // Filtered Lead
     },
   },
+  // 12. Vienna (1780)
+  {
+    id: "vienna",
+    name: "Vienna",
+    country: "Austria",
+    year: 1780,
+    genre: "Classical / Symphony",
+    description: "The Imperial Capital. Strings, Woodwinds, Brass. The Grand Orchestra.",
+    bpm: 100, // Moderato
+    scale: ["C4", "D4", "E4", "F4", "G4", "A4", "B4"], // C Major (Classical)
+    geoCoordinates: { lat: 48.2082, lng: 16.3738 },
+    color: "#d4af37", // Gold
+    image: "https://images.unsplash.com/photo-1516550893923-42d28e5677af?q=80&w=800&auto=format&fit=crop",
+    samples: {
+      kick: "bd:0", // Timpani (mapped in engine)
+      snare: "sd:0",
+      hihat: "hh:0",
+      bass: "bass:0", // Double Bass
+      pad: "pad:0", // String Ensemble
+      lead: "synth:0", // Violin Solo
+    },
+  },
 ]
 
 export const cities: CityData[] = rawCities.map(city => ({

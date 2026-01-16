@@ -385,6 +385,7 @@ function findBestMove(fen, depth) {
     }
   }
 
+  self.postMessage(`info score cp ${bestScore}`)
   return bestMove
 }
 
@@ -405,10 +406,8 @@ self.onmessage = (e) => {
     currentFen = command.replace("position fen ", "")
   } else if (command.startsWith("go depth")) {
     searchDepth = Number.parseInt(command.split(" ")[2]) || 4
-    // Cap depth for performance
     searchDepth = Math.min(searchDepth, 5)
 
-    // Add slight delay for realistic "thinking" feel
     setTimeout(
       () => {
         const bestMove = findBestMove(currentFen, searchDepth)
@@ -420,6 +419,14 @@ self.onmessage = (e) => {
       },
       200 + Math.random() * 500,
     )
+  } else if (command.startsWith("eval depth")) {
+    let depth = Number.parseInt(command.split(" ")[2]) || 4
+    depth = Math.min(depth, 5)
+    const chess = new SimpleChess(currentFen)
+    const isMaximizing = chess.turn === "w"
+    const score = alphaBeta(chess, depth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, isMaximizing)
+    const whiteScore = chess.turn === "w" ? score : -score
+    self.postMessage(`eval ${whiteScore}`)
   } else if (command.startsWith("go")) {
     setTimeout(
       () => {

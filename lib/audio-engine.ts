@@ -90,6 +90,186 @@ export class AudioEngine {
     this.squareEffects = effects
   }
 
+  async playIllegalMoveGlitch(pieceType: string, square?: string) {
+    if (!this.audioContext || !this.masterGain) await this.init()
+    if (!this.audioContext) return
+
+    const now = this.audioContext.currentTime
+    const pattern = this.currentPattern
+    const scale = pattern?.scale
+    const fallbackScale = ["C4", "Eb4", "F4", "G4", "Bb4"]
+    const activeScale = scale && scale.length > 0 ? scale : fallbackScale
+
+    let gain = 0.2
+    let pan = 0
+    let delay = 0.05
+    let reverb = 0.1
+
+    let noteIndex = Math.floor(Math.random() * activeScale.length)
+    if (square && square.length >= 2) {
+      const files = ["a", "b", "c", "d", "e", "f", "g", "h"]
+      const fileChar = square[0].toLowerCase()
+      const rankChar = square[1]
+      let fileIndex = files.indexOf(fileChar)
+      let rankIndex = parseInt(rankChar || "1", 10) - 1
+      if (fileIndex < 0) fileIndex = 0
+      if (!Number.isFinite(rankIndex) || rankIndex < 0) rankIndex = 0
+      noteIndex = (fileIndex + rankIndex * 2) % activeScale.length
+    }
+
+    const baseNote = activeScale[noteIndex]
+    let freq = noteToFrequency(baseNote)
+
+    switch (pieceType) {
+      case "p":
+        this.playPawn(now, "bd", gain * 0.3, pan, "w", 0.9, delay, reverb + 0.05)
+        break
+      case "n":
+        this.playHoofBeats(now, gain * 0.25, 0, 0.05)
+        break
+      case "b": {
+        const filter = this.audioContext.createBiquadFilter()
+        filter.type = "lowpass"
+        filter.frequency.value = 600
+        filter.Q.value = 0.7
+
+        const gainNode = this.audioContext.createGain()
+        gainNode.gain.setValueAtTime(gain * 0.3, now)
+
+        const panner = this.audioContext.createStereoPanner()
+        panner.pan.value = pan
+
+        const osc = this.audioContext.createOscillator()
+        osc.type = "triangle"
+        osc.frequency.value = freq
+
+        osc.connect(filter).connect(gainNode).connect(panner)
+        this.applyEffects(panner, delay, reverb)
+
+        osc.start(now)
+        osc.stop(now + 0.35)
+        break
+      }
+      case "r":
+        this.playPad(now, [freq, freq * 1.25, freq * 1.5], pan, gain * 0.25, [0.1, 0.2, 0.5, 0.3], delay, reverb + 0.05)
+        break
+      case "q":
+        this.playLead6Voice(now, freq, gain * 0.2, pan, delay, reverb + 0.05)
+        break
+      case "k":
+        this.playTimpani(now, gain * 0.25, pan, delay, reverb + 0.05)
+        break
+      default:
+        this.playPawn(now, "bd", gain * 0.3, pan, "w", 0.9, delay, reverb + 0.05)
+    }
+  }
+
+  async playPieceSample(square: string, pieceType: string, pieceColor: "w" | "b", isPreview: boolean = true) {
+    if (!this.audioContext || !this.masterGain) await this.init()
+    if (!this.audioContext) return
+
+    const effects = this.squareEffects[square]
+    const pattern = this.currentPattern
+    const files = ["a", "b", "c", "d", "e", "f", "g", "h"]
+    const fileIndex = files.indexOf(square[0])
+    const rankIndex = parseInt(square[1] || "1", 10) - 1
+
+    const now = this.audioContext.currentTime
+
+    let gain = 0.6
+    let pan = 0
+    let pitch = 1
+    let delay = 0
+    let reverb = 0
+
+    if (effects) {
+      gain = (effects.gain ?? 1) * gain
+      pan = effects.pan ?? 0
+      pitch = effects.pitch ?? 1
+      delay = effects.delay ?? 0
+      reverb = effects.reverb ?? 0
+    }
+
+    switch (pieceType) {
+      case "p":
+        if (pattern && pattern.cityId === "vienna" && pattern.scale && pattern.scale.length > 0) {
+          const degree = fileIndex >= 0 ? fileIndex % 7 : 0
+          const noteName = pattern.scale[degree] || "C4"
+          const baseFreq = noteToFrequency(noteName)
+          const freq = baseFreq * pitch
+          this.playPawn(now, "violin_pizz", gain, pan, pieceColor, pitch, delay, reverb, freq)
+        } else {
+          const drumSamples = ["bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy"]
+          const sample = fileIndex >= 0 ? drumSamples[fileIndex % drumSamples.length] : "bd"
+          this.playPawn(now, sample, gain, pan, pieceColor, pitch, delay, reverb)
+        }
+        break
+      case "n":
+        if (pattern && pattern.scale && pattern.scale.length > 0) {
+          const scaleLen = pattern.scale.length
+          const idx = (fileIndex >= 0 && rankIndex >= 0) ? (fileIndex + rankIndex * 2) % scaleLen : 0
+          const noteName = pattern.scale[idx].replace(/[0-9]/, "2")
+          const baseFreq = noteToFrequency(noteName)
+          const freq = baseFreq * pitch
+          const adsr: [number, number, number, number] = [0.1, 0.2, 1.0, 0.1]
+          this.playAcousticBass(now, freq, gain, pan, adsr, 0.5, delay, reverb)
+        } else {
+          this.playBass(now, 110 * pitch, 600, 5, gain, [0.1, 0.2, 0.8, 0.8], delay, reverb)
+        }
+        break
+      case "b": {
+        const activeScale =
+          pattern && pattern.scale && pattern.scale.length > 0
+            ? pattern.scale
+            : ["C4", "Eb4", "F4", "G4", "Bb4"]
+        const chordIndices = [0, 2, 4]
+        const noteIndex = fileIndex >= 0 ? chordIndices[fileIndex % chordIndices.length] : 0
+        const rootName = activeScale[noteIndex % activeScale.length]
+        const rootFreq = noteToFrequency(rootName) / 2
+        const n1 = rootFreq * pitch
+        const n2 = rootFreq * 1.25 * pitch
+        const n3 = rootFreq * 1.5 * pitch
+        this.playPiano(now, [n1, n2, n3], gain * 0.4, pan, null, delay, reverb)
+        break
+      }
+      case "r":
+        if (pattern && pattern.scale && pattern.scale.length > 0) {
+          const chordNotes = pattern.scale.slice(0, 3).map((n) => noteToFrequency(n) * pitch)
+          this.playPad(now, chordNotes, pan, gain * 0.8, [0.5, 0.5, 0.8, 0.8], delay, reverb)
+        } else {
+          this.playPad(now, [220 * pitch, 330 * pitch, 440 * pitch], pan, gain * 0.8, [0.5, 0.5, 0.8, 0.8], delay, reverb)
+        }
+        break
+      case "q":
+        if (pattern) {
+          const offset = fileIndex >= 0 && rankIndex >= 0 ? (fileIndex + rankIndex) % 5 : 0
+          const ratio = Math.pow(2, offset / 12)
+          let c2 = noteToFrequency("c2") * ratio * pitch
+          let g2 = noteToFrequency("g2") * ratio * pitch
+          let d2 = noteToFrequency("d2") * ratio * pitch
+          let f1 = noteToFrequency("f1") * ratio * pitch
+          if (pattern.cityId === "vienna") {
+            c2 *= 4
+            g2 *= 4
+            d2 *= 4
+            f1 *= 4
+            this.playViolinLegato(now, c2, gain, pan, delay, reverb)
+          } else {
+            const freq = c2
+            this.playQueenRandom(now, freq, gain, pan, delay, reverb)
+          }
+        } else {
+          this.playLead6Voice(now, 440 * pitch, gain, pan, delay, reverb)
+        }
+        break
+      case "k":
+        this.playTimpani(now, gain, pan, delay, reverb)
+        break
+      default:
+        this.playPawn(now, "bd", gain, pan, pieceColor, pitch, delay, reverb)
+    }
+  }
+
   async playSquareSample(square: string) {
     if (!this.audioContext || !this.masterGain) await this.init()
     if (!this.audioContext) return
@@ -311,7 +491,7 @@ export class AudioEngine {
           const reverb = p.reverb || 0
           const pitch = p.pitch || 1
           
-          this.playPawn(triggerTime + humanize(), p.sample, p.gain, p.pan, p.color, pitch, delay, reverb)
+          this.playPawn(triggerTime + humanize(), p.sample, p.gain, p.pan, p.color, pitch, delay, reverb, p.frequency)
         }
       })
     }
@@ -327,6 +507,8 @@ export class AudioEngine {
             this.playLead6Voice(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
           } else if (q.sound === "gm_queen_random") {
             this.playQueenRandom(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
+          } else if (q.sound === "violin_legato") {
+            this.playViolinLegato(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
           } else {
             // Default Synth
             this.playBishop(triggerTime, freq, q.gain, q.pan, q.adsr, !!q.lfo, q.delay, "triangle", q.reverb)
@@ -335,27 +517,16 @@ export class AudioEngine {
       })
     }
 
-    // BISHOPS (Piano or Xylophone)
     if (bishops) {
       bishops.forEach(b => {
         const patternLen = b.pattern.length || 16
         const rawNotes = b.pattern[step % patternLen]
         if (rawNotes !== null) {
           const notes = Array.isArray(rawNotes) ? rawNotes : [rawNotes]
-          // Apply velocity from pattern if available
-          const velocity = (b.velocities && b.velocities[step % patternLen] !== null) 
-            ? (b.velocities[step % patternLen] as number) 
+          const velocity = (b.velocities && b.velocities[step % patternLen] !== null)
+            ? (b.velocities[step % patternLen] as number)
             : 1
-            
-          if (b.sound === "xylophone" || b.sound === "gm_xylophone") {
-              notes.forEach(n => {
-                if (typeof n === 'number') {
-                    this.playXylophone(triggerTime, n, b.gain * velocity, b.pan, b.delay, b.reverb)
-                }
-              })
-          } else {
-              this.playPiano(triggerTime, notes, b.gain * velocity, b.pan, b.lfo, b.delay, b.reverb)
-          }
+          this.playPiano(triggerTime, notes, b.gain * velocity * 0.4, b.pan, null, b.delay, b.reverb)
         }
       })
     }
@@ -389,6 +560,13 @@ export class AudioEngine {
                     this.playAcousticBass(triggerTime, n, k.gain, k.pan, adsr, (k as any).room || 0.5, k.delay, k.reverb)
                 }
              })
+          } else if (k.sound === "timpani") {
+             const notes = Array.isArray(note) ? note : [note]
+             notes.forEach(n => {
+                if (Number.isFinite(n)) {
+                    this.playTimpani(triggerTime, k.gain, k.pan, k.delay, k.reverb)
+                }
+             })
           } else if (k.sound === "synth") {
              // King using Queen's Synth - Match Queen's waveform cycling
              const waveforms: OscillatorType[] = ["sawtooth", "square", "triangle", "sine"]
@@ -418,6 +596,8 @@ export class AudioEngine {
         if (note !== null && Number.isFinite(note)) {
           if (k.sound === "gm_acoustic_bass") {
             this.playAcousticBass(triggerTime, note, k.gain, k.pan, k.adsr, k.room, k.delay, k.reverb)
+          } else if (k.sound === "brass_staccato") {
+            this.playBrassStaccato(triggerTime, note, k.gain, k.pan, k.delay, k.reverb)
           } else {
              // Fallback
              this.playBass(triggerTime, note, 600, 5, k.gain, [0.1, 0.2, 0.8, 1.0], k.delay, k.reverb)
@@ -448,7 +628,11 @@ export class AudioEngine {
     if (pad) {
       const padNotes = pad.pattern[step % 16]
       if (padNotes !== null && padNotes.length > 0 && shouldPlay(pad.probability)) {
-        this.playPad(triggerTime, padNotes, pad.pan, pad.gain, pad.adsr, 0, pad.reverb)
+        if (pad.sound === "string_pad") {
+            this.playStringPad(triggerTime, padNotes, pad.gain, pad.pan, 0, pad.reverb)
+        } else {
+            this.playPad(triggerTime, padNotes, pad.pan, pad.gain, pad.adsr, 0, pad.reverb)
+        }
       }
     }
 
@@ -492,6 +676,34 @@ export class AudioEngine {
     osc.connect(gain).connect(this.masterGain)
     osc.start(time)
     osc.stop(time + 0.4)
+  }
+
+  playDrawKalimba() {
+    if (!this.audioContext || !this.masterGain) return
+    const time = this.audioContext.currentTime
+
+    const notes = [noteToFrequency("C5"), noteToFrequency("E5"), noteToFrequency("G5")]
+
+    notes.forEach((freq, index) => {
+      const osc = this.audioContext!.createOscillator()
+      osc.type = "triangle"
+      osc.frequency.value = freq
+
+      const gain = this.audioContext!.createGain()
+      const startTime = time + index * 0.08
+      gain.gain.setValueAtTime(0, startTime)
+      gain.gain.linearRampToValueAtTime(0.6, startTime + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.35)
+
+      const panner = this.audioContext!.createStereoPanner()
+      panner.pan.value = -0.2 + index * 0.2
+
+      osc.connect(gain).connect(panner)
+      this.applyEffects(panner, 0.05, 0.4)
+
+      osc.start(startTime)
+      osc.stop(startTime + 0.4)
+    })
   }
 
   private playPiano(time: number, notes: number[], gain: number, pan: number, lfoType?: "siren" | "sine" | null, delayTime?: number, reverb: number = 0) {
@@ -596,8 +808,19 @@ export class AudioEngine {
   private applyEffects(source: AudioNode, delay: number = 0, reverb: number = 0) {
     if (!this.masterGain || !this.audioContext) return
 
-    // Dry signal
-    source.connect(this.masterGain)
+    const distortAmount = this.currentPattern?.effects?.distort ?? 0
+    let targetNode: AudioNode = this.masterGain
+
+    if (distortAmount > 0) {
+      const shaper = this.audioContext.createWaveShaper()
+      const amount = 5 + distortAmount * 45
+      shaper.curve = this.makeDistortionCurve(amount)
+      shaper.oversample = "2x"
+      shaper.connect(this.masterGain)
+      targetNode = shaper
+    }
+
+    source.connect(targetNode)
 
     // Delay
     if (delay > 0) {
@@ -609,7 +832,7 @@ export class AudioEngine {
         source.connect(d)
         d.connect(f)
         f.connect(d)
-        d.connect(this.masterGain)
+        d.connect(targetNode)
     }
 
     // Reverb (Simple Delay-based Room)
@@ -627,11 +850,11 @@ export class AudioEngine {
         source.connect(d2)
         d1.connect(g)
         d2.connect(g)
-        g.connect(this.masterGain)
+        g.connect(targetNode)
     }
   }
 
-  private playPawn(time: number, sample: string, gain: number, pan: number, color?: "w" | "b", pitchMultiplier: number = 1, delay: number = 0, reverb: number = 0) {
+  private playPawn(time: number, sample: string, gain: number, pan: number, color?: "w" | "b", pitchMultiplier: number = 1, delay: number = 0, reverb: number = 0, frequency?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     // Tweak sound based on color
@@ -655,6 +878,14 @@ export class AudioEngine {
       case "lc": this.playConga(time, gain, 150 * pitchMod, pan, delay, reverb); break;
       case "mc": this.playConga(time, gain, 250 * pitchMod, pan, delay, reverb); break;
       case "hc": this.playConga(time, gain, 400 * pitchMod, pan, delay, reverb); break;
+      case "violin_pizz":
+        // Frequency should be passed in p.frequency (which comes from p.pitch/note)
+        // If not, we can infer from pitchMultiplier relative to A4? No, better to use frequency param.
+        // But playPawn signature needs frequency.
+        if (frequency) {
+             this.playViolinPizz(time, gain, pan, frequency / 220, delay, reverb) // playViolinPizz takes pitch ratio relative to A3(220)
+        }
+        break;
       default: this.playKick(time, gain, pan, delay, reverb, pitchMod);
     }
   }
@@ -886,6 +1117,15 @@ export class AudioEngine {
     this.applyEffects(panner, delay, reverb)
     
     osc.start(time); osc.stop(time + 0.4)
+  }
+
+  private playHoofBeats(time: number, gain: number, delay: number = 0, reverb: number = 0) {
+    if (!this.audioContext || !this.masterGain) return
+    const step = 0.09
+    const pans = [-0.3, 0.2, -0.1, 0.3]
+    for (let i = 0; i < pans.length; i++) {
+      this.playWoodblock(time + i * step, gain, pans[i], delay, reverb + 0.05)
+    }
   }
 
   private playAcousticBass(time: number, freq: number, gain: number, pan: number, adsr: [number, number, number, number], roomAmount: number = 0.3, delay: number = 0, reverb: number = 0) {
@@ -1281,9 +1521,23 @@ export class AudioEngine {
     const panner = this.audioContext.createStereoPanner()
     panner.pan.value = 0
     
-    osc.connect(filter)
-    filter.connect(gainNode)
-    gainNode.connect(panner)
+    const useDistortion = distort > 0
+    const target = useDistortion && this.audioContext ? this.audioContext.createWaveShaper() : null
+
+    if (useDistortion && target) {
+      const amount = 10 + distort * 90
+      target.curve = this.makeDistortionCurve(amount)
+      target.oversample = "4x"
+
+      osc.connect(filter)
+      filter.connect(gainNode)
+      gainNode.connect(target)
+      target.connect(panner)
+    } else {
+      osc.connect(filter)
+      filter.connect(gainNode)
+      gainNode.connect(panner)
+    }
     
     // Default effects for lead
     this.applyEffects(panner, delay, reverb)
@@ -1293,7 +1547,177 @@ export class AudioEngine {
     this.scheduledNodes.push(osc)
   }
 
-  private makeDistortionCurve(amount: number): any {
+  private playViolinPizz(time: number, gain: number, pan: number, pitch: number = 1, delay: number = 0, reverb: number = 0) {
+    if (!this.audioContext || !this.masterGain) return
+    const osc = this.audioContext.createOscillator()
+    osc.type = "sawtooth"
+    osc.frequency.setValueAtTime(220 * pitch, time)
+    
+    const filter = this.audioContext.createBiquadFilter()
+    filter.type = "lowpass"
+    filter.frequency.setValueAtTime(3000, time)
+    filter.frequency.exponentialRampToValueAtTime(500, time + 0.1)
+
+    const gainNode = this.audioContext.createGain()
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain, time + 0.005)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.15)
+
+    const panner = this.audioContext.createStereoPanner()
+    panner.pan.value = pan
+
+    osc.connect(filter).connect(gainNode).connect(panner)
+    this.applyEffects(panner, delay, reverb)
+    
+    osc.start(time); osc.stop(time + 0.2)
+  }
+
+  private playBrassStaccato(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+    if (!this.audioContext || !this.masterGain) return
+    const osc = this.audioContext.createOscillator()
+    osc.type = "sawtooth"
+    osc.frequency.setValueAtTime(freq, time)
+
+    const filter = this.audioContext.createBiquadFilter()
+    filter.type = "lowpass"
+    filter.frequency.setValueAtTime(200, time)
+    filter.frequency.exponentialRampToValueAtTime(freq * 4, time + 0.05)
+    filter.frequency.exponentialRampToValueAtTime(freq, time + 0.2)
+
+    const gainNode = this.audioContext.createGain()
+    gainNode.gain.setValueAtTime(0, time)
+    gainNode.gain.linearRampToValueAtTime(gain, time + 0.02)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.15)
+
+    const panner = this.audioContext.createStereoPanner()
+    panner.pan.value = pan
+
+    osc.connect(filter).connect(gainNode).connect(panner)
+    this.applyEffects(panner, delay, reverb)
+
+    osc.start(time); osc.stop(time + 0.2)
+  }
+
+  private playWoodwind(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+     if (!this.audioContext || !this.masterGain) return
+     const osc = this.audioContext.createOscillator()
+     osc.type = "sine"
+     osc.frequency.setValueAtTime(freq, time)
+
+     const bufferSize = this.audioContext.sampleRate * 0.2
+     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
+     const data = buffer.getChannelData(0)
+     for(let i=0; i<data.length; i++) data[i] = Math.random() * 2 - 1
+     const noise = this.audioContext.createBufferSource()
+     noise.buffer = buffer
+     const noiseFilter = this.audioContext.createBiquadFilter()
+     noiseFilter.type = "bandpass"
+     noiseFilter.frequency.value = freq * 1.5
+     const noiseGain = this.audioContext.createGain()
+     noiseGain.gain.value = gain * 0.1
+
+     const gainNode = this.audioContext.createGain()
+     gainNode.gain.setValueAtTime(0, time)
+     gainNode.gain.linearRampToValueAtTime(gain, time + 0.05)
+     gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.3)
+
+     const panner = this.audioContext.createStereoPanner()
+     panner.pan.value = pan
+
+     osc.connect(gainNode)
+     noise.connect(noiseFilter).connect(noiseGain).connect(gainNode)
+     gainNode.connect(panner)
+     this.applyEffects(panner, delay, reverb)
+
+     osc.start(time); osc.stop(time + 0.35)
+     noise.start(time); noise.stop(time + 0.35)
+  }
+
+  private playStringPad(time: number, notes: number[], gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+     if (!this.audioContext || !this.masterGain) return
+     
+     const duration = 2.0
+     const gainNode = this.audioContext.createGain()
+     gainNode.gain.setValueAtTime(0, time)
+     gainNode.gain.linearRampToValueAtTime(gain * 0.3, time + 0.5)
+     gainNode.gain.linearRampToValueAtTime(0.01, time + duration)
+
+     const panner = this.audioContext.createStereoPanner()
+     panner.pan.value = pan
+
+     notes.forEach(freq => {
+         const osc = this.audioContext!.createOscillator()
+         osc.type = "sawtooth"
+         osc.frequency.value = freq
+         osc.detune.value = (Math.random() - 0.5) * 10
+         
+         const filter = this.audioContext!.createBiquadFilter()
+         filter.type = "lowpass"
+         filter.frequency.value = 2000
+         
+         osc.connect(filter).connect(gainNode)
+         osc.start(time)
+         osc.stop(time + duration + 0.5)
+     })
+     
+     gainNode.connect(panner)
+     this.applyEffects(panner, delay, reverb)
+  }
+
+  private playViolinLegato(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+      if (!this.audioContext || !this.masterGain) return
+      const osc = this.audioContext.createOscillator()
+      osc.type = "sawtooth"
+      osc.frequency.value = freq
+      
+      const lfo = this.audioContext.createOscillator()
+      lfo.frequency.value = 5
+      const lfoGain = this.audioContext.createGain()
+      lfoGain.gain.value = 5
+      lfo.connect(lfoGain).connect(osc.frequency)
+      
+      const filter = this.audioContext.createBiquadFilter()
+      filter.type = "lowpass"
+      filter.frequency.value = 4000
+      
+      const gainNode = this.audioContext.createGain()
+      gainNode.gain.setValueAtTime(0, time)
+      gainNode.gain.linearRampToValueAtTime(gain, time + 0.2)
+      gainNode.gain.linearRampToValueAtTime(gain * 0.8, time + 0.5)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, time + 1.0)
+      
+      const panner = this.audioContext.createStereoPanner()
+      panner.pan.value = pan
+      
+      osc.connect(filter).connect(gainNode).connect(panner)
+      this.applyEffects(panner, delay, reverb)
+      
+      osc.start(time); osc.stop(time + 1.1)
+      lfo.start(time); lfo.stop(time + 1.1)
+  }
+
+  private playTimpani(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+      if (!this.audioContext || !this.masterGain) return
+      const osc = this.audioContext.createOscillator()
+      osc.type = "sine"
+      osc.frequency.setValueAtTime(120, time)
+      osc.frequency.exponentialRampToValueAtTime(80, time + 0.3)
+      
+      const gainNode = this.audioContext.createGain()
+      gainNode.gain.setValueAtTime(0, time)
+      gainNode.gain.linearRampToValueAtTime(gain, time + 0.01)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.5)
+      
+      const panner = this.audioContext.createStereoPanner()
+      panner.pan.value = pan
+      
+      osc.connect(gainNode).connect(panner)
+      this.applyEffects(panner, delay, reverb)
+      
+      osc.start(time); osc.stop(time + 0.5)
+  }
+
+  private makeDistortionCurve(amount: number): Float32Array {
     const samples = 44100
     const curve = new Float32Array(samples)
     const deg = Math.PI / 180
@@ -1314,14 +1738,16 @@ export class AudioEngine {
 export interface ParsedPattern {
   bpm: number
   swing: number // 0 to 1
+  cityId?: string
+  scale?: string[]
   
   // Layers
-  pawns?: { sample: string; pattern: boolean[]; gain: number; pan: number; color: "w" | "b"; pitch?: number; delay?: number; reverb?: number; decay?: number }[]
-  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka" | "gm_lead_6_voice" | "gm_queen_random"; lfo?: boolean; delay?: number; reverb?: number; decay?: number }[]
-  bishops?: { pattern: (number | number[] | null)[]; velocities?: (number | null)[]; gain: number; pan: number; sound?: "piano" | "xylophone" | "gm_xylophone"; lfo?: "siren" | "sine" | null; delay?: number; reverb?: number; decay?: number }[] // Piano
-  kings?: { pattern: (number | number[] | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka" | "gm_acoustic_bass" | "gm_woodblock" | "gm_melodic_tom"; delay?: number; reverb?: number; decay?: number; adsr?: [number, number, number, number]; room?: number; color?: "w" | "b" }[]
-  knights?: { pattern: (number | null)[]; gain: number; pan: number; sound: "bass" | "gm_acoustic_bass"; adsr: [number, number, number, number]; room?: number; delay?: number; reverb?: number; decay?: number }[]
-  rooks?: { pattern: (number[] | null)[]; gain: number; pan: number; delay?: number; reverb?: number; decay?: number }[]
+  pawns?: { sample: string; pattern: boolean[]; gain: number; pan: number; color: "w" | "b"; pitch?: number; frequency?: number; delay?: number; reverb?: number; decay?: number; sound?: "violin_pizz" }[]
+  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka" | "gm_lead_6_voice" | "gm_queen_random" | "violin_legato"; lfo?: boolean; delay?: number; reverb?: number; decay?: number }[]
+  bishops?: { pattern: (number | number[] | null)[]; velocities?: (number | null)[]; gain: number; pan: number; sound?: "piano" | "xylophone" | "gm_xylophone" | "woodwind"; lfo?: "siren" | "sine" | null; delay?: number; reverb?: number; decay?: number }[] // Piano
+  kings?: { pattern: (number | number[] | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka" | "gm_acoustic_bass" | "gm_woodblock" | "gm_melodic_tom" | "timpani"; delay?: number; reverb?: number; decay?: number; adsr?: [number, number, number, number]; room?: number; color?: "w" | "b" }[]
+  knights?: { pattern: (number | null)[]; gain: number; pan: number; sound: "bass" | "gm_acoustic_bass" | "brass_staccato"; adsr: [number, number, number, number]; room?: number; delay?: number; reverb?: number; decay?: number }[]
+  rooks?: { pattern: (number[] | null)[]; gain: number; pan: number; delay?: number; reverb?: number; decay?: number; sound?: "string_pad" }[]
   
   // Legacy/Fallback
   kick?: { pattern: boolean[]; gain: number; probability?: number }
@@ -1342,6 +1768,7 @@ export interface ParsedPattern {
     gain: number;
     probability?: number;
     adsr: [number, number, number, number];
+    sound?: "string_pad" | "synth_pad";
   }
   lead?: {
     pattern: (number | null)[];

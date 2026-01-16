@@ -3,15 +3,15 @@
 import { Suspense, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { WorldMap } from "@/components/world-map"
-import { ChessGame } from "@/components/chess-game"
+import { DusseldorfGame } from "@/components/modes/dusseldorf-game"
+import { NycGame } from "@/components/modes/nyc-game"
 import { type CityData, getCityById } from "@/lib/cities-data"
 
 function GameContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedCity, setSelectedCity] = useState<CityData | null>(null)
-  
-  // Sync state with URL on mount and when URL changes
+
   useEffect(() => {
     const cityId = searchParams.get("city")
     if (cityId) {
@@ -19,7 +19,6 @@ function GameContent() {
       if (city) {
         setSelectedCity(city)
       } else {
-        // Invalid city ID, reset URL
         router.replace("/")
         setSelectedCity(null)
       }
@@ -39,7 +38,10 @@ function GameContent() {
   }
 
   if (selectedCity) {
-    return <ChessGame city={selectedCity} onBack={handleBack} />
+    if (selectedCity.id === "nyc") {
+      return <NycGame city={selectedCity} onBack={handleBack} />
+    }
+    return <DusseldorfGame city={selectedCity} onBack={handleBack} />
   }
 
   return <WorldMap onCitySelect={handleCitySelect} />

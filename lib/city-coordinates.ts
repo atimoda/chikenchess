@@ -45,5 +45,9 @@ export const cityCoordinates: Record<string, { x: number; y: number }> = {
   "paris": {
     "x": 42.91,
     "y": 27.36
+  },
+  "vienna": {
+    "x": 49.5,
+    "y": 25.0
   }
 }

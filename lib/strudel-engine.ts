@@ -52,46 +52,74 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
   layers.push(``)
   layers.push(`stack(`)
 
-  // 1. PAWNS (Drum Layers)
-  // "Cada peão ative um único instrumento (camada) da bateria"
-  // "Peão inicie com gain de 0.5, e a cada passo para a frente, aumente 0.1 de gain"
-  // "Alterar o 'pan' de acordo com a casa... direita (0) ou esquerda (1)"
+  
+  // 1. PAWNS (Drum Layers / Violins for Vienna)
   if (pawns.length > 0) {
-    const drumSamples = ["bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy"]
-    
-    pawns.forEach((p, i) => {
-      if (i >= 8) return // Limit to 8 layers
+    if (city.id === "vienna") {
+       // VIENNA: Pawns -> Violins (Pizzicato)
+       pawns.forEach((p, i) => {
+         if (i >= 8) return 
+         
+         // Simple rhythmic pattern based on position
+         const pattern = new Array(16).fill(0)
+         const step = (p.file * 2 + p.rank) % 16
+         pattern[step] = 1
+         if (p.rank > 3) pattern[(step + 8) % 16] = 1 // More activity if advanced
+         
+         const str = patternToMini(pattern)
+         
+         // Pitch based on file (scale degree)
+         // C Major scale degrees: 0=C, 1=D, 2=E, etc.
+         const degree = p.file % 7
+         const noteName = city.scale[degree] || "C4"
+         
+         // Gain increases with rank
+         const advancement = p.color === 'w' ? Math.max(0, p.rank - 1) : Math.max(0, 6 - p.rank)
+         const gain = Math.min(1.0, 0.4 + advancement * 0.1).toFixed(2)
+         
+         // Pan based on file
+         const pan = ((p.file / 7) * 2 - 1).toFixed(2) // -1 to 1
 
-      // Calculate Step for rhythm (simple distribution)
-      const pattern = new Array(16).fill(0)
-      const step = (p.file * 2 + p.rank) % 16
-      pattern[step] = 1
-      // Add a second hit for rhythm density
-      if (p.rank > 2 && p.rank < 6) {
-        pattern[(step + 8) % 16] = 1
-      }
-      const str = patternToMini(pattern)
+         layers.push(`  // Violin ${p.square}`)
+         layers.push(`  note("${noteName}")`)
+         layers.push(`    .struct("${str}")`)
+         layers.push(`    .sound("violin_pizz")`)
+         layers.push(`    .gain(${gain}).pan(${pan}),`)
+       })
+
+    } else {
+      // DEFAULT (Dusseldorf/NYC/etc): Drums
+      const drumSamples = ["bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy"]
       
-      // Calculate Gain
-      // White starts at rank 1 (index 1), moves to 7. Gain 0.5 + (rank-1)*0.1
-      // Black starts at rank 6 (index 6), moves to 0. Gain 0.5 + (6-rank)*0.1
-      const advancement = p.color === 'w' ? Math.max(0, p.rank - 1) : Math.max(0, 6 - p.rank)
-      const gain = Math.min(1.0, 0.5 + advancement * 0.1).toFixed(2)
+      pawns.forEach((p, i) => {
+        if (i >= 8) return // Limit to 8 layers
 
-      // Calculate Pan
-      // "quanto mais a peça andar para a esquerda ou direita, o 'pan' é alterado para a direita (0) ou para a esquerda (1)"
-      // File 0 (Left/A) -> Pan 1? User said "direita (0) ou esquerda (1)". Usually Left is -1/0, Right is 1.
-      // Assuming User mapping: Left(File 0) -> 1, Right(File 7) -> 0.
-      const pan = (1 - (p.file / 7)).toFixed(2)
+        // Calculate Step for rhythm (simple distribution)
+        const pattern = new Array(16).fill(0)
+        const step = (p.file * 2 + p.rank) % 16
+        pattern[step] = 1
+        // Add a second hit for rhythm density
+        if (p.rank > 2 && p.rank < 6) {
+          pattern[(step + 8) % 16] = 1
+        }
+        const str = patternToMini(pattern)
+        
+        // Calculate Gain
+        const advancement = p.color === 'w' ? Math.max(0, p.rank - 1) : Math.max(0, 6 - p.rank)
+        const gain = Math.min(1.0, 0.5 + advancement * 0.1).toFixed(2)
 
-      // Sample selection based on file
-      const sample = drumSamples[p.file % drumSamples.length]
+        // Calculate Pan
+        const pan = (1 - (p.file / 7)).toFixed(2)
 
-      layers.push(`  // Pawn ${p.square} (${sample})`)
-      layers.push(`  s("${sample}")`)
-      layers.push(`    .struct("${str}")`)
-      layers.push(`    .gain(${gain}).pan(${pan}),`)
-    })
+        // Sample selection based on file
+        const sample = drumSamples[p.file % drumSamples.length]
+
+        layers.push(`  // Pawn ${p.square} (${sample})`)
+        layers.push(`  s("${sample}")`)
+        layers.push(`    .struct("${str}")`)
+        layers.push(`    .gain(${gain}).pan(${pan}),`)
+      })
+    }
   }
 
   const inCheck = game.isCheck()
@@ -111,10 +139,15 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
       // Pan: -1 (Left/File 0) to 1 (Right/File 7)
       const posPan = ((b.file / 7) * 2 - 1).toFixed(2)
       
+      let sound = "gm_xylophone"
+      if (city.id === "vienna") {
+          sound = "woodwind"
+      }
+
       layers.push(`  // Bishop ${b.square} (${scaleName})`)
       layers.push(`  note(${patternNote})`)
       layers.push(`    .scale("${scaleName}")`)
-      layers.push(`    .sound("gm_xylophone")`)
+      layers.push(`    .sound("${sound}")`)
       layers.push(`    .room(.4).delay(.125).slow(2)`)
       layers.push(`    .pan(${posPan}),`)
     })
@@ -125,13 +158,18 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
   const king = pieces.find(p => p.type === 'k')
   if (king) {
     const soundName = inCheck ? "gm_melodic_tom" : "gm_woodblock"
-    const notePattern = inCheck ? "c2 [eb2,g2] " : "c2 "
+      const notePattern = inCheck ? "c2 [eb2,g2] " : "c2 "
+      
+      let finalSound = soundName
+      if (city.id === "vienna") {
+          finalSound = "timpani"
+      }
     
-    layers.push(`  // King (${soundName})`)
-    layers.push(`  setcpm(60)`)
-    layers.push(`  note("${notePattern}".add("<0 <1 -1>>"))`)
-    layers.push(`    .sound("${soundName}")`) 
-    layers.push(`    .room(.5),`)
+      layers.push(`  // King (${finalSound})`)
+      layers.push(`  setcpm(60)`)
+      layers.push(`  note("${notePattern}".add("<0 <1 -1>>"))`)
+      layers.push(`    .sound("${finalSound}")`) 
+      layers.push(`    .room(.5),`)
   }
 
   // 4. KNIGHTS (Acoustic Bass)
@@ -252,8 +290,21 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
 
   // --- PAWN LOGIC (8 Layers, Gain, Pan) ---
   const pawnLayers = pawns.slice(0, 8).map(p => {
-    const drumSamples = ["bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy"]
-    const sample = drumSamples[p.file % drumSamples.length]
+    let sample = ""
+    let frequency: number | undefined = undefined
+    const fx = getEffects(p.square)
+
+    if (city.id === "vienna") {
+        sample = "violin_pizz"
+        // Scale degree based on file
+        const degree = p.file % 7
+        const noteName = city.scale[degree] || "C4"
+        const pitchMult = fx.pitch ?? 1
+        frequency = noteToFrequency(noteName) * pitchMult
+    } else {
+        const drumSamples = ["bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy"]
+        sample = drumSamples[p.file % drumSamples.length]
+    }
     
     const pattern = new Array(16).fill(false)
     const step = (p.file * 2 + p.rank) % 16
@@ -269,7 +320,6 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     let pan = (p.file / 7) * 2 - 1
     
     // Apply Effects
-    const fx = getEffects(p.square)
     if (fx.gain !== undefined) gain *= fx.gain
     if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
 
@@ -281,14 +331,14 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       color: p.color,
       delay: fx.delay,
       reverb: fx.reverb,
-      pitch: fx.pitch
+      pitch: fx.pitch,
+      frequency
     }
   })
 
   // --- QUEEN LOGIC (Random Low Octave Pattern) ---
   // "note("c2 g2!2 d2 f1").s(wchoose(["sine",10], ["triangle",1], ["bd:6",1]))"
   const queenLayers = queens.map(q => {
-    const pattern = new Array(16).fill(null)
     const fx = getEffects(q.square)
     const pitchMult = fx.pitch ?? 1
     
@@ -297,18 +347,20 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     const offset = (q.file + q.rank) % 5
     const ratio = Math.pow(2, offset / 12)
 
-    const c2 = noteToFrequency("c2") * ratio * pitchMult
-    const g2 = noteToFrequency("g2") * ratio * pitchMult
-    const d2 = noteToFrequency("d2") * ratio * pitchMult
-    const f1 = noteToFrequency("f1") * ratio * pitchMult
+    let sound: "gm_queen_random" | "violin_legato" = "gm_queen_random"
+    let c2 = noteToFrequency("c2") * ratio * pitchMult
+    let g2 = noteToFrequency("g2") * ratio * pitchMult
+    let d2 = noteToFrequency("d2") * ratio * pitchMult
+    let f1 = noteToFrequency("f1") * ratio * pitchMult
+
+    if (city.id === "vienna") {
+        sound = "violin_legato"
+        c2 *= 4; g2 *= 4; d2 *= 4; f1 *= 4;
+    }
+
+    const pattern = new Array(16).fill(null)
 
     // Pattern: c2 g2!2 d2 f1
-    // Mapping to 16 steps (4 beats):
-    // Beat 0 (0): c2
-    // Beat 1 (4): g2!2 -> g2 at 4, g2 at 6 (subdivision)
-    // Beat 2 (8): d2
-    // Beat 3 (12): f1
-
     pattern[0] = c2
     pattern[4] = g2
     pattern[6] = g2
@@ -325,7 +377,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       pattern,
       gain,
       pan,
-      sound: "gm_queen_random" as const, // New sound type
+      sound, 
       adsr: [0.01, 0.1, 0.5, 0.5] as [number, number, number, number],
       color: q.color,
       delay: fx.delay,
@@ -369,6 +421,12 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     // (0/7)*2 - 1 = -1. Correct.
     
     let gain = 0.5 // Reduced volume by 50% (Base was implicit 1.0 or high)
+    let sound: "gm_xylophone" | "woodwind" = "gm_xylophone"
+
+    if (city.id === "vienna") {
+        sound = "woodwind"
+        // Woodwinds can be sustained or short. Defaulting to short in pattern logic for now.
+    }
     
     if (fx.gain !== undefined) gain *= fx.gain
     if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
@@ -378,7 +436,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       velocities: new Array(16).fill(1),
       gain,
       pan,
-      sound: "gm_xylophone" as const,
+      sound,
       lfo: null,
       delay: fx.delay ?? 0.125,
       reverb: fx.reverb ?? 0.4,
@@ -429,7 +487,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
           pattern,
           gain,
           pan,
-          sound: soundName as "gm_melodic_tom" | "gm_woodblock", // Dynamic sound name
+          sound: soundName as "gm_melodic_tom" | "gm_woodblock" | "timpani", // Dynamic sound name
           color: k.color,
           adsr: [0.1, 0, 0.2, 1.0] as [number, number, number, number],
           room: 0.5,
@@ -452,6 +510,11 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     
     let pan = (k.file / 7) * 2 - 1
     let gain = 0.5
+    let sound: string = "gm_acoustic_bass"
+
+    if (city.id === "vienna") {
+        sound = "brass_staccato"
+    }
     
     if (fx.gain !== undefined) gain *= fx.gain
     if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
@@ -460,7 +523,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       pattern,
       gain,
       pan,
-      sound: "gm_acoustic_bass",
+      sound,
       adsr: [0.1, 0.2, 1.0, 0.1] as [number, number, number, number],
       room: 0.5,
       delay: fx.delay,
@@ -481,16 +544,18 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
   return {
     bpm: city.bpm,
     swing: 0,
+    cityId: city.id,
+    scale: city.scale,
     pawns: pawnLayers,
     queens: queenLayers, 
-    bishops: pianoLayers, // Renamed 'piano' to 'bishops'
+    bishops: pianoLayers,
     kings: kingLayers, 
-    knights: knightLayers.map(k => ({...k, sound: "gm_acoustic_bass" as "gm_acoustic_bass" | "bass"})),
+    knights: knightLayers,
     bass: {
       pattern: bassPattern,
       cutoff: 600,
       resonance: 5,
-      gain: 0, // Disable legacy bass
+      gain: 0,
       adsr: [0.1, 0.2, 0.8, 1.0]
     },
     pad: {
@@ -498,10 +563,11 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       pan: 0,
       reverb: 0.3,
       gain: rooks.length > 0 ? 0.25 : 0,
-      adsr: [0.5, 0.5, 0.8, 1.0]
+      adsr: [0.5, 0.5, 0.8, 1.0],
+      sound: city.id === "vienna" ? "string_pad" : "synth_pad"
     },
     effects: {
-      distort: inCheck ? 0.4 : 0,
+      distort: inCheck ? 0.25 : 0,
       delay: 0.2,
     },
   }

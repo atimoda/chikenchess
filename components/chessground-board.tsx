@@ -10,6 +10,7 @@ interface ChessgroundBoardProps {
   game: Chess
   onMove: (move: Move) => void
   onBoardClick?: (square: Square) => void
+  onDragOverSquare?: (from: Square, to: Square) => void
   cityColor: string
   isThinking: boolean
   orientation?: "white" | "black"
@@ -47,6 +48,7 @@ export function ChessgroundBoard({
   onBoardClick,
   synthSelectedSquare,
   activeSquares,
+  onDragOverSquare,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -60,6 +62,10 @@ export function ChessgroundBoard({
     x: number
     y: number
   } | null>(null)
+  const lastHoverSquareRef = useRef<Square | null>(null)
+  const selectionLastSquareRef = useRef<Square | null>(null)
+  const dragHighlightTimeoutRef = useRef<number | null>(null)
+  const [isSelectingSquares, setIsSelectingSquares] = useState(false)
 
   const board = game.board()
   const inCheck = game.isCheck()
@@ -143,13 +149,15 @@ export function ChessgroundBoard({
 
   const handleSquareClick = useCallback(
     (square: Square) => {
-      // Notify parent of click (for synth/pad functionality)
       if (onBoardClick) {
         onBoardClick(square)
       }
 
+      if (isSelectingSquares) {
+        return
+      }
+
       if (isThinking && turn === "b") {
-        // Allow premoves while AI is thinking
         if (selectedSquare) {
           setPremove({ from: selectedSquare, to: square })
           setSelectedSquare(null)
@@ -159,7 +167,6 @@ export function ChessgroundBoard({
       }
 
       if (turn !== "w" || game.isGameOver()) {
-        // Clear selection if it's not player's turn
         if (selectedSquare) {
           setSelectedSquare(null)
           setLegalMoves([])
@@ -170,7 +177,6 @@ export function ChessgroundBoard({
       const piece = game.get(square)
 
       if (selectedSquare) {
-        // Try to make a move
         try {
           const move = game.move({
             from: selectedSquare,
@@ -190,15 +196,11 @@ export function ChessgroundBoard({
             return
           }
         } catch {
-          // Invalid move
         }
       }
 
-      // If square is occupied, select it (white border will be applied by isSynthSelected logic)
-      // The user requested: "quando o usuário clica numa peça, selecione a casa desta peça"
       if (piece) {
         setSelectedSquare(square)
-        // Calculate legal moves for this piece if it's our turn
         if (piece.color === turn) {
           try {
             const moves = game.moves({ square, verbose: true })
@@ -210,12 +212,10 @@ export function ChessgroundBoard({
           setLegalMoves([])
         }
 
-        // Notify parent for synth control
         if (onBoardClick) {
           onBoardClick(square)
         }
       } else {
-        // Empty square logic (for Pad Kontrol) handled by parent via onBoardClick
         setSelectedSquare(null)
         setLegalMoves([])
         if (onBoardClick) {
@@ -223,7 +223,7 @@ export function ChessgroundBoard({
         }
       }
     },
-    [game, selectedSquare, turn, isThinking, onMove],
+    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares],
   )
 
   // Handle drag and drop
@@ -234,15 +234,18 @@ export function ChessgroundBoard({
       const piece = game.get(square)
       if (!piece || piece.color !== "w") return
 
+      if (!boardRef.current) return
+
       e.preventDefault()
+      const rect = boardRef.current.getBoundingClientRect()
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
       setDragPiece({
         piece: `${piece.color}${piece.type.toUpperCase()}`,
         from: square,
-        x: clientX,
-        y: clientY,
+        x: clientX - rect.left,
+        y: clientY - rect.top,
       })
 
       setSelectedSquare(square)
@@ -252,22 +255,94 @@ export function ChessgroundBoard({
     [game, turn],
   )
 
+  const [dragHighlight, setDragHighlight] = useState<{ square: Square | null; visible: boolean }>({
+    square: null,
+    visible: false,
+  })
+
   const handleDragMove = useCallback(
     (e: MouseEvent | TouchEvent) => {
-      if (!dragPiece) return
+      if (!dragPiece || !boardRef.current) return
 
+      const rect = boardRef.current.getBoundingClientRect()
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
-      setDragPiece((prev) => (prev ? { ...prev, x: clientX, y: clientY } : null))
+      const x = clientX - rect.left
+      const y = clientY - rect.top
+
+      setDragPiece((prev) =>
+        prev
+          ? {
+              ...prev,
+              x,
+              y,
+            }
+          : null,
+      )
+
+      const squareSize = rect.width / 8
+      const file = Math.floor(x / squareSize)
+      const rank = Math.floor(y / squareSize)
+
+      if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+        const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
+        if (lastHoverSquareRef.current !== targetSquare) {
+          lastHoverSquareRef.current = targetSquare
+          setDragHighlight({ square: targetSquare, visible: true })
+          if (dragHighlightTimeoutRef.current !== null) {
+            window.clearTimeout(dragHighlightTimeoutRef.current)
+          }
+          dragHighlightTimeoutRef.current = window.setTimeout(() => {
+            setDragHighlight((prev) =>
+              prev.square === targetSquare ? { ...prev, visible: false } : prev,
+            )
+          }, 1000)
+          if (onDragOverSquare) {
+            onDragOverSquare(dragPiece.from, targetSquare)
+          }
+        }
+      } else {
+        lastHoverSquareRef.current = null
+      }
     },
-    [dragPiece],
+    [dragPiece, onDragOverSquare],
+  )
+
+  const handleBoardMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isSelectingSquares || !boardRef.current || dragPiece) return
+      if (e.buttons === 0) {
+        setIsSelectingSquares(false)
+        selectionLastSquareRef.current = null
+        return
+      }
+
+      const rect = boardRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const squareSize = rect.width / 8
+      const file = Math.floor(x / squareSize)
+      const rank = Math.floor(y / squareSize)
+
+      if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+        const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
+        if (targetSquare !== selectionLastSquareRef.current) {
+          selectionLastSquareRef.current = targetSquare
+          handleSquareClick(targetSquare)
+        }
+      }
+    },
+    [isSelectingSquares, handleSquareClick, dragPiece],
   )
 
   const handleDragEnd = useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (!dragPiece || !boardRef.current) {
         setDragPiece(null)
+        lastHoverSquareRef.current = null
+        setIsSelectingSquares(false)
+        selectionLastSquareRef.current = null
         return
       }
 
@@ -303,6 +378,9 @@ export function ChessgroundBoard({
       }
 
       setDragPiece(null)
+      lastHoverSquareRef.current = null
+      setIsSelectingSquares(false)
+      selectionLastSquareRef.current = null
       setSelectedSquare(null)
       setLegalMoves([])
     },
@@ -324,6 +402,26 @@ export function ChessgroundBoard({
       }
     }
   }, [dragPiece, handleDragMove, handleDragEnd])
+
+  useEffect(() => {
+    const handleWindowMouseUp = () => {
+      setIsSelectingSquares(false)
+      selectionLastSquareRef.current = null
+    }
+    window.addEventListener("mouseup", handleWindowMouseUp)
+    window.addEventListener("touchend", handleWindowMouseUp)
+    return () => {
+      window.removeEventListener("mouseup", handleWindowMouseUp)
+      window.removeEventListener("touchend", handleWindowMouseUp)
+    }
+  }, [])
+  useEffect(() => {
+    return () => {
+      if (dragHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(dragHighlightTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Clear premove when turn changes
   useEffect(() => {
@@ -347,7 +445,7 @@ export function ChessgroundBoard({
   }, [turn, premove, game, onMove])
 
   return (
-    <div className="relative select-none">
+    <div className="relative select-none w-full h-full">
       {/* Thinking indicator - REMOVED per user request */}
 
       {/* Premove indicator */}
@@ -359,10 +457,21 @@ export function ChessgroundBoard({
 
       <div
         ref={boardRef}
-        className="grid grid-cols-8 rounded-lg overflow-hidden relative fade-transparency"
+        className="grid grid-cols-8 rounded-lg overflow-hidden relative fade-transparency w-full h-full"
         style={{
           border: `2px solid ${cityColor}`,
           boxShadow: `0 0 40px ${cityColor}40, inset 0 0 20px ${cityColor}10`,
+        }}
+        onMouseMove={handleBoardMouseMove}
+        onMouseUp={(e) => {
+          if (dragPiece) {
+            handleDragEnd(e.nativeEvent)
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (dragPiece) {
+            handleDragEnd(e.nativeEvent)
+          }
         }}
       >
         {ROWS.map((row, rowIndex) =>
@@ -391,28 +500,83 @@ export function ChessgroundBoard({
               <button
                 key={square}
                 className={cn(
-                  "relative aspect-square flex items-center justify-center transition-colors duration-150",
-                  "w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16",
-                  (isSynthSelected || (piece && isSynthSelected)) && "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                  "relative aspect-square flex items-center justify-center transition-colors duration-150 w-full",
+                  (isSynthSelected || (piece && isSynthSelected)) &&
+                    "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]",
                 )}
                 style={{
-            boxShadow: isActive ? `inset 0 0 0 2px ${cityColor}, 0 0 10px ${cityColor}80` : undefined,
-            backgroundColor: isKingInCheck
-              ? "rgba(239, 68, 68, 0.6)"
-              : isSelected
-                ? `${cityColor}40`
-                : isPremoveSquare
-                  ? "rgba(59, 130, 246, 0.3)"
-                  : isLastMove
-                    ? lastMoveColor
-                    : isLight
-                      ? `${cityColor}40` // Light squares: increased opacity
-                      : `${cityColor}25`, // Dark squares: increased opacity for better visibility
-          }}
-                onClick={() => handleSquareClick(square)}
-                onMouseDown={(e) => handleDragStart(e, square)}
-                onTouchStart={(e) => handleDragStart(e, square)}
+                  boxShadow: isActive ? `inset 0 0 0 2px ${cityColor}, 0 0 10px ${cityColor}80` : undefined,
+                  backgroundColor: isKingInCheck
+                    ? "rgba(239, 68, 68, 0.6)"
+                    : isSelected
+                      ? `${cityColor}40`
+                      : isPremoveSquare
+                        ? "rgba(59, 130, 246, 0.3)"
+                        : isLastMove
+                          ? lastMoveColor
+                          : isLight
+                            ? `${cityColor}40`
+                            : `${cityColor}25`,
+                }}
+                onMouseDown={(e) => {
+                  const hasPiece = !!piece
+                  if (!hasPiece) {
+                    setIsSelectingSquares(true)
+                    selectionLastSquareRef.current = square
+                  } else {
+                    setIsSelectingSquares(false)
+                  }
+                  handleSquareClick(square)
+                  handleDragStart(e, square)
+                }}
+                onTouchStart={(e) => {
+                  const hasPiece = !!piece
+                  if (!hasPiece) {
+                    setIsSelectingSquares(true)
+                    selectionLastSquareRef.current = square
+                  } else {
+                    setIsSelectingSquares(false)
+                  }
+                  handleSquareClick(square)
+                  handleDragStart(e, square)
+                }}
               >
+                {dragHighlight.square === square && (
+                  <div
+                    className={cn(
+                      "absolute inset-0 pointer-events-none rounded-none",
+                      dragHighlight.visible ? "opacity-100" : "opacity-0",
+                    )}
+                    style={{
+                      border: "2px solid #fb923c",
+                      boxShadow: dragHighlight.visible
+                        ? "0 0 12px rgba(251, 146, 60, 0.8)"
+                        : "0 0 0 rgba(0,0,0,0)",
+                      transition: "opacity 1s ease-out, box-shadow 1s ease-out",
+                      zIndex: 15,
+                    }}
+                  />
+                )}
+
+                {isActive && (
+                  <>
+                    <div
+                      className="absolute inset-0 pointer-events-none rounded-none active-border-fade"
+                      style={{
+                        border: `1px solid ${cityColor}`,
+                        boxShadow: `0 0 16px ${cityColor}`,
+                        zIndex: 13,
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 pointer-events-none rounded-none animate-pulse"
+                      style={{
+                        boxShadow: `0 0 18px ${cityColor}90`,
+                        zIndex: 12,
+                      }}
+                    />
+                  </>
+                )}
                 {/* Legal move indicator */}
                 {isLegalMove && (
                   <div
@@ -474,7 +638,7 @@ export function ChessgroundBoard({
       {/* Dragged piece */}
       {dragPiece && (
         <div
-          className="fixed pointer-events-none z-50 w-16 h-16"
+          className="absolute pointer-events-none z-50 w-16 h-16"
           style={{
             left: dragPiece.x - 32,
             top: dragPiece.y - 32,

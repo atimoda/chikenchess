@@ -162,6 +162,19 @@
   }
 }
 
+.active-border-fade {
+  animation: fadeActiveBorder 1s ease-out forwards;
+}
+
+@keyframes fadeActiveBorder {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }

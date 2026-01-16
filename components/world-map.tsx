@@ -45,6 +45,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string, rotation: number } | null>(null)
   const [hoveredCityId, setHoveredCityId] = useState<string | null>(null)
+  const [isEntering, setIsEntering] = useState(false)
 
   // --- AUDIO LOGIC ---
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -359,6 +360,36 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           const gain = ctx.createGain()
           gain.gain.setValueAtTime(0.005, t)
           gain.gain.exponentialRampToValueAtTime(0.1, t + dur - 0.1)
+          gain.gain.linearRampToValueAtTime(0, t + dur)
+
+          noise.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          
+          noise.start(t)
+      } else if (type === "suction") {
+          // Reverse suction effect
+          const dur = 1.5
+          const bufferSize = ctx.sampleRate * dur
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          // Pink/White noise with increasing amplitude
+          for (let i = 0; i < bufferSize; i++) {
+              data[i] = (Math.random() * 2 - 1) * Math.pow((i / bufferSize), 2)
+          }
+          
+          const noise = ctx.createBufferSource()
+          noise.buffer = buffer
+          
+          const filter = ctx.createBiquadFilter()
+          filter.type = "lowpass"
+          filter.frequency.setValueAtTime(100, t)
+          filter.frequency.exponentialRampToValueAtTime(8000, t + dur)
+          filter.Q.value = 5
+
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0, t)
+          gain.gain.linearRampToValueAtTime(0.8, t + dur - 0.1)
           gain.gain.linearRampToValueAtTime(0, t + dur)
 
           noise.connect(filter)
@@ -885,12 +916,16 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             transitionDuration: `${transitionDuration}ms`
           }}
         >
-          {/* World Map SVG Background */}
-          <img
-            src="/world_map_tech.svg"
-            alt="World Map"
-            className="absolute inset-0 w-full h-full object-fill select-none pointer-events-none opacity-50"
-            draggable={false}
+          {/* World Map SVG Background - Masked for custom color */}
+          <div
+            className="absolute inset-0 w-full h-full select-none pointer-events-none"
+            style={{
+                maskImage: `url(/world_map_tech.svg)`,
+                maskRepeat: 'no-repeat',
+                maskSize: '100% 100%',
+                backgroundColor: '#0E6C4D',
+                opacity: 1
+            }}
           />
 
           {/* City Markers ONLY (No Popups here) */}
@@ -1130,26 +1165,42 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                         TARGET BPM: <span style={{ color: city.color }}>{city.bpm}</span>
                       </span>
                       <button 
-                        className="px-3 py-1.5 rounded border transition-all cursor-pointer" 
-                        style={{ borderColor: city.color, color: city.color }}
+                        className={cn(
+                           "px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100]",
+                           isEntering && "pointer-events-none"
+                        )}
+                        style={{ 
+                            borderColor: city.color, 
+                            color: city.color,
+                            transform: isEntering ? 'scale(20)' : 'scale(1)', 
+                            opacity: isEntering ? 0 : 1,
+                            transition: 'transform 1.5s cubic-bezier(0.5, 0, 1, 1), opacity 1.4s ease-in 0.1s'
+                        }}
                         onMouseEnter={(e) => {
+                            if (isEntering) return
                             e.currentTarget.style.color = 'white';
                             e.currentTarget.style.boxShadow = `0 0 15px ${city.color}`;
                             startPadSound();
                         }}
                         onMouseMove={(e) => {
+                            if (isEntering) return
                             const rect = e.currentTarget.getBoundingClientRect();
                             updatePadSound(e.clientX - rect.left, rect.width);
                         }}
                         onMouseLeave={(e) => {
+                            if (isEntering) return
                             e.currentTarget.style.color = city.color;
                             e.currentTarget.style.boxShadow = 'none';
                             stopPadSound();
                         }}
                         onClick={() => {
                           stopPadSound();
-                          playMapSound("tubularbells2", true);
-                          onCitySelect(city);
+                          if (isEntering) return;
+                          playMapSound("suction", true);
+                          setIsEntering(true);
+                          setTimeout(() => {
+                             onCitySelect(city);
+                          }, 1500);
                         }}
                       >
                         ENTER ARENA

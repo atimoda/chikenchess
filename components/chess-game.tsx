@@ -15,7 +15,7 @@ import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS } from "@/lib/types"
-import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2 } from "lucide-react"
+import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, ThumbsUp, ThumbsDown } from "lucide-react"
 import { toast } from "sonner"
 import { unlockNextCity } from "@/lib/game-progression"
 import {
@@ -48,11 +48,19 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [activeSquares, setActiveSquares] = useState<Set<string>>(new Set())
   const [synthSelectedSquare, setSynthSelectedSquare] = useState<string | null>(null)
   const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
-  
+  const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
+  const [lastEvalQuality, setLastEvalQuality] = useState<"good" | "bad" | null>(null)
+  const [lastEvalDelta, setLastEvalDelta] = useState<number | null>(null)
+ 
   const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
+  const evalStockfishRef = useRef<Worker | null>(null)
+  const evalSideToMoveRef = useRef<"w" | "b">("w")
+  const evalLastScoreRef = useRef<number | null>(null)
+  const evalPendingRef = useRef(false)
+  const lastEvalScoreRef = useRef<number | null>(null)
 
-  const { togglePlayback, playCheckmate, playSquareSample } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
+  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
 
   // Keep ref in sync
   useEffect(() => {
@@ -66,7 +74,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     stockfishRef.current.postMessage("isready")
 
     stockfishRef.current.onmessage = (event) => {
-      const message = event.data
+      const message = event.data as string
       if (message.startsWith("bestmove")) {
         const moveStr = message.split(" ")[1]
         if (moveStr && moveStr !== "(none)") {
@@ -76,8 +84,57 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }
     }
 
+    evalStockfishRef.current = new Worker("/stockfish.js")
+    evalStockfishRef.current.postMessage("uci")
+    evalStockfishRef.current.postMessage("isready")
+
+    evalStockfishRef.current.onmessage = (event) => {
+      const message = event.data as string
+      if (message.startsWith("info")) {
+        const mateMatch = message.match(/score mate (-?\d+)/)
+        const cpMatch = message.match(/score cp (-?\d+)/)
+        if (mateMatch) {
+          const mate = parseInt(mateMatch[1], 10)
+          const baseScore = mate > 0 ? 10000 : -10000
+          const side = evalSideToMoveRef.current
+          evalLastScoreRef.current = side === "w" ? baseScore : -baseScore
+        } else if (cpMatch) {
+          const cp = parseInt(cpMatch[1], 10)
+          const side = evalSideToMoveRef.current
+          evalLastScoreRef.current = side === "w" ? cp : -cp
+        }
+      } else if (message.startsWith("bestmove")) {
+        const finalScore = evalLastScoreRef.current
+        if (finalScore != null && evalPendingRef.current) {
+          const previous = lastEvalScoreRef.current
+          setLastEvalScore(finalScore)
+          lastEvalScoreRef.current = finalScore
+          if (previous == null) {
+            setLastEvalDelta(null)
+            const quality = finalScore >= 0 ? "good" : "bad"
+            setLastEvalQuality(quality)
+          } else {
+            const delta = finalScore - previous
+            setLastEvalDelta(delta)
+            const threshold = 30
+            let quality: "good" | "bad"
+            if (delta >= threshold) {
+              quality = "good"
+            } else if (delta <= -threshold) {
+              quality = "bad"
+            } else {
+              quality = delta >= 0 ? "good" : "bad"
+            }
+            setLastEvalQuality(quality)
+          }
+        }
+        evalPendingRef.current = false
+      }
+    }
+
     return () => {
       stockfishRef.current?.terminate()
+      evalStockfishRef.current?.terminate()
     }
   }, [])
 
@@ -109,12 +166,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           description: "Try again to unlock the next city."
         })
       }
+    } else if (game.isDraw() || game.isStalemate()) {
+      setGameStatus("DRAW!")
+      setIsPlaying(false)
+      playDrawKalimba()
+      toast("DRAW", {
+        description: "The game ended in a draw.",
+      })
     } else if (game.isCheck()) {
       setGameStatus("CHECK!")
-    } else if (game.isDraw()) {
-      setGameStatus("DRAW!")
-    } else if (game.isStalemate()) {
-      setGameStatus("STALEMATE!")
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "AI analyzing...")
     }
@@ -221,13 +281,20 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         const next = new Set(prev)
         next.delete(move.from)
         next.add(move.to)
-        // Handle castling
         if (move.san === "O-O" || move.san === "O-O-O") {
-          if (move.to === "g1") { next.delete("h1"); next.add("f1"); } // White Kingside
-          if (move.to === "c1") { next.delete("a1"); next.add("d1"); } // White Queenside
+          if (move.to === "g1") { next.delete("h1"); next.add("f1"); }
+          if (move.to === "c1") { next.delete("a1"); next.add("d1"); }
         }
         return next
       })
+      evalSideToMoveRef.current = gameCopy.turn()
+      evalLastScoreRef.current = null
+      evalPendingRef.current = true
+      if (evalStockfishRef.current) {
+        evalStockfishRef.current.postMessage("stop")
+        evalStockfishRef.current.postMessage(`position fen ${gameCopy.fen()}`)
+        evalStockfishRef.current.postMessage("go depth 10")
+      }
     },
     [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback],
   )
@@ -343,6 +410,26 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const hasStarted = moveHistory.length > 0
   const visualizerClass = "w-full h-16 md:h-24"
+
+  const evalIntensity =
+    lastEvalDelta === null ? 0.6 : 0.4 + Math.min(Math.abs(lastEvalDelta) / 100, 1) * 0.6
+  const evalIconColor =
+    lastEvalQuality === "good"
+      ? `rgba(22, 163, 74, ${evalIntensity})`
+      : `rgba(220, 38, 38, ${evalIntensity})`
+  const evalNumberMagnitude =
+    lastEvalDelta === null ? null : Math.min(5, Math.abs(lastEvalDelta) / 100)
+  const evalNumberText =
+    evalNumberMagnitude === null
+      ? ""
+      : `${lastEvalDelta! >= 0 ? "+" : "-"}${
+          evalNumberMagnitude < 1 ? evalNumberMagnitude.toFixed(1) : Math.round(evalNumberMagnitude).toString()
+        }`
+
+  const whiteAdvantage =
+    lastEvalScore === null ? 0.5 : 1 / (1 + Math.pow(10, lastEvalScore / 400))
+  const whitePercent = Math.round(whiteAdvantage * 100)
+  const blackPercent = 100 - whitePercent
 
   return (
     <div
@@ -465,7 +552,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-8 p-4 lg:p-6 mx-auto">
+      <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-4 px-0 py-4 lg:px-6 lg:py-6 mx-auto">
         {/* Left Panel - Game Info & Controls */}
         <div className="lg:w-64 order-2 lg:order-1 flex flex-col gap-4">
           <div>
@@ -490,8 +577,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
 
         {/* Main Game Area */}
-        <div className="flex flex-col gap-4 order-1 lg:order-2 items-center shrink-0">
-          <div className="w-full max-w-[calc(8*3rem)] sm:max-w-[calc(8*3.5rem)] md:max-w-[calc(8*4rem)] flex flex-col gap-4">
+        <div className="flex flex-col gap-4 order-1 lg:order-2 items-center w-full">
+          <div className="w-full max-w-full lg:max-w-[512px] flex flex-col gap-4">
             {/* Synth Control Panel */}
             <SynthControlPanel 
                 selectedSquare={synthSelectedSquare as Square | null}
@@ -535,23 +622,40 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 cityColor={city.color}
               />
 
-            {/* Captured Pieces (Top - White pieces captured by Black) */}
-            <div className="flex justify-center gap-1 min-h-[1rem]">
+            <div className="flex justify-between gap-0.5 min-h-[1rem] w-full">
+              <div className="flex justify-start gap-0.5">
                 {capturedPieces.black.map((p, i) => (
-                    <div 
-                        key={i} 
-                        className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
-                        dangerouslySetInnerHTML={{ 
-                            __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG] 
-                        }} 
-                    />
+                  <div
+                    key={i}
+                    className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
+                    dangerouslySetInnerHTML={{
+                      __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
+                    }}
+                  />
                 ))}
+              </div>
+              <div className="flex justify-end gap-0.5">
+                {capturedPieces.white.map((p, i) => (
+                  <div
+                    key={i}
+                    className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
+                    style={{
+                      "--city-neon": city.color,
+                      filter:
+                        "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))",
+                    } as React.CSSProperties}
+                    dangerouslySetInnerHTML={{
+                      __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG],
+                    }}
+                  />
+                ))}
+              </div>
             </div>
 
             {/* Chess Board */}
-            <div className="flex-1 flex flex-col items-center justify-start min-h-[400px]">
-              <div className="w-full max-w-[calc(100vh-10rem)] aspect-square relative">
-                <ChessgroundBoard 
+            <div className="flex-1 flex flex-col items-center justify-start min-h-[400px] w-full">
+              <div className="w-full aspect-square relative">
+                  <ChessgroundBoard 
                   game={game} 
                   onMove={handlePlayerMove} 
                   cityColor={city.color} 
@@ -560,55 +664,71 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   activeSquares={activeSquares}
                   onBoardClick={(square) => {
                     setSynthSelectedSquare(square)
-                    // If empty, play sample
-                    if (!game.get(square as Square)) {
+                    const piece = game.get(square as Square)
+                    if (piece) {
+                      playSquareSample(square, piece.type, piece.color)
+                    } else {
                       playSquareSample(square)
+                    }
+                  }}
+                  onDragOverSquare={(from, to) => {
+                    if (from === to) return
+                    const piece = game.get(from as Square)
+                    if (!piece) return
+                    const legalTargets = game.moves({ square: from as Square, verbose: true }).map(m => m.to)
+                    const isLegal = legalTargets.includes(to)
+                    if (isLegal) {
+                      playSquareSample(to, piece.type, piece.color)
+                    } else {
+                      playIllegalMoveGlitch(piece.type, to)
                     }
                   }}
                 />
               </div>
             </div>
 
-            {/* Captured Pieces (Bottom - Black pieces captured by White) */}
-            <div className="flex justify-center gap-1 min-h-[1rem]">
-                {capturedPieces.white.map((p, i) => (
-                    <div 
-                        key={i} 
-                        className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
-                        style={{ 
-                            "--city-neon": city.color,
-                            filter: "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))"
-                        } as React.CSSProperties}
-                        dangerouslySetInnerHTML={{ 
-                            __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG] 
-                        }} 
-                    />
-                ))}
-            </div>
+            {lastEvalScore !== null && (
+              <div className="flex flex-col items-center w-full mt-2 gap-1">
+                <div
+                  className="w-full max-w-xs h-2 rounded-full overflow-hidden border"
+                  style={{ backgroundColor: "#000000", borderColor: "rgba(255,255,255,0.1)" }}
+                >
+                  <div
+                    className="h-full bg-white/90"
+                    style={{ width: `${whitePercent}%` }}
+                  />
+                </div>
+                <div className="flex justify-between w-full max-w-xs text-[10px] font-mono text-muted-foreground">
+                  <span>White {whitePercent}%</span>
+                  <span>Black {blackPercent}%</span>
+                </div>
+              </div>
+            )}
 
-            {/* Undo/Redo Buttons */}
-            <div className="flex justify-center gap-4 mt-2 relative z-50">
-                <Button 
-                  variant="ghost" 
-                  size="default" 
-                  onClick={undoMove} 
-                  disabled={moveHistory.length === 0} 
+            <div className="flex w-full items-center mt-2 gap-2 justify-center relative z-50">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="default"
+                  onClick={undoMove}
+                  disabled={moveHistory.length === 0}
                   className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
                   style={{ "--city-neon": city.color } as React.CSSProperties}
                 >
                   <Undo2 className="w-10 h-10" />
                 </Button>
 
-                <Button 
-                  variant="ghost" 
-                  size="default" 
-                  onClick={redoMove} 
-                  disabled={redoStack.length === 0} 
+                <Button
+                  variant="ghost"
+                  size="default"
+                  onClick={redoMove}
+                  disabled={redoStack.length === 0}
                   className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
                   style={{ "--city-neon": city.color } as React.CSSProperties}
                 >
                   <Redo2 className="w-10 h-10" />
                 </Button>
+              </div>
             </div>
           </div>
         </div>

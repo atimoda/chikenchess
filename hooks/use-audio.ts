@@ -70,9 +70,21 @@ export function useAudio(
     engineRef.current?.playCheckmate()
   }, [])
 
-  const playSquareSample = useCallback((square: string) => {
-    engineRef.current?.playSquareSample(square)
+  const playDrawKalimba = useCallback(() => {
+    engineRef.current?.playDrawKalimba()
   }, [])
 
-  return { togglePlayback, isInitialized, playCheckmate, playSquareSample }
+  const playSquareSample = useCallback((square: string, pieceType?: string, pieceColor?: "w" | "b") => {
+    if (pieceType && pieceColor) {
+      engineRef.current?.playPieceSample(square, pieceType, pieceColor)
+    } else {
+      engineRef.current?.playSquareSample(square)
+    }
+  }, [])
+
+  const playIllegalMoveGlitch = useCallback((pieceType: string, square?: string) => {
+    engineRef.current?.playIllegalMoveGlitch(pieceType, square)
+  }, [])
+
+  return { togglePlayback, isInitialized, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch }
 }
