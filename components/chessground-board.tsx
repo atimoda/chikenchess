@@ -44,7 +44,7 @@ export function ChessgroundBoard({
   onMove,
   cityColor,
   isThinking,
-  orientation = "white",
+  orientation: _orientation = "white",
   onBoardClick,
   synthSelectedSquare,
   activeSquares,
@@ -195,7 +195,8 @@ export function ChessgroundBoard({
             setLegalMoves([])
             return
           }
-        } catch {
+        } catch (error) {
+          void error
         }
       }
 
@@ -205,7 +206,7 @@ export function ChessgroundBoard({
           try {
             const moves = game.moves({ square, verbose: true })
             setLegalMoves(moves.map((m) => m.to as Square))
-          } catch (e) {
+          } catch {
             setLegalMoves([])
           }
         } else {
@@ -459,7 +460,7 @@ export function ChessgroundBoard({
         ref={boardRef}
         className="grid grid-cols-8 rounded-lg overflow-hidden relative fade-transparency w-full h-full"
         style={{
-          border: `2px solid ${cityColor}`,
+          border: `1px solid ${cityColor}`,
           boxShadow: `0 0 40px ${cityColor}40, inset 0 0 20px ${cityColor}10`,
         }}
         onMouseMove={handleBoardMouseMove}

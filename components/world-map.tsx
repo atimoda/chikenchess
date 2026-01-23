@@ -1,15 +1,309 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { cities, type CityData } from "@/lib/cities-data"
 import { getCampaignState, resetCampaign } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
+import { Draggable } from "@/components/ui/draggable"
+
+interface CityPopupProps {
+  city: CityData
+  popup: {
+    x: number
+    y: number
+    zIndex: number
+    isClosing?: boolean
+    isFalling?: boolean
+    enterX: number
+    enterRot: number
+  }
+  isUnlocked: boolean
+  isPressed: boolean
+  rotation: number
+  bringToFront: (id: string) => void
+  closePopup: (id: string) => void
+  updatePopupPosition: (id: string, x: number, y: number) => void
+  playMapSound: (type: string, forceResume?: boolean) => void
+  startWhistleLoop: () => void
+  stopWhistleLoop: () => void
+  setPressedPopupState: (state: { id: string, rotation: number } | null) => void
+  onCitySelect: (city: CityData) => void
+  handleSmartPadSound: (e: React.MouseEvent<HTMLButtonElement>) => void
+  handleSmartPadLeave: (e: React.MouseEvent<HTMLButtonElement>) => void
+  stopPadSound: () => void
+  isEntering: boolean
+  setIsEntering: (v: boolean) => void
+  scale: number
+  onDragMove: () => void
+}
+
+const CityPopup = ({
+  city,
+  popup,
+  isUnlocked,
+  isPressed,
+  rotation,
+  bringToFront,
+  closePopup,
+  updatePopupPosition,
+  playMapSound,
+  startWhistleLoop,
+  stopWhistleLoop,
+  setPressedPopupState,
+  onCitySelect,
+  handleSmartPadSound,
+  handleSmartPadLeave,
+  stopPadSound,
+  isEntering,
+  setIsEntering,
+  scale,
+  onDragMove
+}: CityPopupProps) => {
+  const dragHandleRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    console.log('CityPopup mounted', { 
+        cityId: city.id, 
+        dragHandleRef: dragHandleRef.current,
+        popupX: popup.x,
+        popupY: popup.y
+    })
+  }, [city.id])
+
+  return (
+    <Draggable
+      position={{ x: popup.x, y: popup.y }}
+      scale={scale}
+      onDrag={(pos) => {
+        updatePopupPosition(city.id, pos.x, pos.y)
+        onDragMove()
+      }}
+      onDragStart={() => {
+        bringToFront(city.id)
+        startWhistleLoop()
+        const rot = (Math.random() * 6) - 3
+        setPressedPopupState({ id: city.id, rotation: rot })
+      }}
+      onDragEnd={() => {
+        stopWhistleLoop()
+        setPressedPopupState(null)
+        stopPadSound()
+      }}
+      handleRef={dragHandleRef}
+      className={cn(
+        "absolute w-72 pointer-events-auto flex flex-col select-none",
+        popup.isClosing ? "animate-popup-exit" : "animate-popup"
+      )}
+      style={{
+        zIndex: popup.zIndex,
+        // @ts-expect-error - CSS custom property for popup enter offset
+        '--enter-x': `${popup.enterX || 0}px`,
+        // @ts-expect-error - CSS custom property for popup enter rotation
+        '--enter-rot': `${popup.enterRot || 0}deg`
+      }}
+      onMouseDown={() => {
+        console.log('CityPopup wrapper onMouseDown')
+        bringToFront(city.id)
+      }}
+    >
+      <div
+        className="relative p-5 rounded-lg border bg-card/80 backdrop-blur-md shadow-2xl transition-all"
+        onClick={(e) => {
+            console.log('CityPopup inner div onClick')
+            e.stopPropagation()
+        }}
+        onMouseDownCapture={(e) => {
+            console.log('CityPopup inner div onMouseDownCapture', e.target)
+        }}
+        style={{
+          boxShadow: isUnlocked ? `0 0 40px ${city.color}20` : 'none',
+          borderColor: isUnlocked ? city.color : '#444',
+          backgroundColor: !isUnlocked ? `color-mix(in srgb, color-mix(in srgb, ${city.color}, black 95%) 80%, transparent)` : undefined,
+          transform: popup.isClosing 
+            ? undefined 
+            : (isPressed ? `scale(0.9) rotate(${rotation}deg)` : 'scale(1) rotate(0deg)'),
+          transformOrigin: popup.isClosing 
+            ? '0px 3px'
+            : (isPressed ? '0px 40px' : 'center center'),
+          transition: popup.isClosing 
+            ? undefined 
+            : (isPressed ? 'transform 0.2s ease-out' : 'transform 0.1s cubic-bezier(0.68, -0.55, 0.265, 1.55)')
+        }}
+      >
+        {/* Close Button */}
+        <button 
+          className="absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center text-muted-foreground transition-all z-50 shadow-md group hover:cursor-pointer hover:text-black"
+          style={{ borderColor: city.color, top: -13, left: -16 }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = city.color;
+            playMapSound("kr55_hh");
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '';
+          }}
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            playMapSound("alesissr16_oh");
+            closePopup(city.id); 
+          }}
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="16" height="16" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className={cn("transition-transform duration-500 ease-out", popup.isClosing && "rotate-180")}
+          >
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+
+        {/* Drag Handle */}
+        <button
+          ref={dragHandleRef}
+          type="button"
+          data-drag-handle="true"
+          className="absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center text-muted-foreground shadow-md cursor-grab active:cursor-grabbing z-50 pointer-events-auto transition-colors hover:text-black"
+          style={{ 
+            borderColor: city.color, 
+            top: 24, 
+            left: -16,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = city.color
+            playMapSound("bd", true)
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = ''
+          }}
+        >
+          <div className="flex flex-col gap-[2px] pointer-events-none">
+            <span className="w-4 h-px bg-current" />
+            <span className="w-4 h-px bg-current" />
+            <span className="w-4 h-px bg-current" />
+          </div>
+        </button>
+
+        {/* Decorative Header Line */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" style={{ backgroundColor: city.color }} />
+        
+        {/* City Image */}
+        <div 
+          data-drag-handle="true"
+          className="w-full h-32 mb-4 rounded-md overflow-hidden relative animate-content-1 group cursor-grab active:cursor-grabbing"
+        >
+          <img 
+            src={city.image} 
+            alt={`City of ${city.name}`} 
+            className={cn(
+              "w-full h-full object-cover pointer-events-none",
+              !isUnlocked && "grayscale"
+            )}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+          
+        </div>
+
+        <div className="flex items-center justify-between mb-3 animate-content-2">
+          <h3 className="font-mono font-bold text-xl tracking-wide" style={{ color: isUnlocked ? city.color : '#aaa' }}>
+            {city.name}
+          </h3>
+          <span className="text-xs text-muted-foreground font-mono border border-border px-1.5 py-0.5 rounded">{city.year}</span>
+        </div>
+        
+        <div className="mb-4 animate-content-3">
+          <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{city.genre}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{city.description}</p>
+        </div>
+
+        {isUnlocked ? (
+          <div className="space-y-3 animate-content-4">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-muted-foreground">
+                TARGET BPM: <span style={{ color: city.color }}>{city.bpm}</span>
+              </span>
+              <button 
+                className={cn(
+                   "px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100] overflow-hidden group",
+                   isEntering && "pointer-events-none"
+                )}
+                style={{ 
+                    borderColor: city.color, 
+                    color: city.color,
+                    transform: isEntering ? 'scale(20)' : 'scale(1)', 
+                    opacity: isEntering ? 0 : 1,
+                    transition: 'transform 1.5s cubic-bezier(0.5, 0, 1, 1), opacity 1.4s ease-in 0.1s'
+                }}
+                onMouseEnter={(e) => {
+                    if (isEntering) return
+                    e.currentTarget.style.color = 'white';
+                    e.currentTarget.style.boxShadow = `0 0 15px ${city.color}`;
+                    handleSmartPadSound(e)
+                }}
+                onMouseMove={(e) => {
+                    if (isEntering) return
+                    handleSmartPadSound(e)
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const x = e.clientX - rect.left
+                    const y = e.clientY - rect.top
+                    const centerX = rect.width / 2
+                    const centerY = rect.height / 2
+                    const angle = Math.atan2(y - centerY, x - centerX) * (180 / Math.PI)
+                    // Offset the rotation so it aligns with mouse direction if needed
+                    e.currentTarget.style.setProperty('--mouse-angle', `${angle}deg`)
+                    e.currentTarget.style.setProperty('--mouse-x', `${(x / rect.width) * 100}%`)
+                    e.currentTarget.style.setProperty('--mouse-y', `${(y / rect.height) * 100}%`)
+                }}
+                onMouseLeave={(e) => {
+                    if (isEntering) return
+                    handleSmartPadLeave(e)
+                    // Re-apply city color (handleSmartPadLeave clears it)
+                    e.currentTarget.style.color = city.color;
+                }}
+                onClick={() => {
+                  stopPadSound();
+                  if (isEntering) return;
+                  playMapSound("suction", true);
+                  setIsEntering(true);
+                  setTimeout(() => {
+                     onCitySelect(city);
+                  }, 1500);
+                }}
+              >
+                <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-screen overflow-hidden rounded-sm"
+                    style={{ animation: "hue-rotate 3s linear infinite" }}
+                >
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            background: `radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${city.color}, transparent 60%)`,
+                            filter: "hue-rotate(calc(var(--mouse-angle, 0deg)))",
+                        }}
+                    />
+                </div>
+                <span className="relative z-10">ENTER BOARD</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-2 text-xs font-mono p-3 bg-neutral-900/50 rounded border border-dashed border-neutral-700 text-neutral-400 animate-content-4 cursor-not-allowed">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+            <span>LOCATION LOCKED</span>
+          </div>
+        )}
+      </div>
+    </Draggable>
+  )
+}
+
+
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
 }
-
-const CITY_OFFSETS: Record<string, { dx: number; dy: number }> = {}
 
 // Helper to convert lat/long to x/y percentages (Equirectangular projection)
 const getCityPosition = (city: CityData) => {
@@ -34,6 +328,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     y: number
     zIndex: number
     isClosing?: boolean
+    isFalling?: boolean
     timestamp: number
     enterX: number
     enterRot: number
@@ -42,14 +337,17 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [openPopups, setOpenPopups] = useState<Record<string, PopupState>>({})
   const [nextZIndex, setNextZIndex] = useState(100)
   const [showTitle, setShowTitle] = useState(false)
+  const [isLogoCentered, setIsLogoCentered] = useState(true)
+  const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
+  const [mapInteractionLocked, setMapInteractionLocked] = useState(true)
 
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string, rotation: number } | null>(null)
   const [hoveredCityId, setHoveredCityId] = useState<string | null>(null)
   const [isEntering, setIsEntering] = useState(false)
+  const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // --- AUDIO LOGIC ---
   const audioContextRef = useRef<AudioContext | null>(null)
-  const buffersRef = useRef<Record<string, AudioBuffer>>({})
 
   useEffect(() => {
     // Initialize AudioContext
@@ -74,9 +372,19 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const whistleLoopRef = useRef<{ osc: OscillatorNode, gain: GainNode, panner: StereoPannerNode, lfo: OscillatorNode } | null>(null)
   const padSoundRef = useRef<{ osc1: OscillatorNode, osc2: OscillatorNode, gain: GainNode, filter: BiquadFilterNode } | null>(null)
 
+  const whistleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   const startWhistleLoop = () => {
     const ctx = audioContextRef.current
-    if (!ctx || whistleLoopRef.current) return
+    if (!ctx) return
+    // If already playing, just clear timeout
+    if (whistleLoopRef.current) {
+        if (whistleTimeoutRef.current) {
+            clearTimeout(whistleTimeoutRef.current)
+            whistleTimeoutRef.current = null
+        }
+        return
+    }
 
     if (ctx.state === "suspended") ctx.resume()
 
@@ -99,7 +407,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     lfoGain.connect(osc.frequency)
 
     gain.gain.setValueAtTime(0, t)
-    gain.gain.linearRampToValueAtTime(0.0125, t + 0.1) // Reduced volume (50% of previous 0.025)
+    gain.gain.linearRampToValueAtTime(0.01255, t + 0.1) // Reduced volume
 
     osc.connect(gain)
     gain.connect(panner)
@@ -127,6 +435,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     lfo.stop(t + 0.1)
     
     whistleLoopRef.current = null
+    if (whistleTimeoutRef.current) {
+        clearTimeout(whistleTimeoutRef.current)
+        whistleTimeoutRef.current = null
+    }
   }
 
   const startPadSound = () => {
@@ -152,7 +464,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     osc2.frequency.value = 400
 
     gain.gain.setValueAtTime(0, t)
-    gain.gain.linearRampToValueAtTime(0.00625, t + 0.1) // Reduced volume (25% of original)
+    gain.gain.linearRampToValueAtTime(0.002, t + 0.1) // Reduced volume (25% of original)
 
     osc1.connect(filter)
     osc2.connect(filter)
@@ -200,6 +512,46 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     padSoundRef.current = null
   }
 
+  const handleSmartPadSound = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (padSoundTimeoutRef.current) {
+        clearTimeout(padSoundTimeoutRef.current)
+        padSoundTimeoutRef.current = null
+    }
+
+    if (!padSoundRef.current) {
+        startPadSound()
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    updatePadSound(x, rect.width)
+    
+    e.currentTarget.style.setProperty("--mouse-x", `${x}px`)
+    e.currentTarget.style.setProperty("--mouse-y", `${y}px`)
+
+    // Calculate hue rotation based on mouse position (angle from center)
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    const angle = Math.atan2(y - centerY, x - centerX) * (180 / Math.PI)
+    e.currentTarget.style.setProperty('--hue-rotation', `${angle}deg`)
+
+    padSoundTimeoutRef.current = setTimeout(() => {
+        stopPadSound()
+    }, 100)
+}
+
+  const handleSmartPadLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (padSoundTimeoutRef.current) {
+          clearTimeout(padSoundTimeoutRef.current)
+          padSoundTimeoutRef.current = null
+      }
+      stopPadSound()
+      e.currentTarget.style.color = '';
+      e.currentTarget.style.boxShadow = 'none';
+      e.currentTarget.style.backgroundColor = '';
+  }
+
   const playMapSound = (type: string, forceResume = false) => {
       const ctx = audioContextRef.current
       if (!ctx) return
@@ -221,7 +573,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           const gain = ctx.createGain()
           osc.frequency.setValueAtTime(150 * pitchVar, t)
           osc.frequency.exponentialRampToValueAtTime(40 * pitchVar, t + 0.1)
-          gain.gain.setValueAtTime(0.5, t)
+          gain.gain.setValueAtTime(0.15, t)
           gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1)
           osc.connect(gain)
           gain.connect(ctx.destination)
@@ -318,6 +670,30 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           gain.connect(ctx.destination)
           
           source.start(t)
+      } else if (type === "d110_sh_low") {
+          const bufferSize = ctx.sampleRate * 0.1
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2))
+          }
+
+          const source = ctx.createBufferSource()
+          source.buffer = buffer
+
+          const filter = ctx.createBiquadFilter()
+          filter.type = "highpass"
+          filter.frequency.value = 4000
+
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0.3, t)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1)
+
+          source.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+
+          source.start(t)
       } else if (type === "kr55_hh") {
           // Hi-hat
           const bufferSize = ctx.sampleRate * 0.1
@@ -331,6 +707,28 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           const filter = ctx.createBiquadFilter()
           filter.type = "highpass"
           filter.frequency.value = 8000 * pitchVar
+
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0.2, t)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05)
+
+          noise.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          
+          noise.start(t)
+      } else if (type === "kr55_hh_low") {
+          const bufferSize = ctx.sampleRate * 0.1
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+          
+          const noise = ctx.createBufferSource()
+          noise.buffer = buffer
+          
+          const filter = ctx.createBiquadFilter()
+          filter.type = "highpass"
+          filter.frequency.value = 6000 * pitchVar
 
           const gain = ctx.createGain()
           gain.gain.setValueAtTime(0.2, t)
@@ -397,6 +795,29 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           gain.connect(ctx.destination)
           
           noise.start(t)
+      } else if (type === "alesissr16_oh") {
+          // Alesis SR-16 Open Hi-Hat
+          const bufferSize = ctx.sampleRate * 0.5
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+          
+          const noise = ctx.createBufferSource()
+          noise.buffer = buffer
+          
+          const filter = ctx.createBiquadFilter()
+          filter.type = "highpass"
+          filter.frequency.value = 7000 * pitchVar
+
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0.3, t)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3)
+
+          noise.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          
+          noise.start(t)
       } else {
           // Fallback / Noise for sd/cr
           const isSd = type === "sd"
@@ -437,24 +858,17 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     setNextZIndex(n => n + 1)
   }
 
-  const closePopup = (cityId: string) => {
-    playMapSound("d110_sh", true)
-    setOpenPopups(prev => ({
-      ...prev,
-      [cityId]: { ...prev[cityId], isClosing: true }
-    }))
 
-    setTimeout(() => {
-      setOpenPopups(prev => {
-        const next = { ...prev }
-        delete next[cityId]
-        return next
-      })
-    }, 700)
-  }
 
   const handleCityClick = (city: CityData, e?: React.MouseEvent) => {
+    // Prevent multiple rapid clicks
+    if (e) {
+        e.stopPropagation()
+        e.preventDefault()
+    }
+    
     playMapSound("bossdr220_lt", true)
+    
     if (openPopups[city.id] && !openPopups[city.id].isClosing) {
       bringToFront(city.id)
       return
@@ -502,37 +916,57 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     x = Math.max(20, Math.min(x, w - popupWidth - 20))
     y = Math.max(80, Math.min(y, h - popupHeight - 20))
     
-    setOpenPopups(prev => ({
-      ...prev,
-      [city.id]: { 
-        x, 
-        y, 
-        zIndex: nextZIndex,
-        timestamp: Date.now(),
-        enterX: (Math.random() - 0.5) * 400, // -200 to 200
-        enterRot: (Math.random() - 0.5) * 40 // -20 to 20 deg
-      }
-    }))
+    // Final check before state update
+    setOpenPopups(prev => {
+        if (prev[city.id] && !prev[city.id].isClosing) return prev
+        return {
+          ...prev,
+          [city.id]: { 
+            x, 
+            y, 
+            zIndex: nextZIndex,
+            timestamp: Date.now(),
+            enterX: (Math.random() - 0.5) * 400, // -200 to 200
+            enterRot: (Math.random() - 0.5) * 40 // -20 to 20 deg
+          }
+        }
+    })
     setNextZIndex(n => n + 1)
   }
 
   const [isMobile, setIsMobile] = useState(false)
   const [isIntro, setIsIntro] = useState(true)
 
-  // Initial Zoom Animation
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
-    window.addEventListener('resize', checkMobile)
+    window.addEventListener("resize", checkMobile)
 
-    const t1 = setTimeout(() => setScale(window.innerWidth < 768 ? 1.2 : 1.44), 100)
-    const t2 = setTimeout(() => setTransitionDuration(75), 3400)
-    const t3 = setTimeout(() => setShowTitle(true), 3000)
-    const t4 = setTimeout(() => setIsIntro(false), 100)
-    
-    return () => { 
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
-      window.removeEventListener('resize', checkMobile)
+    const tLogo = setTimeout(() => {
+      setIsLogoCentered(false)
+      setIsIntro(false)
+    }, 3000)
+
+    const tZoom = setTimeout(() => {
+      setScale(window.innerWidth < 768 ? 1.2 : 1.44)
+    }, 3200)
+
+    const tZoomTransition = setTimeout(() => setTransitionDuration(75), 6500)
+    const tShowTitle = setTimeout(() => setShowTitle(true), 7000)
+    const tHeadline = setTimeout(() => setIntroHeadlineVisible(false), 6000)
+
+    const tUnlockMap = setTimeout(() => {
+      setMapInteractionLocked(false)
+    }, 4000)
+
+    return () => {
+      clearTimeout(tLogo)
+      clearTimeout(tZoom)
+      clearTimeout(tZoomTransition)
+      clearTimeout(tShowTitle)
+      clearTimeout(tHeadline)
+      clearTimeout(tUnlockMap)
+      window.removeEventListener("resize", checkMobile)
     }
   }, [])
 
@@ -542,11 +976,15 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     setUnlockedCities(state.unlockedCityIds)
   }, [])
 
-  // Mouse event handlers for panning
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (mapInteractionLocked) return
+    e.preventDefault()
     setIsDragging(true)
-    setTransitionDuration(0) // Remove easing for instant drag response
+    setTransitionDuration(0)
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
+    if (typeof document !== "undefined") {
+      document.body.style.userSelect = "none"
+    }
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -559,7 +997,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   const handleMouseUp = () => {
     setIsDragging(false)
-    setTransitionDuration(300) // Restore smoothing
+    setTransitionDuration(300)
+    if (typeof document !== "undefined") {
+      document.body.style.userSelect = ""
+    }
   }
 
   // Touch handlers for mobile (Pan & Pinch-to-Zoom)
@@ -567,6 +1008,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const lastDistRef = useRef<number | null>(null)
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (mapInteractionLocked) return
     if (e.touches.length === 1) {
       // Pan start
       const touch = e.touches[0]
@@ -584,6 +1026,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (mapInteractionLocked) return
     if (e.touches.length === 1 && lastTouchRef.current && isDragging) {
       // Pan move
       const touch = e.touches[0]
@@ -637,6 +1080,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   // Wheel handler for zooming with mouse focus
   const handleWheel = (e: React.WheelEvent) => {
+    if (mapInteractionLocked) return
     e.stopPropagation()
     if (!containerRef.current) return
 
@@ -706,7 +1150,6 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         if (!mapRef.current || !containerRef.current) return
 
         const nextEnds: Record<string, {x: number, y: number}> = {}
-        let hasChanges = false
 
         Object.keys(openPopups).forEach(cityId => {
             const pinElement = document.getElementById(`city-pin-${cityId}`)
@@ -735,32 +1178,94 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     }
   }, [hasOpenPopups, openPopups]) // Re-start loop if popups change structure 
 
-  const updatePopupPosition = (cityId: string, x: number, y: number) => {
+  const updatePopupPosition = (id: string, x: number, y: number) => {
     setOpenPopups(prev => ({
       ...prev,
-      [cityId]: { ...prev[cityId], x, y }
+      [id]: { ...prev[id], x, y }
     }))
+  }
 
-    // Audio Feedback for dragging
-    if (whistleLoopRef.current && typeof window !== 'undefined') {
-        const { osc, panner } = whistleLoopRef.current
-        const w = window.innerWidth
-        const h = window.innerHeight
-        
-        // Pan: Left (-1) to Right (1)
-        const panVal = Math.max(-1, Math.min(1, (x / w) * 2 - 1))
-        panner.pan.setTargetAtTime(panVal, audioContextRef.current!.currentTime, 0.1)
+  const closePopup = (id: string) => {
+    playMapSound("alesissr16_oh", true)
+    // Start closing animation (Rotate + Fall)
+    setOpenPopups(prev => {
+      if (!prev[id]) return prev
+      return {
+        ...prev,
+        [id]: { ...prev[id], isClosing: true }
+      }
+    })
 
-        // Pitch: Top (+3 tones) to Bottom (-3 tones)
-        // +3 tones = +6 semitones, -3 tones = -6 semitones
-        // y=0 -> +6 semitones
-        // y=h -> -6 semitones
-        const semitones = 6 - 12 * (y / h)
-        const baseFreq = 300
-        const freq = baseFreq * Math.pow(2, semitones / 12)
-        
-        osc.frequency.setTargetAtTime(freq, audioContextRef.current!.currentTime, 0.1)
+    // Remove after animation
+    setTimeout(() => {
+        setOpenPopups(prev => {
+            const next = { ...prev }
+            delete next[id]
+            return next
+        })
+    }, 1000)
+
+    if (pressedPopupState?.id === id) {
+      setPressedPopupState(null)
     }
+  }
+
+  const handleDragMove = () => {
+    if (padSoundTimeoutRef.current) {
+        clearTimeout(padSoundTimeoutRef.current)
+        padSoundTimeoutRef.current = null
+    }
+
+    if (!padSoundRef.current) {
+        // Start sound if not playing (similar to smart pad logic but for drag)
+        const ctx = audioContextRef.current
+        if (!ctx) return
+        if (ctx.state === "suspended") ctx.resume()
+
+        const t = ctx.currentTime
+        const osc1 = ctx.createOscillator()
+        const osc2 = ctx.createOscillator()
+        const gain = ctx.createGain()
+        const filter = ctx.createBiquadFilter()
+
+        osc1.type = "sawtooth"
+        osc1.frequency.value = 300
+        osc2.type = "square"
+        osc2.frequency.value = 303 // Detune
+        
+        filter.type = "lowpass"
+        filter.frequency.value = 2000
+        filter.Q.value = 5
+
+        osc1.connect(filter)
+        osc2.connect(filter)
+        filter.connect(gain)
+        gain.connect(ctx.destination)
+
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.001, t + 0.1)
+
+        osc1.start(t)
+        osc2.start(t)
+
+        padSoundRef.current = { osc1, osc2, gain, filter }
+    } else {
+        // Modulate existing sound
+        const ctx = audioContextRef.current
+        if (ctx) {
+             const t = ctx.currentTime
+             const { osc1, osc2, filter } = padSoundRef.current
+             // Random modulation during drag
+             osc1.frequency.setTargetAtTime(300 + Math.random() * 50, t, 0.1)
+             osc2.frequency.setTargetAtTime(303 + Math.random() * 50, t, 0.1)
+             filter.frequency.setTargetAtTime(2000 + Math.random() * 1000, t, 0.1)
+        }
+    }
+
+    // Auto-stop timeout
+    padSoundTimeoutRef.current = setTimeout(() => {
+        stopPadSound()
+    }, 100)
   }
 
   return (
@@ -782,7 +1287,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         .animate-line-exit {
           stroke-dasharray: 4000;
           stroke-dashoffset: 0;
-          animation: drawLineReverse 0.3s ease-in forwards;
+          animation: drawLineReverse 0.6s ease-in forwards;
         }
         @keyframes popupEnter {
           0% { opacity: 0; transform: perspective(1000px) rotateX(10deg) translate(var(--enter-x), 100vh) rotate(var(--enter-rot)) scale(0.5); }
@@ -791,8 +1296,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           100% { opacity: 1; transform: perspective(1000px) rotateX(0) translate(0, 0) rotate(0) scale(1); }
         }
         @keyframes popupExit {
-          0% { opacity: 1; transform: translateY(0) rotate(0); }
-          100% { opacity: 1; transform: translateY(100vh) rotate(15deg); }
+          0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+          100% { opacity: 1; transform: translateY(120vh) rotate(45deg); }
         }
         @keyframes pulseSize {
           0% { transform: scale(1); }
@@ -809,7 +1314,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           animation: popupEnter 0.8s ease-out 0.3s forwards;
         }
         .animate-popup-exit {
-          animation: popupExit 0.64s cubic-bezier(0.8, 0, 1, 0.5) forwards;
+          animation: popupExit 1s cubic-bezier(0.8, 0, 1, 0) forwards;
+          transform-origin: 0px 3px;
         }
         @keyframes contentFade {
           from { opacity: 0; transform: translateY(10px); }
@@ -819,6 +1325,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         .animate-content-2 { opacity: 0; animation: contentFade 0.5s ease-out 0.6s forwards; }
         .animate-content-3 { opacity: 0; animation: contentFade 0.5s ease-out 0.7s forwards; }
         .animate-content-4 { opacity: 0; animation: contentFade 0.5s ease-out 0.8s forwards; }
+        @keyframes hue-rotate {
+          from { filter: hue-rotate(0deg); }
+          to { filter: hue-rotate(360deg); }
+        }
       `}</style>
 
       {/* Grid background */}
@@ -830,59 +1340,99 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         }}
       />
 
-      {/* Header */}
-      <header className="absolute top-0 left-0 w-full z-20 flex flex-col md:flex-row items-center md:justify-between px-8 py-6 pointer-events-none gap-2">
-        {/* Placeholder for layout */}
+      <header
+        className="absolute top-0 left-0 w-full z-60 flex flex-col md:flex-row items-center md:justify-between px-8 py-6 pointer-events-none gap-2"
+        style={{ height: isIntro ? "100vh" : "auto" }}
+      >
         <div className="hidden md:block w-[280px] h-10" />
 
-        <div className="flex items-center gap-4 pointer-events-none transition-all duration-1000 ease-out z-50"
-             style={{
-                position: 'absolute',
-                top: '24px',
-                left: isMobile ? '50%' : '32px',
-                transform: isIntro 
-                  ? (isMobile ? 'translate(-150%, 0)' : 'translate(-150%, 0)') 
-                  : (isMobile 
-                      ? `translateX(-50%) ${scale >= 2.8 ? 'scale(0.5)' : 'scale(1)'}` 
-                      : 'none'),
-                transformOrigin: 'top center',
-                opacity: isIntro ? 0 : 1,
-             }}
+
+        <div
+          className="flex items-center gap-4 pointer-events-none transition-all duration-1000 ease-out z-50"
+          style={{
+            position: "absolute",
+            top: isLogoCentered ? "45%" : "24px",
+            left: isLogoCentered ? "50%" : "32px",
+            transform: isLogoCentered ? "translate(-50%, -50%) scale(1.15)" : "none",
+            transformOrigin: "top center",
+          }}
         >
-          <div className="flex items-center gap-2">
-            <img 
-              src="/images/logo-chikenchess-border-darker.png" 
-              alt="ChiKenChess Logo" 
-              className="w-[80vw] max-w-[200px] md:w-10 md:h-10 md:max-w-none object-contain pointer-events-none transition-transform duration-1000"
+          <div className="flex items-center gap-0.5">
+            <img
+              src="/images/logo-chikenchess-border-darker.png"
+              alt="chiken'chess Logo"
+              className={cn(
+                "object-contain pointer-events-none transition-transform duration-1000",
+                isLogoCentered ? "w-[80vw] max-w-[260px]" : "h-10 w-auto"
+              )}
               style={{
-                 transform: (!isIntro && !isMobile) ? 'scaleX(-1)' : 'scaleX(1)'
+                transform: isLogoCentered ? "scaleX(-1) scale(1)" : "scaleX(1)",
               }}
             />
-            <h1 
-              className={cn(
-                "hidden md:block text-[33px] font-mono font-bold tracking-wider text-foreground transition-opacity duration-1000",
-                (isMobile && scale >= 2.8) && "absolute left-full ml-2 w-max animate-content-1"
-              )}
-              style={{ 
-                textShadow: "rgb(0, 0, 0) 0px 3px 1px, rgb(0, 0, 0) 3px 3px 0px, rgb(0, 0, 0) 3px 3px 0px, rgb(0, 0, 0) -3px -3px 0px, rgb(0, 0, 0) 0px 0px 0px"
-              }}
-            >
-              ChiKen<span className="text-primary">Chess</span>
-            </h1>
+            {!isLogoCentered && (
+              <h1
+                className={cn(
+                  "text-xl md:text-[33px] font-mono font-bold tracking-wider text-foreground transition-all duration-700",
+                  "translate-x-0 opacity-100",
+                )}
+                style={{
+                  textShadow:
+                    "rgb(0, 0, 0) 0px 3px 1px, rgb(0, 0, 0) 3px 3px 0px, rgb(0, 0, 0) 3px 3px 0px, rgb(0, 0, 0) -3px -3px 0px, rgb(0, 0, 0) 0px 0px 0px",
+                }}
+              >
+                chiken'<span className="text-primary">chess</span>
+              </h1>
+            )}
           </div>
         </div>
-        
-        <div 
-          className="font-mono font-bold text-xl text-white uppercase tracking-widest transition-opacity duration-500 text-center md:text-right"
-          style={{ 
-            textShadow: "2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
-            opacity: (showTitle && scale <= (typeof window !== 'undefined' && window.innerWidth >= 768 ? 1.5 : 1.33)) ? 1 : 0,
-            position: isMobile ? 'absolute' : 'relative',
-            top: isMobile ? '220px' : 'auto',
-            left: isMobile ? '50%' : 'auto',
-            transform: isMobile ? 'translateX(-50%)' : 'none',
-            width: isMobile ? '100%' : 'auto',
-            zIndex: 10
+
+        <div className="absolute top-6 right-6 flex items-center gap-4 pointer-events-auto text-xs font-mono">
+          <a
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4"
+          >
+            About
+          </a>
+          <a
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4"
+          >
+            Donate
+          </a>
+        </div>
+
+        <div
+          className="absolute left-1/2 -translate-x-1/2 text-center text-sm md:text-base font-mono text-white transition-opacity duration-700 pointer-events-none z-[70]"
+          style={{
+            opacity: introHeadlineVisible ? 1 : 0,
+            bottom: isMobile ? "17rem" : "19rem",
+            textShadow:
+              "2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+            width: isMobile ? "100%" : "min(90vw, 720px)",
+            whiteSpace: isMobile ? "normal" : "nowrap",
+          }}
+        >
+          Learn chess, compose music.
+        </div>
+
+        <div
+          className="font-mono font-bold text-xl text-white uppercase tracking-widest transition-opacity duration-500 text-center"
+          style={{
+            textShadow:
+              "2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+            opacity:
+              showTitle &&
+              scale <= (typeof window !== "undefined" && window.innerWidth >= 768 ? 1.5 : 1.33)
+                ? 1
+                : 0,
+            position: "absolute",
+            bottom: isMobile ? "8rem" : "7rem",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "100%",
+            zIndex: 10,
           }}
         >
           Select your stage
@@ -891,7 +1441,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
       {/* Map Container */}
       <div 
-        className="absolute inset-0 flex items-center justify-center p-0 overflow-hidden z-10 cursor-grab active:cursor-grabbing touch-none"
+        className="absolute inset-0 flex items-center justify-center p-0 overflow-hidden z-10 cursor-grab active:cursor-grabbing touch-none select-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -999,7 +1549,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       </div>
 
       {/* UI OVERLAY LAYER - Fixed elements that don't scale */}
-      <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
+      <div className="absolute inset-0 z-40 overflow-hidden pointer-events-none">
         
         {/* Connection Lines */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -1009,35 +1559,37 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             </marker>
           </defs>
           {Object.entries(openPopups).map(([cityId, popup]) => {
-             const city = cities.find(c => c.id === cityId)
-             const start = lineEnds[cityId]
-             if (!city || !start) return null
+            const city = cities.find(c => c.id === cityId)
+            const start = lineEnds[cityId]
+            if (!city || !start) return null
 
-             const isPressed = pressedPopupState?.id === cityId
-             const endX = popup.x + 144
-             const endY = popup.y + (isPressed ? 10 : 0)
-             
-             // Organic curve calculation (Quadratic Bezier)
-             const dist = Math.sqrt(Math.pow(endX - start.x, 2) + Math.pow(endY - start.y, 2))
-             const arcHeight = Math.min(50, dist * 0.2)
-             const midX = (start.x + endX) / 2
-             const midY = (start.y + endY) / 2
-             const cpX = midX
-             const cpY = midY + arcHeight * 0.5
+            const endX = popup.x
+            const endY = popup.y + 40
+            
+            const dist = Math.sqrt(Math.pow(endX - start.x, 2) + Math.pow(endY - start.y, 2))
+            const minArc = 30
+            const maxArc = 260
+            const t = Math.min(1, dist / 600)
+            const ease = 1 - Math.pow(t, 0.7)
+            const arcHeight = minArc + ease * (maxArc - minArc)
+            const midX = (start.x + endX) / 2
+            const midY = (start.y + endY) / 2
+            const cpX = midX
+            const cpY = midY + arcHeight
 
-             return (
-               <g key={`line-${cityId}-${popup.timestamp || 0}`}>
-                 <path 
-                   d={`M ${start.x} ${start.y} Q ${cpX} ${cpY} ${endX} ${endY}`}
-                   stroke={city.color} 
-                   strokeWidth="2" 
-                   strokeDasharray="4 4"
-                   fill="none"
-                   className={cn("opacity-80", popup.isClosing ? "animate-line-exit" : "animate-line")}
-                 />
-                 <circle cx={start.x} cy={start.y} r="3" fill={city.color} />
-               </g>
-             )
+            return (
+              <g key={`line-${cityId}-${popup.timestamp || 0}`}>
+                <path 
+                  d={`M ${start.x} ${start.y} Q ${cpX} ${cpY} ${endX} ${endY}`}
+                  stroke={city.color} 
+                  strokeWidth="2" 
+                  strokeDasharray="4 4"
+                  fill="none"
+                  className={cn("opacity-80", popup.isFalling ? "animate-line-exit" : "animate-line")}
+                />
+                <circle cx={start.x} cy={start.y} r="3" fill={city.color} />
+              </g>
+            )
           })}
         </svg>
 
@@ -1050,171 +1602,29 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           const rotation = isPressed ? pressedPopupState.rotation : 0
           
           return (
-            <div 
-              key={cityId} 
-              className={cn(
-                "absolute w-72 pointer-events-auto flex flex-col",
-                popup.isClosing ? "animate-popup-exit" : "animate-popup"
-              )}
-              style={{ 
-                left: popup.x, 
-                top: popup.y, 
-                zIndex: popup.zIndex,
-                // @ts-ignore
-                '--enter-x': `${popup.enterX || 0}px`,
-                // @ts-ignore
-                '--enter-rot': `${popup.enterRot || 0}deg`
-              }}
-              onMouseDown={() => bringToFront(cityId)}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="relative p-5 rounded-lg border bg-card/95 backdrop-blur-md shadow-2xl transition-all"
-                style={{
-                  boxShadow: isUnlocked ? `0 0 40px ${city.color}20` : 'none',
-                  borderColor: isUnlocked ? city.color : '#444',
-                  backgroundColor: !isUnlocked ? `color-mix(in srgb, ${city.color}, black 95%)` : undefined,
-                  transform: isPressed ? `scale(0.9) rotate(${rotation}deg)` : 'scale(1) rotate(0deg)',
-                  transition: isPressed ? 'transform 0.2s ease-out' : 'transform 0.1s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-                }}
-              >
-                {/* Close Button */}
-                <button 
-                  className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-background border rounded-full flex items-center justify-center text-muted-foreground transition-all z-50 shadow-md group hover:cursor-pointer hover:text-black"
-                  style={{ borderColor: city.color }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = city.color;
-                    playMapSound("kr55_hh");
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '';
-                  }}
-                  onClick={(e) => { e.stopPropagation(); closePopup(cityId); }}
-                >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="16" height="16" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className={cn("transition-transform duration-500", popup.isClosing && "rotate-180")}
-                  >
-                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-                  </svg>
-                </button>
-
-                {/* Decorative Header Line */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" style={{ backgroundColor: city.color }} />
-                
-                {/* City Image (Draggable Handle) */}
-                <div 
-                  className="w-full h-32 mb-4 rounded-md overflow-hidden relative animate-content-1 cursor-grab active:cursor-grabbing group"
-                  onMouseDown={(e) => {
-                     e.stopPropagation()
-                     bringToFront(cityId)
-                     startWhistleLoop()
-                     const rot = (Math.random() * 6) - 3
-                     setPressedPopupState({ id: cityId, rotation: rot })
-                     const startX = e.clientX
-                     const startY = e.clientY
-                     const startLeft = popup.x
-                     const startTop = popup.y
-                     
-                     const onMove = (mv: MouseEvent) => {
-                       updatePopupPosition(cityId, startLeft + (mv.clientX - startX), startTop + (mv.clientY - startY))
-                     }
-                     const onUp = () => {
-                       stopWhistleLoop()
-                       setPressedPopupState(null)
-                       window.removeEventListener('mousemove', onMove)
-                       window.removeEventListener('mouseup', onUp)
-                     }
-                     window.addEventListener('mousemove', onMove)
-                     window.addEventListener('mouseup', onUp)
-                  }}
-                >
-                  <img 
-                    src={city.image} 
-                    alt={`City of ${city.name}`} 
-                    className={cn(
-                      "w-full h-full object-cover pointer-events-none",
-                      !isUnlocked && "grayscale"
-                    )}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                  
-                </div>
-
-                <div className="flex items-center justify-between mb-3 animate-content-2">
-                  <h3 className="font-mono font-bold text-xl tracking-wide" style={{ color: isUnlocked ? city.color : '#aaa' }}>
-                    {city.name}
-                  </h3>
-                  <span className="text-xs text-muted-foreground font-mono border border-border px-1.5 py-0.5 rounded">{city.year}</span>
-                </div>
-                
-                <div className="mb-4 animate-content-3">
-                  <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{city.genre}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{city.description}</p>
-                </div>
-
-                {isUnlocked ? (
-                  <div className="space-y-3 animate-content-4">
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-muted-foreground">
-                        TARGET BPM: <span style={{ color: city.color }}>{city.bpm}</span>
-                      </span>
-                      <button 
-                        className={cn(
-                           "px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100]",
-                           isEntering && "pointer-events-none"
-                        )}
-                        style={{ 
-                            borderColor: city.color, 
-                            color: city.color,
-                            transform: isEntering ? 'scale(20)' : 'scale(1)', 
-                            opacity: isEntering ? 0 : 1,
-                            transition: 'transform 1.5s cubic-bezier(0.5, 0, 1, 1), opacity 1.4s ease-in 0.1s'
-                        }}
-                        onMouseEnter={(e) => {
-                            if (isEntering) return
-                            e.currentTarget.style.color = 'white';
-                            e.currentTarget.style.boxShadow = `0 0 15px ${city.color}`;
-                            startPadSound();
-                        }}
-                        onMouseMove={(e) => {
-                            if (isEntering) return
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            updatePadSound(e.clientX - rect.left, rect.width);
-                        }}
-                        onMouseLeave={(e) => {
-                            if (isEntering) return
-                            e.currentTarget.style.color = city.color;
-                            e.currentTarget.style.boxShadow = 'none';
-                            stopPadSound();
-                        }}
-                        onClick={() => {
-                          stopPadSound();
-                          if (isEntering) return;
-                          playMapSound("suction", true);
-                          setIsEntering(true);
-                          setTimeout(() => {
-                             onCitySelect(city);
-                          }, 1500);
-                        }}
-                      >
-                        ENTER ARENA
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-2 text-xs font-mono p-3 bg-neutral-900/50 rounded border border-dashed border-neutral-700 text-neutral-400 animate-content-4 cursor-not-allowed">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                    <span>LOCATION LOCKED</span>
-                  </div>
-                )}
-              </div>
-            </div>
+            <CityPopup
+              key={cityId}
+              city={city}
+              popup={popup}
+              isUnlocked={isUnlocked}
+              isPressed={isPressed}
+              rotation={rotation}
+              bringToFront={bringToFront}
+              closePopup={closePopup}
+              updatePopupPosition={updatePopupPosition}
+              playMapSound={playMapSound}
+              startWhistleLoop={startWhistleLoop}
+              stopWhistleLoop={stopWhistleLoop}
+              setPressedPopupState={setPressedPopupState}
+              onCitySelect={onCitySelect}
+              handleSmartPadSound={handleSmartPadSound}
+              handleSmartPadLeave={handleSmartPadLeave}
+              stopPadSound={stopPadSound}
+              isEntering={isEntering}
+              setIsEntering={setIsEntering}
+              scale={1}
+              onDragMove={handleDragMove}
+            />
           )
         })}
 
@@ -1264,10 +1674,11 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         </div>
 
         {/* Bottom Right Info & Controls */}
-        <div className="hidden md:flex absolute bottom-4 right-4 items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
+        <div 
+          className="hidden md:flex absolute bottom-4 right-4 items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
           <div className="flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-             <span className="text-[10px] font-mono text-muted-foreground">v0.2.3 "World Map Popups"</span>
+             <span className="text-[10px] font-mono text-muted-foreground">v0.2.5 "The Editor"</span>
           </div>
 
           <div className="h-4 w-px bg-border" />

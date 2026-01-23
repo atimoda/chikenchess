@@ -10,12 +10,13 @@ import { AudioVisualizer } from "./audio-visualizer"
 import { GameControls } from "./game-controls"
 import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
+import { StrudelEditor } from "./strudel-editor"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS } from "@/lib/types"
-import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, ThumbsUp, ThumbsDown } from "lucide-react"
+import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check } from "lucide-react"
 import { toast } from "sonner"
 import { unlockNextCity } from "@/lib/game-progression"
 import {
@@ -49,8 +50,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [synthSelectedSquare, setSynthSelectedSquare] = useState<string | null>(null)
   const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
   const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
-  const [lastEvalQuality, setLastEvalQuality] = useState<"good" | "bad" | null>(null)
-  const [lastEvalDelta, setLastEvalDelta] = useState<number | null>(null)
  
   const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
@@ -59,6 +58,39 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const evalLastScoreRef = useRef<number | null>(null)
   const evalPendingRef = useRef(false)
   const lastEvalScoreRef = useRef<number | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const centerContainerRef = useRef<HTMLDivElement | null>(null)
+  const knobsRef = useRef<HTMLDivElement | null>(null)
+  const knobsHandleRef = useRef<HTMLDivElement | null>(null)
+  const boardAreaRef = useRef<HTMLDivElement | null>(null)
+  const [knobsPosition, setKnobsPosition] = useState<{ x: number; y: number } | null>(null)
+  const [strudelEditorPosition, setStrudelEditorPosition] = useState<{ x: number; y: number } | null>(null)
+  const strudelEditorHandleRef = useRef<HTMLDivElement | null>(null)
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        // Position widgets to the right
+        setKnobsPosition({ x: window.innerWidth - 420, y: 500 })
+        setStrudelEditorPosition({ x: window.innerWidth - 420, y: 100 })
+    }
+  }, [])
+
+  const [knobsOn, setKnobsOn] = useState(false)
+  const [strudelEditorOn, setStrudelEditorOn] = useState(false)
+  const [connectionLine, setConnectionLine] = useState<{
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+  } | null>(null)
+  const [editorConnectionLine, setEditorConnectionLine] = useState<{
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+  } | null>(null)
+
+  const strudelEditorRef = useRef<HTMLDivElement | null>(null)
 
   const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
 
@@ -106,27 +138,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       } else if (message.startsWith("bestmove")) {
         const finalScore = evalLastScoreRef.current
         if (finalScore != null && evalPendingRef.current) {
-          const previous = lastEvalScoreRef.current
           setLastEvalScore(finalScore)
           lastEvalScoreRef.current = finalScore
-          if (previous == null) {
-            setLastEvalDelta(null)
-            const quality = finalScore >= 0 ? "good" : "bad"
-            setLastEvalQuality(quality)
-          } else {
-            const delta = finalScore - previous
-            setLastEvalDelta(delta)
-            const threshold = 30
-            let quality: "good" | "bad"
-            if (delta >= threshold) {
-              quality = "good"
-            } else if (delta <= -threshold) {
-              quality = "bad"
-            } else {
-              quality = delta >= 0 ? "good" : "bad"
-            }
-            setLastEvalQuality(quality)
-          }
         }
         evalPendingRef.current = false
       }
@@ -135,6 +148,19 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     return () => {
       stockfishRef.current?.terminate()
       evalStockfishRef.current?.terminate()
+    }
+  }, [])
+
+  const requestEvaluation = useCallback((gameInstance: Chess) => {
+    const fen = gameInstance.fen()
+    evalSideToMoveRef.current = gameInstance.turn()
+    evalLastScoreRef.current = null
+    evalPendingRef.current = true
+    lastEvalScoreRef.current = null
+    if (evalStockfishRef.current) {
+      evalStockfishRef.current.postMessage("stop")
+      evalStockfishRef.current.postMessage(`position fen ${fen}`)
+      evalStockfishRef.current.postMessage("go depth 10")
     }
   }, [])
 
@@ -255,7 +281,19 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setMoveHistory((prev) => [...prev, move.san])
       setRedoStack([]) // Clear redo stack on new move
       updateCapturedPieces(move)
-      setSynthSelectedSquare(null) // Clear selection on player move
+      setSquareEffects((prev) => {
+        const next = { ...prev }
+        if (next[move.from]) {
+          next[move.to] = next[move.from]
+          delete next[move.from]
+        }
+        return next
+      })
+      setSynthSelectedSquare((prev) => {
+        if (!prev) return prev
+        if (prev === (move.from as string)) return move.to as string
+        return prev
+      })
 
       // Auto-start music on first move
       if (!isPlaying) {
@@ -287,16 +325,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         }
         return next
       })
-      evalSideToMoveRef.current = gameCopy.turn()
-      evalLastScoreRef.current = null
-      evalPendingRef.current = true
-      if (evalStockfishRef.current) {
-        evalStockfishRef.current.postMessage("stop")
-        evalStockfishRef.current.postMessage(`position fen ${gameCopy.fen()}`)
-        evalStockfishRef.current.postMessage("go depth 10")
-      }
+      requestEvaluation(gameCopy)
     },
-    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback],
+    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation],
   )
 
   const resetGame = useCallback(() => {
@@ -364,7 +395,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setMoveHistory(newHistory)
     setCapturedPieces(newCapturedPieces as { white: string[], black: string[] })
     setActiveSquares(newActiveSquares)
-  }, [moveHistory])
+    requestEvaluation(newGame)
+  }, [moveHistory, requestEvaluation])
 
   const redoMove = useCallback(() => {
     if (redoStack.length === 0) return
@@ -400,8 +432,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         setRedoStack(newRedoStack)
         setCapturedPieces(nextCaptured)
         setActiveSquares(nextActiveSquares)
+        requestEvaluation(gameCopy)
     }
-  }, [redoStack, game, activeSquares, capturedPieces])
+  }, [redoStack, game, activeSquares, capturedPieces, requestEvaluation])
 
   const handleTogglePlay = useCallback(async () => {
     await togglePlayback()
@@ -409,31 +442,120 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }, [togglePlayback])
 
   const hasStarted = moveHistory.length > 0
-  const visualizerClass = "w-full h-16 md:h-24"
-
-  const evalIntensity =
-    lastEvalDelta === null ? 0.6 : 0.4 + Math.min(Math.abs(lastEvalDelta) / 100, 1) * 0.6
-  const evalIconColor =
-    lastEvalQuality === "good"
-      ? `rgba(22, 163, 74, ${evalIntensity})`
-      : `rgba(220, 38, 38, ${evalIntensity})`
-  const evalNumberMagnitude =
-    lastEvalDelta === null ? null : Math.min(5, Math.abs(lastEvalDelta) / 100)
-  const evalNumberText =
-    evalNumberMagnitude === null
-      ? ""
-      : `${lastEvalDelta! >= 0 ? "+" : "-"}${
-          evalNumberMagnitude < 1 ? evalNumberMagnitude.toFixed(1) : Math.round(evalNumberMagnitude).toString()
-        }`
 
   const whiteAdvantage =
     lastEvalScore === null ? 0.5 : 1 / (1 + Math.pow(10, lastEvalScore / 400))
   const whitePercent = Math.round(whiteAdvantage * 100)
   const blackPercent = 100 - whitePercent
 
+  useEffect(() => {
+    if (!synthSelectedSquare || !rootRef.current || !boardAreaRef.current) {
+      setConnectionLine(null)
+      setEditorConnectionLine(null)
+      return
+    }
+
+    const containerRect = rootRef.current.getBoundingClientRect()
+    const boardRect = boardAreaRef.current.getBoundingClientRect()
+    const squareWidth = boardRect.width / 8
+    const squareHeight = boardRect.height / 8
+    
+    const fileChar = synthSelectedSquare[0]
+    const rankChar = synthSelectedSquare[1]
+    const files = "abcdefgh"
+    const fileIndex = files.indexOf(fileChar)
+    const rank = parseInt(rankChar, 10)
+
+    if (fileIndex < 0 || !Number.isFinite(rank)) {
+      setConnectionLine(null)
+      setEditorConnectionLine(null)
+      return
+    }
+
+    const rankIndexFromBottom = rank - 1
+    const rowFromTop = 7 - rankIndexFromBottom
+    const x2 = boardRect.left + fileIndex * squareWidth - containerRect.left
+    const y2 = boardRect.top + (rowFromTop + 0.5) * squareHeight - containerRect.top
+
+    // Knobs Connection
+    // Always show connection if selected, even if knobs are off? User asked to keep knobs visible when off.
+    // "o gadget de knobs quando estiver 'off' deve continuar aparecendo"
+    // But user now says: "quando o widget estiver off e o usuário selecionar uma casa, não desenhe a linha que conecta ao widget."
+    if (synthSelectedSquare && knobsOn) {
+      const sourceRect = knobsHandleRef.current?.getBoundingClientRect() ?? knobsRef.current?.getBoundingClientRect()
+      if (sourceRect) {
+        // Source is gadget
+        const x1 = sourceRect.left + sourceRect.width / 2 - containerRect.left
+        const y1 = sourceRect.top + sourceRect.height / 2 - containerRect.top
+
+        // Target is square on board
+        const squareCenterX = boardRect.left + (fileIndex + 0.5) * squareWidth - containerRect.left
+        const squareCenterY = boardRect.top + (rowFromTop + 0.5) * squareHeight - containerRect.top
+        
+        // Find closest edge point of the square to the knob handle
+        const dx = x1 - squareCenterX
+        const dy = y1 - squareCenterY
+        
+        let x2 = squareCenterX
+        let y2 = squareCenterY
+
+        // Simple proximity check to attach to the closest side
+        if (Math.abs(dx) > Math.abs(dy)) {
+            // Left or Right
+            x2 = squareCenterX + (dx > 0 ? squareWidth/2 : -squareWidth/2)
+        } else {
+            // Top or Bottom
+            y2 = squareCenterY + (dy > 0 ? squareHeight/2 : -squareHeight/2)
+        }
+        
+        setConnectionLine({ x1, y1, x2, y2 })
+      } else {
+        setConnectionLine(null)
+      }
+    } else {
+      setConnectionLine(null)
+    }
+
+    // Strudel Editor Connection
+    if (strudelEditorOn && knobsOn) {
+      const editorRect = strudelEditorRef.current?.getBoundingClientRect()
+      const editorHandleRect = strudelEditorHandleRef.current?.getBoundingClientRect()
+      // Prefer the main panel for connection source
+      const knobsRect = knobsRef.current?.getBoundingClientRect() ?? knobsHandleRef.current?.getBoundingClientRect()
+
+      if ((editorRect || editorHandleRect) && knobsRect) {
+         // Connect Knobs (Right) -> Editor (Left/Handle)
+         const x1 = knobsRect.right - containerRect.left
+         const y1 = knobsRect.top + knobsRect.height / 2 - containerRect.top
+
+         let x2 = 0
+         let y2 = 0
+
+         if (editorHandleRect) {
+             x2 = editorHandleRect.left + editorHandleRect.width / 2 - containerRect.left
+             y2 = editorHandleRect.top + editorHandleRect.height / 2 - containerRect.top
+         } else if (editorRect) {
+             x2 = editorRect.left - containerRect.left
+             y2 = editorRect.top + 40 - containerRect.top
+         }
+
+         setEditorConnectionLine({ x1, y1, x2, y2 })
+      } else {
+         setEditorConnectionLine(null)
+      }
+    } else {
+      setEditorConnectionLine(null)
+    }
+
+  }, [synthSelectedSquare, knobsPosition, knobsOn, strudelEditorOn, strudelEditorPosition])
+
   return (
     <div
+      ref={rootRef}
       className="relative w-full min-h-screen bg-background overflow-hidden"
+      onClick={() => {
+        setSynthSelectedSquare(null)
+      }}
       style={{
         backgroundImage: `
           radial-gradient(circle at 20% 20%, ${city.color}08 0%, transparent 40%),
@@ -471,7 +593,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <h1 className="font-mono font-bold text-base md:text-lg flex items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
               <span style={{ color: city.color }}>{city.name.toUpperCase()}</span>
-              <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground opacity-50">v0.2.1</span>
+              <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground opacity-50">v0.2.5 "The Editor"</span>
             </h1>
           </div>
         </div>
@@ -510,10 +632,22 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>AI Difficulty</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setAiDepth(5)}>Easy (Depth 5)</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAiDepth(10)}>Medium (Depth 10)</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAiDepth(15)}>Hard (Depth 15)</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAiDepth(20)}>Expert (Depth 20)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAiDepth(5)} className={cn("justify-between", aiDepth === 5 && "bg-accent text-accent-foreground font-bold")}>
+                Easy (Depth 5)
+                {aiDepth === 5 && <Check className="w-4 h-4 ml-2" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAiDepth(10)} className={cn("justify-between", aiDepth === 10 && "bg-accent text-accent-foreground font-bold")}>
+                Medium (Depth 10)
+                {aiDepth === 10 && <Check className="w-4 h-4 ml-2" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAiDepth(15)} className={cn("justify-between", aiDepth === 15 && "bg-accent text-accent-foreground font-bold")}>
+                Hard (Depth 15)
+                {aiDepth === 15 && <Check className="w-4 h-4 ml-2" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAiDepth(20)} className={cn("justify-between", aiDepth === 20 && "bg-accent text-accent-foreground font-bold")}>
+                Expert (Depth 20)
+                {aiDepth === 20 && <Check className="w-4 h-4 ml-2" />}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -577,50 +711,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
 
         {/* Main Game Area */}
-        <div className="flex flex-col gap-4 order-1 lg:order-2 items-center w-full">
-          <div className="w-full max-w-full lg:max-w-[512px] flex flex-col gap-4">
-            {/* Synth Control Panel */}
-            <SynthControlPanel 
-                selectedSquare={synthSelectedSquare as Square | null}
-                selectedPieceInfo={(() => {
-                  if (!synthSelectedSquare) return null
-                  // @ts-ignore
-                    const piece = game.get(synthSelectedSquare as Square)
-                  if (!piece) return "Empty"
-                  
-                  const instrumentMap: Record<string, string> = {
-                      p: "Drums",
-                      n: "Bass",
-                      b: "Piano",
-                      r: "Pad",
-                      q: "Lead",
-                      k: "Lead"
-                  }
-                  
-                  const pieceNameMap: Record<string, string> = {
-                      p: "Pawn",
-                      n: "Knight",
-                      b: "Bishop",
-                      r: "Rook",
-                      q: "Queen",
-                      k: "King"
-                  }
+        <div className="flex flex-col gap-4 order-1 lg:order-2 items-center w-full min-h-screen justify-start pt-0">
+          <div
+            className="w-full max-w-full lg:max-w-[512px] flex flex-col gap-4 relative"
+            ref={centerContainerRef}
+          >
 
-                  return `${piece.color === "w" ? "White" : "Black"} ${pieceNameMap[piece.type]} - ${instrumentMap[piece.type]}`
-                })()}
-                effects={synthSelectedSquare ? (squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS) : DEFAULT_EFFECTS}
-                onEffectChange={(key, value) => {
-                  if (!synthSelectedSquare) return
-                  setSquareEffects(prev => ({
-                    ...prev,
-                    [synthSelectedSquare]: {
-                      ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS),
-                      [key]: value
-                    }
-                  }))
-                }}
-                cityColor={city.color}
-              />
+
+
 
             <div className="flex justify-between gap-0.5 min-h-[1rem] w-full">
               <div className="flex justify-start gap-0.5">
@@ -653,8 +751,25 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             </div>
 
             {/* Chess Board */}
-            <div className="flex-1 flex flex-col items-center justify-start min-h-[400px] w-full">
-              <div className="w-full aspect-square relative">
+            <div className="flex-1 flex flex-col items-center justify-center min-h-[400px] w-full relative z-20">
+              <div className="w-[90vw] max-w-[512px] h-8 bg-black/40 rounded overflow-hidden flex relative mb-2 border border-white/10">
+                <div 
+                  className="h-full bg-white transition-all duration-1000 ease-in-out relative"
+                  style={{ width: `${whitePercent}%` }}
+                >
+                    <span className="absolute top-0 left-2 text-[10px] font-mono font-bold text-black leading-[32px]">
+                      You {whitePercent}%
+                    </span>
+                </div>
+                  <span className="absolute top-0 right-2 text-[10px] font-mono font-bold text-white leading-[32px]">
+                    IA {blackPercent}%
+                  </span>
+              </div>
+              <div
+                className="w-[90vw] max-w-[512px] aspect-square relative z-20"
+                ref={boardAreaRef}
+                onClick={(e) => e.stopPropagation()}
+              >
                   <ChessgroundBoard 
                   game={game} 
                   onMove={handlePlayerMove} 
@@ -687,24 +802,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               </div>
             </div>
 
-            {lastEvalScore !== null && (
-              <div className="flex flex-col items-center w-full mt-2 gap-1">
-                <div
-                  className="w-full max-w-xs h-2 rounded-full overflow-hidden border"
-                  style={{ backgroundColor: "#000000", borderColor: "rgba(255,255,255,0.1)" }}
-                >
-                  <div
-                    className="h-full bg-white/90"
-                    style={{ width: `${whitePercent}%` }}
-                  />
-                </div>
-                <div className="flex justify-between w-full max-w-xs text-[10px] font-mono text-muted-foreground">
-                  <span>White {whitePercent}%</span>
-                  <span>Black {blackPercent}%</span>
-                </div>
-              </div>
-            )}
-
             <div className="flex w-full items-center mt-2 gap-2 justify-center relative z-50">
               <div className="flex items-center gap-3">
                 <Button
@@ -717,7 +814,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 >
                   <Undo2 className="w-10 h-10" />
                 </Button>
-
+                <Button
+                  variant="ghost"
+                  size="default"
+                  onClick={handleTogglePlay}
+                  className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                  style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                  {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
+                </Button>
                 <Button
                   variant="ghost"
                   size="default"
@@ -731,20 +836,156 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Right Panel - Live Code */}
-        <div className="lg:w-96 order-3 flex flex-col gap-4 lg:h-[calc(100vh-6rem)]">
-           <div className={cn("transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
-             <div className="w-full h-16 md:h-24">
-               <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} hasStarted={hasStarted} />
+          {/* Live Code */}
+          <div className="w-full max-w-full lg:max-w-[512px] flex flex-col gap-4 relative z-20 mt-4">
+             <div className={cn("transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
+               <div className="w-full h-16 md:h-24">
+                 <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} hasStarted={hasStarted} />
+               </div>
              </div>
-           </div>
-           <div className={cn("flex-1 transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
-             <LiveCodeOverlay pattern={currentPattern} city={city} isPlaying={isPlaying} />
-           </div>
+             <div className={cn("flex-1 transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
+               <LiveCodeOverlay pattern={currentPattern} city={city} isPlaying={isPlaying} />
+             </div>
+          </div>
         </div>
       </div>
+      {connectionLine && (
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible" style={{ zIndex: 0 }}>
+          {(() => {
+             const startX = connectionLine.x1
+             const startY = connectionLine.y1
+             const endX = connectionLine.x2
+             const endY = connectionLine.y2
+             const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+             const t = Math.min(1, dist / 800)
+             const maxCurve = 120
+             const minCurve = 40 
+             const curveAmount = maxCurve - (t * (maxCurve - minCurve))
+             const cpX = (startX + endX) / 2
+             const cpY = (startY + endY) / 2 + curveAmount
+             return (
+              <>
+                <path
+                  d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
+                  stroke="white"
+                  strokeWidth={1.5}
+                  fill="none"
+                  className="opacity-40"
+                />
+                <circle cx={startX} cy={startY} r={2} fill="red" />
+              </>
+             )
+          })()}
+        </svg>
+      )}
+      {editorConnectionLine && (
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-50 overflow-visible">
+          {(() => {
+             const startX = editorConnectionLine.x1
+             const startY = editorConnectionLine.y1
+             const endX = editorConnectionLine.x2
+             const endY = editorConnectionLine.y2
+             const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+             const t = Math.min(1, dist / 800)
+             const maxCurve = 120
+             const minCurve = 40 
+             const curveAmount = maxCurve - (t * (maxCurve - minCurve))
+             const cpX = (startX + endX) / 2
+             const cpY = (startY + endY) / 2 + curveAmount
+             return (
+              <path
+                d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
+                stroke="white"
+                strokeWidth={1.5}
+                fill="none"
+                className="opacity-40"
+              />
+             )
+          })()}
+        </svg>
+      )}
+
+      <SynthControlPanel
+        ref={knobsRef}
+        selectedSquare={synthSelectedSquare as Square | null}
+        selectedPieceInfo={(() => {
+          if (!synthSelectedSquare) return null
+          // @ts-expect-error - chess.js get typing is not recognized here
+          const piece = game.get(synthSelectedSquare as Square)
+          if (!piece) return "Empty"
+          const instrumentMap: Record<string, string> = {
+            p: "Drums",
+            n: "Bass",
+            b: "Piano",
+            r: "Pad",
+            q: "Lead",
+            k: "Lead",
+          }
+          const pieceNameMap: Record<string, string> = {
+            p: "Pawn",
+            n: "Knight",
+            b: "Bishop",
+            r: "Rook",
+            q: "Queen",
+            k: "King",
+          }
+          return `${piece.color === "w" ? "White" : "Black"} ${
+            pieceNameMap[piece.type]
+          } - ${instrumentMap[piece.type]}`
+        })()}
+        effects={
+          synthSelectedSquare
+            ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS
+            : DEFAULT_EFFECTS
+        }
+        onEffectChange={(key, value) => {
+          if (!synthSelectedSquare) return
+          setSquareEffects((prev) => ({
+            ...prev,
+            [synthSelectedSquare]: {
+              ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS),
+              [key]: value,
+            },
+          }))
+        }}
+        cityColor={city.color}
+        position={knobsPosition ?? { x: 0, y: 0 }}
+        onPositionChange={setKnobsPosition}
+        handleRef={knobsHandleRef}
+        isOn={knobsOn}
+        onToggle={() => setKnobsOn(!knobsOn)}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      />
+
+      <StrudelEditor
+        ref={strudelEditorRef}
+        handleRef={strudelEditorHandleRef}
+        selectedSquare={synthSelectedSquare}
+        effects={
+          synthSelectedSquare
+            ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS
+            : DEFAULT_EFFECTS
+        }
+        onEffectChange={(key, value) => {
+          if (!synthSelectedSquare) return
+          setSquareEffects((prev) => ({
+            ...prev,
+            [synthSelectedSquare]: {
+              ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS),
+              [key]: value,
+            },
+          }))
+        }}
+        cityColor={city.color}
+        isOpen={strudelEditorOn}
+        onToggle={() => setStrudelEditorOn(!strudelEditorOn)}
+        position={strudelEditorPosition ?? { x: 0, y: 0 }}
+        onPositionChange={setStrudelEditorPosition}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      />
+
     </div>
   )
 }

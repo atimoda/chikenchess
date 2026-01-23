@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
-import { cn } from "@/lib/utils"
+import React, { useRef } from "react"
 
 interface KnobProps {
   value: number
@@ -11,20 +10,20 @@ interface KnobProps {
   label: string
   onChange: (value: number) => void
   formatValue?: (value: number) => string
+  neon?: boolean
 }
 
-export function Knob({ value, min, max, step = 0.01, label, onChange, formatValue }: KnobProps) {
-  const [isDragging, setIsDragging] = useState(false)
+export function Knob({ value, min, max, step = 0.01, label, onChange, formatValue, neon = true }: KnobProps) {
   const startY = useRef<number>(0)
   const startX = useRef<number>(0)
   const startValue = useRef<number>(0)
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true)
+    if (!neon) return
     startY.current = e.clientY
     startX.current = e.clientX
     startValue.current = value
-    document.body.style.cursor = "ns-resize"
+    document.body.style.cursor = "ew-resize"
     
     window.addEventListener("mousemove", handleMouseMove)
     window.addEventListener("mouseup", handleMouseUp)
@@ -55,7 +54,6 @@ export function Knob({ value, min, max, step = 0.01, label, onChange, formatValu
   }
 
   const handleMouseUp = () => {
-    setIsDragging(false)
     document.body.style.cursor = "default"
     window.removeEventListener("mousemove", handleMouseMove)
     window.removeEventListener("mouseup", handleMouseUp)
@@ -67,24 +65,28 @@ export function Knob({ value, min, max, step = 0.01, label, onChange, formatValu
   const rotation = -135 + percent * 270
 
   return (
-    <div className="flex flex-col items-center gap-1 select-none">
+    <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")}>
       <div 
-        className="relative w-10 h-10 rounded-full bg-secondary border border-border cursor-ns-resize group"
+        className={cn(
+            "relative w-10 h-10 rounded-full bg-secondary border border-border group transition-all",
+            neon ? "cursor-ew-resize hover:border-[var(--city-neon)]" : "cursor-default border-border/50 bg-secondary/50"
+        )}
         onMouseDown={handleMouseDown}
       >
         <div 
-          className="absolute w-full h-full rounded-full transition-colors group-hover:border-[var(--city-neon)]"
+          className="absolute w-full h-full rounded-full transition-colors"
           style={{ transform: `rotate(${rotation}deg)` }}
         >
-          <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 bg-foreground/50 rounded-full" />
+          <div className={cn("absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 rounded-full transition-colors", neon ? "bg-foreground/50 group-hover:bg-[var(--city-neon)]" : "bg-foreground/20")} />
         </div>
       </div>
       <div className="flex flex-col items-center">
         <span className="text-[10px] uppercase font-mono text-muted-foreground">{label}</span>
-        <span className="text-[10px] font-mono font-bold" style={{ color: "var(--city-neon)" }}>
+        <span className={cn("text-[10px] font-mono font-bold transition-colors", neon ? "text-[var(--city-neon)]" : "text-muted-foreground")}>
           {formatValue ? formatValue(value) : value.toFixed(2)}
         </span>
       </div>
     </div>
   )
 }
+import { cn } from "@/lib/utils"

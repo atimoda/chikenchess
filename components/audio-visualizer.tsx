@@ -2,12 +2,6 @@
 
 import { useEffect, useRef, useCallback } from "react"
 
-interface AudioVisualizerProps {
-  isPlaying: boolean
-  color: string
-  pattern: string
-}
-
 import { getAudioEngine } from "@/lib/audio-engine"
 
 interface AudioVisualizerProps {
@@ -17,7 +11,7 @@ interface AudioVisualizerProps {
   hasStarted: boolean
 }
 
-export function AudioVisualizer({ isPlaying, color, pattern, hasStarted }: AudioVisualizerProps) {
+export function AudioVisualizer({ isPlaying, color, pattern: _pattern, hasStarted }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
   // dataArray reused to avoid GC

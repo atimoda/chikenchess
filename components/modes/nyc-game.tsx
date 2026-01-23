@@ -68,7 +68,7 @@ export function NycGame({ city, onBack }: NycGameProps) {
     }
   }, [])
 
-  const handleMove = (move: Move) => {
+  const handleMove = (_move: Move) => {
     const newGame = new Chess(game.fen())
     setGame(newGame)
     

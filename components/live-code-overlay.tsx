@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import type { CityData } from "@/lib/cities-data"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Copy, Check, Terminal } from "lucide-react"
@@ -56,6 +55,20 @@ export function LiveCodeOverlay({ pattern, city, isPlaying }: LiveCodeOverlayPro
         <div className="flex items-center gap-2">
           <Terminal className="w-3 h-3 text-muted-foreground" />
           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Live Code</span>
+          <Badge className="ml-2 text-[9px] px-2 py-0.5 font-mono bg-primary/10 border-primary/40">
+            {city.name}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={handleCopy}
+            className="h-7 w-7 border-border bg-background/40 hover:bg-background/70"
+          >
+            {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          </Button>
         </div>
       </div>
       <div 

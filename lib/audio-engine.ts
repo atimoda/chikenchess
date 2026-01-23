@@ -164,7 +164,7 @@ export class AudioEngine {
     }
   }
 
-  async playPieceSample(square: string, pieceType: string, pieceColor: "w" | "b", isPreview: boolean = true) {
+  async playPieceSample(square: string, pieceType: string, pieceColor: "w" | "b", _isPreview: boolean = true) {
     if (!this.audioContext || !this.masterGain) await this.init()
     if (!this.audioContext) return
 
@@ -245,14 +245,8 @@ export class AudioEngine {
           const offset = fileIndex >= 0 && rankIndex >= 0 ? (fileIndex + rankIndex) % 5 : 0
           const ratio = Math.pow(2, offset / 12)
           let c2 = noteToFrequency("c2") * ratio * pitch
-          let g2 = noteToFrequency("g2") * ratio * pitch
-          let d2 = noteToFrequency("d2") * ratio * pitch
-          let f1 = noteToFrequency("f1") * ratio * pitch
           if (pattern.cityId === "vienna") {
             c2 *= 4
-            g2 *= 4
-            d2 *= 4
-            f1 *= 4
             this.playViolinLegato(now, c2, gain, pan, delay, reverb)
           } else {
             const freq = c2
@@ -427,7 +421,11 @@ export class AudioEngine {
 
   stopAmbience() {
     this.ambienceNodes.forEach(node => {
-      try { node.stop() } catch { }
+      try {
+        node.stop()
+      } catch (error) {
+        void error
+      }
     })
     this.ambienceNodes = []
     if (this.ambienceGain) {
@@ -447,22 +445,6 @@ export class AudioEngine {
 
     // Humanize: tiny random offset (0-10ms)
     const humanize = () => (Math.random() * 0.01)
-
-    // Helper to get effective params for a piece on a square
-    const getParams = (square: string | undefined, defaultGain: number, defaultPan: number) => {
-      if (!square || !this.squareEffects[square]) {
-        return { gain: defaultGain, pan: defaultPan, pitch: 1, delay: 0, reverb: 0, decay: 0 }
-      }
-      const fx = this.squareEffects[square]
-      return {
-        gain: (fx.gain ?? 1) * defaultGain, // Multiply relative to base gain
-        pan: fx.pan ?? defaultPan, // Override pan
-        pitch: fx.pitch ?? 1,
-        delay: fx.delay ?? 0,
-        reverb: fx.reverb ?? 0,
-        decay: fx.decay ?? 0
-      }
-    }
 
     // Helper: Stochastic trigger
     const shouldPlay = (prob: number = 1) => Math.random() <= (prob ?? 1)
@@ -860,7 +842,6 @@ export class AudioEngine {
     // Tweak sound based on color
     // Black = slightly lower pitch/more filtered for "darker" sound
     const pitchMod = (color === 'b' ? 0.8 : 1.0) * pitchMultiplier
-    const filterMod = color === 'b' ? 0.8 : 1.0
 
     // Map sample names to synthesis functions
     switch (sample) {
@@ -1463,8 +1444,6 @@ export class AudioEngine {
 
     const [att, dec, sus, rel] = adsr
     const duration = 2 // Fixed approximate bar duration for pads
-
-    const merger = this.audioContext.createChannelMerger(2)
     const gainNode = this.audioContext.createGain()
 
     // ADSR Envelope

@@ -12,7 +12,7 @@ interface PiecePosition {
 }
 
 // Generate both the display pattern (Strudel-like code) and the parsed pattern for audio
-export function generateStrudelPattern(game: Chess, city: CityData, activeSquares: Set<string>, squareEffects: SquareEffectMap = {}): string {
+export function generateStrudelPattern(game: Chess, city: CityData, activeSquares: Set<string>, _squareEffects: SquareEffectMap = {}): string {
   const board = game.board()
   const pieces: PiecePosition[] = []
 
@@ -127,7 +127,7 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
   // --- BISHOP LOGIC (Piano with specific patterns) ---
   // "n("0 [2 4] <3 5> [~ <4 1>]".add("<0 [0,2,4]>")) .scale("C5:minor")"
   if (bishops.length > 0) {
-    bishops.forEach((b, i) => {
+    bishops.forEach((b) => {
       // Calculate Scale based on position
       // Roots: C, D, Eb, F, G, Ab, Bb (Minor scale degrees)
       const roots = ["C", "D", "Eb", "F", "G", "Ab", "Bb"]
@@ -233,20 +233,6 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
 
   layers.push(`)`)
   return layers.join("\n")
-}
-
-// Helper: Euclidean Rhythm Generator
-const euclidean = (k: number, n: number): boolean[] => {
-  const pattern = new Array(n).fill(false)
-  let bucket = 0
-  for (let i = 0; i < n; i++) {
-    bucket += k
-    if (bucket >= n) {
-      bucket -= n
-      pattern[i] = true
-    }
-  }
-  return pattern
 }
 
 // Helper to convert binary array to Strudel hex string or mini notation
@@ -387,7 +373,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
   })
 
   // --- BISHOP LOGIC (Xylophone Pattern) ---
-  const pianoLayers = bishops.map((b, i) => {
+  const pianoLayers = bishops.map((b) => {
     const fx = getEffects(b.square)
     const pitchMult = fx.pitch ?? 1
 

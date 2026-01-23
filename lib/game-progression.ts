@@ -1,6 +1,6 @@
 "use client"
 
-import { cities, type CityData } from "./cities-data"
+import { cities } from "./cities-data"
 
 const STORAGE_KEY = "chikenchess_campaign"
 
