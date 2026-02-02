@@ -111,10 +111,10 @@ export function ChessBoard({
 
                 {/* Coordinate labels */}
                 {colIndex === 0 && (
-                  <span className="absolute top-0.5 left-1 text-xs font-mono text-muted-foreground">{row}</span>
+                  <span className="absolute top-0.5 left-1 text-xs font-mono text-white/40">{row}</span>
                 )}
                 {rowIndex === 7 && (
-                  <span className="absolute bottom-0.5 right-1 text-xs font-mono text-muted-foreground">{col}</span>
+                  <span className="absolute bottom-0.5 right-1 text-xs font-mono text-white/40">{col}</span>
                 )}
               </button>
             )

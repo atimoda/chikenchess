@@ -1,4 +1,5 @@
 "use client"
+import { useEffect, useRef } from "react"
 import type { CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
 
@@ -16,14 +17,22 @@ export function GameInfo({ moveHistory, city, turn, aiDepth }: GameInfoProps) {
   // Create a box class that handles the fade out
   const boxClass = cn(
     "border border-border rounded-lg transition-all duration-[3000ms]",
-    hasStarted ? "bg-transparent border-transparent opacity-30 hover:opacity-100 hover:duration-300" : "bg-card/80 backdrop-blur-sm"
+    hasStarted ? "bg-transparent border-transparent opacity-30 hover:opacity-100 hover:duration-300" : "bg-black/90"
   )
   
   // Box for Genre/BPM/Scale - moved out of Piece > Sound
   const infoBoxClass = boxClass
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [moveHistory])
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 w-full">
       {/* Info Box */}
       <div className={infoBoxClass}>
         <div className="px-4 pb-2 pt-4 space-y-4">
@@ -101,7 +110,7 @@ export function GameInfo({ moveHistory, city, turn, aiDepth }: GameInfoProps) {
           </div>
         </div>
         <div className="px-4 pb-2 pt-2">
-          <div className="h-32 overflow-y-auto scrollbar-hide">
+          <div ref={scrollRef} className="h-32 overflow-y-auto scrollbar-hide">
             <style jsx global>{`
               .scrollbar-hide::-webkit-scrollbar {
                   display: none;

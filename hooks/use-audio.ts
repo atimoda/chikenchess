@@ -86,5 +86,5 @@ export function useAudio(
     engineRef.current?.playIllegalMoveGlitch(pieceType, square)
   }, [])
 
-  return { togglePlayback, isInitialized, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch }
+  return { engineRef, togglePlayback, isInitialized, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch }
 }

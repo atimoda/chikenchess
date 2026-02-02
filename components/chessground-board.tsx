@@ -127,7 +127,7 @@ export function ChessgroundBoard({
     const compR = 255 - r;
     const compG = 255 - g;
     const compB = 255 - b;
-    return `rgba(${compR}, ${compG}, ${compB}, 0.3)`;
+    return `rgba(${compR}, ${compG}, ${compB}, 0.15)`;
   }
 
   const lastMoveColor = getComplementaryColor(cityColor);
@@ -460,8 +460,9 @@ export function ChessgroundBoard({
         ref={boardRef}
         className="grid grid-cols-8 rounded-lg overflow-hidden relative fade-transparency w-full h-full"
         style={{
-          border: `1px solid ${cityColor}`,
-          boxShadow: `0 0 40px ${cityColor}40, inset 0 0 20px ${cityColor}10`,
+          boxShadow: `inset 0 0 20px ${cityColor}10`,
+          // @ts-expect-error - CSS variable injection
+          "--city-color": cityColor,
         }}
         onMouseMove={handleBoardMouseMove}
         onMouseUp={(e) => {
@@ -475,6 +476,14 @@ export function ChessgroundBoard({
           }
         }}
       >
+        <style jsx>{`
+          .board-square-light {
+            background-color: rgba(255, 255, 255, 0.2);
+          }
+          .board-square-dark {
+            background-color: color-mix(in srgb, var(--city-color) 60%, rgba(150, 150, 150, 0.75) 80%);
+          }
+        `}</style>
         {ROWS.map((row, rowIndex) =>
           COLUMNS.map((col, colIndex) => {
             const square = `${col}${row}` as Square
@@ -502,6 +511,7 @@ export function ChessgroundBoard({
                 key={square}
                 className={cn(
                   "relative aspect-square flex items-center justify-center transition-colors duration-150 w-full",
+                  !isKingInCheck && !isSelected && !isPremoveSquare && !isLastMove && (isLight ? "board-square-light" : "board-square-dark"),
                   (isSynthSelected || (piece && isSynthSelected)) &&
                     "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]",
                 )}
@@ -514,10 +524,12 @@ export function ChessgroundBoard({
                       : isPremoveSquare
                         ? "rgba(59, 130, 246, 0.3)"
                         : isLastMove
-                          ? lastMoveColor
+                          ? (isLight 
+                              ? `color-mix(in srgb, ${cityColor} 20%, #505050bf 80%)` 
+                              : `color-mix(in srgb, ${cityColor} 20%, #1a1a1abf 80%)`)
                           : isLight
-                            ? `${cityColor}40`
-                            : `${cityColor}25`,
+                            ? `color-mix(in srgb, ${cityColor} 20%, #6c6c6cbf 80%)`
+                            : `color-mix(in srgb, ${cityColor} 20%, #303030bf 80%)`,
                 }}
                 onMouseDown={(e) => {
                   const hasPiece = !!piece
@@ -613,8 +625,7 @@ export function ChessgroundBoard({
                 {colIndex === 0 && (
                   <span
                     className={cn(
-                      "absolute top-0.5 left-1 text-[10px] font-mono font-bold",
-                      isLight ? "text-black/40" : "text-white/40",
+                      "absolute top-0.5 left-1 text-[10px] font-mono font-bold text-white/40",
                     )}
                   >
                     {row}
@@ -623,8 +634,7 @@ export function ChessgroundBoard({
                 {rowIndex === 7 && (
                   <span
                     className={cn(
-                      "absolute bottom-0.5 right-1 text-[10px] font-mono font-bold",
-                      isLight ? "text-black/40" : "text-white/40",
+                      "absolute bottom-0.5 right-1 text-[10px] font-mono font-bold text-white/40",
                     )}
                   >
                     {col}

@@ -32,7 +32,7 @@ interface CityPopupProps {
   handleSmartPadLeave: (e: React.MouseEvent<HTMLButtonElement>) => void
   stopPadSound: () => void
   isEntering: boolean
-  setIsEntering: (v: boolean) => void
+  onEnter: () => void
   scale: number
   onDragMove: () => void
 }
@@ -55,7 +55,7 @@ const CityPopup = ({
   handleSmartPadLeave,
   stopPadSound,
   isEntering,
-  setIsEntering,
+  onEnter,
   scale,
   onDragMove
 }: CityPopupProps) => {
@@ -266,7 +266,7 @@ const CityPopup = ({
                   stopPadSound();
                   if (isEntering) return;
                   playMapSound("suction", true);
-                  setIsEntering(true);
+                  onEnter();
                   setTimeout(() => {
                      onCitySelect(city);
                   }, 1500);
@@ -343,7 +343,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string, rotation: number } | null>(null)
   const [hoveredCityId, setHoveredCityId] = useState<string | null>(null)
-  const [isEntering, setIsEntering] = useState(false)
+  const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
+  const [showAbout, setShowAbout] = useState(false)
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // --- AUDIO LOGIC ---
@@ -464,7 +465,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     osc2.frequency.value = 400
 
     gain.gain.setValueAtTime(0, t)
-    gain.gain.linearRampToValueAtTime(0.002, t + 0.1) // Reduced volume (25% of original)
+    gain.gain.linearRampToValueAtTime(0.0029, t + 0.1) // Reduced volume (25% of original) + 40% boost
 
     osc1.connect(filter)
     osc2.connect(filter)
@@ -787,7 +788,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
           const gain = ctx.createGain()
           gain.gain.setValueAtTime(0, t)
-          gain.gain.linearRampToValueAtTime(0.8, t + dur - 0.1)
+          gain.gain.linearRampToValueAtTime(0.196, t + dur - 0.1)
           gain.gain.linearRampToValueAtTime(0, t + dur)
 
           noise.connect(filter)
@@ -1380,27 +1381,22 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                     "rgb(0, 0, 0) 0px 3px 1px, rgb(0, 0, 0) 3px 3px 0px, rgb(0, 0, 0) 3px 3px 0px, rgb(0, 0, 0) -3px -3px 0px, rgb(0, 0, 0) 0px 0px 0px",
                 }}
               >
-                chiken'<span className="text-primary">chess</span>
+                chicken<span className="text-primary">chess</span>
               </h1>
             )}
           </div>
         </div>
 
         <div className="absolute top-6 right-6 flex items-center gap-4 pointer-events-auto text-xs font-mono">
-          <a
-            href="#"
-            onClick={(e) => e.preventDefault()}
-            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4"
+          <button
+            onClick={(e) => {
+                e.preventDefault()
+                setShowAbout(true)
+            }}
+            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4 bg-transparent border-none cursor-pointer"
           >
             About
-          </a>
-          <a
-            href="#"
-            onClick={(e) => e.preventDefault()}
-            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4"
-          >
-            Donate
-          </a>
+          </button>
         </div>
 
         <div
@@ -1548,6 +1544,47 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         </div>
       </div>
 
+      {/* About Popup */}
+      {showAbout && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div 
+                className="relative bg-card border border-border p-8 rounded-lg max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <button 
+                    onClick={() => setShowAbout(false)}
+                    className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+
+                <h2 className="text-2xl font-mono font-bold mb-4 text-primary">About ChiKenChess</h2>
+                
+                <p className="text-sm text-muted-foreground mb-2 italic">Where strategy meets symphony.</p>
+                <p className="text-sm text-foreground mb-6 leading-relaxed">
+                    ChiKenChess reimagines the classic game by turning the board into a musical instrument. Every piece has a voice, and every move creates a melody.
+                </p>
+
+                <h3 className="text-lg font-mono font-bold mb-2 text-primary">Support Indie Development</h3>
+                <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                    This is an independent project built with love. If you enjoy the experience and want to help keep the servers running (and the developer caffeinated), consider making a donation. Every bit helps us create more features and sounds!
+                </p>
+
+                <a 
+                    href="https://ko-fi.com/chickenchess" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF5E5B] text-white rounded font-bold hover:bg-[#ff4542] transition-colors"
+                >
+                    <span>☕</span> Buy me a Coffee
+                </a>
+            </div>
+            
+            {/* Backdrop click to close */}
+            <div className="absolute inset-0 -z-10" onClick={() => setShowAbout(false)} />
+        </div>
+      )}
+
       {/* UI OVERLAY LAYER - Fixed elements that don't scale */}
       <div className="absolute inset-0 z-40 overflow-hidden pointer-events-none">
         
@@ -1620,8 +1657,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               handleSmartPadSound={handleSmartPadSound}
               handleSmartPadLeave={handleSmartPadLeave}
               stopPadSound={stopPadSound}
-              isEntering={isEntering}
-              setIsEntering={setIsEntering}
+              isEntering={enteringCityId === city.id}
+              onEnter={() => setEnteringCityId(city.id)}
               scale={1}
               onDragMove={handleDragMove}
             />

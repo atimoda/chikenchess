@@ -13,10 +13,18 @@ export class AudioEngine {
   private currentPattern: ParsedPattern | null = null
   private ambienceNodes: AudioScheduledSourceNode[] = []
   private ambienceGain: GainNode | null = null
+  private ambienceFilter: BiquadFilterNode | null = null
+  private ambienceLfo: OscillatorNode | null = null
+  private ambienceOscillators: OscillatorNode[] = []
+  private ambienceBaseFreqs: number[] = []
+  private ambiencePitchMultiplier: number = 1
 
   // Sound parameters
   private bpm = 120
+  private globalBpm: number | null = null
   private stepTime = 0.125 // 16th note duration
+  private currentStep = 0
+
 
   // Per-square effects and samples
   private squareEffects: Record<string, any> = {}
@@ -80,10 +88,58 @@ export class AudioEngine {
     this.stepTime = 60 / bpm / 4 // 16th note
   }
 
+  setGlobalBpm(bpm: number) {
+    this.globalBpm = bpm
+    this.stepTime = 60 / bpm / 4
+    if (this.isPlaying) {
+       this.restartScheduler()
+    }
+  }
+
+  setGlobalVolume(volume: number) {
+    if (this.masterGain && this.audioContext) {
+      const time = this.audioContext.currentTime
+      this.masterGain.gain.setTargetAtTime(volume, time, 0.1)
+    }
+  }
+
+  setAmbiencePitch(pitch: number) {
+    this.ambiencePitchMultiplier = pitch
+    if (this.ambienceOscillators.length === 2 && this.ambienceBaseFreqs.length === 2 && this.audioContext) {
+       const time = this.audioContext.currentTime
+       this.ambienceOscillators[0].frequency.setTargetAtTime(this.ambienceBaseFreqs[0] * pitch, time, 0.1)
+       this.ambienceOscillators[1].frequency.setTargetAtTime(this.ambienceBaseFreqs[1] * pitch, time, 0.1)
+    }
+  }
+
+  setAmbienceFilter(freq: number) {
+    if (this.ambienceFilter && this.audioContext) {
+       const time = this.audioContext.currentTime
+       this.ambienceFilter.frequency.setTargetAtTime(freq, time, 0.1)
+    }
+  }
+
+  setAmbienceLFO(speed: number) {
+    if (this.ambienceLfo && this.audioContext) {
+       const time = this.audioContext.currentTime
+       this.ambienceLfo.frequency.setTargetAtTime(speed, time, 0.1)
+    }
+  }
+
   setPattern(pattern: ParsedPattern) {
     this.currentPattern = pattern
-    this.bpm = pattern.bpm
-    this.stepTime = 60 / this.bpm / 4
+    // Only update BPM if global override is not set
+    if (!this.globalBpm) {
+      this.bpm = pattern.bpm
+      this.stepTime = 60 / this.bpm / 4
+    }
+  }
+
+  private restartScheduler() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId)
+      this.intervalId = window.setInterval(() => this.scheduleLoop(), this.stepTime * 1000)
+    }
   }
 
   setSquareEffects(effects: Record<string, any>) {
@@ -181,6 +237,8 @@ export class AudioEngine {
     let pitch = 1
     let delay = 0
     let reverb = 0
+    let lpf: number | undefined = undefined
+    let hpf: number | undefined = undefined
 
     if (effects) {
       gain = (effects.gain ?? 1) * gain
@@ -188,6 +246,8 @@ export class AudioEngine {
       pitch = effects.pitch ?? 1
       delay = effects.delay ?? 0
       reverb = effects.reverb ?? 0
+      lpf = effects.lpf
+      hpf = effects.hpf
     }
 
     switch (pieceType) {
@@ -197,11 +257,11 @@ export class AudioEngine {
           const noteName = pattern.scale[degree] || "C4"
           const baseFreq = noteToFrequency(noteName)
           const freq = baseFreq * pitch
-          this.playPawn(now, "violin_pizz", gain, pan, pieceColor, pitch, delay, reverb, freq)
+          this.playPawn(now, "violin_pizz", gain, pan, pieceColor, pitch, delay, reverb, freq, lpf, hpf)
         } else {
           const drumSamples = ["bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy"]
           const sample = fileIndex >= 0 ? drumSamples[fileIndex % drumSamples.length] : "bd"
-          this.playPawn(now, sample, gain, pan, pieceColor, pitch, delay, reverb)
+          this.playPawn(now, sample, gain, pan, pieceColor, pitch, delay, reverb, undefined, lpf, hpf)
         }
         break
       case "n":
@@ -212,9 +272,9 @@ export class AudioEngine {
           const baseFreq = noteToFrequency(noteName)
           const freq = baseFreq * pitch
           const adsr: [number, number, number, number] = [0.1, 0.2, 1.0, 0.1]
-          this.playAcousticBass(now, freq, gain, pan, adsr, 0.5, delay, reverb)
+          this.playAcousticBass(now, freq, gain, pan, adsr, 0.5, delay, reverb, lpf, hpf)
         } else {
-          this.playBass(now, 110 * pitch, 600, 5, gain, [0.1, 0.2, 0.8, 0.8], delay, reverb)
+          this.playBass(now, 110 * pitch, 600, 5, gain, [0.1, 0.2, 0.8, 0.8], delay, reverb, lpf, hpf)
         }
         break
       case "b": {
@@ -229,15 +289,19 @@ export class AudioEngine {
         const n1 = rootFreq * pitch
         const n2 = rootFreq * 1.25 * pitch
         const n3 = rootFreq * 1.5 * pitch
-        this.playPiano(now, [n1, n2, n3], gain * 0.4, pan, null, delay, reverb)
+        this.playPiano(now, [n1, n2, n3], gain * 0.4, pan, null, delay, reverb, lpf, hpf)
         break
       }
       case "r":
         if (pattern && pattern.scale && pattern.scale.length > 0) {
           const chordNotes = pattern.scale.slice(0, 3).map((n) => noteToFrequency(n) * pitch)
-          this.playPad(now, chordNotes, pan, gain * 0.8, [0.5, 0.5, 0.8, 0.8], delay, reverb)
+          if (pattern.cityId === "vienna") {
+            this.playStringPad(now, chordNotes, gain * 0.8, pan, delay, reverb, lpf, hpf)
+          } else {
+            this.playPad(now, chordNotes, pan, gain * 0.8, [0.5, 0.5, 0.8, 0.8], delay, reverb, lpf, hpf)
+          }
         } else {
-          this.playPad(now, [220 * pitch, 330 * pitch, 440 * pitch], pan, gain * 0.8, [0.5, 0.5, 0.8, 0.8], delay, reverb)
+          this.playPad(now, [220 * pitch, 330 * pitch, 440 * pitch], pan, gain * 0.8, [0.5, 0.5, 0.8, 0.8], delay, reverb, lpf, hpf)
         }
         break
       case "q":
@@ -247,20 +311,20 @@ export class AudioEngine {
           let c2 = noteToFrequency("c2") * ratio * pitch
           if (pattern.cityId === "vienna") {
             c2 *= 4
-            this.playViolinLegato(now, c2, gain, pan, delay, reverb)
+            this.playViolinLegato(now, c2, gain, pan, delay, reverb, lpf, hpf)
           } else {
             const freq = c2
-            this.playQueenRandom(now, freq, gain, pan, delay, reverb)
+            this.playQueenRandom(now, freq, gain, pan, delay, reverb, lpf, hpf)
           }
         } else {
-          this.playLead6Voice(now, 440 * pitch, gain, pan, delay, reverb)
+          this.playLead6Voice(now, 440 * pitch, gain, pan, delay, reverb, lpf, hpf)
         }
         break
       case "k":
-        this.playTimpani(now, gain, pan, delay, reverb)
+        this.playTimpani(now, gain, pan, delay, reverb, lpf, hpf)
         break
       default:
-        this.playPawn(now, "bd", gain, pan, pieceColor, pitch, delay, reverb)
+        this.playPawn(now, "bd", gain, pan, pieceColor, pitch, delay, reverb, undefined, lpf, hpf)
     }
   }
 
@@ -280,6 +344,8 @@ export class AudioEngine {
     // Apply saved effects if any
     let delay = 0
     let reverb = 0
+    let lpf: number | undefined = undefined
+    let hpf: number | undefined = undefined
 
     if (effects) {
       gain = (effects.gain ?? 1) * 0.5
@@ -287,9 +353,11 @@ export class AudioEngine {
       pitch = effects.pitch ?? 1
       delay = effects.delay ?? 0
       reverb = effects.reverb ?? 0
+      lpf = effects.lpf
+      hpf = effects.hpf
     }
 
-    this.playPawn(now, sample, gain, pan, "w", pitch, delay, reverb) // Using "w" as default color, adding pitch param
+    this.playPawn(now, sample, gain, pan, "w", pitch, delay, reverb, undefined, lpf, hpf) // Using "w" as default color, adding pitch param
   }
 
   async start() {
@@ -297,22 +365,22 @@ export class AudioEngine {
     await this.resume()
 
     this.isPlaying = true
-    let step = 0
-
-    const scheduleStep = () => {
-      if (!this.isPlaying || !this.currentPattern || !this.audioContext) return
-
-      const now = this.audioContext.currentTime
-
-      // Schedule sounds for current step
-      this.playStep(step, now)
-
-      step = (step + 1) % 16
-    }
+    this.currentStep = 0
 
     // Schedule ahead for smoother playback
-    this.intervalId = window.setInterval(scheduleStep, this.stepTime * 1000)
-    scheduleStep() // Play immediately
+    this.intervalId = window.setInterval(() => this.scheduleLoop(), this.stepTime * 1000)
+    this.scheduleLoop() // Play immediately
+  }
+
+  private scheduleLoop() {
+    if (!this.isPlaying || !this.currentPattern || !this.audioContext) return
+
+    const now = this.audioContext.currentTime
+
+    // Schedule sounds for current step
+    this.playStep(this.currentStep, now)
+
+    this.currentStep = (this.currentStep + 1) % 16
   }
 
   stop() {
@@ -393,15 +461,25 @@ export class AudioEngine {
     const filter = this.audioContext.createBiquadFilter()
     filter.type = "lowpass"
     filter.frequency.value = filterFreq
+    this.ambienceFilter = filter
 
     // Drone 2
     const osc2 = this.audioContext.createOscillator()
     osc2.type = wave2
     osc2.frequency.value = fifthNote / 2
 
+    // Store base frequencies for pitch shifting
+    this.ambienceBaseFreqs = [rootNote / 2, fifthNote / 2]
+    
+    // Apply current pitch multiplier
+    osc1.frequency.value = this.ambienceBaseFreqs[0] * this.ambiencePitchMultiplier
+    osc2.frequency.value = this.ambienceBaseFreqs[1] * this.ambiencePitchMultiplier
+
     // LFO for movement (Unique speed per city)
     const lfo = this.audioContext.createOscillator()
     lfo.frequency.value = 0.1 + (cityId.length * 0.02)
+    this.ambienceLfo = lfo
+    
     const lfoGain = this.audioContext.createGain()
     lfoGain.gain.value = 10
 
@@ -417,6 +495,7 @@ export class AudioEngine {
     lfo.start()
 
     this.ambienceNodes = [osc1, osc2, lfo]
+    this.ambienceOscillators = [osc1, osc2]
   }
 
   stopAmbience() {
@@ -428,6 +507,11 @@ export class AudioEngine {
       }
     })
     this.ambienceNodes = []
+    this.ambienceOscillators = []
+    this.ambienceFilter = null
+    this.ambienceLfo = null
+    this.ambienceBaseFreqs = []
+    
     if (this.ambienceGain) {
       this.ambienceGain.disconnect()
       this.ambienceGain = null
@@ -473,7 +557,7 @@ export class AudioEngine {
           const reverb = p.reverb || 0
           const pitch = p.pitch || 1
           
-          this.playPawn(triggerTime + humanize(), p.sample, p.gain, p.pan, p.color, pitch, delay, reverb, p.frequency)
+          this.playPawn(triggerTime + humanize(), p.sample, p.gain, p.pan, p.color, pitch, delay, reverb, p.frequency, p.lpf, p.hpf)
         }
       })
     }
@@ -484,16 +568,16 @@ export class AudioEngine {
         const freq = q.pattern[step % (q.pattern.length || 16)]
         if (freq && freq > 0) {
           if (q.sound === "darbuka") {
-            this.playDarbuka(triggerTime, q.gain, q.pan, q.delay, q.reverb)
+            this.playDarbuka(triggerTime, q.gain, q.pan, q.delay, q.reverb, q.lpf, q.hpf)
           } else if (q.sound === "gm_lead_6_voice") {
-            this.playLead6Voice(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
+            this.playLead6Voice(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb, q.lpf, q.hpf)
           } else if (q.sound === "gm_queen_random") {
-            this.playQueenRandom(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
+            this.playQueenRandom(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb, q.lpf, q.hpf)
           } else if (q.sound === "violin_legato") {
-            this.playViolinLegato(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb)
+            this.playViolinLegato(triggerTime, freq, q.gain, q.pan, q.delay, q.reverb, q.lpf, q.hpf)
           } else {
             // Default Synth
-            this.playBishop(triggerTime, freq, q.gain, q.pan, q.adsr, !!q.lfo, q.delay, "triangle", q.reverb)
+            this.playBishop(triggerTime, freq, q.gain, q.pan, q.adsr, !!q.lfo, q.delay, "triangle", q.reverb, q.lpf, q.hpf)
           }
         }
       })
@@ -508,7 +592,7 @@ export class AudioEngine {
           const velocity = (b.velocities && b.velocities[step % patternLen] !== null)
             ? (b.velocities[step % patternLen] as number)
             : 1
-          this.playPiano(triggerTime, notes, b.gain * velocity * 0.4, b.pan, null, b.delay, b.reverb)
+          this.playPiano(triggerTime, notes, b.gain * velocity * 0.4, b.pan, null, b.delay, b.reverb, b.lpf, b.hpf)
         }
       })
     }
@@ -519,17 +603,17 @@ export class AudioEngine {
         const note = k.pattern[step % (k.pattern.length || 16)]
         if (note !== null) {
           if (k.sound === "darbuka") {
-             this.playDarbuka(triggerTime, k.gain, k.pan, k.delay, k.reverb)
+             this.playDarbuka(triggerTime, k.gain, k.pan, k.delay, k.reverb, k.lpf, k.hpf)
           } else if (k.sound === "gm_woodblock") {
              // Woodblock: high pitch, short decay
-             this.playWoodblock(triggerTime, k.gain, k.pan, k.delay, k.reverb)
+             this.playWoodblock(triggerTime, k.gain, k.pan, k.delay, k.reverb, k.lpf, k.hpf)
           } else if (k.sound === "gm_melodic_tom") {
              const notes = Array.isArray(note) ? note : [note]
              notes.forEach(n => {
                 if (Number.isFinite(n)) {
                     // Transpose up if needed, C2 is low for toms, maybe OK for floor tom
                     // Multiply by 2 or 4 to bring into better tom range if needed
-                    this.playMelodicTom(triggerTime, n * 2, k.gain, k.pan, k.delay, k.reverb)
+                    this.playMelodicTom(triggerTime, n * 2, k.gain, k.pan, k.delay, k.reverb, k.lpf, k.hpf)
                 }
              })
           } else if (k.sound === "gm_acoustic_bass") {
@@ -539,14 +623,14 @@ export class AudioEngine {
              
              notes.forEach(n => {
                 if (Number.isFinite(n)) {
-                    this.playAcousticBass(triggerTime, n, k.gain, k.pan, adsr, (k as any).room || 0.5, k.delay, k.reverb)
+                    this.playAcousticBass(triggerTime, n, k.gain, k.pan, adsr, (k as any).room || 0.5, k.delay, k.reverb, k.lpf, k.hpf)
                 }
              })
           } else if (k.sound === "timpani") {
              const notes = Array.isArray(note) ? note : [note]
              notes.forEach(n => {
                 if (Number.isFinite(n)) {
-                    this.playTimpani(triggerTime, k.gain, k.pan, k.delay, k.reverb)
+                    this.playTimpani(triggerTime, k.gain, k.pan, k.delay, k.reverb, k.lpf, k.hpf)
                 }
              })
           } else if (k.sound === "synth") {
@@ -556,14 +640,14 @@ export class AudioEngine {
              const notes = Array.isArray(note) ? note : [note]
              notes.forEach(n => {
                  if (typeof n === 'number') {
-                    this.playBishop(triggerTime, n, k.gain, k.pan, [0.01, 0.2, 1.25, 1.0], true, k.delay, waveform, k.reverb)
+                    this.playBishop(triggerTime, n, k.gain, k.pan, [0.01, 0.2, 1.25, 1.0], true, k.delay, waveform, k.reverb, k.lpf, k.hpf)
                  }
              })
           } else {
              const notes = Array.isArray(note) ? note : [note]
              notes.forEach(n => {
                  if (typeof n === 'number') {
-                    this.playXylophone(triggerTime, n, k.gain, k.pan, k.delay, k.reverb)
+                    this.playXylophone(triggerTime, n, k.gain, k.pan, k.delay, k.reverb, k.lpf, k.hpf)
                  }
              })
           }
@@ -577,12 +661,12 @@ export class AudioEngine {
         const note = k.pattern[step % (k.pattern.length || 16)]
         if (note !== null && Number.isFinite(note)) {
           if (k.sound === "gm_acoustic_bass") {
-            this.playAcousticBass(triggerTime, note, k.gain, k.pan, k.adsr, k.room, k.delay, k.reverb)
+            this.playAcousticBass(triggerTime, note, k.gain, k.pan, k.adsr, k.room, k.delay, k.reverb, k.lpf, k.hpf)
           } else if (k.sound === "brass_staccato") {
-            this.playBrassStaccato(triggerTime, note, k.gain, k.pan, k.delay, k.reverb)
+            this.playBrassStaccato(triggerTime, note, k.gain, k.pan, k.delay, k.reverb, k.lpf, k.hpf)
           } else {
              // Fallback
-             this.playBass(triggerTime, note, 600, 5, k.gain, [0.1, 0.2, 0.8, 1.0], k.delay, k.reverb)
+             this.playBass(triggerTime, note, 600, 5, k.gain, [0.1, 0.2, 0.8, 1.0], k.delay, k.reverb, k.lpf, k.hpf)
           }
         }
       })
@@ -593,7 +677,11 @@ export class AudioEngine {
       rooks.forEach((r: any) => {
         const chord = r.pattern[step % (r.pattern.length || 16)]
         if (chord !== null && chord.length > 0) {
-          this.playPad(triggerTime, chord, r.pan, r.gain, [0.5, 0.5, 0.8, 1.0], r.delay, r.reverb)
+          if (r.sound === "string_pad") {
+             this.playStringPad(triggerTime, chord, r.gain, r.pan, r.delay, r.reverb, r.lpf, r.hpf)
+          } else {
+             this.playPad(triggerTime, chord, r.pan, r.gain, [0.5, 0.5, 0.8, 1.0], r.delay, r.reverb, r.lpf, r.hpf)
+          }
         }
       })
     }
@@ -611,9 +699,9 @@ export class AudioEngine {
       const padNotes = pad.pattern[step % 16]
       if (padNotes !== null && padNotes.length > 0 && shouldPlay(pad.probability)) {
         if (pad.sound === "string_pad") {
-            this.playStringPad(triggerTime, padNotes, pad.gain, pad.pan, 0, pad.reverb)
+            this.playStringPad(triggerTime, padNotes, pad.gain, pad.pan, 0, pad.reverb, pad.lpf, pad.hpf)
         } else {
-            this.playPad(triggerTime, padNotes, pad.pan, pad.gain, pad.adsr, 0, pad.reverb)
+            this.playPad(triggerTime, padNotes, pad.pan, pad.gain, pad.adsr, 0, pad.reverb, pad.lpf, pad.hpf)
         }
       }
     }
@@ -688,7 +776,19 @@ export class AudioEngine {
     })
   }
 
-  private playPiano(time: number, notes: number[], gain: number, pan: number, lfoType?: "siren" | "sine" | null, delayTime?: number, reverb: number = 0) {
+  playSeatbelt() {
+    if (!this.audioContext || !this.masterGain) return
+    const time = this.audioContext.currentTime
+    
+    // "Seatbelt" chime: Just the second note (C5)
+    // E5 = 659.25 Hz, C5 = 523.25 Hz
+    const note2 = 523.25
+    
+    // Play second note immediately (no delay)
+    this.playPiano(time, [note2], 0.6 * 0.4, 0, undefined, 0, 0.4)
+  }
+
+  public playPiano(time: number, notes: number[], gain: number, pan: number, lfoType?: "siren" | "sine" | null, delayTime?: number, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     
     const panner = this.audioContext.createStereoPanner()
@@ -715,7 +815,7 @@ export class AudioEngine {
 
     outputGain.connect(panner)
 
-    this.applyEffects(panner, delayTime || 0, reverb)
+    this.applyEffects(panner, delayTime || 0, reverb, lpf, hpf)
 
     notes.forEach(freq => {
         // FM Piano-ish sound
@@ -750,7 +850,7 @@ export class AudioEngine {
     })
   }
 
-  private playXylophone(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playXylophone(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     const osc = this.audioContext.createOscillator()
@@ -779,7 +879,7 @@ export class AudioEngine {
     
     gainNode.connect(panner)
     
-    this.applyEffects(panner, delay || 0.125, reverb || 0.4) // Default to previous values if not provided
+    this.applyEffects(panner, delay || 0.125, reverb || 0.4, lpf, hpf) // Default to previous values if not provided
 
     osc.start(time)
     osc.stop(time + 0.5)
@@ -787,7 +887,7 @@ export class AudioEngine {
     overtone.stop(time + 0.5)
   }
 
-  private applyEffects(source: AudioNode, delay: number = 0, reverb: number = 0) {
+  private applyEffects(source: AudioNode, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.masterGain || !this.audioContext) return
 
     const distortAmount = this.currentPattern?.effects?.distort ?? 0
@@ -802,7 +902,26 @@ export class AudioEngine {
       targetNode = shaper
     }
 
-    source.connect(targetNode)
+    // Apply Filters (HPF/LPF)
+    let processedSource = source
+    
+    if (hpf && hpf > 0) {
+      const hpfNode = this.audioContext.createBiquadFilter()
+      hpfNode.type = "highpass"
+      hpfNode.frequency.value = hpf
+      processedSource.connect(hpfNode)
+      processedSource = hpfNode
+    }
+
+    if (lpf && lpf < 20000) {
+      const lpfNode = this.audioContext.createBiquadFilter()
+      lpfNode.type = "lowpass"
+      lpfNode.frequency.value = lpf
+      processedSource.connect(lpfNode)
+      processedSource = lpfNode
+    }
+
+    processedSource.connect(targetNode)
 
     // Delay
     if (delay > 0) {
@@ -811,7 +930,7 @@ export class AudioEngine {
         const f = this.audioContext.createGain()
         f.gain.value = 0.3
         
-        source.connect(d)
+        processedSource.connect(d)
         d.connect(f)
         f.connect(d)
         d.connect(targetNode)
@@ -828,15 +947,15 @@ export class AudioEngine {
         g.gain.value = reverb * 0.4
         
         // Simple multi-tap
-        source.connect(d1)
-        source.connect(d2)
+        processedSource.connect(d1)
+        processedSource.connect(d2)
         d1.connect(g)
         d2.connect(g)
         g.connect(targetNode)
     }
   }
 
-  private playPawn(time: number, sample: string, gain: number, pan: number, color?: "w" | "b", pitchMultiplier: number = 1, delay: number = 0, reverb: number = 0, frequency?: number) {
+  private playPawn(time: number, sample: string, gain: number, pan: number, color?: "w" | "b", pitchMultiplier: number = 1, delay: number = 0, reverb: number = 0, frequency?: number, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     // Tweak sound based on color
@@ -845,33 +964,33 @@ export class AudioEngine {
 
     // Map sample names to synthesis functions
     switch (sample) {
-      case "bd": this.playKick(time, gain, pan, delay, reverb, pitchMod); break;
-      case "sd": this.playSnare(time, gain * (color === 'b' ? 0.8 : 1), pan, delay, reverb, pitchMod); break;
-      case "hh": this.playHihat(time, gain, pan, delay, reverb, pitchMod); break;
-      case "cp": this.playClap(time, gain, pan, delay, reverb, pitchMod); break;
-      case "mt": this.playTom(time, gain, 200 * pitchMod, pan, delay, reverb); break;
-      case "ht": this.playTom(time, gain, 300 * pitchMod, pan, delay, reverb); break;
-      case "lt": this.playTom(time, gain, 100 * pitchMod, pan, delay, reverb); break;
-      case "cy": this.playCymbal(time, gain, pan, delay, reverb, pitchMod); break;
-      case "cb": this.playCowbell(time, gain, pan, pitchMod, delay, reverb); break;
-      case "oh": this.playOpenHihat(time, gain, pan, delay, reverb, pitchMod); break;
-      case "ch": this.playHihat(time, gain, pan, delay, reverb, pitchMod); break;
-      case "lc": this.playConga(time, gain, 150 * pitchMod, pan, delay, reverb); break;
-      case "mc": this.playConga(time, gain, 250 * pitchMod, pan, delay, reverb); break;
-      case "hc": this.playConga(time, gain, 400 * pitchMod, pan, delay, reverb); break;
+      case "bd": this.playKick(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "sd": this.playSnare(time, gain * (color === 'b' ? 0.8 : 1), pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "hh": this.playHihat(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "cp": this.playClap(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "mt": this.playTom(time, gain, 200 * pitchMod, pan, delay, reverb, lpf, hpf); break;
+      case "ht": this.playTom(time, gain, 300 * pitchMod, pan, delay, reverb, lpf, hpf); break;
+      case "lt": this.playTom(time, gain, 100 * pitchMod, pan, delay, reverb, lpf, hpf); break;
+      case "cy": this.playCymbal(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "cb": this.playCowbell(time, gain, pan, pitchMod, delay, reverb, lpf, hpf); break;
+      case "oh": this.playOpenHihat(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "ch": this.playHihat(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "lc": this.playConga(time, gain, 150 * pitchMod, pan, delay, reverb, lpf, hpf); break;
+      case "mc": this.playConga(time, gain, 250 * pitchMod, pan, delay, reverb, lpf, hpf); break;
+      case "hc": this.playConga(time, gain, 400 * pitchMod, pan, delay, reverb, lpf, hpf); break;
       case "violin_pizz":
         // Frequency should be passed in p.frequency (which comes from p.pitch/note)
         // If not, we can infer from pitchMultiplier relative to A4? No, better to use frequency param.
         // But playPawn signature needs frequency.
         if (frequency) {
-             this.playViolinPizz(time, gain, pan, frequency / 220, delay, reverb) // playViolinPizz takes pitch ratio relative to A3(220)
+             this.playViolinPizz(time, gain, pan, frequency / 220, delay, reverb, lpf, hpf) // playViolinPizz takes pitch ratio relative to A3(220)
         }
         break;
-      default: this.playKick(time, gain, pan, delay, reverb, pitchMod);
+      default: this.playKick(time, gain, pan, delay, reverb, pitchMod, lpf, hpf);
     }
   }
 
-  private playCowbell(time: number, gain: number, pan: number, pitch: number, delay: number = 0, reverb: number = 0) {
+  private playCowbell(time: number, gain: number, pan: number, pitch: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     const osc1 = this.audioContext.createOscillator()
     const osc2 = this.audioContext.createOscillator()
@@ -895,13 +1014,13 @@ export class AudioEngine {
     osc2.connect(filter)
     filter.connect(gainNode).connect(panner)
     
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
     
     osc1.start(time); osc1.stop(time + 0.1)
     osc2.start(time); osc2.stop(time + 0.1)
   }
 
-  private playOpenHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1) {
+  private playOpenHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     const bufferSize = this.audioContext.sampleRate * 0.3
     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
@@ -922,16 +1041,16 @@ export class AudioEngine {
     
     noise.connect(filter).connect(gainNode).connect(panner)
     
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
     
     noise.start(time)
   }
 
-  private playConga(time: number, gain: number, freq: number, pan: number, delay: number = 0, reverb: number = 0) {
-    this.playTom(time, gain, freq, pan, delay, reverb) 
+  private playConga(time: number, gain: number, freq: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
+    this.playTom(time, gain, freq, pan, delay, reverb, lpf, hpf) 
   }
 
-  private playClap(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1) {
+  private playClap(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
      if (!this.audioContext || !this.masterGain) return
      // Simple clap synthesis
      const bufferSize = this.audioContext.sampleRate * 0.1
@@ -954,12 +1073,12 @@ export class AudioEngine {
 
      noise.connect(filter).connect(gainNode).connect(panner)
      
-     this.applyEffects(panner, delay, reverb)
+     this.applyEffects(panner, delay, reverb, lpf, hpf)
      
      noise.start(time)
   }
 
-  private playTom(time: number, gain: number, freq: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playTom(time: number, gain: number, freq: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
      if (!this.audioContext || !this.masterGain) return
      const osc = this.audioContext.createOscillator()
      osc.type = "sine"
@@ -975,12 +1094,12 @@ export class AudioEngine {
 
      osc.connect(gainNode).connect(panner)
      
-     this.applyEffects(panner, delay, reverb)
+     this.applyEffects(panner, delay, reverb, lpf, hpf)
      
      osc.start(time); osc.stop(time + 0.3)
   }
 
-  private playCymbal(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1) {
+  private playCymbal(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
      // Re-using hihat logic but longer
      if (!this.audioContext || !this.masterGain) return
      const bufferSize = this.audioContext.sampleRate * 0.5
@@ -1002,12 +1121,12 @@ export class AudioEngine {
 
      noise.connect(filter).connect(gainNode).connect(panner)
      
-     this.applyEffects(panner, delay, reverb)
+     this.applyEffects(panner, delay, reverb, lpf, hpf)
      
      noise.start(time)
   }
 
-  private playDarbuka(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playDarbuka(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     
     // Darbuka / Doumbek synthesis (Membrane + Shell resonance)
@@ -1038,13 +1157,13 @@ export class AudioEngine {
     oscLow.connect(gainLow).connect(panner)
     oscHigh.connect(gainHigh).connect(panner)
     
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
     
     oscLow.start(time); oscLow.stop(time + 0.2)
     oscHigh.start(time); oscHigh.stop(time + 0.1)
   }
 
-  private playWoodblock(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playWoodblock(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     
     // Woodblock: High pitch sine/square mix with very fast decay
@@ -1071,13 +1190,13 @@ export class AudioEngine {
     osc2.connect(gain2).connect(gainNode)
     gainNode.connect(panner)
     
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
     
     osc.start(time); osc.stop(time + 0.1)
     osc2.start(time); osc2.stop(time + 0.1)
   }
 
-  private playMelodicTom(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playMelodicTom(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     
     const osc = this.audioContext.createOscillator()
@@ -1095,21 +1214,21 @@ export class AudioEngine {
     
     osc.connect(gainNode).connect(panner)
     
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
     
     osc.start(time); osc.stop(time + 0.4)
   }
 
-  private playHoofBeats(time: number, gain: number, delay: number = 0, reverb: number = 0) {
+  private playHoofBeats(time: number, gain: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     const step = 0.09
     const pans = [-0.3, 0.2, -0.1, 0.3]
     for (let i = 0; i < pans.length; i++) {
-      this.playWoodblock(time + i * step, gain, pans[i], delay, reverb + 0.05)
+      this.playWoodblock(time + i * step, gain, pans[i], delay, reverb + 0.05, lpf, hpf)
     }
   }
 
-  private playAcousticBass(time: number, freq: number, gain: number, pan: number, adsr: [number, number, number, number], roomAmount: number = 0.3, delay: number = 0, reverb: number = 0) {
+  private playAcousticBass(time: number, freq: number, gain: number, pan: number, adsr: [number, number, number, number], roomAmount: number = 0.3, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     const [att, dec, sus, rel] = adsr
     
@@ -1150,7 +1269,7 @@ export class AudioEngine {
     // Let's use max of both or sum?
     // User requested applyEffects logic.
     // I'll use applyEffects.
-    this.applyEffects(panner, delay, Math.max(reverb, roomAmount))
+    this.applyEffects(panner, delay, Math.max(reverb, roomAmount), lpf, hpf)
 
     osc1.connect(gainNode)
     osc2.connect(gainNode)
@@ -1162,7 +1281,7 @@ export class AudioEngine {
   }
 
   // Modified to support waveform selection
-  private playBishop(time: number, note: number, gain: number, pan: number, adsr: [number, number, number, number], lfo: boolean, delayTime: number = 0, waveform: OscillatorType = "triangle", reverb: number = 0) {
+  private playBishop(time: number, note: number, gain: number, pan: number, adsr: [number, number, number, number], lfo: boolean, delayTime: number = 0, waveform: OscillatorType = "triangle", reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     const [att, dec, sus, rel] = adsr
     
@@ -1213,14 +1332,14 @@ export class AudioEngine {
         gainNode.connect(panner)
     }
 
-    this.applyEffects(panner, delayTime, reverb)
+    this.applyEffects(panner, delayTime, reverb, lpf, hpf)
 
     osc.connect(gainNode)
     osc.start(time)
     osc.stop(time + att + dec + rel + 0.1)
   }
 
-  private playQueenRandom(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playQueenRandom(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     // wchoose(["sine",10], ["triangle",1], ["bd:6",1])
@@ -1229,10 +1348,10 @@ export class AudioEngine {
     
     if (rand < 10) {
         // Sine: High weight
-        this.playBishop(time, freq, gain, pan, [0.01, 0.1, 0.5, 0.5], false, delay, "sine", reverb)
+        this.playBishop(time, freq, gain, pan, [0.01, 0.1, 0.5, 0.5], false, delay, "sine", reverb, lpf, hpf)
     } else if (rand < 11) {
         // Triangle: Low weight
-        this.playBishop(time, freq, gain, pan, [0.01, 0.1, 0.5, 0.5], false, delay, "triangle", reverb)
+        this.playBishop(time, freq, gain, pan, [0.01, 0.1, 0.5, 0.5], false, delay, "triangle", reverb, lpf, hpf)
     } else {
         // BD:6 (Bass Drum): Low weight
         // Using playKick. Pitch multiplier 1.0.
@@ -1240,11 +1359,11 @@ export class AudioEngine {
         // However, to respect "notes", we can try to tune it? 
         // playKick uses pitch multiplier. 
         // Let's just play a standard kick as requested "bd:6".
-        this.playKick(time, gain * 1.5, pan, delay, reverb) 
+        this.playKick(time, gain * 1.5, pan, delay, reverb, 1, lpf, hpf) 
     }
   }
 
-  private playLead6Voice(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playLead6Voice(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     // "Voice" Lead: 2 detuned sawtooths + 1 square + filter sweep
@@ -1283,14 +1402,14 @@ export class AudioEngine {
     osc3.connect(filter)
     filter.connect(gainNode).connect(panner)
 
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     osc1.start(time); osc1.stop(time + 0.8)
     osc2.start(time); osc2.stop(time + 0.8)
     osc3.start(time); osc3.stop(time + 0.8)
   }
 
-  private playKick(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1) {
+  private playKick(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     const osc = this.audioContext.createOscillator()
@@ -1309,14 +1428,14 @@ export class AudioEngine {
     osc.connect(gainNode)
     gainNode.connect(panner)
 
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     osc.start(time)
     osc.stop(time + 0.3)
     this.scheduledNodes.push(osc)
   }
 
-  private playSnare(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1) {
+  private playSnare(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     // Noise component
@@ -1358,7 +1477,7 @@ export class AudioEngine {
     osc.connect(oscGain)
     oscGain.connect(panner)
 
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     noise.start(time)
     osc.start(time)
@@ -1368,7 +1487,7 @@ export class AudioEngine {
     this.scheduledNodes.push(noise, osc)
   }
 
-  private playHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1) {
+  private playHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     const bufferSize = this.audioContext.sampleRate * 0.05
@@ -1396,14 +1515,14 @@ export class AudioEngine {
     filter.connect(gainNode)
     gainNode.connect(panner)
 
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     noise.start(time)
     noise.stop(time + 0.05)
     this.scheduledNodes.push(noise)
   }
 
-  private playBass(time: number, note: number, cutoff: number, resonance: number, gain: number, adsr: [number, number, number, number], delay: number = 0, reverb: number = 0) {
+  private playBass(time: number, note: number, cutoff: number, resonance: number, gain: number, adsr: [number, number, number, number], delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     const [att, dec, sus, rel] = adsr
@@ -1432,14 +1551,14 @@ export class AudioEngine {
     filter.connect(gainNode)
     gainNode.connect(panner)
 
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     osc.start(time)
     osc.stop(time + att + dec + rel + 0.1)
     this.scheduledNodes.push(osc)
   }
 
-  private playPad(time: number, notes: number[], pan: number, gain: number, adsr: [number, number, number, number], delay: number = 0, reverb: number = 0) {
+  private playPad(time: number, notes: number[], pan: number, gain: number, adsr: [number, number, number, number], delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     const [att, dec, sus, rel] = adsr
@@ -1472,10 +1591,10 @@ export class AudioEngine {
     gainNode.connect(panner)
     
     // Apply effects
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
   }
 
-  private playLead(time: number, note: number, distort: number, gain: number, adsr: [number, number, number, number], detune: number, delay: number = 0, reverb: number = 0) {
+  private playLead(time: number, note: number, distort: number, gain: number, adsr: [number, number, number, number], detune: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
 
     const [att, dec, sus, rel] = adsr
@@ -1519,14 +1638,14 @@ export class AudioEngine {
     }
     
     // Default effects for lead
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     osc.start(time)
     osc.stop(time + att + dec + rel + 0.1)
     this.scheduledNodes.push(osc)
   }
 
-  private playViolinPizz(time: number, gain: number, pan: number, pitch: number = 1, delay: number = 0, reverb: number = 0) {
+  private playViolinPizz(time: number, gain: number, pan: number, pitch: number = 1, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     const osc = this.audioContext.createOscillator()
     osc.type = "sawtooth"
@@ -1546,12 +1665,12 @@ export class AudioEngine {
     panner.pan.value = pan
 
     osc.connect(filter).connect(gainNode).connect(panner)
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
     
     osc.start(time); osc.stop(time + 0.2)
   }
 
-  private playBrassStaccato(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playBrassStaccato(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
     if (!this.audioContext || !this.masterGain) return
     const osc = this.audioContext.createOscillator()
     osc.type = "sawtooth"
@@ -1572,12 +1691,12 @@ export class AudioEngine {
     panner.pan.value = pan
 
     osc.connect(filter).connect(gainNode).connect(panner)
-    this.applyEffects(panner, delay, reverb)
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     osc.start(time); osc.stop(time + 0.2)
   }
 
-  private playWoodwind(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playWoodwind(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
      if (!this.audioContext || !this.masterGain) return
      const osc = this.audioContext.createOscillator()
      osc.type = "sine"
@@ -1606,13 +1725,13 @@ export class AudioEngine {
      osc.connect(gainNode)
      noise.connect(noiseFilter).connect(noiseGain).connect(gainNode)
      gainNode.connect(panner)
-     this.applyEffects(panner, delay, reverb)
+     this.applyEffects(panner, delay, reverb, lpf, hpf)
 
      osc.start(time); osc.stop(time + 0.35)
      noise.start(time); noise.stop(time + 0.35)
   }
 
-  private playStringPad(time: number, notes: number[], gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playStringPad(time: number, notes: number[], gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
      if (!this.audioContext || !this.masterGain) return
      
      const duration = 2.0
@@ -1640,10 +1759,10 @@ export class AudioEngine {
      })
      
      gainNode.connect(panner)
-     this.applyEffects(panner, delay, reverb)
+     this.applyEffects(panner, delay, reverb, lpf, hpf)
   }
 
-  private playViolinLegato(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playViolinLegato(time: number, freq: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
       if (!this.audioContext || !this.masterGain) return
       const osc = this.audioContext.createOscillator()
       osc.type = "sawtooth"
@@ -1669,13 +1788,13 @@ export class AudioEngine {
       panner.pan.value = pan
       
       osc.connect(filter).connect(gainNode).connect(panner)
-      this.applyEffects(panner, delay, reverb)
+      this.applyEffects(panner, delay, reverb, lpf, hpf)
       
       osc.start(time); osc.stop(time + 1.1)
       lfo.start(time); lfo.stop(time + 1.1)
   }
 
-  private playTimpani(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0) {
+  private playTimpani(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, lpf?: number, hpf?: number) {
       if (!this.audioContext || !this.masterGain) return
       const osc = this.audioContext.createOscillator()
       osc.type = "sine"
@@ -1691,7 +1810,7 @@ export class AudioEngine {
       panner.pan.value = pan
       
       osc.connect(gainNode).connect(panner)
-      this.applyEffects(panner, delay, reverb)
+      this.applyEffects(panner, delay, reverb, lpf, hpf)
       
       osc.start(time); osc.stop(time + 0.5)
   }
@@ -1721,12 +1840,12 @@ export interface ParsedPattern {
   scale?: string[]
   
   // Layers
-  pawns?: { sample: string; pattern: boolean[]; gain: number; pan: number; color: "w" | "b"; pitch?: number; frequency?: number; delay?: number; reverb?: number; decay?: number; sound?: "violin_pizz" }[]
-  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka" | "gm_lead_6_voice" | "gm_queen_random" | "violin_legato"; lfo?: boolean; delay?: number; reverb?: number; decay?: number }[]
-  bishops?: { pattern: (number | number[] | null)[]; velocities?: (number | null)[]; gain: number; pan: number; sound?: "piano" | "xylophone" | "gm_xylophone" | "woodwind"; lfo?: "siren" | "sine" | null; delay?: number; reverb?: number; decay?: number }[] // Piano
-  kings?: { pattern: (number | number[] | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka" | "gm_acoustic_bass" | "gm_woodblock" | "gm_melodic_tom" | "timpani"; delay?: number; reverb?: number; decay?: number; adsr?: [number, number, number, number]; room?: number; color?: "w" | "b" }[]
-  knights?: { pattern: (number | null)[]; gain: number; pan: number; sound: "bass" | "gm_acoustic_bass" | "brass_staccato"; adsr: [number, number, number, number]; room?: number; delay?: number; reverb?: number; decay?: number }[]
-  rooks?: { pattern: (number[] | null)[]; gain: number; pan: number; delay?: number; reverb?: number; decay?: number; sound?: "string_pad" }[]
+  pawns?: { sample: string; pattern: boolean[]; gain: number; pan: number; color: "w" | "b"; pitch?: number; frequency?: number; delay?: number; reverb?: number; decay?: number; sound?: "violin_pizz"; lpf?: number; hpf?: number }[]
+  queens?: { pattern: (number | null)[]; gain: number; pan: number; adsr: [number, number, number, number]; sound: "synth" | "darbuka" | "gm_lead_6_voice" | "gm_queen_random" | "violin_legato"; lfo?: boolean; delay?: number; reverb?: number; decay?: number; lpf?: number; hpf?: number }[]
+  bishops?: { pattern: (number | number[] | null)[]; velocities?: (number | null)[]; gain: number; pan: number; sound?: "piano" | "xylophone" | "gm_xylophone" | "woodwind"; lfo?: "siren" | "sine" | null; delay?: number; reverb?: number; decay?: number; lpf?: number; hpf?: number }[] // Piano
+  kings?: { pattern: (number | number[] | null)[]; gain: number; pan: number; sound: "xylophone" | "synth" | "darbuka" | "gm_acoustic_bass" | "gm_woodblock" | "gm_melodic_tom" | "timpani"; delay?: number; reverb?: number; decay?: number; adsr?: [number, number, number, number]; room?: number; color?: "w" | "b"; lpf?: number; hpf?: number }[]
+  knights?: { pattern: (number | null)[]; gain: number; pan: number; sound: "bass" | "gm_acoustic_bass" | "brass_staccato"; adsr: [number, number, number, number]; room?: number; delay?: number; reverb?: number; decay?: number; lpf?: number; hpf?: number }[]
+  rooks?: { pattern: (number[] | null)[]; gain: number; pan: number; delay?: number; reverb?: number; decay?: number; sound?: "string_pad" | "synth_pad"; lpf?: number; hpf?: number }[]
   
   // Legacy/Fallback
   kick?: { pattern: boolean[]; gain: number; probability?: number }
@@ -1748,6 +1867,8 @@ export interface ParsedPattern {
     probability?: number;
     adsr: [number, number, number, number];
     sound?: "string_pad" | "synth_pad";
+    lpf?: number;
+    hpf?: number;
   }
   lead?: {
     pattern: (number | null)[];

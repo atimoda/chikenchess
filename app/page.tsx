@@ -4,7 +4,6 @@ import { Suspense, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { WorldMap } from "@/components/world-map"
 import { DusseldorfGame } from "@/components/modes/dusseldorf-game"
-import { NycGame } from "@/components/modes/nyc-game"
 import { type CityData, getCityById } from "@/lib/cities-data"
 
 function GameContent() {
@@ -38,9 +37,6 @@ function GameContent() {
   }
 
   if (selectedCity) {
-    if (selectedCity.id === "nyc") {
-      return <NycGame city={selectedCity} onBack={handleBack} />
-    }
     return <DusseldorfGame city={selectedCity} onBack={handleBack} />
   }
 

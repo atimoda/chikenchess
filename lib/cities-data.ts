@@ -21,6 +21,8 @@ export interface CityData {
     pad: string
     lead: string
   }
+  introPhrases: string[]
+  aiDepth?: number
 }
 
 const rawCities: Omit<CityData, "coordinates">[] = [
@@ -34,6 +36,7 @@ const rawCities: Omit<CityData, "coordinates">[] = [
     description: "Robotic rhythms, synthesized vocoders, the blueprint of electronic music.",
     bpm: 118,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Updated per user request)
+    aiDepth: 15,
     geoCoordinates: { lat: 51.2277, lng: 6.7735 },
     color: "#ff3333",
     image: "https://unsplash.com/photos/qpWvN7L0t7I/download?force=true&w=800",
@@ -45,6 +48,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:6", // Synth strings
       lead: "synth:5", // Sine/Square lead
     },
+    introPhrases: [
+        "She is an AI.",
+        "Can you beat her?",
+        "Unlimited mulligans for you.",
+        "Still, it won't be easy.",
+        "Good luck."
+    ]
   },
   // 2. New York City (1977)
   {
@@ -67,6 +77,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:4", // Strings
       lead: "piano:0", // Electric Piano
     },
+    introPhrases: [
+        "The city that never sleeps.",
+        "The rhythm is in the concrete.",
+        "Can you keep up with the groove?",
+        "Studio 54 is waiting.",
+        "Don't lose the beat."
+    ]
   },
   // 3. Chicago (1984)
   {
@@ -89,6 +106,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:0", // Deep Pad
       lead: "piano:0", // House Piano
     },
+    introPhrases: [
+        "Jack your body.",
+        "The warehouse is open.",
+        "The 909 is relentless.",
+        "House music all night long.",
+        "Move."
+    ]
   },
   // 4. Detroit (1986)
   {
@@ -111,6 +135,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:1", // Cold Strings
       lead: "synth:0", // Detroit Stabs
     },
+    introPhrases: [
+        "Motor City machines.",
+        "Future music from the past.",
+        "Cold steel and warm soul.",
+        "Techno is the logic.",
+        "Calculate your next move."
+    ]
   },
   // 5. Ibiza (1986)
   {
@@ -133,6 +164,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:4", // Warm Pad
       lead: "synth:3", // Flute/Synth
     },
+    introPhrases: [
+        "The sun sets on the island.",
+        "A spiritual awakening.",
+        "Relax your mind.",
+        "But keep your eyes open.",
+        "The night is young."
+    ]
   },
   // 6. Manchester (1988)
   {
@@ -155,6 +193,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:2", // Rave Hoover
       lead: "synth:1", // 303 Acid Lead
     },
+    introPhrases: [
+        "Madchester calls.",
+        "The siren sounds.",
+        "Acid in the veins.",
+        "Can you handle the rush?",
+        "Rave on."
+    ]
   },
   // 7. Berlin (1991)
   {
@@ -177,6 +222,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:3", // Dark Drone
       lead: "synth:2", // Metallic Stab
     },
+    introPhrases: [
+        "The wall is down.",
+        "But the darkness remains.",
+        "Concrete and steel.",
+        "The beat is your heartbeat.",
+        "Don't get lost in the bunker."
+    ]
   },
   // 8. Tokyo (1991)
   {
@@ -199,6 +251,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:6", // Sine Pad
       lead: "synth:5", // Pure Wave
     },
+    introPhrases: [
+        "Neon lights and digital dreams.",
+        "Precision is key.",
+        "A glitch in the system.",
+        "Or a calculated move?",
+        "Focus."
+    ]
   },
   // 9. London (1992)
   {
@@ -221,6 +280,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:7", // Dark Pad
       lead: "synth:6", // Siren/Dub
     },
+    introPhrases: [
+        "The underground is calling.",
+        "Breakneck speed.",
+        "Deep bass pressure.",
+        "Keep your head up.",
+        "It's a jungle out there."
+    ]
   },
   // 10. São Paulo (1993)
   {
@@ -243,6 +309,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:3",
       lead: "synth:2",
     },
+    introPhrases: [
+        "Concrete jungle fever.",
+        "The heat is rising.",
+        "Hard and heavy.",
+        "No time to rest.",
+        "Survive."
+    ]
   },
   // 11. Paris (1995)
   {
@@ -265,6 +338,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:4", // Filtered Strings
       lead: "synth:4", // Filtered Lead
     },
+    introPhrases: [
+        "La vie en rose?",
+        "Not on this board.",
+        "Filtered reality.",
+        "Touch of class.",
+        "Allez."
+    ]
   },
   // 12. Vienna (1780)
   {
@@ -287,6 +367,13 @@ const rawCities: Omit<CityData, "coordinates">[] = [
       pad: "pad:0", // String Ensemble
       lead: "synth:0", // Violin Solo
     },
+    introPhrases: [
+        "A timeless classic.",
+        "The grandmaster watches.",
+        "Symphony of logic.",
+        "Every move a note.",
+        "Compose your victory."
+    ]
   },
 ]
 

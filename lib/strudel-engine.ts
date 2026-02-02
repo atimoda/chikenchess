@@ -1,7 +1,7 @@
 import type { Chess, PieceSymbol, Square } from "chess.js"
 import type { CityData } from "./cities-data"
 import { type ParsedPattern, noteToFrequency } from "./audio-engine"
-import type { SquareEffectMap } from "./types"
+import { type SquareEffectMap, type GlobalEffects, DEFAULT_GLOBAL_EFFECTS } from "./types"
 
 interface PiecePosition {
   type: PieceSymbol
@@ -12,7 +12,7 @@ interface PiecePosition {
 }
 
 // Generate both the display pattern (Strudel-like code) and the parsed pattern for audio
-export function generateStrudelPattern(game: Chess, city: CityData, activeSquares: Set<string>, _squareEffects: SquareEffectMap = {}): string {
+export function generateStrudelPattern(game: Chess, city: CityData, activeSquares: Set<string>, _squareEffects: SquareEffectMap = {}, globalEffects: GlobalEffects = DEFAULT_GLOBAL_EFFECTS): string {
   const board = game.board()
   const pieces: PiecePosition[] = []
 
@@ -52,6 +52,21 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
   layers.push(``)
   layers.push(`stack(`)
 
+  // 0. GLOBAL AMBIENCE (Always first)
+  if (globalEffects) {
+      const pitch = globalEffects.ambiencePitch || 1
+      const lpf = globalEffects.ambienceLpf || 20000
+      const lfo = globalEffects.ambienceLfoSpeed || 0
+      
+      layers.push(`  // Ambience (Global)`)
+      layers.push(`  note("${city.scale[0]}2")`)
+      layers.push(`    .sound("ambience_${city.id}")`)
+      layers.push(`    .gain(${globalEffects.volume * 0.5})`)
+      if (pitch !== 1) layers.push(`    .pitch(${pitch})`)
+      if (lpf < 20000) layers.push(`    .lpf(${lpf})`)
+      if (lfo > 0) layers.push(`    .lfo(${lfo})`)
+      layers.push(`  ,`)
+  }
   
   // 1. PAWNS (Drum Layers / Violins for Vienna)
   if (pawns.length > 0) {
@@ -205,23 +220,9 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
   // 5. QUEENS (Lead Voice with specific pattern)
   if (queens.length > 0) {
     queens.forEach(q => {
-      // User request: note("c2 g2!2 d2 f1").s(wchoose(["sine",10], ["triangle",1], ["bd:6",1]))
-      // Variation: Transpose slightly based on rank/file
-      
       const offset = (q.file + q.rank) % 5
-      // Representing offset in code as a transformation or just modifying the notes string?
-      // "pode alterar as notas conforme ela anda"
-      // Let's modify the notes string to be accurate to what is playing.
-      // Or just show the base pattern with a comment about variation?
-      // The user wants to SEE the code.
-      // "note("c2 g2!2 d2 f1")"
-      
-      // I'll construct the string with offset if possible, or just use |+ offset logic
-      // Strudel: note("c2...").|+ (offset)
-      
       const patternStr = `"c2 g2!2 d2 f1"`
       const transformation = offset > 0 ? `.|+ ${offset}` : ""
-      
       const posPan = (1 - (q.file / 7)).toFixed(2)
 
       layers.push(`  // Queen ${q.square}`)
@@ -230,6 +231,30 @@ export function generateStrudelPattern(game: Chess, city: CityData, activeSquare
       layers.push(`    .pan(${posPan}),`)
     })
   }
+
+  // 6. AMBIENCE (Global) - Removed to avoid duplication
+  /*
+  const rootNote = city.scale[0] || "C2"
+  const fifthNote = city.scale[4] || "G2"
+  
+  let wave1 = "triangle"
+  let wave2 = "sine"
+  
+  // Match logic from audio-engine.ts
+  switch (city.id) {
+    case "nyc": wave1 = "sawtooth"; wave2 = "square"; break;
+    case "london": wave1 = "sine"; wave2 = "sawtooth"; break;
+    case "tokyo": wave1 = "square"; wave2 = "sine"; break;
+    case "paris": wave1 = "sine"; wave2 = "triangle"; break;
+    case "berlin": wave1 = "sawtooth"; wave2 = "sawtooth"; break;
+  }
+
+  layers.push(`  // Ambience (Global)`)
+  layers.push(`  stack(`)
+  layers.push(`    note("${rootNote}").sub(12).s("${wave1}"),`)
+  layers.push(`    note("${fifthNote}").sub(12).s("${wave2}")`)
+  layers.push(`  ).lpf(${globalEffects.ambienceLpf.toFixed(0)}).speed(${globalEffects.ambiencePitch.toFixed(2)}).gain(0.03),`)
+  */
 
   layers.push(`)`)
   return layers.join("\n")
@@ -318,7 +343,9 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       delay: fx.delay,
       reverb: fx.reverb,
       pitch: fx.pitch,
-      frequency
+      frequency,
+      lpf: fx.lpf,
+      hpf: fx.hpf
     }
   })
 
@@ -368,7 +395,9 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       color: q.color,
       delay: fx.delay,
       reverb: fx.reverb,
-      decay: fx.decay
+      decay: fx.decay,
+      lpf: fx.lpf,
+      hpf: fx.hpf
     }
   })
 
@@ -426,7 +455,9 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       lfo: null,
       delay: fx.delay ?? 0.125,
       reverb: fx.reverb ?? 0.4,
-      decay: fx.decay
+      decay: fx.decay,
+      lpf: fx.lpf,
+      hpf: fx.hpf
     }
   })
 
@@ -478,7 +509,9 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
           adsr: [0.1, 0, 0.2, 1.0] as [number, number, number, number],
           room: 0.5,
           delay: fx.delay,
-          decay: fx.decay
+          decay: fx.decay,
+          lpf: fx.lpf,
+          hpf: fx.hpf
       }
   })
 
@@ -514,18 +547,41 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
       room: 0.5,
       delay: fx.delay,
       reverb: fx.reverb,
-      decay: fx.decay
+      decay: fx.decay,
+      lpf: fx.lpf,
+      hpf: fx.hpf
     }
   })
   
   // Legacy bass pattern (fallback or unused)
   const bassPattern: (number | null)[] = new Array(16).fill(null)
 
-  const padPattern: (number[] | null)[] = new Array(16).fill(null)
-  if (rooks.length > 0) {
+  // --- ROOK LOGIC (Pads) ---
+  const rookLayers = rooks.map(r => {
+    const fx = getEffects(r.square)
     const chord = city.scale.slice(0, 3).map(n => noteToFrequency(n))
-    padPattern[0] = chord
-  }
+    
+    const pattern = new Array(16).fill(null)
+    pattern[0] = chord
+    
+    let pan = (r.file / 7) * 2 - 1
+    let gain = 0.25 / Math.max(1, rooks.length)
+    
+    if (fx.gain !== undefined) gain *= fx.gain
+    if (fx.pan !== undefined) pan = Math.max(-1, Math.min(1, pan + fx.pan))
+
+    return {
+      pattern,
+      gain,
+      pan,
+      delay: fx.delay,
+      reverb: fx.reverb ?? 0.3,
+      decay: fx.decay,
+      sound: (city.id === "vienna" ? "string_pad" : "synth_pad") as "string_pad" | "synth_pad",
+      lpf: fx.lpf,
+      hpf: fx.hpf
+    }
+  })
 
   return {
     bpm: city.bpm,
@@ -537,20 +593,13 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     bishops: pianoLayers,
     kings: kingLayers, 
     knights: knightLayers,
+    rooks: rookLayers,
     bass: {
       pattern: bassPattern,
       cutoff: 600,
       resonance: 5,
       gain: 0,
       adsr: [0.1, 0.2, 0.8, 1.0]
-    },
-    pad: {
-      pattern: padPattern,
-      pan: 0,
-      reverb: 0.3,
-      gain: rooks.length > 0 ? 0.25 : 0,
-      adsr: [0.5, 0.5, 0.8, 1.0],
-      sound: city.id === "vienna" ? "string_pad" : "synth_pad"
     },
     effects: {
       distort: inCheck ? 0.25 : 0,

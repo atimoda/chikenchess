@@ -19,10 +19,6 @@ export function LiveCodeOverlay({ pattern, city, isPlaying }: LiveCodeOverlayPro
   // Syntax highlighting for Strudel patterns
   const highlightCode = (code: string) => {
     return code
-      .replace(
-        /\b(s|note|sound|n|gain|pan|speed|cutoff|resonance|decay|distort|delay|room|struct|stack|setcps)\b(?=\()/g,
-        '<span class="text-primary">$1</span>',
-      ) // Extended keywords, added setcps, strict word boundary and lookahead for (
       .replace(/(".*?")/g, '<span class="text-accent">$1</span>')
       .replace(/(\b\d+\.?\d*\b)/g, '<span class="text-chart-4">$1</span>')
       .replace(/(\.\w+)/g, '<span class="text-chart-2">$1</span>')
@@ -38,7 +34,7 @@ export function LiveCodeOverlay({ pattern, city, isPlaying }: LiveCodeOverlayPro
   }
 
   const hasStarted = isPlaying // Using isPlaying as a proxy for game started/focused state
-  const boxClass = `h-full border-border overflow-hidden flex flex-col transition-all duration-[3000ms] ${hasStarted ? "bg-transparent border-transparent" : "bg-card/80 backdrop-blur-sm"}`
+  const boxClass = `h-full border-border overflow-hidden flex flex-col transition-all duration-[3000ms] ${hasStarted ? "bg-transparent border-transparent" : "bg-black/90 border-border"}`
 
   return (
     <div className={boxClass} style={{ flex: 1 }}>

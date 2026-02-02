@@ -23,7 +23,7 @@ export function GameControls({ onReset, cityColor, hasStarted }: GameControlsPro
   return (
     <div
       className={`relative z-50 flex flex-col gap-2 p-3 md:p-4 rounded-lg border transition-all duration-[3000ms] ${
-        hasStarted ? "bg-transparent border-transparent" : "bg-card/80 border-border backdrop-blur-sm"
+        hasStarted ? "bg-transparent border-transparent" : "bg-black/90 border-border"
       }`}
       style={buttonStyle}
     >

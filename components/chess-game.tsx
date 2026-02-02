@@ -1,24 +1,27 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { Chess, type Move, type Square } from "chess.js"
 import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
 import { ChessgroundBoard, PiecesSVG } from "./chessground-board"
 import { LiveCodeOverlay } from "./live-code-overlay"
+import { LiveCodeWidget } from "./live-code-widget"
 import { AudioVisualizer } from "./audio-visualizer"
 import { GameControls } from "./game-controls"
 import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
-import { StrudelEditor } from "./strudel-editor"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import type { SquareEffectMap } from "@/lib/types"
-import { DEFAULT_EFFECTS } from "@/lib/types"
-import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check } from "lucide-react"
+import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
+import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { unlockNextCity } from "@/lib/game-progression"
+import { GlobalControlPanel } from "./global-control-panel"
+import { SpectrogramWidget } from "./spectrogram-widget"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,15 +44,24 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [moveHistory, setMoveHistory] = useState<string[]>([])
   const [redoStack, setRedoStack] = useState<string[]>([]) // Stack of SAN moves to redo
   const [gameStatus, setGameStatus] = useState<string>("Your move")
-  const [aiDepth, setAiDepth] = useState(10)
+  const [aiDepth, setAiDepth] = useState(10) // Initialize with default, update in useEffect
   const [capturedPieces, setCapturedPieces] = useState<{ white: string[]; black: string[] }>({
     white: [],
     black: [],
   })
+  
+  // Sync aiDepth when city changes
+  useEffect(() => {
+    console.log("City changed to:", city.name, "Default Depth:", city.aiDepth)
+    setAiDepth(city.aiDepth || 10)
+  }, [city])
+
   const [activeSquares, setActiveSquares] = useState<Set<string>>(new Set())
   const [synthSelectedSquare, setSynthSelectedSquare] = useState<string | null>(null)
   const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
+  const [globalEffects, setGlobalEffects] = useState<GlobalEffects>(DEFAULT_GLOBAL_EFFECTS)
   const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
+  const [isEvaluating, setIsEvaluating] = useState(false)
  
   const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
@@ -57,42 +69,272 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const evalSideToMoveRef = useRef<"w" | "b">("w")
   const evalLastScoreRef = useRef<number | null>(null)
   const evalPendingRef = useRef(false)
+  const evalPendingFenRef = useRef<string | null>(null)
+  const evalCacheRef = useRef<Map<string, number>>(new Map())
   const lastEvalScoreRef = useRef<number | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const centerContainerRef = useRef<HTMLDivElement | null>(null)
   const knobsRef = useRef<HTMLDivElement | null>(null)
   const knobsHandleRef = useRef<HTMLDivElement | null>(null)
+  const knobsToggleRef = useRef<HTMLButtonElement | null>(null)
+  const globalPanelRef = useRef<HTMLDivElement | null>(null)
+  const globalPanelHandleRef = useRef<HTMLDivElement | null>(null)
+  const globalPanelToggleRef = useRef<HTMLButtonElement | null>(null)
+  const liveCodeRef = useRef<HTMLDivElement | null>(null)
+  const liveCodeHandleRef = useRef<HTMLDivElement | null>(null)
+  const liveCodeToggleRef = useRef<HTMLButtonElement | null>(null)
   const boardAreaRef = useRef<HTMLDivElement | null>(null)
+  const movesTickerRef = useRef<HTMLDivElement>(null)
   const [knobsPosition, setKnobsPosition] = useState<{ x: number; y: number } | null>(null)
-  const [strudelEditorPosition, setStrudelEditorPosition] = useState<{ x: number; y: number } | null>(null)
-  const strudelEditorHandleRef = useRef<HTMLDivElement | null>(null)
+  const [globalPanelPosition, setGlobalPanelPosition] = useState<{ x: number; y: number } | null>(null)
+  const [spectrogramPosition, setSpectrogramPosition] = useState<{ x: number; y: number } | null>(null)
+  const [liveCodePosition, setLiveCodePosition] = useState<{ x: number; y: number } | null>(null)
   
+  // Intro State
+  // 0 = Intro Text, 1 = Intro Boxes, 2 = Board Descend, 3 = Game Active
+  const [introPhase, setIntroPhase] = useState(0)
+  const [currentIntroLine, setCurrentIntroLine] = useState(0)
+  const [showIntroButton, setShowIntroButton] = useState(false)
+  const [showStartButton, setShowStartButton] = useState(false)
+  const [showIntroBoxes, setShowIntroBoxes] = useState(false)
+  const [isStartPressed, setIsStartPressed] = useState(false)
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
-        // Position widgets to the right
-        setKnobsPosition({ x: window.innerWidth - 420, y: 500 })
-        setStrudelEditorPosition({ x: window.innerWidth - 420, y: 100 })
+        const width = window.innerWidth
+        const height = window.innerHeight
+        const isMobile = width < 768
+        
+        // Initial Positions
+        if (isMobile) {
+            // Hide widgets on mobile by default or position off-screen/managed via CSS visibility
+            setKnobsPosition({ x: 0, y: 0 })
+            setGlobalPanelPosition({ x: 0, y: 0 })
+            setSpectrogramPosition({ x: 0, y: 0 })
+            setLiveCodePosition({ x: 0, y: 0 })
+            
+            // Turn off widgets on mobile
+            setKnobsOn(false)
+            setGlobalPanelOn(false)
+            setSpectrogramOn(false)
+            setLiveCodeOn(false)
+        } else {
+            // Desktop Layout: Random Quadrants
+            // Widget dimensions (approx)
+            const widgetW = 340
+            const padding = 20
+            const headerH = 80
+            const footerH = 80
+            
+            // Board dimensions (approx 512px width + some margin)
+            const boardHalfWidth = 256
+            const centerX = width / 2
+            const centerY = height / 2
+            
+            // Random padding from board (30 to 70px)
+            const getBoardPadding = () => 30 + Math.random() * (70 - 30)
+            // Random distance from center line (20 to 40px)
+            const getCenterPadding = () => 20 + Math.random() * (40 - 20)
+
+            // Top Left (Global Control Panel - originally Top Right)
+            // Closer to bottom of quadrant -> centerY - widgetHeight - centerPadding
+            setGlobalPanelPosition({ 
+                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
+                y: centerY - 300 - getCenterPadding() // Approx widget height (taller)
+            })
+
+            // Bottom Left (Spectrogram - originally Top Left)
+            // Closer to top of quadrant -> centerY + centerPadding
+            setSpectrogramPosition({ 
+                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW), 
+                y: centerY + getCenterPadding()
+            })
+
+            // Top Right (Piece Params / Knobs - stays Top Right)
+            // Closer to bottom of quadrant -> centerY - widgetHeight - centerPadding
+            setKnobsPosition({ 
+                x: Math.min(width - widgetW - padding, centerX + boardHalfWidth + getBoardPadding()), 
+                y: centerY - 300 - getCenterPadding() // Approx widget height (taller)
+            })
+
+            // Bottom Right (Live Code - originally Bottom Left)
+            // Closer to top of quadrant -> centerY + centerPadding
+            setLiveCodePosition({
+                x: Math.min(width - widgetW - padding, centerX + boardHalfWidth + getBoardPadding()),
+                y: centerY + getCenterPadding()
+            })
+            
+            // Default states
+            setSpectrogramOn(false)
+            setGlobalPanelOn(false)
+            setKnobsOn(false)
+            setLiveCodeOn(false)
+        }
     }
   }, [])
+  
+    // Auto-scroll to start (left) when history changes (since we reversed the list)
+    useEffect(() => {
+        if (movesTickerRef.current) {
+            // Scroll to 0 because we want to see the newest items which are on the left
+            movesTickerRef.current.scrollTo({
+                left: 0,
+                behavior: "smooth"
+            })
+        }
+    }, [moveHistory])
+  
+  // Intro Animation Logic
+  useEffect(() => {
+      if (introPhase === 0) {
+          const timer = setInterval(() => {
+              setCurrentIntroLine(prev => {
+                  if (prev < (city.introPhrases?.length || 0)) {
+                      return prev + 1
+                  }
+                  clearInterval(timer)
+                  setShowIntroButton(true)
+                  return prev
+              })
+          }, 1500) // Increased by 50% from 1000ms
+          return () => clearInterval(timer)
+      }
+  }, [introPhase, city.introPhrases])
 
-  const [knobsOn, setKnobsOn] = useState(false)
-  const [strudelEditorOn, setStrudelEditorOn] = useState(false)
-  const [connectionLine, setConnectionLine] = useState<{
+  // Seatbelt Sound removed from here (moved below useAudio)
+  
+  const skipIntro = () => {
+      if (introPhase === 0) {
+          setCurrentIntroLine(city.introPhrases?.length || 5)
+          setShowIntroButton(true)
+      }
+  }
+
+  const handleContinue = () => {
+      // Click sound
+      const clickAudio = new Audio('/sounds/click.mp3') // Placeholder
+      playSquareSample('e4') // Reusing for now as requested for click
+
+      // Fade out text, move to Phase 1 (Boxes)
+      setIntroPhase(1)
+      setTimeout(() => {
+          setShowIntroBoxes(true)
+          // Play box appear sound
+          playSquareSample('e4') // Example sound
+          setTimeout(() => {
+             setShowStartButton(true)
+          }, 1000)
+      }, 500)
+  }
+
+  const handleStartGame = () => {
+      setIntroPhase(2) // Board Descend
+      setShowIntroBoxes(false)
+      setShowStartButton(false)
+      
+      // Start Volume Fade In - Unmute immediately
+      if (engineRef.current) {
+          engineRef.current.setGlobalVolume(0)
+          // Ensure audio context is running (browsers require user interaction)
+          // Safety check: check if context exists before accessing state
+          if (engineRef.current.context && engineRef.current.context.state === 'suspended') {
+              engineRef.current.context.resume()
+          }
+      }
+      handleGlobalEffectChange("volume", 0)
+      
+      // Animate volume to 0.8 over 3 seconds
+      let vol = 0
+      const fadeInterval = setInterval(() => {
+          vol += 0.05
+          if (vol >= 0.8) {
+              vol = 0.8
+              clearInterval(fadeInterval)
+              setIntroPhase(3) // Game Active
+          }
+          handleGlobalEffectChange("volume", vol)
+      }, 3000 / (0.8 / 0.05)) 
+  }
+
+  // --- MOBILE SCROLL LOCK ---
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            document.body.style.overflow = 'hidden'
+            document.body.style.position = 'fixed'
+            document.body.style.width = '100%'
+            document.body.style.height = '100%'
+        }
+        return () => {
+            document.body.style.overflow = ''
+            document.body.style.position = ''
+            document.body.style.width = ''
+            document.body.style.height = ''
+        }
+    }, [])
+
+    const [knobsOn, setKnobsOn] = useState(false)
+  const [globalPanelOn, setGlobalPanelOn] = useState(false)
+  const [spectrogramOn, setSpectrogramOn] = useState(false)
+  const [liveCodeOn, setLiveCodeOn] = useState(false)
+  
+  const spectrogramHandleRef = useRef<HTMLDivElement | null>(null)
+  const spectrogramToggleRef = useRef<HTMLButtonElement | null>(null)
+
+  const [knobsConnection, setKnobsConnection] = useState<{
     x1: number
     y1: number
     x2: number
     y2: number
+    sourceSide?: 'left' | 'right'
+    targetSide?: 'left' | 'right' | 'bottom'
   } | null>(null)
-  const [editorConnectionLine, setEditorConnectionLine] = useState<{
+
+  const [spectrogramConnection, setSpectrogramConnection] = useState<{
     x1: number
     y1: number
     x2: number
     y2: number
+    sourceSide?: 'left' | 'right'
+    targetSide?: 'left' | 'right' | 'bottom'
   } | null>(null)
 
-  const strudelEditorRef = useRef<HTMLDivElement | null>(null)
+  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
 
-  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
+  // Seatbelt Sound
+  useEffect(() => {
+      if (showIntroButton && engineRef.current) {
+          engineRef.current.playSeatbelt()
+      }
+  }, [showIntroButton, engineRef])
+
+  // Global Effects Handlers
+  const handleGlobalEffectChange = useCallback((effect: keyof GlobalEffects, value: number) => {
+    setGlobalEffects(prev => {
+        const next = { ...prev, [effect]: value }
+        
+        if (engineRef.current) {
+            switch(effect) {
+                case "volume":
+                    engineRef.current.setGlobalVolume(value)
+                    break
+                case "bpm":
+                    engineRef.current.setGlobalBpm(value)
+                    break
+                case "ambiencePitch":
+                    engineRef.current.setAmbiencePitch(value)
+                    break
+                case "ambienceLpf":
+                    engineRef.current.setAmbienceFilter(value)
+                    break
+                case "ambienceLfoSpeed":
+                    engineRef.current.setAmbienceLFO(value)
+                    break
+            }
+        }
+        
+        return next
+    })
+  }, [engineRef])
 
   // Keep ref in sync
   useEffect(() => {
@@ -107,10 +349,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
     stockfishRef.current.onmessage = (event) => {
       const message = event.data as string
+      // console.log("Stockfish says:", message)
       if (message.startsWith("bestmove")) {
+        console.log("Stockfish returned bestmove:", message)
         const moveStr = message.split(" ")[1]
         if (moveStr && moveStr !== "(none)") {
           makeAIMove(moveStr)
+        } else {
+            console.warn("Stockfish returned no move:", message)
         }
         setIsThinking(false)
       }
@@ -140,8 +386,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         if (finalScore != null && evalPendingRef.current) {
           setLastEvalScore(finalScore)
           lastEvalScoreRef.current = finalScore
+          if (evalPendingFenRef.current) {
+            evalCacheRef.current.set(evalPendingFenRef.current, finalScore)
+          }
         }
         evalPendingRef.current = false
+        setIsEvaluating(false)
       }
     }
 
@@ -153,10 +403,44 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const requestEvaluation = useCallback((gameInstance: Chess) => {
     const fen = gameInstance.fen()
+    
+    // Check cache first
+    if (evalCacheRef.current.has(fen)) {
+      console.log("Evaluation Cache Hit for FEN:", fen)
+      const cachedScore = evalCacheRef.current.get(fen)!
+      setLastEvalScore(cachedScore)
+      lastEvalScoreRef.current = cachedScore
+      evalPendingRef.current = false
+      setIsEvaluating(false)
+      return
+    }
+    
+    // Try to find a cache entry without move counters if direct match fails
+    const fenParts = fen.split(' ')
+    const fenPosition = fenParts.slice(0, 4).join(' ') // Position + Turn + Castling + EnPassant
+    
+    // Check if any key in cache starts with this position
+    // This is O(N) but N (moves in game) is small.
+    for (const [key, value] of evalCacheRef.current.entries()) {
+        if (key.startsWith(fenPosition)) {
+            console.log("Evaluation Cache Soft Hit for FEN:", fen, "Matches:", key)
+            setLastEvalScore(value)
+            lastEvalScoreRef.current = value
+            evalPendingRef.current = false
+            setIsEvaluating(false)
+            return
+        }
+    }
+
+    console.log("Evaluation Cache Miss for FEN:", fen)
+
     evalSideToMoveRef.current = gameInstance.turn()
     evalLastScoreRef.current = null
     evalPendingRef.current = true
     lastEvalScoreRef.current = null
+    evalPendingFenRef.current = fen
+    setIsEvaluating(true)
+    
     if (evalStockfishRef.current) {
       evalStockfishRef.current.postMessage("stop")
       evalStockfishRef.current.postMessage(`position fen ${fen}`)
@@ -166,7 +450,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   // Update pattern when board changes
   useEffect(() => {
-    const pattern = generateStrudelPattern(game, city, activeSquares, squareEffects)
+    const pattern = generateStrudelPattern(game, city, activeSquares, squareEffects, globalEffects)
     setCurrentPattern(pattern)
 
     // Update game status
@@ -204,7 +488,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "AI analyzing...")
     }
-  }, [game, city, activeSquares])
+  }, [game, city, activeSquares, squareEffects, globalEffects])
 
   // Track captured pieces
   const updateCapturedPieces = useCallback((move: Move) => {
@@ -221,11 +505,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const makeAIMove = useCallback(
     (moveStr: string) => {
+      console.log("makeAIMove called with:", moveStr)
       const currentGame = gameRef.current
       
       // Prevent stale moves (e.g. from previous game after reset)
       // If it's White's turn, AI (Black) shouldn't be moving
       if (currentGame.turn() === 'w') {
+        console.warn("Ignored AI move because it is White's turn")
         return
       }
 
@@ -280,6 +566,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     (move: Move) => {
       setMoveHistory((prev) => [...prev, move.san])
       setRedoStack([]) // Clear redo stack on new move
+      
+      // Auto-enable spectrogram on first move
+      if (moveHistory.length === 0) {
+          setSpectrogramOn(true)
+          setLiveCodeOn(true)
+      }
+
       updateCapturedPieces(move)
       setSquareEffects((prev) => {
         const next = { ...prev }
@@ -304,14 +597,19 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       // Undo to get the clean state, then redo
       const gameCopy = new Chess(game.fen())
       setGame(gameCopy)
+      gameRef.current = gameCopy // Ensure ref is updated immediately to prevent race conditions with AI
 
       // Trigger AI move
+      console.log("Player moved. Checking game over:", gameCopy.isGameOver())
       if (!gameCopy.isGameOver()) {
         setIsThinking(true)
+        console.log("Triggering AI for FEN:", gameCopy.fen())
         setTimeout(() => {
           stockfishRef.current?.postMessage(`position fen ${gameCopy.fen()}`)
           stockfishRef.current?.postMessage(`go depth ${aiDepth}`)
         }, 300)
+      } else {
+        console.log("Game over detected, AI not triggered.")
       }
 
       // Update active squares for Player
@@ -332,6 +630,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const resetGame = useCallback(() => {
     stockfishRef.current?.postMessage("stop")
+    evalStockfishRef.current?.postMessage("stop")
     setGame(new Chess())
     setMoveHistory([])
     setRedoStack([])
@@ -340,6 +639,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setActiveSquares(new Set())
     setSynthSelectedSquare(null)
     setSquareEffects({})
+    setLastEvalScore(null)
+    setIsEvaluating(false)
+    evalPendingRef.current = false
   }, [])
 
   const undoMove = useCallback(() => {
@@ -395,6 +697,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setMoveHistory(newHistory)
     setCapturedPieces(newCapturedPieces as { white: string[], black: string[] })
     setActiveSquares(newActiveSquares)
+
+    // Force FEN update and request evaluation with slight delay to ensure state consistency
+    // Also log to debug FEN mismatch
+    console.log("Undo to FEN:", newGame.fen())
     requestEvaluation(newGame)
   }, [moveHistory, requestEvaluation])
 
@@ -444,14 +750,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const hasStarted = moveHistory.length > 0
 
   const whiteAdvantage =
-    lastEvalScore === null ? 0.5 : 1 / (1 + Math.pow(10, lastEvalScore / 400))
+    lastEvalScore === null ? 0.5 : 1 / (1 + Math.pow(10, -lastEvalScore / 400))
   const whitePercent = Math.round(whiteAdvantage * 100)
   const blackPercent = 100 - whitePercent
 
   useEffect(() => {
-    if (!synthSelectedSquare || !rootRef.current || !boardAreaRef.current) {
-      setConnectionLine(null)
-      setEditorConnectionLine(null)
+    if (!rootRef.current || !boardAreaRef.current) {
+      setKnobsConnection(null)
+      setSpectrogramConnection(null)
       return
     }
 
@@ -459,95 +765,76 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     const boardRect = boardAreaRef.current.getBoundingClientRect()
     const squareWidth = boardRect.width / 8
     const squareHeight = boardRect.height / 8
-    
-    const fileChar = synthSelectedSquare[0]
-    const rankChar = synthSelectedSquare[1]
-    const files = "abcdefgh"
-    const fileIndex = files.indexOf(fileChar)
-    const rank = parseInt(rankChar, 10)
 
-    if (fileIndex < 0 || !Number.isFinite(rank)) {
-      setConnectionLine(null)
-      setEditorConnectionLine(null)
-      return
-    }
+    // --- SPECTROGRAM CONNECTION (Board -> Spectrogram) ---
+    // Removed connection line to Spectrogram as per request
+    // if (spectrogramOn && spectrogramHandleRef.current) { ... } logic removed
 
-    const rankIndexFromBottom = rank - 1
-    const rowFromTop = 7 - rankIndexFromBottom
-    const x2 = boardRect.left + fileIndex * squareWidth - containerRect.left
-    const y2 = boardRect.top + (rowFromTop + 0.5) * squareHeight - containerRect.top
+    // --- KNOBS CONNECTION ---
+    if (synthSelectedSquare && knobsOn && knobsRef.current) {
+        const fileChar = synthSelectedSquare[0]
+        const rankChar = synthSelectedSquare[1]
+        const files = "abcdefgh"
+        const fileIndex = files.indexOf(fileChar)
+        const rank = parseInt(rankChar, 10)
 
-    // Knobs Connection
-    // Always show connection if selected, even if knobs are off? User asked to keep knobs visible when off.
-    // "o gadget de knobs quando estiver 'off' deve continuar aparecendo"
-    // But user now says: "quando o widget estiver off e o usuário selecionar uma casa, não desenhe a linha que conecta ao widget."
-    if (synthSelectedSquare && knobsOn) {
-      const sourceRect = knobsHandleRef.current?.getBoundingClientRect() ?? knobsRef.current?.getBoundingClientRect()
-      if (sourceRect) {
-        // Source is gadget
-        const x1 = sourceRect.left + sourceRect.width / 2 - containerRect.left
-        const y1 = sourceRect.top + sourceRect.height / 2 - containerRect.top
+        if (fileIndex >= 0 && Number.isFinite(rank)) {
+             const toggleRect = knobsRef.current.getBoundingClientRect()
+             
+             // Widget Point (Source) - ~37px below top
+             const knobY = toggleRect.top + 37 - containerRect.top
+             const knobCenterX = toggleRect.left + toggleRect.width / 2
+             
+             const rankIndexFromBottom = rank - 1
+             const rowFromTop = 7 - rankIndexFromBottom
+             
+             // Target is square center
+             const squareCenterX = boardRect.left + (fileIndex + 0.5) * squareWidth - containerRect.left
+             const squareCenterY = boardRect.top + (rowFromTop + 0.5) * squareHeight - containerRect.top
+             
+             // Determine Source Side
+             let x1, sourceSide: 'left' | 'right'
+             if (squareCenterX > knobCenterX) {
+                 x1 = toggleRect.right - containerRect.left
+                 sourceSide = 'right'
+             } else {
+                 x1 = toggleRect.left - containerRect.left
+                 sourceSide = 'left'
+             }
+             
+             const dx = x1 - squareCenterX
+             const dy = knobY - squareCenterY
+             
+             let x2 = squareCenterX
+             let y2 = squareCenterY
+             let targetSide: 'left' | 'right' | 'bottom'
 
-        // Target is square on board
-        const squareCenterX = boardRect.left + (fileIndex + 0.5) * squareWidth - containerRect.left
-        const squareCenterY = boardRect.top + (rowFromTop + 0.5) * squareHeight - containerRect.top
-        
-        // Find closest edge point of the square to the knob handle
-        const dx = x1 - squareCenterX
-        const dy = y1 - squareCenterY
-        
-        let x2 = squareCenterX
-        let y2 = squareCenterY
-
-        // Simple proximity check to attach to the closest side
-        if (Math.abs(dx) > Math.abs(dy)) {
-            // Left or Right
-            x2 = squareCenterX + (dx > 0 ? squareWidth/2 : -squareWidth/2)
+             // Simple proximity check to attach to the closest side of the square
+             // Avoid attaching to the top side (dy < 0 and |dy| > |dx|)
+             // If widget is above, force attachment to left or right side
+             if (dy < 0 && Math.abs(dy) > Math.abs(dx)) {
+                 // Widget is above, attach to side
+                 x2 = squareCenterX + (dx > 0 ? squareWidth/2 : -squareWidth/2)
+                 targetSide = dx > 0 ? 'right' : 'left'
+             } else if (Math.abs(dx) > Math.abs(dy)) {
+                 // Widget is to the side
+                 x2 = squareCenterX + (dx > 0 ? squareWidth/2 : -squareWidth/2)
+                 targetSide = dx > 0 ? 'right' : 'left'
+             } else {
+                 // Widget is below, attach to bottom
+                 y2 = squareCenterY + (dy > 0 ? squareHeight/2 : -squareHeight/2)
+                 targetSide = 'bottom'
+             }
+             
+             setKnobsConnection({ x1, y1: knobY, x2, y2, sourceSide, targetSide })
         } else {
-            // Top or Bottom
-            y2 = squareCenterY + (dy > 0 ? squareHeight/2 : -squareHeight/2)
+            setKnobsConnection(null)
         }
-        
-        setConnectionLine({ x1, y1, x2, y2 })
-      } else {
-        setConnectionLine(null)
-      }
     } else {
-      setConnectionLine(null)
+      setKnobsConnection(null)
     }
 
-    // Strudel Editor Connection
-    if (strudelEditorOn && knobsOn) {
-      const editorRect = strudelEditorRef.current?.getBoundingClientRect()
-      const editorHandleRect = strudelEditorHandleRef.current?.getBoundingClientRect()
-      // Prefer the main panel for connection source
-      const knobsRect = knobsRef.current?.getBoundingClientRect() ?? knobsHandleRef.current?.getBoundingClientRect()
-
-      if ((editorRect || editorHandleRect) && knobsRect) {
-         // Connect Knobs (Right) -> Editor (Left/Handle)
-         const x1 = knobsRect.right - containerRect.left
-         const y1 = knobsRect.top + knobsRect.height / 2 - containerRect.top
-
-         let x2 = 0
-         let y2 = 0
-
-         if (editorHandleRect) {
-             x2 = editorHandleRect.left + editorHandleRect.width / 2 - containerRect.left
-             y2 = editorHandleRect.top + editorHandleRect.height / 2 - containerRect.top
-         } else if (editorRect) {
-             x2 = editorRect.left - containerRect.left
-             y2 = editorRect.top + 40 - containerRect.top
-         }
-
-         setEditorConnectionLine({ x1, y1, x2, y2 })
-      } else {
-         setEditorConnectionLine(null)
-      }
-    } else {
-      setEditorConnectionLine(null)
-    }
-
-  }, [synthSelectedSquare, knobsPosition, knobsOn, strudelEditorOn, strudelEditorPosition])
+  }, [synthSelectedSquare, knobsPosition, globalPanelPosition, spectrogramPosition, knobsOn, globalPanelOn, spectrogramOn])
 
   return (
     <div
@@ -563,6 +850,46 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         `,
       }}
     >
+      <style jsx>{`
+        @keyframes border-blink {
+            0%, 100% { border-color: rgba(255, 255, 255, 0.2); }
+            50% { border-color: white; }
+        }
+        .animate-border-blink {
+            animation: border-blink 0.2s ease-in-out;
+        }
+        .mask-fade-right {
+            mask-image: linear-gradient(to right, black 80%, transparent);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-in {
+            animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
+      <style jsx global>{`
+        .continue-btn:hover {
+            border-color: var(--city-neon) !important;
+            box-shadow: 0 0 15px var(--city-neon) !important;
+        }
+      `}</style>
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-1000"
+        style={{
+            backgroundImage: `url(${city.image})`,
+            filter: (introPhase === 1 || introPhase === 2) 
+                ? "grayscale(0%) contrast(100%) brightness(100%) blur(0px)"
+                : "grayscale(100%) contrast(120%) brightness(30%) blur(0px)",
+            opacity: (introPhase === 1 || introPhase === 2) ? 0.8 : 0.4
+        }}
+      />
+      
       {/* Animated background grid */}
       <div
         className="absolute inset-0 opacity-5"
@@ -575,9 +902,219 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         }}
       />
 
+      {/* Intro Overlay */}
+      {introPhase < 3 && (
+          <div className={cn(
+              "absolute inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-all duration-1000",
+              introPhase === 0 ? "bg-background" : "bg-transparent pointer-events-none"
+          )} onClick={skipIntro}>
+              {/* Pointer Events Wrapper for Interactive Elements */}
+              <div className="contents pointer-events-auto">
+              
+              {/* Intro Phase 0: Text Lines */}
+              {introPhase === 0 && (
+                  <div className="flex flex-col gap-4 text-center px-6 max-w-2xl">
+                      {city.introPhrases?.slice(0, -1).map((phrase, i) => (
+                          <p 
+                            key={i} 
+                            className={cn(
+                                "text-2xl md:text-4xl font-light tracking-wide transition-all duration-[1500ms]",
+                                i <= currentIntroLine ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                            )}
+                            style={{ 
+                                color: "white",
+                                textShadow: "none"
+                            }}
+                          >
+                              {phrase}
+                          </p>
+                      ))}
+                      
+                      <div className={cn(
+                            "mt-12 transition-all duration-1000 hover:opacity-100",
+                            showIntroButton ? "opacity-100" : "opacity-0"
+                        )}>
+                            <Button
+                                  variant="outline"
+                                  size="lg"
+                                  className={cn(
+                                    "continue-btn border-white/20 hover:bg-white/10 text-xl px-12 py-6 tracking-widest uppercase hover:scale-105 transition-all duration-300 cursor-pointer group",
+                                    showIntroButton ? "animate-border-blink" : ""
+                                  )}
+                                  onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleContinue()
+                                  }}
+                              onMouseEnter={() => {
+                                  // Hover sound
+                                  const audio = new Audio('/sounds/kick.mp3') // Assuming kick is bass/bumbo
+                                  // Or reuse playSquareSample('a1') for bassy sound if available
+                                  playSquareSample('a1') 
+                              }}
+                              style={{
+                                  "--city-neon": city.color,
+                                  color: city.color
+                              } as React.CSSProperties}
+                          >
+                              <span className="group-hover:text-[var(--city-neon)] transition-colors duration-300 group-hover:drop-shadow-[0_0_8px_var(--city-neon)]">
+                                {city.introPhrases?.[city.introPhrases.length - 1] || "CONTINUE"}
+                              </span>
+                          </Button>
+                      </div>
+                  </div>
+              )}
+
+              {/* Intro Phase 1 & 2: Info Boxes & Start */}
+                      {(introPhase === 1 || introPhase === 2) && (
+                          <div className={cn(
+                              "flex flex-col items-center gap-8 w-full max-w-4xl px-4 pointer-events-auto",
+                          )}>
+                        <div className="flex flex-col items-center gap-6 w-full max-w-md">
+                            {/* Title Outside Box */}
+                            <h2 
+                                className={cn(
+                                    "text-3xl md:text-4xl font-black flex items-center gap-3 transition-all duration-1000",
+                                    showIntroBoxes && !isStartPressed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+                                    isStartPressed && "duration-100 opacity-0"
+                                )}
+                                style={{ 
+                                    color: 'black',
+                                    textShadow: `0 0 15px ${city.color}, 0 0 30px ${city.color}`
+                                }}
+                            >
+                                {city.name.toUpperCase()}
+                            </h2>
+
+                            {/* Box 1: City Stats */}
+                            <div 
+                                className={cn(
+                                    "bg-black/80 border border-white/10 backdrop-blur-md p-6 rounded-xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-1000 w-full",
+                                    showIntroBoxes && !isStartPressed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+                                    isStartPressed && "duration-100 opacity-0"
+                                )}
+                                style={{ borderColor: `${city.color}40` }}
+                            >
+                                {/* Description Moved to Top & Resized */}
+                                <div className="mb-6 text-base md:text-lg text-white/90 italic leading-relaxed font-light border-b border-white/10 pb-4">
+                                    "{city.description}"
+                                </div>
+
+                                <div className="space-y-3 font-mono text-sm">
+                                    <div className="flex justify-between border-b border-white/5 pb-2">
+                                        <span className="text-muted-foreground">GENRE</span>
+                                        <span className="text-white font-bold">{city.genre}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-white/5 pb-2">
+                                        <span className="text-muted-foreground">BPM</span>
+                                        <span>{city.bpm}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-white/5 pb-2">
+                                        <span className="text-muted-foreground">SCALE</span>
+                                        <span className="truncate max-w-[200px] text-right">{city.scale.join(" ")}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-white/5 pb-2">
+                                        <span className="text-muted-foreground">AI LEVEL</span>
+                                        <span className="text-yellow-400">
+                                            {city.aiDepth === 5 ? "EASY (Depth 5)" :
+                                             city.aiDepth === 10 ? "MEDIUM (Depth 10)" :
+                                             city.aiDepth === 15 ? "HARD (Depth 15)" :
+                                             "EXPERT (Depth 20)"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sound Kit Box HIDDEN for now */}
+                        {false && (
+                            <div className="hidden">
+                                {/* Original Sound Kit Code was here */}
+                            </div>
+                        )}
+
+                        <div className={cn(
+                            "mt-8 transition-all duration-1000 delay-400",
+                            showStartButton ? "opacity-100 translate-y-0" : "opacity-0 translate-y-0"
+                        )}>
+                            <Button
+                                className="cursor-pointer relative overflow-hidden bg-black hover:bg-black/80 text-black font-bold text-xl px-16 py-8 tracking-widest uppercase shadow-[0_0_30px_var(--city-neon)] hover:shadow-[0_0_50px_var(--city-neon)] hover:scale-105 transition-all duration-300 group"
+                                style={{ "--city-neon": city.color } as React.CSSProperties}
+                                onMouseDown={(e) => {
+                                    e.stopPropagation()
+                                    setIsStartPressed(true)
+                                    if (engineRef.current) {
+                                        // Pitch shift -1 tone (-2 semitones)
+                                        engineRef.current.setAmbiencePitch(Math.pow(2, -2 / 12))
+                                    }
+                                }}
+                                onMouseUp={(e) => {
+                                    e.stopPropagation()
+                                    handleStartGame()
+                                }}
+                                onMouseLeave={() => {
+                                    if (isStartPressed && introPhase < 3) {
+                                        setIsStartPressed(false)
+                                        if (engineRef.current) {
+                                            engineRef.current.setAmbiencePitch(1)
+                                        }
+                                    }
+                                    engineRef.current?.stopAmbience()
+                                }}
+                                onMouseEnter={() => {
+                                    if (engineRef.current) {
+                                        if (engineRef.current.context?.state === 'suspended') {
+                                            engineRef.current.context.resume()
+                                        }
+                                        engineRef.current.startAmbience(city.scale, city.id)
+                                        engineRef.current.setGlobalVolume(0.5)
+                                    }
+                                }}
+                                onMouseMove={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    const x = e.clientX - rect.left
+                                    const y = e.clientY - rect.top
+                                    const width = rect.width
+                                    e.currentTarget.style.setProperty("--mouse-x", `${x}px`)
+                                    e.currentTarget.style.setProperty("--mouse-y", `${y}px`)
+
+                                    if (engineRef.current) {
+                                        // Pitch shift: -2 to +2 semitones (4 semitones range)
+                                        const normalizedX = x / width
+                                        const semitones = (normalizedX * 4) - 2
+                                        const pitch = Math.pow(2, semitones / 12)
+                                        engineRef.current.setAmbiencePitch(pitch)
+                                    }
+                                }}
+                            >
+                                {/* Radial Gradient Background */}
+                                <div 
+                                    className={cn(
+                                        "absolute inset-0 transition-opacity duration-300 pointer-events-none",
+                                        isStartPressed ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                    )}
+                                    style={{
+                                        background: isStartPressed 
+                                            ? `radial-gradient(circle 150px at var(--mouse-x, 30%) var(--mouse-y, 30%), white 0%, var(--city-neon) 40%, transparent 70%)`
+                                            : `radial-gradient(circle 150px at var(--mouse-x, 50%) var(--mouse-y, 50%), white 0%, var(--city-neon) 40%, transparent 80%)`,
+                                        mixBlendMode: 'screen'
+                                    }}
+                                />
+                                {/* Button Text */}
+                                <span className="relative z-10 text-[var(--city-neon)] group-hover:text-black transition-colors duration-300">START MATCH</span>
+                            </Button>
+                        </div>
+                  </div>
+              )}
+          </div>
+          </div>
+      )}
+
       {/* Header */}
       <header 
-        className="relative z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-border bg-card/80 backdrop-blur-sm"
+        className={cn(
+          "absolute top-0 left-0 w-full z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000",
+          introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
         style={{ "--city-neon": city.color } as React.CSSProperties}
       >
         <div className="flex items-center gap-3">
@@ -630,7 +1167,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>AI Difficulty</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                AI Difficulty: <span className="text-[var(--city-neon)] font-bold">
+                  {aiDepth === 5 ? "Easy" : aiDepth === 10 ? "Medium" : aiDepth === 15 ? "Hard" : "Expert"}
+                </span>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setAiDepth(5)} className={cn("justify-between", aiDepth === 5 && "bg-accent text-accent-foreground font-bold")}>
                 Easy (Depth 5)
@@ -671,6 +1212,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               setGameStatus("CHECKMATE - White wins!")
               setIsPlaying(false)
               unlockNextCity(city.id)
+              if (engineRef.current) {
+                 engineRef.current.playSeatbelt()
+              }
               toast.success("CITY CONQUERED! 🎵", {
                 description: "Next arena unlocked. Ready for the next era?",
                 duration: Infinity,
@@ -686,41 +1230,50 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-4 px-0 py-4 lg:px-6 lg:py-6 mx-auto">
-        {/* Left Panel - Game Info & Controls */}
-        <div className="lg:w-64 order-2 lg:order-1 flex flex-col gap-4">
-          <div>
-            <GameInfo
-              moveHistory={moveHistory}
-              city={city}
-              turn={game.turn()}
-              aiDepth={aiDepth}
-            />
-          </div>
-          <GameControls 
-            onReset={resetGame}
-            isPlaying={isPlaying}
-            onTogglePlay={handleTogglePlay}
-            cityColor={city.color}
-            hasStarted={hasStarted}
-            onUndo={undoMove}
-            canUndo={moveHistory.length > 0}
-            onRedo={redoMove}
-            canRedo={redoStack.length > 0}
-          />
+      <div className="relative w-full h-full flex flex-col lg:block justify-start pt-4 lg:pt-0">
+        
+        {/* Footer - Fixed Bottom */}
+        <div className={cn(
+            "fixed bottom-0 left-0 right-0 h-[60px] z-40 flex items-center justify-end px-6 border-t border-transparent bg-transparent transition-all duration-1000 pointer-events-none",
+            introPhase < 3 ? "opacity-0 translate-y-full" : "opacity-100 translate-y-0"
+        )}>
+             {/* Center: Restart Button */}
+             <div className="flex items-center pointer-events-auto">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={resetGame}
+                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] hover:cursor-pointer transition-all"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                    <RotateCcw className="w-4 h-4" />
+                    <span className="hidden sm:inline">Restart</span>
+                </Button>
+             </div>
         </div>
 
-        {/* Main Game Area */}
-        <div className="flex flex-col gap-4 order-1 lg:order-2 items-center w-full min-h-screen justify-start pt-0">
+        {/* Main Game Area (Board Container) */}
+        {/* Animated Descent for Phase 2 -> 3 */}
+        <div 
+            className={cn(
+                "flex flex-col gap-4 items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 transition-all duration-[5000ms] ease-out",
+                introPhase < 2 ? "-translate-y-[150vh]" : introPhase === 2 ? "translate-y-[25vh]" : "lg:pt-6" // 25vh approx center vertical
+            )}
+            style={{
+                // If introPhase is 3 (Game Active), we reset transform to allow normal layout flow
+                transform: introPhase === 3 ? "none" : undefined,
+                marginTop: introPhase === 3 ? (typeof window !== 'undefined' && window.innerWidth > 768 ? 'calc(50vh - 350px)' : '100px') : undefined // Centering hack
+            }}
+        >
           <div
-            className="w-full max-w-full lg:max-w-[512px] flex flex-col gap-4 relative"
+            className="w-full max-w-full flex flex-col gap-4 relative"
             ref={centerContainerRef}
           >
 
 
 
 
-            <div className="flex justify-between gap-0.5 min-h-[1rem] w-full">
+            <div className="flex justify-between gap-0.5 min-h-[2rem] h-8 w-full px-4 lg:px-0">
               <div className="flex justify-start gap-0.5">
                 {capturedPieces.black.map((p, i) => (
                   <div
@@ -750,23 +1303,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               </div>
             </div>
 
-            {/* Chess Board */}
-            <div className="flex-1 flex flex-col items-center justify-center min-h-[400px] w-full relative z-20">
-              <div className="w-[90vw] max-w-[512px] h-8 bg-black/40 rounded overflow-hidden flex relative mb-2 border border-white/10">
-                <div 
-                  className="h-full bg-white transition-all duration-1000 ease-in-out relative"
-                  style={{ width: `${whitePercent}%` }}
-                >
-                    <span className="absolute top-0 left-2 text-[10px] font-mono font-bold text-black leading-[32px]">
-                      You {whitePercent}%
-                    </span>
-                </div>
-                  <span className="absolute top-0 right-2 text-[10px] font-mono font-bold text-white leading-[32px]">
-                    IA {blackPercent}%
-                  </span>
-              </div>
+            <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20">
+              {/* Board Area - Moved to Top */}
               <div
-                className="w-[90vw] max-w-[512px] aspect-square relative z-20"
+                className="w-[90vw] max-w-[512px] aspect-square relative z-20 mb-4"
                 ref={boardAreaRef}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -800,113 +1340,166 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   }}
                 />
               </div>
-            </div>
 
-            <div className="flex w-full items-center mt-2 gap-2 justify-center relative z-50">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="default"
-                  onClick={undoMove}
-                  disabled={moveHistory.length === 0}
-                  className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
-                  style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                  <Undo2 className="w-10 h-10" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="default"
-                  onClick={handleTogglePlay}
-                  className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
-                  style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                  {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="default"
-                  onClick={redoMove}
-                  disabled={redoStack.length === 0}
-                  className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
-                  style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                  <Redo2 className="w-10 h-10" />
-                </Button>
+              {/* Time Control Buttons - Moved Below Board */}
+              <div className="flex w-full items-center mb-6 gap-2 justify-center relative z-50">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="default"
+                    onClick={undoMove}
+                    disabled={moveHistory.length === 0}
+                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                  >
+                    <Undo2 className="w-10 h-10" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="default"
+                    onClick={handleTogglePlay}
+                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                  >
+                    {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="default"
+                    onClick={redoMove}
+                    disabled={redoStack.length === 0}
+                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                  >
+                    <Redo2 className="w-10 h-10" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Eval Bar - Moved Below Controls */}
+              <div className="w-[90vw] max-w-[512px] h-2 bg-black/40 rounded-[12px] overflow-hidden flex flex-col relative mb-7 border border-white/10 relative">
+                <div className="w-full h-2 relative overflow-hidden">
+                    <div 
+                      className="absolute inset-y-0 left-0 bg-white transition-all duration-1000 ease-in-out"
+                      style={{ width: `${blackPercent}%` }}
+                    />
+                    {isEvaluating && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-30">
+                            <Loader2 className="w-2 h-2 text-white animate-spin" />
+                        </div>
+                    )}
+                </div>
+              </div>
+
+              {/* Moves Ticker - Moved Below Eval */}
+              <div 
+                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-7 px-1 relative z-20 overflow-hidden"
+               >
+                   <div
+                      ref={movesTickerRef}
+                      className="flex items-center justify-start gap-3 text-xs font-mono whitespace-nowrap overflow-x-auto scrollbar-hide mask-fade-right w-full"
+                      style={{ textShadow: "1px 1px 1px black" }}
+                   >
+                       {[...moveHistory].reverse().map((move, i) => {
+                           const originalIndex = moveHistory.length - 1 - i
+                           return (
+                               <span key={originalIndex} className={cn(
+                                   originalIndex % 2 === 0 ? "text-white" : "text-muted-foreground",
+                                   "animate-slide-in"
+                               )}>
+                                   {originalIndex % 2 === 0 ? `${Math.floor(originalIndex/2) + 1}.` : ""} {move}
+                               </span>
+                           )
+                       })}
+                   </div>
               </div>
             </div>
           </div>
-          {/* Live Code */}
-          <div className="w-full max-w-full lg:max-w-[512px] flex flex-col gap-4 relative z-20 mt-4">
-             <div className={cn("transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
-               <div className="w-full h-16 md:h-24">
-                 <AudioVisualizer isPlaying={isPlaying} color={city.color} pattern={currentPattern} hasStarted={hasStarted} />
-               </div>
-             </div>
-             <div className={cn("flex-1 transition-opacity duration-1000", hasStarted ? "opacity-30 hover:opacity-100" : "")}>
-               <LiveCodeOverlay pattern={currentPattern} city={city} isPlaying={isPlaying} />
-             </div>
-          </div>
+
         </div>
       </div>
-      {connectionLine && (
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible" style={{ zIndex: 0 }}>
-          {(() => {
-             const startX = connectionLine.x1
-             const startY = connectionLine.y1
-             const endX = connectionLine.x2
-             const endY = connectionLine.y2
-             const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
-             const t = Math.min(1, dist / 800)
-             const maxCurve = 120
-             const minCurve = 40 
-             const curveAmount = maxCurve - (t * (maxCurve - minCurve))
-             const cpX = (startX + endX) / 2
-             const cpY = (startY + endY) / 2 + curveAmount
-             return (
-              <>
-                <path
-                  d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
-                  stroke="white"
-                  strokeWidth={1.5}
-                  fill="none"
-                  className="opacity-40"
-                />
-                <circle cx={startX} cy={startY} r={2} fill="red" />
-              </>
-             )
-          })()}
-        </svg>
-      )}
-      {editorConnectionLine && (
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-50 overflow-visible">
-          {(() => {
-             const startX = editorConnectionLine.x1
-             const startY = editorConnectionLine.y1
-             const endX = editorConnectionLine.x2
-             const endY = editorConnectionLine.y2
-             const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
-             const t = Math.min(1, dist / 800)
-             const maxCurve = 120
-             const minCurve = 40 
-             const curveAmount = maxCurve - (t * (maxCurve - minCurve))
-             const cpX = (startX + endX) / 2
-             const cpY = (startY + endY) / 2 + curveAmount
-             return (
-              <path
-                d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
-                stroke="white"
-                strokeWidth={1.5}
-                fill="none"
-                className="opacity-40"
-              />
-             )
-          })()}
-        </svg>
-      )}
+      
+      {/* Connection Lines Layer - z-60 (Between Widget Box and Widget Button) */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 60 }}>
+        {[knobsConnection, spectrogramConnection].map((conn, i) => {
+          if (!conn) return null
+          
+          const startX = conn.x1
+          const startY = conn.y1
+          const endX = conn.x2
+          const endY = conn.y2
+          
+          // Calculate curve to dip below the lowest point
+          const lowestY = Math.max(startY, endY)
+          const targetLowPoint = lowestY + 15 // Fixed 15px dip below lowest point
+          
+          const cpX = (startX + endX) / 2
+          const cpY = 2 * targetLowPoint - 0.5 * startY - 0.5 * endY
+
+          const r = 4 // Handle radius
+
+          // Source Handle (Widget)
+          let sourceHandlePath = ""
+          if (conn.sourceSide === 'left') {
+              sourceHandlePath = `M ${startX} ${startY - r} A ${r} ${r} 0 0 0 ${startX} ${startY + r}`
+          } else if (conn.sourceSide === 'right') {
+              sourceHandlePath = `M ${startX} ${startY - r} A ${r} ${r} 0 0 1 ${startX} ${startY + r}`
+          }
+
+          // Target Handle
+          let targetHandlePath = ""
+          if (conn.targetSide === 'bottom') {
+              // U shape (Flat top)
+              targetHandlePath = `M ${endX - r} ${endY} A ${r} ${r} 0 0 0 ${endX + r} ${endY}`
+          } else if (conn.targetSide === 'left') {
+              targetHandlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 0 ${endX} ${endY + r}`
+          } else if (conn.targetSide === 'right') {
+              targetHandlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 1 ${endX} ${endY + r}`
+          }
+
+          return (
+             <React.Fragment key={i}>
+               <path
+                 d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
+                 stroke="white"
+                 strokeWidth={1.5}
+                 fill="none"
+                 className="opacity-50"
+               />
+               {sourceHandlePath && (
+                   <path
+                       d={sourceHandlePath}
+                       fill="white"
+                       className="opacity-100"
+                   />
+               )}
+               {targetHandlePath && (
+                   <path
+                       d={targetHandlePath}
+                       fill="white"
+                       className="opacity-100"
+                   />
+               )}
+             </React.Fragment>
+          )
+        })}
+      </svg>
+
+      <div className={cn("transition-opacity duration-1000", introPhase < 2 ? "opacity-0 pointer-events-none" : "opacity-100")}>
+      <SpectrogramWidget
+        ref={spectrogramHandleRef}
+        toggleRef={spectrogramToggleRef}
+        isOn={spectrogramOn}
+        onToggle={() => setSpectrogramOn(prev => !prev)}
+        isPlaying={isPlaying}
+        cityColor={city.color}
+        position={spectrogramPosition || undefined}
+        onPositionChange={(pos) => setSpectrogramPosition(pos)}
+      />
 
       <SynthControlPanel
         ref={knobsRef}
+        toggleRef={knobsToggleRef}
         selectedSquare={synthSelectedSquare as Square | null}
         selectedPieceInfo={(() => {
           if (!synthSelectedSquare) return null
@@ -958,33 +1551,35 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         onMouseDown={(e) => e.stopPropagation()}
       />
 
-      <StrudelEditor
-        ref={strudelEditorRef}
-        handleRef={strudelEditorHandleRef}
-        selectedSquare={synthSelectedSquare}
-        effects={
-          synthSelectedSquare
-            ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS
-            : DEFAULT_EFFECTS
-        }
-        onEffectChange={(key, value) => {
-          if (!synthSelectedSquare) return
-          setSquareEffects((prev) => ({
-            ...prev,
-            [synthSelectedSquare]: {
-              ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS),
-              [key]: value,
-            },
-          }))
-        }}
+      {/* Global Control Panel */}
+      <GlobalControlPanel
+        ref={globalPanelRef}
+        toggleRef={globalPanelToggleRef}
+        effects={globalEffects}
+        onEffectChange={handleGlobalEffectChange}
         cityColor={city.color}
-        isOpen={strudelEditorOn}
-        onToggle={() => setStrudelEditorOn(!strudelEditorOn)}
-        position={strudelEditorPosition ?? { x: 0, y: 0 }}
-        onPositionChange={setStrudelEditorPosition}
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
+        position={globalPanelPosition || undefined}
+        onPositionChange={(pos) => setGlobalPanelPosition(pos)}
+        handleRef={globalPanelHandleRef}
+        isOn={globalPanelOn}
+        onToggle={() => setGlobalPanelOn(!globalPanelOn)}
       />
+
+      {/* Live Code Widget */}
+      <LiveCodeWidget
+        ref={liveCodeRef}
+        toggleRef={liveCodeToggleRef}
+        handleRef={liveCodeHandleRef}
+        pattern={currentPattern}
+        city={city}
+        cityColor={city.color}
+        isPlaying={isPlaying}
+        position={liveCodePosition || undefined}
+        onPositionChange={(pos) => setLiveCodePosition(pos)}
+        isOn={liveCodeOn}
+        onToggle={() => setLiveCodeOn(!liveCodeOn)}
+      />
+      </div>
 
     </div>
   )

@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useRef } from "react"
+import React, { useRef, useState } from "react"
+import { cn } from "@/lib/utils"
 
 interface KnobProps {
   value: number
@@ -17,17 +18,7 @@ export function Knob({ value, min, max, step = 0.01, label, onChange, formatValu
   const startY = useRef<number>(0)
   const startX = useRef<number>(0)
   const startValue = useRef<number>(0)
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!neon) return
-    startY.current = e.clientY
-    startX.current = e.clientX
-    startValue.current = value
-    document.body.style.cursor = "ew-resize"
-    
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("mouseup", handleMouseUp)
-  }
+  const [isDragging, setIsDragging] = useState(false)
 
   const handleMouseMove = (e: MouseEvent) => {
     const deltaY = startY.current - e.clientY // Up is positive
@@ -54,9 +45,22 @@ export function Knob({ value, min, max, step = 0.01, label, onChange, formatValu
   }
 
   const handleMouseUp = () => {
-    document.body.style.cursor = "default"
+    setIsDragging(false)
+    document.body.style.cursor = ""
     window.removeEventListener("mousemove", handleMouseMove)
     window.removeEventListener("mouseup", handleMouseUp)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!neon) return
+    setIsDragging(true)
+    startY.current = e.clientY
+    startX.current = e.clientX
+    startValue.current = value
+    document.body.style.cursor = "ew-resize"
+    
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
   }
 
   // Calculate rotation for visual
@@ -69,7 +73,11 @@ export function Knob({ value, min, max, step = 0.01, label, onChange, formatValu
       <div 
         className={cn(
             "relative w-10 h-10 rounded-full bg-secondary border border-border group transition-all",
-            neon ? "cursor-ew-resize hover:border-[var(--city-neon)]" : "cursor-default border-border/50 bg-secondary/50"
+            neon 
+              ? (isDragging 
+                  ? "cursor-ew-resize border-white" 
+                  : "cursor-ew-resize hover:border-[var(--city-neon)]") 
+              : "cursor-default border-border/50 bg-secondary/50"
         )}
         onMouseDown={handleMouseDown}
       >
@@ -77,7 +85,7 @@ export function Knob({ value, min, max, step = 0.01, label, onChange, formatValu
           className="absolute w-full h-full rounded-full transition-colors"
           style={{ transform: `rotate(${rotation}deg)` }}
         >
-          <div className={cn("absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 rounded-full transition-colors", neon ? "bg-foreground/50 group-hover:bg-[var(--city-neon)]" : "bg-foreground/20")} />
+          <div className={cn("absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 rounded-full transition-colors", neon ? (isDragging ? "bg-white" : "bg-foreground/50 group-hover:bg-white") : "bg-foreground/20")} />
         </div>
       </div>
       <div className="flex flex-col items-center">
@@ -89,4 +97,3 @@ export function Knob({ value, min, max, step = 0.01, label, onChange, formatValu
     </div>
   )
 }
-import { cn } from "@/lib/utils"

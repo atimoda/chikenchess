@@ -17,6 +17,7 @@ interface SynthControlPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   position?: { x: number; y: number }
   onPositionChange?: (pos: { x: number; y: number }) => void
   handleRef?: React.RefObject<HTMLDivElement | null>
+  toggleRef?: React.RefObject<HTMLButtonElement | null>
   isOn: boolean
   onToggle: () => void
 }
@@ -30,6 +31,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   position,
   onPositionChange,
   handleRef,
+  toggleRef,
   isOn,
   onToggle,
   ...props
@@ -51,12 +53,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
     : (selectedSquare ? cityColor : "rgba(255,255,255,0.3)")
 
   const toggleIconColor = !isOn 
-    ? "white" 
-    : (selectedSquare ? "var(--city-neon)" : "#60a5fa") // Neon if active, Blue if inactive
-
-  const dragIconColor = !isOn 
-    ? "rgba(255,255,255,0.1)" 
-    : (selectedSquare ? "var(--city-neon)" : "rgba(255,255,255,0.3)") // Neon if active, Matches border if inactive
+    ? "var(--city-neon)" 
+    : (selectedSquare ? "var(--city-neon)" : "#60a5fa")
 
   return (
     <Draggable
@@ -65,29 +63,40 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       onDrag={onPositionChange}
       handleRef={effectiveHandleRef}
       className={cn(
-        "z-50 rounded-md select-none",
-        isOn ? "border-2 bg-black/80 backdrop-blur-md" : "border bg-black/60 backdrop-blur-sm",
-        selectedSquare ? "border-white/70" : "border-white/30",
+        "pointer-events-auto", // Remove z-50 and visual styles from container
         props.className
       )}
       style={{
-        ...panelStyle,
-        borderColor: widgetBorderColor,
-        boxShadow: isOn && selectedSquare ? `0 0 20px ${cityColor}40` : "none",
-        ...props.style
+        ...props.style,
+        zIndex: undefined // Ensure no z-index on container
       }}
       {...props}
     >
-      {/* Toggle Button (On/Off) - Top Left */}
-      <button
+      {/* Widget Background/Box - z-50 */}
+      <div 
         className={cn(
-          "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-50 shadow-md group hover:cursor-pointer",
+            "absolute inset-0 z-50 rounded-md",
+            isOn ? "border-2 bg-black/80 backdrop-blur-md" : "border bg-black/60 backdrop-blur-sm",
+            selectedSquare ? "border-white/70" : "border-white/30",
+        )}
+        style={{
+            ...panelStyle,
+            borderColor: widgetBorderColor,
+            boxShadow: isOn && selectedSquare ? `0 0 20px ${cityColor}40` : "none",
+        }}
+      />
+
+      {/* Toggle Button (On/Off) - Top Left - z-70 */}
+      <button
+        ref={toggleRef}
+        className={cn(
+          "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group hover:cursor-pointer",
         )}
         style={{ 
           borderColor: widgetBorderColor, 
           color: toggleIconColor,
-          top: -13, 
-          left: -16,
+          top: -5, 
+          left: -8,
           boxShadow: isOn ? `0 0 10px ${cityColor}40` : "none"
         }}
         onClick={(e) => {
@@ -98,43 +107,27 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         <Power className={cn("w-4 h-4", isOn ? "drop-shadow-[0_0_8px_currentColor]" : "")} />
       </button>
 
-      {/* Drag Handle - Below Toggle */}
-      <div
-        className={cn(
-            "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-40 shadow-md group hover:cursor-grab hover:text-black cursor-grab active:cursor-grabbing",
-        )}
-        style={{ 
-            borderColor: widgetBorderColor, 
-            color: dragIconColor,
-            top: 24, 
-            left: -16 
-        }}
+      {/* Invisible Drag Handle Header - z-60 */}
+      <div 
         ref={effectiveHandleRef}
-      >
-        <div className="flex flex-col gap-[2px] items-center justify-center">
-          <span className={cn("block w-4 h-px bg-current", isOn && selectedSquare ? "shadow-[0_0_5px_currentColor]" : "")} />
-          <span className={cn("block w-4 h-px bg-current", isOn && selectedSquare ? "shadow-[0_0_5px_currentColor]" : "")} />
-          <span className={cn("block w-4 h-px bg-current", isOn && selectedSquare ? "shadow-[0_0_5px_currentColor]" : "")} />
-        </div>
-      </div>
+        className="absolute inset-x-0 top-0 h-8 cursor-grab active:cursor-grabbing z-60"
+      />
 
-      {/* Main Content */}
-      <div className={cn("px-2.5 py-2.5 min-w-[300px]", !isOn && "opacity-50 grayscale")}>
+      {/* Main Content - z-50 */}
+      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px]", !isOn && "opacity-50 grayscale")}>
         <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between mb-2 px-1 h-4">
-            {isOn ? (
-               <span className="text-xs font-mono font-bold text-[var(--city-neon)] uppercase tracking-wider animate-in fade-in duration-300">
-                  {selectedSquare ? `SQ: ${selectedSquare}` : "NO SELECTION"}
-               </span>
-            ) : <span />}
-             <span className="text-[10px] text-muted-foreground font-mono ml-auto">
-                SYNTH PARAMS
+          <div className="flex items-center justify-center mb-2 px-1 h-4 relative">
+             <span className={cn(
+               "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300",
+               isOn && selectedSquare ? "text-[var(--city-neon)]" : "text-muted-foreground"
+             )}>
+                {selectedSquare ? `SQ: ${selectedSquare}` : "PIECE PARAMS"}
              </span>
           </div>
           
           <div
             className={cn(
-              "flex items-center justify-between gap-2 overflow-x-hidden py-2",
+              "grid grid-cols-4 gap-x-2 gap-y-4 py-2",
               (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale",
               !isOn && "pointer-events-none"
             )}
@@ -157,6 +150,14 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               neon={isOn}
             />
             <Knob
+              label="PITCH"
+              value={effects.pitch}
+              min={0.5}
+              max={2}
+              onChange={(v) => onEffectChange("pitch", v)}
+              neon={isOn}
+            />
+            <Knob
               label="PAN"
               value={effects.pan}
               min={-1}
@@ -165,20 +166,28 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               neon={isOn}
             />
             <Knob
-              label="PITCH"
-              value={effects.pitch}
-              min={0.5}
-              max={2}
-              onChange={(v) => onEffectChange("pitch", v)}
-              neon={isOn}
-            />
-
-            <Knob
               label="DELAY"
               value={effects.delay}
               min={0}
               max={1}
               onChange={(v) => onEffectChange("delay", v)}
+              neon={isOn}
+            />
+            
+            <Knob
+              label="HPF"
+              value={effects.hpf ?? 0}
+              min={0}
+              max={20000}
+              onChange={(v) => onEffectChange("hpf", v)}
+              neon={isOn}
+            />
+            <Knob
+              label="LPF"
+              value={effects.lpf ?? 20000}
+              min={20}
+              max={20000}
+              onChange={(v) => onEffectChange("lpf", v)}
               neon={isOn}
             />
             <Knob
