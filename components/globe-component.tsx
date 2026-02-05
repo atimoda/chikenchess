@@ -27,6 +27,7 @@ interface GlobeProps {
   enteringCityId: string | null
   setEnteringCityId: (id: string | null) => void
   zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>
+  onZoomChange?: (zoom: number) => void
 }
 
 const GLOBE_RADIUS = 2
@@ -99,6 +100,11 @@ const PopupContainer = ({
     // Track drag start position for anchor
     const dragAnchor = useRef({ x: 31, y: 8 }) // Default to handle center
     const currentDragPos = useRef({ x: 0, y: 0 })
+    
+    // Store last calculated line state to freeze it during closing animation
+    const lastLineState = useRef({ 
+        startX: 0, startY: 0, cpX: 0, cpY: 0, endX: 0, endY: 0, handlePath: "" 
+    })
 
     // Sync local state when global state changes (e.g. from other interactions or init)
     useEffect(() => {
@@ -113,101 +119,91 @@ const PopupContainer = ({
     
     // Connection Logic
     // Pin is at 0,0 relative to this container
-    const startX = 0
-    const startY = 0
+    let startX = 0
+    let startY = 0
     
     // Find closest side connection point
     // Calculate distances to center of each side
     const leftCenter = { x: localPos.x, y: localPos.y + popupHeight/2 }
     const rightCenter = { x: localPos.x + popupWidth, y: localPos.y + popupHeight/2 }
     const topCenter = { x: localPos.x + popupWidth/2, y: localPos.y }
-    const bottomCenter = { x: localPos.x + popupWidth/2, y: localPos.y + popupHeight }
     
     // Distances squared
     const dLeft = Math.pow(leftCenter.x - startX, 2) + Math.pow(leftCenter.y - startY, 2)
     const dRight = Math.pow(rightCenter.x - startX, 2) + Math.pow(rightCenter.y - startY, 2)
     const dTop = Math.pow(topCenter.x - startX, 2) + Math.pow(topCenter.y - startY, 2)
-    const dBottom = Math.pow(bottomCenter.x - startX, 2) + Math.pow(bottomCenter.y - startY, 2)
     
-    let endX, endY, side, cpX, cpY
-    
-    // Determine closest side
-    const minD = Math.min(dLeft, dRight, dTop, dBottom)
-    
-    if (minD === dTop) {
-        endX = topCenter.x
-        endY = topCenter.y
-        side = 'top'
-        cpX = startX + (Math.random() - 0.5) * 20
-        cpY = (startY + endY) / 2
-    } else if (minD === dBottom) {
-        endX = bottomCenter.x
-        endY = bottomCenter.y
-        side = 'bottom'
-        cpX = startX + (Math.random() - 0.5) * 20
-        cpY = (startY + endY) / 2
-    } else if (minD === dLeft) {
-        endX = leftCenter.x
-        endY = leftCenter.y - 40 // Adjust visual anchor
-        side = 'left'
-        cpX = (startX + endX) / 2
-        
-        // Curve based on vertical position
-        if (endY < 0) cpY = (startY + endY) / 2 + 50
-        else cpY = (startY + endY) / 2 - 50
-    } else { // Right
-        endX = rightCenter.x
-        endY = rightCenter.y - 40 // Adjust visual anchor
-        side = 'right'
-        cpX = (startX + endX) / 2
-        
-        // Curve based on vertical position
-        if (endY < 0) cpY = (startY + endY) / 2 + 50
-        else cpY = (startY + endY) / 2 - 50
-    }
-
-    // Override connection point if dragging
-    // We assume the user grabs the "drag handle" which is at a specific spot.
-    // But `Draggable` allows dragging from the handle.
-    // If dragging, we want the line to point to the handle.
-    // Handle pos relative to popup: left: 15, top: -8. Center of handle (~32px) -> +16, +16.
-    // So Handle Center relative to popup = x+31, y+8.
+    let endX, endY, side, cpX, cpY, handlePath = ""
     
     // We need to know if we are currently dragging.
-    // We have `setIsDraggingPopup` passed down, but we don't have a local `isDragging` state that we can read during render.
-    // Let's add one.
     const [isDraggingLocal, setIsDraggingLocal] = useState(false)
 
-    if (isDraggingLocal) {
-        endX = localPos.x + dragAnchor.current.x
-        endY = localPos.y + dragAnchor.current.y
-        // Update control points for smooth line to handle
-        // Simple quadratic to the handle
-        const midX = (startX + endX) / 2
-        const midY = (startX + endY) / 2
-        cpX = midX
-        const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
-        let arcHeight = Math.min(dist * 0.266, 66)
-        if (endY < 0) {
-             cpY = midY + arcHeight 
-        } else {
-             cpY = midY - arcHeight 
+    // Calculate line state only if NOT closing (freeze otherwise)
+    if (!popup.isClosing) {
+        // Determine closest side
+        const minD = Math.min(dLeft, dRight, dTop)
+        
+        if (minD === dTop) {
+            endX = topCenter.x
+            endY = topCenter.y
+            side = 'top'
+            cpX = startX + (Math.random() - 0.5) * 20
+            cpY = (startY + endY) / 2
+        } else if (minD === dLeft) {
+            endX = leftCenter.x
+            endY = leftCenter.y - 40 // Adjust visual anchor
+            side = 'left'
+            cpX = (startX + endX) / 2
+            
+            // Curve based on vertical position
+            if (endY < 0) cpY = (startY + endY) / 2 + 50
+            else cpY = (startY + endY) / 2 - 50
+        } else { // Right
+            endX = rightCenter.x
+            endY = rightCenter.y - 40 // Adjust visual anchor
+            side = 'right'
+            cpX = (startX + endX) / 2
+            
+            // Curve based on vertical position
+            if (endY < 0) cpY = (startY + endY) / 2 + 50
+            else cpY = (startY + endY) / 2 - 50
         }
-    }
 
-    // Handle path
-    const r = 4
-    let handlePath = ""
-    if (!isDraggingLocal) {
-        if (side === 'left') {
-            handlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 0 ${endX} ${endY + r}`
-        } else if (side === 'right') {
-            handlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 1 ${endX} ${endY + r}`
-        } else if (side === 'top') {
-            handlePath = `M ${endX - r} ${endY} A ${r} ${r} 0 0 1 ${endX + r} ${endY}`
-        } else if (side === 'bottom') {
-            handlePath = `M ${endX - r} ${endY} A ${r} ${r} 0 0 0 ${endX + r} ${endY}`
+        // Override connection point if dragging
+        if (isDraggingLocal) {
+            endX = localPos.x + dragAnchor.current.x
+            endY = localPos.y + dragAnchor.current.y
+            // Update control points for smooth line to handle
+            // Simple quadratic to the handle
+            const midX = (startX + endX) / 2
+            const midY = (startX + endY) / 2
+            cpX = midX
+            const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+            let arcHeight = Math.min(dist * 0.266, 66)
+            if (endY < 0) {
+                 cpY = midY + arcHeight 
+            } else {
+                 cpY = midY - arcHeight 
+            }
         }
+
+        // Handle path
+        const r = 4
+        if (!isDraggingLocal) {
+            if (side === 'left') {
+                handlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 0 ${endX} ${endY + r}`
+            } else if (side === 'right') {
+                handlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 1 ${endX} ${endY + r}`
+            } else if (side === 'top') {
+                handlePath = `M ${endX - r} ${endY} A ${r} ${r} 0 0 1 ${endX + r} ${endY}`
+            }
+        }
+        
+        // Update ref
+        lastLineState.current = { startX, startY, cpX, cpY, endX, endY, handlePath }
+    } else {
+        // Use frozen state
+        ({ startX, startY, cpX, cpY, endX, endY, handlePath } = lastLineState.current)
     }
 
     const lineElement = (
@@ -226,76 +222,82 @@ const PopupContainer = ({
     )
 
     return (
-        <div ref={wrapperRef} style={{ pointerEvents: 'auto', position: 'relative' }}>
-            {lineElement}
-            <CityPopup
-                city={city}
-                popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
-                isUnlocked={isUnlocked}
-                isPressed={pressedPopupState?.id === city.id}
-                rotation={pressedPopupState?.rotation || 0}
-                bringToFront={bringToFront}
-                closePopup={onPopupClose}
-                updatePopupPosition={(id, x, y) => {
-                    // Update local state immediately for smooth drag
-                    setLocalPos({ x, y })
-                    localPosRef.current = { x, y }
-                }}
-                playMapSound={playMapSound}
-                startWhistleLoop={startWhistleLoop}
-                stopWhistleLoop={stopWhistleLoop}
-                setPressedPopupState={setPressedPopupState}
-                onCitySelect={onCitySelect}
-                handleSmartPadSound={handleSmartPadSound}
-                handleSmartPadLeave={handleSmartPadLeave}
-                stopPadSound={stopPadSound}
-                isEntering={isEntering}
-                onEnter={() => setEnteringCityId(city.id)}
-                scale={1}
-                transformOrigin={isDraggingLocal ? `${dragAnchor.current.x}px ${dragAnchor.current.y}px` : undefined}
-                onDragMove={() => {
-                    handleInteraction()
-                }}
-                onDragStart={(e) => {
-                    setIsDraggingPopup(true)
-                    setIsDraggingLocal(true)
-                    
-                    if (e && wrapperRef.current) {
-                        const rect = wrapperRef.current.getBoundingClientRect()
-                        let clientX, clientY
-                        if ('touches' in e) {
-                             clientX = e.touches[0].clientX
-                             clientY = e.touches[0].clientY
-                        } else {
-                             clientX = (e as React.MouseEvent).clientX
-                             clientY = (e as React.MouseEvent).clientY
-                        }
-
-                        const mouseX = clientX - rect.left
-                        const mouseY = clientY - rect.top
-                        
-                        // Calculate anchor relative to popup top-left
-                        // localPos is the current position of the popup relative to wrapper
-                        dragAnchor.current = {
-                            x: mouseX - localPos.x,
-                            y: mouseY - localPos.y
-                        }
-                    } else {
-                        // Fallback to handle center if event is missing (should not happen)
-                        dragAnchor.current = { x: 31, y: 8 }
-                    }
-                    
-                    handleInteraction()
-                }}
-                onDragEnd={() => {
-                    setIsDraggingPopup(false)
-                    setIsDraggingLocal(false)
-                    handleInteraction()
-                    // Sync to global state on drag end
-                    updatePopupPosition(city.id, localPosRef.current.x, localPosRef.current.y)
-                }}
-            />
-        </div>
+        <>
+            <Html style={{ pointerEvents: 'none', zIndex: 10 }}>
+                {lineElement}
+            </Html>
+            <Html style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
+                <div ref={wrapperRef} style={{ pointerEvents: 'auto', position: 'relative' }}>
+                    <CityPopup
+                        city={city}
+                        popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
+                        isUnlocked={isUnlocked}
+                        isPressed={pressedPopupState?.id === city.id}
+                        rotation={pressedPopupState?.rotation || 0}
+                        bringToFront={bringToFront}
+                        closePopup={onPopupClose}
+                        updatePopupPosition={(id, x, y) => {
+                            // Update local state immediately for smooth drag
+                            setLocalPos({ x, y })
+                            localPosRef.current = { x, y }
+                        }}
+                        playMapSound={playMapSound}
+                        startWhistleLoop={startWhistleLoop}
+                        stopWhistleLoop={stopWhistleLoop}
+                        setPressedPopupState={setPressedPopupState}
+                        onCitySelect={onCitySelect}
+                        handleSmartPadSound={handleSmartPadSound}
+                        handleSmartPadLeave={handleSmartPadLeave}
+                        stopPadSound={stopPadSound}
+                        isEntering={isEntering}
+                        onEnter={() => setEnteringCityId(city.id)}
+                        scale={1}
+                        transformOrigin={isDraggingLocal ? `${dragAnchor.current.x}px ${dragAnchor.current.y}px` : undefined}
+                        onDragMove={() => {
+                            handleInteraction()
+                        }}
+                        onDragStart={(e) => {
+                            setIsDraggingPopup(true)
+                            setIsDraggingLocal(true)
+                            
+                            if (e && wrapperRef.current) {
+                                const rect = wrapperRef.current.getBoundingClientRect()
+                                let clientX, clientY
+                                if ('touches' in e) {
+                                     clientX = e.touches[0].clientX
+                                     clientY = e.touches[0].clientY
+                                } else {
+                                     clientX = (e as React.MouseEvent).clientX
+                                     clientY = (e as React.MouseEvent).clientY
+                                }
+        
+                                const mouseX = clientX - rect.left
+                                const mouseY = clientY - rect.top
+                                
+                                // Calculate anchor relative to popup top-left
+                                // localPos is the current position of the popup relative to wrapper
+                                dragAnchor.current = {
+                                    x: mouseX - localPos.x,
+                                    y: mouseY - localPos.y
+                                }
+                            } else {
+                                // Fallback to handle center if event is missing (should not happen)
+                                dragAnchor.current = { x: 31, y: 8 }
+                            }
+                            
+                            handleInteraction()
+                        }}
+                        onDragEnd={() => {
+                            setIsDraggingPopup(false)
+                            setIsDraggingLocal(false)
+                            handleInteraction()
+                            // Sync to global state on drag end
+                            updatePopupPosition(city.id, localPosRef.current.x, localPosRef.current.y)
+                        }}
+                    />
+                </div>
+            </Html>
+        </>
     )
 }
 
@@ -318,7 +320,8 @@ const GlobeContent = ({
   pressedPopupState,
   enteringCityId,
   setEnteringCityId,
-  zoomRef
+  zoomRef,
+  onZoomChange
 }: GlobeProps) => {
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
@@ -326,6 +329,7 @@ const GlobeContent = ({
   const [isStandby, setIsStandby] = useState(false)
   const lastInteractionTime = useRef(Date.now())
   const [introZoomComplete, setIntroZoomComplete] = useState(false)
+  const lastReportedZoom = useRef(100)
   
   // Standby Rotation State
   const standbyRotationAxis = useRef(new Vector3(0, 1, 0))
@@ -417,6 +421,19 @@ const GlobeContent = ({
     const now = Date.now()
     const hasOpenPopups = Object.keys(openPopups).length > 0
     const timeSinceInteraction = now - lastInteractionTime.current
+
+    // Report Zoom Level
+    if (camera && onZoomChange) {
+        const dist = camera.position.length()
+        // Standard distance is 5.
+        // Zoom % = (5 / dist) * 100
+        const zoom = Math.round((5 / dist) * 100)
+        
+        if (Math.abs(zoom - lastReportedZoom.current) >= 1) {
+            lastReportedZoom.current = zoom
+            onZoomChange(zoom)
+        }
+    }
     
     if (introZoomComplete && !isDraggingPopup && timeSinceInteraction > 3000) {
         if (!isStandby) {
@@ -489,8 +506,8 @@ const GlobeContent = ({
                 if (camera) {
                     const basePos = targetCameraPos ? targetCameraPos.clone() : camera.position.clone()
                     const currentDist = basePos.length()
-                    // Zoom In = reduce distance (min 2.5)
-                    const newDist = Math.max(2.5, currentDist * 0.8)
+                    // Zoom In = reduce distance (min 3.33 for 150%)
+                    const newDist = Math.max(3.33, currentDist * 0.8)
                     
                     // Maintain direction, update distance
                     const newPos = basePos.normalize().multiplyScalar(newDist)
@@ -548,7 +565,7 @@ const GlobeContent = ({
 
   const handleCityClickInternal = (city: CityData) => {
        // Center the globe on the city
-       if (controlsRef.current) {
+       if (controlsRef.current && globeRef.current) {
            const phi = (90 - city.geoCoordinates.lat) * (Math.PI / 180)
            const theta = (city.geoCoordinates.lng + 180) * (Math.PI / 180)
            
@@ -558,7 +575,11 @@ const GlobeContent = ({
            const z = (radius * Math.sin(phi) * Math.sin(theta))
            const y = (radius * Math.cos(phi))
            
-           setTargetCameraPos(new Vector3(x, y, z))
+           // Create vector and apply current globe rotation
+           const targetVec = new Vector3(x, y, z)
+           targetVec.applyQuaternion(globeRef.current.quaternion)
+           
+           setTargetCameraPos(targetVec)
            // We don't update controls immediately, loop handles it
        }
        
@@ -631,22 +652,23 @@ const GlobeContent = ({
                   <meshStandardMaterial 
                     color={city.color} 
                     emissive={city.color}
-                    emissiveIntensity={1}
+                    emissiveIntensity={isUnlocked ? 1 : 0.5}
                     toneMapped={false}
+                    transparent
+                    opacity={isUnlocked ? 1 : 0.25}
                   />
                 </mesh>
                 
                 {/* Glow effect */}
                 <mesh scale={[1.5, 1.5, 1.5]}>
                     <sphereGeometry args={[0.04, 16, 16]} />
-                    <meshBasicMaterial color={city.color} transparent opacity={0.3} />
+                    <meshBasicMaterial color={city.color} transparent opacity={isUnlocked ? 0.3 : 0.15} />
                 </mesh>
 
                 {/* Pulse Ring Effect (Hover/Selected) */}
                 <PulsingRing city={city} isOpen={isOpen} isHoveredProp={isHovered} />
 
                 {isOpen && (
-                   <Html zIndexRange={[100, 0]} style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
                       <PopupContainer
                           city={city}
                           popup={popup}
@@ -668,7 +690,6 @@ const GlobeContent = ({
                           setIsDraggingPopup={setIsDraggingPopup}
                           handleInteraction={handleInteraction}
                       />
-                   </Html>
                 )}
               </group>
             )
@@ -678,9 +699,9 @@ const GlobeContent = ({
       <TrackballControls 
         ref={controlsRef} 
         noPan={true} 
-        minDistance={2.5} 
+        minDistance={3.33} 
         maxDistance={10} 
-        rotateSpeed={isDraggingPopup ? 0.2 : 2.5} // Faster default speed for trackball feel
+        rotateSpeed={isDraggingPopup ? 0.2 : 1.7} // Reduced from 2.5 by ~33%
         noZoom={false}
         staticMoving={false} // Enable damping/inertia
         dynamicDampingFactor={0.1}

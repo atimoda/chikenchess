@@ -162,11 +162,17 @@ export const CityPopup = ({
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = '';
           }}
-          onClick={(e) => { 
+          onMouseDown={(e) => { 
             e.stopPropagation(); 
             playMapSound("alesissr16_oh");
             closePopup(city.id); 
           }}
+          onTouchStart={(e) => { 
+            e.stopPropagation(); 
+            playMapSound("alesissr16_oh");
+            closePopup(city.id); 
+          }}
+          onClick={(e) => e.stopPropagation()}
         >
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
@@ -223,7 +229,7 @@ export const CityPopup = ({
                 ref={enterButtonRef}
                 className={cn(
                    "px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100] overflow-hidden group",
-                   isEntering && "pointer-events-none duration-[1500ms] ease-in-out"
+                   isEntering && "pointer-events-none duration-[2000ms] ease-in"
                 )}
                 style={{ 
                     borderColor: city.color, 

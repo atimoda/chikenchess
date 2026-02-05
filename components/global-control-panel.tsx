@@ -67,8 +67,8 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
       {/* Widget Background/Box - z-50 */}
       <div 
         className={cn(
-            "absolute inset-0 z-50 rounded-md",
-            isOn ? "border-2 bg-black/80 backdrop-blur-md" : "border bg-black/60 backdrop-blur-sm",
+            "absolute inset-0 z-50 rounded-md transition-all duration-300",
+            isOn ? "border-2 bg-black/80 backdrop-blur-md opacity-100" : "border bg-black/60 backdrop-blur-sm opacity-60",
             "border-white/30"
         )}
         style={{

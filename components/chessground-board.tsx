@@ -661,25 +661,25 @@ export function ChessgroundBoard({
         />
       )}
 
-      {/* Coordinates Layer - Pointer events disabled to prevent interference */}
+      {/* Coordinates Layer removed to fix duplication */}
+      {/* 
       <div 
         className="absolute inset-0 pointer-events-none" 
         style={{ zIndex: 10 }}
       >
-        {/* Ranks (1-8) */}
         <div className="absolute left-0.5 top-0 bottom-0 flex flex-col justify-around text-[10px] font-bold text-neutral-400 select-none">
           {ROWS.map((r) => (
             <span key={r} className="h-[12.5%] flex items-start pt-0.5">{r}</span>
           ))}
         </div>
         
-        {/* Files (a-h) */}
         <div className="absolute left-0 bottom-0 right-0 flex justify-around text-[10px] font-bold text-neutral-400 select-none pl-[12.5%]">
           {COLUMNS.map((f) => (
             <span key={f} className="w-full text-right pr-1 pb-0.5">{f}</span>
           ))}
         </div>
       </div>
+      */}
     </div>
   )
 }

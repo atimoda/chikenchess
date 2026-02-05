@@ -37,6 +37,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string, rotation: number } | null>(null)
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
   const [showAbout, setShowAbout] = useState(false)
+  const [currentZoom, setCurrentZoom] = useState(100)
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   const zoomRef = useRef<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>(null)
@@ -516,11 +517,17 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     // Popup size is roughly 288px (w) x 450px (h)
     // We want to keep it at least 20px from edges.
     
-    // Random direction
-    const angle = Math.random() * Math.PI * 2
+    // Position slightly more to the left or right to avoid overlapping the pin
+    // Use an angle that is primarily horizontal (e.g., -45 to 45 degrees or 135 to 225 degrees)
+    const isRight = Math.random() > 0.5
+    // Random angle between -30 and 30 degrees (Right) OR 150 and 210 degrees (Left)
+    const angleSpread = (Math.PI / 6) // 30 degrees
+    const baseAngle = isRight ? 0 : Math.PI
+    const angle = baseAngle + (Math.random() - 0.5) * 2 * angleSpread
+
     // Distance: 2/3 of half-screen size (radius)? Or 2/3 of screen width?
     // Let's take min(w, h) * 0.3 (which is roughly 2/3 of half width)
-    const dist = Math.min(w, h) * 0.3
+    const dist = Math.min(w, h) * 0.35 // Increased slightly to ensure gap
     
     let x = Math.cos(angle) * dist
     let y = Math.sin(angle) * dist
@@ -734,6 +741,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             enteringCityId={enteringCityId}
             setEnteringCityId={setEnteringCityId}
             zoomRef={zoomRef}
+            onZoomChange={setCurrentZoom}
          />
       </div>
 
@@ -745,7 +753,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
         {/* Intro Logo (Big) */}
         <div
-          className="flex items-center gap-4 pointer-events-none z-50"
+          className="flex flex-col items-center gap-4 pointer-events-none z-50"
           style={{
             position: "absolute",
             top: "45%",
@@ -762,6 +770,19 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               className="object-contain w-[80vw] max-w-[260px]"
               style={{ transform: "scaleX(-1) scale(1)" }}
             />
+            
+            <div
+              className="text-center text-sm md:text-base font-mono text-white w-full"
+              style={{
+                opacity: introHeadlineVisible ? 1 : 0,
+                textShadow:
+                  "2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+                whiteSpace: isMobile ? "normal" : "nowrap",
+                transition: 'opacity 0.5s ease-out'
+              }}
+            >
+              Learn chess, compose music.
+            </div>
         </div>
 
         {/* Header Logo (Small) */}
@@ -803,21 +824,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           </button>
         </div>
 
-        <div
-          className="absolute left-0 text-center text-sm md:text-base font-mono text-white pointer-events-none z-[70] w-full"
-          style={{
-            opacity: introHeadlineVisible ? 1 : 0,
-            transform: `scale(${sloganScale})`,
-            bottom: isMobile ? "17rem" : "19rem",
-            textShadow:
-              "2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
-            maxWidth: "100%",
-            whiteSpace: isMobile ? "normal" : "nowrap",
-            transition: 'opacity 0.5s ease-out, transform 3.5s ease-out'
-          }}
-        >
-          Learn chess, compose music.
-        </div>
+        {/* Slogan moved to logo container */}
 
         <div
           className="font-mono font-bold text-xl text-white uppercase tracking-widest transition-opacity duration-500 text-center"
@@ -959,6 +966,11 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           >
               100%
           </Button>
+          <div className="text-center mt-1 pointer-events-none">
+              <span className="text-[10px] font-mono text-white/33">
+                  {currentZoom}%
+              </span>
+          </div>
       </div>
     </div>
   )

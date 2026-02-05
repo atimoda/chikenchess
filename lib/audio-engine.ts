@@ -224,6 +224,12 @@ export class AudioEngine {
     }
   }
 
+  playDrum(sample: string, gain: number = 0.6) {
+    if (!this.audioContext || !this.masterGain) return
+    const now = this.audioContext.currentTime
+    this.playPawn(now, sample, gain, 0, "w")
+  }
+
   async playPieceSample(square: string, pieceType: string, pieceColor: "w" | "b", _isPreview: boolean = true) {
     if (!this.audioContext || !this.masterGain) await this.init()
     if (!this.audioContext) return
@@ -982,6 +988,7 @@ export class AudioEngine {
       case "lc": this.playConga(time, gain, 150 * pitchMod, pan, delay, reverb, lpf, hpf); break;
       case "mc": this.playConga(time, gain, 250 * pitchMod, pan, delay, reverb, lpf, hpf); break;
       case "hc": this.playConga(time, gain, 400 * pitchMod, pan, delay, reverb, lpf, hpf); break;
+      case "rim": this.playRimshot(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
       case "violin_pizz":
         // Frequency should be passed in p.frequency (which comes from p.pitch/note)
         // If not, we can infer from pitchMultiplier relative to A4? No, better to use frequency param.
@@ -1022,6 +1029,48 @@ export class AudioEngine {
     
     osc1.start(time); osc1.stop(time + 0.1)
     osc2.start(time); osc2.stop(time + 0.1)
+  }
+
+  private playRimshot(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
+    if (!this.audioContext || !this.masterGain) return
+    
+    // High pitched sine + noise
+    const osc = this.audioContext.createOscillator()
+    osc.type = "sine"
+    osc.frequency.setValueAtTime(800 * pitch, time)
+    osc.frequency.exponentialRampToValueAtTime(100 * pitch, time + 0.05)
+    
+    const oscGain = this.audioContext.createGain()
+    oscGain.gain.setValueAtTime(gain * 0.6, time)
+    oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05)
+    
+    // Noise
+    const bufferSize = this.audioContext.sampleRate * 0.05
+    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+    
+    const noise = this.audioContext.createBufferSource()
+    noise.buffer = buffer
+    
+    const noiseFilter = this.audioContext.createBiquadFilter()
+    noiseFilter.type = "highpass"
+    noiseFilter.frequency.value = 2000 * pitch
+    
+    const noiseGain = this.audioContext.createGain()
+    noiseGain.gain.setValueAtTime(gain * 0.4, time)
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.03)
+    
+    const panner = this.audioContext.createStereoPanner()
+    panner.pan.value = pan
+    
+    osc.connect(oscGain).connect(panner)
+    noise.connect(noiseFilter).connect(noiseGain).connect(panner)
+    
+    this.applyEffects(panner, delay, reverb, lpf, hpf)
+    
+    osc.start(time); osc.stop(time + 0.05)
+    noise.start(time); noise.stop(time + 0.05)
   }
 
   private playOpenHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {

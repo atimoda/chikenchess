@@ -185,7 +185,7 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
       className={className}
       style={{
         ...style,
-        position: "absolute",
+        position: style?.position || "absolute",
         left: position.x,
         top: position.y,
       }}

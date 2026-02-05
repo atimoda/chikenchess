@@ -153,11 +153,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             setSpectrogramPosition({ x: 0, y: 0 })
             setLiveCodePosition({ x: 0, y: 0 })
             
-            // Turn off widgets on mobile
-            setKnobsOn(false)
-            setGlobalPanelOn(false)
-            setSpectrogramOn(false)
-            setLiveCodeOn(false)
+            // Turn on widgets on mobile by default (stacked layout)
+            setKnobsOn(true)
+            setGlobalPanelOn(true)
+            setSpectrogramOn(true)
+            setLiveCodeOn(true)
         } else {
             // Desktop Layout: Random Quadrants
             // Widget dimensions (approx)
@@ -303,21 +303,29 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }, 1000)
   }
 
-  // --- MOBILE SCROLL LOCK ---
-    useEffect(() => {
-        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-            document.body.style.overflow = 'hidden'
-            document.body.style.position = 'fixed'
-            document.body.style.width = '100%'
-            document.body.style.height = '100%'
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const checkMobile = () => {
+            const mobile = window.innerWidth < 768
+            setIsMobile(mobile)
+            
+            if (mobile) {
+                document.body.style.overflow = '' // Allow scroll on mobile for widgets
+                document.body.style.position = ''
+                document.body.style.width = ''
+                document.body.style.height = ''
+            } else {
+                // Reset styles for desktop if needed, or leave as is
+            }
         }
-        return () => {
-            document.body.style.overflow = ''
-            document.body.style.position = ''
-            document.body.style.width = ''
-            document.body.style.height = ''
-        }
-    }, [])
+        
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }
+  }, [])
 
     const [knobsOn, setKnobsOn] = useState(false)
   const [globalPanelOn, setGlobalPanelOn] = useState(false)
@@ -353,7 +361,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     targetSide?: 'left' | 'right' | 'top' | 'bottom'
   }[]>([])
 
-  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
+  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
 
   // Seatbelt Sound
   useEffect(() => {
@@ -1176,6 +1184,93 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     })
   }
 
+  const widgetsContent = (mobileMode: boolean) => {
+      const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', marginBottom: '1rem', zIndex: 10 } : undefined
+      return (
+          <>
+            <SpectrogramWidget
+                ref={spectrogramHandleRef}
+                toggleRef={spectrogramToggleRef}
+                isOn={spectrogramOn}
+                onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
+                isPlaying={isPlaying}
+                cityColor={city.color}
+                position={mobileMode ? undefined : (spectrogramPosition || undefined)}
+                onPositionChange={(pos) => setSpectrogramPosition(pos)}
+                style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('spectrogram') + 10 }}
+                onClickCapture={() => handleWidgetHeaderClick('spectrogram')}
+            />
+
+            <SynthControlPanel
+                ref={knobsRef}
+                toggleRef={knobsToggleRef}
+                selectedSquare={synthSelectedSquare as Square | null}
+                selectedPieceInfo={(() => {
+                    if (!synthSelectedSquare) return null
+                    // @ts-ignore
+                    const piece = game.get(synthSelectedSquare as Square)
+                    if (!piece) return "Empty"
+                    const instrumentMap: Record<string, string> = {
+                        p: "Drums", n: "Bass", b: "Piano", r: "Pad", q: "Lead", k: "Lead",
+                    }
+                    const pieceNameMap: Record<string, string> = {
+                        p: "Pawn", n: "Knight", b: "Bishop", r: "Rook", q: "Queen", k: "King",
+                    }
+                    return `${piece.color === "w" ? "White" : "Black"} ${pieceNameMap[piece.type]} - ${instrumentMap[piece.type]}`
+                })()}
+                effects={synthSelectedSquare ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS : DEFAULT_EFFECTS}
+                onEffectChange={(key, value) => {
+                    if (!synthSelectedSquare) return
+                    setSquareEffects((prev) => ({
+                        ...prev,
+                        [synthSelectedSquare]: { ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS), [key]: value },
+                    }))
+                }}
+                cityColor={city.color}
+                position={mobileMode ? undefined : (knobsPosition ?? { x: 0, y: 0 })}
+                onPositionChange={setKnobsPosition}
+                handleRef={knobsHandleRef}
+                isOn={knobsOn}
+                onToggle={() => setKnobsOn(!knobsOn)}
+                onClick={(e) => { e.stopPropagation(); handleWidgetHeaderClick('knobs') }}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('knobs') + 10 }}
+            />
+
+            <GlobalControlPanel
+                ref={globalPanelRef}
+                toggleRef={globalPanelToggleRef}
+                effects={globalEffects}
+                onEffectChange={handleGlobalEffectChange}
+                cityColor={city.color}
+                position={mobileMode ? undefined : (globalPanelPosition || undefined)}
+                onPositionChange={(pos) => setGlobalPanelPosition(pos)}
+                handleRef={globalPanelHandleRef}
+                isOn={globalPanelOn}
+                onToggle={() => toggleWidget('globalPanel', setGlobalPanelOn)}
+                style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('globalPanel') + 10 }}
+                onClickCapture={() => handleWidgetHeaderClick('globalPanel')}
+            />
+
+            <LiveCodeWidget
+                ref={liveCodeRef}
+                toggleRef={liveCodeToggleRef}
+                handleRef={liveCodeHandleRef}
+                pattern={currentPattern}
+                city={city}
+                cityColor={city.color}
+                isPlaying={isPlaying}
+                position={mobileMode ? undefined : (liveCodePosition || undefined)}
+                onPositionChange={(pos) => setLiveCodePosition(pos)}
+                isOn={liveCodeOn}
+                onToggle={() => toggleWidget('liveCode', setLiveCodeOn)}
+                style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('liveCode') + 10 }}
+                onClickCapture={() => handleWidgetHeaderClick('liveCode')}
+            />
+          </>
+      )
+  }
+
   return (
     <div
       ref={rootRef}
@@ -1245,7 +1340,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       {/* Intro Overlay */}
       {introPhase < 3 && (
           <div className={cn(
-              "absolute inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-all duration-1000",
+              "absolute inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-all duration-[3000ms]",
               introPhase === 0 ? "bg-background" : "bg-transparent pointer-events-none"
           )} onClick={skipIntro}>
               {/* Pointer Events Wrapper for Interactive Elements */}
@@ -1482,7 +1577,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       <header 
         className={cn(
           "absolute top-0 left-0 w-full z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000",
-          introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100"
+          introPhase === 0 ? "opacity-100" : (introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")
         )}
         style={{ "--city-neon": city.color } as React.CSSProperties}
       >
@@ -1491,7 +1586,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             variant="ghost" 
             size="icon" 
             onClick={onBack} 
-            className="shrink-0 hover:text-white hover:bg-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
+            className="shrink-0 hover:text-white hover:bg-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
             style={{ 
                 "--city-neon": city.color,
                 backgroundColor: "var(--city-neon)20"
@@ -1499,7 +1594,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className={cn("transition-opacity duration-500", introPhase === 0 ? "opacity-0" : "opacity-100")}>
             <h1 className="font-mono font-bold text-base md:text-lg flex items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
               <span style={{ color: city.color }}>{city.name.toUpperCase()}</span>
@@ -1508,7 +1603,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className={cn("flex items-center gap-2 md:gap-4 transition-opacity duration-500", introPhase === 0 ? "opacity-0" : "opacity-100")}>
           {/* Status */}
           <div
             className={`text-xs md:text-sm font-mono px-3 py-1 rounded-full ${gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "animate-pulse" : ""
@@ -1531,7 +1626,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               <Button 
                 variant="outline" 
                 size="icon" 
-                className="hidden md:flex bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white"
+                className="hidden md:flex bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-[var(--hover-color)] active:text-black"
                 style={{
                     "--hover-color": city.color
                 } as React.CSSProperties}
@@ -1571,7 +1666,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 variant="outline" 
                 size="icon" 
                 onClick={handleToggleMute} 
-                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
+                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
                 style={{ "--city-neon": city.color } as React.CSSProperties}
             >
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -1580,7 +1675,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 variant="outline" 
                 size="icon" 
                 onClick={toggleFullscreen} 
-                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
+                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
                 style={{ "--city-neon": city.color } as React.CSSProperties}
             >
                 {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
@@ -1602,7 +1697,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     variant="outline"
                     size="sm"
                     onClick={resetGame}
-                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] hover:cursor-pointer transition-all"
+                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black hover:cursor-pointer transition-all"
                     style={{ "--city-neon": city.color } as React.CSSProperties}
                 >
                     <RotateCcw className="w-4 h-4" />
@@ -1628,7 +1723,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                             }
                         })
                     }}
-                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] hover:cursor-pointer transition-all"
+                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black hover:cursor-pointer transition-all"
                     style={{ "--city-neon": city.color } as React.CSSProperties}
                 >
                     <span className="hidden sm:inline">Win</span>
@@ -1739,8 +1834,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     variant="ghost"
                     size="default"
                     onClick={undoMove}
+                    onMouseEnter={() => playDrum("bd")}
+                    onMouseDown={() => playDrum("oh", 1.5)}
                     disabled={moveHistory.length === 0}
-                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20" // Default low opacity background
@@ -1752,7 +1849,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     variant="ghost"
                     size="default"
                     onClick={handleTogglePlay}
-                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                    onMouseEnter={() => playDrum("bd")}
+                    onMouseDown={() => playDrum("sd")}
+                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20"
@@ -1764,8 +1863,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     variant="ghost"
                     size="default"
                     onClick={redoMove}
+                    onMouseEnter={() => playDrum("bd")}
+                    onMouseDown={() => playDrum("hh", 1.5)}
                     disabled={redoStack.length === 0}
-                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
+                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20"
@@ -1815,6 +1916,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     )}
                 </div>
               </div>
+
               <div className={cn(
                   "w-[90vw] max-w-[512px] flex justify-start mb-7 transition-opacity duration-1000",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
@@ -1823,6 +1925,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                       Chance ({whitePercent}%)
                   </span>
               </div>
+
+              {isMobile && (
+                  <div className={cn("flex flex-col gap-4 mt-4 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
+                      {widgetsContent(true)}
+                  </div>
+              )}
             </div>
           </div>
 
@@ -1929,111 +2037,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       </svg>
 
       <div className={cn("transition-opacity duration-1000", introPhase < 2 ? "opacity-0 pointer-events-none" : "opacity-100")}>
-      <SpectrogramWidget
-        ref={spectrogramHandleRef}
-        toggleRef={spectrogramToggleRef}
-        isOn={spectrogramOn}
-        onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
-        isPlaying={isPlaying}
-        cityColor={city.color}
-        position={spectrogramPosition || undefined}
-        onPositionChange={(pos) => setSpectrogramPosition(pos)}
-        style={{ zIndex: activeWidgetOrder.indexOf('spectrogram') + 10 }}
-        onClickCapture={() => handleWidgetHeaderClick('spectrogram')}
-      />
-
-      <SynthControlPanel
-        ref={knobsRef}
-        toggleRef={knobsToggleRef}
-        selectedSquare={synthSelectedSquare as Square | null}
-        selectedPieceInfo={(() => {
-          if (!synthSelectedSquare) return null
-          // @ts-ignore - chess.js get typing is not recognized here
-          const piece = game.get(synthSelectedSquare as Square)
-          if (!piece) return "Empty"
-          const instrumentMap: Record<string, string> = {
-            p: "Drums",
-            n: "Bass",
-            b: "Piano",
-            r: "Pad",
-            q: "Lead",
-            k: "Lead",
-          }
-          const pieceNameMap: Record<string, string> = {
-            p: "Pawn",
-            n: "Knight",
-            b: "Bishop",
-            r: "Rook",
-            q: "Queen",
-            k: "King",
-          }
-          return `${piece.color === "w" ? "White" : "Black"} ${
-            pieceNameMap[piece.type]
-          } - ${instrumentMap[piece.type]}`
-        })()}
-        effects={
-          synthSelectedSquare
-            ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS
-            : DEFAULT_EFFECTS
-        }
-        onEffectChange={(key, value) => {
-          if (!synthSelectedSquare) return
-          setSquareEffects((prev) => ({
-            ...prev,
-            [synthSelectedSquare]: {
-              ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS),
-              [key]: value,
-            },
-          }))
-        }}
-        cityColor={city.color}
-        position={knobsPosition ?? { x: 0, y: 0 }}
-        onPositionChange={setKnobsPosition}
-        handleRef={knobsHandleRef}
-        isOn={knobsOn}
-        onToggle={() => setKnobsOn(!knobsOn)}
-        onClick={(e) => {
-            e.stopPropagation()
-            handleWidgetHeaderClick('knobs')
-        }}
-        onMouseDown={(e) => {
-            e.stopPropagation()
-        }}
-        style={{ zIndex: activeWidgetOrder.indexOf('knobs') + 10 }}
-      />
-
-      {/* Global Control Panel */}
-      <GlobalControlPanel
-        ref={globalPanelRef}
-        toggleRef={globalPanelToggleRef}
-        effects={globalEffects}
-        onEffectChange={handleGlobalEffectChange}
-        cityColor={city.color}
-        position={globalPanelPosition || undefined}
-        onPositionChange={(pos) => setGlobalPanelPosition(pos)}
-        handleRef={globalPanelHandleRef}
-        isOn={globalPanelOn}
-        onToggle={() => toggleWidget('globalPanel', setGlobalPanelOn)}
-        style={{ zIndex: activeWidgetOrder.indexOf('globalPanel') + 10 }}
-        onClickCapture={() => handleWidgetHeaderClick('globalPanel')}
-      />
-
-      {/* Live Code Widget */}
-      <LiveCodeWidget
-        ref={liveCodeRef}
-        toggleRef={liveCodeToggleRef}
-        handleRef={liveCodeHandleRef}
-        pattern={currentPattern}
-        city={city}
-        cityColor={city.color}
-        isPlaying={isPlaying}
-        position={liveCodePosition || undefined}
-        onPositionChange={(pos) => setLiveCodePosition(pos)}
-        isOn={liveCodeOn}
-        onToggle={() => toggleWidget('liveCode', setLiveCodeOn)}
-        style={{ zIndex: activeWidgetOrder.indexOf('liveCode') + 10 }}
-        onClickCapture={() => handleWidgetHeaderClick('liveCode')}
-      />
+      {!isMobile && widgetsContent(false)}
       </div>
 
     </div>
