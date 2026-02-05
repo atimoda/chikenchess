@@ -8,7 +8,3 @@ npm run dev
 
 
 # next
-
-gadgets:
-- bpm da musica
-- parametros da peça selecionada

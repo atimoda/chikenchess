@@ -16,7 +16,7 @@ import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2 } from "lucide-react"
+import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { unlockNextCity } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
@@ -99,6 +99,46 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
   const [isStartPressed, setIsStartPressed] = useState(false)
 
+  const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([])
+  const [isMuted, setIsMuted] = useState(false)
+  const previousVolumeRef = useRef(0.8)
+
+  const [isBackgroundDark, setIsBackgroundDark] = useState(false)
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        setIsFullscreen(true)
+      }).catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`)
+      })
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+        setIsFullscreen(false)
+      }
+    }
+  }, [])
+
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [boardScale, setBoardScale] = useState(1)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
+  }, [])
+
+  const handleZoom = (direction: 'in' | 'out' | 'reset') => {
+      setBoardScale(prev => {
+          if (direction === 'reset') return 1
+          if (direction === 'in') return Math.min(prev + 0.1, 2)
+          return Math.max(prev - 0.1, 0.5)
+      })
+  }
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
         const width = window.innerWidth
@@ -173,12 +213,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     }
   }, [])
   
-    // Auto-scroll to start (left) when history changes (since we reversed the list)
+    // Auto-scroll to end (right) when history changes
     useEffect(() => {
         if (movesTickerRef.current) {
-            // Scroll to 0 because we want to see the newest items which are on the left
             movesTickerRef.current.scrollTo({
-                left: 0,
+                left: movesTickerRef.current.scrollWidth,
                 behavior: "smooth"
             })
         }
@@ -212,7 +251,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const handleContinue = () => {
       // Click sound
-      const clickAudio = new Audio('/sounds/click.mp3') // Placeholder
+      // const clickAudio = new Audio('/sounds/click.mp3') // Placeholder
       playSquareSample('e4') // Reusing for now as requested for click
 
       // Fade out text, move to Phase 1 (Boxes)
@@ -224,13 +263,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           setTimeout(() => {
              setShowStartButton(true)
           }, 1000)
-      }, 500)
+      }, 2000) // Increased to 2000ms as requested
   }
 
   const handleStartGame = () => {
-      setIntroPhase(2) // Board Descend
-      setShowIntroBoxes(false)
+      // Phase 1.5: Hide button, Darken Background
       setShowStartButton(false)
+      setShowIntroBoxes(false)
+      setIsBackgroundDark(true)
       
       // Start Volume Fade In - Unmute immediately
       if (engineRef.current) {
@@ -250,10 +290,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           if (vol >= 0.8) {
               vol = 0.8
               clearInterval(fadeInterval)
-              setIntroPhase(3) // Game Active
           }
           handleGlobalEffectChange("volume", vol)
-      }, 3000 / (0.8 / 0.05)) 
+      }, 3000 / (0.8 / 0.05))
+
+      // Wait for background darken (1s) before board descend
+      setTimeout(() => {
+          setIntroPhase(2) // Board Descend
+          setTimeout(() => {
+              setIntroPhase(3) // Game Active (Controls appear)
+          }, 2000) // Wait for descend animation (matched to 2s duration)
+      }, 1000)
   }
 
   // --- MOBILE SCROLL LOCK ---
@@ -285,18 +332,26 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     y1: number
     x2: number
     y2: number
+    anchorX1: number
+    anchorY1: number
+    anchorX2: number
+    anchorY2: number
     sourceSide?: 'left' | 'right'
     targetSide?: 'left' | 'right' | 'bottom'
   } | null>(null)
 
-  const [spectrogramConnection, setSpectrogramConnection] = useState<{
+  const [chainConnections, setChainConnections] = useState<{
     x1: number
     y1: number
     x2: number
     y2: number
-    sourceSide?: 'left' | 'right'
-    targetSide?: 'left' | 'right' | 'bottom'
-  } | null>(null)
+    anchorX1: number
+    anchorY1: number
+    anchorX2: number
+    anchorY2: number
+    sourceSide?: 'left' | 'right' | 'top' | 'bottom'
+    targetSide?: 'left' | 'right' | 'top' | 'bottom'
+  }[]>([])
 
   const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
 
@@ -642,6 +697,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setLastEvalScore(null)
     setIsEvaluating(false)
     evalPendingRef.current = false
+    setIsBackgroundDark(false)
   }, [])
 
   const undoMove = useCallback(() => {
@@ -742,22 +798,93 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     }
   }, [redoStack, game, activeSquares, capturedPieces, requestEvaluation])
 
+  const toggleWidget = useCallback((id: string, setIsOn: React.Dispatch<React.SetStateAction<boolean>>) => {
+    setIsOn(prev => {
+        const newState = !prev
+        setActiveWidgetOrder(currentOrder => {
+            if (newState) {
+                // Turning ON: Add to end if not present
+                return currentOrder.includes(id) ? currentOrder : [...currentOrder, id]
+            } else {
+                // Turning OFF: Remove
+                return currentOrder.filter(widgetId => widgetId !== id)
+            }
+        })
+        return newState
+    })
+  }, [])
+
   const handleTogglePlay = useCallback(async () => {
+    if (!isPlaying) {
+        // Auto-activate Board Params (Global Control Panel) when play starts
+        setGlobalPanelOn(true)
+        setActiveWidgetOrder(prev => prev.includes('globalPanel') ? prev : [...prev, 'globalPanel'])
+    }
     await togglePlayback()
     setIsPlaying((prev) => !prev)
-  }, [togglePlayback])
+  }, [togglePlayback, isPlaying])
+
+  const handleToggleMute = useCallback(() => {
+    if (isMuted) {
+        // Unmute
+        setIsMuted(false)
+        const targetVol = previousVolumeRef.current
+        
+        // Animate volume up
+        let vol = 0
+        const fadeInterval = setInterval(() => {
+            vol += 0.05
+            if (vol >= targetVol) {
+                vol = targetVol
+                clearInterval(fadeInterval)
+            }
+            handleGlobalEffectChange("volume", vol)
+        }, 300 / (targetVol / 0.05)) // 300ms duration
+        
+    } else {
+        // Mute
+        previousVolumeRef.current = globalEffects.volume
+        setIsMuted(true)
+        
+        // Animate volume down
+        let vol = globalEffects.volume
+        const fadeInterval = setInterval(() => {
+            vol -= 0.05
+            if (vol <= 0) {
+                vol = 0
+                clearInterval(fadeInterval)
+            }
+            handleGlobalEffectChange("volume", vol)
+        }, 300 / (globalEffects.volume / 0.05)) // 300ms duration
+    }
+  }, [isMuted, globalEffects.volume, handleGlobalEffectChange])
 
   const hasStarted = moveHistory.length > 0
 
+  // Force update for resize events
+  const [resizeTick, forceUpdate] = useState(0)
+  useEffect(() => {
+      const observer = new ResizeObserver(() => {
+          forceUpdate(n => n + 1)
+      })
+      
+      if (globalPanelRef.current) observer.observe(globalPanelRef.current)
+      if (spectrogramHandleRef.current) observer.observe(spectrogramHandleRef.current)
+      if (liveCodeRef.current) observer.observe(liveCodeRef.current)
+      if (knobsRef.current) observer.observe(knobsRef.current)
+      
+      return () => observer.disconnect()
+  }, [globalPanelOn, spectrogramOn, liveCodeOn, knobsOn, introPhase])
+
   const whiteAdvantage =
     lastEvalScore === null ? 0.5 : 1 / (1 + Math.pow(10, -lastEvalScore / 400))
-  const whitePercent = Math.round(whiteAdvantage * 100)
+  // Invert percent as requested: "se estiver mostrando 35%, mostre 65%"
+  const whitePercent = 100 - Math.round(whiteAdvantage * 100)
   const blackPercent = 100 - whitePercent
 
   useEffect(() => {
     if (!rootRef.current || !boardAreaRef.current) {
       setKnobsConnection(null)
-      setSpectrogramConnection(null)
       return
     }
 
@@ -766,9 +893,196 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     const squareWidth = boardRect.width / 8
     const squareHeight = boardRect.height / 8
 
-    // --- SPECTROGRAM CONNECTION (Board -> Spectrogram) ---
-    // Removed connection line to Spectrogram as per request
-    // if (spectrogramOn && spectrogramHandleRef.current) { ... } logic removed
+    // --- CHAIN CONNECTIONS (MST) ---
+    const widgets = {
+        'globalPanel': { ref: globalPanelRef, on: globalPanelOn },
+        'spectrogram': { ref: spectrogramHandleRef, on: spectrogramOn },
+        'liveCode': { ref: liveCodeRef, on: liveCodeOn }
+    }
+
+    const activeWidgetIds = Object.keys(widgets).filter(id => widgets[id as keyof typeof widgets]?.on)
+    
+    // Nodes: 'board' is always index 0. Other widgets follow.
+    const nodes = [{ id: 'board', rect: boardRect }]
+    activeWidgetIds.forEach(id => {
+        const widget = widgets[id as keyof typeof widgets]
+        if (widget && widget.ref.current) {
+            nodes.push({ id, rect: widget.ref.current.getBoundingClientRect() })
+        }
+    })
+
+    const newConnections: {
+        x1: number, y1: number, x2: number, y2: number, 
+        anchorX1: number, anchorY1: number, anchorX2: number, anchorY2: number,
+        sourceSide?: 'left'|'right'|'top'|'bottom', 
+        targetSide?: 'left'|'right'|'top'|'bottom'
+    }[] = []
+
+    const occupiedSides: Record<string, Set<string>> = {}
+    const occupy = (id: string, side: string) => {
+        if (!occupiedSides[id]) occupiedSides[id] = new Set()
+        occupiedSides[id].add(side)
+    }
+    const isOccupied = (id: string, side: string) => occupiedSides[id]?.has(side)
+
+    // Prim's Algorithm to build MST
+    // We want to connect all active widgets to the tree rooted at 'board'
+    const connectedIndices = new Set([0]) // Start with board
+    const unconnectedIndices = new Set(nodes.map((_, i) => i).filter(i => i !== 0))
+
+    while (unconnectedIndices.size > 0) {
+        let bestDist = Infinity
+        let bestU = -1 // From connected
+        let bestV = -1 // From unconnected
+
+        // Find closest pair (u, v)
+        for (const uIdx of connectedIndices) {
+            const uNode = nodes[uIdx]
+            const uCenter = { 
+                x: uNode.rect.left + uNode.rect.width/2, 
+                y: uNode.rect.top + uNode.rect.height/2 
+            }
+
+            for (const vIdx of unconnectedIndices) {
+                const vNode = nodes[vIdx]
+                const vCenter = { 
+                    x: vNode.rect.left + vNode.rect.width/2, 
+                    y: vNode.rect.top + vNode.rect.height/2 
+                }
+                
+                const dist = Math.hypot(uCenter.x - vCenter.x, uCenter.y - vCenter.y)
+                if (dist < bestDist) {
+                    bestDist = dist
+                    bestU = uIdx
+                    bestV = vIdx
+                }
+            }
+        }
+
+        if (bestU !== -1 && bestV !== -1) {
+            // Create connection U -> V
+            const uNode = nodes[bestU]
+            const vNode = nodes[bestV]
+            
+            const uCenter = { x: uNode.rect.left + uNode.rect.width/2, y: uNode.rect.top + uNode.rect.height/2 }
+            const vCenter = { x: vNode.rect.left + vNode.rect.width/2, y: vNode.rect.top + vNode.rect.height/2 }
+
+            // Determine sides
+             const getBestSide = (rect: DOMRect, otherCenter: {x:number, y:number}, id: string): 'left'|'right'|'bottom'|'top' => {
+                const dx = rect.left + rect.width/2 - otherCenter.x
+                const dy = rect.top + rect.height/2 - otherCenter.y
+                
+                // Allow top, bottom, left, right
+                const sides: ('left'|'right'|'bottom'|'top')[] = []
+                
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    // Horizontal preference
+                    sides.push(dx > 0 ? 'left' : 'right') // Face the other object
+                    sides.push(dy > 0 ? 'top' : 'bottom')
+                    sides.push(dy > 0 ? 'bottom' : 'top')
+                    sides.push(dx > 0 ? 'right' : 'left') // Back side
+                } else {
+                    // Vertical preference
+                    sides.push(dy > 0 ? 'top' : 'bottom')
+                    sides.push(dx > 0 ? 'left' : 'right')
+                    sides.push(dx > 0 ? 'right' : 'left')
+                    sides.push(dy > 0 ? 'bottom' : 'top')
+                }
+
+                for (const side of sides) {
+                    if (!isOccupied(id, side)) return side
+                }
+                return sides[0] // Fallback
+            }
+
+            // Source (U)
+            let sourceSide: 'left'|'right'|'bottom'|'top'
+            if (uNode.id === 'board') {
+                 // Board logic (simple)
+                 const dx = uCenter.x - vCenter.x
+                 const dy = uCenter.y - vCenter.y
+                 if (Math.abs(dx) > Math.abs(dy)) {
+                     sourceSide = dx > 0 ? 'left' : 'right'
+                 } else {
+                     sourceSide = dy > 0 ? 'top' : 'bottom'
+                 }
+            } else {
+                sourceSide = getBestSide(uNode.rect, vCenter, uNode.id)
+                occupy(uNode.id, sourceSide)
+            }
+
+            // Target (V)
+            let targetSide: 'left'|'right'|'bottom'|'top'
+            if (vNode.id === 'board') {
+                 // Board logic (simple)
+                 const dx = vCenter.x - uCenter.x
+                 const dy = vCenter.y - uCenter.y
+                 if (Math.abs(dx) > Math.abs(dy)) {
+                     targetSide = dx > 0 ? 'left' : 'right'
+                 } else {
+                     targetSide = dy > 0 ? 'top' : 'bottom'
+                 }
+            } else {
+                targetSide = getBestSide(vNode.rect, uCenter, vNode.id)
+                occupy(vNode.id, targetSide)
+            }
+
+            // Calculate Coordinates with 5px offset for line, original for anchor
+            const getPoint = (rect: DOMRect, side: string) => {
+                const offset = 5
+                let anchor = { x: rect.left, y: rect.top }
+                let line = { x: rect.left, y: rect.top }
+                
+                switch(side) {
+                    case 'left': 
+                        anchor = { x: rect.left, y: rect.top + rect.height/2 }
+                        line = { x: rect.left - offset, y: rect.top + rect.height/2 }
+                        break
+                    case 'right': 
+                        anchor = { x: rect.right, y: rect.top + rect.height/2 }
+                        line = { x: rect.right + offset, y: rect.top + rect.height/2 }
+                        break
+                    case 'top': 
+                        anchor = { x: rect.left + rect.width/2, y: rect.top }
+                        line = { x: rect.left + rect.width/2, y: rect.top - offset }
+                        break
+                    case 'bottom': 
+                        anchor = { x: rect.left + rect.width/2, y: rect.bottom }
+                        line = { x: rect.left + rect.width/2, y: rect.bottom + offset }
+                        break
+                    default: 
+                        anchor = { x: rect.left, y: rect.top }
+                        line = { x: rect.left, y: rect.top }
+                }
+                return { anchor, line }
+            }
+
+            const p1 = getPoint(uNode.rect, sourceSide)
+            const p2 = getPoint(vNode.rect, targetSide)
+
+            newConnections.push({
+                x1: p1.line.x - containerRect.left,
+                y1: p1.line.y - containerRect.top,
+                x2: p2.line.x - containerRect.left,
+                y2: p2.line.y - containerRect.top,
+                anchorX1: p1.anchor.x - containerRect.left,
+                anchorY1: p1.anchor.y - containerRect.top,
+                anchorX2: p2.anchor.x - containerRect.left,
+                anchorY2: p2.anchor.y - containerRect.top,
+                sourceSide,
+                targetSide
+            })
+
+            // Update MST sets
+            connectedIndices.add(bestV)
+            unconnectedIndices.delete(bestV)
+        } else {
+            // Should not happen if graph is connected, but break to avoid infinite loop
+            break
+        }
+    }
+
+    setChainConnections(newConnections)
 
     // --- KNOBS CONNECTION ---
     if (synthSelectedSquare && knobsOn && knobsRef.current) {
@@ -781,8 +1095,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         if (fileIndex >= 0 && Number.isFinite(rank)) {
              const toggleRect = knobsRef.current.getBoundingClientRect()
              
-             // Widget Point (Source) - ~37px below top
-             const knobY = toggleRect.top + 37 - containerRect.top
+             // Widget Point (Source) - Center Vertical
+             const knobY = toggleRect.top + toggleRect.height / 2 - containerRect.top
              const knobCenterX = toggleRect.left + toggleRect.width / 2
              
              const rankIndexFromBottom = rank - 1
@@ -825,8 +1139,27 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                  y2 = squareCenterY + (dy > 0 ? squareHeight/2 : -squareHeight/2)
                  targetSide = 'bottom'
              }
+
+             // Offset Logic for Knobs
+             const offset = 5
              
-             setKnobsConnection({ x1, y1: knobY, x2, y2, sourceSide, targetSide })
+             // Source (Widget) - Left or Right
+             let anchorX1 = x1
+             let anchorY1 = knobY
+             if (sourceSide === 'left') {
+                 x1 = toggleRect.left - containerRect.left - offset
+             } else {
+                 x1 = toggleRect.right - containerRect.left + offset
+             }
+
+             // Target (Square)
+             let anchorX2 = x2
+             let anchorY2 = y2
+             if (targetSide === 'left') x2 -= offset
+             if (targetSide === 'right') x2 += offset
+             if (targetSide === 'bottom') y2 += offset
+             
+             setKnobsConnection({ x1, y1: knobY, x2, y2, anchorX1, anchorY1: knobY, anchorX2, anchorY2, sourceSide, targetSide })
         } else {
             setKnobsConnection(null)
         }
@@ -834,7 +1167,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setKnobsConnection(null)
     }
 
-  }, [synthSelectedSquare, knobsPosition, globalPanelPosition, spectrogramPosition, knobsOn, globalPanelOn, spectrogramOn])
+  }, [synthSelectedSquare, knobsPosition, globalPanelPosition, spectrogramPosition, liveCodePosition, knobsOn, globalPanelOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick])
+
+  const handleWidgetHeaderClick = (id: string) => {
+    setActiveWidgetOrder(prev => {
+        const filtered = prev.filter(wId => wId !== id)
+        return [...filtered, id]
+    })
+  }
 
   return (
     <div
@@ -858,8 +1198,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         .animate-border-blink {
             animation: border-blink 0.2s ease-in-out;
         }
-        .mask-fade-right {
-            mask-image: linear-gradient(to right, black 80%, transparent);
+        .mask-fade-left {
+            mask-image: linear-gradient(to right, transparent, black 20%);
         }
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
@@ -883,10 +1223,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-1000"
         style={{
             backgroundImage: `url(${city.image})`,
-            filter: (introPhase === 1 || introPhase === 2) 
+            filter: (!isBackgroundDark && introPhase < 3) 
                 ? "grayscale(0%) contrast(100%) brightness(100%) blur(0px)"
-                : "grayscale(100%) contrast(120%) brightness(30%) blur(0px)",
-            opacity: (introPhase === 1 || introPhase === 2) ? 0.8 : 0.4
+                : "grayscale(100%) contrast(120%) brightness(30%) blur(0px)", // Darken for game
+            opacity: (!isBackgroundDark && introPhase < 3) ? 0.8 : 0.4
         }}
       />
       
@@ -913,7 +1253,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               
               {/* Intro Phase 0: Text Lines */}
               {introPhase === 0 && (
-                  <div className="flex flex-col gap-4 text-center px-6 max-w-2xl">
+                  <div className="flex flex-col gap-4 text-center px-6 w-full max-w-2xl items-center justify-center h-full">
+                      <div className="flex flex-col gap-4">
                       {city.introPhrases?.slice(0, -1).map((phrase, i) => (
                           <p 
                             key={i} 
@@ -929,6 +1270,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                               {phrase}
                           </p>
                       ))}
+                      </div>
                       
                       <div className={cn(
                             "mt-12 transition-all duration-1000 hover:opacity-100",
@@ -947,7 +1289,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                                   }}
                               onMouseEnter={() => {
                                   // Hover sound
-                                  const audio = new Audio('/sounds/kick.mp3') // Assuming kick is bass/bumbo
+                                  // const audio = new Audio('/sounds/kick.mp3') // Assuming kick is bass/bumbo
                                   // Or reuse playSquareSample('a1') for bassy sound if available
                                   playSquareSample('a1') 
                               }}
@@ -973,7 +1315,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                             {/* Title Outside Box */}
                             <h2 
                                 className={cn(
-                                    "text-3xl md:text-4xl font-black flex items-center gap-3 transition-all duration-1000",
+                                    "text-3xl md:text-4xl font-black flex items-center gap-3 transition-all duration-1000 delay-500", // Added 500ms delay
                                     showIntroBoxes && !isStartPressed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
                                     isStartPressed && "duration-100 opacity-0"
                                 )}
@@ -1067,6 +1409,23 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                                         }
                                         engineRef.current.startAmbience(city.scale, city.id)
                                         engineRef.current.setGlobalVolume(0.5)
+
+                                        // Play default hover sound (BD)
+                                        const ctx = engineRef.current.context
+                                        if (ctx) {
+                                             const t = ctx.currentTime
+                                             const pitchVar = 0.9 + Math.random() * 0.2
+                                             const osc = ctx.createOscillator()
+                                             const gain = ctx.createGain()
+                                             osc.frequency.setValueAtTime(150 * pitchVar, t)
+                                             osc.frequency.exponentialRampToValueAtTime(40 * pitchVar, t + 0.1)
+                                             gain.gain.setValueAtTime(0.15, t)
+                                             gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1)
+                                             osc.connect(gain)
+                                             gain.connect(ctx.destination)
+                                             osc.start(t)
+                                             osc.stop(t + 0.1)
+                                        }
                                     }
                                 }}
                                 onMouseMove={(e) => {
@@ -1076,6 +1435,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                                     const width = rect.width
                                     e.currentTarget.style.setProperty("--mouse-x", `${x}px`)
                                     e.currentTarget.style.setProperty("--mouse-y", `${y}px`)
+                                    
+                                    // Calculate proximity to center for radial size
+                                    // 0 = center, 0.5 = edge (normalized)
+                                    const centerX = width / 2
+                                    const distFromCenter = Math.abs(x - centerX) / width // 0 to 0.5
+                                    // Map 0 -> 150px, 0.5 -> 50px
+                                    const maxRadius = 150
+                                    const minRadius = 50
+                                    const radius = maxRadius - (distFromCenter * 2 * (maxRadius - minRadius))
+                                    e.currentTarget.style.setProperty("--radial-radius", `${radius}px`)
 
                                     if (engineRef.current) {
                                         // Pitch shift: -2 to +2 semitones (4 semitones range)
@@ -1094,8 +1463,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                                     )}
                                     style={{
                                         background: isStartPressed 
-                                            ? `radial-gradient(circle 150px at var(--mouse-x, 30%) var(--mouse-y, 30%), white 0%, var(--city-neon) 40%, transparent 70%)`
-                                            : `radial-gradient(circle 150px at var(--mouse-x, 50%) var(--mouse-y, 50%), white 0%, var(--city-neon) 40%, transparent 80%)`,
+                                            ? `radial-gradient(circle var(--radial-radius, 150px) at var(--mouse-x, 30%) var(--mouse-y, 30%), white 0%, var(--city-neon) 40%, transparent 70%)`
+                                            : `radial-gradient(circle var(--radial-radius, 150px) at var(--mouse-x, 50%) var(--mouse-y, 50%), white 0%, var(--city-neon) 40%, transparent 80%)`,
                                         mixBlendMode: 'screen'
                                     }}
                                 />
@@ -1122,7 +1491,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             variant="ghost" 
             size="icon" 
             onClick={onBack} 
-            className="shrink-0 hover:text-[var(--city-neon)] hover:bg-transparent transition-colors"
+            className="shrink-0 hover:text-white hover:bg-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
+            style={{ 
+                "--city-neon": city.color,
+                backgroundColor: "var(--city-neon)20"
+            } as React.CSSProperties}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -1193,40 +1566,26 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           </DropdownMenu>
 
           {/* Audio toggle */}
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handleTogglePlay} 
-            className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
-            style={{ "--city-neon": city.color } as React.CSSProperties}
-          >
-            {isPlaying ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </Button>
-
-          {/* DEBUG: Force Win Button */}
-          <Button
-            variant="destructive"
-            size="sm"
-            className="hidden md:flex text-[10px] h-7 px-2"
-            onClick={() => {
-              setGameStatus("CHECKMATE - White wins!")
-              setIsPlaying(false)
-              unlockNextCity(city.id)
-              if (engineRef.current) {
-                 engineRef.current.playSeatbelt()
-              }
-              toast.success("CITY CONQUERED! 🎵", {
-                description: "Next arena unlocked. Ready for the next era?",
-                duration: Infinity,
-                action: {
-                  label: "RETURN TO MAP",
-                  onClick: onBack
-                }
-              })
-            }}
-          >
-            WIN
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleToggleMute} 
+                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
+                style={{ "--city-neon": city.color } as React.CSSProperties}
+            >
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </Button>
+            <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={toggleFullscreen} 
+                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] transition-all"
+                style={{ "--city-neon": city.color } as React.CSSProperties}
+            >
+                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -1234,11 +1593,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         
         {/* Footer - Fixed Bottom */}
         <div className={cn(
-            "fixed bottom-0 left-0 right-0 h-[60px] z-40 flex items-center justify-end px-6 border-t border-transparent bg-transparent transition-all duration-1000 pointer-events-none",
+            "fixed bottom-0 left-0 right-0 h-[60px] z-40 flex items-center justify-start px-6 border-t border-transparent bg-transparent transition-all duration-1000 pointer-events-none",
             introPhase < 3 ? "opacity-0 translate-y-full" : "opacity-100 translate-y-0"
         )}>
-             {/* Center: Restart Button */}
-             <div className="flex items-center pointer-events-auto">
+             {/* Center: Restart & Win Buttons */}
+             <div className="flex items-center gap-4 pointer-events-auto">
                 <Button
                     variant="outline"
                     size="sm"
@@ -1249,6 +1608,31 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     <RotateCcw className="w-4 h-4" />
                     <span className="hidden sm:inline">Restart</span>
                 </Button>
+                
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        setGameStatus("CHECKMATE - White wins!")
+                        setIsPlaying(false)
+                        unlockNextCity(city.id)
+                        if (engineRef.current) {
+                            engineRef.current.playSeatbelt()
+                        }
+                        toast.success("CITY CONQUERED! 🎵", {
+                            description: "Next arena unlocked. Ready for the next era?",
+                            duration: Infinity,
+                            action: {
+                                label: "RETURN TO MAP",
+                                onClick: onBack
+                            }
+                        })
+                    }}
+                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] hover:cursor-pointer transition-all"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                    <span className="hidden sm:inline">Win</span>
+                </Button>
              </div>
         </div>
 
@@ -1256,7 +1640,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         {/* Animated Descent for Phase 2 -> 3 */}
         <div 
             className={cn(
-                "flex flex-col gap-4 items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 transition-all duration-[5000ms] ease-out",
+                "flex flex-col gap-4 items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 transition-all duration-[2000ms] ease-out",
                 introPhase < 2 ? "-translate-y-[150vh]" : introPhase === 2 ? "translate-y-[25vh]" : "lg:pt-6" // 25vh approx center vertical
             )}
             style={{
@@ -1309,6 +1693,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 className="w-[90vw] max-w-[512px] aspect-square relative z-20 mb-4"
                 ref={boardAreaRef}
                 onClick={(e) => e.stopPropagation()}
+                style={{
+                    transform: `scale(${boardScale})`,
+                    transition: 'transform 0.3s ease-out'
+                }}
               >
                   <ChessgroundBoard 
                   game={game} 
@@ -1342,7 +1730,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               </div>
 
               {/* Time Control Buttons - Moved Below Board */}
-              <div className="flex w-full items-center mb-6 gap-2 justify-center relative z-50">
+              <div className={cn(
+                  "flex w-full items-center mb-6 gap-2 justify-center relative z-50 transition-opacity duration-1000",
+                  introPhase < 3 ? "opacity-0" : "opacity-100"
+              )}>
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
@@ -1350,7 +1741,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onClick={undoMove}
                     disabled={moveHistory.length === 0}
                     className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                    style={{ 
+                        "--city-neon": city.color,
+                        backgroundColor: "var(--city-neon)20" // Default low opacity background
+                    } as React.CSSProperties}
                   >
                     <Undo2 className="w-10 h-10" />
                   </Button>
@@ -1359,7 +1753,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     size="default"
                     onClick={handleTogglePlay}
                     className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                    style={{ 
+                        "--city-neon": city.color,
+                        backgroundColor: "var(--city-neon)20"
+                    } as React.CSSProperties}
                   >
                     {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
                   </Button>
@@ -1369,19 +1766,47 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onClick={redoMove}
                     disabled={redoStack.length === 0}
                     className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                    style={{ 
+                        "--city-neon": city.color,
+                        backgroundColor: "var(--city-neon)20"
+                    } as React.CSSProperties}
                   >
                     <Redo2 className="w-10 h-10" />
                   </Button>
                 </div>
               </div>
 
-              {/* Eval Bar - Moved Below Controls */}
-              <div className="w-[90vw] max-w-[512px] h-2 bg-black/40 rounded-[12px] overflow-hidden flex flex-col relative mb-7 border border-white/10 relative">
+              {/* Moves Ticker - Moved ABOVE Eval */}
+              <div 
+                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-2 px-1 relative z-20 overflow-hidden"
+               >
+                   <div
+                      ref={movesTickerRef}
+                      className="flex items-center justify-start gap-3 text-xs font-mono whitespace-nowrap overflow-x-auto scrollbar-hide mask-fade-left w-full"
+                      style={{ textShadow: "1px 1px 1px black" }}
+                   >
+                       {moveHistory.map((move, i) => {
+                           // Use regular index
+                           return (
+                               <span key={i} className={cn(
+                                   i % 2 === 0 ? "text-white" : "text-muted-foreground"
+                               )}>
+                                   {i % 2 === 0 ? `${Math.floor(i/2) + 1}.` : ""} {move}
+                               </span>
+                           )
+                       })}
+                   </div>
+              </div>
+
+              {/* Eval Bar */}
+              <div className={cn(
+                  "w-[90vw] max-w-[512px] h-2 bg-black/40 rounded-[12px] overflow-hidden flex flex-col relative mb-1 border border-white/10 relative transition-opacity duration-1000",
+                  introPhase < 3 ? "opacity-0" : "opacity-100"
+              )}>
                 <div className="w-full h-2 relative overflow-hidden">
                     <div 
                       className="absolute inset-y-0 left-0 bg-white transition-all duration-1000 ease-in-out"
-                      style={{ width: `${blackPercent}%` }}
+                      style={{ width: `${whitePercent}%` }} // Show White%
                     />
                     {isEvaluating && (
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 z-30">
@@ -1390,28 +1815,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     )}
                 </div>
               </div>
-
-              {/* Moves Ticker - Moved Below Eval */}
-              <div 
-                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-7 px-1 relative z-20 overflow-hidden"
-               >
-                   <div
-                      ref={movesTickerRef}
-                      className="flex items-center justify-start gap-3 text-xs font-mono whitespace-nowrap overflow-x-auto scrollbar-hide mask-fade-right w-full"
-                      style={{ textShadow: "1px 1px 1px black" }}
-                   >
-                       {[...moveHistory].reverse().map((move, i) => {
-                           const originalIndex = moveHistory.length - 1 - i
-                           return (
-                               <span key={originalIndex} className={cn(
-                                   originalIndex % 2 === 0 ? "text-white" : "text-muted-foreground",
-                                   "animate-slide-in"
-                               )}>
-                                   {originalIndex % 2 === 0 ? `${Math.floor(originalIndex/2) + 1}.` : ""} {move}
-                               </span>
-                           )
-                       })}
-                   </div>
+              <div className={cn(
+                  "w-[90vw] max-w-[512px] flex justify-start mb-7 transition-opacity duration-1000",
+                  introPhase < 3 ? "opacity-0" : "opacity-100"
+              )}>
+                  <span className="text-[10px] text-white/80 font-mono tracking-wide">
+                      Chance ({whitePercent}%)
+                  </span>
               </div>
             </div>
           </div>
@@ -1419,9 +1829,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
       </div>
       
-      {/* Connection Lines Layer - z-60 (Between Widget Box and Widget Button) */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 60 }}>
-        {[knobsConnection, spectrogramConnection].map((conn, i) => {
+      {/* Connection Lines Layer - Moved BEHIND widgets and board (z-0 to z-10 range, but above BG) */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 5 }}>
+        {[knobsConnection, ...chainConnections].map((conn, i) => {
           if (!conn) return null
           
           const startX = conn.x1
@@ -1429,55 +1839,88 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           const endX = conn.x2
           const endY = conn.y2
           
-          // Calculate curve to dip below the lowest point
-          const lowestY = Math.max(startY, endY)
-          const targetLowPoint = lowestY + 15 // Fixed 15px dip below lowest point
-          
-          const cpX = (startX + endX) / 2
-          const cpY = 2 * targetLowPoint - 0.5 * startY - 0.5 * endY
+          // Standard S-curve (Cubic Bezier)
+          // Adjust control points based on exit/entry direction
+          const dist = Math.hypot(endX - startX, endY - startY)
+          const handleLen = dist * 0.5
+
+          let cp1x = startX, cp1y = startY
+          let cp2x = endX, cp2y = endY
+
+          switch(conn.sourceSide) {
+              case 'left': cp1x -= handleLen; break;
+              case 'right': cp1x += handleLen; break;
+              case 'top': cp1y -= handleLen; break;
+              case 'bottom': cp1y += handleLen; break;
+          }
+
+          switch(conn.targetSide) {
+              case 'left': cp2x -= handleLen; break;
+              case 'right': cp2x += handleLen; break;
+              case 'top': cp2y -= handleLen; break;
+              case 'bottom': cp2y += handleLen; break;
+          }
 
           const r = 4 // Handle radius
 
-          // Source Handle (Widget)
+          // Source Handle (Widget) - Anchored to widget edge, bulging OUTWARDS
           let sourceHandlePath = ""
+          const ax1 = (conn as any).anchorX1 ?? startX // Fallback if type issue, though we added it
+          const ay1 = (conn as any).anchorY1 ?? startY
+
           if (conn.sourceSide === 'left') {
-              sourceHandlePath = `M ${startX} ${startY - r} A ${r} ${r} 0 0 0 ${startX} ${startY + r}`
+              // Bulge Left (CCW, sweep 0)
+              sourceHandlePath = `M ${ax1} ${ay1 - r} A ${r} ${r} 0 0 0 ${ax1} ${ay1 + r}`
           } else if (conn.sourceSide === 'right') {
-              sourceHandlePath = `M ${startX} ${startY - r} A ${r} ${r} 0 0 1 ${startX} ${startY + r}`
+              // Bulge Right (CW, sweep 1)
+              sourceHandlePath = `M ${ax1} ${ay1 - r} A ${r} ${r} 0 0 1 ${ax1} ${ay1 + r}`
+          } else if (conn.sourceSide === 'top') {
+              // Bulge Up (CW, sweep 1 - FLIPPED) 
+              // Start (-4, 0). End (4, 0). Vector Right. 
+              sourceHandlePath = `M ${ax1 - r} ${ay1} A ${r} ${r} 0 0 1 ${ax1 + r} ${ay1}`
+          } else if (conn.sourceSide === 'bottom') {
+              // Bulge Down (CCW, sweep 0 - FLIPPED)
+              sourceHandlePath = `M ${ax1 - r} ${ay1} A ${r} ${r} 0 0 0 ${ax1 + r} ${ay1}`
           }
 
-          // Target Handle
+          // Target Handle - Anchored to widget edge, bulging OUTWARDS
           let targetHandlePath = ""
+          const ax2 = (conn as any).anchorX2 ?? endX
+          const ay2 = (conn as any).anchorY2 ?? endY
+
           if (conn.targetSide === 'bottom') {
-              // U shape (Flat top)
-              targetHandlePath = `M ${endX - r} ${endY} A ${r} ${r} 0 0 0 ${endX + r} ${endY}`
+              // Bulge Down (CCW, sweep 0 - FLIPPED)
+              targetHandlePath = `M ${ax2 - r} ${ay2} A ${r} ${r} 0 0 0 ${ax2 + r} ${ay2}`
           } else if (conn.targetSide === 'left') {
-              targetHandlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 0 ${endX} ${endY + r}`
+              targetHandlePath = `M ${ax2} ${ay2 - r} A ${r} ${r} 0 0 0 ${ax2} ${ay2 + r}`
           } else if (conn.targetSide === 'right') {
-              targetHandlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 1 ${endX} ${endY + r}`
+              targetHandlePath = `M ${ax2} ${ay2 - r} A ${r} ${r} 0 0 1 ${ax2} ${ay2 + r}`
+          } else if (conn.targetSide === 'top') {
+              // Bulge Up (CW, sweep 1 - FLIPPED)
+              targetHandlePath = `M ${ax2 - r} ${ay2} A ${r} ${r} 0 0 1 ${ax2 + r} ${ay2}`
           }
 
           return (
              <React.Fragment key={i}>
                <path
-                 d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
+                 d={`M ${startX} ${startY} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${endX} ${endY}`}
                  stroke="white"
                  strokeWidth={1.5}
                  fill="none"
-                 className="opacity-50"
+                 className="opacity-20"
                />
                {sourceHandlePath && (
                    <path
                        d={sourceHandlePath}
                        fill="white"
-                       className="opacity-100"
+                       className="opacity-20"
                    />
                )}
                {targetHandlePath && (
                    <path
                        d={targetHandlePath}
                        fill="white"
-                       className="opacity-100"
+                       className="opacity-20"
                    />
                )}
              </React.Fragment>
@@ -1490,11 +1933,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         ref={spectrogramHandleRef}
         toggleRef={spectrogramToggleRef}
         isOn={spectrogramOn}
-        onToggle={() => setSpectrogramOn(prev => !prev)}
+        onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
         isPlaying={isPlaying}
         cityColor={city.color}
         position={spectrogramPosition || undefined}
         onPositionChange={(pos) => setSpectrogramPosition(pos)}
+        style={{ zIndex: activeWidgetOrder.indexOf('spectrogram') + 10 }}
+        onClickCapture={() => handleWidgetHeaderClick('spectrogram')}
       />
 
       <SynthControlPanel
@@ -1503,7 +1948,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         selectedSquare={synthSelectedSquare as Square | null}
         selectedPieceInfo={(() => {
           if (!synthSelectedSquare) return null
-          // @ts-expect-error - chess.js get typing is not recognized here
+          // @ts-ignore - chess.js get typing is not recognized here
           const piece = game.get(synthSelectedSquare as Square)
           if (!piece) return "Empty"
           const instrumentMap: Record<string, string> = {
@@ -1547,8 +1992,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         handleRef={knobsHandleRef}
         isOn={knobsOn}
         onToggle={() => setKnobsOn(!knobsOn)}
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+            e.stopPropagation()
+            handleWidgetHeaderClick('knobs')
+        }}
+        onMouseDown={(e) => {
+            e.stopPropagation()
+        }}
+        style={{ zIndex: activeWidgetOrder.indexOf('knobs') + 10 }}
       />
 
       {/* Global Control Panel */}
@@ -1562,7 +2013,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         onPositionChange={(pos) => setGlobalPanelPosition(pos)}
         handleRef={globalPanelHandleRef}
         isOn={globalPanelOn}
-        onToggle={() => setGlobalPanelOn(!globalPanelOn)}
+        onToggle={() => toggleWidget('globalPanel', setGlobalPanelOn)}
+        style={{ zIndex: activeWidgetOrder.indexOf('globalPanel') + 10 }}
+        onClickCapture={() => handleWidgetHeaderClick('globalPanel')}
       />
 
       {/* Live Code Widget */}
@@ -1577,7 +2030,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         position={liveCodePosition || undefined}
         onPositionChange={(pos) => setLiveCodePosition(pos)}
         isOn={liveCodeOn}
-        onToggle={() => setLiveCodeOn(!liveCodeOn)}
+        onToggle={() => toggleWidget('liveCode', setLiveCodeOn)}
+        style={{ zIndex: activeWidgetOrder.indexOf('liveCode') + 10 }}
+        onClickCapture={() => handleWidgetHeaderClick('liveCode')}
       />
       </div>
 

@@ -6,8 +6,8 @@ interface DraggableProps {
   children: React.ReactNode
   position?: { x: number; y: number }
   defaultPosition?: { x: number; y: number }
-  onDrag?: (position: { x: number; y: number }) => void
-  onDragStart?: () => void
+  onDrag?: (position: { x: number; y: number }, e?: MouseEvent | TouchEvent) => void
+  onDragStart?: (e: React.MouseEvent | React.TouchEvent) => void
   onDragEnd?: () => void
   handleRef?: React.RefObject<HTMLElement | null>
   className?: string
@@ -66,7 +66,7 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
         originY: currentY,
       }
 
-      if (onDragStart) onDragStart()
+      if (onDragStart) onDragStart(e)
 
       if (typeof document !== "undefined") {
         document.body.style.userSelect = "none"
@@ -88,7 +88,7 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
         }
         
         if (onDrag) {
-          onDrag(newPos)
+          onDrag(newPos, mv)
         }
       }
 
@@ -109,6 +109,76 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
     [position, isControlled, onDrag, onDragStart, onDragEnd, handleRef, scale]
   )
 
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (handleRef?.current && !handleRef.current.contains(e.target as Node)) {
+        if (!(e.target as Element).closest('[data-drag-handle="true"]')) {
+          return
+        }
+      }
+
+      // Prevent scrolling while dragging
+      // e.preventDefault() // This might be too aggressive if we want to allow scroll on non-drag areas, but we checked handle.
+      e.stopPropagation()
+
+      const touch = e.touches[0]
+      const currentX = position.x
+      const currentY = position.y
+
+      dragRef.current = {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        originX: currentX,
+        originY: currentY,
+      }
+
+      if (onDragStart) onDragStart(e)
+
+      if (typeof document !== "undefined") {
+        document.body.style.userSelect = "none"
+      }
+
+      const onTouchMove = (te: TouchEvent) => {
+        if (!dragRef.current) return
+        // Prevent scrolling
+        te.preventDefault() 
+        
+        const t = te.touches[0]
+        const s = Number(scale) || 1
+        const dx = (t.clientX - dragRef.current.startX) / s
+        const dy = (t.clientY - dragRef.current.startY) / s
+        
+        const newPos = {
+          x: dragRef.current.originX + dx,
+          y: dragRef.current.originY + dy,
+        }
+
+        if (!isControlled) {
+          setInternalPosition(newPos)
+        }
+        
+        if (onDrag) {
+          onDrag(newPos, te)
+        }
+      }
+
+      const onTouchEnd = () => {
+        dragRef.current = null
+        if (typeof document !== "undefined") {
+          document.body.style.userSelect = ""
+        }
+        if (onDragEnd) onDragEnd()
+        
+        window.removeEventListener("touchmove", onTouchMove)
+        window.removeEventListener("touchend", onTouchEnd)
+      }
+
+      window.addEventListener("touchmove", onTouchMove, { passive: false })
+      window.addEventListener("touchend", onTouchEnd)
+    },
+    [position, isControlled, onDrag, onDragStart, onDragEnd, handleRef, scale]
+  )
+
   return (
     <div
       ref={ref}
@@ -123,10 +193,12 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
       onMouseDown={(e) => {
         handleMouseDown(e)
         // @ts-ignore
-        if (props.onMouseDown) {
-          // @ts-ignore
-          props.onMouseDown(e)
-        }
+        if (props.onMouseDown) props.onMouseDown(e)
+      }}
+      onTouchStart={(e) => {
+        handleTouchStart(e)
+        // @ts-ignore
+        if (props.onTouchStart) props.onTouchStart(e)
       }}
     >
       {children}

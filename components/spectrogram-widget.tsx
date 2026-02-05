@@ -7,6 +7,8 @@ import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { getAudioEngine } from "@/lib/audio-engine"
 
+import { Resizable } from "re-resizable"
+
 interface SpectrogramWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   cityColor: string
   position?: { x: number; y: number }
@@ -116,6 +118,8 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
     }
   }, [isOn, isPlaying, cityColor])
 
+  const initialPosRef = useRef<{x: number, y: number} | null>(null)
+
   return (
     <Draggable
       ref={ref}
@@ -132,6 +136,27 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
       }}
       {...props}
     >
+      <Resizable
+        defaultSize={{
+          width: 340,
+          height: 140, // Approx height based on content
+        }}
+        minWidth={200}
+        minHeight={100}
+        enable={{ top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
+        className="relative"
+        onResizeStart={() => {
+            initialPosRef.current = position || { x: 0, y: 0 }
+        }}
+        onResize={(e, direction, ref, d) => {
+            if (direction.includes('left') && initialPosRef.current) {
+                onPositionChange?.({
+                    x: initialPosRef.current.x - d.width,
+                    y: initialPosRef.current.y
+                })
+            }
+        }}
+      >
       {/* Widget Background/Box - z-50 */}
       <div 
         className={cn(
@@ -174,9 +199,9 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
       />
 
       {/* Main Content - z-50 */}
-      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px]", !isOn && "opacity-50 grayscale")}>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-center mb-2 px-1 h-4 relative">
+      <div className={cn("relative z-50 px-2.5 py-2.5 w-full h-full flex flex-col", !isOn && "opacity-50 grayscale")}>
+        <div className="flex flex-col gap-3 flex-1 h-full">
+          <div className="flex items-center justify-center mb-2 px-1 h-4 relative shrink-0">
              <span className={cn(
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300",
                isOn ? "text-[var(--city-neon)]" : "text-muted-foreground"
@@ -185,7 +210,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
              </span>
           </div>
           
-          <div className="h-24 w-full overflow-hidden relative">
+          <div className="flex-1 w-full overflow-hidden relative min-h-0">
             <canvas 
                 ref={canvasRef}
                 className="w-full h-full"
@@ -194,6 +219,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
 
         </div>
       </div>
+      </Resizable>
     </Draggable>
   )
 })

@@ -50,7 +50,7 @@ export function LiveCodeOverlay({ pattern, city, isPlaying }: LiveCodeOverlayPro
       <div className="flex items-center justify-between p-2 border-b border-border bg-muted/20">
         <div className="flex items-center gap-2">
           <Terminal className="w-3 h-3 text-muted-foreground" />
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Live Code</span>
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Live Music Code (Strudel)</span>
           <Badge className="ml-2 text-[9px] px-2 py-0.5 font-mono bg-primary/10 border-primary/40">
             {city.name}
           </Badge>

@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import type { CityData } from "@/lib/cities-data"
 
+import { Resizable } from "re-resizable"
+
 interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   pattern: string
   city: CityData
@@ -99,6 +101,8 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const initialPosRef = useRef<{x: number, y: number} | null>(null)
+
   return (
     <Draggable
       ref={ref}
@@ -115,6 +119,27 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
       }}
       {...props}
     >
+      <Resizable
+        defaultSize={{
+          width: 340,
+          height: 'auto',
+        }}
+        minWidth={300}
+        minHeight={200}
+        enable={{ top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
+        className="relative"
+        onResizeStart={() => {
+            initialPosRef.current = position || { x: 0, y: 0 }
+        }}
+        onResize={(e, direction, ref, d) => {
+            if (direction.includes('left') && initialPosRef.current) {
+                onPositionChange?.({
+                    x: initialPosRef.current.x - d.width,
+                    y: initialPosRef.current.y
+                })
+            }
+        }}
+      >
       {/* Widget Background/Box - z-50 */}
       <div 
         className={cn(
@@ -176,22 +201,22 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
       />
 
       {/* Main Content - z-50 */}
-      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px]", !isOn && "opacity-50 grayscale")}>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-center mb-2 px-1 h-4 relative w-full">
+      <div className={cn("relative z-50 px-2.5 py-2.5 w-full h-full flex flex-col", !isOn && "opacity-50 grayscale")}>
+        <div className="flex flex-col gap-3 flex-1 h-full">
+          <div className="flex items-center justify-center mb-2 px-1 h-4 relative w-full shrink-0">
              <span className={cn(
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300 text-center",
                isOn ? "text-[var(--city-neon)]" : "text-muted-foreground"
              )}>
-                LIVE CODE
+                STRUDEL CODE
              </span>
           </div>
           
-          <div className="h-64 w-full flex flex-col gap-2">
+          <div className="flex-1 w-full flex flex-col gap-2 min-h-0">
             
             <div 
                 ref={codeRef}
-                className="flex-1 p-2 font-mono text-xs leading-relaxed overflow-y-auto bg-black/40 rounded inner-shadow scrollbar-hide"
+                className="flex-1 p-2 font-mono text-xs leading-relaxed overflow-y-auto bg-black/40 rounded inner-shadow scrollbar-hide h-full"
             >
                 {/* Scrollbar styling for Webkit/Blink */}
                 <style jsx global>{`
@@ -216,6 +241,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
         </div>
       </div>
+      </Resizable>
     </Draggable>
   )
 })

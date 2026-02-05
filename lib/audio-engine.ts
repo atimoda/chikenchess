@@ -71,6 +71,10 @@ export class AudioEngine {
     }
   }
 
+  get context(): AudioContext | null {
+    return this.audioContext
+  }
+
   getFrequencyData(dataArray: any) {
     if (this.analyser) {
       this.analyser.getByteFrequencyData(dataArray)
