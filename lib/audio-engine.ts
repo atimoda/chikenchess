@@ -906,7 +906,7 @@ export class AudioEngine {
     if (distortAmount > 0) {
       const shaper = this.audioContext.createWaveShaper()
       const amount = 5 + distortAmount * 45
-      shaper.curve = this.makeDistortionCurve(amount)
+      shaper.curve = this.makeDistortionCurve(amount) as any
       shaper.oversample = "2x"
       shaper.connect(this.masterGain)
       targetNode = shaper
@@ -1677,7 +1677,7 @@ export class AudioEngine {
 
     if (useDistortion && target) {
       const amount = 10 + distort * 90
-      target.curve = this.makeDistortionCurve(amount)
+      target.curve = this.makeDistortionCurve(amount) as any
       target.oversample = "4x"
 
       osc.connect(filter)

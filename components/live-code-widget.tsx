@@ -38,6 +38,9 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   isPlaying,
   ...props
 }, ref) => {
+  // Remove onDrag from props to avoid type conflict with Draggable's onDrag
+  const { onDrag, ...restProps } = props as any
+
   const [copied, setCopied] = useState(false)
 
   const panelStyle = {
@@ -117,7 +120,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
         ...props.style,
         zIndex: undefined
       }}
-      {...props}
+      {...restProps}
     >
       <Resizable
         defaultSize={{

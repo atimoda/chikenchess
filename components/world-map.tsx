@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
 
 import { Button } from "@/components/ui/button"
-import { Plus, Minus } from "lucide-react"
+import { Plus, Minus, Maximize, Minimize } from "lucide-react"
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
@@ -38,7 +38,32 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
   const [showAbout, setShowAbout] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(100)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        setIsFullscreen(true)
+      }).catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`)
+      })
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+        setIsFullscreen(false)
+      }
+    }
+  }
   
   const zoomRef = useRef<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>(null)
   const handleZoom = (direction: 'in' | 'out' | 'reset') => {
@@ -822,6 +847,15 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           >
             About
           </button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleFullscreen} 
+            className="text-muted-foreground hover:text-foreground hover:bg-white/10"
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </Button>
         </div>
 
         {/* Slogan moved to logo container */}
@@ -859,25 +893,28 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
 
-                <h2 className="text-2xl font-mono font-bold mb-4 text-primary">chickenchess v0.2.6</h2>
+                <h2 className="text-2xl font-mono font-bold mb-1 text-primary">chickenchess</h2>
                 
-                <p className="text-sm font-bold text-foreground mb-1">v0.2.6 "The globe"</p>
-                <p className="text-sm text-muted-foreground mb-4 italic">Where strategy meets symphony.</p>
-                
+                <p className="text-xs font-bold text-muted-foreground mb-4">v0.2.6 "The globe"</p>
+
                 <div className="my-4 border-l-2 border-primary/50 pl-4 py-1">
                     <p className="text-sm text-foreground leading-relaxed">
-                        Our vision is to reimagine the classic game by turning the board into a musical instrument. Every piece has a voice, and every move creates a new moment in the music.
+                        Our vision is to reimagine the classic chess game by turning the board into a musical instrument. Every piece has a voice, and every move creates a new moment in the music. This is just the beginning.
                     </p>
                 </div>
-
-                <h3 className="text-lg font-mono font-bold mb-2 text-primary mt-6">Support Indie Development</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                    This is an independent project built with love and lots of coffee. If you enjoy the experience and want to help keep the servers running (and the developer caffeinated), consider making a donation. Every bit helps us to develop more features.
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed mt-6">
+                    This is an independent project built with love and lots of coffee. The idea emerged after dozens of chess games played while listening to electronic music, by cousins Thiago Horta and Rodrigo Zecchinelli. If you enjoy the experience and want to help the development, consider making a donation. Every bit helps us develop more features.
                 </p>
                 
-                <div className="mb-6">
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Email for contact:</p>
-                    <a href="mailto:thiago@chickenchess.com" className="text-sm text-primary hover:underline">thiago@chickenchess.com</a>
+                <div className="mb-6 space-y-3">
+                    <div>
+                         <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">For feedback and discussions, Join our Discord:</p>
+                         <a href="https://discord.gg/Ps66QJdc" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">https://discord.gg/Ps66QJdc</a>
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">General Contact:</p>
+                        <a href="mailto:info@chickenchess.com" className="text-sm text-primary hover:underline">info@chickenchess.com</a>
+                    </div>
                 </div>
 
                 <a 
@@ -941,7 +978,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       </div>
 
       {/* Zoom Controls (Fixed Bottom Right) */}
-      <div className="hidden md:flex fixed bottom-24 right-4 z-50 flex-col gap-2 pointer-events-auto">
+      <div className="flex fixed bottom-24 right-4 z-50 flex-col gap-2 pointer-events-auto">
           <Button
               variant="outline"
               size="icon"

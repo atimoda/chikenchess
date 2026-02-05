@@ -31,6 +31,9 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   isPlaying,
   ...props
 }, ref) => {
+  // Remove onDrag from props to avoid type conflict with Draggable's onDrag
+  const { onDrag, ...restProps } = props as any
+
   const panelStyle = {
     "--city-neon": cityColor,
   } as React.CSSProperties
@@ -134,7 +137,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
         ...props.style,
         zIndex: undefined // Ensure no z-index on container
       }}
-      {...props}
+      {...restProps}
     >
       <Resizable
         defaultSize={{
@@ -156,7 +159,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
                 })
             }
         }}
-      >
+    >
       {/* Widget Background/Box - z-50 */}
       <div 
         className={cn(

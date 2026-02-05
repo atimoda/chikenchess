@@ -399,19 +399,19 @@ const GlobeContent = ({
        const ease = 1 - Math.pow(1 - progress, 3)
        
        const startZ = 2.5
-       const endZ = 5
+       const endZ = 5 / 0.75 // Target 75% zoom (Distance ~6.66)
        
        camera.position.z = MathUtils.lerp(startZ, endZ, ease)
        
        if (progress >= 1 && !introZoomComplete) {
            setIntroZoomComplete(true)
-           lastInteractionTime.current = Date.now()
+           lastInteractionTime.current = Date.now() - 4000 // Start standby immediately
        }
     } else if (time >= 6.5 && !introZoomComplete) {
         // Ensure we finish
-        camera.position.z = 5
+        camera.position.z = 5 / 0.75
         setIntroZoomComplete(true)
-        lastInteractionTime.current = Date.now()
+        lastInteractionTime.current = Date.now() - 4000 // Start standby immediately
     } else if (time <= 3.0) {
         // Hold start position
         camera.position.z = 2.5
@@ -600,7 +600,18 @@ const GlobeContent = ({
           </Sphere>
 
           {/* The Earth Surface */}
-          <Sphere args={[GLOBE_RADIUS, 64, 64]} onPointerDown={handleInteraction}>
+          <Sphere 
+            args={[GLOBE_RADIUS, 64, 64]} 
+            onPointerDown={(e) => {
+                document.body.style.cursor = 'grabbing'
+                handleInteraction()
+            }}
+            onPointerUp={() => {
+                document.body.style.cursor = 'grab'
+            }}
+            onPointerOver={() => { document.body.style.cursor = 'grab' }}
+            onPointerOut={() => { document.body.style.cursor = 'auto' }}
+          >
             <meshStandardMaterial 
                 map={texture}
                 color="#0E6C4D" // Dark green base
@@ -701,7 +712,27 @@ const GlobeContent = ({
         noPan={true} 
         minDistance={3.33} 
         maxDistance={10} 
-        rotateSpeed={isDraggingPopup ? 0.2 : 1.7} // Reduced from 2.5 by ~33%
+        rotateSpeed={(() => {
+            if (isDraggingPopup) return 0.2
+            
+            // Calculate rotate speed based on zoom (camera distance)
+            // Base distance (75% zoom) is approx 6.66 (since 5/0.75 = 6.66)
+            // Max zoom (150%) distance is 3.33 (since 5/1.5 = 3.33)
+            
+            // We want base speed (1.7) at distance 6.66
+            // We want speed 0.66 at distance 3.33
+            
+            // Let's use simpler lerp logic inside component
+            const dist = camera.position.length()
+            // Clamp distance between min and base
+            const clampedDist = Math.min(Math.max(dist, 3.33), 6.66)
+            
+            // Map [3.33, 6.66] to [0.66, 1.7]
+            const t = (clampedDist - 3.33) / (6.66 - 3.33) // 0 to 1
+            const speed = 0.66 + t * (1.7 - 0.66)
+            
+            return speed
+        })()}
         noZoom={false}
         staticMoving={false} // Enable damping/inertia
         dynamicDampingFactor={0.1}
