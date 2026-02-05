@@ -1851,6 +1851,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onClick={handleTogglePlay}
                     onMouseEnter={() => playDrum("bd")}
                     onMouseDown={() => playDrum("sd")}
+                    onMouseUp={() => playDrum("hh")}
                     className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
@@ -1901,7 +1902,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
               {/* Eval Bar */}
               <div className={cn(
-                  "w-[90vw] max-w-[512px] h-2 bg-black/40 rounded-[12px] overflow-hidden flex flex-col relative mb-1 border border-white/10 relative transition-opacity duration-1000",
+                  "w-[90vw] max-w-[512px] h-2 bg-black/40 rounded-[12px] overflow-hidden flex flex-col relative mb-1 border border-white/10 relative transition-opacity duration-1000 pointer-events-none select-none",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
                 <div className="w-full h-2 relative overflow-hidden">

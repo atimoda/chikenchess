@@ -122,7 +122,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
       <Resizable
         defaultSize={{
           width: 340,
-          height: 'auto',
+          height: 280,
         }}
         minWidth={300}
         minHeight={200}
@@ -216,20 +216,27 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
             
             <div 
                 ref={codeRef}
-                className="flex-1 p-2 font-mono text-xs leading-relaxed overflow-y-auto bg-black/40 rounded inner-shadow scrollbar-hide h-full"
+                className="flex-1 p-2 font-mono text-xs leading-relaxed overflow-y-auto bg-black/40 rounded inner-shadow custom-scrollbar h-full"
             >
                 {/* Scrollbar styling for Webkit/Blink */}
                 <style jsx global>{`
-                .scrollbar-hide::-webkit-scrollbar {
-                    display: none;
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
                 }
-                .scrollbar-hide {
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: rgba(0, 0, 0, 0.2);
+                    border-radius: 3px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 3px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.4);
                 }
                 .inner-shadow {
                     box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
-                }
                 }
                 `}</style>
                 <pre
