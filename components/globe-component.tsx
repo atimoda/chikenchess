@@ -638,15 +638,42 @@ const GlobeContent = ({
             const popup = openPopups[city.id]
             const [isHovered, setIsHovered] = useState(false)
             
+            // Touch/Click handling state
+            const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
+
             return (
               <group key={city.id} position={position}>
                 {/* City Pin */}
                 <mesh 
-                    onClick={(e) => { 
+                    onClick={(e) => {
+                        // Keep onClick for desktop/mouse standard behavior if it works
+                        if (e.pointerType === 'mouse') {
+                            e.stopPropagation()
+                            handleInteraction()
+                            handleCityClickInternal(city) 
+                            bringToFront(city.id)
+                        }
+                    }}
+                    onPointerDown={(e) => {
+                        e.stopPropagation() // Prevent globe drag start
+                        touchStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() }
+                    }}
+                    onPointerUp={(e) => {
                         e.stopPropagation()
-                        handleInteraction()
-                        handleCityClickInternal(city) 
-                        bringToFront(city.id) // Ensure clicked pin brings popup to front
+                        if (touchStartRef.current) {
+                            const dx = e.clientX - touchStartRef.current.x
+                            const dy = e.clientY - touchStartRef.current.y
+                            const dist = Math.sqrt(dx * dx + dy * dy)
+                            const timeDiff = Date.now() - touchStartRef.current.time
+                            
+                            // Tolerance for touch "tap" (allow slight movement)
+                            if (dist < 10 && timeDiff < 500) {
+                                handleInteraction()
+                                handleCityClickInternal(city) 
+                                bringToFront(city.id)
+                            }
+                            touchStartRef.current = null
+                        }
                     }}
                     onPointerEnter={(e) => {
                         e.stopPropagation()
