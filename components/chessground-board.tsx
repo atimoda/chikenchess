@@ -71,11 +71,52 @@ export function ChessgroundBoard({
   const inCheck = game.isCheck()
   const turn = game.turn()
 
+  const [animatingPiece, setAnimatingPiece] = useState<{
+    piece: string
+    from: Square
+    to: Square
+    startX: number
+    startY: number
+    targetX: number
+    targetY: number
+    progress: number // 0 to 1
+  } | null>(null)
+
+  const justDraggedRef = useRef(false)
+
+  const getCoords = (sq: Square) => {
+    const col = sq.charCodeAt(0) - 97
+    const row = 8 - parseInt(sq[1])
+    return { x: col * 12.5, y: row * 12.5 }
+  }
+
   // Handle last move updates from props
   useEffect(() => {
     if (game) {
       const history = game.history({ verbose: true })
       
+      const lastMove = history[history.length - 1]
+      
+      if (lastMove && !dragPiece && !animatingPiece) { // Trigger animation only if not dragging
+          // Calculate start and end positions relative to board
+          // This requires knowing the square size and board dimensions
+          // We can use the boardRef to get dimensions, but we need to trigger this effect AFTER render?
+          // Or we can just use relative percentage coordinates (0-7 range)
+          
+          // Only animate if it's a new move we haven't animated yet?
+          // For now, let's assume if history changes, we animate the last move IF it matches our expectations
+          // But wait, the game state updates instantly. The piece is ALREADY at 'to'.
+          // To animate 'slide', we need to:
+          // 1. Hide the piece at 'to' (visually)
+          // 2. Render a floating piece moving from 'from' to 'to'
+          // 3. On complete, show the piece at 'to'
+          
+          // Check if this move is recent enough to animate?
+          // We can just animate every update if the last move changed.
+          
+          // Let's store the last animated move index to avoid re-animating on re-renders
+      }
+
       // Find last white move
       // findLast is not available in all environments, so we iterate backwards
       let lastW = null
@@ -98,7 +139,59 @@ export function ChessgroundBoard({
       setLastMoveWhite(lastW ? { from: lastW.from, to: lastW.to } : null)
       setLastMoveBlack(lastB ? { from: lastB.from, to: lastB.to } : null)
     }
-  }, [game, game.fen()]) // Added fen dependency to update on history navigation
+  }, [game])
+
+  // Animation Loop
+  useEffect(() => {
+      if (animatingPiece) {
+          const startTime = performance.now()
+          const duration = 200 // ms
+          
+          const animate = () => {
+              const now = performance.now()
+              const elapsed = now - startTime
+              const progress = Math.min(elapsed / duration, 1)
+              
+              setAnimatingPiece(prev => prev ? { ...prev, progress } : null)
+              
+              if (progress < 1) {
+                  requestAnimationFrame(animate)
+              } else {
+                  setAnimatingPiece(null)
+              }
+          }
+          
+          requestAnimationFrame(animate)
+      }
+  }, [animatingPiece?.from, animatingPiece?.to]) // Dependency on move identity
+
+  // We need to intercept the game update to set up animation
+  // Since 'game' prop changes instantly, we can use a ref to track previous FEN or history length
+  const prevHistoryLen = useRef(0)
+  
+  useEffect(() => {
+      const history = game.history({ verbose: true })
+      if (history.length > prevHistoryLen.current) {
+          const lastMove = history[history.length - 1]
+          
+          if (!justDraggedRef.current) {
+             const from = getCoords(lastMove.from)
+             const to = getCoords(lastMove.to)
+             
+             setAnimatingPiece({
+                 piece: `${lastMove.color}${lastMove.piece.toUpperCase()}`,
+                 from: lastMove.from,
+                 to: lastMove.to,
+                 startX: from.x,
+                 startY: from.y,
+                 targetX: to.x,
+                 targetY: to.y,
+                 progress: 0
+             })
+          }
+      }
+      prevHistoryLen.current = history.length
+  }, [game, dragPiece])
 
   // Calculate opposite color for last move highlight
   // We need a complementary color to the neon city color
@@ -366,6 +459,12 @@ export function ChessgroundBoard({
           })
 
           if (move) {
+            justDraggedRef.current = true
+            // Reset flag after a short delay to allow effect to see it
+            setTimeout(() => {
+                justDraggedRef.current = false
+            }, 100)
+
             if (dragPiece.piece.startsWith('w')) {
               setLastMoveWhite({ from: dragPiece.from, to: targetSquare })
             } else {
@@ -497,6 +596,7 @@ export function ChessgroundBoard({
             const isLastMove = isLastMoveWhite || isLastMoveBlack
             const isPremoveSquare = premove?.from === square || premove?.to === square
             const isDragging = dragPiece?.from === square
+            const isAnimatingTo = animatingPiece?.to === square
             const isSynthSelected = synthSelectedSquare === square
             const isActive = activeSquares?.has(square)
 
@@ -607,7 +707,7 @@ export function ChessgroundBoard({
                 )}
 
                 {/* Piece */}
-                {piece && !isDragging && (
+                {piece && !isDragging && !isAnimatingTo && (
                   <div
                     className={cn("w-[85%] h-[85%] transition-transform duration-150", isSelected && "scale-105")}
                     style={{
@@ -645,6 +745,28 @@ export function ChessgroundBoard({
           }),
         )}
       </div>
+
+      {/* Animating piece */}
+      {animatingPiece && (
+        <div
+          className="absolute pointer-events-none z-40 w-[12.5%] h-[12.5%] flex items-center justify-center"
+          style={{
+            left: `${animatingPiece.startX + (animatingPiece.targetX - animatingPiece.startX) * animatingPiece.progress}%`,
+            top: `${animatingPiece.startY + (animatingPiece.targetY - animatingPiece.startY) * animatingPiece.progress}%`,
+            transition: 'none',
+          }}
+        >
+             <div
+                className="w-[85%] h-[85%]"
+                style={{
+                  filter: `drop-shadow(0 0 12px ${cityColor})`,
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: PiecesSVG[animatingPiece.piece as PieceKey] || "",
+                }}
+              />
+        </div>
+      )}
 
       {/* Dragged piece */}
       {dragPiece && (
