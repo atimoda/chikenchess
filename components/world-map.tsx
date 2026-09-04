@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { cities, type CityData } from "@/lib/cities-data"
-import { getCampaignState, resetCampaign } from "@/lib/game-progression"
+import { getPlayerProfile, resetCampaign, type PlayerProfile } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
 
@@ -15,6 +15,7 @@ interface WorldMapProps {
 
 export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [unlockedCities, setUnlockedCities] = useState<string[]>([])
+  const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null)
 
   interface PopupState {
     x: number
@@ -658,8 +659,9 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   }, [])
 
   useEffect(() => {
-    const state = getCampaignState()
-    setUnlockedCities(state.unlockedCityIds)
+    const profile = getPlayerProfile()
+    setPlayerProfile(profile)
+    setUnlockedCities(cities.map(c => c.id))
   }, [])
 
   const updatePopupPosition = (id: string, x: number, y: number) => {
@@ -748,6 +750,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       <div className="absolute inset-0 z-0">
          <GlobeComponent 
             cities={cities}
+            conqueredCities={playerProfile?.conqueredCityIds || []}
             unlockedCities={unlockedCities}
             openPopups={openPopups}
             onCityClick={handleCityClick}
@@ -895,7 +898,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
                 <h2 className="text-2xl font-mono font-bold mb-1 text-primary">chickenchess</h2>
                 
-                <p className="text-xs font-bold text-muted-foreground mb-4">v0.2.6 "The globe"</p>
+                <p className="text-xs font-bold text-muted-foreground mb-4">v3.0 "The Distribution"</p>
 
                 <div className="my-4 border-l-2 border-primary/50 pl-4 py-1">
                     <p className="text-sm text-foreground leading-relaxed">
@@ -934,20 +937,39 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       {/* UI OVERLAY LAYER */}
       <div className="absolute inset-0 z-40 overflow-hidden pointer-events-none">
         
-        {/* Legend (Fixed Bottom Left) */}
+        {/* Player Progress & Rank HUD (Fixed Bottom Left) */}
         <div 
-          className="absolute bottom-4 left-4 p-4 rounded-lg border border-border bg-card/80 backdrop-blur-sm pointer-events-auto"
+          className="absolute bottom-4 left-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-md shadow-xl pointer-events-auto min-w-[240px]"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="space-y-1">
-            <div className="text-xs font-mono text-muted-foreground">
-              Campaign Progress: <span className="text-primary font-bold">{unlockedCities.length}</span> / {cities.length} cities unlocked
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Rank</span>
+              <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(234,179,8,0.2)]">
+                🎖️ {playerProfile?.rank || "Novice Beatmaker"}
+              </span>
             </div>
-            <div className="w-32 bg-secondary h-1.5 rounded-full mt-2 overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-500"
-                style={{ width: `${(unlockedCities.length / cities.length) * 100}%` }}
-              />
+            
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-muted-foreground">Score:</span>
+              <span className="font-bold text-primary text-sm tracking-wide">
+                🏆 {(playerProfile?.points || 0).toLocaleString()} <span className="text-[10px] text-muted-foreground">PTS</span>
+              </span>
+            </div>
+
+            <div className="space-y-1 pt-1 border-t border-border/50">
+              <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                <span>Conquered</span>
+                <span>
+                  <strong className="text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}
+                </span>
+              </div>
+              <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${(((playerProfile?.conqueredCityIds?.length || 0) / cities.length)) * 100}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -957,7 +979,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           className="hidden md:flex absolute bottom-4 right-4 items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
           <div className="flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-             <span className="text-[10px] font-mono text-muted-foreground">v0.2.6 "The globe"</span>
+             <span className="text-[10px] font-mono text-muted-foreground">v3.0 "The Distribution"</span>
           </div>
 
           <div className="h-4 w-px bg-border" />

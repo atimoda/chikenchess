@@ -18,7 +18,7 @@ import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
 import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
 import { toast } from "sonner"
-import { unlockNextCity } from "@/lib/game-progression"
+import { conquerCity, unlockNextCity } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
 import { SpectrogramWidget } from "./spectrogram-widget"
 
@@ -153,11 +153,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             setSpectrogramPosition({ x: 0, y: 0 })
             setLiveCodePosition({ x: 0, y: 0 })
             
-            // Turn on widgets on mobile by default (stacked layout)
-            setKnobsOn(true)
-            setGlobalPanelOn(true)
-            setSpectrogramOn(true)
-            setLiveCodeOn(true)
+            // Turn off widgets on mobile to maintain clean zero-scroll view
+            setKnobsOn(false)
+            setGlobalPanelOn(false)
+            setSpectrogramOn(false)
+            setLiveCodeOn(false)
         } else {
             // Desktop Layout: Random Quadrants
             // Widget dimensions (approx)
@@ -525,9 +525,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
       // If White (Player) won
       if (winner === "White") {
-        unlockNextCity(city.id)
-        toast.success("CITY CONQUERED! 🎵", {
-          description: "Next arena unlocked. Ready for the next era?",
+        const result = conquerCity(city.id)
+        const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
+        toast.success(`CITY CONQUERED! +${result.earnedPoints.toLocaleString()} PTS 🎵`, {
+          description: `${result.isFirstTime ? "First conquest reward claimed!" : "Conquest bonus earned!"}${rankMsg} (Total: ${result.profile.points.toLocaleString()} PTS)`,
           duration: Infinity,
           action: {
             label: "RETURN TO MAP",
@@ -536,7 +537,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         })
       } else {
         toast.error("DEFEAT!", {
-          description: "Try again to unlock the next city."
+          description: "Try again to conquer this city and claim the points."
         })
       }
     } else if (game.isDraw() || game.isStalemate()) {
@@ -1274,7 +1275,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   return (
     <div
       ref={rootRef}
-      className="relative w-full min-h-screen bg-background overflow-hidden"
+      className="relative w-full h-[100dvh] max-h-[100dvh] max-w-[100vw] bg-background overflow-hidden select-none flex flex-col"
       onClick={() => {
         setSynthSelectedSquare(null)
       }}
@@ -1598,7 +1599,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <h1 className="font-mono font-bold text-base md:text-lg flex items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
               <span style={{ color: city.color }}>{city.name.toUpperCase()}</span>
-              <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground opacity-50">v0.2.5 "The Editor"</span>
             </h1>
           </div>
         </div>
@@ -1710,12 +1710,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onClick={() => {
                         setGameStatus("CHECKMATE - White wins!")
                         setIsPlaying(false)
-                        unlockNextCity(city.id)
+                        const result = conquerCity(city.id)
                         if (engineRef.current) {
                             engineRef.current.playSeatbelt()
                         }
-                        toast.success("CITY CONQUERED! 🎵", {
-                            description: "Next arena unlocked. Ready for the next era?",
+                        const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
+                        toast.success(`CITY CONQUERED! +${result.earnedPoints.toLocaleString()} PTS 🎵`, {
+                            description: `${result.isFirstTime ? "First conquest reward claimed!" : "Conquest bonus earned!"}${rankMsg} (Total: ${result.profile.points.toLocaleString()} PTS)`,
                             duration: Infinity,
                             action: {
                                 label: "RETURN TO MAP",
@@ -1735,17 +1736,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         {/* Animated Descent for Phase 2 -> 3 */}
         <div 
             className={cn(
-                "flex flex-col gap-4 items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 transition-all duration-[2000ms] ease-out",
-                introPhase < 2 ? "-translate-y-[150vh]" : introPhase === 2 ? "translate-y-[25vh]" : "lg:pt-6" // 25vh approx center vertical
+                "flex flex-col items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 transition-all duration-[2000ms] ease-out px-2",
+                introPhase < 2 ? "-translate-y-[150vh]" : introPhase === 2 ? "translate-y-[25vh]" : "lg:pt-6"
             )}
             style={{
                 // If introPhase is 3 (Game Active), we reset transform to allow normal layout flow
                 transform: introPhase === 3 ? "none" : undefined,
-                marginTop: introPhase === 3 ? (typeof window !== 'undefined' && window.innerWidth > 768 ? 'calc(50vh - 350px)' : '100px') : undefined // Centering hack
+                marginTop: introPhase === 3 ? (typeof window !== 'undefined' && window.innerWidth > 768 ? 'calc(50vh - 350px)' : '48px') : undefined
             }}
         >
           <div
-            className="w-full max-w-full flex flex-col gap-4 relative"
+            className="w-full max-w-full flex flex-col items-center relative"
             ref={centerContainerRef}
           >
 
@@ -1785,7 +1786,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20">
               {/* Board Area - Moved to Top */}
               <div
-                className="w-[90vw] max-w-[512px] aspect-square relative z-20 mb-4"
+                className="w-[min(90vw,calc(100dvh-270px),512px)] aspect-square relative z-20 mb-2 sm:mb-4"
                 ref={boardAreaRef}
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -1826,10 +1827,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
               {/* Time Control Buttons - Moved Below Board */}
               <div className={cn(
-                  "flex w-full items-center mb-6 gap-2 justify-center relative z-50 transition-opacity duration-1000",
+                  "flex w-full items-center mb-2 sm:mb-4 gap-2 justify-center relative z-50 transition-opacity duration-1000",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <Button
                     variant="ghost"
                     size="default"
@@ -1837,13 +1838,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onMouseEnter={() => playDrum("bd")}
                     onMouseDown={() => playDrum("oh", 1.5)}
                     disabled={moveHistory.length === 0}
-                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
+                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20" // Default low opacity background
                     } as React.CSSProperties}
                   >
-                    <Undo2 className="w-10 h-10" />
+                    <Undo2 className="w-7 h-7 sm:w-10 sm:h-10" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -1852,13 +1853,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onMouseEnter={() => playDrum("bd")}
                     onMouseDown={() => playDrum("sd")}
                     onMouseUp={() => playDrum("hh")}
-                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
+                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20"
                     } as React.CSSProperties}
                   >
-                    {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
+                    {isPlaying ? <Pause className="w-7 h-7 sm:w-10 sm:h-10" /> : <Play className="w-7 h-7 sm:w-10 sm:h-10" />}
                   </Button>
                   <Button
                     variant="ghost"
@@ -1867,20 +1868,20 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onMouseEnter={() => playDrum("bd")}
                     onMouseDown={() => playDrum("hh", 1.5)}
                     disabled={redoStack.length === 0}
-                    className="w-16 h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
+                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20"
                     } as React.CSSProperties}
                   >
-                    <Redo2 className="w-10 h-10" />
+                    <Redo2 className="w-7 h-7 sm:w-10 sm:h-10" />
                   </Button>
                 </div>
               </div>
 
               {/* Moves Ticker - Moved ABOVE Eval */}
               <div 
-                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-2 px-1 relative z-20 overflow-hidden"
+                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-1.5 px-1 relative z-20 overflow-hidden"
                >
                    <div
                       ref={movesTickerRef}
@@ -1919,19 +1920,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               </div>
 
               <div className={cn(
-                  "w-[90vw] max-w-[512px] flex justify-start mb-7 transition-opacity duration-1000",
+                  "w-[90vw] max-w-[512px] flex justify-start mb-2 sm:mb-6 transition-opacity duration-1000",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
                   <span className="text-[10px] text-white/80 font-mono tracking-wide">
                       Chance ({whitePercent}%)
                   </span>
               </div>
-
-              {isMobile && (
-                  <div className={cn("flex flex-col gap-4 mt-4 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
-                      {widgetsContent(true)}
-                  </div>
-              )}
             </div>
           </div>
 
@@ -2039,6 +2034,20 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
       <div className={cn("transition-opacity duration-1000", introPhase < 2 ? "opacity-0 pointer-events-none" : "opacity-100")}>
       {!isMobile && widgetsContent(false)}
+      </div>
+
+      {/* Bottom Right Info & Version */}
+      <div 
+        className="hidden sm:flex absolute bottom-3 right-3 z-30 pointer-events-none items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
+      >
+        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-[10px] font-mono text-muted-foreground">v3.0 "The Distribution"</span>
+      </div>
+      <div 
+        className="flex sm:hidden absolute bottom-1.5 right-2 z-30 pointer-events-none items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
+      >
+        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-[9px] font-mono text-muted-foreground">v3.0 "The Distribution"</span>
       </div>
 
     </div>

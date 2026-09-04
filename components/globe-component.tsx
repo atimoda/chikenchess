@@ -9,7 +9,8 @@ import { CityPopup } from './city-popup'
 
 interface GlobeProps {
   cities: CityData[]
-  unlockedCities: string[]
+  conqueredCities?: string[]
+  unlockedCities?: string[]
   openPopups: Record<string, any>
   onCityClick: (city: CityData) => void
   onPopupClose: (cityId: string) => void
@@ -74,6 +75,7 @@ const PulsingRing = ({ city, isOpen, isHoveredProp }: { city: CityData, isOpen: 
 const PopupContainer = ({
     city,
     popup, // Initial/Global state
+    isConquered,
     isUnlocked,
     pressedPopupState,
     bringToFront,
@@ -231,6 +233,7 @@ const PopupContainer = ({
                     <CityPopup
                         city={city}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
+                        isConquered={isConquered}
                         isUnlocked={isUnlocked}
                         isPressed={pressedPopupState?.id === city.id}
                         rotation={pressedPopupState?.rotation || 0}
@@ -303,7 +306,8 @@ const PopupContainer = ({
 
 const GlobeContent = ({ 
   cities, 
-  unlockedCities,
+  conqueredCities = [],
+  unlockedCities: _unlockedCities = [],
   openPopups, 
   onCityClick, 
   onPopupClose,
@@ -420,6 +424,9 @@ const GlobeContent = ({
     // Standby Logic
     const now = Date.now()
     const hasOpenPopups = Object.keys(openPopups).length > 0
+    if (hasOpenPopups) {
+        lastInteractionTime.current = now // Keep resetting while popups are open
+    }
     const timeSinceInteraction = now - lastInteractionTime.current
 
     // Report Zoom Level
@@ -435,7 +442,8 @@ const GlobeContent = ({
         }
     }
     
-    if (introZoomComplete && !isDraggingPopup && timeSinceInteraction > 3000) {
+    // Completely freeze rotation if popup is open, dragging, or recently interacted
+    if (introZoomComplete && !isDraggingPopup && !hasOpenPopups && timeSinceInteraction > 3000) {
         if (!isStandby) {
             setIsStandby(true)
             // Initialize random rotation axis and speed
@@ -634,7 +642,8 @@ const GlobeContent = ({
           {cities.map((city) => {
             const position = getSphericalCoordinates(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS)
             const isOpen = !!openPopups[city.id]
-            const isUnlocked = unlockedCities.includes(city.id)
+            const isConquered = (conqueredCities || []).includes(city.id)
+            const isUnlocked = true // All cities playable in v3.0!
             const popup = openPopups[city.id]
             const [isHovered, setIsHovered] = useState(false)
             
@@ -690,18 +699,26 @@ const GlobeContent = ({
                   <meshStandardMaterial 
                     color={city.color} 
                     emissive={city.color}
-                    emissiveIntensity={isUnlocked ? 1 : 0.5}
+                    emissiveIntensity={isConquered ? 1.4 : 0.85}
                     toneMapped={false}
                     transparent
-                    opacity={isUnlocked ? 1 : 0.25}
+                    opacity={1}
                   />
                 </mesh>
                 
                 {/* Glow effect */}
                 <mesh scale={[1.5, 1.5, 1.5]}>
                     <sphereGeometry args={[0.04, 16, 16]} />
-                    <meshBasicMaterial color={city.color} transparent opacity={isUnlocked ? 0.3 : 0.15} />
+                    <meshBasicMaterial color={city.color} transparent opacity={isConquered ? 0.45 : 0.25} />
                 </mesh>
+
+                {/* Conquered Golden Aura */}
+                {isConquered && (
+                    <mesh scale={[2.1, 2.1, 2.1]}>
+                        <sphereGeometry args={[0.04, 16, 16]} />
+                        <meshBasicMaterial color="#eab308" transparent opacity={0.35} />
+                    </mesh>
+                )}
 
                 {/* Pulse Ring Effect (Hover/Selected) */}
                 <PulsingRing city={city} isOpen={isOpen} isHoveredProp={isHovered} />
@@ -710,6 +727,7 @@ const GlobeContent = ({
                       <PopupContainer
                           city={city}
                           popup={popup}
+                          isConquered={isConquered}
                           isUnlocked={isUnlocked}
                           pressedPopupState={pressedPopupState}
                           bringToFront={bringToFront}
