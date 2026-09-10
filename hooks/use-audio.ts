@@ -12,7 +12,8 @@ export function useAudio(
   city: CityData, 
   isPlaying: boolean, 
   activeSquares: Set<string>,
-  squareEffects: SquareEffectMap = {}
+  squareEffects: SquareEffectMap = {},
+  enabled = true
 ) {
   const engineRef = useRef<AudioEngine | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -46,7 +47,7 @@ export function useAudio(
   useEffect(() => {
     if (!engineRef.current || !isInitialized) return
 
-    if (isPlaying) {
+    if (isPlaying && enabled) {
       engineRef.current.resume()
       engineRef.current.start()
       // Start ambience only if playing AND city.id exists
@@ -58,7 +59,7 @@ export function useAudio(
       // Stop ambience if pause/mute
       engineRef.current.stopAmbience()
     }
-  }, [isPlaying, isInitialized, city.scale, city.id])
+  }, [isPlaying, isInitialized, city.scale, city.id, enabled])
 
   const togglePlayback = useCallback(async () => {
     if (!engineRef.current) return

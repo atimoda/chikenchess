@@ -12,6 +12,7 @@ import { GameControls } from "./game-controls"
 import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
+import { useMusic } from "@/hooks/use-music"
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import type { SquareEffectMap } from "@/lib/types"
@@ -59,7 +60,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [activeSquares, setActiveSquares] = useState<Set<string>>(new Set())
   const [synthSelectedSquare, setSynthSelectedSquare] = useState<string | null>(null)
   const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
-  const [globalEffects, setGlobalEffects] = useState<GlobalEffects>(DEFAULT_GLOBAL_EFFECTS)
+  const [globalEffects, setGlobalEffects] = useState<GlobalEffects>({ ...DEFAULT_GLOBAL_EFFECTS, bpm: city.bpm })
   const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
  
@@ -361,7 +362,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     targetSide?: 'left' | 'right' | 'top' | 'bottom'
   }[]>([])
 
-  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects)
+  const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume)
+
+  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects, !music.enabled)
 
   // Seatbelt Sound
   useEffect(() => {
@@ -703,6 +706,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setActiveSquares(new Set())
     setSynthSelectedSquare(null)
     setSquareEffects({})
+    music.reset()
     setLastEvalScore(null)
     setIsEvaluating(false)
     evalPendingRef.current = false
@@ -1190,11 +1194,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       return (
           <>
             <SpectrogramWidget
+                getFrequencyData={music.enabled ? music.getFrequencyData : undefined}
                 ref={spectrogramHandleRef}
                 toggleRef={spectrogramToggleRef}
                 isOn={spectrogramOn}
                 onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
-                isPlaying={isPlaying}
+                isPlaying={isPlaying || (music.enabled && !!music.preview)}
                 cityColor={city.color}
                 position={mobileMode ? undefined : (spectrogramPosition || undefined)}
                 onPositionChange={(pos) => setSpectrogramPosition(pos)}
@@ -1205,8 +1210,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <SynthControlPanel
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
-                selectedSquare={synthSelectedSquare as Square | null}
+                selectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
                 selectedPieceInfo={(() => {
+                    if (music.enabled) return music.instrument?.name ?? null
                     if (!synthSelectedSquare) return null
                     // @ts-ignore
                     const piece = game.get(synthSelectedSquare as Square)
@@ -1219,8 +1225,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     }
                     return `${piece.color === "w" ? "White" : "Black"} ${pieceNameMap[piece.type]} - ${instrumentMap[piece.type]}`
                 })()}
-                effects={synthSelectedSquare ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS : DEFAULT_EFFECTS}
+                effects={music.enabled ? (music.selected ? music.effects[music.selected.id] ?? { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 } : DEFAULT_EFFECTS) : synthSelectedSquare ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS : DEFAULT_EFFECTS}
                 onEffectChange={(key, value) => {
+                    if (music.enabled) {
+                      if (!music.selected) return
+                      const id = music.selected.id
+                      music.setEffects(prev => ({ ...prev, [id]: { ...(prev[id] || { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 }), [key]: value } }))
+                      return
+                    }
                     if (!synthSelectedSquare) return
                     setSquareEffects((prev) => ({
                         ...prev,
@@ -1239,6 +1251,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <GlobalControlPanel
+                showAmbience={!music.enabled}
                 ref={globalPanelRef}
                 toggleRef={globalPanelToggleRef}
                 effects={globalEffects}
@@ -1257,7 +1270,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 ref={liveCodeRef}
                 toggleRef={liveCodeToggleRef}
                 handleRef={liveCodeHandleRef}
-                pattern={currentPattern}
+                pattern={music.enabled ? music.code : currentPattern}
                 city={city}
                 cityColor={city.color}
                 isPlaying={isPlaying}
@@ -1785,6 +1798,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
             <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20">
               {/* Board Area - Moved to Top */}
+              {music.enabled && (
+                <div className="text-xs font-mono text-center mb-2" role="status">
+                  {music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview
+                    ? <span className="text-orange-300">AUDIÇÃO · {music.instrument?.name} · {music.preview.square} · solte para confirmar ou cancelar</span>
+                    : <span className="text-white/60">STRUDEL · segure uma peça para ouvir seu instrumento</span>}
+                </div>
+              )}
               <div
                 className="w-[min(90vw,calc(100dvh-270px),512px)] aspect-square relative z-20 mb-2 sm:mb-4"
                 ref={boardAreaRef}
@@ -1799,9 +1819,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   onMove={handlePlayerMove} 
                   cityColor={city.color} 
                   isThinking={isThinking} 
-                  synthSelectedSquare={synthSelectedSquare as Square | null}
+                  synthSelectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
                   activeSquares={activeSquares}
+                  onPieceHold={music.enabled ? music.audition : undefined}
+                  onPieceRelease={music.enabled ? music.endAudition : undefined}
+                  musicPulse={music.enabled ? music.pulse : null}
                   onBoardClick={(square) => {
+                    if (music.enabled) { music.select(square); return }
                     setSynthSelectedSquare(square)
                     const piece = game.get(square as Square)
                     if (piece) {
@@ -1811,6 +1835,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     }
                   }}
                   onDragOverSquare={(from, to) => {
+                    if (music.enabled) { music.audition(from, to); return }
                     if (from === to) return
                     const piece = game.get(from as Square)
                     if (!piece) return

@@ -1,5 +1,7 @@
 # Roadmap - ChiKenChess 1.0
 
+> Documento histórico. A prioridade atual e a visão revisada estão em [MUSIC_ENGINE_PLAN.md](./MUSIC_ENGINE_PLAN.md), de 10/09/2026: primeiro validar a engine musical em Düsseldorf. As fases, preços e tecnologias abaixo não são compromissos vigentes.
+
 Este documento define a visão global de curto e médio prazo para a plataforma ChiKenChess.
 
 ## 1. Visão do Produto

@@ -18,6 +18,7 @@ interface SpectrogramWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   isOn: boolean
   onToggle: () => void
   isPlaying: boolean
+  getFrequencyData?: (data: Uint8Array<ArrayBuffer>) => void
 }
 
 export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetProps>(({
@@ -29,6 +30,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   isOn,
   onToggle,
   isPlaying,
+  getFrequencyData,
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
@@ -43,7 +45,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
-  const dataArrayRef = useRef<Uint8Array>(new Uint8Array(128))
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(128))
 
   const widgetBorderColor = !isOn 
     ? "rgba(255,255,255,0.1)" 
@@ -85,8 +87,8 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
         ctx.fillRect(0, 0, width, height)
     
         if (isPlaying) {
-            const audioEngine = getAudioEngine()
-            audioEngine.getFrequencyData(dataArrayRef.current)
+            if (getFrequencyData) getFrequencyData(dataArrayRef.current)
+            else getAudioEngine().getFrequencyData(dataArrayRef.current)
         
             const bars = 32
             const barWidth = width / bars
@@ -119,7 +121,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
     return () => {
         if (animationRef.current) cancelAnimationFrame(animationRef.current)
     }
-  }, [isOn, isPlaying, cityColor])
+  }, [isOn, isPlaying, cityColor, getFrequencyData])
 
   const initialPosRef = useRef<{x: number, y: number} | null>(null)
 

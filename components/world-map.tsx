@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
 import { cities, type CityData } from "@/lib/cities-data"
 import { getPlayerProfile, resetCampaign, type PlayerProfile } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
@@ -841,6 +842,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         </div>
 
         <div className="absolute top-6 right-6 flex items-center gap-4 pointer-events-auto text-xs font-mono">
+          <Link href="/creative" className="rounded-md border border-primary/40 bg-black/60 px-3 py-2 text-primary hover:bg-primary/15">Modo Criativo</Link>
           <button
             onClick={(e) => {
                 e.preventDefault()

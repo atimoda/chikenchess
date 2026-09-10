@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 
-interface GlobalControlPanelProps extends React.HTMLAttributes<HTMLDivElement> {
+interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
+  showAmbience?: boolean
   effects: GlobalEffects
   onEffectChange: (effect: keyof GlobalEffects, value: number) => void
   cityColor: string
@@ -22,6 +23,7 @@ interface GlobalControlPanelProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelProps>(({
+  showAmbience = true,
   effects,
   onEffectChange,
   cityColor,
@@ -150,7 +152,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mt-2">
+            {showAmbience && <div className="grid grid-cols-3 gap-2 mt-2">
               <Knob
                 label="AMB PITCH"
                 value={effects.ambiencePitch}
@@ -175,7 +177,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
                 onChange={(v) => onEffectChange("ambienceLfoSpeed", v)}
                 neon={isOn}
               />
-            </div>
+            </div>}
           </div>
 
         </div>

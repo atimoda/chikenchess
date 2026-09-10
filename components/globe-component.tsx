@@ -656,7 +656,7 @@ const GlobeContent = ({
                 <mesh 
                     onClick={(e) => {
                         // Keep onClick for desktop/mouse standard behavior if it works
-                        if (e.pointerType === 'mouse') {
+                        if (("pointerType" in e.nativeEvent ? e.nativeEvent.pointerType : "mouse") === 'mouse') {
                             e.stopPropagation()
                             handleInteraction()
                             handleCityClickInternal(city) 
