@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 
-interface SynthControlPanelProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   selectedSquare: string | null
   selectedPieceInfo: string | null
   effects: SquareEffects
@@ -24,7 +24,7 @@ interface SynthControlPanelProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
   selectedSquare,
-  selectedPieceInfo: _selectedPieceInfo,
+  selectedPieceInfo,
   effects,
   onEffectChange,
   cityColor,
@@ -121,7 +121,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300",
                isOn && selectedSquare ? "text-[var(--city-neon)]" : "text-muted-foreground"
              )}>
-                {selectedSquare ? `SQ: ${selectedSquare}` : "PIECE PARAMS"}
+                {selectedSquare ? `${selectedSquare} · ${selectedPieceInfo ?? "Instrumento"}` : "PIECE PARAMS"}
              </span>
           </div>
           

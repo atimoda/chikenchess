@@ -9,7 +9,7 @@ import { PAD_SAMPLES, SquareEffects, DEFAULT_EFFECTS } from "@/lib/types"
 import { Draggable } from "@/components/ui/draggable"
 import { Power } from "lucide-react"
 
-interface StrudelEditorProps extends React.HTMLAttributes<HTMLDivElement> {
+interface StrudelEditorProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   selectedSquare: string | null
   effects: SquareEffects
   onEffectChange: (effect: keyof SquareEffects, value: any) => void

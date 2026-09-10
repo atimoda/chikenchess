@@ -529,7 +529,7 @@ export function parsePatternForAudio(game: Chess, city: CityData, activeSquares:
     
     let pan = (k.file / 7) * 2 - 1
     let gain = 0.5
-    let sound: string = "gm_acoustic_bass"
+    let sound: "gm_acoustic_bass" | "brass_staccato" = "gm_acoustic_bass"
 
     if (city.id === "vienna") {
         sound = "brass_staccato"
