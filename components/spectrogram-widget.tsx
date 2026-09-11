@@ -45,6 +45,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
+  const lastFrameRef = useRef(0)
   const dataArrayRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(128))
 
   const widgetBorderColor = !isOn 
@@ -66,7 +67,11 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
         return
     }
 
-    const animate = () => {
+    const animate = (timestamp: number) => {
+        animationRef.current = requestAnimationFrame(animate)
+        // Canvas analysis is intentionally capped. Audio scheduling is unaffected.
+        if (timestamp - lastFrameRef.current < 1000 / 24) return
+        lastFrameRef.current = timestamp
         const canvas = canvasRef.current
         if (!canvas) return
     
@@ -113,7 +118,6 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
              ctx.fillRect(0, height - 1, width, 1)
         }
     
-        animationRef.current = requestAnimationFrame(animate)
     }
 
     animationRef.current = requestAnimationFrame(animate)

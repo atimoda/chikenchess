@@ -22,6 +22,7 @@ import { toast } from "sonner"
 import { conquerCity, unlockNextCity } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
 import { SpectrogramWidget } from "./spectrogram-widget"
+import { isConstrainedDevice } from "@/lib/performance"
 
 import {
   DropdownMenu,
@@ -428,36 +429,38 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }
     }
 
-    evalStockfishRef.current = new Worker("/stockfish.js")
-    evalStockfishRef.current.postMessage("uci")
-    evalStockfishRef.current.postMessage("isready")
-
-    evalStockfishRef.current.onmessage = (event) => {
-      const message = event.data as string
-      if (message.startsWith("info")) {
-        const mateMatch = message.match(/score mate (-?\d+)/)
-        const cpMatch = message.match(/score cp (-?\d+)/)
-        if (mateMatch) {
-          const mate = parseInt(mateMatch[1], 10)
-          const baseScore = mate > 0 ? 10000 : -10000
-          const side = evalSideToMoveRef.current
-          evalLastScoreRef.current = side === "w" ? baseScore : -baseScore
-        } else if (cpMatch) {
-          const cp = parseInt(cpMatch[1], 10)
-          const side = evalSideToMoveRef.current
-          evalLastScoreRef.current = side === "w" ? cp : -cp
-        }
-      } else if (message.startsWith("bestmove")) {
-        const finalScore = evalLastScoreRef.current
-        if (finalScore != null && evalPendingRef.current) {
-          setLastEvalScore(finalScore)
-          lastEvalScoreRef.current = finalScore
-          if (evalPendingFenRef.current) {
-            evalCacheRef.current.set(evalPendingFenRef.current, finalScore)
+    if (!isConstrainedDevice()) {
+      const evalWorker = new Worker("/stockfish.js")
+      evalStockfishRef.current = evalWorker
+      evalWorker.postMessage("uci")
+      evalWorker.postMessage("isready")
+      evalWorker.onmessage = (event) => {
+        const message = event.data as string
+        if (message.startsWith("info")) {
+          const mateMatch = message.match(/score mate (-?\d+)/)
+          const cpMatch = message.match(/score cp (-?\d+)/)
+          if (mateMatch) {
+            const mate = parseInt(mateMatch[1], 10)
+            const baseScore = mate > 0 ? 10000 : -10000
+            const side = evalSideToMoveRef.current
+            evalLastScoreRef.current = side === "w" ? baseScore : -baseScore
+          } else if (cpMatch) {
+            const cp = parseInt(cpMatch[1], 10)
+            const side = evalSideToMoveRef.current
+            evalLastScoreRef.current = side === "w" ? cp : -cp
           }
+        } else if (message.startsWith("bestmove")) {
+          const finalScore = evalLastScoreRef.current
+          if (finalScore != null && evalPendingRef.current) {
+            setLastEvalScore(finalScore)
+            lastEvalScoreRef.current = finalScore
+            if (evalPendingFenRef.current) {
+              evalCacheRef.current.set(evalPendingFenRef.current, finalScore)
+            }
+          }
+          evalPendingRef.current = false
+          setIsEvaluating(false)
         }
-        evalPendingRef.current = false
-        setIsEvaluating(false)
       }
     }
 
@@ -468,6 +471,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }, [])
 
   const requestEvaluation = useCallback((gameInstance: Chess) => {
+    if (!evalStockfishRef.current) {
+      setIsEvaluating(false)
+      return
+    }
     const fen = gameInstance.fen()
     
     // Check cache first
@@ -635,7 +642,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setRedoStack([]) // Clear redo stack on new move
       
       // Auto-enable spectrogram on first move
-      if (moveHistory.length === 0) {
+      if (moveHistory.length === 0 && !isConstrainedDevice()) {
           setSpectrogramOn(true)
           setLiveCodeOn(true)
       }
@@ -673,7 +680,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         console.log("Triggering AI for FEN:", gameCopy.fen())
         setTimeout(() => {
           stockfishRef.current?.postMessage(`position fen ${gameCopy.fen()}`)
-          stockfishRef.current?.postMessage(`go depth ${aiDepth}`)
+          const effectiveDepth = isConstrainedDevice() ? Math.min(aiDepth, 6) : aiDepth
+          stockfishRef.current?.postMessage(`go depth ${effectiveDepth}`)
         }, 300)
       } else {
         console.log("Game over detected, AI not triggered.")

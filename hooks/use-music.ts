@@ -17,6 +17,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const [error, setError] = useState<string | null>(null)
   const runtime = useRef<MusicRuntime | null>(null)
   const snapshot = useMemo(() => ({ pieces, scale: city.scale, bpm, volume, playing, effects }), [pieces, city.scale, bpm, volume, playing, effects])
+  const code = useMemo(() => enabled ? renderMusicCode(snapshot, preview) : '', [enabled, snapshot, preview])
 
   useEffect(() => {
     if (!enabled) return
@@ -25,7 +26,11 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     engine.preload()
     return () => { engine.dispose(); runtime.current = null }
   }, [enabled])
-  useEffect(() => { runtime.current?.update(snapshot) }, [snapshot])
+  useEffect(() => {
+    const mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
+    const timer = setTimeout(() => runtime.current?.update(snapshot), mobile ? 50 : 16)
+    return () => clearTimeout(timer)
+  }, [snapshot])
   useEffect(() => {
     if (enabled && playing) void runtime.current?.unlock()
   }, [enabled, playing])
@@ -55,7 +60,6 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     if (runtime.current) runtime.current.getFrequencyData(data)
     else data.fill(0)
   }, [])
-  const code = enabled ? renderMusicCode(snapshot, preview) : ''
   return {
     enabled, audition, endAudition, select, reset, selected, effects, setEffects,
     code, preview, pulse, error, getFrequencyData,
