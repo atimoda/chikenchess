@@ -1,4 +1,7 @@
 import { Chess, type PieceSymbol, type Square } from 'chess.js'
+import type { SampleSource } from './sample-banks'
+import type { Automations } from './automation'
+import type { GrooveBinding } from './grooves'
 
 export type Behavior = 'pulse' | 'phrase' | 'sustain'
 export interface MusicPiece {
@@ -26,6 +29,9 @@ export interface Instrument {
   clip?: number
   phrases?: string[]
   mask?: string
+  source?: { kind: 'synth' } | SampleSource
+  automations?: Automations
+  groove?: GrooveBinding
 }
 
 export interface MovementMapping {

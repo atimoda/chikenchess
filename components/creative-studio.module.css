@@ -66,6 +66,8 @@
 .formEditor { display: grid; gap: 12px; padding-top: 16px; }
 .formEditor textarea { font-family: var(--font-geist-mono), monospace; font-size: 11px; line-height: 1.55; resize: vertical; }
 .formEditor .actions { margin-top: -3px; }
+.automationRow { display: grid; gap: 8px; padding: 10px; background: #131c17; border: 1px solid #34463a; border-radius: 6px; }
+.triple { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .studio details { border-top: 1px solid #39473d; margin-top: 18px; padding-top: 16px; }
 .studio summary { cursor: pointer; font-size: 12px; font-weight: 500; color: #d5dfd2; }
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 17px 14px; padding-top: 18px; }

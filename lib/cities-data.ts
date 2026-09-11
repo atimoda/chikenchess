@@ -34,8 +34,8 @@ const rawCities: Omit<CityData, "coordinates">[] = [
     year: 1970,
     genre: "Krautrock / Electro Pop",
     description: "Robotic rhythms, synthesized vocoders, the blueprint of electronic music.",
-    bpm: 118,
-    scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Updated per user request)
+    bpm: 122,
+    scale: ["C#4", "D#4", "E4", "F#4", "G#4", "A4", "B4"],
     aiDepth: 15,
     geoCoordinates: { lat: 51.2277, lng: 6.7735 },
     color: "#ff3333",

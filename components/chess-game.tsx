@@ -13,6 +13,7 @@ import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
+import { MusicTransportReadout, MusicVoiceReadout } from './music-playback'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import type { SquareEffectMap } from "@/lib/types"
@@ -366,6 +367,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume)
 
   const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects, !music.enabled)
+
+  // A city kit owns its initial tempo. The global control can still change it
+  // freely after the kit has been loaded for this match.
+  useEffect(() => {
+    const kitBpm = music.kitBpm
+    const kitVolume = music.kitVolume
+    if (kitBpm == null) return
+    setGlobalEffects(current => current.bpm === kitBpm && current.volume === kitVolume ? current : { ...current, bpm: kitBpm, volume: kitVolume ?? current.volume })
+  }, [city.id, music.kitBpm, music.kitVolume])
 
   // Seatbelt Sound
   useEffect(() => {
@@ -1813,6 +1823,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     : <span className="text-white/60">STRUDEL · segure uma peça para ouvir seu instrumento</span>}
                 </div>
               )}
+              {music.enabled && <div className="w-full max-w-lg px-3"><MusicTransportReadout monitor={music.monitor} />{music.selected && <MusicVoiceReadout monitor={music.monitor} id={music.selected.id} />}</div>}
               <div
                 className="w-[min(90vw,calc(100dvh-270px),512px)] aspect-square relative z-20 mb-2 sm:mb-4"
                 ref={boardAreaRef}

@@ -727,7 +727,9 @@ const GlobeContent = ({
       
       <TrackballControls 
         ref={controlsRef} 
-        enabled={!isDraggingPopup}
+        // Keep the controller enabled so it always receives pointerup and clears
+        // its internal drag state. Only rotation is suspended behind a popup.
+        noRotate={isDraggingPopup}
         noPan={true} 
         minDistance={3.33} 
         maxDistance={10} 

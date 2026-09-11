@@ -21,13 +21,13 @@ O registro tipado em `lib/music/pattern-library.ts` já expõe nove receitas no 
 - `bonespurs-harmony` e `bonespurs-sequence`;
 - `bennington-bass`, `bennington-pad` e `bennington-lead`.
 
-São adaptações compactas em graus da escala, adequadas à engine atual. Ainda não cobrem banks de samples, parâmetros que também são padrões nem grooves distribuídos por `pickOut`.
+São adaptações compactas em graus da escala. O editor também permite combinar fontes de samples, automações e grooves compartilhados. Aplicar uma receita de síntese restaura sua fonte e remove o vínculo de groove e as automações anteriores, evitando que uma receita de baixo continue tocando um sample percussivo por acidente.
 
 ### Primeira formação integrada
 
-`Düsseldorf · Elliptical Lab` aplica seis dessas vozes em um arranjo de 16 ciclos. O `SectionTimeline` é uma mini-notação global; cada instrumento possui um `PhraseBank` de até quatro variações, resolvido por `pickRestart`, e uma máscara opcional sincronizada. A formação integrada usa três variações por peça e entradas progressivas. Timeline, frases e máscara já são editáveis e persistem no JSON versionado do kit.
+`Düsseldorf · Electro 01` sucede a formação de seis vozes `Elliptical Lab` e ativa as 16 brancas para audição no Criativo. O `SectionTimeline` é uma mini-notação global; cada instrumento possui um `PhraseBank` de até quatro variações, resolvido por `pickRestart`, e uma máscara opcional sincronizada. A forma de 16 ciclos é `[0@4 1@4 2@4 1@4]/16`, com A/B/C/B por quatro ciclos cada. O preset atual remove as máscaras de entrada para apresentar todas as vozes desde a ativação.
 
-Com isso, timeline, `PhraseBank`, reinício coordenado e máscaras passam de requisito a capacidade implementada. Permanecem como P0: banks/samples, parâmetros que também são padrões e distribuição de um groove único entre peões por `pickOut`.
+Além de timeline, frases e máscaras, estão implementados: banco genérico de samples, parâmetros em padrão/seno/rampa e grooves compartilhados por qualquer peça. O groove possui trilhas de ritmo e acento; `struct` define ataques e `pickRestart` coordena seções. O primeiro banco é original e local (13 WAVs CC0), sem redistribuir samples dos exemplos. Ganho, filtro, pan, reverb e delay aceitam automação por ataque; transposição em padrão, GM, layers e modulação dentro de notas sustentadas permanecem pendentes. O JSON v4 preserva todas essas configurações no kit da cidade.
 
 ## Prioridade: campanha eletrônica
 
@@ -63,7 +63,7 @@ Com isso, timeline, `PhraseBank`, reinício coordenado e máscaras passam de req
 - `PhraseBank` com seleção normal, reinício de frase e variação determinada por seed.
 - `SectionTimeline` compartilhada: todas as peças consultam a mesma seção sem perder o relógio.
 - Padrões como valores de ganho, filtro, pan, transposição, reverb e delay, não somente números fixos.
-- Percussão com `pickOut`: um groove coordenado pode ser distribuído entre peões sem perder sua relação temporal.
+- Groove coordenado distribuído entre quaisquer peças: implementado por trilhas de ritmo/acentos com `struct` e `pickRestart`; `pickOut` permanece uma possível técnica de importação.
 
 ### P1 — harmonia e interpretação
 

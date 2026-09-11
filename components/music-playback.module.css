@@ -1,0 +1,13 @@
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font: 11px monospace; color: #b9cbbc; padding: 8px 0; }
+.transport b { color: #e1eeac; }
+.beats { display: flex; gap: 5px; }
+.beats i { width: 8px; height: 8px; border-radius: 50%; background: #485448; }
+.beats i[data-on='true'] { background: #e1eeac; }
+.voice { padding: 12px 0; }
+.line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: #e1eeac; font: 11px monospace; margin-bottom: 8px; }
+.voice svg { display: block; width: 100%; max-height: 80px; background: #111a15; border-radius: 4px; }
+.badge { font: 9px sans-serif; color: #a5b1a8; display: block; }
+.badge[data-status='note'] { color: #d5f49d; }
+.badge[data-status='masked'], .badge[data-status='loading'] { color: #e1b778; }
+.badge[data-status='error'] { color: #f7aa9d; }
+.values { display: flex; flex-wrap: wrap; gap: 6px 12px; font: 10px monospace; color: #b6c7b9; padding-top: 8px; min-height: 25px; }
