@@ -13,6 +13,8 @@ interface DraggableProps {
   className?: string
   style?: React.CSSProperties
   scale?: number
+  onMouseDown?: React.MouseEventHandler<HTMLDivElement>
+  onTouchStart?: React.TouchEventHandler<HTMLDivElement>
 }
 
 export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
@@ -26,6 +28,8 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
   className,
   style,
   scale = 1,
+  onMouseDown: externalMouseDown,
+  onTouchStart: externalTouchStart,
   ...props
 }, ref) => {
   const [internalPosition, setInternalPosition] = useState(defaultPosition)
@@ -36,23 +40,14 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      console.log('Draggable: MouseDown detected', {
-        target: e.target,
-        handleRefCurrent: handleRef?.current,
-        isContained: handleRef?.current?.contains(e.target as Node),
-        isDragHandleAttribute: (e.target as Element).closest('[data-drag-handle="true"]')
-      })
-
       // If a handle is specified, only allow dragging from the handle
       // Also allow if the element has data-drag-handle="true"
       if (handleRef?.current && !handleRef.current.contains(e.target as Node)) {
         if (!(e.target as Element).closest('[data-drag-handle="true"]')) {
-          console.log('Draggable: Blocked - Click outside handle')
           return
         }
       }
       
-      console.log('Draggable: Starting drag')
       e.preventDefault()
       e.stopPropagation()
 
@@ -192,13 +187,11 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
       {...props}
       onMouseDown={(e) => {
         handleMouseDown(e)
-        // @ts-ignore
-        if (props.onMouseDown) props.onMouseDown(e)
+        externalMouseDown?.(e)
       }}
       onTouchStart={(e) => {
         handleTouchStart(e)
-        // @ts-ignore
-        if (props.onTouchStart) props.onTouchStart(e)
+        externalTouchStart?.(e)
       }}
     >
       {children}

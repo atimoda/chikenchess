@@ -17,6 +17,7 @@ export interface MusicSnapshot {
   mappings?: Record<string, MovementMapping>
   title?: string
   sectionPattern?: string
+  soloId?: string | null
 }
 export interface Preview { id: string; square: Square }
 export interface MusicPulse { id: string; square: Square; preview: boolean; duration: number }
@@ -54,7 +55,9 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
       orbit: piece.slot + (audition ? 64 : 0), notes,
       phrases,
       sectionPattern: state.sectionPattern ?? '0',
-      mask: audition ? undefined : instrument.mask,
+      // A solo should be audible immediately, even when the arrangement mask
+      // normally holds this layer back until a later section.
+      mask: audition || state.soloId === piece.id ? undefined : instrument.mask,
       instrument,
       controls: {
         s: instrument.sound,
@@ -125,6 +128,7 @@ export class MusicRuntime {
   private scheduler: any
   private state?: MusicSnapshot
   private preview: Preview | null = null
+  private unlockAudition: Preview | null = null
   private voices = new Map<string, VoiceSpec>()
   private ready?: Promise<void>
   private disposed = false
@@ -179,20 +183,31 @@ export class MusicRuntime {
 
   audition(id: string, square: Square) {
     const changed = this.preview?.id !== id || this.preview.square !== square
-    this.preview = { id, square }
+    const requested = { id, square }
+    this.preview = requested
     this.refresh()
     // A short immediate note gives tactile feedback even before the next onset.
-    if (changed) void this.unlock().then(() => {
-      if (this.preview?.id !== id || this.preview.square !== square) return
-      this.triggerPreview()
-    })
+    // Keep the latest request while the first AudioContext is being created. A
+    // quick tap may end before initialization finishes, but it must still sound.
+    if (changed) {
+      this.unlockAudition = requested
+      void this.unlock().then(() => {
+        const currentMatches = this.preview?.id === id && this.preview.square === square
+        const pendingMatches = this.unlockAudition?.id === id && this.unlockAudition.square === square
+        if (!currentMatches && !pendingMatches) return
+        if (pendingMatches) this.unlockAudition = null
+        this.triggerPreview(requested)
+      })
+    }
   }
 
   endAudition() { this.preview = null; this.refresh() }
 
-  private triggerPreview() {
+  private triggerPreview(requested: Preview) {
     if (!this.api || !this.state || this.disposed) return
-    const voice = [...this.voices.values()].find(v => v.preview)
+    // Build from the requested square as the pointer may already be up by the
+    // time the browser grants audio access on the first interaction.
+    const voice = voiceSpecs(this.state, requested).find(v => v.preview)
     if (!voice) return
     const pattern = this.patternFor(voice)
     const hap = pattern.queryArc(0, 4).find((h: any) => h.hasOnset())
