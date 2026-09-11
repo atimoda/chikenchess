@@ -11,6 +11,7 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   const [pulse, setPulse] = useState<MusicPulse | null>(null)
   const [error, setError] = useState('')
   const snapshot = useMemo(() => creativeSnapshot(session, playing, soloId), [session, playing, soloId])
+  const code = useMemo(() => renderMusicCode(snapshot, preview), [snapshot, preview])
 
   useEffect(() => {
     const engine = new MusicRuntime(setPulse, e => setError(e instanceof Error ? e.message : String(e)))
@@ -18,7 +19,13 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     engine.preload()
     return () => { engine.dispose(); runtime.current = null }
   }, [])
-  useEffect(() => { runtime.current?.update(snapshot) }, [snapshot])
+  useEffect(() => {
+    // Coalesce continuous slider updates. Fifty milliseconds still feels immediate
+    // on touch while avoiding a full Strudel graph compilation for every pointer event.
+    const mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
+    const timer = setTimeout(() => runtime.current?.update(snapshot), mobile ? 50 : 16)
+    return () => clearTimeout(timer)
+  }, [snapshot])
   useEffect(() => {
     if (playing) { setError(''); void runtime.current?.unlock() }
   }, [playing])
@@ -43,5 +50,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, endAudition, preview, pulse, error, code: renderMusicCode(snapshot, preview) }
+  return { audition, endAudition, preview, pulse, error, code }
 }

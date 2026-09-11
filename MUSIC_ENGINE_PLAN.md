@@ -1,6 +1,28 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Data: 10/09/2026. Status: planejamento; nenhuma migração de áudio implementada neste documento.
+Data: 10/09/2026. Status: primeira bancada da engine e Modo Criativo implementados; evolução musical em andamento.
+
+## Modo Criativo (primeira bancada implementada)
+
+O laboratório em `/creative` usa o mesmo `MusicRuntime` das partidas e abre sem introdução, adversário ou validação de movimentos. Ele permite ativar e solar qualquer uma das 32 vozes, mover ou trocar peças livremente, tocar casas temporariamente, editar o subconjunto seguro da mini-notation do Strudel e ajustar timbre, envelope, filtros, efeitos e os mapeamentos de posição para grau, pan e filtro.
+
+O rascunho e kits nomeados são guardados no navegador. A exportação/importação JSON conserva todas as identidades e configurações e valida o schema e a compilação dos padrões antes de substituir a sessão atual. Persistência oficial, versionamento de kits, publicação e administração em banco ficam para a camada futura de conteúdo e contas.
+
+### Ciclo atual: curadoria musical de Düsseldorf
+
+Os trechos Strudel recebidos formam o corpus de referência. Cada trecho é descrito pelo papel que cumpre (groove, baixo, harmonia, melodia ou textura), separado em componentes reaproveitáveis e comparado no Modo Criativo. As construções que a engine ainda não representa geram requisitos concretos para o modelo, em vez de adicionarmos abstrações sem referência sonora.
+
+O resultado desse ciclo será um kit eletrônico de referência com algumas formações testáveis, métricas simples de densidade/headroom e uma lista pequena de capacidades faltantes — por exemplo bancos de samples, seleção coordenada de seções, progressões harmônicas ou variação determinística. Só então ligaremos estados táticos mais complexos à música, para que esses estados transformem um arranjo que já soa bem em repouso.
+
+As referências recebidas foram triadas em `STRUDEL_REFERENCE_CATALOG.md`. Nove adaptações iniciais de “Death By Elliptical Eye”, “Bennington” e “Bonespurs” estão em `lib/music/pattern-library.ts` e podem ser aplicadas a qualquer peça no inspetor.
+
+A primeira formação `Düsseldorf · Elliptical Lab` coordena bumbo, caixa, chimbal, baixo, pad e lead. Cada voz possui três variações; uma timeline A/B/C/B compartilhada escolhe e reinicia as frases nas mesmas fronteiras, enquanto máscaras introduzem as camadas aos poucos. O editor permite alterar a timeline, até quatro variações da peça e sua máscara durante a execução. O próximo incremento é adicionar banks/samples licenciados e padrões de automação para ganho, filtro, transposição e efeitos.
+
+### Estabilização para testes móveis
+
+A primeira redução de custo mantém o agendamento de áudio completo e limita trabalho visual: pulsos do tabuleiro são amostrados a 8 Hz em aparelho restrito e 15 Hz no desktop; sliders agrupam recompilações em janelas curtas; o espectrograma desenha no máximo 24 quadros por segundo. Em tela estreita, toque ou aparelho com até quatro núcleos, a partida usa somente o worker de jogada do Stockfish, limita a profundidade efetiva da IA a 6 e não abre espectrograma/código automaticamente. A polifonia fica em 32 vozes nesses aparelhos e 64 nos demais. Uma mixagem densa recebe atenuação progressiva acima de dez loops para recuperar headroom.
+
+Esta é uma otimização estrutural inicial para viabilizar a escuta. A rodada final de performance precisa medir aparelhos físicos depois que seções, samples, automações e interação estiverem definidas.
 
 ## 1. Direção e critério de prioridade
 

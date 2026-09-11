@@ -32,8 +32,8 @@
 .sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .segmented { display: flex; background: #111a14; padding: 3px; border-radius: 7px; flex-shrink: 0; }
 .segmented button { background: transparent; border-color: transparent; padding: 7px 10px; }
-.board { width: min(100%, 560px); margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; border: 5px solid #354439; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
-.board .square { width: 100%; height: 100%; min-width: 0; min-height: 0; padding: 0; position: relative; border: 0; border-radius: 0; color: #a2b09b; touch-action: none; }
+.board { width: min(100%, 560px); margin: 0 auto; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); aspect-ratio: 1; border: 5px solid #354439; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
+.board .square { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: 0; position: relative; border: 0; border-radius: 0; color: #a2b09b; touch-action: none; }
 .board .light { background: #6a7c64; color: #d8e4ce; }
 .board .dark { background: #354535; color: #a0b39a; }
 .board .square:hover { background: #7a9062; }
@@ -42,7 +42,7 @@
 .board .square.pulse { background: #aebd65; }
 .coordinate { position: absolute; left: 4px; top: 2px; font-size: 9px; opacity: .85; pointer-events: none; }
 .piece { width: 76%; height: 76%; pointer-events: none; filter: drop-shadow(0 2px 1px #0007); }
-.piece svg { width: 100%; height: 100%; }
+.piece svg { display: block; width: 100%; height: 100%; }
 .activeDot { position: absolute; bottom: 4px; right: 4px; width: 6px; height: 6px; background: #e7f3a6; border-radius: 50%; box-shadow: 0 0 5px #dafa9770; pointer-events: none; }
 .hint { font-size: 11px; color: #a2b0a7; line-height: 1.65; margin-top: 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
@@ -60,6 +60,9 @@
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; margin-top: 18px; }
 .editor { border-top: 1px solid #39473d; padding-top: 18px; margin-top: 18px; }
 .editor textarea { font-family: var(--font-geist-mono), monospace; font-size: 12px; line-height: 1.7; margin-top: 7px; resize: vertical; }
+.formEditor { display: grid; gap: 12px; padding-top: 16px; }
+.formEditor textarea { font-family: var(--font-geist-mono), monospace; font-size: 11px; line-height: 1.55; resize: vertical; }
+.formEditor .actions { margin-top: -3px; }
 .studio details { border-top: 1px solid #39473d; margin-top: 18px; padding-top: 16px; }
 .studio summary { cursor: pointer; font-size: 12px; font-weight: 500; color: #d5dfd2; }
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 17px 14px; padding-top: 18px; }

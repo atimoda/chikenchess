@@ -24,6 +24,8 @@ export interface Instrument {
   decay?: number
   sustain?: number
   clip?: number
+  phrases?: string[]
+  mask?: string
 }
 
 export interface MovementMapping {
@@ -46,14 +48,14 @@ const drums: Instrument[] = [
   { name: 'Chimbal aberto', sound: 'white', notes: '~ 0 ~ 0', lpf: 12000, hpf: 6000 },
   { name: 'Rim eletrônico', sound: 'triangle', notes: '<[~ 0 ~ ~] [~ ~ 0 ~]>', lpf: 6500, hpf: 900 },
   { name: 'Percussão', sound: 'sine', notes: '<[~ ~ ~ 0] [~ 2 ~ 0]>', lpf: 2200, hpf: 100 },
-].map((d, i) => ({ ...d, behavior: 'pulse', octave: i === 6 ? 5 : 2, gain: i === 0 ? 0.45 : 0.17, attack: 0.002, release: i === 5 ? 0.16 : 0.035 }))
+].map((d, i) => ({ ...d, behavior: 'pulse', octave: i === 6 ? 5 : 2, gain: i === 0 ? 0.62 : 0.25, attack: 0.002, release: i === 5 ? 0.16 : 0.035 }))
 
 const instruments: Record<Exclude<PieceSymbol, 'p'>, Instrument> = {
-  n: { name: 'Baixo analógico', behavior: 'phrase', sound: 'sawtooth', notes: '<[0 ~ 0 2] [0 4 ~ 2]>', octave: 2, gain: 0.3, attack: 0.008, release: 0.08, lpf: 900, hpf: 30 },
-  r: { name: 'Sopro eletrônico', behavior: 'phrase', sound: 'square', notes: '<[~ 2 ~ 4] [~ ~ 3 2]>', octave: 4, gain: 0.14, attack: 0.06, release: 0.12, lpf: 1600, hpf: 180 },
-  b: { name: 'Teclas sequenciadas', behavior: 'phrase', sound: 'triangle', notes: '<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>', octave: 4, gain: 0.24, attack: 0.01, release: 0.16, lpf: 7000, hpf: 180 },
-  k: { name: 'Cordas sintetizadas', behavior: 'sustain', sound: 'supersaw', notes: '<[0,2,4] [0,3,4]>/2', octave: 3, gain: 0.1, attack: 0.3, release: 0.3, lpf: 1600, hpf: 120 },
-  q: { name: 'Melodia principal', behavior: 'phrase', sound: 'triangle', notes: '<[~ [4 3] 2 ~] [[2 4] ~ 3 [2 ~]]>', octave: 5, gain: 0.22, attack: 0.02, release: 0.15, lpf: 6000, hpf: 300 },
+  n: { name: 'Baixo analógico', behavior: 'phrase', sound: 'sawtooth', notes: '<[0 ~ 0 2] [0 4 ~ 2]>', octave: 2, gain: 0.42, attack: 0.008, release: 0.08, lpf: 900, hpf: 30 },
+  r: { name: 'Sopro eletrônico', behavior: 'phrase', sound: 'square', notes: '<[~ 2 ~ 4] [~ ~ 3 2]>', octave: 4, gain: 0.24, attack: 0.06, release: 0.12, lpf: 1600, hpf: 180 },
+  b: { name: 'Teclas sequenciadas', behavior: 'phrase', sound: 'triangle', notes: '<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>', octave: 4, gain: 0.32, attack: 0.01, release: 0.16, lpf: 7000, hpf: 180 },
+  k: { name: 'Cordas sintetizadas', behavior: 'sustain', sound: 'supersaw', notes: '<[0,2,4] [0,3,4]>/2', octave: 3, gain: 0.18, attack: 0.3, release: 0.3, lpf: 1600, hpf: 120 },
+  q: { name: 'Melodia principal', behavior: 'phrase', sound: 'triangle', notes: '<[~ [4 3] 2 ~] [[2 4] ~ 3 [2 ~]]>', octave: 5, gain: 0.32, attack: 0.02, release: 0.15, lpf: 6000, hpf: 300 },
 }
 
 export function instrumentFor(piece: MusicPiece): Instrument {

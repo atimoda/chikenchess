@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Download, FlaskConical, Pause, Play, Save, Upload, Volume2 } from 'lucide-react'
 import { PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
-import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, creativeSnapshot, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
+import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
+import { PATTERN_RECIPES, patternRecipe } from '@/lib/music/pattern-library'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
 import styles from './creative-studio.module.css'
 
@@ -44,7 +45,12 @@ export function CreativeStudio() {
   const [kits, setKits] = useState<CreativeSession[]>([])
   const [chosenKit, setChosenKit] = useState('')
   const [pattern, setPattern] = useState('')
+  const [recipeId, setRecipeId] = useState('')
   const [patternError, setPatternError] = useState('')
+  const [sectionPattern, setSectionPattern] = useState('0')
+  const [phrases, setPhrases] = useState<string[]>(['0'])
+  const [mask, setMask] = useState('')
+  const [formError, setFormError] = useState('')
   const drag = useRef<{ id: string; square: string; origin: string; x: number; y: number; moved: boolean } | null>(null)
   const suppressClick = useRef(false)
   const music = useCreativeMusic(session, playing, soloId)
@@ -53,6 +59,9 @@ export function CreativeStudio() {
   const effects = session.effects[selectedId]
   const mapping = session.mappings[selectedId]
   const activeCount = session.pieces.filter(p => p.active).length
+  const chosenRecipe = patternRecipe(recipeId)
+  const savedPhrases = instrument.phrases?.length ? instrument.phrases : [instrument.notes]
+  const formDirty = sectionPattern !== session.sectionPattern || mask !== (instrument.mask ?? '') || JSON.stringify(phrases) !== JSON.stringify(savedPhrases)
 
   useEffect(() => {
     let cancelled = false
@@ -87,7 +96,13 @@ export function CreativeStudio() {
     return () => clearTimeout(timer)
   }, [session, ready])
 
-  useEffect(() => { setPattern(instrument.notes); setPatternError('') }, [selectedId, instrument.notes])
+  useEffect(() => { setPattern(instrument.notes); setRecipeId(''); setPatternError('') }, [selectedId, instrument.notes])
+  useEffect(() => {
+    setPhrases(instrument.phrases?.length ? instrument.phrases : [instrument.notes])
+    setMask(instrument.mask ?? '')
+    setFormError('')
+  }, [selectedId, instrument.notes, instrument.phrases, instrument.mask])
+  useEffect(() => { setSectionPattern(session.sectionPattern); setFormError('') }, [session.sectionPattern])
   useEffect(() => {
     const cancel = () => { drag.current = null; music.endAudition() }
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel() }
@@ -106,6 +121,9 @@ export function CreativeStudio() {
     setSession(s => ({ ...s, mappings: { ...s.mappings, [selectedId]: { ...s.mappings[selectedId], ...update } } }))
   }
   function toggleActive(id: string) {
+    const currentlyActive = session.pieces.find(p => p.id === id)?.active
+    if (!currentlyActive) setPlaying(true)
+    else if (activeCount === 1) setPlaying(false)
     setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: !p.active } : p) }))
   }
   function stop() { setPlaying(false); music.endAudition(); drag.current = null }
@@ -119,21 +137,41 @@ export function CreativeStudio() {
     }
     setBusy(true)
     try {
-      const candidate = { ...session, instruments: { ...session.instruments, [id]: { ...instrument, notes: pattern } } }
+      const recipe = patternRecipe(recipeId)
+      const nextInstrument = { ...instrument, ...(recipe?.instrument ?? {}), ...(recipe ? { behavior: recipe.behavior } : {}), notes: pattern, phrases: undefined, mask: undefined }
+      const candidate = { ...session, instruments: { ...session.instruments, [id]: nextInstrument } }
       await validateMusicSnapshot(creativeSnapshot(candidate, false))
-      setSession(s => ({ ...s, instruments: { ...s.instruments, [id]: { ...s.instruments[id], notes: pattern } } }))
+      setSession(s => ({ ...s, instruments: { ...s.instruments, [id]: { ...s.instruments[id], ...(recipe?.instrument ?? {}), ...(recipe ? { behavior: recipe.behavior } : {}), notes: pattern, phrases: undefined, mask: undefined } } }))
       setPatternError('')
-      setNotice('Padrão aplicado. A próxima execução já usa a nova frase.')
+      setNotice(recipe ? `Receita “${recipe.name}” aplicada. A próxima execução já usa timbre, envelope e frase novos.` : 'Padrão aplicado. A próxima execução já usa a nova frase.')
     } catch (error) { setPatternError(`O padrão anterior foi mantido. ${messageOf(error)}`) }
     finally { setBusy(false) }
   }
 
-  async function loadSession(next: CreativeSession) {
+  async function applyForm() {
+    const cleanPhrases = phrases.map(phrase => phrase.trim()).filter(Boolean)
+    if (!hasPatternBudget(sectionPattern) || !cleanPhrases.length || cleanPhrases.length > 4 || cleanPhrases.some(phrase => !hasPatternBudget(phrase)) || (mask.trim() && !hasMaskBudget(mask))) {
+      setFormError('Revise a timeline, as variações e a máscara. São aceitas até quatro frases; a máscara usa x e ~ com a mesma mini-notação.')
+      return
+    }
+    setBusy(true)
+    try {
+      const nextInstrument = { ...instrument, notes: cleanPhrases[0], phrases: cleanPhrases.length > 1 ? cleanPhrases : undefined, mask: mask.trim() || undefined }
+      const candidate = { ...session, sectionPattern, instruments: { ...session.instruments, [selectedId]: nextInstrument } }
+      await validateMusicSnapshot(creativeSnapshot(candidate, false))
+      setSession(candidate)
+      setFormError('')
+      setNotice(`Forma aplicada a “${instrument.name}”. As variações seguem a timeline comum sem reiniciar o transporte.`)
+    } catch (error) { setFormError(`A forma anterior foi mantida. ${messageOf(error)}`) }
+    finally { setBusy(false) }
+  }
+
+  async function loadSession(next: CreativeSession, autoplay = false) {
     setBusy(true)
     try {
       await validateMusicSnapshot(creativeSnapshot(next, false))
-      stop(); setSoloId(null); setSession(next)
-      setNotice(`Kit “${next.name}” carregado e pausado.`)
+      music.endAudition(); drag.current = null; setSoloId(null); setSession(next); setPlaying(autoplay)
+      setNotice(`Kit “${next.name}” carregado${autoplay ? ' e tocando' : ' e pausado'}.`)
     } catch (error) { setNotice(`Kit não carregado: ${messageOf(error)}`) }
     finally { setBusy(false) }
   }
@@ -185,6 +223,7 @@ export function CreativeStudio() {
     if (!current) return
     const square = squareAt(event)
     if (mode === 'move' && current.moved && square && square !== current.origin) {
+      setPlaying(true)
       setSession(s => moveCreativePiece(s, current.id, square))
     }
     suppressClick.current = current.moved || mode === 'play'
@@ -234,7 +273,7 @@ export function CreativeStudio() {
                     if (suppressClick.current) { suppressClick.current = false; return }
                     if (mode === 'play') return
                     if (piece) select(piece.id)
-                    else setSession(s => moveCreativePiece(s, selectedId, square))
+                    else { setPlaying(true); setSession(s => moveCreativePiece(s, selectedId, square)) }
                   }}
                   onKeyDown={e => { if (mode === 'play' && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); if (!e.repeat) music.audition(selectedId, square) } }}
                   onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') music.endAudition() }} onBlur={() => { if (!drag.current) music.endAudition() }}>
@@ -246,8 +285,9 @@ export function CreativeStudio() {
             </div>
             <p className={styles.hint}>{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</p>
             <div className={styles.actions}>
-              <button onClick={() => { setSoloId(null); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: ['w:a2', 'w:b2', 'w:c2', 'w:b1', 'w:c1'].includes(p.id) })) })); setPlaying(true) }}>Ouvir formação inicial</button>
-              <button onClick={() => { music.endAudition(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloId(null) }}>Silenciar todas</button>
+              <button className={styles.primary} onClick={() => void loadSession(createDusseldorfSession(), true)}>Carregar Düsseldorf</button>
+              <button onClick={() => { setSoloId(null); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: ['w:a2', 'w:b2', 'w:c2', 'w:b1', 'w:c1'].includes(p.id) })) })); setPlaying(true) }}>Ativar quinteto atual</button>
+              <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloId(null) }}>Silenciar todas</button>
               <button onClick={() => { music.endAudition(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Repor posições</button>
             </div>
           </section>
@@ -269,18 +309,37 @@ export function CreativeStudio() {
             <label>Nome do instrumento<input maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrumento' })} /></label>
             <div className={styles.actions}>
               <button aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}>{selected.active ? 'Loop ativo' : 'Ativar loop'}</button>
-              <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) }}>Solo</button>
+              <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) { setPlaying(true); setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) } }}>Solo</button>
               <button onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); music.audition(selectedId, selected.square) }} onPointerUp={music.endAudition} onPointerCancel={music.endAudition} onLostPointerCapture={music.endAudition} onBlur={music.endAudition} onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) music.audition(selectedId, selected.square) } }} onKeyUp={music.endAudition}><Volume2 size={14} />Segure para ouvir</button>
             </div>
             <div className={styles.pair}><label>Comportamento<select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulso / percussão</option><option value="phrase">Frase / sequenciador</option><option value="sustain">Sustentado / acordes</option></select></label>
               <label>Timbre<select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'] })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
             <p className={styles.hint}>O comportamento independe da peça. Os timbres desta primeira bancada são sintetizados.</p>
 
-            <div className={styles.editor}><label htmlFor="creative-pattern">Padrão · graus da escala</label><textarea id="creative-pattern" rows={3} spellCheck={false} value={pattern} maxLength={512} onChange={e => { setPattern(e.target.value); setPatternError('') }} />
-              <div className={styles.actions}><button className={styles.primary} disabled={pattern === instrument.notes} onClick={() => void applyPattern()}>Aplicar padrão</button><button onClick={() => { setPattern(instrument.notes); setPatternError('') }}>Restaurar edição</button></div>
+            <div className={styles.editor}>
+              <label>Receitas de referência<select value={recipeId} onChange={e => {
+                const id = e.target.value
+                setRecipeId(id)
+                const recipe = patternRecipe(id)
+                if (recipe) { setPattern(recipe.notes); setPatternError('') }
+              }}><option value="">Escolha uma receita</option>{PATTERN_RECIPES.map(recipe => <option key={recipe.id} value={recipe.id}>{recipe.name} · {recipe.study}</option>)}</select></label>
+              {chosenRecipe && <p className={styles.hint}>{chosenRecipe.description} Estudo: {chosenRecipe.study} · {chosenRecipe.credit}.</p>}
+              <label htmlFor="creative-pattern">Padrão · graus da escala</label><textarea id="creative-pattern" rows={3} spellCheck={false} value={pattern} maxLength={512} onChange={e => { setPattern(e.target.value); setRecipeId(''); setPatternError('') }} />
+              <div className={styles.actions}><button className={styles.primary} disabled={pattern === instrument.notes && !recipeId} onClick={() => void applyPattern()}>{recipeId ? 'Aplicar receita' : 'Aplicar padrão'}</button><button onClick={() => { setPattern(instrument.notes); setRecipeId(''); setPatternError('') }}>Restaurar edição</button></div>
               {patternError && <p role="alert" className={styles.error}>{patternError}</p>}
               <p className={styles.hint}>0 = tônica · ~ = pausa · [0 2] = subdivisão · &lt;0 2&gt; = alternar ciclos · [0,2,4] = acorde · *2 = acelerar · /2 = desacelerar. Um ciclo = 4 tempos.</p>
             </div>
+
+            <details open><summary>Forma e variações</summary><div className={styles.formEditor}>
+              <label>Timeline compartilhada A/B/C/D<textarea rows={2} spellCheck={false} value={sectionPattern} maxLength={512} onChange={e => { setSectionPattern(e.target.value); setFormError('') }} /></label>
+              <p className={styles.hint}>Os números escolhem a variação de todas as peças. Exemplo: &lt;0@4 1@4 2@4 1@4&gt;/16 mantém A, B, C e B por quatro ciclos cada.</p>
+              {phrases.map((phrase, index) => <label key={index}>Variação {String.fromCharCode(65 + index)}<textarea aria-label={`Variação ${String.fromCharCode(65 + index)}`} rows={2} spellCheck={false} value={phrase} maxLength={512} onChange={e => { setPhrases(current => current.map((value, i) => i === index ? e.target.value : value)); setFormError('') }} /></label>)}
+              <div className={styles.actions}><button disabled={phrases.length >= 4} onClick={() => setPhrases(current => [...current, current.at(-1) ?? '0'])}>Adicionar variação</button><button disabled={phrases.length <= 1} onClick={() => setPhrases(current => current.slice(0, -1))}>Remover última</button></div>
+              <label>Máscara de entrada<textarea rows={2} spellCheck={false} placeholder="vazio = sempre presente" value={mask} maxLength={256} onChange={e => { setMask(e.target.value); setFormError('') }} /></label>
+              <p className={styles.hint}>x toca e ~ silencia. A máscara usa o mesmo relógio da timeline e não interrompe a frase durante edições.</p>
+              <button className={styles.primary} disabled={!formDirty} onClick={() => void applyForm()}>Aplicar forma</button>
+              {formError && <p role="alert" className={styles.error}>{formError}</p>}
+            </div></details>
 
             <details open><summary>Afinação e envelope</summary><div className={styles.controls}>
               <Range label="Oitava" value={instrument.octave} min={0} max={7} step={1} onChange={octave => updateInstrument({ octave })} />
@@ -319,12 +378,12 @@ export function CreativeStudio() {
             if (!file) return
             if (file.size > 150000) { setNotice('Arquivo de kit muito grande. Limite: 150 KB.'); return }
             try { await loadSession(parseCreativeSession(await file.text())) } catch (error) { setNotice(`Kit não importado: ${messageOf(error)}`) }
-          }} /></label></div>
+          }} /></label><button onClick={() => { if (confirm('Começar um rascunho novo? Exporte ou salve o atual se quiser mantê-lo.')) void loadSession(createCreativeSession()) }}>Novo rascunho</button></div>
           <div className={styles.pair}><label>Kits salvos<select value={chosenKit} onChange={e => setChosenKit(e.target.value)}><option value="">Escolha um kit</option>{kits.map(kit => <option key={kit.name}>{kit.name}</option>)}</select></label><button disabled={!chosenKit} onClick={() => { const kit = kits.find(k => k.name === chosenKit); if (kit) void loadSession(kit) }}>Carregar kit</button></div>
         </div>
       </section>
       <details className={`${styles.panel} ${styles.code}`}><summary>Código Strudel em execução</summary><p className={styles.hint}>Visão gerada pelas vozes ativas e pela prévia. Para editar, use os controles do instrumento.</p><pre>{music.code}</pre></details>
     </fieldset>
-    <div className={styles.notice} role="status" aria-live="polite">{!ready ? 'Abrindo bancada…' : busy ? 'Validando padrões…' : music.error ? `Áudio: ${music.error}` : notice || 'Selecione uma peça ou ouça a formação inicial para começar.'}</div>
+    <div className={styles.notice} role="status" aria-live="polite">{!ready ? 'Abrindo bancada…' : busy ? 'Validando padrões…' : music.error ? `Áudio: ${music.error}` : notice || 'Selecione uma peça ou carregue uma formação para começar.'}</div>
   </main>
 }

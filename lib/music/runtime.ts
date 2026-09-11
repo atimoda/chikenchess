@@ -1,8 +1,11 @@
 import type { Square } from 'chess.js'
 import type { SquareEffects } from '../types'
+import { isConstrainedDevice } from '../performance'
 import { DEFAULT_MOVEMENT, degreeToMidi, instrumentFor, type Instrument, type MovementMapping, type MusicPiece } from './model'
 
 type Strudel = typeof import('@strudel/web')
+type StrudelPattern = ReturnType<Strudel['note']>
+type StrudelWithPick = Strudel & { pickRestart: (lookup: StrudelPattern[], selector: string) => StrudelPattern }
 export interface MusicSnapshot {
   pieces: MusicPiece[]
   scale: string[]
@@ -13,6 +16,7 @@ export interface MusicSnapshot {
   instruments?: Record<string, Instrument>
   mappings?: Record<string, MovementMapping>
   title?: string
+  sectionPattern?: string
 }
 export interface Preview { id: string; square: Square }
 export interface MusicPulse { id: string; square: Square; preview: boolean; duration: number }
@@ -23,6 +27,9 @@ export interface VoiceSpec {
   preview: boolean
   orbit: number
   notes: string
+  phrases: string[]
+  sectionPattern: string
+  mask?: string
   controls: Record<string, number | string>
   instrument: Instrument
 }
@@ -38,11 +45,16 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
     const fileOffset = square.charCodeAt(0) - piece.origin.charCodeAt(0)
     const degreeLimit = state.mappings?.[piece.id] ? 12 : 4
     const offset = instrument.behavior === 'pulse' ? 0 : Math.max(-degreeLimit, Math.min(degreeLimit, Math.round(fileOffset * mapping.fileDegrees + Math.floor(advance * mapping.rankDegrees))))
-    const notes = instrument.notes.replace(/(^|[\s[<,])(-?\d+)/g, (_, prefix, degree) => `${prefix}${degreeToMidi(Number(degree) + offset, state.scale, instrument.octave) + 12 * Math.log2(fx?.pitch ?? 1)}`)
+    const toMidiPattern = (notes: string) => notes.replace(/(^|[\s[<,])(-?\d+)/g, (_, prefix, degree) => `${prefix}${degreeToMidi(Number(degree) + offset, state.scale, instrument.octave) + 12 * Math.log2(fx?.pitch ?? 1)}`)
+    const phrases = (instrument.phrases?.length ? instrument.phrases : [instrument.notes]).map(toMidiPattern)
+    const notes = phrases[0]
     const lpf = Math.min(fx?.lpf ?? instrument.lpf, audition && mapping.previewFilter ? 800 + Number(square[1]) * 1800 : 20000)
     return {
       key: `${piece.id}:${audition ? 'preview' : 'loop'}`, piece, square, preview: audition,
       orbit: piece.slot + (audition ? 64 : 0), notes,
+      phrases,
+      sectionPattern: state.sectionPattern ?? '0',
+      mask: audition ? undefined : instrument.mask,
       instrument,
       controls: {
         s: instrument.sound,
@@ -69,7 +81,13 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
     '// Degrees follow the shared scale; each piece keeps its instrument.',
     `setcps(${state.bpm} / 60 / 4)`,
     'stack(',
-    ...voices.map(v => `  // ${v.piece.id} · ${v.instrument.name.replace(/[\r\n]/g, ' ')}${v.preview ? ' · audition' : ''}\n  note(${JSON.stringify(v.notes)})\n    ${Object.entries(v.controls).map(([key, value]) => `.${key}(${JSON.stringify(key === 'gain' ? Number(value) * state.volume : value)})`).join('')}.orbit(${v.orbit})` + ','),
+    ...voices.map(v => {
+      const source = v.phrases.length > 1
+        ? `${JSON.stringify(v.sectionPattern)}.pickRestart([${v.phrases.map(phrase => `note(${JSON.stringify(phrase)})`).join(', ')}])`
+        : `note(${JSON.stringify(v.notes)})`
+      const mask = v.mask ? `.mask(${JSON.stringify(v.mask)})` : ''
+      return `  // ${v.piece.id} · ${v.instrument.name.replace(/[\r\n]/g, ' ')}${v.preview ? ' · audition' : ''}\n  ${source}${mask}\n    ${Object.entries(v.controls).map(([key, value]) => `.${key}(${JSON.stringify(key === 'gain' ? Number(value) * state.volume : value)})`).join('')}.orbit(${v.orbit}),`
+    }),
     voices.length ? ')' : '  silence\n)',
   ].join('\n')
 }
@@ -84,7 +102,10 @@ function loadLibrary() {
 }
 
 function compileVoice(api: Strudel, voice: VoiceSpec) {
-  let pattern = api.note(voice.notes)
+  let pattern = voice.phrases.length > 1
+    ? (api as StrudelWithPick).pickRestart(voice.phrases.map(phrase => api.note(phrase)), voice.sectionPattern)
+    : api.note(voice.notes)
+  if (voice.mask) pattern = pattern.mask(voice.mask)
   for (const [key, value] of Object.entries(voice.controls)) pattern = pattern[key](value)
   return pattern.orbit(voice.orbit).withValue((value: object) => ({ ...value, ccVoice: voice.key }))
 }
@@ -112,6 +133,9 @@ export class MusicRuntime {
   private starting = false
   private analyser?: AnalyserNode
   private connectedOrbits = new Set<number>()
+  private visualInterval = 1 / 15
+  private visualBuckets = new Map<number, { events: Map<string, MusicPulse>; timer: ReturnType<typeof setTimeout> }>()
+  private visualCursor = 0
   constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void) {}
 
   // Preload JS only. AudioContext is created/resumed from an interaction.
@@ -132,7 +156,9 @@ export class MusicRuntime {
     const s = await loadLibrary()
     if (this.disposed) return
     this.api = s
-    await s.initAudio({ maxPolyphony: 96 })
+    const constrained = isConstrainedDevice()
+    this.visualInterval = 1 / (constrained ? 8 : 15)
+    await s.initAudio({ maxPolyphony: constrained ? 32 : 64 })
     if (this.disposed) return
     const context: AudioContext = s.getAudioContext()
     this.analyser = context.createAnalyser()
@@ -182,10 +208,34 @@ export class MusicRuntime {
 
   private scheduleVisual(voice: VoiceSpec, time: number, duration: number) {
     const generation = this.generation
+    const event = { id: voice.piece.id, square: voice.square, preview: voice.preview, duration }
+    // Manual playing stays immediate. Loop events that fall in the same short
+    // window share one render; the chosen piece rotates so dense drums cannot
+    // permanently hide the visual feedback of bass, harmony or lead voices.
+    if (!voice.preview) {
+      const bucketId = Math.floor(time / this.visualInterval)
+      const pending = this.visualBuckets.get(bucketId)
+      if (pending) {
+        pending.events.set(voice.key, event)
+        return
+      }
+      const events = new Map([[voice.key, event]])
+      const timer = setTimeout(() => {
+        this.visualTimers.delete(timer)
+        this.visualBuckets.delete(bucketId)
+        if (this.disposed || generation !== this.generation) return
+        const candidates = [...events.entries()].filter(([key]) => this.voices.has(key)).map(([, value]) => value)
+        if (!candidates.length) return
+        this.pulse(candidates[this.visualCursor++ % candidates.length])
+      }, Math.max(0, (time - this.api!.getAudioContext().currentTime) * 1000))
+      this.visualBuckets.set(bucketId, { events, timer })
+      this.visualTimers.add(timer)
+      return
+    }
     const timer = setTimeout(() => {
       this.visualTimers.delete(timer)
       if (this.disposed || generation !== this.generation || !this.voices.has(voice.key)) return
-      this.pulse({ id: voice.piece.id, square: voice.square, preview: voice.preview, duration })
+      this.pulse(event)
     }, Math.max(0, (time - this.api!.getAudioContext().currentTime) * 1000))
     this.visualTimers.add(timer)
   }
@@ -210,13 +260,15 @@ export class MusicRuntime {
       this.voices = next
       const controller = this.api.getSuperdoughAudioController()
       const time = this.api.getAudioContext().currentTime
+      const loopCount = specs.filter(voice => !voice.preview).length
+      const denseMixAttenuation = Math.min(1, Math.sqrt(10 / Math.max(1, loopCount)))
       for (const voice of specs) {
         const orbit = controller.getOrbit(voice.orbit, [0, 1])
         if (!this.connectedOrbits.has(voice.orbit) && this.analyser) {
           orbit.output.connect(this.analyser)
           this.connectedOrbits.add(voice.orbit)
         }
-        orbit.output.gain.setTargetAtTime(this.state.volume, time, 0.015)
+        orbit.output.gain.setTargetAtTime(this.state.volume * denseMixAttenuation, time, 0.015)
       }
       this.scheduler.setCps(this.state.bpm / 240)
       void this.scheduler.setPattern(pattern)
@@ -242,6 +294,7 @@ export class MusicRuntime {
     this.generation++
     this.visualTimers.forEach(clearTimeout)
     this.visualTimers.clear()
+    this.visualBuckets.clear()
   }
   dispose() {
     this.disposed = true
