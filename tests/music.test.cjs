@@ -151,6 +151,16 @@ test('Düsseldorf formation coordinates phrase banks and entrances on one timeli
   assert.match(code, /\.mask\("<~@12 x@4>\/16"\)/)
 })
 
+test('solo makes a late-arriving Düsseldorf voice audible immediately', () => {
+  const lab = creative.createDusseldorfSession()
+  const snapshot = creative.creativeSnapshot(lab, true, 'w:d1')
+  const voices = voiceSpecs(snapshot, null)
+  assert.equal(voices.length, 1)
+  assert.equal(voices[0].piece.id, 'w:d1')
+  assert.equal(voices[0].mask, undefined)
+  assert.doesNotMatch(renderMusicCode(snapshot, null), /\.mask\(/)
+})
+
 test('reference recipes stay inside the safe notation and creative instrument schema', () => {
   assert.equal(patterns.PATTERN_RECIPES.length, 9)
   for (const recipe of patterns.PATTERN_RECIPES) {

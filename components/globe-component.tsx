@@ -2,8 +2,8 @@
 
 import { useRef, useState, useEffect, Suspense } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
-import { OrbitControls, Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
-import { TextureLoader, Color, Mesh, Group, Vector3, MathUtils } from 'three'
+import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
+import { TextureLoader, Mesh, Group, Vector3, MathUtils } from 'three'
 import { CityData } from '@/lib/cities-data'
 import { CityPopup } from './city-popup'
 
@@ -97,11 +97,12 @@ const PopupContainer = ({
     // Local state for smooth dragging
     const [localPos, setLocalPos] = useState({ x: popup.x, y: popup.y })
     const localPosRef = useRef({ x: popup.x, y: popup.y })
+    const positionFrame = useRef<number | null>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
+    const topCurveJitter = useRef((Math.random() - 0.5) * 20)
     
     // Track drag start position for anchor
     const dragAnchor = useRef({ x: 31, y: 8 }) // Default to handle center
-    const currentDragPos = useRef({ x: 0, y: 0 })
     
     // Store last calculated line state to freeze it during closing animation
     const lastLineState = useRef({ 
@@ -115,6 +116,10 @@ const PopupContainer = ({
         setLocalPos({ x: popup.x, y: popup.y })
         localPosRef.current = { x: popup.x, y: popup.y }
     }, [popup.x, popup.y])
+
+    useEffect(() => () => {
+        if (positionFrame.current !== null) cancelAnimationFrame(positionFrame.current)
+    }, [])
 
     const popupWidth = 288 // w-72
     const popupHeight = 450 // Approximate height of the card
@@ -149,7 +154,7 @@ const PopupContainer = ({
             endX = topCenter.x
             endY = topCenter.y
             side = 'top'
-            cpX = startX + (Math.random() - 0.5) * 20
+            cpX = startX + topCurveJitter.current
             cpY = (startY + endY) / 2
         } else if (minD === dLeft) {
             endX = leftCenter.x
@@ -178,7 +183,7 @@ const PopupContainer = ({
             // Update control points for smooth line to handle
             // Simple quadratic to the handle
             const midX = (startX + endX) / 2
-            const midY = (startX + endY) / 2
+            const midY = (startY + endY) / 2
             cpX = midX
             const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
             let arcHeight = Math.min(dist * 0.266, 66)
@@ -240,9 +245,16 @@ const PopupContainer = ({
                         bringToFront={bringToFront}
                         closePopup={onPopupClose}
                         updatePopupPosition={(id, x, y) => {
-                            // Update local state immediately for smooth drag
-                            setLocalPos({ x, y })
                             localPosRef.current = { x, y }
+                            // Pointer events may arrive faster than the display. One
+                            // React update per frame keeps the card and cable together
+                            // without compiling the whole popup tree several times.
+                            if (positionFrame.current === null) {
+                                positionFrame.current = requestAnimationFrame(() => {
+                                    positionFrame.current = null
+                                    setLocalPos(localPosRef.current)
+                                })
+                            }
                         }}
                         playMapSound={playMapSound}
                         startWhistleLoop={startWhistleLoop}
@@ -330,7 +342,7 @@ const GlobeContent = ({
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
   const [isDraggingPopup, setIsDraggingPopup] = useState(false)
-  const [isStandby, setIsStandby] = useState(false)
+  const isStandby = useRef(false)
   const lastInteractionTime = useRef(Date.now())
   const [introZoomComplete, setIntroZoomComplete] = useState(false)
   const lastReportedZoom = useRef(100)
@@ -339,13 +351,10 @@ const GlobeContent = ({
   const standbyRotationAxis = useRef(new Vector3(0, 1, 0))
   const standbyRotationSpeed = useRef(0.1)
 
-  // Popup Counter-Movement Logic
-  const cityScreenPositions = useRef<Record<string, { x: number, y: number }>>({})
-  
   // Load texture
   const texture = useLoader(TextureLoader, '/world_map_tech.svg')
   
-  const { camera, size } = useThree()
+  const { camera } = useThree()
 
   const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
 
@@ -444,8 +453,8 @@ const GlobeContent = ({
     
     // Completely freeze rotation if popup is open, dragging, or recently interacted
     if (introZoomComplete && !isDraggingPopup && !hasOpenPopups && timeSinceInteraction > 3000) {
-        if (!isStandby) {
-            setIsStandby(true)
+        if (!isStandby.current) {
+            isStandby.current = true
             // Initialize random rotation axis and speed
             standbyRotationAxis.current.set(
                 (Math.random() - 0.5) * 2,
@@ -460,50 +469,14 @@ const GlobeContent = ({
             globeRef.current.rotateOnWorldAxis(standbyRotationAxis.current, standbyRotationSpeed.current * delta)
         }
     } else {
-        if (isStandby) setIsStandby(false)
+        isStandby.current = false
     }
 
-    // Popup Counter-Movement Logic (5x less movement)
-    if (hasOpenPopups && !isDraggingPopup) {
-         cities.forEach(city => {
-             if (openPopups[city.id]) {
-                 const pos = getSphericalCoordinates(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS)
-                 const v = new Vector3(...pos)
-                 // Apply globe rotation to position
-                 if (globeRef.current) {
-                     v.applyEuler(globeRef.current.rotation)
-                     v.applyMatrix4(globeRef.current.matrixWorld)
-                 }
-                 
-                 v.project(camera)
-                 const x = (v.x * .5 + .5) * size.width
-                 const y = (v.y * -.5 + .5) * size.height
-
-                 const prev = cityScreenPositions.current[city.id]
-                 if (prev) {
-                     const dx = x - prev.x
-                     const dy = y - prev.y
-                     
-                     if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-                         const currentPopup = openPopups[city.id]
-                         updatePopupPosition(
-                             city.id, 
-                             currentPopup.x - (dx * 0.3), // Reduced from 0.8 to 0.3 (60% less)
-                             currentPopup.y - (dy * 0.3)
-                         )
-                     }
-                 }
-                 cityScreenPositions.current[city.id] = { x, y }
-             } else {
-                 delete cityScreenPositions.current[city.id]
-             }
-         })
-    }
   })
 
   const handleInteraction = () => {
       lastInteractionTime.current = Date.now()
-      setIsStandby(false)
+      isStandby.current = false
   }
 
   // Handle Zoom Ref
@@ -610,7 +583,7 @@ const GlobeContent = ({
           {/* The Earth Surface */}
           <Sphere 
             args={[GLOBE_RADIUS, 64, 64]} 
-            onPointerDown={(e) => {
+            onPointerDown={() => {
                 document.body.style.cursor = 'grabbing'
                 handleInteraction()
             }}
@@ -721,7 +694,7 @@ const GlobeContent = ({
                 )}
 
                 {/* Pulse Ring Effect (Hover/Selected) */}
-                <PulsingRing city={city} isOpen={isOpen} isHoveredProp={isHovered} />
+                {(isOpen || isHovered) && <PulsingRing city={city} isOpen={isOpen} isHoveredProp={isHovered} />}
 
                 {isOpen && (
                       <PopupContainer
@@ -754,6 +727,7 @@ const GlobeContent = ({
       
       <TrackballControls 
         ref={controlsRef} 
+        enabled={!isDraggingPopup}
         noPan={true} 
         minDistance={3.33} 
         maxDistance={10} 
@@ -788,7 +762,7 @@ const GlobeContent = ({
 
 export const GlobeComponent = (props: GlobeProps) => {
     return (
-        <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} className="w-full h-full">
+        <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={[1, 1.5]} gl={{ powerPreference: 'high-performance' }} className="w-full h-full">
             <Suspense fallback={null}>
                 <GlobeContent {...props} />
             </Suspense>

@@ -251,8 +251,7 @@ export function CreativeStudio() {
       </section>
 
       <div className={styles.columns}>
-        <div className={styles.canvas}>
-          <section className={styles.panel}>
+          <section className={`${styles.panel} ${styles.boardPanel}`}>
             <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>01 / TABULEIRO LIVRE</span><h2>Experimente o movimento</h2></div><div className={styles.segmented}>
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
@@ -292,25 +291,15 @@ export function CreativeStudio() {
             </div>
           </section>
 
-          <section className={styles.panel}>
-            <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>02 / SUA BANDA</span><h2>32 vozes independentes</h2></div><span className={styles.hint}>● loop ativo</span></div>
-            <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
-              <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
-                <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span>{session.instruments[p.id].name}</button>
-                <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
-              </div>)}</div>)}</div>
-          </section>
-        </div>
-
         <aside className={styles.inspector} aria-label="Editor do instrumento">
           <section className={styles.panel}>
-            <span className={styles.eyebrow}>03 / INSTRUMENTO SELECIONADO</span>
+            <span className={styles.eyebrow}>02 / INSTRUMENTO</span>
             <div className={styles.instrumentTitle}><h2>{pieceNames[selected.type]} · {selected.origin}</h2><span>em {selected.square}</span></div>
             <label>Nome do instrumento<input maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrumento' })} /></label>
             <div className={styles.actions}>
               <button aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}>{selected.active ? 'Loop ativo' : 'Ativar loop'}</button>
               <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) { setPlaying(true); setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) } }}>Solo</button>
-              <button onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); music.audition(selectedId, selected.square) }} onPointerUp={music.endAudition} onPointerCancel={music.endAudition} onLostPointerCapture={music.endAudition} onBlur={music.endAudition} onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) music.audition(selectedId, selected.square) } }} onKeyUp={music.endAudition}><Volume2 size={14} />Segure para ouvir</button>
+              <button className={styles.auditionButton} onContextMenu={e => e.preventDefault()} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); music.audition(selectedId, selected.square) }} onPointerUp={music.endAudition} onPointerCancel={music.endAudition} onLostPointerCapture={music.endAudition} onBlur={music.endAudition} onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) music.audition(selectedId, selected.square) } }} onKeyUp={music.endAudition}><Volume2 size={14} />Segure para ouvir</button>
             </div>
             <div className={styles.pair}><label>Comportamento<select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulso / percussão</option><option value="phrase">Frase / sequenciador</option><option value="sustain">Sustentado / acordes</option></select></label>
               <label>Timbre<select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'] })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
@@ -340,7 +329,13 @@ export function CreativeStudio() {
               <button className={styles.primary} disabled={!formDirty} onClick={() => void applyForm()}>Aplicar forma</button>
               {formError && <p role="alert" className={styles.error}>{formError}</p>}
             </div></details>
+          </section>
+        </aside>
 
+        <aside className={styles.inspector} aria-label="Parâmetros do instrumento">
+          <section className={styles.panel}>
+            <span className={styles.eyebrow}>03 / PARÂMETROS</span>
+            <div className={styles.instrumentTitle}><h2>Som e movimento</h2><span>{instrument.name}</span></div>
             <details open><summary>Afinação e envelope</summary><div className={styles.controls}>
               <Range label="Oitava" value={instrument.octave} min={0} max={7} step={1} onChange={octave => updateInstrument({ octave })} />
               <Range label="Ganho do instrumento" value={instrument.gain} min={0} max={1} onChange={gain => updateInstrument({ gain })} />
@@ -367,10 +362,19 @@ export function CreativeStudio() {
             </div><p className={styles.hint}>{instrument.behavior === 'pulse' ? 'Percussão mantém os graus ao mover; pan e filtro continuam reagindo.' : 'Deslocamentos partem da casa original. Avanço segue a cor da peça. O resultado é arredondado para graus inteiros e limitado a ±12 graus.'}</p></details>
           </section>
         </aside>
+
+        <section className={`${styles.panel} ${styles.bandPanel}`}>
+          <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>04 / SUA BANDA</span><h2>32 vozes independentes</h2></div><span className={styles.hint}>● loop ativo</span></div>
+          <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
+            <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
+              <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span>{session.instruments[p.id].name}</button>
+              <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
+            </div>)}</div>)}</div>
+        </section>
       </div>
 
       <section className={`${styles.panel} ${styles.kitPanel}`} aria-label="Biblioteca de kits">
-        <div><span className={styles.eyebrow}>04 / BIBLIOTECA LOCAL</span><h2>Guarde o que funcionou</h2><p className={styles.hint}>Rascunho salvo automaticamente. Kits ficam neste navegador; exporte para levar a outro dispositivo.</p></div>
+        <div><span className={styles.eyebrow}>05 / BIBLIOTECA LOCAL</span><h2>Guarde o que funcionou</h2><p className={styles.hint}>Rascunho salvo automaticamente. Kits ficam neste navegador; exporte para levar a outro dispositivo.</p></div>
         <div className={styles.kitControls}>
           <label>Nome do kit<input maxLength={80} value={session.name} onChange={e => setSession(s => ({ ...s, name: e.target.value }))} /></label>
           <div className={styles.actions}><button onClick={saveKit}><Save size={15} />Salvar kit</button><button onClick={exportKit}><Download size={15} />Exportar kit</button><label className={styles.upload}><Upload size={15} />Importar kit<input type="file" accept=".json,application/json" aria-label="Importar kit JSON" onChange={async e => {

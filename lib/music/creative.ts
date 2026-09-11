@@ -99,6 +99,7 @@ export function creativeSnapshot(session: CreativeSession, playing: boolean, sol
   return {
     title: session.name, bpm: session.bpm, volume: session.volume, playing,
     sectionPattern: session.sectionPattern,
+    soloId,
     scale: SCALES[session.scale].map(interval => `${ROOTS[(rootIndex + interval) % 12]}4`),
     pieces: session.pieces.map(p => ({ ...p, origin: p.origin as MusicSnapshot['pieces'][number]['origin'], square: p.square as MusicSnapshot['pieces'][number]['square'], active: p.active && (!soloId || soloId === p.id) })),
     instruments: session.instruments, effects: session.effects, mappings: session.mappings,

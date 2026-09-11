@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import { type CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
 import { Draggable } from "@/components/ui/draggable"
@@ -72,15 +72,6 @@ export const CityPopup = ({
   const enterButtonRef = useRef<HTMLButtonElement>(null)
   const exitStyleRef = useRef<React.CSSProperties | null>(null)
 
-  useEffect(() => {
-    // console.log('CityPopup mounted', { 
-    //     cityId: city.id, 
-    //     dragHandleRef: dragHandleRef.current,
-    //     popupX: popup.x,
-    //     popupY: popup.y
-    // })
-  }, [city.id])
-
   return (
     <Draggable
       position={{ x: popup.x, y: popup.y }}
@@ -109,11 +100,11 @@ export const CityPopup = ({
       )}
       style={{
         zIndex: popup.zIndex,
-        // @ts-ignore - CSS custom property for popup enter offset
+        willChange: 'left, top',
+        contain: 'layout paint',
         '--enter-x': `${popup.enterX || 0}px`,
-        // @ts-ignore - CSS custom property for popup enter rotation
         '--enter-rot': `${popup.enterRot || 0}deg`
-      }}
+      } as React.CSSProperties}
       onMouseDown={() => {
         bringToFront(city.id)
       }}
@@ -121,12 +112,9 @@ export const CityPopup = ({
       <div
         ref={containerRef}
         data-drag-handle="true" // Make the entire popup draggable
-        className="relative p-5 rounded-lg border bg-card/80 backdrop-blur-md shadow-2xl transition-all cursor-grab active:cursor-grabbing"
+        className="relative p-5 rounded-lg border bg-card/95 shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
         onClick={(e) => {
             e.stopPropagation()
-        }}
-        onMouseDownCapture={(e) => {
-            // console.log('CityPopup inner div onMouseDownCapture', e.target)
         }}
         style={{
           boxShadow: isConquered
@@ -145,9 +133,9 @@ export const CityPopup = ({
               transformOrigin: transformOrigin || (popup.isClosing 
                 ? '0px 3px'
                 : (isPressed ? '0px 40px' : 'center center')),
-              transition: popup.isClosing 
-            ? undefined 
-            : (isPressed ? 'transform 0.2s ease-out' : 'all 0.3s ease-in-out')
+              transition: popup.isClosing
+                ? undefined
+                : 'transform 0.2s ease-out'
           })
         }}
         onMouseDown={() => {
