@@ -14,6 +14,7 @@ import { SynthControlPanel } from "./synth-control-panel"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceReadout } from './music-playback'
+import { VersionChangelog } from './version-changelog'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -1230,7 +1231,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onInstrumentChange={music.updateInstrument}
                 playback={music.enabled && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
-                  <MusicVoiceReadout monitor={music.monitor} id={music.selected.id} />
+                  <MusicVoiceReadout monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} />
                 </> : undefined}
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
@@ -2094,16 +2095,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
       {/* Bottom Right Info & Version */}
       <div 
-        className="hidden sm:flex absolute bottom-3 right-3 z-30 pointer-events-none items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
+        className="hidden sm:flex absolute bottom-3 right-3 z-30 pointer-events-auto items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
       >
         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-[10px] font-mono text-muted-foreground">v3.0 "The Distribution"</span>
+        <VersionChangelog />
       </div>
       <div 
-        className="flex sm:hidden absolute bottom-1.5 right-2 z-30 pointer-events-none items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
+        className="flex sm:hidden absolute bottom-1.5 right-2 z-30 pointer-events-auto items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
       >
         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-[9px] font-mono text-muted-foreground">v3.0 "The Distribution"</span>
+        <VersionChangelog />
       </div>
 
     </div>

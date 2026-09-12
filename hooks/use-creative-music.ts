@@ -52,5 +52,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, endAudition, preview, pulse, error, code, monitor }
+  return { audition, endAudition, preview, pulse, error, code, monitor, snapshot }
 }

@@ -4,6 +4,12 @@
 .beats i { width: 8px; height: 8px; border-radius: 50%; background: #485448; }
 .beats i[data-on='true'] { background: #e1eeac; }
 .voice { padding: 12px 0; min-height: 150px; }
+.variations { height: 174px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; font: 10px monospace; }
+.variation { padding: 5px; margin-bottom: 7px; border: 1px solid #34463b; border-radius: 5px; }
+.variation[data-active='true'] { border-color: #c2db91; }
+.variationLabel { display: flex; justify-content: space-between; gap: 6px; height: 22px; color: #b6c7b9; }
+.variationLabel span { font-size: 9px; }
+.notation { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 18px; padding-top: 4px; color: #a5b1a8; }
 .line { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 16px; color: #e1eeac; font: 11px monospace; margin-bottom: 8px; }
 .line > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice svg { display: block; width: 100%; height: 66px; background: #111a15; border-radius: 4px; }
