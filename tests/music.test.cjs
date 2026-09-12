@@ -4,23 +4,42 @@ const fs = require('node:fs')
 const path = require('node:path')
 const ts = require('typescript')
 const Module = require('node:module')
-let patterns
+const moduleCache = new Map()
 // Compile the pure domain modules without loading browser/audio dependencies.
 function loadTs(relative) {
   const file = path.resolve(__dirname, '..', relative)
+  if (moduleCache.has(file)) return moduleCache.get(file).exports
   const mod = new Module(file, module)
+  moduleCache.set(file, mod)
   mod.filename = file
   mod.paths = module.paths
   const original = mod.require.bind(mod)
-  mod.require = name => name === './model' ? model : name === './pattern-library' ? patterns : name === '../performance' ? { isConstrainedDevice: () => false } : original(name)
+  mod.require = name => name === '../performance' ? { isConstrainedDevice: () => false } : name.startsWith('.') && fs.existsSync(path.resolve(path.dirname(file), `${name}.ts`)) ? loadTs(path.relative(path.resolve(__dirname, '..'), path.resolve(path.dirname(file), `${name}.ts`))) : original(name)
   mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, file)
   return mod.exports
 }
 const model = loadTs('lib/music/model.ts')
-const { voiceSpecs, renderMusicCode } = loadTs('lib/music/runtime.ts')
-patterns = loadTs('lib/music/pattern-library.ts')
+const { voiceSpecs, renderMusicCode, compileVoice, MusicRuntime } = loadTs('lib/music/runtime.ts')
+const patterns = loadTs('lib/music/pattern-library.ts')
 const creative = loadTs('lib/music/creative.ts')
 const state = (history = []) => ({ pieces: model.piecesFromHistory(history), scale: ['C4','Eb4','F4','G4','Bb4'], bpm: 118, volume: 0.8, playing: true, effects: {} })
+
+let realStrudel
+async function strudel() {
+  if (!realStrudel) {
+    // Only the bundle's DOM event listeners are stubbed. Pattern parsing,
+    // composition, timeline selection and event queries use the shipped ESM.
+    const previousWindow = globalThis.window, previousDocument = globalThis.document
+    globalThis.window = { addEventListener() {}, removeEventListener() {} }
+    globalThis.document = { addEventListener() {}, removeEventListener() {}, dispatchEvent() {} }
+    try { realStrudel = await import('@strudel/web/dist/index.mjs'); realStrudel.miniAllStrings() }
+    finally {
+      if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow
+      if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument
+    }
+  }
+  return realStrudel
+}
 
 test('all 32 instruments start inactive, no hidden accompaniment', () => {
   const s = state()
@@ -104,7 +123,7 @@ test('creative session configures all 32 persistent voices and starts silent', (
   assert.equal(Object.keys(lab.effects).length, 32)
   assert.equal(Object.keys(lab.mappings).length, 32)
   assert.equal(voiceSpecs(creative.creativeSnapshot(lab, true), null).length, 0)
-  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(lab)), lab)
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(lab)), JSON.parse(JSON.stringify(lab)))
 })
 
 test('creative movement activates a voice and swaps occupied squares without losing identities', () => {
@@ -130,7 +149,7 @@ test('version 1 creative kits migrate their quiet mix exactly once', () => {
   const current = creative.createCreativeSession()
   const legacy = { ...current, version: 1, volume: 0.65, instruments: Object.fromEntries(Object.entries(current.instruments).map(([id, instrument]) => [id, { ...instrument, gain: 0.2 }])) }
   const migrated = creative.parseCreativeSession(JSON.stringify(legacy))
-  assert.equal(migrated.version, 3)
+  assert.equal(migrated.version, 4)
   assert.equal(migrated.sectionPattern, '0')
   assert.ok(Math.abs(migrated.volume - 0.728) < 1e-9)
   assert.ok(Math.abs(migrated.instruments['w:b1'].gain - 0.28) < 1e-9)
@@ -140,19 +159,42 @@ test('version 1 creative kits migrate their quiet mix exactly once', () => {
 test('Düsseldorf formation coordinates phrase banks and entrances on one timeline', () => {
   const lab = creative.createDusseldorfSession()
   const voices = voiceSpecs(creative.creativeSnapshot(lab, true), null)
-  assert.equal(lab.version, 3)
-  assert.equal(lab.sectionPattern, '<0@4 1@4 2@4 1@4>/16')
-  assert.equal(voices.length, 6)
-  assert.equal(voices.every(voice => voice.phrases.length === 3), true)
+  assert.equal(lab.version, 4)
+  assert.equal(lab.cityId, 'dusseldorf')
+  assert.equal(lab.bpm, 122)
+  assert.equal(lab.root, 'C#')
+  assert.equal(lab.sectionPattern, '[0@4 1@4 2@4 1@4]/16')
+  assert.equal(voices.length, 16)
+  assert.equal(lab.pieces.filter(piece => piece.active && piece.color === 'w').length, 16)
+  assert.equal(lab.pieces.some(piece => piece.active && piece.color === 'b'), false)
+  assert.equal(voices.filter(voice => ['w:b1', 'w:c1', 'w:d1'].includes(voice.piece.id)).every(voice => voice.phrases.length === 3), true)
+  assert.equal(voices.filter(voice => voice.groove).length, 8)
   assert.equal(voices.find(voice => voice.piece.id === 'w:a2').mask, undefined)
-  assert.equal(voices.find(voice => voice.piece.id === 'w:d1').mask, '<~@12 x@4>/16')
+  assert.equal(voices.find(voice => voice.piece.id === 'w:d1').mask, undefined)
+  assert.equal(lab.instruments['w:b1'].name, 'Baixo supersaw')
+  assert.deepEqual(lab.instruments['b:b8'], lab.instruments['w:b1'])
+  assert.deepEqual(lab.instruments['b:d8'], lab.instruments['w:d1'])
   const code = renderMusicCode(creative.creativeSnapshot(lab, true), null)
   assert.match(code, /pickRestart/)
-  assert.match(code, /\.mask\("<~@12 x@4>\/16"\)/)
+  assert.match(code, /Lead de resposta/)
+})
+
+test('an activated Düsseldorf queen keeps the city lead loop during gameplay', () => {
+  const lab = creative.createDusseldorfSession()
+  const snapshot = {
+    ...creative.creativeSnapshot(lab, true),
+    pieces: model.piecesFromHistory(['e4', 'e5', 'Qh5']),
+  }
+  const queen = voiceSpecs(snapshot, null).find(voice => voice.piece.id === 'w:d1')
+  assert.ok(queen)
+  assert.equal(queen.instrument.name, 'Lead de resposta')
+  assert.equal(queen.mask, undefined)
+  assert.match(renderMusicCode(snapshot, null), /w:d1 · Lead de resposta/)
 })
 
 test('solo makes a late-arriving Düsseldorf voice audible immediately', () => {
   const lab = creative.createDusseldorfSession()
+  lab.instruments['w:d1'].mask = '<~@12 x@4>/16'
   const snapshot = creative.creativeSnapshot(lab, true, 'w:d1')
   const voices = voiceSpecs(snapshot, null)
   assert.equal(voices.length, 1)
@@ -169,4 +211,281 @@ test('reference recipes stay inside the safe notation and creative instrument sc
     lab.instruments['w:b1'] = { ...lab.instruments['w:b1'], ...recipe.instrument, behavior: recipe.behavior, notes: recipe.notes }
     assert.deepEqual(creative.parseCreativeSession(JSON.stringify(lab)), lab)
   }
+})
+
+test('real Strudel switches the shared A/B/C/B timeline every four cycles', async () => {
+  const api = await strudel()
+  const lab = creative.createDusseldorfSession()
+  const timeline = api.mini(lab.sectionPattern)
+  assert.deepEqual([0, 4, 8, 12, 16].map(cycle => timeline.queryArc(cycle, cycle + .001)[0].value), [0, 1, 2, 1, 0])
+  const old = { ...lab, version: 3, sectionPattern: '<0@4 1@4 2@4 1@4>/16' }
+  assert.equal(creative.parseCreativeSession(JSON.stringify(old)).sectionPattern, lab.sectionPattern)
+})
+
+test('a king can play unpitched samples and a pawn can play a pitched melody', async () => {
+  const api = await strudel()
+  const lab = creative.createDusseldorfSession()
+  lab.instruments['w:e1'] = { ...lab.instruments['w:a2'] }
+  lab.instruments['w:a2'] = { ...lab.instruments['w:d1'], source: { kind: 'sample', bank: 'chicken-electro-v1', asset: 'bell', variant: 1, pitched: true }, notes: '0 2 4 2', phrases: undefined, octave: 4 }
+  const snapshot = creative.creativeSnapshot(lab, true)
+  const king = voiceSpecs(snapshot, null).find(v => v.piece.id === 'w:e1')
+  const pawn = voiceSpecs(snapshot, null).find(v => v.piece.id === 'w:a2')
+  const hits = compileVoice(api, king).queryArc(0, 1)
+  assert.equal(hits.length, 4)
+  assert.ok(hits.every(h => h.value.note === undefined && h.value.n === 0))
+  assert.deepEqual(compileVoice(api, pawn).queryArc(0, 1).map(h => h.value.note), [61, 64, 68, 64])
+  const changedScale = { ...snapshot, scale: ['D4','E4','F4','G4','A4','Bb4','C5'] }
+  const newKing = voiceSpecs(changedScale, null).find(v => v.piece.id === 'w:e1')
+  assert.deepEqual(compileVoice(api, newKing).queryArc(0, 1).map(h => h.value), hits.map(h => h.value))
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(lab)), JSON.parse(JSON.stringify(lab)))
+})
+
+test('groove lanes keep complementary timing and accents with any active subset', async () => {
+  const api = await strudel()
+  const lab = creative.createDusseldorfSession()
+  const snapshot = creative.creativeSnapshot(lab, true)
+  const specs = voiceSpecs(snapshot, null)
+  const onsets = voice => compileVoice(api, voice).queryArc(0, 1).filter(h => h.hasOnset()).map(h => Number(h.whole.begin))
+  assert.deepEqual(onsets(specs.find(v => v.piece.id === 'w:a2')), [0, .25, .5, .75])
+  assert.deepEqual(onsets(specs.find(v => v.piece.id === 'w:b2')), [.25, .75])
+  const hats = compileVoice(api, specs.find(v => v.piece.id === 'w:c2')).queryArc(0, 1)
+  assert.equal(hats.length, 8)
+  assert.deepEqual(hats.map(h => h.value.velocity), [1, .4, .7, .4, 1, .4, .7, .4])
+  const solo = voiceSpecs(creative.creativeSnapshot(lab, true, 'w:c2'), null)[0]
+  assert.deepEqual(onsets(solo), onsets(specs.find(v => v.piece.id === 'w:c2')))
+})
+
+test('automation scales gain and changes filters without adding note attacks', async () => {
+  const api = await strudel()
+  const lab = creative.createCreativeSession()
+  lab.pieces.find(p => p.id === 'w:b1').active = true
+  lab.instruments['w:b1'] = { ...lab.instruments['w:b1'], notes: '0*4', gain: .5, automations: {
+    gain: { kind: 'pattern', patterns: ['1 .5 .75 .5', '.5 1 .5 .75'] },
+    lpf: { kind: 'ramp', min: 400, max: 2000, cycles: 1 },
+  } }
+  lab.sectionPattern = '<0 1>'
+  const voice = voiceSpecs(creative.creativeSnapshot(lab, true), null)[0]
+  const pattern = compileVoice(api, voice)
+  const events = pattern.queryArc(0, 1)
+  assert.equal(events.length, 4)
+  assert.deepEqual(events.map(h => h.value.gain), [.5, .25, .375, .25])
+  assert.deepEqual(events.map(h => h.value.cutoff), [400, 800, 1200, 1600])
+  assert.deepEqual(pattern.queryArc(1, 2).map(h => h.value.gain), [.25, .5, .25, .375])
+})
+
+test('all Düsseldorf sections compile using the real Strudel bundle', async () => {
+  const api = await strudel()
+  const lab = creative.createDusseldorfSession()
+  for (const voice of voiceSpecs(creative.creativeSnapshot(lab, true), null)) {
+    const pattern = compileVoice(api, voice)
+    const events = pattern.queryArc(0, 16)
+    assert.ok(events.length > 0, voice.instrument.name)
+    assert.ok(events.every(h => Number.isFinite(Number(h.value.gain))), voice.instrument.name)
+    assert.ok(events.length < 2048, voice.instrument.name)
+  }
+})
+
+test('invalid automation or sample IDs cannot be saved as city kits', () => {
+  const lab = creative.createDusseldorfSession()
+  const invalid = patch => JSON.stringify({ ...lab, instruments: { ...lab.instruments, 'w:e1': { ...lab.instruments['w:e1'], ...patch } } })
+  assert.throws(() => creative.parseCreativeSession(invalid({ source: { kind: 'sample', bank: 'unknown', asset: 'kick', variant: 0, pitched: false } })))
+  assert.throws(() => creative.parseCreativeSession(invalid({ automations: { lpf: { kind: 'pattern', patterns: ['1000*20000'] } } })))
+  assert.throws(() => creative.parseCreativeSession(invalid({ automations: { gain: { kind: 'pattern', patterns: ['window.alert(1)'] } } })))
+  assert.throws(() => creative.parseCreativeSession(invalid({ automations: { pan: { kind: 'ramp', min: 0, max: 2, cycles: 4 } } })))
+})
+
+test('sample registry points to small valid local WAV files with explicit tuning', () => {
+  const { SAMPLE_BANKS, sampleRegistration } = loadTs('lib/music/sample-banks.ts')
+  let total = 0
+  for (const bank of SAMPLE_BANKS) for (const asset of bank.assets) for (const [variant, data] of asset.variants.entries()) {
+    const file = fs.readFileSync(path.resolve(__dirname, '../public', data.file.slice(1)))
+    total += file.length
+    assert.equal(file.toString('ascii', 0, 4), 'RIFF')
+    assert.equal(file.toString('ascii', 8, 12), 'WAVE')
+    assert.equal(file.readUInt16LE(22), 1)
+    assert.ok(sampleRegistration({ kind: 'sample', bank: bank.id, asset: asset.id, variant, pitched: true }).map)
+  }
+  assert.ok(total < 500_000)
+})
+
+test('playback monitor distinguishes inactive, rhythmic rest and section rest', async () => {
+  const api = await strudel()
+  const lab = creative.createCreativeSession()
+  lab.pieces.find(p => p.id === 'w:b1').active = true
+  lab.instruments['w:b1'] = { ...lab.instruments['w:b1'], notes: '0 ~', mask: '[x ~]/2' }
+  let seconds = .2
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.api = { ...api, getAudioContext: () => ({ currentTime: seconds }) }
+  runtime.scheduler = { started: true, lastBegin: 0, lastTick: 0, latency: 0, cps: 1 }
+  runtime.state = creative.creativeSnapshot(lab, true)
+  runtime.voices = new Map(voiceSpecs(runtime.state, null).map(v => [v.key, v]))
+  runtime.publishFrame()
+  assert.equal(runtime.monitor.getSnapshot().tracks['w:b1'].status, 'note')
+  assert.equal(runtime.monitor.getSnapshot().tracks['w:e1'].status, 'inactive')
+  seconds = .75; runtime.publishFrame()
+  assert.equal(runtime.monitor.getSnapshot().tracks['w:b1'].status, 'rest')
+  seconds = 1.2; runtime.publishFrame()
+  assert.equal(runtime.monitor.getSnapshot().tracks['w:b1'].status, 'masked')
+})
+
+test('before audio unlock the monitor preserves active versus inactive state', () => {
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.update(creative.creativeSnapshot(creative.createDusseldorfSession(), false))
+  assert.equal(runtime.monitor.getSnapshot().tracks['w:d1'].status, 'paused')
+  assert.equal(runtime.monitor.getSnapshot().tracks['b:d8'].status, 'inactive')
+  runtime.dispose()
+})
+
+test('pattern edits and an empty active band preserve the running transport', async () => {
+  const api = await strudel()
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  const scheduler = { started: true, lastBegin: 8, lastTick: 16, latency: 0, cps: .5, setCps(value) { this.cps = value }, setPattern() {}, start() { assert.fail('must not restart') }, stop() { assert.fail('must not stop while playing') } }
+  runtime.scheduler = scheduler
+  runtime.api = { ...api, getAudioContext: () => ({ currentTime: 17 }), getSuperdoughAudioController: () => ({ nodes: {}, getOrbit: () => ({ output: { gain: { setTargetAtTime() {} } } }) }) }
+  runtime.update(state(['Nf3']))
+  const cycle = runtime.monitor.getSnapshot().cycle
+  runtime.update({ ...state(['Nf3']), effects: { 'w:g1': { gain: .5 } } })
+  assert.equal(runtime.monitor.getSnapshot().cycle, cycle)
+  runtime.update(state())
+  assert.equal(runtime.monitor.getSnapshot().running, true)
+  assert.equal(runtime.monitor.getSnapshot().cycle, cycle)
+})
+
+test('city kit persistence round-trips sources, automation and shared grooves', () => {
+  const cityKits = loadTs('lib/music/city-kits.ts')
+  const lab = creative.createDusseldorfSession()
+  lab.instruments['w:e1'] = { ...lab.instruments['w:a2'] }
+  lab.instruments['w:b1'].automations.pan = { kind: 'pattern', patterns: ['.2 .8'] }
+  const memory = new Map([[cityKits.cityKitStorageKey('dusseldorf'), JSON.stringify(lab)]])
+  const previous = globalThis.window
+  globalThis.window = { localStorage: { getItem: key => memory.get(key) ?? null } }
+  try {
+    const loaded = cityKits.loadCityKit('dusseldorf')
+    assert.deepEqual(loaded, JSON.parse(JSON.stringify(lab)))
+    assert.equal(loaded.instruments['w:e1'].source.asset, 'kick')
+    assert.equal(loaded.instruments['w:e1'].groove.lane, 'kick')
+    memory.set(cityKits.cityKitStorageKey('dusseldorf'), 'invalid')
+    assert.equal(cityKits.loadCityKit('dusseldorf').version, 4)
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
+})
+
+test('pausing while the audio clock starts leaves playback and its monitor stopped', async () => {
+  const api = await strudel()
+  let finishStart
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.scheduler = {
+    started: false, lastBegin: 0, lastTick: 0, latency: 0, cps: .5,
+    setCps(value) { this.cps = value }, setPattern() {},
+    start() { this.started = true; return new Promise(resolve => { finishStart = resolve }) },
+    stop() { this.started = false },
+  }
+  runtime.api = { ...api, getAudioContext: () => ({ currentTime: 0 }), getSuperdoughAudioController: () => ({ nodes: {} }) }
+  runtime.update(state())
+  assert.equal(runtime.monitor.getSnapshot().running, true)
+  runtime.update({ ...state(), playing: false })
+  // Completion may race with the pause. The completion path must recheck state.
+  runtime.scheduler.started = true
+  finishStart()
+  await Promise.resolve()
+  assert.equal(runtime.scheduler.started, false)
+  assert.equal(runtime.monitor.getSnapshot().running, false)
+  runtime.dispose()
+})
+
+test('check activates only the attacking team temporarily and restores moved voices on escape', () => {
+  const history = ['e4', 'd5', 'Bb5+']
+  const checked = model.gameMusicStateFromHistory(history)
+  assert.equal(checked.attackingColor, 'w')
+  assert.equal(checked.pieces.filter(p => p.color === 'w' && p.active).length, 16)
+  assert.equal(checked.pieces.filter(p => p.color === 'b' && p.active).length, 1)
+  assert.equal(checked.pieces.find(p => p.id === 'w:e1').activation, 'check')
+  assert.equal(model.piecesFromHistory(history).find(p => p.id === 'w:e1').active, false)
+  const escaped = model.gameMusicStateFromHistory([...history, 'c6'])
+  assert.equal(escaped.attackingColor, null)
+  assert.equal(escaped.pieces.filter(p => p.color === 'w' && p.active).length, 2)
+  assert.equal(escaped.pieces.find(p => p.id === 'w:e1').active, false)
+  assert.deepEqual(model.gameMusicStateFromHistory(history), checked) // Undo/redo reconstruct the overlay.
+})
+
+test('black check does not resurrect captured voices and mate still obeys transport pause', () => {
+  const checked = model.gameMusicStateFromHistory(['d4', 'e5', 'dxe5', 'Bb4+'])
+  assert.equal(checked.attackingColor, 'b')
+  assert.equal(checked.pieces.filter(p => p.color === 'b' && p.active).length, 15)
+  assert.equal(checked.pieces.some(p => p.id === 'b:e7'), false)
+  const mate = model.gameMusicStateFromHistory(['f3', 'e5', 'g4', 'Qh4#'])
+  assert.equal(mate.checkmate, true)
+  assert.equal(voiceSpecs({ ...state(), pieces: mate.pieces, playing: false }, null).length, 0)
+})
+
+test('check bypasses entry masks for all attackers without altering the saved kit', () => {
+  const kit = creative.createDusseldorfSession()
+  kit.instruments['w:e2'].mask = '~'
+  kit.instruments['w:e1'].mask = '~'
+  const during = model.gameMusicStateFromHistory(['e4', 'd5', 'Bb5+'])
+  const snapshot = { ...creative.creativeSnapshot(kit, true), pieces: during.pieces }
+  for (const id of ['w:e2', 'w:e1']) assert.equal(voiceSpecs(snapshot, null).find(v => v.piece.id === id).mask, undefined)
+  assert.equal(kit.instruments['w:e2'].mask, '~')
+})
+
+async function manualRuntime() {
+  const api = await strudel()
+  let pattern, time = 0
+  const attacks = []
+  const nodes = {}
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.scheduler = { started: true, lastBegin: 0, lastTick: 0, latency: 0, cps: .5, setCps(v) { this.cps = v }, setPattern(v) { pattern = v }, stop() { this.started = false } }
+  runtime.api = { ...api, getAudioContext: () => ({ currentTime: time }), getSuperdoughAudioController: () => ({ nodes, getOrbit: id => nodes[id] ??= { disconnect() {}, output: { gain: { setTargetAtTime() {} } } } }), webaudioOutput: async hap => { attacks.push(hap.value) } }
+  runtime.unlock = async () => {}
+  return { runtime, attacks, pattern: () => pattern, advance: seconds => { time = seconds; runtime.publishFrame() } }
+}
+
+test('drag suspends that voice, triggers once per entered square and restores its loop', async () => {
+  const { runtime, attacks, pattern, advance } = await manualRuntime()
+  runtime.update(state(['Nf3', 'Nc6']))
+  runtime.audition('w:g1', 'f3')
+  await Promise.resolve()
+  assert.equal(attacks.length, 1)
+  assert.ok(pattern().queryArc(0, 16).every(h => h.value.ccVoice === 'b:b8:loop'))
+  runtime.audition('w:g1', 'f3'); await Promise.resolve()
+  assert.equal(attacks.length, 1)
+  runtime.audition('w:g1', 'g4'); await Promise.resolve()
+  assert.equal(attacks.length, 2)
+  assert.notEqual(attacks[0].note, attacks[1].note)
+  advance(10)
+  assert.equal(attacks.length, 2)
+  assert.equal(runtime.monitor.getSnapshot().tracks['w:g1'].status, 'rest')
+  runtime.endAudition()
+  assert.ok(pattern().queryArc(0, 4).some(h => h.value.ccVoice === 'w:g1:loop'))
+  runtime.dispose()
+})
+
+test('cancelled loading gestures stay silent; the dedicated audition button still plays the phrase', async () => {
+  const { runtime, attacks, pattern } = await manualRuntime()
+  runtime.update(state())
+  runtime.audition('w:e1', 'e1')
+  runtime.endAudition()
+  await Promise.resolve()
+  assert.equal(attacks.length, 0)
+  assert.equal(pattern().queryArc(0, 8).length, 0)
+  runtime.audition('w:e1', 'e1', 'pattern')
+  await Promise.resolve()
+  assert.ok(pattern().queryArc(0, 4).length > 0)
+  runtime.endAudition()
+  assert.equal(pattern().queryArc(0, 8).length, 0)
+  runtime.dispose()
+})
+
+test('city flight ends above the selected world pin, even from the opposite side', () => {
+  const { Vector3, Quaternion } = require('three')
+  const { cityDirection, cityFlightPose } = loadTs('lib/globe-navigation.ts')
+  const pin = cityDirection(51.23, 6.78).applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), 1.5))
+  const from = pin.clone().normalize().multiplyScalar(-6)
+  for (const progress of [0, .25, .5, .75, 1]) {
+    const pose = cityFlightPose(from, new Vector3(0, 1, 0), pin, progress)
+    assert.ok(pose.position.length() >= 2.25 - 1e-8)
+    assert.ok(pose.position.toArray().every(Number.isFinite))
+  }
+  const end = cityFlightPose(from, new Vector3(0, 1, 0), pin, 1)
+  assert.ok(end.position.clone().normalize().distanceTo(pin.clone().normalize()) < 1e-8)
+  assert.ok(Math.abs(end.position.length() - 2.25) < 1e-8)
 })

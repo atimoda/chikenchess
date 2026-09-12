@@ -8,6 +8,7 @@ import type { GlobalEffects } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
+import { ROOTS, SCALES, type CreativeSession } from '@/lib/music/creative'
 
 interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   showAmbience?: boolean
@@ -20,6 +21,8 @@ interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivEleme
   toggleRef?: React.RefObject<HTMLButtonElement | null>
   isOn: boolean
   onToggle: () => void
+  tonality?: Pick<CreativeSession, 'root' | 'scale'>
+  onTonalityChange?: (root: CreativeSession['root'], scale: CreativeSession['scale']) => void
 }
 
 export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelProps>(({
@@ -33,6 +36,8 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
   toggleRef,
   isOn,
   onToggle,
+  tonality,
+  onTonalityChange,
   ...props
 }, ref) => {
   const panelStyle = {
@@ -52,10 +57,12 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
 
   return (
     <Draggable
+      data-widget="board"
       ref={ref}
       position={position}
       onDrag={onPositionChange}
       handleRef={effectiveHandleRef}
+      dragFromBackground
       className={cn(
         "pointer-events-auto", // Remove z-50 and visual styles from container
         props.className
@@ -82,6 +89,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
 
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
+        aria-label={isOn ? 'Desligar Board Params' : 'Ligar Board Params'}
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group hover:cursor-pointer",
@@ -108,7 +116,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
       />
 
       {/* Main Content - z-50 (relative to sit on top of bg) */}
-      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px]", !isOn && "opacity-50 grayscale")}>
+      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px] max-w-full", !isOn && "opacity-50 grayscale")}>
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-center mb-2 px-1 h-4 relative">
              <span className={cn(
@@ -151,6 +159,16 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
                 className="w-full"
               />
             </div>
+
+            {tonality && <fieldset disabled={!isOn} className="grid grid-cols-[.7fr_1.3fr] gap-2 px-2" data-no-drag>
+              <label className="text-[10px] font-mono text-muted-foreground">TOM
+                <select aria-label="Tom da partida" className="mt-1 w-full rounded border border-white/20 bg-neutral-950 p-2 text-xs text-white" value={tonality.root} onChange={e => onTonalityChange?.(e.target.value as CreativeSession['root'], tonality.scale)}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select>
+              </label>
+              <label className="text-[10px] font-mono text-muted-foreground">ESCALA
+                <select aria-label="Escala da partida" className="mt-1 w-full rounded border border-white/20 bg-neutral-950 p-2 text-xs text-white" value={tonality.scale} onChange={e => onTonalityChange?.(tonality.root, e.target.value as CreativeSession['scale'])}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select>
+              </label>
+              <p className="col-span-2 text-[10px] text-white/50">Todas as vozes afinadas seguem o tom e a escala. Alterações valem nesta partida.</p>
+            </fieldset>}
 
             {showAmbience && <div className="grid grid-cols-3 gap-2 mt-2">
               <Knob

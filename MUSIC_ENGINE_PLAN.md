@@ -1,6 +1,8 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Data: 10/09/2026. Status: primeira bancada da engine e Modo Criativo implementados; evolução musical em andamento.
+Atualizado em 12/09/2026. Status: bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e monitor de execução implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+
+A primeira regra tática coletiva ativa temporariamente a banda atacante durante cheque. O arraste suspende o loop da peça e toca por entrada em casa. Os widgets da partida agora reúnem transporte/código, execução por peça e tom/escala global; a entrada pelo mapa aproxima a câmera do pin antes da fase. Estados táticos mais complexos continuam sujeitos à validação musical da base.
 
 ## Modo Criativo (primeira bancada implementada)
 
@@ -12,17 +14,28 @@ O rascunho e kits nomeados são guardados no navegador. A exportação/importaç
 
 Os trechos Strudel recebidos formam o corpus de referência. Cada trecho é descrito pelo papel que cumpre (groove, baixo, harmonia, melodia ou textura), separado em componentes reaproveitáveis e comparado no Modo Criativo. As construções que a engine ainda não representa geram requisitos concretos para o modelo, em vez de adicionarmos abstrações sem referência sonora.
 
-O resultado desse ciclo será um kit eletrônico de referência com algumas formações testáveis, métricas simples de densidade/headroom e uma lista pequena de capacidades faltantes — por exemplo bancos de samples, seleção coordenada de seções, progressões harmônicas ou variação determinística. Só então ligaremos estados táticos mais complexos à música, para que esses estados transformem um arranjo que já soa bem em repouso.
+O resultado desse ciclo será um kit eletrônico de referência com algumas formações testáveis, métricas simples de densidade/headroom e uma lista pequena de capacidades faltantes — por exemplo progressões harmônicas ou variação determinística. Só então ligaremos estados táticos mais complexos à música, para que esses estados transformem um arranjo que já soa bem em repouso.
 
 As referências recebidas foram triadas em `STRUDEL_REFERENCE_CATALOG.md`. Nove adaptações iniciais de “Death By Elliptical Eye”, “Bennington” e “Bonespurs” estão em `lib/music/pattern-library.ts` e podem ser aplicadas a qualquer peça no inspetor.
 
-A primeira formação `Düsseldorf · Elliptical Lab` coordena bumbo, caixa, chimbal, baixo, pad e lead. Cada voz possui três variações; uma timeline A/B/C/B compartilhada escolhe e reinicia as frases nas mesmas fronteiras, enquanto máscaras introduzem as camadas aos poucos. O editor permite alterar a timeline, até quatro variações da peça e sua máscara durante a execução. O próximo incremento é adicionar banks/samples licenciados e padrões de automação para ganho, filtro, transposição e efeitos.
+A formação atual `Düsseldorf · Electro 01` expande a primeira `Elliptical Lab` para todas as 16 peças brancas no Criativo, com os instrumentos correspondentes espelhados nas pretas. A timeline A/B/C/B tem quatro ciclos por seção; a notação foi corrigida para `[0@4 1@4 2@4 1@4]/16`, pois a anterior alongava a forma por um fator de 16. Máscaras continuam editáveis, mas o preset atual permite ouvir cada voz ativa sem esperar uma entrada longa, inclusive a rainha.
+
+Os quatro incrementos desta entrega:
+
+1. **Fontes independentes das peças:** banco local `Chicken Electro · 01`, com 13 samples originais CC0, articulações e opção de seguir a escala. Rei com bumbo e peão com sino melódico foram verificados com o compilador Strudel real e no Criativo.
+2. **Automações:** ganho, filtro, pan, reverb e delay aceitam padrões por seção ou curvas seno/rampa. O editor valida limites antes de aplicar; valores são lidos a cada ataque. Modulação contínua de uma nota sustentada e transposição em padrão ficam para outra etapa.
+3. **Grooves compartilhados:** trilhas de ritmo e acentos coordenadas pela timeline, atribuíveis a qualquer peça. O editor cria grooves/trilhas e altera uma trilha para todas as vozes vinculadas. A execução usa `struct` e `pickRestart`, sem exigir `pickOut` nem atrelar a distribuição a peões.
+4. **Feedback musical:** seção, compasso, pulso, notas/pausas e valores executados; distingue peça inativa, pausa do transporte, solo, carregamento e máscara. Os dados vêm dos padrões compilados e do relógio de áudio.
+
+O JSON v4 conserva fontes, grooves e automações. **Salvar kit da fase** faz a próxima partida usar a configuração editada, guardada neste navegador. **Düsseldorf original · samples** permite comparar o preset novo sem sobrescrever automaticamente um kit salvo. Banco oficial, contas e sincronização entre dispositivos continuam futuros.
+
+**Próximo passo:** ouvir este preset no Criativo e na fase em formações pequenas e completas, ajustar balanço, densidade e respostas entre as vozes, e medir um celular físico. Depois de aprovar essa base sonora, experimentar progressão harmônica global e transformações de frase por movimento; estados táticos avançados vêm depois dessa comparação.
 
 ### Estabilização para testes móveis
 
 A primeira redução de custo mantém o agendamento de áudio completo e limita trabalho visual: pulsos do tabuleiro são amostrados a 8 Hz em aparelho restrito e 15 Hz no desktop; sliders agrupam recompilações em janelas curtas; o espectrograma desenha no máximo 24 quadros por segundo. Em tela estreita, toque ou aparelho com até quatro núcleos, a partida usa somente o worker de jogada do Stockfish, limita a profundidade efetiva da IA a 6 e não abre espectrograma/código automaticamente. A polifonia fica em 32 vozes nesses aparelhos e 64 nos demais. Uma mixagem densa recebe atenuação progressiva acima de dez loops para recuperar headroom.
 
-Esta é uma otimização estrutural inicial para viabilizar a escuta. A rodada final de performance precisa medir aparelhos físicos depois que seções, samples, automações e interação estiverem definidas.
+Samples agora são carregados sob demanda e reutilizados; padrões de vozes sem mudanças e consultas visuais por ciclo usam cache. O monitor atualiza pequenos componentes em 100 ms no desktop e 150 ms em aparelho restrito, sem reconstruir o editor inteiro. Esta é uma otimização estrutural inicial para viabilizar a escuta. A rodada final de performance precisa medir aparelhos físicos depois que seções, samples, automações e interação estiverem definidas.
 
 ## 1. Direção e critério de prioridade
 

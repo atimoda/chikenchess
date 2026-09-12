@@ -36,7 +36,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
   const [sloganScale, setSloganScale] = useState(1)
 
-  const [pressedPopupState, setPressedPopupState] = useState<{ id: string, rotation: number } | null>(null)
+  const [pressedPopupState, setPressedPopupState] = useState<{ id: string } | null>(null)
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
   const [showAbout, setShowAbout] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(100)
@@ -289,7 +289,26 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       const t = ctx.currentTime
       const pitchVar = 0.9 + Math.random() * 0.2
 
-      if (type === "bd") {
+      if (type === 'popup_down' || type === 'popup_up' || type === 'popup_drag') {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          const filter = ctx.createBiquadFilter()
+          const isPress = type === 'popup_down'
+          const isRelease = type === 'popup_up'
+          const duration = isRelease ? .13 : type === 'popup_drag' ? .055 : .09
+          osc.type = isPress ? 'triangle' : 'sine'
+          osc.frequency.setValueAtTime((isPress ? 190 : isRelease ? 360 : 520) * pitchVar, t)
+          osc.frequency.exponentialRampToValueAtTime((isPress ? 108 : isRelease ? 620 : 390) * pitchVar, t + duration)
+          filter.type = 'lowpass'
+          filter.frequency.setValueAtTime(isPress ? 900 : 1800, t)
+          gain.gain.setValueAtTime(isPress ? .075 : isRelease ? .055 : .018, t)
+          gain.gain.exponentialRampToValueAtTime(.001, t + duration)
+          osc.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          osc.start(t)
+          osc.stop(t + duration)
+      } else if (type === "bd") {
           const osc = ctx.createOscillator()
           const gain = ctx.createGain()
           osc.frequency.setValueAtTime(150 * pitchVar, t)
@@ -696,7 +715,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   }
 
   return (
-    <div className="relative w-full h-screen bg-neutral-900 overflow-hidden flex flex-col">
+    <div className="relative w-full h-screen overflow-hidden flex flex-col" style={{ background: 'radial-gradient(ellipse at 18% 30%, #22243d 0%, transparent 52%), radial-gradient(ellipse at 82% 62%, #142d36 0%, transparent 48%), radial-gradient(ellipse at 56% 90%, #2b1e32 0%, transparent 50%), #080b14' }}>
       <style jsx global>{`
         @keyframes drawLine {
           from { stroke-dashoffset: 4000; }

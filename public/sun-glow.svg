@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs><radialGradient id="corona">
+    <stop offset="0" stop-color="#fff0bd" stop-opacity=".85"/>
+    <stop offset=".2" stop-color="#ffda93" stop-opacity=".48"/>
+    <stop offset=".38" stop-color="#efad58" stop-opacity=".16"/>
+    <stop offset=".65" stop-color="#e68c42" stop-opacity=".04"/>
+    <stop offset="1" stop-color="#e68c42" stop-opacity="0"/>
+  </radialGradient></defs>
+  <circle cx="128" cy="128" r="128" fill="url(#corona)"/>
+</svg>

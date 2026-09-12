@@ -3,9 +3,10 @@
 import { useRef, useState, useEffect, Suspense } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
-import { TextureLoader, Mesh, Group, Vector3, MathUtils } from 'three'
+import { TextureLoader, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace } from 'three'
 import { CityData } from '@/lib/cities-data'
 import { CityPopup } from './city-popup'
+import { cityDirection, cityFlightPose } from '@/lib/globe-navigation'
 
 interface GlobeProps {
   cities: CityData[]
@@ -19,12 +20,12 @@ interface GlobeProps {
   playMapSound: (type: string, forceResume?: boolean) => void
   startWhistleLoop: () => void
   stopWhistleLoop: () => void
-  setPressedPopupState: (state: { id: string, rotation: number } | null) => void
+  setPressedPopupState: (state: { id: string } | null) => void
   onCitySelect: (city: CityData) => void
   handleSmartPadSound: (e: React.MouseEvent<HTMLButtonElement>) => void
   handleSmartPadLeave: (e: React.MouseEvent<HTMLButtonElement>) => void
   stopPadSound: () => void
-  pressedPopupState: { id: string, rotation: number } | null
+  pressedPopupState: { id: string } | null
   enteringCityId: string | null
   setEnteringCityId: (id: string | null) => void
   zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>
@@ -32,6 +33,7 @@ interface GlobeProps {
 }
 
 const GLOBE_RADIUS = 2
+const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
 
 // Separate component to handle Popup state locally and avoid full re-renders during drag
 const PulsingRing = ({ city, isOpen, isHoveredProp }: { city: CityData, isOpen: boolean, isHoveredProp: boolean }) => {
@@ -72,6 +74,21 @@ const PulsingRing = ({ city, isOpen, isHoveredProp }: { city: CityData, isOpen: 
     )
 }
 
+const ConqueredFlag = ({ city }: { city: CityData }) => {
+  const normal = cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, 1).normalize()
+  const orientation = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), normal)
+  return <group quaternion={orientation}>
+    <mesh position={[0, .105, 0]}>
+      <cylinderGeometry args={[.008, .008, .21, 6]} />
+      <meshBasicMaterial color="#b9ffd1" />
+    </mesh>
+    <mesh position={[.06, .155, .004]}>
+      <planeGeometry args={[.12, .07]} />
+      <meshBasicMaterial color="#62e88b" side={DoubleSide} transparent opacity={.96} />
+    </mesh>
+  </group>
+}
+
 const PopupContainer = ({
     city,
     popup, // Initial/Global state
@@ -85,7 +102,6 @@ const PopupContainer = ({
     startWhistleLoop,
     stopWhistleLoop,
     setPressedPopupState,
-    onCitySelect,
     handleSmartPadSound,
     handleSmartPadLeave,
     stopPadSound,
@@ -241,7 +257,6 @@ const PopupContainer = ({
                         isConquered={isConquered}
                         isUnlocked={isUnlocked}
                         isPressed={pressedPopupState?.id === city.id}
-                        rotation={pressedPopupState?.rotation || 0}
                         bringToFront={bringToFront}
                         closePopup={onPopupClose}
                         updatePopupPosition={(id, x, y) => {
@@ -260,7 +275,6 @@ const PopupContainer = ({
                         startWhistleLoop={startWhistleLoop}
                         stopWhistleLoop={stopWhistleLoop}
                         setPressedPopupState={setPressedPopupState}
-                        onCitySelect={onCitySelect}
                         handleSmartPadSound={handleSmartPadSound}
                         handleSmartPadLeave={handleSmartPadLeave}
                         stopPadSound={stopPadSound}
@@ -342,6 +356,7 @@ const GlobeContent = ({
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
   const [isDraggingPopup, setIsDraggingPopup] = useState(false)
+  const [hoveredPinId, setHoveredPinId] = useState<string | null>(null)
   const isStandby = useRef(false)
   const lastInteractionTime = useRef(Date.now())
   const [introZoomComplete, setIntroZoomComplete] = useState(false)
@@ -351,16 +366,38 @@ const GlobeContent = ({
   const standbyRotationAxis = useRef(new Vector3(0, 1, 0))
   const standbyRotationSpeed = useRef(0.1)
 
-  // Load texture
-  const texture = useLoader(TextureLoader, '/world_map_tech.svg')
+  // Transparent equirectangular contour texture; the surface keeps its own shading.
+  const [contourTexture, sunGlow] = useLoader(TextureLoader, ['/world_map_contours.svg', '/sun-glow.svg'])
+  useEffect(() => { sunGlow.colorSpace = SRGBColorSpace }, [sunGlow])
   
   const { camera } = useThree()
 
   const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
+  const entryFlight = useRef<{ city: CityData; from: Vector3; up: Vector3; pin: Vector3; elapsed: number; duration: number; done: boolean } | null>(null)
+  useEffect(() => {
+    const city = cities.find(candidate => candidate.id === enteringCityId)
+    if (!city || !globeRef.current) { entryFlight.current = null; return }
+    const pin = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS))
+    entryFlight.current = { city, from: camera.position.clone(), up: camera.up.clone(), pin, elapsed: 0, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? .15 : 1.4, done: false }
+    setTargetCameraPos(null)
+    isStandby.current = false
+  }, [enteringCityId, cities, camera])
 
   // Initial Zoom Animation & Standby Logic
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime()
+    const flight = entryFlight.current
+    if (flight) {
+      if (flight.done) return
+      flight.elapsed += delta
+      const progress = Math.min(1, flight.elapsed / flight.duration)
+      const pose = cityFlightPose(flight.from, flight.up, flight.pin, progress)
+      camera.position.copy(pose.position)
+      camera.up.copy(pose.up)
+      camera.lookAt(0, 0, 0)
+      if (progress === 1) { flight.done = true; onCitySelect(flight.city) }
+      return
+    }
     
     // Camera Animation (Centering)
     if (targetCameraPos) {
@@ -433,9 +470,6 @@ const GlobeContent = ({
     // Standby Logic
     const now = Date.now()
     const hasOpenPopups = Object.keys(openPopups).length > 0
-    if (hasOpenPopups) {
-        lastInteractionTime.current = now // Keep resetting while popups are open
-    }
     const timeSinceInteraction = now - lastInteractionTime.current
 
     // Report Zoom Level
@@ -451,8 +485,10 @@ const GlobeContent = ({
         }
     }
     
-    // Completely freeze rotation if popup is open, dragging, or recently interacted
-    if (introZoomComplete && !isDraggingPopup && !hasOpenPopups && timeSinceInteraction > 3000) {
+    // A city card does not stop the idle globe. Only a direct gesture, flight or
+    // pin hover pauses it; a just-opened card resumes as soon as centering ends.
+    const canRotate = introZoomComplete && !isDraggingPopup && !hoveredPinId && !targetCameraPos && (hasOpenPopups || timeSinceInteraction > 3000)
+    if (canRotate) {
         if (!isStandby.current) {
             isStandby.current = true
             // Initialize random rotation axis and speed
@@ -536,15 +572,11 @@ const GlobeContent = ({
   }, [])
 
   const getSphericalCoordinates = (lat: number, lng: number, radius: number) => {
-    const phi = (90 - lat) * (Math.PI / 180)
-    const theta = (lng + 180) * (Math.PI / 180)
-    const x = -(radius * Math.sin(phi) * Math.cos(theta))
-    const z = (radius * Math.sin(phi) * Math.sin(theta))
-    const y = (radius * Math.cos(phi))
-    return [x, y, z] as [number, number, number]
+    return cityDirection(lat, lng, radius).toArray() as [number, number, number]
   }
 
   const handleCityClickInternal = (city: CityData) => {
+       if (enteringCityId) return
        // Center the globe on the city
        if (controlsRef.current && globeRef.current) {
            const phi = (90 - city.geoCoordinates.lat) * (Math.PI / 180)
@@ -569,9 +601,19 @@ const GlobeContent = ({
 
   return (
     <>
-      <ambientLight intensity={0.1} />
-      <pointLight position={[10, 10, 10]} intensity={1.5} />
+      <ambientLight intensity={0.6} color="#bbc8da" />
+      {/* Shared light source: both the Earth's terminator and lunar phase face the visible sun. */}
+      <pointLight position={SUN_POSITION} intensity={160} decay={2} color="#ffe0b0" />
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      <group position={SUN_POSITION}>
+        <Sphere args={[.32, 32, 24]}><meshBasicMaterial color="#ffe7af" toneMapped={false} /></Sphere>
+        <sprite scale={[2.8, 2.8, 1]} raycast={() => {}}>
+          <spriteMaterial map={sunGlow} blending={AdditiveBlending} transparent opacity={.7} depthWrite={false} toneMapped={false} />
+        </sprite>
+      </group>
+      <group position={[6.4, -2.8, -10]}>
+        <Sphere args={[.34, 32, 24]}><meshStandardMaterial color="#8c929d" roughness={1} metalness={0} /></Sphere>
+      </group>
       
       {/* Group wrapper for standby rotation */}
       <group ref={globeRef}>
@@ -580,7 +622,7 @@ const GlobeContent = ({
              <meshBasicMaterial color="#000000" />
           </Sphere>
 
-          {/* The Earth Surface */}
+          {/* Ambient fill preserves the night silhouette; direct light comes only from the sun. */}
           <Sphere 
             args={[GLOBE_RADIUS, 64, 64]} 
             onPointerDown={() => {
@@ -594,23 +636,18 @@ const GlobeContent = ({
             onPointerOut={() => { document.body.style.cursor = 'auto' }}
           >
             <meshStandardMaterial 
-                map={texture}
-                color="#0E6C4D" // Dark green base
-                transparent
-                opacity={0.9} // Slightly transparent to blend with dark background
-                roughness={0.7} 
-                metalness={0.5} 
-                emissive="#000000"
+                color="#18332c"
+                roughness={.88}
+                metalness={.12}
+                emissive="#06130f"
+                emissiveIntensity={.22}
             />
           </Sphere>
-          
-          {/* Dark overlay sphere to mute the map colors further as requested */}
-          <Sphere args={[GLOBE_RADIUS + 0.01, 64, 64]}>
-             <meshBasicMaterial color="#1a1a2e" transparent opacity={0.85} blending={2} /> 
-          </Sphere>
 
-          {/* Grid helper for visual tech feel */}
-          <gridHelper args={[20, 20, 0x444444, 0x222222]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, 0]} />
+          {/* Only coastlines: no borders or regional divisions. */}
+          <Sphere args={[GLOBE_RADIUS + .012, 64, 64]}>
+             <meshStandardMaterial map={contourTexture} color="#bed3c8" emissiveMap={contourTexture} emissive="#7b9588" emissiveIntensity={.07} roughness={1} metalness={0} transparent opacity={.7} depthWrite={false} />
+          </Sphere>
 
           {cities.map((city) => {
             const position = getSphericalCoordinates(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS)
@@ -618,7 +655,7 @@ const GlobeContent = ({
             const isConquered = (conqueredCities || []).includes(city.id)
             const isUnlocked = true // All cities playable in v3.0!
             const popup = openPopups[city.id]
-            const [isHovered, setIsHovered] = useState(false)
+            const isHovered = hoveredPinId === city.id
             
             // Touch/Click handling state
             const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
@@ -661,12 +698,14 @@ const GlobeContent = ({
                         e.stopPropagation()
                         document.body.style.cursor = 'pointer'
                         playMapSound("bd", true)
-                        setIsHovered(true)
+                        setHoveredPinId(city.id)
+                        handleInteraction()
                     }}
                     onPointerOut={() => {
                         document.body.style.cursor = 'auto'
-                        setIsHovered(false)
+                        setHoveredPinId(current => current === city.id ? null : current)
                     }}
+                    scale={isHovered ? [1.15, 1.15, 1.15] : [1, 1, 1]}
                 >
                   <sphereGeometry args={[0.04, 16, 16]} />
                   <meshStandardMaterial 
@@ -680,7 +719,7 @@ const GlobeContent = ({
                 </mesh>
                 
                 {/* Glow effect */}
-                <mesh scale={[1.5, 1.5, 1.5]}>
+                <mesh scale={isHovered ? [1.725, 1.725, 1.725] : [1.5, 1.5, 1.5]}>
                     <sphereGeometry args={[0.04, 16, 16]} />
                     <meshBasicMaterial color={city.color} transparent opacity={isConquered ? 0.45 : 0.25} />
                 </mesh>
@@ -692,6 +731,8 @@ const GlobeContent = ({
                         <meshBasicMaterial color="#eab308" transparent opacity={0.35} />
                     </mesh>
                 )}
+
+                {isConquered && <ConqueredFlag city={city} />}
 
                 {/* Pulse Ring Effect (Hover/Selected) */}
                 {(isOpen || isHovered) && <PulsingRing city={city} isOpen={isOpen} isHoveredProp={isHovered} />}
@@ -710,12 +751,11 @@ const GlobeContent = ({
                           startWhistleLoop={startWhistleLoop}
                           stopWhistleLoop={stopWhistleLoop}
                           setPressedPopupState={setPressedPopupState}
-                          onCitySelect={onCitySelect}
                           handleSmartPadSound={handleSmartPadSound}
                           handleSmartPadLeave={handleSmartPadLeave}
                           stopPadSound={stopPadSound}
                           isEntering={enteringCityId === city.id}
-                          setEnteringCityId={setEnteringCityId}
+                          setEnteringCityId={(id: string | null) => { if (!enteringCityId) setEnteringCityId(id) }}
                           setIsDraggingPopup={setIsDraggingPopup}
                           handleInteraction={handleInteraction}
                       />
@@ -727,9 +767,12 @@ const GlobeContent = ({
       
       <TrackballControls 
         ref={controlsRef} 
-        enabled={!isDraggingPopup}
+        // Keep the controller enabled so it always receives pointerup and clears
+        // its internal drag state. Only rotation is suspended behind a popup.
+        enabled={!enteringCityId}
+        noRotate={isDraggingPopup || !!enteringCityId}
         noPan={true} 
-        minDistance={3.33} 
+        minDistance={enteringCityId ? 2.05 : 3.33}
         maxDistance={10} 
         rotateSpeed={(() => {
             if (isDraggingPopup) return 0.2
@@ -752,7 +795,7 @@ const GlobeContent = ({
             
             return speed
         })()}
-        noZoom={false}
+        noZoom={!!enteringCityId}
         staticMoving={false} // Enable damping/inertia
         dynamicDampingFactor={0.1}
       />
@@ -762,7 +805,7 @@ const GlobeContent = ({
 
 export const GlobeComponent = (props: GlobeProps) => {
     return (
-        <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={[1, 1.5]} gl={{ powerPreference: 'high-performance' }} className="w-full h-full">
+        <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={[1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
             <Suspense fallback={null}>
                 <GlobeContent {...props} />
             </Suspense>

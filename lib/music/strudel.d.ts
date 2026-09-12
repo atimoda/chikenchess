@@ -12,4 +12,10 @@ declare module '@strudel/web' {
   export const getAudioContext: any
   export const getSuperdoughAudioController: any
   export const webaudioOutput: any
+  export const mini: any
+  export const sine: any
+  export const saw: any
+  export const samples: any
+  export const loadBuffer: any
+  export const pickRestart: any
 }

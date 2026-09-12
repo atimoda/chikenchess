@@ -13,8 +13,10 @@ import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
+import { MusicTransportReadout, MusicVoiceReadout } from './music-playback'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
 import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
@@ -42,6 +44,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [game, setGame] = useState(new Chess())
   const [currentPattern, setCurrentPattern] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [moveHistory, setMoveHistory] = useState<string[]>([])
   const [redoStack, setRedoStack] = useState<string[]>([]) // Stack of SAN moves to redo
@@ -182,27 +185,25 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             // Closer to bottom of quadrant -> centerY - widgetHeight - centerPadding
             setGlobalPanelPosition({ 
                 x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
-                y: centerY - 300 - getCenterPadding() // Approx widget height (taller)
+                y: Math.max(headerH, centerY - 300 - getCenterPadding())
             })
 
-            // Bottom Left (Spectrogram - originally Top Left)
-            // Closer to top of quadrant -> centerY + centerPadding
-            setSpectrogramPosition({ 
-                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW), 
-                y: centerY + getCenterPadding()
+            // Compact spectrum below the taller piece inspector.
+            setSpectrogramPosition({
+                x: Math.min(width - widgetW - padding, centerX + boardHalfWidth + getBoardPadding()),
+                y: Math.max(headerH + 560, centerY + getCenterPadding())
             })
 
             // Top Right (Piece Params / Knobs - stays Top Right)
             // Closer to bottom of quadrant -> centerY - widgetHeight - centerPadding
             setKnobsPosition({ 
                 x: Math.min(width - widgetW - padding, centerX + boardHalfWidth + getBoardPadding()), 
-                y: centerY - 300 - getCenterPadding() // Approx widget height (taller)
+                y: Math.max(headerH, centerY - 550 - getCenterPadding())
             })
 
-            // Bottom Right (Live Code - originally Bottom Left)
-            // Closer to top of quadrant -> centerY + centerPadding
+            // Transport and code below Board Params, clear of Piece Params.
             setLiveCodePosition({
-                x: Math.min(width - widgetW - padding, centerX + boardHalfWidth + getBoardPadding()),
+                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
                 y: centerY + getCenterPadding()
             })
             
@@ -366,6 +367,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume)
 
   const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects, !music.enabled)
+
+  // A city kit owns its initial tempo. The global control can still change it
+  // freely after the kit has been loaded for this match.
+  useEffect(() => {
+    const kitBpm = music.kitBpm
+    const kitVolume = music.kitVolume
+    if (kitBpm == null) return
+    setGlobalEffects(current => current.bpm === kitBpm && current.volume === kitVolume ? current : { ...current, bpm: kitBpm, volume: kitVolume ?? current.volume })
+  }, [city.id, music.kitBpm, music.kitVolume])
 
   // Seatbelt Sound
   useEffect(() => {
@@ -1216,6 +1226,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <SynthControlPanel
+                instrument={music.enabled ? music.instrument : undefined}
+                onInstrumentChange={music.updateInstrument}
+                playback={music.enabled && music.selected ? <>
+                  {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
+                  <MusicVoiceReadout monitor={music.monitor} id={music.selected.id} />
+                </> : undefined}
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
                 selectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
@@ -1237,8 +1253,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onEffectChange={(key, value) => {
                     if (music.enabled) {
                       if (!music.selected) return
-                      const id = music.selected.id
-                      music.setEffects(prev => ({ ...prev, [id]: { ...(prev[id] || { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 }), [key]: value } }))
+                      music.setPieceEffect(key, value)
                       return
                     }
                     if (!synthSelectedSquare) return
@@ -1259,6 +1274,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <GlobalControlPanel
+                tonality={music.tonality}
+                onTonalityChange={music.setTonality}
                 showAmbience={!music.enabled}
                 ref={globalPanelRef}
                 toggleRef={globalPanelToggleRef}
@@ -1275,6 +1292,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <LiveCodeWidget
+                playback={music.enabled ? <>
+                  <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">Arraste uma peça para tocar · {music.activeSquares.size} vozes ativas</span>}</div>
+                  {music.attackingColor && <div className="text-amber-200">CHEQUE · banda {music.attackingColor === 'w' ? 'branca' : 'preta'} completa</div>}
+                  <MusicTransportReadout monitor={music.monitor} />
+                </> : undefined}
                 ref={liveCodeRef}
                 toggleRef={liveCodeToggleRef}
                 handleRef={liveCodeHandleRef}
@@ -1683,6 +1705,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
           {/* Audio toggle */}
           <div className="flex gap-2">
+            {isMobile && <Button variant="outline" size="icon" aria-label="Parâmetros musicais" onClick={() => { setKnobsOn(true); setGlobalPanelOn(true); setLiveCodeOn(true); setMobileControlsOpen(true) }}><Settings2 className="w-4 h-4" /></Button>}
             <Button 
                 variant="outline" 
                 size="icon" 
@@ -1806,13 +1829,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
             <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20">
               {/* Board Area - Moved to Top */}
-              {music.enabled && (
-                <div className="text-xs font-mono text-center mb-2" role="status">
-                  {music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview
-                    ? <span className="text-orange-300">AUDIÇÃO · {music.instrument?.name} · {music.preview.square} · solte para confirmar ou cancelar</span>
-                    : <span className="text-white/60">STRUDEL · segure uma peça para ouvir seu instrumento</span>}
-                </div>
-              )}
               <div
                 className="w-[min(90vw,calc(100dvh-270px),512px)] aspect-square relative z-20 mb-2 sm:mb-4"
                 ref={boardAreaRef}
@@ -1828,7 +1844,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   cityColor={city.color} 
                   isThinking={isThinking} 
                   synthSelectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
-                  activeSquares={activeSquares}
+                  activeSquares={music.enabled ? music.activeSquares : activeSquares}
                   onPieceHold={music.enabled ? music.audition : undefined}
                   onPieceRelease={music.enabled ? music.endAudition : undefined}
                   musicPulse={music.enabled ? music.pulse : null}
@@ -2068,6 +2084,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       <div className={cn("transition-opacity duration-1000", introPhase < 2 ? "opacity-0 pointer-events-none" : "opacity-100")}>
       {!isMobile && widgetsContent(false)}
       </div>
+
+      {isMobile && <Dialog open={mobileControlsOpen} onOpenChange={setMobileControlsOpen}>
+        <DialogContent className="z-[130] max-h-[88dvh] overflow-y-auto bg-black border-white/20 p-5 text-white">
+          <DialogHeader><DialogTitle>Parâmetros musicais</DialogTitle><DialogDescription>Selecione uma peça no tabuleiro para ajustar seu instrumento. Tom e escala afetam toda a banda.</DialogDescription></DialogHeader>
+          <div className="flex flex-col gap-3 [&>[data-widget=piece]]:order-first [&>[data-widget=spectrum]]:order-last">{widgetsContent(true)}</div>
+        </DialogContent>
+      </Dialog>}
 
       {/* Bottom Right Info & Version */}
       <div 

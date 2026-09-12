@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useRef, forwardRef, useEffect, useState } from "react"
+import { useRef, forwardRef, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
@@ -34,7 +34,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
-  const { onDrag, ...restProps } = props as any
+  const { onDrag: _onDrag, ...restProps } = props as any
 
   const panelStyle = {
     "--city-neon": cityColor,
@@ -131,10 +131,12 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
 
   return (
     <Draggable
+      data-widget="spectrum"
       ref={ref}
       position={position}
       onDrag={onPositionChange}
       handleRef={effectiveHandleRef}
+      dragFromBackground
       className={cn(
         "pointer-events-auto", // Remove z-50 and visual styles from container
         props.className
@@ -154,7 +156,8 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
         minHeight={100}
         enable={{ top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
         className="relative"
-        onResizeStart={() => {
+        onResizeStart={(event) => {
+            event.stopPropagation()
             initialPosRef.current = position || { x: 0, y: 0 }
         }}
         onResize={(e, direction, ref, d) => {

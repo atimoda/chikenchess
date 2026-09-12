@@ -12,88 +12,60 @@ interface KnobProps {
   onChange: (value: number) => void
   formatValue?: (value: number) => string
   neon?: boolean
+  logarithmic?: boolean
 }
 
-export function Knob({ value, min, max, step = 0.01, label, onChange, formatValue, neon = true }: KnobProps) {
-  const startY = useRef<number>(0)
-  const startX = useRef<number>(0)
-  const startValue = useRef<number>(0)
-  const [isDragging, setIsDragging] = useState(false)
-
-  const handleMouseMove = (e: MouseEvent) => {
-    const deltaY = startY.current - e.clientY // Up is positive
-    const deltaX = e.clientX - startX.current // Right is positive
-    
-    // Combine deltas for intuitive control (up/right = increase)
-    const delta = deltaY + deltaX
-    
-    // Sensitivity
-    const range = max - min
-    const change = (delta / 200) * range
-    
-    let newValue = startValue.current + change
-    
-    // Clamp
-    newValue = Math.min(max, Math.max(min, newValue))
-    
-    // Step
-    if (step) {
-      newValue = Math.round(newValue / step) * step
-    }
-
-    onChange(newValue)
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-    document.body.style.cursor = ""
-    window.removeEventListener("mousemove", handleMouseMove)
-    window.removeEventListener("mouseup", handleMouseUp)
-  }
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!neon) return
-    setIsDragging(true)
-    startY.current = e.clientY
-    startX.current = e.clientX
-    startValue.current = value
-    document.body.style.cursor = "ew-resize"
-    
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("mouseup", handleMouseUp)
-  }
-
-  // Calculate rotation for visual
-  // Map min-max to -135deg to +135deg
-  const percent = (value - min) / (max - min)
-  const rotation = -135 + percent * 270
-
-  return (
-    <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")}>
-      <div 
-        className={cn(
-            "relative w-10 h-10 rounded-full bg-secondary border border-border group transition-all",
-            neon 
-              ? (isDragging 
-                  ? "cursor-ew-resize border-white" 
-                  : "cursor-ew-resize hover:border-[var(--city-neon)]") 
-              : "cursor-default border-border/50 bg-secondary/50"
-        )}
-        onMouseDown={handleMouseDown}
-      >
-        <div 
-          className="absolute w-full h-full rounded-full transition-colors"
-          style={{ transform: `rotate(${rotation}deg)` }}
-        >
-          <div className={cn("absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 rounded-full transition-colors", neon ? (isDragging ? "bg-white" : "bg-foreground/50 group-hover:bg-white") : "bg-foreground/20")} />
-        </div>
-      </div>
-      <div className="flex flex-col items-center">
-        <span className="text-[10px] uppercase font-mono text-muted-foreground">{label}</span>
-        <span className={cn("text-[10px] font-mono font-bold transition-colors", neon ? "text-[var(--city-neon)]" : "text-muted-foreground")}>
-          {formatValue ? formatValue(value) : value.toFixed(2)}
-        </span>
+export function Knob({ value, min, max, step = .01, label, onChange, formatValue, neon = true, logarithmic = false }: KnobProps) {
+  const drag = useRef<{ x: number; y: number; amount: number } | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const toAmount = (v: number) => logarithmic ? (Math.log1p(v) - Math.log1p(min)) / (Math.log1p(max) - Math.log1p(min)) : (v - min) / (max - min)
+  const fromAmount = (amount: number) => logarithmic ? Math.expm1(Math.log1p(min) + amount * (Math.log1p(max) - Math.log1p(min))) : min + amount * (max - min)
+  const commit = (v: number) => onChange(Math.max(min, Math.min(max, Math.round(v / step) * step)))
+  const amount = Math.max(0, Math.min(1, toAmount(value)))
+  const finish = () => { drag.current = null; setDragging(false) }
+  return <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")} data-no-drag>
+    <div role="slider" aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={formatValue?.(value)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
+      className={cn("relative w-10 h-10 rounded-full bg-secondary border border-border group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]", neon ? "cursor-ew-resize hover:border-[var(--city-neon)]" : "cursor-default", dragging && "border-white")}
+      onPointerDown={event => {
+        if (!neon || event.button !== 0) return
+        event.preventDefault(); event.stopPropagation()
+        event.currentTarget.setPointerCapture(event.pointerId)
+        drag.current = { x: event.clientX, y: event.clientY, amount }; setDragging(true)
+      }}
+      onPointerMove={event => {
+        const start = drag.current
+        if (!start) return
+        const next = Math.max(0, Math.min(1, start.amount + (start.y - event.clientY + event.clientX - start.x) / 200))
+        commit(fromAmount(next))
+      }}
+      onPointerUp={event => { finish(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }}
+      onPointerCancel={finish} onLostPointerCapture={finish} onBlur={finish}
+      onWheel={event => {
+        if (!neon || event.deltaY === 0) return
+        event.preventDefault(); event.stopPropagation()
+        const direction = event.deltaY < 0 ? 1 : -1
+        const multiplier = event.shiftKey ? 4 : 1
+        const next = logarithmic
+          ? fromAmount(Math.max(0, Math.min(1, amount + direction * .02 * multiplier)))
+          : value + direction * Math.max(step, (max - min) * .01) * multiplier
+        commit(next)
+        event.currentTarget.focus({ preventScroll: true })
+      }}
+      onKeyDown={event => {
+        if (!neon) return
+        if (event.key === 'Escape') { finish(); return }
+        if (!['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return
+        event.preventDefault(); event.stopPropagation()
+        const direction = ['ArrowUp', 'ArrowRight'].includes(event.key) ? 1 : -1
+        commit(event.key === 'Home' ? min : event.key === 'End' ? max : logarithmic ? fromAmount(Math.max(0, Math.min(1, amount + direction * .02))) : value + direction * step * (event.shiftKey ? 10 : 1))
+      }}>
+      <div className="absolute w-full h-full rounded-full" style={{ transform: 'rotate(' + (-135 + amount * 270) + 'deg)' }}>
+        <div className={cn("absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 rounded-full", neon ? "bg-foreground/50 group-hover:bg-white" : "bg-foreground/20")} />
       </div>
     </div>
-  )
+    <div className="flex flex-col items-center">
+      <span className="text-[10px] uppercase font-mono text-muted-foreground">{label}</span>
+      <span className={cn("text-[10px] font-mono font-bold", neon ? "text-[var(--city-neon)]" : "text-muted-foreground")}>{formatValue ? formatValue(value) : value.toFixed(2)}</span>
+    </div>
+  </div>
 }

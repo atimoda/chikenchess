@@ -7,6 +7,7 @@ import type { SquareEffects } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
+import type { Instrument, InstrumentPerformanceEdit } from '@/lib/music/model'
 
 interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   selectedSquare: string | null
@@ -20,6 +21,9 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   toggleRef?: React.RefObject<HTMLButtonElement | null>
   isOn: boolean
   onToggle: () => void
+  playback?: React.ReactNode
+  instrument?: Instrument | null
+  onInstrumentChange?: (patch: InstrumentPerformanceEdit) => void
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -34,6 +38,9 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   toggleRef,
   isOn,
   onToggle,
+  playback,
+  instrument,
+  onInstrumentChange,
   ...props
 }, ref) => {
   const panelStyle = {
@@ -58,10 +65,12 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
   return (
     <Draggable
+      data-widget="piece"
       ref={ref}
       position={position}
       onDrag={onPositionChange}
       handleRef={effectiveHandleRef}
+      dragFromBackground
       className={cn(
         "pointer-events-auto", // Remove z-50 and visual styles from container
         props.className
@@ -88,6 +97,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
+        aria-label={isOn ? 'Desligar Piece Params' : 'Ligar Piece Params'}
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group hover:cursor-pointer",
@@ -114,16 +124,18 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       />
 
       {/* Main Content - z-50 */}
-      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px]", !isOn && "opacity-50 grayscale")}>
+      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px] max-w-full", !isOn && "opacity-50 grayscale")}>
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-center mb-2 px-1 h-4 relative">
              <span className={cn(
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300",
                isOn && selectedSquare ? "text-[var(--city-neon)]" : "text-muted-foreground"
              )}>
-                {selectedSquare ? `${selectedSquare} · ${selectedPieceInfo ?? "Instrumento"}` : "PIECE PARAMS"}
+                PIECE PARAMS
              </span>
           </div>
+          <div className="h-4 overflow-hidden text-center text-xs text-white/80" aria-live="polite">{selectedSquare ? `${selectedSquare} · ${selectedPieceInfo ?? 'Instrumento'}` : 'Selecione uma peça'}</div>
+          <div className="h-[170px] overflow-hidden">{playback}</div>
           
           <div
             className={cn(
@@ -149,14 +161,14 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={(v) => onEffectChange("gain", v)}
               neon={isOn}
             />
-            <Knob
+            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <Knob label="OITAVA" value={instrument.octave} min={1} max={6} step={1} formatValue={v => String(v)} onChange={octave => onInstrumentChange?.({ octave })} neon={isOn && !!selectedSquare} /> : <Knob
               label="PITCH"
               value={effects.pitch}
               min={0.5}
               max={2}
               onChange={(v) => onEffectChange("pitch", v)}
               neon={isOn}
-            />
+            />}
             <Knob
               label="PAN"
               value={effects.pan}
@@ -179,6 +191,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               value={effects.hpf ?? 0}
               min={0}
               max={20000}
+              logarithmic
               onChange={(v) => onEffectChange("hpf", v)}
               neon={isOn}
             />
@@ -187,6 +200,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               value={effects.lpf ?? 20000}
               min={20}
               max={20000}
+              logarithmic
               onChange={(v) => onEffectChange("lpf", v)}
               neon={isOn}
             />
@@ -201,12 +215,19 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             <Knob
               label="DECAY"
               value={effects.decay}
-              min={0.1}
+              min={0.01}
               max={2}
               onChange={(v) => onEffectChange("decay", v)}
               neon={isOn}
             />
+            {instrument && <>
+              <Knob label="ATAQUE" value={instrument.attack} min={.001} max={2} step={.001} logarithmic formatValue={v => `${v.toFixed(3)} s`} onChange={attack => onInstrumentChange?.({ attack })} neon={isOn && !!selectedSquare} />
+              <Knob label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
+              <Knob label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
+              <Knob label="DURAÇÃO" value={instrument.clip ?? .7} min={.05} max={1} formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
+            </>}
           </div>
+          {instrument && <p className="text-[10px] text-white/50">Arraste os knobs ou use as setas. Filtro, pan e efeitos assumem o controle da automação ao editar. Ganho mantém os acentos.</p>}
         </div>
       </div>
     </Draggable>
