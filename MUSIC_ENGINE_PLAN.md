@@ -1,6 +1,8 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 11/09/2026. Status: bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e monitor de execução implementados; validação musical em andamento.
+Atualizado em 12/09/2026. Status: bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e monitor de execução implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+
+A primeira regra tática coletiva ativa temporariamente a banda atacante durante cheque. O arraste suspende o loop da peça e toca por entrada em casa. Os widgets da partida agora reúnem transporte/código, execução por peça e tom/escala global; a entrada pelo mapa aproxima a câmera do pin antes da fase. Estados táticos mais complexos continuam sujeitos à validação musical da base.
 
 ## Modo Criativo (primeira bancada implementada)
 

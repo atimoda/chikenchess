@@ -79,6 +79,7 @@ export const StrudelEditor = forwardRef<HTMLDivElement, StrudelEditorProps>(({
         position={position}
         onDrag={onPositionChange}
         handleRef={effectiveHandleRef}
+        dragFromBackground
         className={cn(
             "z-50 rounded-lg shadow-2xl flex flex-col w-[350px] max-h-[60vh]",
             isOpen ? "bg-card/95 backdrop-blur-md border" : "bg-black/60 backdrop-blur-sm border",

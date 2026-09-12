@@ -55,6 +55,8 @@ export function CreativeStudio() {
   const [mask, setMask] = useState('')
   const [formError, setFormError] = useState('')
   const drag = useRef<{ id: string; square: string; origin: string; x: number; y: number; moved: boolean } | null>(null)
+  const boardRef = useRef<HTMLDivElement>(null)
+  const [dragVisual, setDragVisual] = useState<{ id: string; svg: keyof typeof PiecesSVG; x: number; y: number } | null>(null)
   const suppressClick = useRef(false)
   const music = useCreativeMusic(session, playing, soloId)
   const selected = session.pieces.find(p => p.id === selectedId)!
@@ -107,7 +109,7 @@ export function CreativeStudio() {
   }, [selectedId, instrument.notes, instrument.phrases, instrument.mask])
   useEffect(() => { setSectionPattern(session.sectionPattern); setFormError('') }, [session.sectionPattern])
   useEffect(() => {
-    const cancel = () => { drag.current = null; music.endAudition() }
+    const cancel = () => { drag.current = null; setDragVisual(null); music.endAudition() }
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel() }
     window.addEventListener('blur', cancel)
     window.addEventListener('keydown', escape)
@@ -219,6 +221,17 @@ export function CreativeStudio() {
   function squareAt(event: React.PointerEvent) {
     return document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-creative-square]')?.getAttribute('data-creative-square') ?? null
   }
+  function updateDragVisual(event: React.PointerEvent, id: string) {
+    const piece = session.pieces.find(item => item.id === id)
+    const rect = boardRef.current?.getBoundingClientRect()
+    if (!piece || !rect) return
+    setDragVisual({
+      id,
+      svg: `${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG,
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    })
+  }
   function pointerDown(event: React.PointerEvent, square: string) {
     if (event.button !== 0) return
     const piece = session.pieces.find(p => p.square === square)
@@ -233,7 +246,10 @@ export function CreativeStudio() {
   function pointerMove(event: React.PointerEvent) {
     if (!drag.current) return
     const square = squareAt(event)
-    if (Math.hypot(event.clientX - drag.current.x, event.clientY - drag.current.y) > 5) drag.current.moved = true
+    if (Math.hypot(event.clientX - drag.current.x, event.clientY - drag.current.y) > 5) {
+      drag.current.moved = true
+      if (mode === 'move') updateDragVisual(event, drag.current.id)
+    }
     if (square && square !== drag.current.square) {
       drag.current.square = square
       music.audition(drag.current.id, square)
@@ -249,13 +265,14 @@ export function CreativeStudio() {
     }
     suppressClick.current = current.moved || mode === 'play'
     drag.current = null
+    setDragVisual(null)
     music.endAudition()
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
   return <main className={styles.studio}>
     <header className={styles.header}>
-      <div className={styles.identity}><Link href="/" aria-label="Voltar ao mundo"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS / LAB</span><h1><FlaskConical size={22} /> Modo Criativo</h1></div></div>
+      <div className={styles.identity}><Link href="/" aria-label="Voltar ao mundo"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS LAB</span><h1><FlaskConical size={22} /> Modo Criativo</h1></div></div>
       <p>Uma bancada para compor com as peças.<br /><span>Sem abertura. Sem turnos. No seu tempo.</span></p>
     </header>
 
@@ -278,7 +295,7 @@ export function CreativeStudio() {
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
             </div></div>
-            <div className={styles.board} role="group" aria-label="Tabuleiro criativo">
+            <div ref={boardRef} className={styles.board} role="group" aria-label="Tabuleiro criativo">
               {squares.map((square, index) => {
                 const piece = session.pieces.find(p => p.square === square)
                 const chosen = piece?.id === selectedId
@@ -288,8 +305,8 @@ export function CreativeStudio() {
                   aria-label={`${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'branco' : 'preto'} · ${session.instruments[piece.id].name} · ${piece.active ? 'ativo' : 'inativo'}` : ' · vazia'}`}
                   aria-pressed={chosen} className={`${styles.square} ${(Math.floor(index / 8) + index % 8) % 2 ? styles.dark : styles.light} ${chosen ? styles.selected : ''} ${preview ? styles.preview : ''} ${pulse ? styles.pulse : ''}`}
                   onPointerDown={e => pointerDown(e, square)} onPointerMove={pointerMove} onPointerUp={pointerUp}
-                  onPointerCancel={() => { drag.current = null; music.endAudition(); suppressClick.current = true }}
-                  onLostPointerCapture={() => { if (drag.current) { drag.current = null; music.endAudition() } }}
+                  onPointerCancel={() => { drag.current = null; setDragVisual(null); music.endAudition(); suppressClick.current = true }}
+                  onLostPointerCapture={() => { if (drag.current) { drag.current = null; setDragVisual(null); music.endAudition() } }}
                   onClick={() => {
                     if (suppressClick.current) { suppressClick.current = false; return }
                     if (mode === 'play') return
@@ -299,10 +316,11 @@ export function CreativeStudio() {
                   onKeyDown={e => { if (mode === 'play' && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); if (!e.repeat) music.audition(selectedId, square) } }}
                   onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') music.endAudition() }} onBlur={() => { if (!drag.current) music.endAudition() }}>
                   <span className={styles.coordinate}>{square}</span>
-                  {piece && <span className={styles.piece} dangerouslySetInnerHTML={{ __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG] }} />}
-                  {piece?.active && <span className={styles.activeDot} />}
+                  {piece && dragVisual?.id !== piece.id && <span className={styles.piece} dangerouslySetInnerHTML={{ __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG] }} />}
+                  {piece?.active && dragVisual?.id !== piece.id && <span className={styles.activeDot} />}
                 </button>
               })}
+              {dragVisual && <span className={styles.dragPiece} style={{ left: dragVisual.x, top: dragVisual.y }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
             </div>
             <p className={styles.hint}>{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</p>
             <div className={styles.actions}>
@@ -314,6 +332,8 @@ export function CreativeStudio() {
             </div>
           </section>
 
+        <div className={styles.controlColumns}>
+        <div className={styles.controlColumn}>
         <aside className={styles.inspector} aria-label="Editor do instrumento">
           <section className={styles.panel}>
             <span className={styles.eyebrow}>02 / INSTRUMENTO</span>
@@ -322,7 +342,7 @@ export function CreativeStudio() {
             <div className={styles.actions}>
               <button aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}>{selected.active ? 'Loop ativo' : 'Ativar loop'}</button>
               <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) { setPlaying(true); setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) } }}>Solo</button>
-              <button className={styles.auditionButton} onContextMenu={e => e.preventDefault()} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); music.audition(selectedId, selected.square) }} onPointerUp={music.endAudition} onPointerCancel={music.endAudition} onLostPointerCapture={music.endAudition} onBlur={music.endAudition} onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) music.audition(selectedId, selected.square) } }} onKeyUp={music.endAudition}><Volume2 size={14} />Segure para ouvir</button>
+              <button className={styles.auditionButton} onContextMenu={e => e.preventDefault()} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); music.audition(selectedId, selected.square, 'pattern') }} onPointerUp={music.endAudition} onPointerCancel={music.endAudition} onLostPointerCapture={music.endAudition} onBlur={music.endAudition} onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) music.audition(selectedId, selected.square, 'pattern') } }} onKeyUp={music.endAudition}><Volume2 size={14} />Segure para ouvir</button>
             </div>
             <MusicVoiceReadout monitor={music.monitor} id={selectedId} />
             <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
@@ -359,7 +379,9 @@ export function CreativeStudio() {
             }} />
           </section>
         </aside>
+        </div>
 
+        <div className={styles.controlColumn}>
         <aside className={styles.inspector} aria-label="Parâmetros do instrumento">
           <section className={styles.panel}>
             <span className={styles.eyebrow}>03 / PARÂMETROS</span>
@@ -402,6 +424,8 @@ export function CreativeStudio() {
               <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
             </div>)}</div>)}</div>
         </section>
+        </div>
+        </div>
       </div>
 
       <section className={`${styles.panel} ${styles.kitPanel}`} aria-label="Biblioteca de kits">

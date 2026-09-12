@@ -70,7 +70,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
       sectionPattern: state.sectionPattern ?? '0',
       // A solo should be audible immediately, even when the arrangement mask
       // normally holds this layer back until a later section.
-      mask: audition || state.soloId === piece.id ? undefined : instrument.mask,
+      mask: audition || state.soloId === piece.id || piece.checkEnsemble ? undefined : instrument.mask,
       instrument,
       unpitched,
       groove: !manual && instrument.groove ? state.grooves?.[instrument.groove.groove]?.lanes[instrument.groove.lane] : undefined,
@@ -246,7 +246,7 @@ export class MusicRuntime {
       onError: this.error,
       onTrigger: (hap: any, deadline: number, duration: number, cps: number, time: number) => {
         const voice = this.voices.get(hap.value.ccVoice)
-        if (!voice) return
+        if (!voice || voice.manual) return
         void s.webaudioOutput(hap, deadline, duration, cps, time).catch(this.error)
         this.scheduleVisual(voice, time, duration)
       },
@@ -263,9 +263,8 @@ export class MusicRuntime {
     this.preview = requested
     this.refresh()
     // A short immediate note gives tactile feedback even before the next onset.
-    // Keep the latest request while the first AudioContext is being created. A
-    // quick tap may end before initialization finishes, but it must still sound.
-    {
+    // Keep only the latest square while unlocking/loading audio. Manual gestures
+    // cancelled before readiness must never produce a delayed note.
       this.unlockAudition = requested
       void this.unlock().then(async () => {
         const source = this.state?.instruments?.[id]?.source
@@ -277,7 +276,6 @@ export class MusicRuntime {
         if (pendingMatches) this.unlockAudition = null
         this.triggerPreview(requested)
       }).catch(this.error)
-    }
   }
 
   endAudition() {
@@ -372,7 +370,11 @@ export class MusicRuntime {
           const hit = this.manualHit
           const now = this.api.getAudioContext().currentTime
           const sounding = hit?.voice.key === voice.key && now >= hit.start && now < hit.end
-          tracks[piece.id] = { ...empty, status: sounding ? 'note' : 'rest', notes: sounding ? [voice.unpitched ? null : Number(hit.value.note)] : [] }
+          const note = voice.unpitched ? null : Number(hit?.value.note)
+          const start = hit ? cycle + (hit.start - now) * this.scheduler.cps : 0
+          const end = hit ? cycle + (hit.end - now) * this.scheduler.cps : 0
+          tracks[piece.id] = { ...empty, status: sounding ? 'note' : 'rest', notes: sounding ? [note] : [],
+            events: hit && end > cycleIndex && start < cycleIndex + 1 ? [{ start: Math.max(cycleIndex, start), end: Math.min(cycleIndex + 1, end), note, gain: Number(hit.value.gain) }] : [] }
           continue
         }
         const pattern = this.patternFor(voice)
@@ -431,7 +433,8 @@ export class MusicRuntime {
     }
     const timer = setTimeout(() => {
       this.visualTimers.delete(timer)
-      if (this.disposed || generation !== this.generation || !this.voices.has(voice.key)) return
+      const current = this.voices.get(voice.key)
+      if (this.disposed || generation !== this.generation || !current || current.manual !== voice.manual || current.square !== voice.square) return
       this.pulse(event)
     }, Math.max(0, (time - this.api!.getAudioContext().currentTime) * 1000))
     this.visualTimers.add(timer)
@@ -460,7 +463,7 @@ export class MusicRuntime {
       const loops = specs.filter(voice => !voice.manual)
       const pattern = loops.length ? this.api.stack(...loops.map(v => this.patternFor(v))) : this.api.silence
       const next = new Map(specs.map(v => [v.key, v]))
-      for (const [key, voice] of this.voices) if (!next.has(key)) this.removeOrbit(voice.orbit)
+      for (const [key, voice] of this.voices) if (!next.has(key) || next.get(key)?.manual !== voice.manual) this.removeOrbit(voice.orbit)
       this.voices = next
       for (const mask of this.maskCache.keys()) if (!specs.some(voice => voice.mask === mask)) this.maskCache.delete(mask)
       for (const key of this.compiled.keys()) if (!next.has(key)) { this.compiled.delete(key); this.displayCache.delete(key) }

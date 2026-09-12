@@ -3,10 +3,8 @@
 import type React from "react"
 import { useRef, forwardRef, useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { Power, Copy, Check, Terminal } from "lucide-react"
+import { Power, Copy, Check } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import type { CityData } from "@/lib/cities-data"
 
@@ -23,11 +21,12 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   isOn: boolean
   onToggle: () => void
   isPlaying: boolean
+  playback?: React.ReactNode
 }
 
 export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   pattern,
-  city,
+  city: _city,
   cityColor,
   position,
   onPositionChange,
@@ -35,11 +34,12 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   toggleRef,
   isOn,
   onToggle,
-  isPlaying,
+  isPlaying: _isPlaying,
+  playback,
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
-  const { onDrag, ...restProps } = props as any
+  const { onDrag: _onDrag, ...restProps } = props as any
 
   const [copied, setCopied] = useState(false)
 
@@ -71,8 +71,6 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   const highlightCode = (code: string) => {
     // Remove the first 3 lines if they are comments (start with //)
     const lines = code.split('\n');
-    let startIndex = 0;
-    let commentCount = 0;
     
     // First, handle the comment removal logic requested previously
     const filteredLines = lines.filter((line, index) => {
@@ -89,10 +87,9 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
     const filteredCode = filteredLines.join('\n');
 
-    return filteredCode
-      .replace(/(".*?")/g, '<span class="text-accent">$1</span>')
-      .replace(/(\b\d+\.?\d*\b)/g, '<span class="text-chart-4">$1</span>')
-      .replace(/(\.\w+)/g, '<span class="text-chart-2">$1</span>')
+    // Text tokens preserve mini-notation brackets without interpreting HTML.
+    return filteredCode.split(/("[^"\n]*"|\/\/[^\n]*|\.\w+|\b\d+\.?\d*\b)/g).map((token, index) =>
+      <span key={index} className={token.startsWith('//') ? 'text-white/40' : token.startsWith('"') ? 'text-accent' : token.startsWith('.') ? 'text-chart-2' : /^\d/.test(token) ? 'text-chart-4' : undefined}>{token}</span>)
   }
 
   const handleCopy = () => {
@@ -108,10 +105,12 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
   return (
     <Draggable
+      data-widget="strudel"
       ref={ref}
       position={position}
       onDrag={onPositionChange}
       handleRef={effectiveHandleRef}
+      dragFromBackground
       className={cn(
         "pointer-events-auto",
         props.className
@@ -131,7 +130,8 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
         minHeight={200}
         enable={{ top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
         className="relative"
-        onResizeStart={() => {
+        onResizeStart={(event) => {
+            event.stopPropagation()
             initialPosRef.current = position || { x: 0, y: 0 }
         }}
         onResize={(e, direction, ref, d) => {
@@ -159,6 +159,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
+        aria-label={isOn ? 'Desligar Strudel' : 'Ligar Strudel'}
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group hover:cursor-pointer",
@@ -211,14 +212,16 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300 text-center",
                isOn ? "text-[var(--city-neon)]" : "text-muted-foreground"
              )}>
-                STRUDEL CODE
+                STRUDEL
              </span>
           </div>
+          {playback && <div className="shrink-0 text-[10px] font-mono space-y-1">{playback}</div>}
           
           <div className="flex-1 w-full flex flex-col gap-2 min-h-0">
             
             <div 
                 ref={codeRef}
+                data-no-drag
                 className="flex-1 p-2 font-mono text-xs leading-relaxed overflow-y-auto bg-black/40 rounded inner-shadow custom-scrollbar h-full"
             >
                 {/* Scrollbar styling for Webkit/Blink */}
@@ -244,8 +247,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
                 `}</style>
                 <pre
                     className="whitespace-pre-wrap break-all text-foreground/90"
-                    dangerouslySetInnerHTML={{ __html: highlightCode(pattern) }}
-                />
+                >{highlightCode(pattern)}</pre>
             </div>
           </div>
 

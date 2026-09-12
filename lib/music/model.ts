@@ -12,6 +12,8 @@ export interface MusicPiece {
   type: PieceSymbol
   color: 'w' | 'b'
   active: boolean
+  activation?: 'move' | 'check'
+  checkEnsemble?: boolean
 }
 export interface Instrument {
   name: string
@@ -40,6 +42,8 @@ export interface MovementMapping {
   panWidth: number
   previewFilter: boolean
 }
+
+export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'automations'>>
 
 export const DEFAULT_MOVEMENT: MovementMapping = {
   fileDegrees: 1, rankDegrees: 0.5, panWidth: 0.5, previewFilter: true,
@@ -70,7 +74,7 @@ export function instrumentFor(piece: MusicPiece): Instrument {
 
 // Replaying legal moves preserves identity across captures, castling and promotion,
 // and makes undo/redo independent of the current Chess instance's truncated history.
-export function piecesFromHistory(history: readonly string[]): MusicPiece[] {
+function reconstructPosition(history: readonly string[]) {
   const chess = new Chess()
   const pieces: MusicPiece[] = chess.board().flatMap(row => row.flatMap(p => p ? [{
     id: `${p.color}:${p.square}`, slot: 0, origin: p.square, square: p.square,
@@ -96,7 +100,27 @@ export function piecesFromHistory(history: readonly string[]): MusicPiece[] {
       }
     }
   }
-  return pieces
+  return { pieces, chess }
+}
+
+export function piecesFromHistory(history: readonly string[]): MusicPiece[] {
+  return reconstructPosition(history).pieces
+}
+
+/** Check is a temporary performance overlay; it never marks a piece as moved. */
+export function gameMusicStateFromHistory(history: readonly string[]) {
+  const { pieces, chess } = reconstructPosition(history)
+  const attackingColor = chess.isCheck() ? (chess.turn() === 'w' ? 'b' : 'w') : null
+  return {
+    attackingColor,
+    checkmate: chess.isCheckmate(),
+    pieces: pieces.map(piece => ({
+      ...piece,
+      active: piece.active || piece.color === attackingColor,
+      checkEnsemble: piece.color === attackingColor,
+      activation: piece.active ? 'move' as const : piece.color === attackingColor ? 'check' as const : undefined,
+    })),
+  }
 }
 
 export function degreeToMidi(degree: number, scale: readonly string[], octave: number): number {

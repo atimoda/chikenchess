@@ -8,10 +8,14 @@ Run `npm install` and `npm run dev`, then open `/?city=dusseldorf` on the printe
 
 For immediate experiments, open `/creative` and choose **Düsseldorf original · samples**. This loads the factory `Düsseldorf · Electro 01` kit with all 16 white voices active. **Carregar kit de Düsseldorf** loads your saved city version instead. **Salvar kit da fase** associates the edited kit with Düsseldorf in this browser; the next game uses its instruments, grooves, timeline, scale, BPM and volume. In a game, each piece still activates only after its first legal move. Export JSON to transfer a kit between devices; there is no shared database yet.
 
-- Hold a piece to audition it before making a move. Drag across squares to vary pitch/register for melodic instruments, pan, and the temporary filter limit.
+- Hold/drag a piece to play individual notes before making a move. Its loop is suspended during the gesture; entering a new square triggers one attack. Holding still does not repeat the phrase. The Creative “Segure para ouvir” button still auditions the complete pattern.
 - Release on an illegal destination, the original square, or outside the board to cancel. Escape, touch cancellation, and window blur also end the audition.
 - Complete a legal move to activate that piece's pattern. AI pieces activate on their moves too. Captured pieces are removed from playback.
+- Check temporarily activates all surviving attacker pieces and bypasses their entry masks. Resolving check restores history-based activation. This overlay never records an unmoved piece as moved. Checkmate/pausing stops the transport as before.
 - Select a piece to inspect its instrument and adjust gain, pitch, pan, decay, filters, reverb, and delay. The inspector follows its identity after moves and stays selected when the AI moves.
+- Piece Params contains note/rest feedback and envelope/octave/gate knobs. Board Params changes the shared root/scale. Strudel contains transport/status above the code. In-game edits stay local to that match; save city kits through Creative.
+
+See `GAME_MECHANICS.md` for the maintained behavior inventory, gesture limitations and state priorities.
 - The code widget is generated from the same voice specifications used to build the Strudel patterns. The spectrogram reads the new audio output.
 
 ## Modules

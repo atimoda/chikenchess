@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState, useCallback, forwardRef } from "react"
+import React, { useRef, useState, useCallback, useEffect, forwardRef } from "react"
 
 interface DraggableProps {
   children: React.ReactNode
@@ -10,6 +10,7 @@ interface DraggableProps {
   onDragStart?: (e: React.MouseEvent | React.TouchEvent) => void
   onDragEnd?: () => void
   handleRef?: React.RefObject<HTMLElement | null>
+  dragFromBackground?: boolean
   className?: string
   style?: React.CSSProperties
   scale?: number
@@ -25,6 +26,7 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
   onDragStart,
   onDragEnd,
   handleRef,
+  dragFromBackground = false,
   className,
   style,
   scale = 1,
@@ -37,16 +39,19 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
   const position = isControlled ? controlledPosition : internalPosition
 
   const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => cleanupRef.current?.(), [])
+  const acceptsDrag = useCallback((target: React.SyntheticEvent['target']) => {
+    if (style?.position === 'static' || !(target instanceof Element)) return false
+    const onHandle = handleRef?.current?.contains(target)
+    if (!onHandle && target.closest('button, input, select, textarea, a, label, summary, [role="slider"], [data-slot="slider"], [role="button"], [role="combobox"], [contenteditable="true"], [data-no-drag]')) return false
+    return dragFromBackground || onHandle || !handleRef?.current || !!target.closest('[data-drag-handle="true"]')
+  }, [style?.position, handleRef, dragFromBackground])
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      // If a handle is specified, only allow dragging from the handle
-      // Also allow if the element has data-drag-handle="true"
-      if (handleRef?.current && !handleRef.current.contains(e.target as Node)) {
-        if (!(e.target as Element).closest('[data-drag-handle="true"]')) {
-          return
-        }
-      }
+      if (e.button !== 0 || !acceptsDrag(e.target)) return
+      cleanupRef.current?.()
       
       e.preventDefault()
       e.stopPropagation()
@@ -96,21 +101,22 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
         
         window.removeEventListener("mousemove", onMove)
         window.removeEventListener("mouseup", onUp)
+        window.removeEventListener("blur", onUp)
+        cleanupRef.current = null
       }
 
       window.addEventListener("mousemove", onMove)
       window.addEventListener("mouseup", onUp)
+      window.addEventListener("blur", onUp)
+      cleanupRef.current = onUp
     },
-    [position, isControlled, onDrag, onDragStart, onDragEnd, handleRef, scale]
+    [position, isControlled, onDrag, onDragStart, onDragEnd, acceptsDrag, scale]
   )
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (handleRef?.current && !handleRef.current.contains(e.target as Node)) {
-        if (!(e.target as Element).closest('[data-drag-handle="true"]')) {
-          return
-        }
-      }
+      if (e.touches.length !== 1 || !acceptsDrag(e.target)) return
+      cleanupRef.current?.()
 
       // Prevent scrolling while dragging
       // e.preventDefault() // This might be too aggressive if we want to allow scroll on non-drag areas, but we checked handle.
@@ -166,12 +172,18 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
         
         window.removeEventListener("touchmove", onTouchMove)
         window.removeEventListener("touchend", onTouchEnd)
+        window.removeEventListener("touchcancel", onTouchEnd)
+        window.removeEventListener("blur", onTouchEnd)
+        cleanupRef.current = null
       }
 
       window.addEventListener("touchmove", onTouchMove, { passive: false })
       window.addEventListener("touchend", onTouchEnd)
+      window.addEventListener("touchcancel", onTouchEnd)
+      window.addEventListener("blur", onTouchEnd)
+      cleanupRef.current = onTouchEnd
     },
-    [position, isControlled, onDrag, onDragStart, onDragEnd, handleRef, scale]
+    [position, isControlled, onDrag, onDragStart, onDragEnd, acceptsDrag, scale]
   )
 
   return (
@@ -180,9 +192,11 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
       className={className}
       style={{
         ...style,
-        position: style?.position || "absolute",
-        left: position.x,
-        top: position.y,
+        // Flow layouts still need a containing block for each widget's absolute
+        // background/controls; static positioning would cover neighboring panels.
+        position: style?.position === 'static' ? 'relative' : style?.position || 'absolute',
+        left: style?.position === 'static' ? undefined : position.x,
+        top: style?.position === 'static' ? undefined : position.y,
       }}
       {...props}
       onMouseDown={(e) => {

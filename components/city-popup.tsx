@@ -4,6 +4,7 @@ import { useRef } from "react"
 import { type CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
 import { Draggable } from "@/components/ui/draggable"
+import { POINTS_FIRST_CONQUEST, POINTS_REPLAY_WIN } from '@/lib/game-progression'
 
 export interface CityPopupProps {
   city: CityData
@@ -20,15 +21,13 @@ export interface CityPopupProps {
   isConquered?: boolean
   isUnlocked?: boolean
   isPressed: boolean
-  rotation: number
   bringToFront: (id: string) => void
   closePopup: (id: string) => void
   updatePopupPosition: (id: string, x: number, y: number) => void
   playMapSound: (type: string, forceResume?: boolean) => void
   startWhistleLoop: () => void
   stopWhistleLoop: () => void
-  setPressedPopupState: (state: { id: string, rotation: number } | null) => void
-  onCitySelect: (city: CityData) => void
+  setPressedPopupState: (state: { id: string } | null) => void
   handleSmartPadSound: (e: React.MouseEvent<HTMLButtonElement>) => void
   handleSmartPadLeave: (e: React.MouseEvent<HTMLButtonElement>) => void
   stopPadSound: () => void
@@ -47,7 +46,6 @@ export const CityPopup = ({
   isConquered = false,
   isUnlocked: _isUnlocked,
   isPressed,
-  rotation,
   bringToFront,
   closePopup,
   updatePopupPosition,
@@ -55,7 +53,6 @@ export const CityPopup = ({
   startWhistleLoop,
   stopWhistleLoop,
   setPressedPopupState,
-  onCitySelect,
   handleSmartPadSound,
   handleSmartPadLeave,
   stopPadSound,
@@ -71,6 +68,7 @@ export const CityPopup = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const enterButtonRef = useRef<HTMLButtonElement>(null)
   const exitStyleRef = useRef<React.CSSProperties | null>(null)
+  const lastDragAccent = useRef(0)
 
   return (
     <Draggable
@@ -78,17 +76,22 @@ export const CityPopup = ({
       scale={scale}
       onDrag={(pos) => {
         updatePopupPosition(city.id, pos.x, pos.y)
+        if (Date.now() - lastDragAccent.current > 110) {
+          lastDragAccent.current = Date.now()
+          playMapSound('popup_drag')
+        }
         onDragMove()
       }}
       onDragStart={(e) => {
         bringToFront(city.id)
         startWhistleLoop()
-        const rot = (Math.random() * 6) - 3
-        setPressedPopupState({ id: city.id, rotation: rot })
+        playMapSound('popup_down', true)
+        setPressedPopupState({ id: city.id })
         if (onDragStart) onDragStart(e)
       }}
       onDragEnd={() => {
         stopWhistleLoop()
+        playMapSound('popup_up', true)
         setPressedPopupState(null)
         stopPadSound()
         if (onDragEnd) onDragEnd()
@@ -101,7 +104,7 @@ export const CityPopup = ({
       style={{
         zIndex: popup.zIndex,
         willChange: 'left, top',
-        contain: 'layout paint',
+        contain: 'layout',
         '--enter-x': `${popup.enterX || 0}px`,
         '--enter-rot': `${popup.enterRot || 0}deg`
       } as React.CSSProperties}
@@ -129,7 +132,7 @@ export const CityPopup = ({
           } : {
               transform: popup.isClosing 
                 ? undefined 
-                : (isPressed ? `scale(0.9) rotate(${rotation}deg)` : 'scale(1) rotate(0deg)'),
+                : (isPressed ? 'scale(0.92)' : 'scale(1)'),
               transformOrigin: transformOrigin || (popup.isClosing 
                 ? '0px 3px'
                 : (isPressed ? '0px 40px' : 'center center')),
@@ -200,13 +203,9 @@ export const CityPopup = ({
             <h3 className="font-mono font-bold text-xl tracking-wide" style={{ color: city.color }}>
               {city.name}
             </h3>
-            {isConquered ? (
+            {isConquered && (
               <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
                 👑 CONQUERED
-              </span>
-            ) : (
-              <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-800/60 px-2 py-0.5 rounded-full flex items-center gap-1">
-                ⚡ +1,000 PTS
               </span>
             )}
           </div>
@@ -225,7 +224,7 @@ export const CityPopup = ({
                 TARGET BPM: <span style={{ color: city.color }}>{city.bpm}</span>
               </span>
               <span className="text-[10px] text-muted-foreground/70">
-                {isConquered ? "Victory reward claimed (+1,000 PTS)" : "Challenge reward: +1,000 PTS"}
+                Reward: {(isConquered ? POINTS_REPLAY_WIN : POINTS_FIRST_CONQUEST).toLocaleString('en-US')} PTS
               </span>
             </div>
               <button 
@@ -296,9 +295,6 @@ export const CityPopup = ({
                   }
 
                   onEnter();
-                  setTimeout(() => {
-                     onCitySelect(city);
-                  }, 1500);
                 }}
               >
                 <div 

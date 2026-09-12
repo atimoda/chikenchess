@@ -391,3 +391,101 @@ test('pausing while the audio clock starts leaves playback and its monitor stopp
   assert.equal(runtime.monitor.getSnapshot().running, false)
   runtime.dispose()
 })
+
+test('check activates only the attacking team temporarily and restores moved voices on escape', () => {
+  const history = ['e4', 'd5', 'Bb5+']
+  const checked = model.gameMusicStateFromHistory(history)
+  assert.equal(checked.attackingColor, 'w')
+  assert.equal(checked.pieces.filter(p => p.color === 'w' && p.active).length, 16)
+  assert.equal(checked.pieces.filter(p => p.color === 'b' && p.active).length, 1)
+  assert.equal(checked.pieces.find(p => p.id === 'w:e1').activation, 'check')
+  assert.equal(model.piecesFromHistory(history).find(p => p.id === 'w:e1').active, false)
+  const escaped = model.gameMusicStateFromHistory([...history, 'c6'])
+  assert.equal(escaped.attackingColor, null)
+  assert.equal(escaped.pieces.filter(p => p.color === 'w' && p.active).length, 2)
+  assert.equal(escaped.pieces.find(p => p.id === 'w:e1').active, false)
+  assert.deepEqual(model.gameMusicStateFromHistory(history), checked) // Undo/redo reconstruct the overlay.
+})
+
+test('black check does not resurrect captured voices and mate still obeys transport pause', () => {
+  const checked = model.gameMusicStateFromHistory(['d4', 'e5', 'dxe5', 'Bb4+'])
+  assert.equal(checked.attackingColor, 'b')
+  assert.equal(checked.pieces.filter(p => p.color === 'b' && p.active).length, 15)
+  assert.equal(checked.pieces.some(p => p.id === 'b:e7'), false)
+  const mate = model.gameMusicStateFromHistory(['f3', 'e5', 'g4', 'Qh4#'])
+  assert.equal(mate.checkmate, true)
+  assert.equal(voiceSpecs({ ...state(), pieces: mate.pieces, playing: false }, null).length, 0)
+})
+
+test('check bypasses entry masks for all attackers without altering the saved kit', () => {
+  const kit = creative.createDusseldorfSession()
+  kit.instruments['w:e2'].mask = '~'
+  kit.instruments['w:e1'].mask = '~'
+  const during = model.gameMusicStateFromHistory(['e4', 'd5', 'Bb5+'])
+  const snapshot = { ...creative.creativeSnapshot(kit, true), pieces: during.pieces }
+  for (const id of ['w:e2', 'w:e1']) assert.equal(voiceSpecs(snapshot, null).find(v => v.piece.id === id).mask, undefined)
+  assert.equal(kit.instruments['w:e2'].mask, '~')
+})
+
+async function manualRuntime() {
+  const api = await strudel()
+  let pattern, time = 0
+  const attacks = []
+  const nodes = {}
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.scheduler = { started: true, lastBegin: 0, lastTick: 0, latency: 0, cps: .5, setCps(v) { this.cps = v }, setPattern(v) { pattern = v }, stop() { this.started = false } }
+  runtime.api = { ...api, getAudioContext: () => ({ currentTime: time }), getSuperdoughAudioController: () => ({ nodes, getOrbit: id => nodes[id] ??= { disconnect() {}, output: { gain: { setTargetAtTime() {} } } } }), webaudioOutput: async hap => { attacks.push(hap.value) } }
+  runtime.unlock = async () => {}
+  return { runtime, attacks, pattern: () => pattern, advance: seconds => { time = seconds; runtime.publishFrame() } }
+}
+
+test('drag suspends that voice, triggers once per entered square and restores its loop', async () => {
+  const { runtime, attacks, pattern, advance } = await manualRuntime()
+  runtime.update(state(['Nf3', 'Nc6']))
+  runtime.audition('w:g1', 'f3')
+  await Promise.resolve()
+  assert.equal(attacks.length, 1)
+  assert.ok(pattern().queryArc(0, 16).every(h => h.value.ccVoice === 'b:b8:loop'))
+  runtime.audition('w:g1', 'f3'); await Promise.resolve()
+  assert.equal(attacks.length, 1)
+  runtime.audition('w:g1', 'g4'); await Promise.resolve()
+  assert.equal(attacks.length, 2)
+  assert.notEqual(attacks[0].note, attacks[1].note)
+  advance(10)
+  assert.equal(attacks.length, 2)
+  assert.equal(runtime.monitor.getSnapshot().tracks['w:g1'].status, 'rest')
+  runtime.endAudition()
+  assert.ok(pattern().queryArc(0, 4).some(h => h.value.ccVoice === 'w:g1:loop'))
+  runtime.dispose()
+})
+
+test('cancelled loading gestures stay silent; the dedicated audition button still plays the phrase', async () => {
+  const { runtime, attacks, pattern } = await manualRuntime()
+  runtime.update(state())
+  runtime.audition('w:e1', 'e1')
+  runtime.endAudition()
+  await Promise.resolve()
+  assert.equal(attacks.length, 0)
+  assert.equal(pattern().queryArc(0, 8).length, 0)
+  runtime.audition('w:e1', 'e1', 'pattern')
+  await Promise.resolve()
+  assert.ok(pattern().queryArc(0, 4).length > 0)
+  runtime.endAudition()
+  assert.equal(pattern().queryArc(0, 8).length, 0)
+  runtime.dispose()
+})
+
+test('city flight ends above the selected world pin, even from the opposite side', () => {
+  const { Vector3, Quaternion } = require('three')
+  const { cityDirection, cityFlightPose } = loadTs('lib/globe-navigation.ts')
+  const pin = cityDirection(51.23, 6.78).applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), 1.5))
+  const from = pin.clone().normalize().multiplyScalar(-6)
+  for (const progress of [0, .25, .5, .75, 1]) {
+    const pose = cityFlightPose(from, new Vector3(0, 1, 0), pin, progress)
+    assert.ok(pose.position.length() >= 2.25 - 1e-8)
+    assert.ok(pose.position.toArray().every(Number.isFinite))
+  }
+  const end = cityFlightPose(from, new Vector3(0, 1, 0), pin, 1)
+  assert.ok(end.position.clone().normalize().distanceTo(pin.clone().normalize()) < 1e-8)
+  assert.ok(Math.abs(end.position.length() - 2.25) < 1e-8)
+})
