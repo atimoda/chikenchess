@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Download, FlaskConical, Pause, Play, Save, Upload, Volume2 } from 'lucide-react'
 import { PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
-import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
+import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { PATTERN_RECIPES, patternRecipe } from '@/lib/music/pattern-library'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
 import { EDITABLE_CITY_KITS, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative } from '@/lib/music/city-kits'
+import { getCityById } from '@/lib/cities-data'
+import { createRandomCityKit } from '@/lib/music/random-kit'
 import { SampleSourceControls, AutomationControls, GrooveControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
 import styles from './creative-studio.module.css'
@@ -47,6 +49,7 @@ export function CreativeStudio() {
   const [notice, setNotice] = useState('')
   const [kits, setKits] = useState<CreativeSession[]>([])
   const [chosenKit, setChosenKit] = useState('')
+  const [stageCityId, setStageCityId] = useState('dusseldorf')
   const [pattern, setPattern] = useState('')
   const [recipeId, setRecipeId] = useState('')
   const [patternError, setPatternError] = useState('')
@@ -76,7 +79,10 @@ export function CreativeStudio() {
         if (saved) {
           const parsed = parseCreativeSession(saved)
           await validateMusicSnapshot(creativeSnapshot(parsed, false))
-          if (!cancelled) setSession(parsed)
+          if (!cancelled) {
+            setSession(parsed)
+            if (parsed.cityId && getCityById(parsed.cityId)) setStageCityId(parsed.cityId)
+          }
         }
         const savedKits: unknown = JSON.parse(localStorage.getItem(PRESETS_STORAGE) ?? '[]')
         if (Array.isArray(savedKits) && !cancelled) {
@@ -184,7 +190,8 @@ export function CreativeStudio() {
     setBusy(true)
     try {
       await validateMusicSnapshot(creativeSnapshot(next, false))
-      music.endAudition(); drag.current = null; setSoloId(null); setSession(next); setPlaying(autoplay)
+      music.endAudition(); drag.current = null; setDragVisual(null); setSoloId(null); setSession(next); setPlaying(autoplay)
+      if (next.cityId && getCityById(next.cityId)) setStageCityId(next.cityId)
       setNotice(`Kit “${next.name}” carregado${autoplay ? ' e tocando' : ' e pausado'}.`)
     } catch (error) { setNotice(`Kit não carregado: ${messageOf(error)}`) }
     finally { setBusy(false) }
@@ -323,13 +330,20 @@ export function CreativeStudio() {
               {dragVisual && <span className={styles.dragPiece} style={{ left: dragVisual.x, top: dragVisual.y }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
             </div>
             <p className={styles.hint}>{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</p>
+            <label className={styles.hint}>Cidade para experimentar<select aria-label="Cidade do kit" value={stageCityId} onChange={e => setStageCityId(e.target.value)}>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
             <div className={styles.actions}>
-              <button className={styles.primary} onClick={() => void loadStageKit('dusseldorf')}>Carregar kit de Düsseldorf</button>
-              <button onClick={() => void loadSession(defaultCityKit('dusseldorf')!, true)}>Düsseldorf original · samples</button>
+              <button className={styles.primary} onClick={() => void loadStageKit(stageCityId)}>Carregar kit da cidade</button>
+              <button onClick={() => void loadSession(defaultCityKit(stageCityId)!, true)}>Kit inicial da cidade</button>
+              <button onClick={() => {
+                const city = getCityById(stageCityId)
+                if (city) void loadSession(createRandomCityKit(city, Math.random().toString(36).slice(2, 8)), true)
+              }}>Gerar kit aleatório</button>
+              <button onClick={() => void loadSession(createDusseldorfSession(), true)}>Düsseldorf original · samples</button>
               <button onClick={() => { setSoloId(null); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === 'w' })) })); setPlaying(true) }}>Ativar brancas</button>
               <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloId(null) }}>Silenciar todas</button>
               <button onClick={() => { music.endAudition(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Repor posições</button>
             </div>
+            <p className={styles.hint}>Cada cidade tem um kit experimental estável. Gere variações e use Salvar kit da fase para adotá-las na próxima partida.</p>
           </section>
 
         <div className={styles.controlColumns}>

@@ -31,17 +31,17 @@ export function useAudio(
 
   // Update pattern when game OR activeSquares OR squareEffects changes
   useEffect(() => {
-    if (!engineRef.current || !isInitialized) return
+    if (!enabled || !engineRef.current || !isInitialized) return
 
     const pattern = parsePatternForAudio(game, city, activeSquares, squareEffects)
     engineRef.current.setPattern(pattern)
-  }, [game, city, isInitialized, activeSquares, squareEffects])
+  }, [game, city, isInitialized, activeSquares, squareEffects, enabled])
 
   // Update square effects when they change
   useEffect(() => {
-    if (!engineRef.current || !isInitialized) return
+    if (!enabled || !engineRef.current || !isInitialized) return
     engineRef.current.setSquareEffects(squareEffects)
-  }, [squareEffects, isInitialized])
+  }, [squareEffects, isInitialized, enabled])
 
   // Control playback (Pattern + Ambience)
   useEffect(() => {

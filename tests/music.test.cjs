@@ -369,6 +369,95 @@ test('city kit persistence round-trips sources, automation and shared grooves', 
   } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
 })
 
+test('every city has a reproducible, distinct kit with roles independent of chess type', () => {
+  const { cities } = loadTs('lib/cities-data.ts')
+  const { defaultCityKit, EDITABLE_CITY_KITS } = loadTs('lib/music/city-kits.ts')
+  const { createRandomCityKit } = loadTs('lib/music/random-kit.ts')
+  assert.deepEqual(EDITABLE_CITY_KITS.map(c => c.id), cities.map(c => c.id))
+  const fingerprints = new Set(), kingBehaviors = new Set()
+  for (const city of cities) {
+    const kit = defaultCityKit(city.id)
+    assert.deepEqual(kit, defaultCityKit(city.id))
+    assert.equal(kit.cityId, city.id)
+    assert.equal(kit.pieces.filter(p => p.active).length, 16)
+    assert.ok(kit.pieces.filter(p => p.active).every(p => p.color === 'w'))
+    assert.deepEqual(creative.parseCreativeSession(JSON.stringify(kit)), JSON.parse(JSON.stringify(kit)))
+    fingerprints.add(JSON.stringify(kit.instruments))
+    kingBehaviors.add(kit.instruments['w:e1'].behavior)
+    for (const color of ['w', 'b']) {
+      const instruments = kit.pieces.filter(p => p.color === color).map(p => kit.instruments[p.id])
+      assert.equal(instruments.filter(i => i.behavior === 'pulse').length, 8)
+      assert.equal(instruments.filter(i => i.behavior === 'sustain').length, 2)
+      assert.equal(instruments.filter(i => i.behavior === 'phrase').length, 6)
+    }
+    const variant = createRandomCityKit(city, 'test-variation')
+    assert.notDeepEqual(kit.instruments, variant.instruments)
+    assert.deepEqual(variant, createRandomCityKit(city, 'test-variation'))
+    assert.deepEqual(kit, defaultCityKit(city.id)) // reroll must not mutate the factory kit
+  }
+  assert.equal(fingerprints.size, cities.length)
+  assert.ok(kingBehaviors.size > 1)
+  assert.equal(defaultCityKit('unknown'), null)
+})
+
+test('every city voice produces bounded, in-scale Strudel events in every section', async () => {
+  const api = await strudel()
+  const { cities } = loadTs('lib/cities-data.ts')
+  const { createRandomCityKit } = loadTs('lib/music/random-kit.ts')
+  for (const city of cities) for (const seed of ['01', 'test-variation']) {
+    const kit = createRandomCityKit(city, seed)
+    const snapshot = creative.creativeSnapshot(kit, true)
+    const pitchClasses = new Set(creative.SCALES[kit.scale].map(n => (creative.ROOTS.indexOf(kit.root) + n) % 12))
+    const voices = voiceSpecs({ ...snapshot, pieces: snapshot.pieces.map(p => ({ ...p, active: true })) }, null)
+    for (const voice of voices) for (const section of ['0', '1', '2']) {
+      const events = compileVoice(api, { ...voice, sectionPattern: section }).queryArc(0, 4)
+      const label = `${city.id}/${seed}/${voice.piece.id}/section${section}`
+      assert.ok(events.length > 0 && events.length <= 128, `${label}: audible, bounded density`)
+      for (const { value } of events) {
+        for (const key of ['gain', 'cutoff', 'pan', 'room', 'delay']) assert.ok(Number.isFinite(Number(value[key])), `${label}: ${key}`)
+        assert.ok(value.gain > 0 && value.gain < 1, `${label}: gain`)
+        if (!voice.unpitched) assert.ok(pitchClasses.has(((Number(value.note) % 12) + 12) % 12), `${label}: in scale`)
+      }
+    }
+  }
+})
+
+test('all city kits obey move, capture and temporary check activation in games', () => {
+  const { cities } = loadTs('lib/cities-data.ts')
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  for (const city of cities) {
+    const snapshot = creative.creativeSnapshot(defaultCityKit(city.id), true)
+    const gameVoices = history => voiceSpecs({ ...snapshot, pieces: model.gameMusicStateFromHistory(history).pieces }, null)
+    assert.equal(gameVoices([]).length, 0) // Creative's active flags never leak into the game
+    assert.equal(gameVoices(['e4']).length, 1)
+    assert.ok(gameVoices(['e4', 'd5', 'exd5']).every(v => v.piece.id !== 'b:d7'))
+    assert.equal(gameVoices(['e4', 'd5', 'Bb5+']).filter(v => v.piece.color === 'w').length, 16)
+    assert.equal(gameVoices(['e4', 'd5', 'Bb5+', 'c6']).filter(v => v.piece.color === 'w').length, 2)
+  }
+})
+
+test('saved kits override each city independently, with safe defaults for corrupt or mismatched saves', () => {
+  const { cities } = loadTs('lib/cities-data.ts')
+  const { createRandomCityKit } = loadTs('lib/music/random-kit.ts')
+  const { loadCityKit, defaultCityKit, cityKitStorageKey } = loadTs('lib/music/city-kits.ts')
+  const memory = new Map(), previous = globalThis.window
+  globalThis.window = { localStorage: { getItem: key => memory.get(key) ?? null } }
+  try {
+    for (const city of cities) {
+      const custom = createRandomCityKit(city, 'saved-custom')
+      memory.set(cityKitStorageKey(city.id), JSON.stringify(custom))
+      assert.deepEqual(loadCityKit(city.id), JSON.parse(JSON.stringify(custom)))
+    }
+    for (const city of cities) {
+      memory.set(cityKitStorageKey(city.id), '{invalid')
+      assert.deepEqual(loadCityKit(city.id), defaultCityKit(city.id))
+      const other = cities.find(c => c.id !== city.id)
+      memory.set(cityKitStorageKey(city.id), JSON.stringify(defaultCityKit(other.id)))
+      assert.deepEqual(loadCityKit(city.id), defaultCityKit(city.id))
+    }
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
+})
+
 test('pausing while the audio clock starts leaves playback and its monitor stopped', async () => {
   const api = await strudel()
   let finishStart
