@@ -1,6 +1,31 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 12/09/2026. Status: bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e monitor de execução implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+Atualizado em 12/09/2026 — v3.1. Status: nova engine nas 12 cidades, kits experimentais reproduzíveis, bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e visualização de todas as variações implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+
+## Próximo ciclo de implementação
+
+1. **Transições musicais quantizadas:** fila de mudanças estruturais com aplicação no próximo compasso/seção; preservar fase, cancelar eventos obsoletos por undo/redo e mostrar a mudança pendente. BPM deve poder fazer rampas, em vez de saltar. É a base para mudar contexto sem cortar frases.
+2. **Direção harmônica compartilhada:** separar tônica/escala de acorde e graus preferenciais por seção; baixo e harmonia sustentam uma progressão, melodias escolhem notas com condução de vozes. Kits podem manter harmonia estática. Comparar A/B com o mesmo histórico de lances.
+3. **Groove e articulação:** swing comum configurável, microvariações determinísticas de tempo/velocidade, notas fantasmas e fraseado de pergunta/resposta. Evoluir o vocabulário de timbres e articulações por evidência de escuta. Estudo de Manchester em `MUSIC_REFERENCE_GET_A_MOVE_ON.md`.
+4. **Eventos raros, configuráveis por kit:** implementar inicialmente apenas uma ou duas regras da proposta abaixo, com acionamento manual no Criativo, indicador do motivo e cancelamento. Não ligar todas as regras ao mesmo tempo.
+5. **Curadoria e orçamento de áudio:** escutar formações de 1, 4, 8, 16 e 32 vozes e cheques, medir picos, densidade e custo em celular físico; comparar o eletrônico original, um kit contrastante e os sorteios. Ajustar limites antes de novos modos/loja/multiplayer.
+
+O sorteio por cidade está implementado; os kits salvos continuam prioritários. A aleatoriedade serve à experimentação, sem substituir a curadoria dos estilos. A referência eletrônica original permanece acessível no Criativo.
+
+### Proposta de contexto musical por eventos raros — ainda não implementada
+
+Atualmente nenhum evento de xadrez modifica automaticamente tônica, escala ou BPM. As alterações vêm do kit ou dos controles manuais. Proposta inicial para experimentação:
+
+| Gatilho | Proposta musical | Proteção contra excesso |
+| --- | --- | --- |
+| Primeiro roque da partida | Pequeno aumento de BPM (2–3%), com rampa de quatro compassos, marcando a passagem à seção B | Uma vez por partida; próximo limite de seção; teto definido no kit |
+| Ambas as equipes atingem quatro vozes permanentemente ativadas | Abrir uma seção harmônica nova; em kits menores, experimentar eólica → dórica conservando a tônica | Uma vez; ignorar ativação temporária por cheque; opção do kit, não mudança universal |
+| Saída das duas rainhas do tabuleiro | Marcar o final com BPM 3% menor; em outra receita, passar ao relativo maior/menor conservando o conjunto de notas | Limiar de material e mudança única; usar apenas uma transformação por receita |
+| Primeira promoção | Clímax com modulação preparada para tonalidade vizinha, por exemplo a quinta, ou para o relativo | Próxima seção; uma vez; condução harmônica antes de transpor todas as vozes |
+
+Começar pelo roque e pela entrada no final. Modulação por promoção depende da direção harmônica. Evitar mudar escala/tom/BPM a cada cheque ou captura: o cheque já tem efeito coletivo forte. Relativos só fazem sentido quando a escala de origem admite essa relação; não converter arbitrariamente qualquer escala para maior/menor.
+
+Regras globais propostas: intervalo mínimo de 16 compassos entre mudanças de contexto, até duas mudanças harmônicas por partida e edição manual com prioridade (suspende automação daquele parâmetro até reativação explícita). Desfazer um lance cancela o evento pendente ou reconstrói o contexto devido; pausa/fim de jogo suspende a fila. Nenhuma regra toca peça capturada ou muda a ativação permanente. Todos esses controles devem ser visíveis e simuláveis no Criativo antes de entrar no jogo.
 
 A primeira regra tática coletiva ativa temporariamente a banda atacante durante cheque. O arraste suspende o loop da peça e toca por entrada em casa. Os widgets da partida agora reúnem transporte/código, execução por peça e tom/escala global; a entrada pelo mapa aproxima a câmera do pin antes da fase. Estados táticos mais complexos continuam sujeitos à validação musical da base.
 

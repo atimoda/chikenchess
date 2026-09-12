@@ -158,6 +158,56 @@ export function compileVoice(api: Strudel, voice: VoiceSpec) {
   return pattern.orbit(voice.orbit).withValue((value: object) => ({ ...value, ccVoice: voice.key }))
 }
 
+// Only the inspected voice gets a variation preview. Compile once per edit and
+// cache four-cycle windows; UI clock ticks never rebuild these patterns.
+export function compileVoiceVariations(api: Strudel, voice: VoiceSpec) {
+  const banks = [voice.phrases.length, voice.groove?.rhythms.length ?? 1, voice.groove?.accents.length ?? 1,
+    ...Object.values(voice.automations ?? {}).map(a => a.kind === 'pattern' ? a.patterns.length : 1)]
+  const gcd = (a: number, b: number): number => b ? gcd(b, a % b) : a
+  const count = banks.reduce((a, b) => a * b / gcd(a, b), 1)
+  const timeline = api.mini(voice.sectionPattern)
+  const patterns = Array.from({ length: count }, (_, index) => compileVoice(api, { ...voice, sectionPattern: String(index), mask: undefined }))
+  const actual = compileVoice(api, { ...voice, mask: undefined })
+  const cache = new Map<number, { key: string; events: NoteEvent[] }>()
+  let cachedCycle = -1, sectionEvents: any[] = []
+  return (cycle: number) => {
+    if (Math.floor(cycle) !== cachedCycle) {
+      cachedCycle = Math.floor(cycle)
+      sectionEvents = timeline.queryArc(cachedCycle, cachedCycle + 1)
+    }
+    const section = sectionEvents.find(h => Number(h.part.begin) <= cycle && Number(h.part.end) > cycle)
+    const index = ((Number(section?.value ?? 0) % count) + count) % count
+    const banked = banks.some(n => n > 1)
+    const sectionStart = banked ? Number(section?.whole?.begin ?? 0) : 0
+    const phase = Math.max(0, cycle - sectionStart)
+    return patterns.map((pattern, i) => {
+      const start = i === index ? Math.floor(phase / 4) * 4 : 0
+      const queryStart = i === index ? sectionStart + start : 0
+      const queryEnd = i === index && banked ? Math.min(queryStart + 4, Number(section?.whole?.end ?? queryStart + 4)) : queryStart + 4
+      const key = `${i === index}:${queryStart}:${queryEnd}`
+      let window = cache.get(i)
+      if (!window || window.key !== key) {
+        const events = (i === index ? actual : pattern).queryArc(queryStart, queryEnd).slice(0, 512).map((hap: any) => ({
+          start: Math.max(0, Number(hap.whole?.begin ?? hap.part.begin) - queryStart),
+          end: Math.min(queryEnd - queryStart, Number(hap.whole?.end ?? hap.part.end) - queryStart),
+          note: voice.unpitched ? null : Number(hap.value.note),
+          gain: Number(hap.value.gain ?? 1) * Number(hap.value.velocity ?? 1),
+        }))
+        window = { key, events }; cache.set(i, window)
+      }
+      return { index: i, active: i === index, cursor: phase - start, start, events: window.events,
+        phrase: voice.instrument.phrases?.[i % voice.phrases.length] ?? voice.instrument.notes,
+        rhythm: voice.groove?.rhythms[i % voice.groove.rhythms.length] }
+    })
+  }
+}
+
+export async function prepareVoiceVariations(state: MusicSnapshot, id: string) {
+  const api = await loadLibrary()
+  const voice = voiceSpecs({ ...state, playing: true, pieces: state.pieces.filter(p => p.id === id).map(p => ({ ...p, active: true })) }, null)[0]
+  return voice ? compileVoiceVariations(api, voice) : null
+}
+
 // Validate inactive tracks too, without opening an AudioContext or playing sound.
 export async function validateMusicSnapshot(state: MusicSnapshot) {
   const api = await loadLibrary()

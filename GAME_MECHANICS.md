@@ -4,7 +4,9 @@ Atualizado em 12/09/2026. Referência de comportamento atual para desenvolviment
 
 ## Escopo e dados
 
-A engine Strudel é usada por Düsseldorf e pelo Criativo. Outras cidades ainda usam o motor nativo anterior; sons de interface, introdução e encerramento também continuam nativos.
+A engine Strudel é usada pelas 12 cidades cadastradas e pelo Criativo. Todas compartilham as regras abaixo; sons de interface, introdução e encerramento continuam nativos. A compilação dos loops nativos fica desabilitada quando a fase usa Strudel.
+
+Cada cidade tem um kit experimental gerado por sorteio reproduzível (`city-kit-v1`, cidade e semente). Reabrir a fase ou o Criativo conserva esse kit. Uma configuração salva no navegador tem prioridade sobre o default. Os defaults variam BPM, tom, escala, timeline, grooves, frases, fontes, articulações, ganhos, envelopes, filtros, efeitos, automações e mapeamentos; não são ainda reconstruções dos estilos históricos das cidades. O gerador mantém oito vozes percussivas, dois baixos, duas harmonias e quatro vozes de sequência/melodia por equipe, distribuídas independentemente do tipo de peça. Os lados compartilham os papéis correspondentes, com interpretações individuais. Vozes afinadas obedecem à escala comum e a mixagem mantém os limites da engine.
 
 | Dado | Significado | Duração / origem |
 | --- | --- | --- |
@@ -16,7 +18,7 @@ A engine Strudel é usada por Düsseldorf e pelo Criativo. Outras cidades ainda 
 | Gesto manual | Peça e casa que estão sendo percorridas, em camada separada | Enquanto segura/arrasta; não altera posição nem ativação permanente |
 | Contexto musical | Tom, escala, BPM, volume, timeline e grooves comuns | Kit da cidade + ajustes desta partida |
 
-## Ações e efeitos implementados — Düsseldorf
+## Ações e efeitos implementados — todas as cidades
 
 | Ação / condição | Efeito musical | Feedback / retorno |
 | --- | --- | --- |
@@ -39,6 +41,8 @@ A engine Strudel é usada por Düsseldorf e pelo Criativo. Outras cidades ainda 
 | Pausar / retomar | Pausa todos os loops. Retomar reinicia o transporte; gestos manuais ainda podem ser ouvidos quando pausado | Indicador de transporte |
 | Editar tom/escala | Todas as vozes afinadas usam o novo contexto nos próximos ataques. Samples não afinados mantêm a altura original | Seletores em Board Params e notas executadas em Piece Params |
 | Editar BPM/volume | Altera o relógio comum ou a mixagem | Board Params e transporte em Strudel |
+
+**Tom, escala e BPM não mudam automaticamente por eventos de xadrez nesta versão.** São definidos pelo kit carregado e podem ser editados pelo usuário. Carregar/gerar outro kit no Criativo pode trocar os três. Cheque, captura, roque e promoção afetam as vozes conforme a tabela, mas não modulam esse contexto global. Propostas de eventos raros estão em `MUSIC_ENGINE_PLAN.md`, ainda sem execução.
 
 O efeito de cheque não ressuscita peças capturadas, não ativa a equipe defensora e não aumenta automaticamente BPM ou ganho. Entradas respeitam os próximos ataques do arranjo; não há reinício das frases nem disparo de todas as notas no mesmo instante. Acima de dez loops, a engine atenua a mixagem progressivamente para acomodar a banda.
 
@@ -65,13 +69,17 @@ Prioridades: captura/encerramento/pausa controlam a existência dos loops; o ges
 
 Knobs aceitam mouse, toque, roda do mouse e teclado (setas, Home/End). A roda sobre o knob altera o valor; Shift amplia esse passo. Filtros e controles de envelope selecionados usam escala logarítmica. Editar filtro, pan, reverb ou delay remove a automação absoluta desse parâmetro nesta partida, para o knob assumir o controle; editar ganho preserva os acentos e multiplica seu volume. As edições no jogo não sobrescrevem automaticamente o kit salvo da cidade. O monitor do Piece Params reserva a altura para o estado, notas, gráfico e valores de efeitos, evitando que os pulsos redimensionem o widget.
 
+O quadro MIDI da peça selecionada mostra todas as variações salvas, uma abaixo da outra, rotuladas A/B/C/D. Inclui os bancos de groove/automações; quando bancos têm tamanhos diferentes, mostra suas combinações cíclicas (até 12). A região tem altura fixa e scroll interno. Cada quadro mostra uma janela de até quatro compassos; a janela da variação atual avança quando necessário, com ponteiro apenas enquanto sua voz está em execução. Peças inativas/pausadas continuam mostrando os padrões salvos, sem ponteiro. Gestos manuais no tabuleiro ocultam o ponteiro de loop; a audição do padrão completo conserva-o. Máscaras de entrada não apagam a composição desenhada. Apenas a voz inspecionada é compilada para essa visualização; janelas são cacheadas, sem recompilar nos ticks do relógio.
+
 Widgets flutuantes podem ser arrastados pelas áreas de fundo/conteúdo não interativo. Botões, knobs, sliders, seletores, código selecionável e alças de redimensionamento conservam suas funções. No celular, o botão “Parâmetros musicais” abre os painéis empilhados; nesse painel eles permanecem no fluxo da página, com fundo e controles contidos no próprio widget. Soltar, cancelar toque ou perder foco encerra o arraste.
 
 ## Criativo e persistência
 
 | Ação | Resultado |
 | --- | --- |
-| Carregar kit de Düsseldorf | Carrega a versão salva neste navegador; restaura posições e ativa as 16 brancas para escuta |
+| Cidade para experimentar + Carregar kit da cidade | Seleciona qualquer cidade e carrega sua versão salva neste navegador, ou seu kit aleatório inicial; restaura posições e ativa as 16 brancas para escuta |
+| Kit inicial da cidade | Carrega o sorteio reproduzível de fábrica, sem sobrescrever o kit salvo |
+| Gerar kit aleatório | Sorteia outra configuração vinculada à cidade escolhida, ativa as 16 brancas e inicia a escuta. Só Salvar kit da fase a adota na próxima partida |
 | Düsseldorf original · samples | Carrega o preset de fábrica com 16 brancas; não sobrescreve o kit salvo automaticamente |
 | Ativar/silenciar uma peça | Liga/desliga diretamente seu loop, sem exigir lance legal |
 | Solo | Ouve só a peça escolhida, ignorando sua máscara de entrada |
@@ -95,6 +103,8 @@ No Criativo, em desktop, tablet e tela de celular em paisagem, o tabuleiro perma
 - A preferência de movimento reduzido encurta a transição. A introdução atual da fase continua existindo após a chegada.
 - A superfície usa o litoral geográfico real do Natural Earth 1:110m, incluindo ilhas principais, em textura local equiretangular alinhada aos pins, sem fronteiras regionais. Terra e lua recebem a mesma luz pontual na posição do sol; luz ambiente suave mantém o lado escuro legível. O sol é pequeno, com halo radial transparente, e a lua é menor e fosca, com iluminação variando pela direção do sol. Nenhum efeito de áudio depende desse fundo.
 - O título do popup não exibe pontos de recompensa. O rodapé mostra `Reward: X PTS`, usando o valor real da próxima vitória: 1.000 na primeira conquista ou 200 na repetição.
+- O clique de um pin (tom e prato reverso de abertura) usa 30% do ganho anterior, redução de 70%; o pulso de hover usa 70%, redução de 30%. Sons de arraste dos popups e do botão Enter board conservam seus ajustes.
+- Clicar em `v3.1` abre o changelog com rolagem interna, disponível no mapa, na partida e no Criativo. Escape, botão de fechar ou clique fora encerram o popup; o histórico fica em `lib/changelog.ts`.
 
 ## Estados e ideias ainda não associados à engine Strudel
 

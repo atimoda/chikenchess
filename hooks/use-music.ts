@@ -109,7 +109,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     else data.fill(0)
   }, [])
   return {
-    enabled, audition, endAudition, select, reset, selected, effects, setEffects,
+    enabled, audition, endAudition, select, reset, selected, effects, setEffects, snapshot,
     code, preview, pulse, error, getFrequencyData, monitor,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,

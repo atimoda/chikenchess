@@ -19,7 +19,7 @@ function loadTs(relative) {
   return mod.exports
 }
 const model = loadTs('lib/music/model.ts')
-const { voiceSpecs, renderMusicCode, compileVoice, MusicRuntime } = loadTs('lib/music/runtime.ts')
+const { voiceSpecs, renderMusicCode, compileVoice, compileVoiceVariations, MusicRuntime } = loadTs('lib/music/runtime.ts')
 const patterns = loadTs('lib/music/pattern-library.ts')
 const creative = loadTs('lib/music/creative.ts')
 const state = (history = []) => ({ pieces: model.piecesFromHistory(history), scale: ['C4','Eb4','F4','G4','Bb4'], bpm: 118, volume: 0.8, playing: true, effects: {} })
@@ -283,6 +283,44 @@ test('all Düsseldorf sections compile using the real Strudel bundle', async () 
     assert.ok(events.every(h => Number.isFinite(Number(h.value.gain))), voice.instrument.name)
     assert.ok(events.length < 2048, voice.instrument.name)
   }
+})
+
+test('variation previews show all banks, track section restarts and cache clock-only updates', async () => {
+  const api = await strudel()
+  const kit = creative.createDusseldorfSession()
+  const voice = voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.piece.id === 'w:d1')
+  const preview = compileVoiceVariations(api, { ...voice, phrases: ['60*4', '62*4', '64*4'], groove: undefined, automations: undefined })
+  const first = preview(.5)
+  assert.equal(first.length, 3)
+  assert.equal(first.filter(v => v.active).length, 1)
+  assert.equal(first[0].cursor, .5)
+  assert.ok(first[0].events.every(e => e.note === 60))
+  assert.ok(first[1].events.every(e => e.note === 62))
+  assert.ok(first[2].events.every(e => e.note === 64))
+  assert.equal(preview(.75)[0].events, first[0].events)
+  const second = preview(4.25)
+  assert.equal(second.find(v => v.active).index, 1)
+  assert.equal(second[1].cursor, .25)
+  assert.equal(preview(8.75).find(v => v.active).index, 2)
+  assert.equal(preview(12.5).find(v => v.active).index, 1)
+  const percussion = voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.piece.id === 'w:a2')
+  assert.equal(compileVoiceVariations(api, percussion)(0).length, 3)
+  const mixed = compileVoiceVariations(api, { ...voice, phrases: ['60*4', '62*4'], sectionPattern: '[0 1 2 3]/4',
+    groove: { rhythms: ['x', 'x*2', 'x*3'], accents: ['1'] }, automations: undefined })(3.25)
+  assert.equal(mixed.length, 6) // Two phrases and three rhythms have six combinations.
+  assert.equal(mixed.find(v => v.active).index, 3)
+  assert.ok(mixed[3].events.every(e => e.note === 62))
+})
+
+test('variation preview keeps continuous notes aligned when only a groove or automation restarts', async () => {
+  const api = await strudel()
+  const kit = creative.createDusseldorfSession()
+  const voice = { ...voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.piece.id === 'w:d1'),
+    notes: '<60 64>', phrases: ['<60 64>'], sectionPattern: '[0 1]/2', groove: undefined, mask: undefined,
+    automations: { gain: { kind: 'pattern', patterns: ['1', '.5'] } } }
+  const preview = compileVoiceVariations(api, voice)
+  assert.equal(preview(1.25).find(v => v.active).events[0].note, 64)
+  assert.equal(preview(2.25).find(v => v.active).events[0].note, 60)
 })
 
 test('invalid automation or sample IDs cannot be saved as city kits', () => {

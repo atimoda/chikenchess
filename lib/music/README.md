@@ -1,12 +1,12 @@
 # Strudel music engine and Creative lab
 
-The `codex/music-engine` branch migrates Düsseldorf to `@strudel/web` 1.3.0. Other cities retain the existing audio engine during this migration. The existing native engine also continues to provide introductory/UI sound effects.
+All 12 registered cities and Creative use `@strudel/web` 1.3.0. The existing native engine continues to provide introductory/UI/end-game sound effects; its loop compilation and playback are disabled for these stages.
 
 ## Try it
 
 Run `npm install` and `npm run dev`, then open `/?city=dusseldorf` on the printed local URL. Complete the existing introduction.
 
-For immediate experiments, open `/creative` and choose **Düsseldorf original · samples**. This loads the factory `Düsseldorf · Electro 01` kit with all 16 white voices active. **Carregar kit de Düsseldorf** loads your saved city version instead. **Salvar kit da fase** associates the edited kit with Düsseldorf in this browser; the next game uses its instruments, grooves, timeline, scale, BPM and volume. In a game, each piece still activates only after its first legal move. Export JSON to transfer a kit between devices; there is no shared database yet.
+For immediate experiments, open `/creative`, select a city and choose **Carregar kit da cidade**. Saved city kits take priority over seeded factory arrangements. **Kit inicial da cidade** restores the reproducible default; **Gerar kit aleatório** creates a new variation. These actions activate all 16 white voices. **Salvar kit da fase** stores the edited city kit in this browser; the next game uses its instruments, grooves, timeline, scale, BPM and volume. **Düsseldorf original · samples** preserves the original electronic reference. Gameplay activation still comes from moves and the temporary check overlay, never from Creative's active flags. Export JSON to transfer kits between devices; there is no shared database yet.
 
 - Hold/drag a piece to play individual notes before making a move. Its loop is suspended during the gesture; entering a new square triggers one attack. Holding still does not repeat the phrase. The Creative “Segure para ouvir” button still auditions the complete pattern.
 - Release on an illegal destination, the original square, or outside the board to cancel. Escape, touch cancellation, and window blur also end the audition.
@@ -26,7 +26,9 @@ See `GAME_MECHANICS.md` for the maintained behavior inventory, gesture limitatio
 - `automation.ts`: bounded patterns per section and sine/ramp curves for gain, low-pass, pan, reverb and delay. Gain multiplies the base value; other automated controls replace their fixed values. Values are sampled at note attacks, not continuously inside an already sounding note.
 - `grooves.ts`: shared named grooves with rhythm/accent lanes. Any instrument can reference any lane; notes remain in the instrument's phrase bank. Editing a lane changes every linked voice, while disabling one piece leaves the other lanes intact.
 - `creative.ts` and `city-kits.ts`: schema v4, migrations, factory kit, import validation and browser-local city persistence. Source, behavior and chess role are independent: a king can play an unpitched kick and a pawn a tuned bell sequence.
+- `random-kit.ts`: versioned seeded arrangements for every city, randomized roles and bounded parameters. Defaults are experimental combinations of available sources, not historically curated genre kits.
 - `monitor.ts` and `components/music-playback.tsx`: shared section/beat, notes/rests and resolved control values. Queries use the same compiled Strudel patterns as audio, aligned to the transport clock. Small subscribers and cached per-cycle queries avoid rerendering the editor on every tick.
+- The selected voice's variation panels compile once per configuration and cache four-cycle preview windows. Saved variants remain visible while inactive; only the executing variant has a playhead. Actual timeline queries preserve alignment when phrases, grooves and automations have different bank sizes.
 - `hooks/use-music.ts`: React state and controls. Piece parameter edits are keyed by identity; undo/redo restores board-derived activation and position while retaining manual edits.
 
 ## Checks

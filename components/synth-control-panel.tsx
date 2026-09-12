@@ -135,7 +135,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
              </span>
           </div>
           <div className="h-4 overflow-hidden text-center text-xs text-white/80" aria-live="polite">{selectedSquare ? `${selectedSquare} · ${selectedPieceInfo ?? 'Instrumento'}` : 'Selecione uma peça'}</div>
-          <div className="h-[170px] overflow-hidden">{playback}</div>
+          <div className="h-[275px] overflow-hidden">{playback}</div>
           
           <div
             className={cn(

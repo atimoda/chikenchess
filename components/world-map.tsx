@@ -6,6 +6,8 @@ import { cities, type CityData } from "@/lib/cities-data"
 import { getPlayerProfile, resetCampaign, type PlayerProfile } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
+import { VersionChangelog } from './version-changelog'
+import { RELEASE_LABEL } from '@/lib/changelog'
 
 import { Button } from "@/components/ui/button"
 import { Plus, Minus, Maximize, Minimize } from "lucide-react"
@@ -313,8 +315,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           const gain = ctx.createGain()
           osc.frequency.setValueAtTime(150 * pitchVar, t)
           osc.frequency.exponentialRampToValueAtTime(40 * pitchVar, t + 0.1)
-          gain.gain.setValueAtTime(0.15, t)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1)
+          gain.gain.setValueAtTime(0.15 * .7, t)
+          gain.gain.exponentialRampToValueAtTime(0.01 * .7, t + 0.1)
           osc.connect(gain)
           gain.connect(ctx.destination)
           osc.start(t)
@@ -324,8 +326,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           const gain = ctx.createGain()
           osc.frequency.setValueAtTime(200 * pitchVar, t)
           osc.frequency.exponentialRampToValueAtTime(50 * pitchVar, t + 0.2)
-          gain.gain.setValueAtTime(0.6, t)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2)
+          gain.gain.setValueAtTime(0.6 * .3, t)
+          gain.gain.exponentialRampToValueAtTime(0.01 * .3, t + 0.2)
           osc.connect(gain)
           gain.connect(ctx.destination)
           osc.start(t)
@@ -454,8 +456,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           filter.frequency.value = 4000 * pitchVar
           filter.Q.value = 1
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.005, t)
-          gain.gain.exponentialRampToValueAtTime(0.1, t + dur - 0.1)
+          gain.gain.setValueAtTime(0.005 * .3, t)
+          gain.gain.exponentialRampToValueAtTime(0.1 * .3, t + dur - 0.1)
           gain.gain.linearRampToValueAtTime(0, t + dur)
           noise.connect(filter)
           filter.connect(gain)
@@ -919,7 +921,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
                 <h2 className="text-2xl font-mono font-bold mb-1 text-primary">chickenchess</h2>
                 
-                <p className="text-xs font-bold text-muted-foreground mb-4">v3.0 "The Distribution"</p>
+                <p className="text-xs font-bold text-muted-foreground mb-4">{RELEASE_LABEL}</p>
 
                 <div className="my-4 border-l-2 border-primary/50 pl-4 py-1">
                     <p className="text-sm text-foreground leading-relaxed">
@@ -997,10 +999,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
         {/* Bottom Right Info & Controls */}
         <div 
-          className="hidden md:flex absolute bottom-4 right-4 items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
+          className="flex absolute bottom-4 right-4 items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
           <div className="flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-             <span className="text-[10px] font-mono text-muted-foreground">v3.0 "The Distribution"</span>
+             <VersionChangelog />
           </div>
 
           <div className="h-4 w-px bg-border" />

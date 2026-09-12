@@ -13,6 +13,7 @@ import { getCityById } from '@/lib/cities-data'
 import { createRandomCityKit } from '@/lib/music/random-kit'
 import { SampleSourceControls, AutomationControls, GrooveControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
+import { VersionChangelog } from './version-changelog'
 import styles from './creative-studio.module.css'
 
 const pieceNames = { p: 'Peão', n: 'Cavalo', b: 'Bispo', r: 'Torre', q: 'Rainha', k: 'Rei' }
@@ -281,6 +282,7 @@ export function CreativeStudio() {
     <header className={styles.header}>
       <div className={styles.identity}><Link href="/" aria-label="Voltar ao mundo"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS LAB</span><h1><FlaskConical size={22} /> Modo Criativo</h1></div></div>
       <p>Uma bancada para compor com as peças.<br /><span>Sem abertura. Sem turnos. No seu tempo.</span></p>
+      <VersionChangelog />
     </header>
 
     <fieldset disabled={!ready || busy} className={styles.workspace}>
@@ -358,7 +360,7 @@ export function CreativeStudio() {
               <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) { setPlaying(true); setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) } }}>Solo</button>
               <button className={styles.auditionButton} onContextMenu={e => e.preventDefault()} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); music.audition(selectedId, selected.square, 'pattern') }} onPointerUp={music.endAudition} onPointerCancel={music.endAudition} onLostPointerCapture={music.endAudition} onBlur={music.endAudition} onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) music.audition(selectedId, selected.square, 'pattern') } }} onKeyUp={music.endAudition}><Volume2 size={14} />Segure para ouvir</button>
             </div>
-            <MusicVoiceReadout monitor={music.monitor} id={selectedId} />
+            <MusicVoiceReadout monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
             <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
             <div className={styles.pair}><label>Comportamento<select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulso / percussão</option><option value="phrase">Frase / sequenciador</option><option value="sustain">Sustentado / acordes</option></select></label>
               <label>Timbre sintetizado<select disabled={instrument.source?.kind === 'sample'} value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'] })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
