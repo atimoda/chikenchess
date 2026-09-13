@@ -15,6 +15,7 @@ import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceReadout } from './music-playback'
 import { VersionChangelog } from './version-changelog'
+import { Draggable } from './ui/draggable'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -182,11 +183,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             // Random distance from center line (20 to 40px)
             const getCenterPadding = () => 20 + Math.random() * (40 - 20)
 
-            // Top Left (Global Control Panel - originally Top Right)
-            // Closer to bottom of quadrant -> centerY - widgetHeight - centerPadding
+            // Leave room for the taller DJ mixer and keep the code below it.
             setGlobalPanelPosition({ 
                 x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
-                y: Math.max(headerH, centerY - 300 - getCenterPadding())
+                y: headerH
             })
 
             // Compact spectrum below the taller piece inspector.
@@ -205,7 +205,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             // Transport and code below Board Params, clear of Piece Params.
             setLiveCodePosition({
                 x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
-                y: centerY + getCenterPadding()
+                y: headerH + 600
             })
             
             // Default states
@@ -365,7 +365,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     targetSide?: 'left' | 'right' | 'top' | 'bottom'
   }[]>([])
 
-  const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume)
+  const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume, liveCodeOn && (!isMobile || mobileControlsOpen))
 
   const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects, !music.enabled)
 
@@ -1229,7 +1229,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <SynthControlPanel
                 instrument={music.enabled ? music.instrument : undefined}
                 onInstrumentChange={music.updateInstrument}
-                playback={music.enabled && music.selected ? <>
+                playback={knobsOn && music.enabled && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
                   <MusicVoiceReadout monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} />
                 </> : undefined}
@@ -1275,6 +1275,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <GlobalControlPanel
+                teamMixes={music.enabled ? music.teamMixes : undefined}
+                onTeamMixChange={music.updateTeamMix}
+                deckClock={music.enabled ? music.deckClock : undefined}
                 tonality={music.tonality}
                 onTonalityChange={music.setTonality}
                 showAmbience={!music.enabled}
@@ -1293,9 +1296,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <LiveCodeWidget
-                playback={music.enabled ? <>
+                playback={liveCodeOn && music.enabled ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">Arraste uma peça para tocar · {music.activeSquares.size} vozes ativas</span>}</div>
-                  {music.attackingColor && <div className="text-amber-200">CHEQUE · banda {music.attackingColor === 'w' ? 'branca' : 'preta'} completa</div>}
+                  {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
+                  {music.reactionDescriptions.map((description, i) => <div key={i}>{description}</div>)}
                   <MusicTransportReadout monitor={music.monitor} />
                 </> : undefined}
                 ref={liveCodeRef}
@@ -1468,13 +1472,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                             </h2>
 
                             {/* Box 1: City Stats */}
-                            <div 
+                            <Draggable
+                                dragFromBackground
                                 className={cn(
-                                    "bg-black/80 border border-white/10 backdrop-blur-md p-6 rounded-xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-1000 w-full",
+                                    "bg-black/80 border border-white/10 backdrop-blur-md p-6 rounded-xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] transition-[opacity,transform] duration-1000 w-full cursor-grab active:cursor-grabbing select-none",
                                     showIntroBoxes && !isStartPressed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
                                     isStartPressed && "duration-100 opacity-0"
                                 )}
-                                style={{ borderColor: `${city.color}40` }}
+                                style={{ position: 'relative', borderColor: `${city.color}40`, touchAction: 'none' }}
+                                aria-label="Informações da cidade"
                             >
                                 {/* Description Moved to Top & Resized */}
                                 <div className="mb-6 text-base md:text-lg text-white/90 italic leading-relaxed font-light border-b border-white/10 pb-4">
@@ -1504,7 +1510,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                                         </span>
                                     </div>
                                 </div>
-                            </div>
+                            </Draggable>
                         </div>
 
                         {/* Sound Kit Box HIDDEN for now */}
@@ -1515,7 +1521,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                         )}
 
                         <div className={cn(
-                            "mt-8 transition-all duration-1000 delay-400",
+                            "relative z-30 mt-8 transition-all duration-1000 delay-400",
                             showStartButton ? "opacity-100 translate-y-0" : "opacity-0 translate-y-0"
                         )}>
                             <Button

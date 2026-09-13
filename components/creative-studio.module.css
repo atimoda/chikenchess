@@ -97,3 +97,15 @@
 @media (max-width: 720px) { .studio { padding: 18px 12px 88px; } .header { margin-bottom: 18px; } .header p { display: none; } .header h1 { font-size: 23px; } .identity { gap: 12px; } .columns { grid-template-columns: 1fr; } .boardPanel { position: static; } .controlColumns { grid-template-columns: 1fr; } .controlColumn { max-height: none; overflow: visible; padding-right: 0; } .transport { padding: 12px; gap: 12px; } .transport > .range { width: 120px; } .canvas { gap: 14px; } .voices, .bandPanel .voices { grid-template-columns: 1fr 1fr; gap: 12px; } .kitPanel { grid-template-columns: 1fr; gap: 18px; } .sectionHeader { flex-direction: row; flex-wrap: wrap; } }
 @media (max-width: 720px) and (orientation: landscape) { .studio { padding: 10px 12px 60px; } .header { margin-bottom: 10px; } .header h1 { font-size: 20px; } .identity > a { padding: 8px; } .transport { margin-bottom: 10px; padding: 9px 10px; gap: 9px; } .columns { grid-template-columns: minmax(200px, .7fr) minmax(300px, 1.3fr); gap: 10px; } .boardPanel { position: sticky; top: 8px; } .controlColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .controlColumn { max-height: calc(100dvh - 16px); overflow-y: auto; padding-right: 3px; } .panel { padding: 10px; } .panel h2 { font-size: 15px; } .sectionHeader { margin-bottom: 10px; } .board { border-width: 3px; } .hint { font-size: 10px; } .voices, .bandPanel .voices { grid-template-columns: 1fr; gap: 10px; } }
 @media (prefers-reduced-motion: reduce) { .studio button { transition: none; } }
+
+/* v0.3.2: compact columns, one scroll surface per column. */
+.columns, .controlColumns { gap: 0; }
+.boardColumn { min-width: 0; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+.boardPanel { position: static; }
+.board { position: relative; }
+.panel, .inspector .panel { padding: 12px; }
+.transport { margin-bottom: 8px; padding: 8px 12px; gap: 10px; }
+.transport > label:first-child { flex: 1; min-width: 170px; }
+.transport .actions { margin: 0; }
+.sectionHeader, .instrumentTitle { margin-bottom: 10px; }
+@media (max-width:720px) and (orientation:portrait) { .boardColumn { max-height:none; overflow:visible; } }

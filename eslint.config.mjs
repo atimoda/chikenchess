@@ -57,6 +57,7 @@ export default [
         alert: "readonly",
         KeyboardEvent: "readonly",
         HTMLCanvasElement: "readonly",
+        SVGSVGElement: "readonly",
       },
     },
     plugins: {

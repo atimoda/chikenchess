@@ -9,14 +9,21 @@ import { MusicRuntime, renderMusicCode, type Preview, type MusicPulse } from '@/
 import { defaultCityKit, loadCityKit } from '@/lib/music/city-kits'
 import { scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { createMusicMonitor } from '@/lib/music/monitor'
+import { createTeamMixes, resolveDeckClock, type TeamMix } from '@/lib/music/team-mixer'
+import { applyReactions, reactionContext } from '@/lib/music/reactions'
 
-export function useMusic(history: string[], city: CityData, playing: boolean, bpm: number, volume: number) {
+export function useMusic(history: string[], city: CityData, playing: boolean, bpm: number, volume: number, showCode = true) {
   const builtInKit = useMemo(() => defaultCityKit(city.id), [city.id])
   const enabled = builtInKit !== null
   const [kit, setKit] = useState<CreativeSession | null>(builtInKit)
+  const [teamMixes, setTeamMixes] = useState(createTeamMixes)
+  const [finePitch, setFinePitch] = useState(0)
+  const [quartzLock, setQuartzLock] = useState(false)
+  const { tuning, bpm: effectiveBpm } = resolveDeckClock(bpm, kit?.bpm ?? bpm, finePitch, quartzLock)
+  const updateTeamMix = useCallback((color: 'w' | 'b', patch: Partial<TeamMix>) => setTeamMixes(current => ({ ...current, [color]: { ...current[color], ...patch } })), [])
   const gameMusicState = useMemo(() => gameMusicStateFromHistory(history), [history])
   const pieces = gameMusicState.pieces
-  const activeSquares = useMemo(() => new Set(pieces.filter(p => p.active).map(p => p.square)), [pieces])
+  const context = useMemo(() => reactionContext(history, kit?.reactions.minimumPieces), [history, kit?.reactions.minimumPieces])
   const [effects, setEffects] = useState<Record<string, SquareEffects>>(builtInKit?.effects ?? {})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Preview | null>(null)
@@ -24,10 +31,11 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const [error, setError] = useState<string | null>(null)
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
-  const snapshot = useMemo(() => ({
-    pieces,
+  const baseSnapshot = useMemo(() => ({
+    pieces: pieces.map(p => ({ ...p, active: p.activation === 'move', checkEnsemble: false })),
     scale: kit ? scaleForCreativeSession(kit) : city.scale,
-    bpm,
+    bpm: effectiveBpm,
+    tuning,
     volume,
     playing,
     effects,
@@ -35,13 +43,19 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     mappings: kit?.mappings,
     sectionPattern: kit?.sectionPattern,
     grooves: kit?.grooves,
+    teamMixes,
     title: kit ? `${city.name} · ${kit.name}` : city.name,
-  }), [pieces, kit, city.scale, city.name, bpm, volume, playing, effects])
-  const code = useMemo(() => enabled ? renderMusicCode(snapshot, preview) : '', [enabled, snapshot, preview])
+  }), [pieces, kit, city.scale, city.name, effectiveBpm, tuning, volume, playing, effects, teamMixes])
+  const resolved = useMemo(() => kit ? applyReactions(baseSnapshot, kit.reactions, context) : { snapshot:baseSnapshot, descriptions:[] }, [baseSnapshot,kit,context])
+  const snapshot = useMemo(() => quartzLock ? { ...resolved.snapshot, bpm: kit?.bpm ?? bpm } : resolved.snapshot, [quartzLock,resolved.snapshot,kit?.bpm,bpm])
+  const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active).map(p => p.square)), [snapshot.pieces])
+  const code = useMemo(() => enabled && showCode ? renderMusicCode(snapshot, preview) : '', [enabled, showCode, snapshot, preview])
 
   useEffect(() => {
     const resolved = loadCityKit(city.id)
     setKit(resolved)
+    setTeamMixes(createTeamMixes())
+    setFinePitch(0); setQuartzLock(false)
     setEffects(resolved?.effects ?? {})
     setSelectedId(null)
     setPreview(null)
@@ -83,7 +97,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     if (piece) setSelectedId(piece.id)
   }, [pieces])
   const reset = useCallback(() => { setEffects(kit?.effects ?? {}); setSelectedId(null); endAudition() }, [endAudition, kit])
-  const selected = pieces.find(p => p.id === selectedId)
+  const selected = snapshot.pieces.find(p => p.id === selectedId)
   const instrument = selected ? (kit?.instruments[selected.id] ?? instrumentFor(selected)) : null
   const updateInstrument = useCallback((patch: InstrumentPerformanceEdit) => {
     if (!selectedId) return
@@ -109,8 +123,9 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     else data.fill(0)
   }, [])
   return {
-    enabled, audition, endAudition, select, reset, selected, effects, setEffects, snapshot,
-    code, preview, pulse, error, getFrequencyData, monitor,
+    enabled, audition, endAudition, select, reset, selected, effects, setEffects, snapshot, teamMixes, updateTeamMix,
+    deckClock: { finePitch, quartzLock, effectiveBpm: snapshot.bpm, originalBpm: kit?.bpm ?? bpm, setFinePitch, setQuartzLock },
+    code, preview, pulse, error, getFrequencyData, monitor, reactionDescriptions: resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,
     kitVolume: kit?.volume ?? null,

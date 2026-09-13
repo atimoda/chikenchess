@@ -1,0 +1,1916 @@
+{
+  "reactions": {
+    "minimumPieces": 4,
+    "rules": [
+      {
+        "id": "check-band",
+        "trigger": "check",
+        "enabled": true,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "activate",
+            "value": 0,
+            "scale": "Maior"
+          }
+        ]
+      }
+    ]
+  },
+  "version": 4,
+  "name": "Manchester 1999 · Northern Jazz Breaks",
+  "cityId": "manchester-1999",
+  "bpm": 123,
+  "volume": 0.72,
+  "root": "G",
+  "scale": "Dórica",
+  "sectionPattern": "[0@4 1@8 2@4 3@8]/24",
+  "pieces": [
+    {
+      "id": "b:a8",
+      "slot": 0,
+      "origin": "a8",
+      "square": "a8",
+      "type": "r",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:b8",
+      "slot": 1,
+      "origin": "b8",
+      "square": "b8",
+      "type": "n",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:c8",
+      "slot": 2,
+      "origin": "c8",
+      "square": "c8",
+      "type": "b",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:d8",
+      "slot": 3,
+      "origin": "d8",
+      "square": "d8",
+      "type": "q",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:e8",
+      "slot": 4,
+      "origin": "e8",
+      "square": "e8",
+      "type": "k",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:f8",
+      "slot": 5,
+      "origin": "f8",
+      "square": "f8",
+      "type": "b",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:g8",
+      "slot": 6,
+      "origin": "g8",
+      "square": "g8",
+      "type": "n",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:h8",
+      "slot": 7,
+      "origin": "h8",
+      "square": "h8",
+      "type": "r",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:a7",
+      "slot": 8,
+      "origin": "a7",
+      "square": "a7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:b7",
+      "slot": 9,
+      "origin": "b7",
+      "square": "b7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:c7",
+      "slot": 10,
+      "origin": "c7",
+      "square": "c7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:d7",
+      "slot": 11,
+      "origin": "d7",
+      "square": "d7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:e7",
+      "slot": 12,
+      "origin": "e7",
+      "square": "e7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:f7",
+      "slot": 13,
+      "origin": "f7",
+      "square": "f7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:g7",
+      "slot": 14,
+      "origin": "g7",
+      "square": "g7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:h7",
+      "slot": 15,
+      "origin": "h7",
+      "square": "h7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "w:a2",
+      "slot": 16,
+      "origin": "a2",
+      "square": "a2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:b2",
+      "slot": 17,
+      "origin": "b2",
+      "square": "b2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:c2",
+      "slot": 18,
+      "origin": "c2",
+      "square": "c2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:d2",
+      "slot": 19,
+      "origin": "d2",
+      "square": "d2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:e2",
+      "slot": 20,
+      "origin": "e2",
+      "square": "e2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:f2",
+      "slot": 21,
+      "origin": "f2",
+      "square": "f2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:g2",
+      "slot": 22,
+      "origin": "g2",
+      "square": "g2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:h2",
+      "slot": 23,
+      "origin": "h2",
+      "square": "h2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:a1",
+      "slot": 24,
+      "origin": "a1",
+      "square": "a1",
+      "type": "r",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:b1",
+      "slot": 25,
+      "origin": "b1",
+      "square": "b1",
+      "type": "n",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:c1",
+      "slot": 26,
+      "origin": "c1",
+      "square": "c1",
+      "type": "b",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:d1",
+      "slot": 27,
+      "origin": "d1",
+      "square": "d1",
+      "type": "q",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:e1",
+      "slot": 28,
+      "origin": "e1",
+      "square": "e1",
+      "type": "k",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:f1",
+      "slot": 29,
+      "origin": "f1",
+      "square": "f1",
+      "type": "b",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:g1",
+      "slot": 30,
+      "origin": "g1",
+      "square": "g1",
+      "type": "n",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:h1",
+      "slot": 31,
+      "origin": "h1",
+      "square": "h1",
+      "type": "r",
+      "color": "w",
+      "active": true
+    }
+  ],
+  "instruments": {
+    "b:a8": {
+      "name": "Barítono · apoio",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "0 ~ [~@5 4@4] ~",
+      "octave": 3,
+      "gain": 0.27,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "0 ~ [~@5 4@4] ~",
+        "0 ~ [2@5 4@4] ~",
+        "~ ~ 0 ~",
+        "0 [~@5 2@4] 4 ~"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "baritone",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:b8": {
+      "name": "Baixo · pergunta",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "[0@5 ~@4] ~ [0@5 4@4] [~@5 6@4]",
+      "octave": 2,
+      "gain": 0.42,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 1400,
+      "hpf": 25,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "[0@5 ~@4] ~ [0@5 4@4] [~@5 6@4]",
+        "[0@5 ~@4] [~@5 2@4] 4 [~@5 -1@4]",
+        "0 ~ ~ [4@5 ~@4]",
+        "[0@5 0@4] ~ [4@5 3@4] [~@5 -1@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "pluck",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:c8": {
+      "name": "Teclas · acordes curtos",
+      "behavior": "sustain",
+      "sound": "sine",
+      "notes": "~ [0,2,6] ~ ~",
+      "octave": 4,
+      "gain": 0.12,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 3800,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.4,
+      "phrases": [
+        "~ [0,2,6] ~ ~",
+        "~ [0,2,6] ~ [2,4,6]",
+        "~ ~ [0,2,4] ~",
+        "~ [0,2,6] ~ [0,3,6]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "keys",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:d8": {
+      "name": "Palheta · motivo principal",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "[0@5 2@4] [4@5 ~@4] [3@5 2@4] [~@5 0@4]",
+      "octave": 4,
+      "gain": 0.31,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "[0@5 2@4] [4@5 ~@4] [3@5 2@4] [~@5 0@4]",
+        "[0@5 2@4] [4@5 6@4] [4@5 ~@4] [2@5 0@4]",
+        "[0@5 ~@4] ~ [2@5 4@4] ~",
+        "[0@5 2@4] [4@5 ~@4] [6@5 4@4] [2@5 -1@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "reed",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:e8": {
+      "name": "Vogal · interjeições",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~ ~ [~@5 0@4] ~",
+      "octave": 4,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "~ ~ [~@5 0@4] ~",
+        "~ ~ ~ [2@5 0@4]",
+        "~ 0 ~ ~",
+        "~ [~@5 4@4] ~ [2@5 ~@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "formant",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:f8": {
+      "name": "Teclas · resposta",
+      "behavior": "sustain",
+      "sound": "sine",
+      "notes": "~ ~ ~ [~@5 [2,4]@4]",
+      "octave": 4,
+      "gain": 0.11,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 3800,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.4,
+      "phrases": [
+        "~ ~ ~ [~@5 [2,4]@4]",
+        "~ ~ [~@5 [2,4]@4] ~",
+        "[2,4]/2",
+        "~ ~ ~ [2,4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "keys",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:g8": {
+      "name": "Baixo · resposta",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~ ~ ~ [~@5 4@4]",
+      "octave": 2,
+      "gain": 0.29,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 1400,
+      "hpf": 25,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "~ ~ ~ [~@5 4@4]",
+        "~ [~@5 4@4] ~ ~",
+        "~ ~ 0 ~",
+        "~ ~ [~@5 6@4] ~"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "pluck",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:h8": {
+      "name": "Metal · resposta",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~ ~ ~ [4@5 2@4]",
+      "octave": 4,
+      "gain": 0.23,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "~ ~ ~ [4@5 2@4]",
+        "~ [~@5 4@4] ~ [6@5 4@4]",
+        "~ ~ ~ 2",
+        "~ ~ [~@5 6@4] [4@5 2@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "brass",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "b:a7": {
+      "name": "Bumbo seco",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.52,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "kick",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "kick"
+      }
+    },
+    "b:b7": {
+      "name": "Caixa breaks",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.34,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "snare",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "snare"
+      }
+    },
+    "b:c7": {
+      "name": "Chimbal longo-curto",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "hat",
+        "variant": 1,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "hat"
+      }
+    },
+    "b:d7": {
+      "name": "Caixa fantasma",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.13,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "snare",
+        "variant": 1,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "ghost"
+      }
+    },
+    "b:e7": {
+      "name": "Ride pontuado",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "ride",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "ride"
+      }
+    },
+    "b:f7": {
+      "name": "Chimbal de resposta",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.12,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "open-hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "open"
+      }
+    },
+    "b:g7": {
+      "name": "Rim de madeira",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.19,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "rim",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "rim"
+      }
+    },
+    "b:h7": {
+      "name": "Shaker sincopado",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.12,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "shaker",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "shaker"
+      }
+    },
+    "w:a2": {
+      "name": "Bumbo seco",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.52,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "kick",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "kick"
+      }
+    },
+    "w:b2": {
+      "name": "Caixa breaks",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.34,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "snare",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "snare"
+      }
+    },
+    "w:c2": {
+      "name": "Chimbal longo-curto",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "hat",
+        "variant": 1,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "hat"
+      }
+    },
+    "w:d2": {
+      "name": "Caixa fantasma",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.13,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "snare",
+        "variant": 1,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "ghost"
+      }
+    },
+    "w:e2": {
+      "name": "Ride pontuado",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "ride",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "ride"
+      }
+    },
+    "w:f2": {
+      "name": "Chimbal de resposta",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.12,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "open-hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "open"
+      }
+    },
+    "w:g2": {
+      "name": "Rim de madeira",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.19,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "rim",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "rim"
+      }
+    },
+    "w:h2": {
+      "name": "Shaker sincopado",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "0",
+      "octave": 2,
+      "gain": 0.12,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 12000,
+      "hpf": 0,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.9,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "shaker",
+        "variant": 0,
+        "pitched": false
+      },
+      "groove": {
+        "groove": "jazzBreaks",
+        "lane": "shaker"
+      }
+    },
+    "w:a1": {
+      "name": "Barítono · apoio",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "0 ~ [~@5 4@4] ~",
+      "octave": 3,
+      "gain": 0.27,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "0 ~ [~@5 4@4] ~",
+        "0 ~ [2@5 4@4] ~",
+        "~ ~ 0 ~",
+        "0 [~@5 2@4] 4 ~"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "baritone",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "w:b1": {
+      "name": "Baixo · pergunta",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "[0@5 ~@4] ~ [0@5 4@4] [~@5 6@4]",
+      "octave": 2,
+      "gain": 0.42,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 1400,
+      "hpf": 25,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "[0@5 ~@4] ~ [0@5 4@4] [~@5 6@4]",
+        "[0@5 ~@4] [~@5 2@4] 4 [~@5 -1@4]",
+        "0 ~ ~ [4@5 ~@4]",
+        "[0@5 0@4] ~ [4@5 3@4] [~@5 -1@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "pluck",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "w:c1": {
+      "name": "Teclas · acordes curtos",
+      "behavior": "sustain",
+      "sound": "sine",
+      "notes": "~ [0,2,6] ~ ~",
+      "octave": 4,
+      "gain": 0.12,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 3800,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.4,
+      "phrases": [
+        "~ [0,2,6] ~ ~",
+        "~ [0,2,6] ~ [2,4,6]",
+        "~ ~ [0,2,4] ~",
+        "~ [0,2,6] ~ [0,3,6]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "keys",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "w:d1": {
+      "name": "Palheta · motivo principal",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "[0@5 2@4] [4@5 ~@4] [3@5 2@4] [~@5 0@4]",
+      "octave": 4,
+      "gain": 0.31,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "[0@5 2@4] [4@5 ~@4] [3@5 2@4] [~@5 0@4]",
+        "[0@5 2@4] [4@5 6@4] [4@5 ~@4] [2@5 0@4]",
+        "[0@5 ~@4] ~ [2@5 4@4] ~",
+        "[0@5 2@4] [4@5 ~@4] [6@5 4@4] [2@5 -1@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "reed",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "w:e1": {
+      "name": "Vogal · interjeições",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~ ~ [~@5 0@4] ~",
+      "octave": 4,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "~ ~ [~@5 0@4] ~",
+        "~ ~ ~ [2@5 0@4]",
+        "~ 0 ~ ~",
+        "~ [~@5 4@4] ~ [2@5 ~@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "formant",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "w:f1": {
+      "name": "Teclas · resposta",
+      "behavior": "sustain",
+      "sound": "sine",
+      "notes": "~ ~ ~ [~@5 [2,4]@4]",
+      "octave": 4,
+      "gain": 0.11,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 3800,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.4,
+      "phrases": [
+        "~ ~ ~ [~@5 [2,4]@4]",
+        "~ ~ [~@5 [2,4]@4] ~",
+        "[2,4]/2",
+        "~ ~ ~ [2,4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "keys",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "w:g1": {
+      "name": "Baixo · resposta",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~ ~ ~ [~@5 4@4]",
+      "octave": 2,
+      "gain": 0.29,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 1400,
+      "hpf": 25,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "~ ~ ~ [~@5 4@4]",
+        "~ [~@5 4@4] ~ ~",
+        "~ ~ 0 ~",
+        "~ ~ [~@5 6@4] ~"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "pluck",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    },
+    "w:h1": {
+      "name": "Metal · resposta",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~ ~ ~ [4@5 2@4]",
+      "octave": 4,
+      "gain": 0.23,
+      "attack": 0.002,
+      "release": 0.04,
+      "lpf": 5500,
+      "hpf": 120,
+      "decay": 0.16,
+      "sustain": 1,
+      "clip": 0.82,
+      "phrases": [
+        "~ ~ ~ [4@5 2@4]",
+        "~ [~@5 4@4] ~ [6@5 4@4]",
+        "~ ~ ~ 2",
+        "~ ~ [~@5 6@4] [4@5 2@4]"
+      ],
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "brass",
+        "variant": 0,
+        "pitched": true
+      },
+      "automations": {
+        "gain": {
+          "kind": "pattern",
+          "patterns": [
+            "1 .78 .9 .72",
+            "1 .85 .95 .8",
+            ".85 .65 .8 .65",
+            "1 .85 .95 .8"
+          ]
+        }
+      }
+    }
+  },
+  "effects": {
+    "b:a8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:b8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:c8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:d8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:e8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:f8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:g8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:h8": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "b:a7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "b:b7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "b:c7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "b:d7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "b:e7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "b:f7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "b:g7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "b:h7": {
+      "gain": 0.85,
+      "pitch": 1,
+      "pan": 0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:a2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:b2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:c2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:d2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:e2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:f2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:g2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:h2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.035,
+      "decay": 0.16
+    },
+    "w:a1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "w:b1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "w:c1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "w:d1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "w:e1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "w:f1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "w:g1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    },
+    "w:h1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": -0.12,
+      "delay": 0,
+      "reverb": 0.08,
+      "decay": 0.16
+    }
+  },
+  "mappings": {
+    "b:a8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:b8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:c8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:d8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:e8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:f8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:g8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:h8": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:a7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:b7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:c7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:d7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:e7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:f7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:g7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "b:h7": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:a2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:b2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:c2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:d2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:e2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:f2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:g2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:h2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:a1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:b1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:c1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:d1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:e1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:f1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:g1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    },
+    "w:h1": {
+      "fileDegrees": 0.5,
+      "rankDegrees": 0,
+      "panWidth": 0.3,
+      "previewFilter": true
+    }
+  },
+  "grooves": {
+    "jazzBreaks": {
+      "name": "Northern breaks · pulso e respostas",
+      "lanes": {
+        "kick": {
+          "name": "kick",
+          "rhythms": [
+            "x ~ [x@5 ~@4] [~@5 x@4]",
+            "x [~@5 x@4] x ~",
+            "x ~ ~ ~",
+            "x ~ [x@5 ~@4] [~@5 x@4]"
+          ],
+          "accents": [
+            "1 .85 .9 .8"
+          ]
+        },
+        "snare": {
+          "name": "snare",
+          "rhythms": [
+            "~ x ~ x",
+            "~ x ~ x",
+            "~ x ~ x",
+            "~ x ~ [x@5 x@4]"
+          ],
+          "accents": [
+            "1 .85 .9 .8"
+          ]
+        },
+        "hat": {
+          "name": "hat",
+          "rhythms": [
+            "[x@5 x@4]*4",
+            "[x@5 x@4]*4",
+            "[~@5 x@4]*4",
+            "[x@5 x@4]*4"
+          ],
+          "accents": [
+            "1 .5 .75 .45 1 .5 .7 .4"
+          ]
+        },
+        "ghost": {
+          "name": "ghost",
+          "rhythms": [
+            "~ ~ [~ ~ ~ x] ~",
+            "[~ ~ ~ x] ~ [~ ~ ~ x] ~",
+            "~ ~ ~ [~ ~ ~ x]",
+            "~ ~ [~ ~ ~ x] ~"
+          ],
+          "accents": [
+            "1 .85 .9 .8"
+          ]
+        },
+        "ride": {
+          "name": "ride",
+          "rhythms": [
+            "x ~ x ~",
+            "x [~@5 x@4] x ~",
+            "~ ~ x ~",
+            "x ~ [x@5 x@4] ~"
+          ],
+          "accents": [
+            "1 .85 .9 .8"
+          ]
+        },
+        "open": {
+          "name": "open",
+          "rhythms": [
+            "~ ~ ~ [~@5 x@4]",
+            "~ [~@5 x@4] ~ ~",
+            "~ ~ ~ x",
+            "~ ~ ~ [~@5 x@4]"
+          ],
+          "accents": [
+            "1 .85 .9 .8"
+          ]
+        },
+        "rim": {
+          "name": "rim",
+          "rhythms": [
+            "~ [~@5 x@4] ~ ~",
+            "~ ~ [~@5 x@4] ~",
+            "~ x ~ ~",
+            "[~@5 x@4] ~ ~ ~"
+          ],
+          "accents": [
+            "1 .85 .9 .8"
+          ]
+        },
+        "shaker": {
+          "name": "shaker",
+          "rhythms": [
+            "[~@5 x@4]*4",
+            "[~@5 x@4]*4",
+            "~ [~@5 x@4] ~ [~@5 x@4]",
+            "[~@5 x@4]*4"
+          ],
+          "accents": [
+            "1 .5 .75 .45 1 .5 .7 .4"
+          ]
+        }
+      }
+    }
+  }
+}

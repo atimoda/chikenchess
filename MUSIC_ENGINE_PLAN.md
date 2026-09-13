@@ -1,8 +1,21 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 12/09/2026 — v3.1. Status: nova engine nas 12 cidades, kits experimentais reproduzíveis, bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e visualização de todas as variações implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+Atualizado em 13/09/2026 — v3.1. Status: nova engine nas 13 fases / 12 cidades, kits experimentais reproduzíveis e Manchester 1999 composto, bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e visualização de todas as variações implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
 
 ## Próximo ciclo de implementação
+
+**v0.3.2 — The Creative:** regras de estados/eventos configuráveis por kit, simulador no Criativo e aplicação compartilhada na partida entregues. Próxima prioridade sonora: (1) quantizar mudanças de escala/variação no compasso e suavizar BPM; (2) condução de vozes/acordes comuns para evitar saltos; (3) arranjo com limites por camada, respostas e destaque sem excesso de densidade; (4) refinar samples/articulações com escuta comparativa e medir celular físico. A simulação agora permite comparar esses comportamentos antes de vincular presets mais expressivos aos eventos raros.
+
+
+**Entregue em 13/09:** Manchester · 1999 / Northern Jazz Breaks é o primeiro default composto a partir de referência, com quatro seções, 11 samples sintéticos novos e separação de épocas no mesmo local. O arquivo FLAC de Get a Move On! foi analisado numericamente; a medição não equivale a uma transcrição auditiva. Próxima escuta com o usuário: avaliar identidade dos sopros, balanço com 16/32 peças e evolução por lances. Primeiro refinar esse kit; depois expandir articulações/motivo-resposta e a harmonia global. Detalhes e limites em `MUSIC_REFERENCE_GET_A_MOVE_ON.md`.
+
+### Decks DJ — base entregue em 13/09 e próxima extensão
+
+Board Params já oferece dois buses de áudio com ganho e EQ independentes, além de fine pitch/quartz lock sobre o relógio comum. O passo seguinte dos decks é um protótipo separado de captura e leitura de áudio por equipe: AudioWorklet com buffer circular limitado (por exemplo, 2–4 compassos), cursor de reprodução variável, crossfade e saída para o mixer. Esse protótipo precisa validar custo, memória, latência e ausência de estalos em celular antes de integrar platters.
+
+Reverse deve ler áudio capturado para trás; inverter a ordem de notas Strudel não reproduz o mesmo efeito. Scratch varia posição e velocidade do leitor pelo gesto. Definir explicitamente pausa, limite do histórico, o que acontece com novas notas durante scratch e o retorno ao relógio musical (crossfade seguido de reencontro quantizado). Strudel pode continuar compondo enquanto o deck manipula a saída capturada. Velocidades independentes por lado exigem decidir sincronização de dois transportes; a implementação atual mantém ambos juntos. Nenhum botão de scratch/reverse fictício foi adicionado.
+
+Na revisão mobile foram retirados reenvios redundantes de acompanhamento, consultas de painéis ocultos e renderizações React a cada pixel de arraste; loops ganham maior antecipação em dispositivos restritos. Próxima medição: aparelho físico, kit completo e interação simultânea, observando falhas de áudio, tempo de frame e custo por voz/efeito. A simulação touch de navegador valida gestos, não aprova qualidade de áudio nem desempenho real.
 
 1. **Transições musicais quantizadas:** fila de mudanças estruturais com aplicação no próximo compasso/seção; preservar fase, cancelar eventos obsoletos por undo/redo e mostrar a mudança pendente. BPM deve poder fazer rampas, em vez de saltar. É a base para mudar contexto sem cortar frases.
 2. **Direção harmônica compartilhada:** separar tônica/escala de acorde e graus preferenciais por seção; baixo e harmonia sustentam uma progressão, melodias escolhem notas com condução de vozes. Kits podem manter harmonia estática. Comparar A/B com o mesmo histórico de lances.
