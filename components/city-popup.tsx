@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-import { type CityData } from "@/lib/cities-data"
+import { getCityEras, type CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
 import { Draggable } from "@/components/ui/draggable"
 import { POINTS_FIRST_CONQUEST, POINTS_REPLAY_WIN } from '@/lib/game-progression'
@@ -38,6 +38,7 @@ export interface CityPopupProps {
   onDragStart?: (e?: React.MouseEvent | React.TouchEvent) => void
   onDragEnd?: () => void
   transformOrigin?: string
+  onEraSelect?: (city: CityData) => void
 }
 
 export const CityPopup = ({
@@ -62,7 +63,8 @@ export const CityPopup = ({
   onDragMove,
   onDragStart,
   onDragEnd,
-  transformOrigin
+  transformOrigin,
+  onEraSelect,
 }: CityPopupProps) => {
   const dragHandleRef = useRef<HTMLButtonElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -105,6 +107,7 @@ export const CityPopup = ({
         zIndex: popup.zIndex,
         willChange: 'left, top',
         contain: 'layout',
+        touchAction: 'none',
         '--enter-x': `${popup.enterX || 0}px`,
         '--enter-rot': `${popup.enterRot || 0}deg`
       } as React.CSSProperties}
@@ -212,6 +215,12 @@ export const CityPopup = ({
           <span className="text-xs text-muted-foreground font-mono border border-border px-1.5 py-0.5 rounded">{city.year}</span>
         </div>
         
+        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex gap-2 mb-3" data-no-drag>
+          {getCityEras(city).map(era => <button key={era.id} type="button" disabled={isEntering} aria-pressed={era.id === city.id}
+            onClick={() => onEraSelect?.(era)} className={cn('border rounded px-2 py-1 text-xs font-mono', era.id === city.id ? 'text-white border-white/60' : 'text-white/50 border-white/20')}>
+            {era.year} · {era.id === 'manchester' ? 'Acid' : 'Jazz / Breaks'}
+          </button>)}
+        </nav>}
         <div className="mb-4 animate-content-3">
           <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{city.genre}</p>
           <p className="text-xs text-muted-foreground leading-relaxed">{city.description}</p>

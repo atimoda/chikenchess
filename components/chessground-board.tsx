@@ -70,6 +70,7 @@ export function ChessgroundBoard({
     y: number
   } | null>(null)
   const dragPieceRef = useRef<typeof dragPiece>(null)
+  const dragGhostRef = useRef<HTMLDivElement>(null)
   const heldSquareRef = useRef<Square | null>(null)
   const [pulseSquare, setPulseSquare] = useState<Square | null>(null)
   const lastHoverSquareRef = useRef<Square | null>(null)
@@ -97,15 +98,13 @@ export function ChessgroundBoard({
       lastHoverSquareRef.current = null
     }
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') cancel() }
-    window.addEventListener('mouseup', release)
-    window.addEventListener('touchend', release)
-    window.addEventListener('touchcancel', cancel)
+    window.addEventListener('pointerup', release)
+    window.addEventListener('pointercancel', cancel)
     window.addEventListener('blur', cancel)
     window.addEventListener('keydown', escape)
     return () => {
-      window.removeEventListener('mouseup', release)
-      window.removeEventListener('touchend', release)
-      window.removeEventListener('touchcancel', cancel)
+      window.removeEventListener('pointerup', release)
+      window.removeEventListener('pointercancel', cancel)
       window.removeEventListener('blur', cancel)
       window.removeEventListener('keydown', escape)
     }
@@ -235,7 +234,7 @@ export function ChessgroundBoard({
           }
       }
       prevHistoryLen.current = history.length
-  }, [game, dragPiece])
+  }, [game])
 
   // Calculate opposite color for last move highlight
   // We need a complementary color to the neon city color
@@ -386,8 +385,8 @@ export function ChessgroundBoard({
       dragPieceRef.current = {
         piece: `${piece.color}${piece.type.toUpperCase()}`,
         from: square,
-        x: clientX - rect.left,
-        y: clientY - rect.top,
+        x: (clientX - rect.left) * boardRef.current.offsetWidth / rect.width,
+        y: (clientY - rect.top) * boardRef.current.offsetHeight / rect.height,
       }
       setDragPiece(dragPieceRef.current)
 
@@ -407,6 +406,7 @@ export function ChessgroundBoard({
     (e: MouseEvent | TouchEvent) => {
       const dragPiece = dragPieceRef.current
       if (!dragPiece || !boardRef.current) return
+      if (e.cancelable) e.preventDefault()
 
       const rect = boardRef.current.getBoundingClientRect()
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
@@ -415,15 +415,8 @@ export function ChessgroundBoard({
       const x = clientX - rect.left
       const y = clientY - rect.top
 
-      setDragPiece((prev) =>
-        prev
-          ? {
-              ...prev,
-              x,
-              y,
-            }
-          : null,
-      )
+      // Move the ghost without rerendering all 64 squares for every pixel.
+      if (dragGhostRef.current) dragGhostRef.current.style.transform = `translate(${x * boardRef.current.offsetWidth / rect.width - 32}px, ${y * boardRef.current.offsetHeight / rect.height - 32}px)`
 
       const squareSize = rect.width / 8
       const file = Math.floor(x / squareSize)
@@ -450,7 +443,7 @@ export function ChessgroundBoard({
         lastHoverSquareRef.current = null
       }
     },
-    [dragPiece, onDragOverSquare],
+    [onDragOverSquare],
   )
 
   const handleBoardMouseMove = useCallback(
@@ -540,24 +533,18 @@ export function ChessgroundBoard({
         setLegalMoves([])
       }
     },
-    [dragPiece, game, onMove],
+    [game, onMove],
   )
 
   useEffect(() => {
-    if (dragPiece) {
-      window.addEventListener("mousemove", handleDragMove)
-      window.addEventListener("mouseup", handleDragEnd)
-      window.addEventListener("touchmove", handleDragMove)
-      window.addEventListener("touchend", handleDragEnd)
+      window.addEventListener("pointermove", handleDragMove)
+      window.addEventListener("pointerup", handleDragEnd)
 
       return () => {
-        window.removeEventListener("mousemove", handleDragMove)
-        window.removeEventListener("mouseup", handleDragEnd)
-        window.removeEventListener("touchmove", handleDragMove)
-        window.removeEventListener("touchend", handleDragEnd)
+        window.removeEventListener("pointermove", handleDragMove)
+        window.removeEventListener("pointerup", handleDragEnd)
       }
-    }
-  }, [dragPiece, handleDragMove, handleDragEnd])
+  }, [handleDragMove, handleDragEnd])
 
   useEffect(() => {
     const handleWindowMouseUp = () => {
@@ -616,12 +603,12 @@ export function ChessgroundBoard({
         className="grid grid-cols-8 rounded-lg overflow-hidden relative fade-transparency w-full h-full"
         style={{
           boxShadow: `inset 0 0 20px ${cityColor}10`,
+          touchAction: 'none',
           // @ts-expect-error - CSS variable injection
           "--city-color": cityColor,
         }}
         onMouseMove={handleBoardMouseMove}
-        onMouseUp={e => handleDragEnd(e.nativeEvent)}
-        onTouchEnd={e => handleDragEnd(e.nativeEvent)}
+        onPointerUp={e => handleDragEnd(e.nativeEvent)}
 
       >
         <style jsx>{`
@@ -682,18 +669,9 @@ export function ChessgroundBoard({
                             ? `color-mix(in srgb, ${cityColor} 20%, #6c6c6cbf 80%)`
                             : `color-mix(in srgb, ${cityColor} 20%, #303030bf 80%)`,
                 }}
-                onMouseDown={(e) => {
-                  const hasPiece = !!piece
-                  if (!hasPiece) {
-                    setIsSelectingSquares(true)
-                    selectionLastSquareRef.current = square
-                  } else {
-                    setIsSelectingSquares(false)
-                  }
-                  handleSquareClick(square)
-                  if (hasPiece) handleDragStart(e, square)
-                }}
-                onTouchStart={(e) => {
+                onPointerDown={(e) => {
+                  if (!e.isPrimary || e.button !== 0) return
+                  e.currentTarget.setPointerCapture(e.pointerId)
                   const hasPiece = !!piece
                   if (!hasPiece) {
                     setIsSelectingSquares(true)
@@ -705,7 +683,7 @@ export function ChessgroundBoard({
                   if (hasPiece) handleDragStart(e, square)
                 }}
               >
-                {pulseSquare === square && <span className="absolute inset-1 rounded border-2 border-cyan-200 bg-cyan-200/20 pointer-events-none z-30" />}
+                {pulseSquare === square && <span data-musical-pulse={square} className="absolute inset-1 rounded border-2 border-cyan-200 bg-cyan-200/20 pointer-events-none z-30" />}
                 {dragHighlight.square === square && (
                   <div
                     className={cn(
@@ -823,10 +801,14 @@ export function ChessgroundBoard({
       {/* Dragged piece */}
       {dragPiece && (
         <div
+          data-dragged-piece={dragPiece.from}
+          ref={dragGhostRef}
           className="absolute pointer-events-none z-50 w-16 h-16"
           style={{
-            left: dragPiece.x - 32,
-            top: dragPiece.y - 32,
+            left: 0,
+            top: 0,
+            transform: `translate(${dragPiece.x - 32}px, ${dragPiece.y - 32}px)`,
+            willChange: 'transform',
             filter: `drop-shadow(0 0 12px ${cityColor})`,
           }}
           dangerouslySetInnerHTML={{

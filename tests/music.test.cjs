@@ -335,15 +335,55 @@ test('invalid automation or sample IDs cannot be saved as city kits', () => {
 test('sample registry points to small valid local WAV files with explicit tuning', () => {
   const { SAMPLE_BANKS, sampleRegistration } = loadTs('lib/music/sample-banks.ts')
   let total = 0
-  for (const bank of SAMPLE_BANKS) for (const asset of bank.assets) for (const [variant, data] of asset.variants.entries()) {
+  for (const bank of SAMPLE_BANKS) {
+    let bankBytes = 0
+    for (const asset of bank.assets) for (const [variant, data] of asset.variants.entries()) {
     const file = fs.readFileSync(path.resolve(__dirname, '../public', data.file.slice(1)))
     total += file.length
+    bankBytes += file.length
     assert.equal(file.toString('ascii', 0, 4), 'RIFF')
     assert.equal(file.toString('ascii', 8, 12), 'WAVE')
     assert.equal(file.readUInt16LE(22), 1)
     assert.ok(sampleRegistration({ kind: 'sample', bank: bank.id, asset: asset.id, variant, pitched: true }).map)
+    }
+    assert.ok(bankBytes < 500_000, `${bank.id}: each bank stays below 500 KB`)
   }
-  assert.ok(total < 500_000)
+  assert.ok(total < 1_000_000, 'both banks stay below 1 MB; assets load on demand')
+})
+
+test('Manchester 1999 has a curated four-section band with audible queens and gentle swung eighths', async () => {
+  const api = await strudel()
+  const { createManchesterJazzKit } = loadTs('lib/music/manchester-kit.ts')
+  const kit = createManchesterJazzKit()
+  const snapshot = creative.creativeSnapshot(kit, true)
+  const voices = voiceSpecs({ ...snapshot, pieces: snapshot.pieces.map(p => ({ ...p, active: true })) }, null)
+  assert.equal(kit.bpm, 123)
+  assert.deepEqual([0, 4, 12, 16, 24].map(n => api.mini(kit.sectionPattern).queryArc(n, n + .001)[0].value), [0, 1, 2, 3, 0])
+  const pcs = new Set([7, 9, 10, 0, 2, 4, 5])
+  for (const voice of voices) for (const section of ['0', '1', '2', '3']) {
+    const events = compileVoice(api, { ...voice, sectionPattern: section }).queryArc(0, 4)
+    assert.ok(events.length > 0 && events.length < 100, `${voice.key}/${section}: active voice produces a bounded loop`)
+    for (const event of events) {
+      assert.ok(event.value.gain > 0 && event.value.gain < 1)
+      if (!voice.unpitched) assert.ok(pcs.has(Number(event.value.note) % 12), `${voice.key}: shared G Dorian`)
+    }
+  }
+  const hat = voices.find(v => v.piece.id === 'w:c2')
+  const onsets = [...new Set(compileVoice(api, { ...hat, sectionPattern: '0' }).queryArc(0, 1).filter(h => h.hasOnset()).map(h => Number(h.whole.begin)))].sort((a, b) => a - b)
+  assert.ok(Math.abs(onsets[1] - 5 / 36) < 1e-8, 'second eighth is delayed by the shared 5:4 weighting')
+  assert.equal(onsets[2], .25, 'quarter-note pulse remains stable')
+  assert.notDeepEqual(kit.instruments['w:b1'].phrases, kit.instruments['w:g1'].phrases, 'bass and reply are complementary')
+})
+
+test('Manchester eras share geography but keep separate kits and save keys', () => {
+  const { getCityById, getCityEras } = loadTs('lib/cities-data.ts')
+  const { defaultCityKit, cityKitStorageKey, EDITABLE_CITY_KITS } = loadTs('lib/music/city-kits.ts')
+  const old = getCityById('manchester'), jazz = getCityById('manchester-1999')
+  assert.deepEqual(getCityEras(jazz).map(c => c.year), [1988, 1999])
+  assert.deepEqual(old.geoCoordinates, jazz.geoCoordinates)
+  assert.notEqual(cityKitStorageKey(old.id), cityKitStorageKey(jazz.id))
+  assert.equal(defaultCityKit(jazz.id).name, 'Manchester 1999 · Northern Jazz Breaks')
+  assert.equal(EDITABLE_CITY_KITS.find(c => c.id === jazz.id).name, 'Manchester · 1999')
 })
 
 test('playback monitor distinguishes inactive, rhythmic rest and section rest', async () => {
@@ -556,15 +596,31 @@ test('check bypasses entry masks for all attackers without altering the saved ki
 
 async function manualRuntime() {
   const api = await strudel()
-  let pattern, time = 0
+  let pattern, time = 0, patternUpdates = 0
   const attacks = []
   const nodes = {}
   const runtime = new MusicRuntime(() => {}, error => { throw error })
-  runtime.scheduler = { started: true, lastBegin: 0, lastTick: 0, latency: 0, cps: .5, setCps(v) { this.cps = v }, setPattern(v) { pattern = v }, stop() { this.started = false } }
+  runtime.scheduler = { started: true, lastBegin: 0, lastTick: 0, latency: 0, cps: .5, setCps(v) { this.cps = v }, setPattern(v) { pattern = v; patternUpdates++ }, stop() { this.started = false } }
   runtime.api = { ...api, getAudioContext: () => ({ currentTime: time }), getSuperdoughAudioController: () => ({ nodes, getOrbit: id => nodes[id] ??= { disconnect() {}, output: { gain: { setTargetAtTime() {} } } } }), webaudioOutput: async hap => { attacks.push(hap.value) } }
   runtime.unlock = async () => {}
-  return { runtime, attacks, pattern: () => pattern, advance: seconds => { time = seconds; runtime.publishFrame() } }
+  return { runtime, attacks, pattern: () => pattern, patternUpdates: () => patternUpdates, advance: seconds => { time = seconds; runtime.publishFrame() } }
 }
+
+test('crossing squares during manual play does not resubmit unchanged accompaniment', async () => {
+  const { runtime, attacks, patternUpdates } = await manualRuntime()
+  runtime.update(state(['Nf3', 'Nc6']))
+  assert.equal(patternUpdates(), 1)
+  runtime.audition('w:g1', 'f3'); await Promise.resolve()
+  assert.equal(patternUpdates(), 2) // suspend the held piece's loop
+  for (const square of ['f4', 'g4', 'h4', 'h5', 'g5']) {
+    runtime.audition('w:g1', square); await Promise.resolve()
+  }
+  assert.equal(attacks.length, 6)
+  assert.equal(patternUpdates(), 2)
+  runtime.endAudition()
+  assert.equal(patternUpdates(), 3)
+  runtime.dispose()
+})
 
 test('drag suspends that voice, triggers once per entered square and restores its loop', async () => {
   const { runtime, attacks, pattern, advance } = await manualRuntime()
@@ -615,4 +671,130 @@ test('city flight ends above the selected world pin, even from the opposite side
   const end = cityFlightPose(from, new Vector3(0, 1, 0), pin, 1)
   assert.ok(end.position.clone().normalize().distanceTo(pin.clone().normalize()) < 1e-8)
   assert.ok(Math.abs(end.position.length() - 2.25) < 1e-8)
+})
+
+test('vector coastlines and globe grid remain above the sphere without joining separate paths', () => {
+  const { coastlineSegments, globeGridSegments, pinIsBehindGlobe } = loadTs('lib/globe-geography.ts')
+  const { Vector3 } = require('three')
+  assert.equal(coastlineSegments('<path d="M0,512 M1024,512"/>').length, 0)
+  const coastline = coastlineSegments(fs.readFileSync(path.resolve(__dirname, '../public/world_map_contours.svg'), 'utf8'))
+  const grid = globeGridSegments()
+  assert.ok(coastline.length > 1000 && coastline.length < 150000)
+  for (const positions of [coastline, grid]) for (let i = 0; i < positions.length; i += 6) {
+    const a = new Vector3(...positions.slice(i, i + 3)), b = new Vector3(...positions.slice(i + 3, i + 6))
+    assert.ok(a.add(b).multiplyScalar(.5).length() > 2)
+  }
+  assert.equal(pinIsBehindGlobe(new Vector3(0, 0, 2), new Vector3(0, 0, 5)), false)
+  assert.equal(pinIsBehindGlobe(new Vector3(0, 0, -2), new Vector3(0, 0, 5)), true)
+  assert.equal(pinIsBehindGlobe(new Vector3(2, 0, 0), new Vector3(0, 0, 5)), true)
+})
+
+test('team mixer routes each side independently and quartz lock overrides prepared fine pitch', () => {
+  const { TeamMixer, createTeamMixes, resolveDeckClock } = loadTs('lib/music/team-mixer.ts')
+  const node = () => ({ connections: [], frequency: {}, Q: {}, gain: { value: 0, setTargetAtTime(value) { this.value = value } }, connect(to) { this.connections.push(to) }, disconnect() { this.connections = [] } })
+  const destination = node(), analyser = node()
+  const mixer = new TeamMixer({ currentTime: 5, destination, createBiquadFilter: node, createGain: node }, analyser)
+  const whiteOrbit = node(), blackOrbit = node()
+  whiteOrbit.connect(destination)
+  mixer.connect(whiteOrbit, 'w'); mixer.connect(blackOrbit, 'b')
+  assert.deepEqual(whiteOrbit.connections, [mixer.sides.w.bass])
+  assert.deepEqual(blackOrbit.connections, [mixer.sides.b.bass])
+  const values = createTeamMixes(); values.w.bass = -9; values.w.gain = .4
+  mixer.update(values)
+  assert.equal(mixer.sides.w.bass.gain.value, -9)
+  assert.equal(mixer.sides.b.bass.gain.value, 0)
+  assert.equal(mixer.sides.w.output.gain.value, .4)
+  assert.deepEqual(mixer.sides.w.output.connections, [destination, analyser])
+  assert.deepEqual(resolveDeckClock(120, 118, 5, false), { bpm: 126, tuning: 1.05 })
+  assert.deepEqual(resolveDeckClock(120, 118, 5, true), { bpm: 118, tuning: 1 })
+  assert.deepEqual(resolveDeckClock(120, 118, -8, true), { bpm: 118, tuning: 1 })
+  mixer.dispose()
+  assert.equal(mixer.sides.w.output.connections.length, 0)
+})
+
+test('fine pitch changes synth tuning and sample speed consistently across both teams', () => {
+  const kit = creative.createDusseldorfSession()
+  const snapshot = creative.creativeSnapshot(kit, true)
+  snapshot.pieces = snapshot.pieces.map(p => ({ ...p, active: true }))
+  const normal = voiceSpecs(snapshot, null), shifted = voiceSpecs({ ...snapshot, tuning: 1.05 }, null)
+  for (let i = 0; i < normal.length; i++) {
+    if (normal[i].unpitched) assert.ok(Math.abs(shifted[i].controls.speed / normal[i].controls.speed - 1.05) < 1e-8)
+    else {
+      const firstNote = s => Number(s.match(/\d+(\.\d+)?/)[0])
+      assert.ok(Math.abs(firstNote(shifted[i].notes) - firstNote(normal[i].notes) - 12 * Math.log2(1.05)) < 1e-8)
+    }
+  }
+})
+
+test('reaction ledger detects castling, captures, depleted families, thresholds, promotions and undo', () => {
+  const { reactionContext }=loadTs('lib/music/reactions.ts')
+  const ids=c=>c.events.map(e=>e.trigger)
+  const castling=reactionContext(['O-O','O-O-O'],4,'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1')
+  assert.deepEqual(ids(castling),['firstCastle','secondCastle'])
+  for(const [symbol,event] of [['q','queenCapture'],['n','noKnights'],['r','noRooks'],['b','noBishops']]){
+    const c=reactionContext(['Rxa8+'],2,`${symbol}6k/1p6/8/8/8/8/8/R6K w - - 0 1`)
+    for(const name of ['firstCapture','capture',event,'minimumOne','minimumBoth'])assert.ok(ids(c).includes(name),name)
+    assert.equal(c.events.find(e=>e.trigger==='minimumOne').color,'b')
+    if(symbol==='q')assert.ok(ids(c).includes('noQueens'))
+  }
+  const fen='7k/P7/8/8/8/8/8/7K w - - 0 1'
+  assert.ok(ids(reactionContext(['a8=Q+'],4,fen)).includes('promotion'))
+  assert.ok(ids(reactionContext(['a8=N'],4,fen)).includes('underpromotion'))
+  const ep=['e4','a6','e5','d5','exd6']
+  assert.ok(ids(reactionContext(ep)).includes('enPassant'))
+  assert.ok(!ids(reactionContext(ep.slice(0,-1))).includes('enPassant'))
+  const mate=reactionContext(['f3','e5','g4','Qh4#'])
+  assert.ok(mate.states.some(e=>e.trigger==='mate'&&e.color==='b'))
+  const repeat=['Nf3','Nf6','Ng1','Ng8','Nf3','Nf6','Ng1','Ng8','Nf3','Nf6']
+  assert.ok(ids(reactionContext(repeat)).includes('quiet'))
+  assert.ok(reactionContext(repeat).states.some(e=>e.trigger==='repetition'))
+})
+
+test('kit reactions round-trip, restore base, expire and never accumulate on rerender', () => {
+  const { applyReactions, reactionsSchema }=loadTs('lib/music/reactions.ts')
+  const kit=creative.createCreativeSession(), base=creative.creativeSnapshot(kit,true)
+  const config=reactionsSchema.parse({minimumPieces:4,rules:[{id:'test',trigger:'queenCapture',enabled:true,target:'both',duration:2,actions:[{type:'bpm',value:10},{type:'transpose',value:2},{type:'variation',value:2},{type:'gain',value:-20}]}]})
+  const context={ply:5,states:[],events:[{trigger:'queenCapture',color:'w',ply:5}]}
+  const first=applyReactions(base,config,context)
+  assert.equal(first.snapshot.bpm,base.bpm*1.1)
+  assert.equal(first.snapshot.scale[0],'D4')
+  assert.equal(first.snapshot.sectionOverrides['w:d1'],2)
+  assert.deepEqual(first,applyReactions(base,config,context))
+  assert.equal(applyReactions(base,config,{...context,ply:7}).snapshot.bpm,base.bpm)
+  assert.equal(base.scale[0],'C4')
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify({...kit,reactions:config})).reactions,config)
+  assert.throws(()=>reactionsSchema.parse({...config,rules:[{...config.rules[0],actions:[{type:'bpm',value:500}]}]}))
+})
+
+test('check reaction is removable and side actions preserve the opponent; relative preserves pitch classes', () => {
+  const { applyReactions, reactionsSchema, defaultReactions }=loadTs('lib/music/reactions.ts')
+  const kit=creative.createCreativeSession(), base=creative.creativeSnapshot(kit,true)
+  const context={ply:0,states:[{trigger:'check',color:'b',ply:0}],events:[]}
+  const result=applyReactions(base,{minimumPieces:4,rules:defaultReactions()},context)
+  assert.equal(result.snapshot.pieces.filter(p=>p.active).length,16)
+  assert.ok(result.snapshot.pieces.filter(p=>p.active).every(p=>p.color==='b'))
+  assert.equal(applyReactions(base,{minimumPieces:4,rules:[]},context).snapshot.pieces.filter(p=>p.active).length,0)
+  const config=reactionsSchema.parse({rules:[{...defaultReactions()[0],actions:[{type:'gain',value:50},{type:'variation',value:1}]}]})
+  const scoped=applyReactions(base,config,context).snapshot
+  assert.equal(scoped.effects['w:d1'].gain,base.effects['w:d1'].gain)
+  assert.equal(scoped.effects['b:d8'].gain,base.effects['b:d8'].gain*1.5)
+  const major={...base,scale:['C4','D4','E4','F4','G4','A4','B4']}
+  const relative=reactionsSchema.parse({rules:[{...defaultReactions()[0],target:'both',actions:[{type:'relative'}]}]})
+  const minor=applyReactions(major,relative,context).snapshot
+  assert.equal(minor.scale[0],'A4')
+  assert.deepEqual([...minor.scale].sort(),[...major.scale].sort())
+})
+
+test('transposition across C retains direction and octave and does not retune drum samples', () => {
+  const {applyReactions,reactionsSchema}=loadTs('lib/music/reactions.ts')
+  const kit=creative.createDusseldorfSession(),base=creative.creativeSnapshot(kit,true)
+  base.scale=['C4','D4','E4','F4','G4','A4','B4']
+  const context={ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}
+  const first=s=>Number(voiceSpecs(s,null).find(v=>v.piece.id==='w:b1').notes.match(/-?\d+(?:\.\d+)?/)[0])
+  for(const shift of [-12,-1,2,12]){
+    const config=reactionsSchema.parse({rules:[{id:'transpose',trigger:'opening',target:'both',enabled:true,duration:1,actions:[{type:'transpose',value:shift}]}]})
+    const result=applyReactions(base,config,context).snapshot
+    assert.equal(first(result)-first(base),shift)
+    assert.equal(result.effects['w:a2'].pitch,base.effects['w:a2'].pitch)
+  }
 })

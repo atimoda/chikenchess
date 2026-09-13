@@ -862,8 +862,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           </div>
         </div>
 
-        <div className="absolute top-6 right-6 flex items-center gap-4 pointer-events-auto text-xs font-mono">
-          <Link href="/creative" className="rounded-md border border-primary/40 bg-black/60 px-3 py-2 text-primary hover:bg-primary/15">Modo Criativo</Link>
+        <div className="absolute top-6 right-6 grid grid-cols-[auto_auto] justify-items-end items-center gap-x-4 gap-y-2 md:flex pointer-events-auto text-xs font-mono">
+          <Link href="/creative" className="row-start-2 col-span-2 md:order-none rounded-md border border-primary/40 bg-black/60 px-3 py-2 text-primary hover:bg-primary/15">Modo Criativo</Link>
           <button
             onClick={(e) => {
                 e.preventDefault()

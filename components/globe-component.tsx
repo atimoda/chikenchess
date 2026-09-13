@@ -1,12 +1,33 @@
 "use client"
 
-import { useRef, useState, useEffect, Suspense } from 'react'
+import { useRef, useState, useEffect, useMemo, Suspense } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
-import { TextureLoader, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace } from 'three'
-import { CityData } from '@/lib/cities-data'
+import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace } from 'three'
+import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup } from './city-popup'
 import { cityDirection, cityFlightPose } from '@/lib/globe-navigation'
+import { isConstrainedDevice } from '@/lib/performance'
+import { coastlineSegments, globeGridSegments, pinIsBehindGlobe } from '@/lib/globe-geography'
+
+function GlobeGeography() {
+  const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
+  const coast = useMemo(() => coastlineSegments(svg), [svg])
+  const grid = useMemo(() => globeGridSegments(), [])
+  const uniforms = useMemo(() => ({ color: { value: new Color('#91ad9e') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
+  return <>
+    <lineSegments raycast={() => {}}>
+      <bufferGeometry><bufferAttribute attach="attributes-position" args={[grid, 3]} /></bufferGeometry>
+      <lineBasicMaterial color="#587466" transparent opacity={.18} depthWrite={false} />
+    </lineSegments>
+    <lineSegments raycast={() => {}}>
+      <bufferGeometry><bufferAttribute attach="attributes-position" args={[coast, 3]} /></bufferGeometry>
+      <shaderMaterial transparent depthWrite={false} uniforms={uniforms}
+        vertexShader="varying vec3 worldPoint; void main() { vec4 p = modelMatrix * vec4(position, 1.0); worldPoint = p.xyz; gl_Position = projectionMatrix * viewMatrix * p; }"
+        fragmentShader="uniform vec3 color; uniform vec3 sun; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .32 * (.35 + .65 * light)); }" />
+    </lineSegments>
+  </>
+}
 
 interface GlobeProps {
   cities: CityData[]
@@ -108,13 +129,27 @@ const PopupContainer = ({
     isEntering,
     setEnteringCityId,
     setIsDraggingPopup,
-    handleInteraction
+    handleInteraction,
+    onEraSelect,
 }: any) => {
     // Local state for smooth dragging
     const [localPos, setLocalPos] = useState({ x: popup.x, y: popup.y })
     const localPosRef = useRef({ x: popup.x, y: popup.y })
     const positionFrame = useRef<number | null>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
+    const anchorRef = useRef<Group>(null)
+    const lineRef = useRef<SVGSVGElement>(null)
+    const worldPin = useMemo(() => new Vector3(), [])
+    useFrame(({ camera }) => {
+      if (!anchorRef.current || !lineRef.current) return
+      anchorRef.current.getWorldPosition(worldPin)
+      const behind = pinIsBehindGlobe(worldPin, camera.position)
+      const opacity = behind ? '0.5' : '1'
+      if (lineRef.current.style.opacity !== opacity) {
+        lineRef.current.style.opacity = opacity
+        lineRef.current.dataset.pinHidden = String(behind)
+      }
+    })
     const topCurveJitter = useRef((Math.random() - 0.5) * 20)
     
     // Track drag start position for anchor
@@ -230,7 +265,7 @@ const PopupContainer = ({
     }
 
     const lineElement = (
-        <svg style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none', width: 1, height: 1 }}>
+        <svg ref={lineRef} aria-label="Conexão com o pin da cidade" style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none', width: 1, height: 1, transition: 'opacity .2s' }}>
             <path 
               d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
               stroke={city.color} 
@@ -245,13 +280,15 @@ const PopupContainer = ({
     )
 
     return (
-        <>
+        <group ref={anchorRef}>
             <Html style={{ pointerEvents: 'none', zIndex: 10 }}>
                 {lineElement}
             </Html>
             <Html style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
-                <div ref={wrapperRef} style={{ pointerEvents: 'auto', position: 'relative' }}>
+                <div ref={wrapperRef} style={{ pointerEvents: 'auto', position: 'relative' }}
+                    onPointerDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
                     <CityPopup
+                        onEraSelect={onEraSelect}
                         city={city}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
                         isConquered={isConquered}
@@ -326,7 +363,7 @@ const PopupContainer = ({
                     />
                 </div>
             </Html>
-        </>
+        </group>
     )
 }
 
@@ -358,6 +395,7 @@ const GlobeContent = ({
   const [isDraggingPopup, setIsDraggingPopup] = useState(false)
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null)
   const isStandby = useRef(false)
+  const isInteracting = useRef(false)
   const lastInteractionTime = useRef(Date.now())
   const [introZoomComplete, setIntroZoomComplete] = useState(false)
   const lastReportedZoom = useRef(100)
@@ -366,11 +404,50 @@ const GlobeContent = ({
   const standbyRotationAxis = useRef(new Vector3(0, 1, 0))
   const standbyRotationSpeed = useRef(0.1)
 
-  // Transparent equirectangular contour texture; the surface keeps its own shading.
-  const [contourTexture, sunGlow] = useLoader(TextureLoader, ['/world_map_contours.svg', '/sun-glow.svg'])
+  // Only the sun halo uses a texture; geography is vector geometry.
+  const sunGlow = useLoader(TextureLoader, '/sun-glow.svg')
   useEffect(() => { sunGlow.colorSpace = SRGBColorSpace }, [sunGlow])
   
-  const { camera } = useThree()
+  const { camera, gl } = useThree()
+  useEffect(() => {
+    document.body.style.cursor = ''
+    return () => { gl.domElement.style.cursor = ''; document.body.style.cursor = '' }
+  }, [gl])
+  useEffect(() => {
+    const canvas = gl.domElement
+    let angle: number | null = null
+    const readAngle = (e: TouchEvent) => Math.atan2(e.touches[1].clientY - e.touches[0].clientY, e.touches[1].clientX - e.touches[0].clientX)
+    const start = (e: TouchEvent) => {
+      isInteracting.current = true
+      angle = e.touches.length === 2 ? readAngle(e) : null
+    }
+    const move = (e: TouchEvent) => {
+      if (enteringCityId || e.touches.length !== 2) { angle = null; return }
+      const next = readAngle(e)
+      if (angle !== null) {
+        const delta = Math.atan2(Math.sin(next - angle), Math.cos(next - angle))
+        camera.up.applyAxisAngle(camera.position.clone().normalize(), -delta).normalize()
+        camera.lookAt(0, 0, 0)
+        lastInteractionTime.current = Date.now()
+      }
+      angle = next
+    }
+    const end = (e: TouchEvent) => {
+      angle = e.touches.length === 2 ? readAngle(e) : null
+      isInteracting.current = e.touches.length > 0
+      lastInteractionTime.current = Date.now()
+    }
+    canvas.addEventListener('touchstart', start, { passive: true })
+    canvas.addEventListener('touchmove', move, { passive: true })
+    canvas.addEventListener('touchend', end)
+    canvas.addEventListener('touchcancel', end)
+    return () => {
+      canvas.removeEventListener('touchstart', start)
+      canvas.removeEventListener('touchmove', move)
+      canvas.removeEventListener('touchend', end)
+      canvas.removeEventListener('touchcancel', end)
+    }
+  }, [gl, camera, enteringCityId])
 
   const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
   const entryFlight = useRef<{ city: CityData; from: Vector3; up: Vector3; pin: Vector3; elapsed: number; duration: number; done: boolean } | null>(null)
@@ -436,7 +513,6 @@ const GlobeContent = ({
             camera.lookAt(0, 0, 0) // Always look at center
         }
         
-        if (controlsRef.current) controlsRef.current.update()
     }
 
     // Initial Zoom Out (Wait 3s, then zoom for 3.5s)
@@ -469,7 +545,6 @@ const GlobeContent = ({
 
     // Standby Logic
     const now = Date.now()
-    const hasOpenPopups = Object.keys(openPopups).length > 0
     const timeSinceInteraction = now - lastInteractionTime.current
 
     // Report Zoom Level
@@ -487,7 +562,7 @@ const GlobeContent = ({
     
     // A city card does not stop the idle globe. Only a direct gesture, flight or
     // pin hover pauses it; a just-opened card resumes as soon as centering ends.
-    const canRotate = introZoomComplete && !isDraggingPopup && !hoveredPinId && !targetCameraPos && (hasOpenPopups || timeSinceInteraction > 3000)
+    const canRotate = introZoomComplete && !isInteracting.current && !isDraggingPopup && !hoveredPinId && !targetCameraPos && timeSinceInteraction > 800
     if (canRotate) {
         if (!isStandby.current) {
             isStandby.current = true
@@ -562,10 +637,14 @@ const GlobeContent = ({
   useEffect(() => {
     const controls = controlsRef.current
     if (controls) {
-        controls.addEventListener('start', handleInteraction)
+        const start = () => { isInteracting.current = true; setTargetCameraPos(null); handleInteraction() }
+        const end = () => { isInteracting.current = false; handleInteraction() }
+        controls.addEventListener('start', start)
+        controls.addEventListener('end', end)
         controls.addEventListener('change', handleInteraction)
         return () => {
-            controls.removeEventListener('start', handleInteraction)
+            controls.removeEventListener('start', start)
+            controls.removeEventListener('end', end)
             controls.removeEventListener('change', handleInteraction)
         }
     }
@@ -626,14 +705,14 @@ const GlobeContent = ({
           <Sphere 
             args={[GLOBE_RADIUS, 64, 64]} 
             onPointerDown={() => {
-                document.body.style.cursor = 'grabbing'
+                gl.domElement.style.cursor = 'grabbing'
                 handleInteraction()
             }}
             onPointerUp={() => {
-                document.body.style.cursor = 'grab'
+                gl.domElement.style.cursor = 'grab'
             }}
-            onPointerOver={() => { document.body.style.cursor = 'grab' }}
-            onPointerOut={() => { document.body.style.cursor = 'auto' }}
+            onPointerOver={() => { gl.domElement.style.cursor = 'grab' }}
+            onPointerOut={() => { gl.domElement.style.cursor = '' }}
           >
             <meshStandardMaterial 
                 color="#18332c"
@@ -645,9 +724,7 @@ const GlobeContent = ({
           </Sphere>
 
           {/* Only coastlines: no borders or regional divisions. */}
-          <Sphere args={[GLOBE_RADIUS + .012, 64, 64]}>
-             <meshStandardMaterial map={contourTexture} color="#bed3c8" emissiveMap={contourTexture} emissive="#7b9588" emissiveIntensity={.07} roughness={1} metalness={0} transparent opacity={.7} depthWrite={false} />
-          </Sphere>
+          <GlobeGeography />
 
           {cities.map((city) => {
             const position = getSphericalCoordinates(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS)
@@ -656,12 +733,17 @@ const GlobeContent = ({
             const isUnlocked = true // All cities playable in v3.0!
             const popup = openPopups[city.id]
             const isHovered = hoveredPinId === city.id
+            const eras = getCityEras(city)
+            const isLocationPin = eras[0]?.id === city.id
+            const locationConquered = eras.some(era => conqueredCities.includes(era.id))
+            const locationOpen = eras.some(era => !!openPopups[era.id])
             
             // Touch/Click handling state
             const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
 
             return (
               <group key={city.id} position={position}>
+                {isLocationPin && <>
                 {/* City Pin */}
                 <mesh 
                     onClick={(e) => {
@@ -675,18 +757,19 @@ const GlobeContent = ({
                     }}
                     onPointerDown={(e) => {
                         e.stopPropagation() // Prevent globe drag start
+                        ;(e.target as Element).setPointerCapture(e.pointerId)
                         touchStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() }
                     }}
                     onPointerUp={(e) => {
                         e.stopPropagation()
+                        ;(e.target as Element).releasePointerCapture(e.pointerId)
                         if (touchStartRef.current) {
                             const dx = e.clientX - touchStartRef.current.x
                             const dy = e.clientY - touchStartRef.current.y
                             const dist = Math.sqrt(dx * dx + dy * dy)
-                            const timeDiff = Date.now() - touchStartRef.current.time
                             
                             // Tolerance for touch "tap" (allow slight movement)
-                            if (dist < 10 && timeDiff < 500) {
+                            if (dist < 10 && e.pointerType !== 'mouse') {
                                 handleInteraction()
                                 handleCityClickInternal(city) 
                                 bringToFront(city.id)
@@ -696,22 +779,26 @@ const GlobeContent = ({
                     }}
                     onPointerEnter={(e) => {
                         e.stopPropagation()
-                        document.body.style.cursor = 'pointer'
+                        gl.domElement.style.cursor = 'pointer'
                         playMapSound("bd", true)
-                        setHoveredPinId(city.id)
+                        if (e.pointerType === 'mouse') setHoveredPinId(city.id)
                         handleInteraction()
                     }}
                     onPointerOut={() => {
-                        document.body.style.cursor = 'auto'
+                        gl.domElement.style.cursor = ''
                         setHoveredPinId(current => current === city.id ? null : current)
                     }}
                     scale={isHovered ? [1.15, 1.15, 1.15] : [1, 1, 1]}
                 >
                   <sphereGeometry args={[0.04, 16, 16]} />
+                  <mesh>
+                    <sphereGeometry args={[.075, 12, 8]} />
+                    <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+                  </mesh>
                   <meshStandardMaterial 
                     color={city.color} 
                     emissive={city.color}
-                    emissiveIntensity={isConquered ? 1.4 : 0.85}
+                    emissiveIntensity={locationConquered ? 1.4 : 0.85}
                     toneMapped={false}
                     transparent
                     opacity={1}
@@ -721,24 +808,26 @@ const GlobeContent = ({
                 {/* Glow effect */}
                 <mesh scale={isHovered ? [1.725, 1.725, 1.725] : [1.5, 1.5, 1.5]}>
                     <sphereGeometry args={[0.04, 16, 16]} />
-                    <meshBasicMaterial color={city.color} transparent opacity={isConquered ? 0.45 : 0.25} />
+                    <meshBasicMaterial color={city.color} transparent opacity={locationConquered ? 0.45 : 0.25} />
                 </mesh>
 
                 {/* Conquered Golden Aura */}
-                {isConquered && (
+                {locationConquered && (
                     <mesh scale={[2.1, 2.1, 2.1]}>
                         <sphereGeometry args={[0.04, 16, 16]} />
                         <meshBasicMaterial color="#eab308" transparent opacity={0.35} />
                     </mesh>
                 )}
 
-                {isConquered && <ConqueredFlag city={city} />}
+                {locationConquered && <ConqueredFlag city={city} />}
 
                 {/* Pulse Ring Effect (Hover/Selected) */}
-                {(isOpen || isHovered) && <PulsingRing city={city} isOpen={isOpen} isHoveredProp={isHovered} />}
+                {(locationOpen || isHovered) && <PulsingRing city={city} isOpen={locationOpen} isHoveredProp={isHovered} />}
+                </>}
 
                 {isOpen && (
                       <PopupContainer
+                          onEraSelect={(era: CityData) => { if (era.id !== city.id) { onPopupClose(city.id); handleCityClickInternal(era) } }}
                           city={city}
                           popup={popup}
                           isConquered={isConquered}
@@ -767,6 +856,7 @@ const GlobeContent = ({
       
       <TrackballControls 
         ref={controlsRef} 
+        domElement={gl.domElement}
         // Keep the controller enabled so it always receives pointerup and clears
         // its internal drag state. Only rotation is suspended behind a popup.
         enabled={!enteringCityId}
@@ -796,7 +886,7 @@ const GlobeContent = ({
             return speed
         })()}
         noZoom={!!enteringCityId}
-        staticMoving={false} // Enable damping/inertia
+        staticMoving={true}
         dynamicDampingFactor={0.1}
       />
     </>
@@ -804,8 +894,9 @@ const GlobeContent = ({
 }
 
 export const GlobeComponent = (props: GlobeProps) => {
+    const [constrained] = useState(isConstrainedDevice)
     return (
-        <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={[1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
+        <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={constrained ? 1 : [1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
             <Suspense fallback={null}>
                 <GlobeContent {...props} />
             </Suspense>

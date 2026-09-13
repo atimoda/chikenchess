@@ -1,39 +1,65 @@
-# Referência: Get A Move On! — Mr. Scruff
+# Get a Move On! → Manchester · 1999
 
-Estudo preliminar, 12/09/2026. A identificação foi confirmada pelo oEmbed público do Spotify para o ID `7iQ1TjOoYi33BupikScqAa`. Não houve escuta do áudio nesta sessão. Não estão medidos BPM, tonalidade, microtiming, instrumentação completa nem seções com timestamps. As receitas abaixo são propostas de composição para testar, não uma transcrição da faixa.
+Atualizado em 13/09/2026. Implementado: **Northern Jazz Breaks**, ID `manchester-1999`.
 
-## Evidência disponível
+- Partida: `/?city=manchester-1999`.
+- Bancada sem introdução: `/creative?city=manchester-1999`, depois **Tocar arranjo**.
+- No mapa, pin Manchester → **1999 · Jazz / Breaks** → Enter board.
+- Kit JSON e partitura Strudel: `public/presets/manchester-1999.json` e `.strudel`.
 
-- No [perfil oficial do artista no SoundCloud](https://soundcloud.com/mr-scruff/mr-scruff-get-a-move-on-2), Mr. Scruff identifica o sample de sax de *Bird's Lament*, de Moondog, e o sample vocal de *Hypin' Woman Blues*, de T-Bone Walker.
-- A [biografia da Ninja Tune](https://ninjatune.net/artist/mr-scruff) situa *Keep It Unreal*, com a faixa, em 1999 e relaciona esse período à sua noite de clube em Manchester. Descreve influências que incluem jazz, funk, hip-hop e house.
-- [Lançamento na Ninja Tune](https://downloads.ninjatune.net/release/mr-scruff/get-a-move-on). [Faixa fornecida no Spotify](https://open.spotify.com/track/7iQ1TjOoYi33BupikScqAa).
+## Artista, lugar e época
 
-## Cidade e direção proposta
+A [Ninja Tune data o single em 1º de maio de 1999](https://ninjatune.net/release/mr-scruff/get-a-move-on) e [Keep It Unreal em 1º de junho de 1999](https://ninjatune.net/release/mr-scruff/keep-it-unreal). Sua [biografia oficial](https://ninjatune.net/artist/mr-scruff) associa esse período à noite Keep It Unreal em Manchester. Essa combinação justifica **Manchester, 1999**, sem substituir Manchester 1988 / Haçienda.
 
-**Manchester, 1999 · Jazz / breaks / colagem eletrônica.** É uma proposta de novo kit/época para Manchester. O cadastro atual da cidade e seu kit não foram alterados para fingir uma recriação já validada.
+O [perfil oficial de Mr. Scruff](https://soundcloud.com/mr-scruff/mr-scruff-get-a-move-on-2) identifica os samples de sax de *Bird's Lament*, de Moondog, e vocal de *Hypin' Woman Blues*, de T-Bone Walker. Jazz, funk, breaks e colagem de samples orientam o capítulo; não é um kit genérico de acid house nem uma reconstrução de todos os estilos da cidade.
 
-O ponto útil à engine é construir identidade com um motivo curto recorrente e respostas complementares. Instrumentos não devem todos improvisar densamente ao mesmo tempo. A relação entre sopros e voz confirmada nas fontes sugere experimentar uma banda com os seguintes papéis independentes do tipo de peça:
+## Análise do FLAC fornecido
 
-| Camada | Receita a experimentar | Parâmetros úteis |
+Foi decodificado e analisado numericamente o arquivo **08 - Mr. Scruff - Get a Move On! (radio edit).flac**. Não houve escuta auditiva direta nesta sessão. Os dados espectrais não identificam sozinhos instrumentos, notas exatas, swing ou seções formais. A descrição tímbrica combina fontes do artista e escolhas de síntese; o kit é uma reinterpretação original, não uma transcrição fiel.
+
+| Medida | Resultado / limite |
+| --- | --- |
+| Duração | 203,4267 s — 3min23s |
+| Formato decodificado | Estéreo, 44,1 kHz, fonte de 16 bits |
+| Pico / RMS global | −0,05 / −11,72 dBFS |
+| Pulso | Próximo de 123 BPM. Correlação de envelopes nas bandas 35–160 Hz e 2–4,5 kHz, em 30–90 s e 90–160 s, dá pico de 122,73 BPM na resolução usada. Busca espectral local dá 123,32; adotados 123 BPM, sem alegar precisão de centésimos |
+| Tonalidade | Não confirmada. A soma espectral enfatiza G/A/D, mas inclui harmônicos e bateria. Sol dórico é uma escolha do novo arranjo |
+| Microtiming | Não estimado com confiança a partir da mistura. Proporção 5:4 das colcheias é uma escolha musical editável do kit |
+
+A correlação espectral inicial, de resolução menor, também encontrou aliases perto de 81/129 BPM; por isso não foi usada isoladamente. Os resultados brutos estão em `analysis/scruff-radio-edit.json`. `scripts/analyze-audio.py` oferece a análise espectral reproduzível (dependências de análise: NumPy, SciPy e SoundFile; não fazem parte do app).
+
+### Forma observada por energia, não por transcrição
+
+| Trecho aproximado | Evidência no arquivo | Decisão para a versão do jogo |
 | --- | --- | --- |
-| Bateria | Pulso firme, caixa nos contratempos, chimbal com acentos e pequenas notas fantasmas | Groove comum; swing discreto; probabilidade determinística dos ornamentos; duração curta |
-| Baixo | Frase curta sincopada que responde ao bumbo, deixando silêncio sob o motivo principal | Oitava, gate, acentos, graus preferenciais do acorde; timbre redondo e pouco reverb |
-| Sopros | Motivo original de um/dois compassos com articulação curta, repetição e resposta de outro registro | Banco de frases e articulações, attack/release, filtro, velocidade; amostras de sopro afinadas |
-| Voz | Interjeições originais curtas nas lacunas, sem sobrepor continuamente o motivo | Gatilhos de frase, pausas longas, cortes de sample; pitch opcional conforme a fonte |
-| Teclas/textura | Acordes curtos ocasionais e textura discreta para contrastar com a seção cheia | Voicing compartilhado, densidade baixa, filtro e ambiência curta |
+| 0–8 s | RMS −18,93 dBFS, pouca energia grave relativa | A apresenta a identidade com menos ataques |
+| 8–32 s | Crescimento do grave e RMS chegando a −13,5 dBFS | Acrescentar base e respostas progressivamente |
+| 32–184 s | Patamar em torno de −11 dBFS; grave predominante | B/D mantêm pulso e motivo, variando respostas e acentos |
+| 184–203 s | Redução de energia e brilho | C abre espaço para contraste; no jogo retorna ao groove em vez de terminar |
 
-Proposta de forma: A apresenta motivo/base; B acrescenta resposta e baixo mais móvel; C retira camadas para abrir espaço; volta a A com uma pequena virada. Manter a base identificável ao mover peças e alterar poucos aspectos por lance. Comparar pulso reto e swing sutil; só fixar BPM e intensidade depois de escuta. Não foi reutilizado áudio comercial nem copiado o motivo da referência.
+Esses intervalos de oito segundos não delimitam compassos exatos. A forma do kit é cíclica, adaptada à duração imprevisível de uma partida.
 
-## O que a engine já permite
+## Arranjo implementado
 
-Fontes independentes, samples afinados/não afinados, sequências em graus, bancos A/B/C, grooves/acento compartilhados, envelopes, filtros, ganho, delay/reverb e distribuição de papéis por kit. Isso permite um esboço de arranjo, mas o banco eletrônico atual não contém sax ou voz articulados; um synth genérico não valida essa identidade tímbrica.
+**123 BPM · Sol dórico · A4/B8/C4/D8 compassos**, com os dois lados no relógio comum. As 16 brancas vêm ativas no Criativo. Na partida, as peças continuam entrando após seus movimentos; cheque amplia temporariamente a banda atacante.
 
-## Capacidades a desenvolver e critério de conclusão
+| Peças neste kit | Papel |
+| --- | --- |
+| Peões | Bumbo seco, caixa, chimbal, ghost snare, ride, chimbal aberto, rim e shaker |
+| Cavalos | Baixo dedilhado: pergunta e resposta com padrões distintos |
+| Torres | Barítono de apoio e metal de resposta |
+| Bispos | Acordes elétricos curtos e respostas de teclas |
+| Rainha | Motivo principal de palheta, com quatro variações audíveis |
+| Rei | Interjeições de vogal sintetizada |
 
-1. Swing compartilhado e humanização determinística de acentos/tempo sem desalinhamento entre vozes.
-2. Banco de sopros e interjeições originais/licenciadas, com articulações curtas e afinação explícita. Explorar síntese de sopro como alternativa, validando a escuta.
-3. Motivo/resposta e limitação de densidade entre solistas; troca de frases no limite de seção.
-4. Condução harmônica de baixo/acordes/melodia, preservando a identidade do motivo.
-5. Audição da referência e do protótipo em conjunto com o usuário: documentar forma real e timbres, corrigir as hipóteses acima e testar formações pequenas/cheias no celular.
+Os papéis são configurações, não regras da engine. Qualquer peça pode usar qualquer fonte. Movimento lateral desloca o motivo lentamente; avanço não o transpõe, preservando sua identidade. As frases, pesos 5:4, envelopes, ganhos e fontes são editáveis. Cada voz toca em todas as seções, com pausas internas; nenhuma rainha depende do botão de audição para soar.
 
-Para concluir a análise auditiva são necessários acesso ao áudio numa forma analisável ou um arquivo/trecho disponibilizado pelo usuário. Até lá, este documento registra fontes e proposta, sem afirmar que a música foi escutada ou reproduzida.
+O banco **Chicken Jazz · 01** contém 11 one-shots originais (~297 KB), mono/32 kHz: palheta em duas articulações, barítono, metal, vogal, baixo, teclas, bumbo, caixa em duas articulações e ride. São aproximações sintéticas; não são gravações realistas de sax/contrabaixo nem voz humana. Não há áudio extraído do FLAC no projeto. O código gerador e os WAVs estão disponíveis; os WAVs são CC0.
+
+A partitura exportada contém os mesmos padrões da engine e requer os assets `/samples` servidos pelo projeto; para executá-la em outro domínio, hospedar os assets e ajustar suas URLs. Regenerar kit/partitura com `node scripts/export-manchester-kit.cjs`.
+
+## Validação e próxima escuta
+
+Testes verificam todos os 32 instrumentos nas quatro seções, escala, densidade, rainhas ativas, colcheias 5:4 e isolamento dos salvamentos de 1988/1999. No navegador, a rainha em Solo gerou sinal real sem segurar a audição; os samples carregaram sem erros.
+
+A próxima comparação com o usuário deve decidir se a palheta sintetizada tem identidade suficiente, se há espaço entre motivo/resposta e se o baixo sustenta bem formações pequenas. Fidelidade acústica e qualidade musical não são comprovadas pelos testes. O loop curto não reproduz a faixa comercial integral nem suas seções exatas.

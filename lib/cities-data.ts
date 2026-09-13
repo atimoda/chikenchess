@@ -201,6 +201,17 @@ const rawCities: Omit<CityData, "coordinates">[] = [
         "Rave on."
     ]
   },
+  // A second Manchester era, preserving the existing Haçienda chapter.
+  {
+    id: "manchester-1999", name: "Manchester", country: "UK", year: 1999,
+    genre: "Jazz / Breaks · sample collage",
+    description: "Manchester, 1999: Mr. Scruff, Keep It Unreal e a mistura de jazz, funk e breaks. Kit Northern Jazz Breaks inspirado em Get a Move On!: motivos de palheta, baixo sincopado e respostas curtas.",
+    bpm: 123, scale: ["G4", "A4", "Bb4", "C4", "D4", "E4", "F4"],
+    geoCoordinates: { lat: 53.4808, lng: -2.2426 }, color: "#ffb65c",
+    image: "https://unsplash.com/photos/pRc34iEHRmo/download?force=true&w=800",
+    samples: { kick: "bd:2", snare: "sd:2", hihat: "hh:2", bass: "bass:2", pad: "pad:2", lead: "synth:1" },
+    introPhrases: ["Manchester, 1999.", "Jazz finds the breakbeat.", "A short phrase. A new reply.", "Leave room for the next player.", "Keep the band moving."],
+  },
   // 7. Berlin (1991)
   {
     id: "berlin",
@@ -402,4 +413,8 @@ export function getCitiesForDecade(year: number): CityData[] {
 
 export function getCityById(id: string): CityData | undefined {
   return cities.find((city) => city.id === id)
+}
+
+export function getCityEras(city: CityData): CityData[] {
+  return cities.filter(c => c.geoCoordinates.lat === city.geoCoordinates.lat && c.geoCoordinates.lng === city.geoCoordinates.lng).sort((a, b) => a.year - b.year)
 }

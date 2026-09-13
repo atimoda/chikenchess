@@ -5,6 +5,7 @@ import type { MusicSnapshot } from './runtime'
 import { AUTOMATION_TARGETS, hasControlPatternBudget } from './automation'
 import { sampleAsset } from './sample-banks'
 import { electronicGrooves } from './grooves'
+import { reactionsSchema } from './reactions'
 
 export const SOUNDS = ['sbd', 'sine', 'triangle', 'square', 'sawtooth', 'supersaw', 'white', 'pink', 'brown'] as const
 export const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
@@ -60,7 +61,7 @@ const sourceSchema = z.discriminatedUnion('kind', [
   if (source.kind === 'sample' && !sampleAsset(source)?.variants[source.variant]) ctx.addIssue({ code: 'custom', message: 'Banco, som ou articulação de sample inexistente.' })
 })
 const instrumentSchema = z.object({
-  name: z.string().trim().min(1).max(60), behavior: z.enum(['pulse', 'phrase', 'sustain']),
+  name: z.string().trim().min(1).max(60).transform(name => name.replace(/\s*·\s*[a-h][1-8]$/i, '')), behavior: z.enum(['pulse', 'phrase', 'sustain']),
   sound: z.enum(SOUNDS), notes: z.string().refine(hasPatternBudget, 'Use graus, pausas e grupos; limite repetições a 32 e graus a ±48.'),
   octave: finite(0, 7).int(), gain: finite(0, 1), attack: finite(0.001, 2),
   release: finite(0.01, 2), lpf: finite(20, 20000), hpf: finite(0, 20000),
@@ -83,6 +84,7 @@ const pieceSchema = z.object({
   type: z.enum(['p', 'n', 'b', 'r', 'q', 'k']), color: z.enum(['w', 'b']), active: z.boolean(),
 })
 export const creativeSchema = z.object({
+  reactions: reactionsSchema,
   version: z.literal(4), name: z.string().trim().min(1).max(80),
   cityId: z.string().trim().regex(/^[a-z0-9-]+$/).optional(),
   bpm: finite(30, 240), volume: finite(0, 1), root: z.enum(ROOTS),

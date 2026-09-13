@@ -5,14 +5,16 @@ import type { Square } from 'chess.js'
 import { creativeSnapshot, type CreativeSession } from '@/lib/music/creative'
 import { MusicRuntime, renderMusicCode, type MusicPulse, type Preview } from '@/lib/music/runtime'
 import { createMusicMonitor } from '@/lib/music/monitor'
+import { applyReactions, type ReactionContext } from '@/lib/music/reactions'
 
-export function useCreativeMusic(session: CreativeSession, playing: boolean, soloId: string | null) {
+export function useCreativeMusic(session: CreativeSession, playing: boolean, soloId: string | null, context: ReactionContext) {
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
   const [preview, setPreview] = useState<Preview | null>(null)
   const [pulse, setPulse] = useState<MusicPulse | null>(null)
   const [error, setError] = useState('')
-  const snapshot = useMemo(() => creativeSnapshot(session, playing, soloId), [session, playing, soloId])
+  const resolved = useMemo(() => applyReactions(creativeSnapshot(session, playing, soloId), session.reactions, context), [session, playing, soloId, context])
+  const snapshot = resolved.snapshot
   const code = useMemo(() => renderMusicCode(snapshot, preview), [snapshot, preview])
 
   useEffect(() => {
@@ -52,5 +54,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, endAudition, preview, pulse, error, code, monitor, snapshot }
+  return { audition, endAudition, preview, pulse, error, code, monitor, snapshot, reactionDescriptions: resolved.descriptions }
 }

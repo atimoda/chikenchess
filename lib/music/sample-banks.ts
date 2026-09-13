@@ -28,6 +28,24 @@ export const SAMPLE_BANKS: SampleBank[] = [{
     { id: 'shaker', name: 'Shaker', variants: variants('shaker', ['Curto']) },
     { id: 'bell', name: 'Sino elétrico · C4', rootNote: 'c4', variants: variants('bell', ['Cristal', 'Feltro']) },
   ],
+}, {
+  id: 'chicken-jazz-v1', name: 'Chicken Jazz · 01',
+  credit: 'ChickenChess · síntese original de sopros, teclas e bateria; scripts/generate-jazz-samples.py', license: 'CC0-1.0',
+  assets: [
+    ...[
+      ['reed', 'Palheta sintética', 'c4', ['Staccato', 'Suave']],
+      ['baritone', 'Barítono sintético', 'c3', ['Corpo']],
+      ['brass', 'Metal curto sintético', 'c4', ['Queda']],
+      ['formant', 'Vogal sintética', 'c4', ['Ah']],
+      ['pluck', 'Baixo dedilhado sintético', 'c2', ['Madeira']],
+      ['keys', 'Teclas elétricas', 'c4', ['Tine']],
+      ['kick', 'Bumbo seco', undefined, ['Curto']],
+      ['snare', 'Caixa breaks', undefined, ['Corpo', 'Ghost']],
+      ['ride', 'Ride curto', undefined, ['Ponta']],
+    ].map(([id, name, rootNote, names]) => ({ id: id as string, name: name as string, rootNote: rootNote as string | undefined,
+      variants: (names as string[]).map((name, i) => ({ name, file: `/samples/chicken-jazz-v1/${id}-${i}.wav` })),
+    })),
+  ],
 }]
 
 export interface SampleSource { kind: 'sample'; bank: string; asset: string; variant: number; pitched: boolean }

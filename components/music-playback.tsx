@@ -22,7 +22,7 @@ export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: st
   const status = useSyncExternalStore<VoiceStatus>(monitor.subscribe, () => monitor.getSnapshot().tracks[id]?.status ?? 'inactive', () => 'inactive')
   return <span className={styles.badge} data-status={status}>{VOICE_STATUS_LABELS[status]}</span>
 }
-export function MusicVoiceReadout({ monitor, id, snapshot, manual = false }: { monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean }) {
+export function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false }: { monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const track = frame.tracks[id]
   const [preview, setPreview] = useState<{ read: Awaited<ReturnType<typeof prepareVoiceVariations>>; snapshot: MusicSnapshot; id: string } | null>(null)
@@ -42,7 +42,7 @@ export function MusicVoiceReadout({ monitor, id, snapshot, manual = false }: { m
   const top = notes.length ? Math.max(...notes) : 0
   return <div className={styles.voice} aria-label="Execução do instrumento">
     <div className={styles.line}><MusicVoiceBadge monitor={monitor} id={id} /><span>{track?.notes.map(noteLabel).join(' + ')}</span></div>
-    <div className={styles.variations} tabIndex={0} aria-label="Variações salvas da peça">
+    <div className={styles.variations} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Variações salvas da peça">
       {!rows.length && <p>{error || 'Preparando variações…'}</p>}
       {rows.map(row => <div key={row.index} className={styles.variation} data-active={running && row.active}>
         <div className={styles.variationLabel}><b>Variação {String.fromCharCode(65 + row.index)}</b><span>{running && row.active ? 'Em execução' : `Compassos ${row.start + 1}–${row.start + 4}`}</span></div>

@@ -1,10 +1,34 @@
-export const RELEASE_LABEL = 'v3.1'
+export const RELEASE_LABEL = 'v0.3.2'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.3.2', date: '13/09/2026', title: 'The Creative', groups: [
+    { title: 'Estados e Eventos', items: [
+      'Simulador de estados e eventos abaixo do tabuleiro, com regras salvas em cada kit e aplicadas também na partida.',
+      'Transposição, BPM, escala paralela/relativa, rotação modal, inversão melódica, variação, ganho, filtro e ativação por equipe.',
+      'Roques, capturas, perda de famílias de peças, formação mínima, promoções, en passant e saída de cheque com duração configurável.',
+    ] },
+    { title: 'Bancada compacta', items: [
+      'Seletor de kit acima do transporte, colunas sem gap, variações expandidas e nomes de instrumento sem sufixo de casa.',
+      'Correção do alinhamento da peça arrastada; botão Segure para ouvir removido. Solo continua disponível para ouvir a frase completa.',
+      'Versões renomeadas para a série v0.3; versão atual v0.3.2 — The Creative.',
+    ] },
+  ] },
   {
-    version: '3.1', date: '12/09/2026', title: 'Peças que fazem música',
+    version: '0.3.1', date: '13/09/2026', title: 'Peças que fazem música',
     groups: [
+      { title: 'Manchester · 1999', items: [
+        'Nova época Northern Jazz Breaks, inspirada em Get a Move On! de Mr. Scruff: 123 BPM, quatro seções e motivos de sopro com respostas.',
+        'Banco Chicken Jazz com 11 samples sintéticos originais de palhetas, metais, baixo, teclas, vogal e bateria, disponíveis para qualquer peça no Criativo.',
+        'Manchester mantém 1988 e ganha seletor de época no popup; kits e progresso separados. Links diretos do Criativo carregam a cidade escolhida.',
+      ] },
+      { title: 'Mobile, globo e mixer · 13/09', items: [
+        'Correções de touch em Enter board, arraste das peças com audição das casas e isolamento do cursor do globo.',
+        'Giro do globo com dois dedos, retomada estável do giro automático e quadro de apresentação arrastável.',
+        'Litorais vetoriais mais discretos, grade geográfica e linha do popup 50% mais escura quando o pin está atrás do planeta.',
+        'Board Params com ganho e equalização por equipe; fine pitch comum e quartz lock no BPM original do kit.',
+        'Menos atualizações de padrões, gráficos ocultos e renderizações durante o arraste; menor resolução do globo em dispositivos restritos.',
+      ] },
       { title: 'Engine musical', items: [
         'Strudel integrado ao jogo e ao Criativo, com um relógio comum e 32 instrumentos independentes.',
         'Todas as 12 cidades usam a nova mecânica. Kits experimentais aleatórios e reproduzíveis variam fontes, frases, grooves, timbres, efeitos e movimentos.',
@@ -40,7 +64,7 @@ export const CHANGELOG = [
       ] },
     ],
   },
-  { version: '3.0', date: '', title: 'The Distribution', groups: [
+  { version: '0.3.0', date: '', title: 'The Distribution', groups: [
     { title: 'Base da versão', items: ['Mapa de cidades e fases de xadrez contra IA, progressão local e interface de jogo que serviram de base à evolução musical da versão 3.1.'] },
   ] },
 ] as const

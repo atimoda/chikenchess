@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { MusicReactionEditor } from './music-reaction-editor'
+import type { ReactionContext } from '@/lib/music/reactions'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Download, FlaskConical, Pause, Play, Save, Upload, Volume2 } from 'lucide-react'
+import { ArrowLeft, Download, FlaskConical, Pause, Play, Save, Upload } from 'lucide-react'
 import { PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
@@ -62,7 +64,8 @@ export function CreativeStudio() {
   const boardRef = useRef<HTMLDivElement>(null)
   const [dragVisual, setDragVisual] = useState<{ id: string; svg: keyof typeof PiecesSVG; x: number; y: number } | null>(null)
   const suppressClick = useRef(false)
-  const music = useCreativeMusic(session, playing, soloId)
+  const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
+  const music = useCreativeMusic(session, playing, soloId, simulation)
   const selected = session.pieces.find(p => p.id === selectedId)!
   const instrument = session.instruments[selectedId]
   const effects = session.effects[selectedId]
@@ -76,7 +79,9 @@ export function CreativeStudio() {
     let cancelled = false
     async function restore() {
       try {
-        const saved = localStorage.getItem(CREATIVE_STORAGE)
+        const requestedCity = new window.URLSearchParams(window.location.search).get('city')
+        const requestedKit = requestedCity ? loadCityKit(requestedCity) : null
+        const saved = requestedKit ? JSON.stringify(prepareCityKitForCreative(requestedKit, requestedCity!)) : localStorage.getItem(CREATIVE_STORAGE)
         if (saved) {
           const parsed = parseCreativeSession(saved)
           await validateMusicSnapshot(creativeSnapshot(parsed, false))
@@ -191,7 +196,7 @@ export function CreativeStudio() {
     setBusy(true)
     try {
       await validateMusicSnapshot(creativeSnapshot(next, false))
-      music.endAudition(); drag.current = null; setDragVisual(null); setSoloId(null); setSession(next); setPlaying(autoplay)
+      music.endAudition(); drag.current = null; setDragVisual(null); setSoloId(null); setSimulation({ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}); setSession(next); setPlaying(autoplay)
       if (next.cityId && getCityById(next.cityId)) setStageCityId(next.cityId)
       setNotice(`Kit “${next.name}” carregado${autoplay ? ' e tocando' : ' e pausado'}.`)
     } catch (error) { setNotice(`Kit não carregado: ${messageOf(error)}`) }
@@ -236,8 +241,8 @@ export function CreativeStudio() {
     setDragVisual({
       id,
       svg: `${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG,
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: (event.clientX - rect.left) * (boardRef.current!.offsetWidth / rect.width) - boardRef.current!.clientLeft,
+      y: (event.clientY - rect.top) * (boardRef.current!.offsetHeight / rect.height) - boardRef.current!.clientTop,
     })
   }
   function pointerDown(event: React.PointerEvent, square: string) {
@@ -286,6 +291,17 @@ export function CreativeStudio() {
     </header>
 
     <fieldset disabled={!ready || busy} className={styles.workspace}>
+<section className={styles.transport} aria-label="Kit atual">            <label className={styles.hint}>Kit atual do Criativo<select aria-label="Cidade do kit" value={stageCityId} onChange={e => setStageCityId(e.target.value)}>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+            <div className={styles.actions}>
+              <button className={styles.primary} onClick={() => void loadStageKit(stageCityId)}>Carregar kit da cidade</button>
+              <button onClick={() => void loadSession(defaultCityKit(stageCityId)!, true)}>Kit inicial da cidade</button>
+              <button onClick={() => {
+                const city = getCityById(stageCityId)
+                if (city) void loadSession(createRandomCityKit(city, Math.random().toString(36).slice(2, 8)), true)
+              }}>Gerar kit aleatório</button>
+              <button onClick={() => void loadSession(createDusseldorfSession(), true)}>Düsseldorf original · samples</button>
+</div>
+</section>
       <section className={styles.transport} aria-label="Controles da sessão">
         <button className={styles.primary} onClick={() => { if (playing) stop(); else setPlaying(true) }} aria-pressed={playing}>
           {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pausar' : 'Tocar arranjo'}
@@ -294,19 +310,19 @@ export function CreativeStudio() {
         <label>Tônica<select value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
         <label>Escala<select value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
         <Range label="Volume geral" value={session.volume} min={0} max={1} onChange={volume => setSession(s => ({ ...s, volume }))} />
-        <span className={styles.status}><i className={playing ? styles.running : ''} />{playing ? 'Em execução' : 'Pausado'} · {activeCount}/32 ativas{soloId ? ' · solo' : ''}</span>
+        <span className={styles.status}><i className={playing ? styles.running : ''} />{playing ? 'Em execução' : 'Pausado'} · {music.snapshot.pieces.filter(p => p.active).length}/32 ativas{soloId ? ' · solo' : ''}</span>
         <MusicTransportReadout monitor={music.monitor} />
       </section>
 
       <div className={styles.columns}>
-          <section className={`${styles.panel} ${styles.boardPanel}`}>
+          <div className={styles.boardColumn}><section className={`${styles.panel} ${styles.boardPanel}`}>
             <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>01 / TABULEIRO LIVRE</span><h2>Experimente o movimento</h2></div><div className={styles.segmented}>
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
             </div></div>
             <div ref={boardRef} className={styles.board} role="group" aria-label="Tabuleiro criativo">
               {squares.map((square, index) => {
-                const piece = session.pieces.find(p => p.square === square)
+                const piece = music.snapshot.pieces.find(p => p.square === square)
                 const chosen = piece?.id === selectedId
                 const preview = music.preview?.square === square
                 const pulse = music.pulse?.square === square
@@ -329,18 +345,10 @@ export function CreativeStudio() {
                   {piece?.active && dragVisual?.id !== piece.id && <span className={styles.activeDot} />}
                 </button>
               })}
-              {dragVisual && <span className={styles.dragPiece} style={{ left: dragVisual.x, top: dragVisual.y }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
+              {dragVisual && <span data-creative-drag={dragVisual.id} className={styles.dragPiece} style={{ left: dragVisual.x, top: dragVisual.y }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
             </div>
             <p className={styles.hint}>{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</p>
-            <label className={styles.hint}>Cidade para experimentar<select aria-label="Cidade do kit" value={stageCityId} onChange={e => setStageCityId(e.target.value)}>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
             <div className={styles.actions}>
-              <button className={styles.primary} onClick={() => void loadStageKit(stageCityId)}>Carregar kit da cidade</button>
-              <button onClick={() => void loadSession(defaultCityKit(stageCityId)!, true)}>Kit inicial da cidade</button>
-              <button onClick={() => {
-                const city = getCityById(stageCityId)
-                if (city) void loadSession(createRandomCityKit(city, Math.random().toString(36).slice(2, 8)), true)
-              }}>Gerar kit aleatório</button>
-              <button onClick={() => void loadSession(createDusseldorfSession(), true)}>Düsseldorf original · samples</button>
               <button onClick={() => { setSoloId(null); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === 'w' })) })); setPlaying(true) }}>Ativar brancas</button>
               <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloId(null) }}>Silenciar todas</button>
               <button onClick={() => { music.endAudition(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Repor posições</button>
@@ -348,6 +356,7 @@ export function CreativeStudio() {
             <p className={styles.hint}>Cada cidade tem um kit experimental estável. Gere variações e use Salvar kit da fase para adotá-las na próxima partida.</p>
           </section>
 
+        <MusicReactionEditor config={session.reactions} onChange={reactions=>setSession(s=>({...s,reactions}))} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} /></div>
         <div className={styles.controlColumns}>
         <div className={styles.controlColumn}>
         <aside className={styles.inspector} aria-label="Editor do instrumento">
@@ -358,9 +367,8 @@ export function CreativeStudio() {
             <div className={styles.actions}>
               <button aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}>{selected.active ? 'Loop ativo' : 'Ativar loop'}</button>
               <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) { setPlaying(true); setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) } }}>Solo</button>
-              <button className={styles.auditionButton} onContextMenu={e => e.preventDefault()} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); music.audition(selectedId, selected.square, 'pattern') }} onPointerUp={music.endAudition} onPointerCancel={music.endAudition} onLostPointerCapture={music.endAudition} onBlur={music.endAudition} onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) music.audition(selectedId, selected.square, 'pattern') } }} onKeyUp={music.endAudition}><Volume2 size={14} />Segure para ouvir</button>
             </div>
-            <MusicVoiceReadout monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
+            <MusicVoiceReadout expanded monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
             <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
             <div className={styles.pair}><label>Comportamento<select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulso / percussão</option><option value="phrase">Frase / sequenciador</option><option value="sustain">Sustentado / acordes</option></select></label>
               <label>Timbre sintetizado<select disabled={instrument.source?.kind === 'sample'} value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'] })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>

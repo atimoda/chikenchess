@@ -1,6 +1,7 @@
 import type { Square } from 'chess.js'
 import type { SquareEffects } from '../types'
 import { isConstrainedDevice } from '../performance'
+import { TeamMixer, createTeamMixes, type TeamMixes } from './team-mixer'
 import { DEFAULT_MOVEMENT, degreeToMidi, instrumentFor, type Instrument, type MovementMapping, type MusicPiece } from './model'
 import { sampleRegistration, type SampleSource } from './sample-banks'
 import type { Automation, Automations } from './automation'
@@ -11,6 +12,7 @@ type Strudel = typeof import('@strudel/web')
 type StrudelPattern = ReturnType<Strudel['note']>
 type StrudelWithPick = Strudel & { pickRestart: (lookup: StrudelPattern[], selector: string) => StrudelPattern }
 export interface MusicSnapshot {
+  sectionOverrides?: Record<string, number>
   pieces: MusicPiece[]
   scale: string[]
   bpm: number
@@ -23,6 +25,8 @@ export interface MusicSnapshot {
   sectionPattern?: string
   soloId?: string | null
   grooves?: Record<string, Groove>
+  teamMixes?: TeamMixes
+  tuning?: number
 }
 export interface Preview { id: string; square: Square; mode?: 'manual' | 'pattern' }
 export interface MusicPulse { id: string; square: Square; preview: boolean; duration: number }
@@ -58,7 +62,8 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
     const offset = instrument.behavior === 'pulse' ? 0 : Math.max(-degreeLimit, Math.min(degreeLimit, Math.round(fileOffset * mapping.fileDegrees + Math.floor(advance * mapping.rankDegrees))))
     const source = instrument.source
     const unpitched = source?.kind === 'sample' && !source.pitched
-    const toMidiPattern = (notes: string) => notes.replace(/(^|[\s[<,])(-?\d+)/g, (_, prefix, degree) => `${prefix}${unpitched ? 0 : degreeToMidi(Number(degree) + offset, state.scale, instrument.octave) + 12 * Math.log2(fx?.pitch ?? 1)}`)
+    const pitch = (fx?.pitch ?? 1) * (state.tuning ?? 1)
+    const toMidiPattern = (notes: string) => notes.replace(/(^|[\s[<,])(-?\d+)/g, (_, prefix, degree) => `${prefix}${unpitched ? 0 : degreeToMidi(Number(degree) + offset, state.scale, instrument.octave) + 12 * Math.log2(pitch)}`)
     // Board performance plays a single scale degree, not the sequence/groove.
     const phrases = (manual ? ['0'] : instrument.phrases?.length ? instrument.phrases : [instrument.notes]).map(toMidiPattern)
     const notes = phrases[0]
@@ -67,7 +72,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
       key: `${piece.id}:${audition ? 'preview' : 'loop'}`, piece, square, preview: audition, manual,
       orbit: piece.slot + (audition ? 64 : 0), notes,
       phrases,
-      sectionPattern: state.sectionPattern ?? '0',
+      sectionPattern: state.sectionOverrides?.[piece.id] === undefined ? state.sectionPattern ?? '0' : String(state.sectionOverrides[piece.id]),
       // A solo should be audible immediately, even when the arrangement mask
       // normally holds this layer back until a later section.
       mask: audition || state.soloId === piece.id || piece.checkEnsemble ? undefined : instrument.mask,
@@ -77,7 +82,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
       automations: instrument.automations,
       controls: {
         s: source?.kind === 'sample' ? sampleRegistration(source).sound : instrument.sound,
-        ...(unpitched ? { speed: fx?.pitch ?? 1 } : {}),
+        ...(unpitched ? { speed: pitch } : {}),
         gain: instrument.gain * (fx?.gain ?? 1),
         attack: instrument.attack, decay: fx?.decay ?? instrument.decay ?? 0.15,
         sustain: instrument.sustain ?? (instrument.behavior === 'pulse' ? 0 : 0.55),
@@ -100,6 +105,7 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
   return [
     `// ${(state.title ?? 'Düsseldorf').replace(/[\r\n]/g, ' ')} · Strudel`,
     '// Degrees follow the shared scale; each piece keeps its instrument.',
+    ...(state.teamMixes ? [`// Post-mix Web Audio buses (gain; bass/mids/highs dB): ${JSON.stringify(state.teamMixes)}`] : []),
     ...(preview?.mode === 'manual' ? [`// ${preview.id}: manual note at ${preview.square}; its loop is suspended during the gesture.`] : []),
     `setcps(${state.bpm} / 60 / 4)`,
     ...samples.map(sample => `samples(${JSON.stringify(sample.map)})`),
@@ -242,6 +248,7 @@ function ensureSample(api: Strudel, source: SampleSource) {
 export class MusicRuntime {
   private api?: Strudel
   private scheduler: any
+  private scheduledLoops: unknown[] | undefined
   private state?: MusicSnapshot
   private preview: Preview | null = null
   private unlockAudition: Preview | null = null
@@ -252,6 +259,7 @@ export class MusicRuntime {
   private visualTimers = new Set<ReturnType<typeof setTimeout>>()
   private starting = false
   private analyser?: AnalyserNode
+  private teamMixer?: TeamMixer
   private connectedOrbits = new Set<number>()
   private visualInterval = 1 / 15
   private visualBuckets = new Map<number, { events: Map<string, MusicPulse>; timer: ReturnType<typeof setTimeout> }>()
@@ -291,7 +299,11 @@ export class MusicRuntime {
     const context: AudioContext = s.getAudioContext()
     this.analyser = context.createAnalyser()
     this.analyser.fftSize = 256
+    this.teamMixer = new TeamMixer(context, this.analyser)
     this.scheduler = new s.Cyclist({
+      // More scheduling headroom on touch devices; manual notes keep their
+      // independent 30 ms response and the monitor follows this latency.
+      latency: constrained ? .18 : .1,
       getTime: () => context.currentTime,
       onError: this.error,
       onTrigger: (hap: any, deadline: number, duration: number, cps: number, time: number) => {
@@ -301,7 +313,7 @@ export class MusicRuntime {
         this.scheduleVisual(voice, time, duration)
       },
     })
-    this.monitorTimer = setInterval(() => { if (this.scheduler?.started) this.publishFrame() }, constrained ? 150 : 100)
+    this.monitorTimer = setInterval(() => { if (this.scheduler?.started && this.monitor.hasSubscribers()) this.publishFrame() }, constrained ? 150 : 100)
   }
 
   update(state: MusicSnapshot) { this.state = state; this.refresh() }
@@ -511,7 +523,8 @@ export class MusicRuntime {
       const specs = voiceSpecs(this.state, this.preview).filter(voice => this.sampleReady(voice))
       // Compile first: invalid edits must not tear down the last valid voices.
       const loops = specs.filter(voice => !voice.manual)
-      const pattern = loops.length ? this.api.stack(...loops.map(v => this.patternFor(v))) : this.api.silence
+      const compiledLoops = loops.map(v => this.patternFor(v))
+      const changed = !this.scheduledLoops || compiledLoops.length !== this.scheduledLoops.length || compiledLoops.some((p, i) => p !== this.scheduledLoops![i])
       const next = new Map(specs.map(v => [v.key, v]))
       for (const [key, voice] of this.voices) if (!next.has(key) || next.get(key)?.manual !== voice.manual) this.removeOrbit(voice.orbit)
       this.voices = next
@@ -521,16 +534,22 @@ export class MusicRuntime {
       const time = this.api.getAudioContext().currentTime
       const loopCount = specs.filter(voice => !voice.preview).length
       const denseMixAttenuation = Math.min(1, Math.sqrt(10 / Math.max(1, loopCount)))
+      this.teamMixer?.update(this.state.teamMixes ?? createTeamMixes())
       for (const voice of specs) {
         const orbit = controller.getOrbit(voice.orbit, [0, 1])
         if (!this.connectedOrbits.has(voice.orbit) && this.analyser) {
-          orbit.output.connect(this.analyser)
+          if (this.teamMixer) this.teamMixer.connect(orbit.output, voice.piece.color)
+          else orbit.output.connect(this.analyser)
           this.connectedOrbits.add(voice.orbit)
         }
         orbit.output.gain.setTargetAtTime(this.state.volume * denseMixAttenuation, time, 0.015)
       }
       this.scheduler.setCps(this.state.bpm / 240)
-      void this.scheduler.setPattern(pattern)
+      if (changed) {
+        const pattern = compiledLoops.length ? this.api.stack(...compiledLoops) : this.api.silence
+        void this.scheduler.setPattern(pattern)
+        this.scheduledLoops = compiledLoops
+      }
       const shouldRun = this.state.playing || specs.length > 0
       if (shouldRun && !this.scheduler.started && !this.starting) {
         this.starting = true
@@ -574,5 +593,6 @@ export class MusicRuntime {
     this.displayCache.clear()
     this.maskCache.clear()
     this.analyser?.disconnect()
+    this.teamMixer?.dispose()
   }
 }

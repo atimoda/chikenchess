@@ -26,6 +26,7 @@ export const cityCoordinates: Record<string, { x: number; y: number }> = {
     "x": 43.18,
     "y": 17.71
   },
+  "manchester-1999": { "x": 43.18, "y": 17.71 },
   "berlin": {
     "x": 47.83,
     "y": 21.38

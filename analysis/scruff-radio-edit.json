@@ -1,0 +1,191 @@
+{
+  "source_sha256": "b630bea8bd195070138846586d2de08770c91ef37582ca040ef01f14d0a48dff",
+  "duration_seconds": 203.42666666666668,
+  "sample_rate": 44100,
+  "channels": 2,
+  "peak_dbfs": -0.05,
+  "rms_dbfs": -11.72,
+  "tempo_candidates": [
+    {
+      "bpm": 80.75,
+      "strength": 0.702
+    },
+    {
+      "bpm": 129.2,
+      "strength": 0.53
+    }
+  ],
+  "refined_pulse_bpm": 123.32,
+  "chroma_energy": {
+    "C": 0.095,
+    "C#": 0.053,
+    "D": 0.1141,
+    "D#": 0.0151,
+    "E": 0.0608,
+    "F": 0.0682,
+    "F#": 0.0936,
+    "G": 0.1659,
+    "G#": 0.0788,
+    "A": 0.1479,
+    "A#": 0.0641,
+    "B": 0.0435
+  },
+  "segments_8_seconds": [
+    {
+      "start": 0,
+      "rms_db": -18.93,
+      "low_share": 0.168,
+      "high_share": 0.098
+    },
+    {
+      "start": 8,
+      "rms_db": -16.18,
+      "low_share": 0.531,
+      "high_share": 0.046
+    },
+    {
+      "start": 16,
+      "rms_db": -13.53,
+      "low_share": 0.738,
+      "high_share": 0.015
+    },
+    {
+      "start": 24,
+      "rms_db": -13.6,
+      "low_share": 0.677,
+      "high_share": 0.024
+    },
+    {
+      "start": 32,
+      "rms_db": -11.8,
+      "low_share": 0.733,
+      "high_share": 0.048
+    },
+    {
+      "start": 40,
+      "rms_db": -11.66,
+      "low_share": 0.72,
+      "high_share": 0.047
+    },
+    {
+      "start": 48,
+      "rms_db": -11.14,
+      "low_share": 0.681,
+      "high_share": 0.046
+    },
+    {
+      "start": 56,
+      "rms_db": -11.0,
+      "low_share": 0.68,
+      "high_share": 0.044
+    },
+    {
+      "start": 64,
+      "rms_db": -11.17,
+      "low_share": 0.68,
+      "high_share": 0.047
+    },
+    {
+      "start": 72,
+      "rms_db": -10.91,
+      "low_share": 0.72,
+      "high_share": 0.04
+    },
+    {
+      "start": 80,
+      "rms_db": -11.22,
+      "low_share": 0.759,
+      "high_share": 0.043
+    },
+    {
+      "start": 88,
+      "rms_db": -10.97,
+      "low_share": 0.72,
+      "high_share": 0.041
+    },
+    {
+      "start": 96,
+      "rms_db": -11.04,
+      "low_share": 0.682,
+      "high_share": 0.042
+    },
+    {
+      "start": 104,
+      "rms_db": -11.02,
+      "low_share": 0.758,
+      "high_share": 0.041
+    },
+    {
+      "start": 112,
+      "rms_db": -11.01,
+      "low_share": 0.753,
+      "high_share": 0.041
+    },
+    {
+      "start": 120,
+      "rms_db": -11.13,
+      "low_share": 0.745,
+      "high_share": 0.044
+    },
+    {
+      "start": 128,
+      "rms_db": -11.16,
+      "low_share": 0.72,
+      "high_share": 0.045
+    },
+    {
+      "start": 136,
+      "rms_db": -10.97,
+      "low_share": 0.737,
+      "high_share": 0.043
+    },
+    {
+      "start": 144,
+      "rms_db": -11.04,
+      "low_share": 0.712,
+      "high_share": 0.042
+    },
+    {
+      "start": 152,
+      "rms_db": -11.01,
+      "low_share": 0.718,
+      "high_share": 0.044
+    },
+    {
+      "start": 160,
+      "rms_db": -11.24,
+      "low_share": 0.709,
+      "high_share": 0.049
+    },
+    {
+      "start": 168,
+      "rms_db": -10.98,
+      "low_share": 0.713,
+      "high_share": 0.045
+    },
+    {
+      "start": 176,
+      "rms_db": -11.25,
+      "low_share": 0.714,
+      "high_share": 0.049
+    },
+    {
+      "start": 184,
+      "rms_db": -12.11,
+      "low_share": 0.698,
+      "high_share": 0.033
+    },
+    {
+      "start": 192,
+      "rms_db": -13.45,
+      "low_share": 0.728,
+      "high_share": 0.024
+    },
+    {
+      "start": 200,
+      "rms_db": -13.42,
+      "low_share": 0.832,
+      "high_share": 0.016
+    }
+  ]
+}

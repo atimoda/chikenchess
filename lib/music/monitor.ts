@@ -15,6 +15,7 @@ export function createMusicMonitor() {
   let frame = EMPTY_MUSIC_FRAME
   const listeners = new Set<() => void>()
   return {
+    hasSubscribers: () => listeners.size > 0,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     getSnapshot: () => frame,
     getServerSnapshot: () => EMPTY_MUSIC_FRAME,
