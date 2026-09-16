@@ -6,6 +6,7 @@
         "id": "check-band",
         "trigger": "check",
         "enabled": true,
+        "quantize": false,
         "target": "actor",
         "duration": 1,
         "actions": [
@@ -18,6 +19,7 @@
       }
     ]
   },
+  "catalogRevision": "styles-2026-09-14-v1",
   "version": 4,
   "name": "Manchester 1999 · Northern Jazz Breaks",
   "cityId": "manchester-1999",
@@ -337,6 +339,35 @@
         "~ ~ 0 ~",
         "0 [~@5 2@4] 4 ~"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -376,6 +407,35 @@
         "0 ~ ~ [4@5 ~@4]",
         "[0@5 0@4] ~ [4@5 3@4] [~@5 -1@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -415,6 +475,35 @@
         "~ ~ [0,2,4] ~",
         "~ [0,2,6] ~ [0,3,6]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -454,6 +543,35 @@
         "[0@5 ~@4] ~ [2@5 4@4] ~",
         "[0@5 2@4] [4@5 ~@4] [6@5 4@4] [2@5 -1@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -469,6 +587,21 @@
             "1 .85 .95 .8",
             ".85 .65 .8 .65",
             "1 .85 .95 .8"
+          ]
+        },
+        "penv": {
+          "kind": "pattern",
+          "patterns": [
+            "0",
+            "0",
+            "0",
+            "<0 0 0 -2>"
+          ]
+        },
+        "patt": {
+          "kind": "pattern",
+          "patterns": [
+            ".09"
           ]
         }
       }
@@ -493,6 +626,35 @@
         "~ 0 ~ ~",
         "~ [~@5 4@4] ~ [2@5 ~@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -532,6 +694,35 @@
         "[2,4]/2",
         "~ ~ ~ [2,4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -571,6 +762,35 @@
         "~ ~ 0 ~",
         "~ ~ [~@5 6@4] ~"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -610,6 +830,35 @@
         "~ ~ ~ 2",
         "~ ~ [~@5 6@4] [4@5 2@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1065,6 +1314,35 @@
         "~ ~ 0 ~",
         "0 [~@5 2@4] 4 ~"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1104,6 +1382,35 @@
         "0 ~ ~ [4@5 ~@4]",
         "[0@5 0@4] ~ [4@5 3@4] [~@5 -1@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1143,6 +1450,35 @@
         "~ ~ [0,2,4] ~",
         "~ [0,2,6] ~ [0,3,6]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1182,6 +1518,35 @@
         "[0@5 ~@4] ~ [2@5 4@4] ~",
         "[0@5 2@4] [4@5 ~@4] [6@5 4@4] [2@5 -1@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1197,6 +1562,21 @@
             "1 .85 .95 .8",
             ".85 .65 .8 .65",
             "1 .85 .95 .8"
+          ]
+        },
+        "penv": {
+          "kind": "pattern",
+          "patterns": [
+            "0",
+            "0",
+            "0",
+            "<0 0 0 -2>"
+          ]
+        },
+        "patt": {
+          "kind": "pattern",
+          "patterns": [
+            ".09"
           ]
         }
       }
@@ -1221,6 +1601,35 @@
         "~ 0 ~ ~",
         "~ [~@5 4@4] ~ [2@5 ~@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1260,6 +1669,35 @@
         "[2,4]/2",
         "~ ~ ~ [2,4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1299,6 +1737,35 @@
         "~ ~ 0 ~",
         "~ ~ [~@5 6@4] ~"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1338,6 +1805,35 @@
         "~ ~ ~ 2",
         "~ ~ [~@5 6@4] [4@5 2@4]"
       ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 16,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 32,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",

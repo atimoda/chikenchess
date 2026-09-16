@@ -2,13 +2,29 @@ export const RELEASE_LABEL = 'v0.3.2'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
-  { version: '0.3.2', date: '13/09/2026', title: 'The Creative', groups: [
+  { version: '0.3.2', date: '16/09/2026', title: 'The Creative', groups: [
+    { title: 'Arranjos e timbres', items: [
+      'Seções por peça com durações diferentes, entradas/pausas, transposição e reinício opcional da frase.',
+      'Slide global ou por nota, acentos e pan individuais, intensidade e nível da distorção.',
+      'Estudo Mouth Breather: 17 etapas, guitarra em camadas, baixo quebrado e bateria distribuída.',
+      'Kits compostos para as 13 fases, oito samples sintéticos novos e backup recuperável dos kits anteriores.',
+      'Ajuda em círculos ? com hover, foco e toque; piano roll corrigido para editar todas as linhas visíveis.',
+    ] },
+    { title: 'Composição visual e transporte', items: [
+      'Transições preparadas no relógio de áudio e rampas de BPM por regra, com curva, ponteiro e destino no Criativo.',
+      'Até oito variações selecionáveis, conversão para piano roll, desenho/movimento/duração de notas com mouse e restauração do padrão original.',
+      'Duração independente por variação, grade de tercinas e loops de comprimentos diferentes sobre o mesmo BPM.',
+      'Correção do sentido do giro do globo com dois dedos.',
+    ] },
     { title: 'Estados e Eventos', items: [
+      'Opção por regra de aguardar a virada do compasso, com indicação de pendências e persistência no kit.',
+      'Catálogo compartilhado de 19 escalas/aliases, incluindo blues, tons inteiros, diminutas, modos e cromática.',
       'Simulador de estados e eventos abaixo do tabuleiro, com regras salvas em cada kit e aplicadas também na partida.',
       'Transposição, BPM, escala paralela/relativa, rotação modal, inversão melódica, variação, ganho, filtro e ativação por equipe.',
       'Roques, capturas, perda de famílias de peças, formação mínima, promoções, en passant e saída de cheque com duração configurável.',
     ] },
     { title: 'Bancada compacta', items: [
+      'Scrollbars dos painéis escondidas, mantendo rolagem por mouse, trackpad e toque.',
       'Seletor de kit acima do transporte, colunas sem gap, variações expandidas e nomes de instrumento sem sufixo de casa.',
       'Correção do alinhamento da peça arrastada; botão Segure para ouvir removido. Solo continua disponível para ouvir a frase completa.',
       'Versões renomeadas para a série v0.3; versão atual v0.3.2 — The Creative.',

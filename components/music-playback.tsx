@@ -3,6 +3,8 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { VOICE_STATUS_LABELS, type MusicMonitor, type VoiceStatus } from '@/lib/music/monitor'
 import { prepareVoiceVariations, type MusicSnapshot } from '@/lib/music/runtime'
+import { MusicPianoEditor } from './music-piano-editor'
+import type { Instrument } from '@/lib/music/model'
 import styles from './music-playback.module.css'
 
 function noteLabel(note: number | null) {
@@ -13,8 +15,9 @@ function noteLabel(note: number | null) {
 export function MusicTransportReadout({ monitor }: { monitor: MusicMonitor }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   return <div className={styles.transport} aria-label="Relógio musical">
-    <span>{frame.running ? 'Em execução' : 'Parado'} · Seção <b>{String.fromCharCode(65 + Math.max(0, frame.section % 4))}</b></span>
+    <span>{frame.running ? 'Em execução' : 'Parado'} · Seção <b>{String.fromCharCode(65 + Math.max(0, frame.section % 8))}</b></span>
     <span>Compasso {Math.floor(frame.cycle) + 1}</span>
+    {frame.transport&&<span aria-label="BPM em execução">{frame.transport.bpm.toFixed(1)} → {frame.transport.targetBpm.toFixed(1)} BPM {frame.transport.ramp&&frame.transport.ramp.progress<1&&<progress aria-label="Avanço da rampa" max={1} value={frame.transport.ramp.progress} style={{width:60}}/>}{frame.transport.pending.length>0&&` · ${frame.transport.pending.length} mudança(s) na virada`}</span>}
     <div className={styles.beats} aria-label={`Tempo ${frame.beat} de 4`}>{[1, 2, 3, 4].map(beat => <i key={beat} data-on={frame.running && frame.beat === beat} />)}</div>
   </div>
 }
@@ -22,19 +25,21 @@ export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: st
   const status = useSyncExternalStore<VoiceStatus>(monitor.subscribe, () => monitor.getSnapshot().tracks[id]?.status ?? 'inactive', () => 'inactive')
   return <span className={styles.badge} data-status={status}>{VOICE_STATUS_LABELS[status]}</span>
 }
-export function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false }: { monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean }) {
+export function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, instrument, onInstrumentChange }: { instrument?:Instrument; onInstrumentChange?:(patch:Partial<Pick<Instrument,'phrases'|'pianoRolls'|'selectedVariation'>>)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const track = frame.tracks[id]
   const [preview, setPreview] = useState<{ read: Awaited<ReturnType<typeof prepareVoiceVariations>>; snapshot: MusicSnapshot; id: string } | null>(null)
   const [error, setError] = useState('')
+  const editable=!!instrument&&!!onInstrumentChange
   useEffect(() => {
+    if(editable)return
     let cancelled = false
     setError('')
     void prepareVoiceVariations(snapshot, id).then(read => {
       if (!cancelled) setPreview({ read, snapshot, id })
     }).catch(() => { if (!cancelled) setError('Não foi possível desenhar as variações.') })
     return () => { cancelled = true }
-  }, [snapshot, id])
+  }, [snapshot, id, editable])
   const rows = preview?.snapshot === snapshot && preview.id === id ? preview.read?.(frame.cycle) ?? [] : []
   const running = frame.running && !manual && ['note', 'rest', 'masked'].includes(track?.status ?? '')
   const notes = rows.flatMap(row => row.events.flatMap(event => event.note == null ? [] : [event.note]))
@@ -42,7 +47,7 @@ export function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expan
   const top = notes.length ? Math.max(...notes) : 0
   return <div className={styles.voice} aria-label="Execução do instrumento">
     <div className={styles.line}><MusicVoiceBadge monitor={monitor} id={id} /><span>{track?.notes.map(noteLabel).join(' + ')}</span></div>
-    <div className={styles.variations} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Variações salvas da peça">
+    {instrument && onInstrumentChange ? <MusicPianoEditor snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange}/> : <div className={styles.variations} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Variações salvas da peça">
       {!rows.length && <p>{error || 'Preparando variações…'}</p>}
       {rows.map(row => <div key={row.index} className={styles.variation} data-active={running && row.active}>
         <div className={styles.variationLabel}><b>Variação {String.fromCharCode(65 + row.index)}</b><span>{running && row.active ? 'Em execução' : `Compassos ${row.start + 1}–${row.start + 4}`}</span></div>
@@ -56,6 +61,7 @@ export function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expan
         <div className={styles.notation} title={row.rhythm ?? row.phrase}>{row.rhythm ?? row.phrase}</div>
       </div>)}
     </div>
+    }
     <div className={styles.values}>{Object.entries(track?.values ?? {}).filter(([, value]) => Number.isFinite(value)).map(([key, value]) => <span key={key}>{key}: {key === 'lpf' ? `${Math.round(value!)} Hz` : value!.toFixed(2)}</span>)}</div>
   </div>
 }

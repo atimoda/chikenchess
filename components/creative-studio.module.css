@@ -109,3 +109,18 @@
 .transport .actions { margin: 0; }
 .sectionHeader, .instrumentTitle { margin-bottom: 10px; }
 @media (max-width:720px) and (orientation:portrait) { .boardColumn { max-height:none; overflow:visible; } }
+
+/* Keep scrolling and touch gestures, without visible nested scrollbars. */
+.studio, .studio * { scrollbar-width: none; }
+.studio::-webkit-scrollbar, .studio *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+.boardColumn label:has(> input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.boardColumn input[type="checkbox"] { width: 16px; height: 16px; flex: 0 0 16px; }
+
+.helpCaption { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.studio h2:has(button), .studio summary:has(button) { align-items: center; }
+
+.studio :is(h2, summary):has(> [data-info-tip]) { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.studio summary:has(> [data-info-tip])::before { content: '▸'; flex: 0 0 auto; }
+.studio details[open] > summary:has(> [data-info-tip])::before { content: '▾'; }
+.studio label:has(> input[type='checkbox']) { flex-direction: row; align-items: center; flex-wrap: wrap; margin: 8px 0; }

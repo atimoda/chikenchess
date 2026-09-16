@@ -426,7 +426,7 @@ const GlobeContent = ({
       const next = readAngle(e)
       if (angle !== null) {
         const delta = Math.atan2(Math.sin(next - angle), Math.cos(next - angle))
-        camera.up.applyAxisAngle(camera.position.clone().normalize(), -delta).normalize()
+        camera.up.applyAxisAngle(camera.position.clone().normalize(), delta).normalize()
         camera.lookAt(0, 0, 0)
         lastInteractionTime.current = Date.now()
       }

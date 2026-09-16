@@ -348,7 +348,7 @@ test('sample registry points to small valid local WAV files with explicit tuning
     }
     assert.ok(bankBytes < 500_000, `${bank.id}: each bank stays below 500 KB`)
   }
-  assert.ok(total < 1_000_000, 'both banks stay below 1 MB; assets load on demand')
+  assert.ok(total < 1_200_000, 'three sample banks stay below 1.2 MB; assets load on demand')
 })
 
 test('Manchester 1999 has a curated four-section band with audible queens and gentle swung eighths', async () => {
@@ -464,9 +464,10 @@ test('every city has a reproducible, distinct kit with roles independent of ches
     kingBehaviors.add(kit.instruments['w:e1'].behavior)
     for (const color of ['w', 'b']) {
       const instruments = kit.pieces.filter(p => p.color === color).map(p => kit.instruments[p.id])
-      assert.equal(instruments.filter(i => i.behavior === 'pulse').length, 8)
-      assert.equal(instruments.filter(i => i.behavior === 'sustain').length, 2)
-      assert.equal(instruments.filter(i => i.behavior === 'phrase').length, 6)
+      assert.equal(instruments.length,16)
+      assert.equal(instruments.filter(i=>i.behavior==='pulse').length,city.id==='vienna'?0:8)
+      assert.ok(instruments.some(i=>i.behavior==='phrase'))
+      assert.ok(instruments.every(i=>i.performance||city.id==='manchester-1999'))
     }
     const variant = createRandomCityKit(city, 'test-variation')
     assert.notDeepEqual(kit.instruments, variant.instruments)
@@ -797,4 +798,229 @@ test('transposition across C retains direction and octave and does not retune dr
     assert.equal(first(result)-first(base),shift)
     assert.equal(result.effects['w:a2'].pitch,base.effects['w:a2'].pitch)
   }
+})
+
+test('expanded scales round-trip in kits and rules and produce bounded Strudel notes', async () => {
+  const { SCALE_INTERVALS } = loadTs('lib/music/scales.ts')
+  const { reactionsSchema, applyReactions } = loadTs('lib/music/reactions.ts')
+  const engine = await strudel()
+  assert.deepEqual(SCALE_INTERVALS.Aeolian, SCALE_INTERVALS['Menor natural'])
+  for (const [scale, intervals] of Object.entries(SCALE_INTERVALS)) {
+    assert.equal(intervals[0], 0)
+    assert.ok(intervals.every((n,i)=>Number.isInteger(n)&&n<12&&(i===0||n>intervals[i-1])))
+    const kit=creative.createDusseldorfSession(); kit.scale=scale
+    assert.equal(creative.parseCreativeSession(JSON.stringify(kit)).scale,scale)
+    const config=reactionsSchema.parse({rules:[{id:'scale',trigger:'opening',enabled:true,quantize:true,target:'both',duration:2,actions:[{type:'scale',scale}]}]})
+    const snapshot=applyReactions(creative.creativeSnapshot(kit,true),config,{ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}).snapshot
+    assert.equal(snapshot.scale.length,intervals.length)
+    const voice=voiceSpecs(snapshot,null).find(v=>v.piece.id==='w:b1')
+    const haps=compileVoice(engine,voice).queryArc(0,4)
+    assert.ok(haps.length>0,scale)
+    assert.ok(haps.every(h=>Number.isFinite(Number(h.value.note))),scale)
+  }
+})
+
+test('timed reaction snapshots hold both entry and return without freezing unrelated base edits', () => {
+  const { reactionsSchema, reactionEntries, applyReactions }=loadTs('lib/music/reactions.ts')
+  const config=reactionsSchema.parse({rules:[{id:'q',trigger:'queenCapture',enabled:true,quantize:true,target:'both',duration:1,actions:[{type:'bpm',value:10}]}]})
+  const idle={ply:0,states:[],events:[]}, hit={ply:1,states:[],events:[{trigger:'queenCapture',color:'w',ply:1}]}
+  const base=creative.creativeSnapshot(creative.createDusseldorfSession(),true)
+  const before=reactionEntries(config,idle), active=reactionEntries(config,hit)
+  assert.equal(applyReactions(base,config,hit,before).snapshot.bpm,base.bpm)
+  assert.equal(applyReactions(base,config,hit,active).snapshot.bpm,base.bpm*1.1)
+  assert.equal(applyReactions({...base,bpm:100},config,{...hit,ply:2},active).snapshot.bpm,110.00000000000001)
+  const expired=reactionEntries(config,{...hit,ply:2})
+  assert.equal(applyReactions(base,config,{...hit,ply:2},expired).snapshot.bpm,base.bpm)
+  assert.equal(creative.parseCreativeSession(JSON.stringify({...creative.createCreativeSession(),reactions:config})).reactions.rules[0].quantize,true)
+  const old=JSON.parse(JSON.stringify(config));delete old.rules[0].quantize
+  assert.equal(reactionsSchema.parse(old).rules[0].quantize,false)
+})
+
+test('audio tempo map integrates ramps exactly and preserves phase when interrupted', () => {
+ const {TempoMap}=loadTs('lib/music/transport.ts'),t=new TempoMap(120,10)
+ assert.equal(t.timeAt(1),12)
+ t.change(1,180,4)
+ assert.equal(t.bpmAt(3),150)
+ for(const c of [0,1,1.5,3,5,7])assert.ok(Math.abs(t.cycleAt(t.timeAt(c))-c)<1e-8)
+ const before=t.timeAt(2.5);t.change(2.5,90,2)
+ assert.equal(t.timeAt(2.5),before)
+ assert.equal(t.bpmAt(4.5),90)
+ assert.ok(Math.abs(t.cycleAt(t.timeAt(7))-7)<1e-8)
+})
+
+test('audio scheduler switches before the downbeat query and schedules through a BPM ramp', async () => {
+ const {MusicTransport}=loadTs('lib/music/transport.ts');let now=0,switched=false
+ const scheduled=[],boundaries=[]
+ const api=await strudel()
+ const transport=new MusicTransport({getTime:()=>now,latency:.18,onError:e=>{throw e},onBoundary:c=>{boundaries.push(c);if(c===1){switched=true;transport.setCps(180/240,2);transport.setPattern(api.note('72*4'))}},onTrigger:(h,d,duration,cps,time)=>scheduled.push({note:h.value.note,cycle:Number(h.whole.begin),time,duration,cps})})
+ await transport.setPattern(api.note('60*4'));await transport.start()
+ for(now=.025;now<7;now+=.025)transport.tick()
+ transport.stop()
+ assert.ok(switched)
+ const downbeat=scheduled.find(n=>n.cycle===1)
+ assert.equal(Number(downbeat.note),72)
+ assert.ok(Math.abs(downbeat.time-2.03)<1e-8)
+ assert.ok(scheduled.every(n=>n.duration>0))
+ assert.equal(new Set(scheduled.map(n=>n.cycle)).size,scheduled.length)
+ assert.ok(scheduled.find(n=>n.cycle===2).cps>scheduled.find(n=>n.cycle===1).cps)
+})
+
+test('queued rules coalesce, cancel stale events, and apply independently at audio boundaries', () => {
+ const {ReactionQueue}=loadTs('lib/music/reaction-queue.ts'),{reactionsSchema}=loadTs('lib/music/reactions.ts')
+ const q=new ReactionQueue(),idle={ply:0,states:[],events:[]},active={ply:0,states:[{trigger:'check',color:'w',ply:0}],events:[]}
+ const config=reactionsSchema.parse({rules:[{id:'check',trigger:'check',enabled:true,quantize:true,target:'both',duration:1,actions:[{type:'bpm',value:10,rampBars:4}]}]})
+ q.update(config,idle,false,0,'a');q.update(config,active,true,.2,'a')
+ assert.equal(q.pending.get('check').cycle,1)
+ q.update(config,idle,true,.8,'a');assert.equal(q.pending.size,0)
+ q.update(config,active,true,.9,'a');assert.equal(q.advance(.99).changed,false)
+ assert.deepEqual(q.advance(1),{changed:true,bars:4});assert.equal(q.entries.get('check').hit.color,'w')
+ q.update(config,idle,true,1.4,'a');assert.equal(q.entries.get('check').hit.color,'w')
+ q.advance(2);assert.equal(q.entries.get('check').hit,undefined)
+ q.update(config,active,true,2.5,'a');q.update(config,idle,false,2.6,'a');assert.equal(q.pending.size,0)
+})
+
+test('editable notes keep their durations and independent loop lengths in real Strudel', async () => {
+ const api=await strudel(),kit=creative.createDusseldorfSession()
+ kit.instruments['w:b1'].pianoRolls=[{bars:.75,notes:[{start:0,duration:.125,degree:0,velocity:.7}]}]
+ kit.instruments['w:b1'].selectedVariation=0
+ const parsed=creative.parseCreativeSession(JSON.stringify(kit))
+ const v=voiceSpecs(creative.creativeSnapshot(parsed,true),null).find(v=>v.piece.id==='w:b1')
+ const hits=compileVoice(api,v).queryArc(0,3).filter(h=>h.hasOnset())
+ assert.deepEqual(hits.map(h=>Number(h.whole.begin)),[0,.75,1.5,2.25])
+ assert.ok(hits.every(h=>Number(h.whole.end.sub(h.whole.begin))===.125))
+ assert.ok(renderMusicCode(creative.creativeSnapshot(parsed,true),null).includes('timeCat('))
+ const {resizeRoll}=loadTs('lib/music/piano-roll.ts')
+ assert.deepEqual(resizeRoll({bars:2,notes:[{start:.5,duration:1,degree:0,velocity:1},{start:1.5,duration:.5,degree:2,velocity:1}]},1).notes,[{start:.5,duration:.5,degree:0,velocity:1}])
+})
+
+test('fixed variation plays its whole multi-bar phrase instead of restarting every bar', async () => {
+ const api=await strudel(),kit=creative.createDusseldorfSession(),id='w:b1'
+ Object.assign(kit.instruments[id],{notes:'0',phrases:['0','<0 2 4 6>'],selectedVariation:1,groove:undefined,automations:undefined,mask:undefined})
+ const voice=voiceSpecs(creative.creativeSnapshot(kit,true),null).find(v=>v.piece.id===id)
+ const pitches=compileVoice(api,voice).queryArc(0,4).map(h=>Number(h.value.note))
+ assert.equal(new Set(pitches).size,4)
+})
+
+test('state inversion also transforms edited degrees without mutating the saved roll', () => {
+ const {reactionsSchema,applyReactions}=loadTs('lib/music/reactions.ts')
+ const kit=creative.createDusseldorfSession(),id='w:b1'
+ kit.instruments[id].pianoRolls=[{bars:1,notes:[{start:0,duration:.25,degree:3,velocity:.8}]}]
+ const config=reactionsSchema.parse({rules:[{id:'invert',trigger:'opening',enabled:true,target:'both',duration:1,actions:[{type:'invert'}]}]})
+ const result=applyReactions(creative.creativeSnapshot(kit,true),config,{ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]})
+ assert.equal(result.snapshot.instruments[id].pianoRolls[0].notes[0].degree,-3)
+ assert.equal(kit.instruments[id].pianoRolls[0].notes[0].degree,3)
+})
+
+test('two-finger screen rotation projects globe landmarks in the same direction', () => {
+ const THREE=require('three')
+ for(const gesture of [-Math.PI/6,Math.PI/6]){
+  const camera=new THREE.PerspectiveCamera(45,1,.1,100);camera.position.set(0,0,5);camera.lookAt(0,0,0);camera.updateMatrixWorld()
+  const marker=new THREE.Vector3(1,0,0),before=marker.clone().project(camera)
+  camera.up.applyAxisAngle(camera.position.clone().normalize(),gesture);camera.lookAt(0,0,0);camera.updateMatrixWorld()
+  const after=marker.clone().project(camera),screenDelta=Math.atan2(-after.y,after.x)-Math.atan2(-before.y,before.x)
+  assert.ok(Math.abs(screenDelta-gesture)<1e-8)
+ }
+})
+
+test('section form preserves asymmetric lengths, silence, transpose and restart selection', async () => {
+ const api=await strudel(),kit=creative.createCreativeSession()
+ const instrument=kit.instruments['w:b1']
+ Object.assign(instrument,{notes:'0 1',phrases:['0 1','2 3'],pianoRolls:undefined,automations:undefined,mask:undefined,groove:undefined,performance:{restart:true,steps:[{beats:3,variation:0,transpose:0,active:true},{beats:5,variation:1,transpose:-5,active:true},{beats:2,variation:0,transpose:0,active:false}]}})
+ kit.pieces.forEach(p=>p.active=p.id==='w:b1')
+ const voice=voiceSpecs(creative.creativeSnapshot(kit,true),null)[0],pattern=compileVoice(api,voice)
+ const events=pattern.queryArc(0,2.5).filter(h=>h.hasOnset())
+ assert.ok(events.some(h=>Number(h.whole.begin)===.75),'second phrase restarts at the 3-beat boundary')
+ assert.equal(pattern.queryArc(2,2.5).length,0,'muted section has no notes')
+ const expected=compileVoice(api,{...voice,performance:undefined,sectionPattern:'1'}).queryArc(0,.1)[0].value.note-5
+ assert.equal(events.find(h=>Number(h.whole.begin)===.75).value.note,expected)
+ assert.equal(voiceSpecs({...creative.creativeSnapshot(kit,true),sectionOverrides:{'w:b1':1}},null)[0].performance,undefined)
+ instrument.selectedVariation=0
+ assert.equal(voiceSpecs(creative.creativeSnapshot(kit,true),null)[0].performance,undefined)
+})
+
+test('per-note slide uses canonical pattack and pan overrides after global controls', async () => {
+ const api=await strudel(),kit=creative.createCreativeSession()
+ kit.pieces.forEach(p=>p.active=p.id==='w:b1')
+ Object.assign(kit.instruments['w:b1'],{phrases:['0'],groove:undefined,automations:undefined,mask:undefined,performance:undefined,pitchEnvelope:2,pitchAttack:.1,pianoRolls:[{bars:1,notes:[{start:0,duration:.5,degree:0,velocity:.7,slide:-3,slideSeconds:.6,pan:.49},{start:.5,duration:.5,degree:2,velocity:1}]}]})
+ const snapshot=creative.creativeSnapshot(kit,true),events=compileVoice(api,voiceSpecs(snapshot,null)[0]).queryArc(0,1)
+ assert.equal(events[0].value.penv,-3);assert.equal(events[0].value.pattack,.6);assert.equal(events[0].value.pan,.49)
+ assert.equal(events[1].value.penv,2);assert.equal(events[1].value.pattack,.1)
+ assert.equal(events[0].value.ccSlide,undefined)
+})
+
+test('curated collection has finite, bounded events across all banks and full forms',async()=>{
+ const api=await strudel(),{cities}=loadTs('lib/cities-data.ts'),{defaultCityKit}=loadTs('lib/music/city-kits.ts')
+ for(const city of cities){
+  const kit=defaultCityKit(city.id),snapshot=creative.creativeSnapshot(kit,true)
+  for(const voice of voiceSpecs({...snapshot,pieces:snapshot.pieces.map(p=>({...p,active:true}))},null)){
+   for(let section=0;section<voice.phrases.length;section++){
+    const events=compileVoice(api,{...voice,performance:undefined,mask:undefined,sectionPattern:String(section)}).queryArc(0,8)
+    assert.ok(events.length>0,`${city.id}/${voice.key}/${section} has music`)
+    for(const h of events){assert.ok(Number.isFinite(h.value.gain));if(!voice.unpitched)assert.ok(Number.isFinite(Number(h.value.note)))}
+   }
+   const pattern=compileVoice(api,voice),bars=voice.performance?voice.performance.steps.reduce((n,s)=>n+s.beats/4,0):16
+   for(let cycle=0;cycle<bars;cycle++)assert.ok(pattern.queryArc(cycle,cycle+1).length<=128,`${city.id}/${voice.key}: density`)
+  }
+ }
+})
+
+test('catalog migration backs up once and preserves subsequent edits, including restored old kits',()=>{
+ const {loadCityKit,previousCityKit,cityKitStorageKey}=loadTs('lib/music/city-kits.ts'),{STYLE_REVISION}=loadTs('lib/music/styled-kits.ts')
+ const old=creative.createDusseldorfSession(),memory=new Map([[cityKitStorageKey('dusseldorf'),JSON.stringify(old)]]),previous=globalThis.window
+ globalThis.window={localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v)}}
+ try{
+  const current=loadCityKit('dusseldorf');assert.equal(current.catalogRevision,STYLE_REVISION)
+  assert.deepEqual(previousCityKit('dusseldorf'),JSON.parse(JSON.stringify(old)))
+  current.name='Personal';memory.set(cityKitStorageKey('dusseldorf'),JSON.stringify(current));assert.equal(loadCityKit('dusseldorf').name,'Personal')
+  const restored={...old,catalogRevision:STYLE_REVISION};memory.set(cityKitStorageKey('dusseldorf'),JSON.stringify(restored));assert.equal(loadCityKit('dusseldorf').name,old.name)
+  assert.deepEqual(previousCityKit('dusseldorf'),JSON.parse(JSON.stringify(old)))
+ }finally{if(previous===undefined)delete globalThis.window;else globalThis.window=previous}
+})
+
+test('Mouth Breather study preserves guitar layers, chromatic falls and drum-specific tracks',async()=>{
+ const api=await strudel(),kit=creative.parseCreativeSession(fs.readFileSync(path.join(__dirname,'../public/presets/mouth-breather.json'),'utf8'))
+ assert.equal(kit.bpm,215);assert.equal(kit.scale,'Chromatic');assert.equal(kit.pieces.filter(p=>p.active).length,6)
+ const g=kit.instruments['w:d1'];assert.equal(g.performance.steps.length,17);assert.equal(g.performance.steps.reduce((n,s)=>n+s.beats,0),488)
+ assert.ok(g.pianoRolls[0].notes.some(n=>n.pan===.49));assert.deepEqual(g.pianoRolls[1].notes.map(n=>n.degree).sort((a,b)=>a-b),[-8,-1,4])
+ assert.ok(g.pianoRolls[1].notes.every(n=>n.slide===-3&&n.slideSeconds===.6))
+ for(const voice of voiceSpecs(creative.creativeSnapshot(kit,true),null)){
+  const pattern=compileVoice(api,voice)
+  for(let cycle=0;cycle<122;cycle++)assert.ok(pattern.queryArc(cycle,cycle+1).length<=128)
+ }
+})
+
+test('exported Strudel matches compiled note timing, slide and form through an entire study',async()=>{
+ const api=await strudel(),kit=creative.parseCreativeSession(fs.readFileSync(path.join(__dirname,'../public/presets/mouth-breather.json'),'utf8'))
+ const snapshot=creative.creativeSnapshot(kit,true),code=renderMusicCode(snapshot,null)
+ const expression=code.slice(code.indexOf('\nstack(')+1)
+ const exported=new Function(...Object.keys(api),`return ${expression}`)(...Object.values(api))
+ const actual=api.stack(...voiceSpecs(snapshot,null).map(v=>compileVoice(api,v)))
+ const normalize=hs=>hs.filter(h=>h.hasOnset()).map(h=>JSON.stringify([Number(h.whole.begin),Number(h.whole.end),h.value.note??null,h.value.s,h.value.penv??null,h.value.pattack??null,h.value.pan,h.value.velocity])).sort()
+ for(let bar=0;bar<122;bar++)assert.deepEqual(normalize(exported.queryArc(bar,bar+1)),normalize(actual.queryArc(bar,bar+1)),`bar ${bar}`)
+})
+
+test('study arrangement matches the supplied G/B/D score timing and chromatic pitches',async()=>{
+ const api=await strudel(),score=api.mini('<G@3 [G,D]@6 [G,D,B]@6 [G:1,D]@3 [G,D,B]@3 [G:1,D]@3 [G,D,B]@3 [G:0:-5,D,B:0:-5]@3 [G:0:-7,D,B:0:-7]@3 [D,B]@6 [G,D,B]@3 ~ [G,D,B]@6 [G:0:-5,D,B:0:-5]@3 [G:0:-7,D,B:0:-7]@3 D@3 ~@3>/16')
+ const column=(pat,i)=>pat.withValue(v=>Array.isArray(v)?v[i]??0:i===0?v:0)
+ const source=(part,patterns)=>{const selected=score.filterValues(v=>v[0]===part);return api.pickRestart(patterns,column(selected,1)).transpose(column(selected,2)).fast(8)}
+ const structure=api.mini('<x!4 ~!2 x!9 x@3 x!6>')
+ const g0=api.stack(api.note('<48@9 49 48@2>'),api.mini('<55 53@2 55@4 53 55 56 55 53>').add('<0,5>').note()).struct(structure)
+ const g1=api.mini('<[48,55,60]@3 ~@45>').add(-8).note()
+ const b=api.note('<36!3 36@2 ~ 36!3 <[37 41 37] [36 41 43]>@3>')
+ const kit=creative.parseCreativeSession(fs.readFileSync(path.join(__dirname,'../public/presets/mouth-breather.json'),'utf8'))
+ const voices=voiceSpecs(creative.creativeSnapshot(kit,true),null)
+ const normalize=hs=>hs.filter(h=>h.hasOnset()).map(h=>JSON.stringify([Number(h.whole.begin),Number(h.whole.end),h.value.note])).sort()
+ for(const [id,pattern] of [['w:d1',source('G',[g0,g1])],['w:b1',source('B',[b])]]){
+  const actual=compileVoice(api,voices.find(v=>v.piece.id===id))
+  for(let bar=0;bar<122;bar++)assert.deepEqual(normalize(actual.queryArc(bar,bar+1)),normalize(pattern.queryArc(bar,bar+1)),`${id} bar ${bar}`)
+ }
+})
+
+test('study drum parts retain each onset from the supplied mixed drum pattern',async()=>{
+ const api=await strudel(),kit=creative.parseCreativeSession(fs.readFileSync(path.join(__dirname,'../public/presets/mouth-breather.json'),'utf8'))
+ const drumPattern=api.s('<[bd ~ bd sd ~ bd!2 ~!2 bd sd ~ bd ~!2 bd sd bd ~ bd sd ~ bd ~],oh*12,cr*2>/24').fast(8)
+ for(const [id,sound] of [['w:a2','bd'],['w:b2','sd'],['w:c2','oh'],['w:d2','cr']]){
+  const expected=drumPattern.queryArc(0,3).filter(h=>h.hasOnset()&&h.value.s===sound).map(h=>[Number(h.whole.begin),Number(h.whole.end)])
+  assert.deepEqual(kit.instruments[id].pianoRolls[0].notes.map(n=>[n.start,n.start+n.duration]),expected)
+ }
 })

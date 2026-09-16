@@ -1,3 +1,8 @@
+import { performancePattern, type Performance } from './performance'
+import type { PianoRoll } from './piano-roll'
+import { MusicTransport } from './transport'
+import { ReactionQueue } from './reaction-queue'
+import { applyReactions, type Reactions, type ReactionContext } from './reactions'
 import type { Square } from 'chess.js'
 import type { SquareEffects } from '../types'
 import { isConstrainedDevice } from '../performance'
@@ -12,6 +17,9 @@ type Strudel = typeof import('@strudel/web')
 type StrudelPattern = ReturnType<Strudel['note']>
 type StrudelWithPick = Strudel & { pickRestart: (lookup: StrudelPattern[], selector: string) => StrudelPattern }
 export interface MusicSnapshot {
+  reactionDescriptions?: string[]
+  reactionInput?: {config: Reactions; context: ReactionContext; scope: string; lockedBpm?: number}
+
   sectionOverrides?: Record<string, number>
   pieces: MusicPiece[]
   scale: string[]
@@ -31,6 +39,8 @@ export interface MusicSnapshot {
 export interface Preview { id: string; square: Square; mode?: 'manual' | 'pattern' }
 export interface MusicPulse { id: string; square: Square; preview: boolean; duration: number }
 export interface VoiceSpec {
+  performance?: Performance
+
   key: string
   piece: MusicPiece
   square: Square
@@ -39,6 +49,7 @@ export interface VoiceSpec {
   orbit: number
   notes: string
   phrases: string[]
+  pianoRolls?: (PianoRoll | null)[]
   sectionPattern: string
   mask?: string
   controls: Record<string, number | string>
@@ -68,11 +79,14 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
     const phrases = (manual ? ['0'] : instrument.phrases?.length ? instrument.phrases : [instrument.notes]).map(toMidiPattern)
     const notes = phrases[0]
     const lpf = Math.min(fx?.lpf ?? instrument.lpf, audition && mapping.previewFilter ? 800 + Number(square[1]) * 1800 : 20000)
+    const performance = !manual && state.sectionOverrides?.[piece.id]===undefined && instrument.selectedVariation===undefined ? instrument.performance : undefined
     return {
+      performance,
       key: `${piece.id}:${audition ? 'preview' : 'loop'}`, piece, square, preview: audition, manual,
       orbit: piece.slot + (audition ? 64 : 0), notes,
       phrases,
-      sectionPattern: state.sectionOverrides?.[piece.id] === undefined ? state.sectionPattern ?? '0' : String(state.sectionOverrides[piece.id]),
+      pianoRolls: manual ? undefined : instrument.pianoRolls?.map(roll=>roll?{...roll,notes:roll.notes.map(n=>({...n,degree:Number(toMidiPattern(String(n.degree)))}))}:null),
+      sectionPattern: performance ? performancePattern(performance) : state.sectionOverrides?.[piece.id] !== undefined ? String(state.sectionOverrides[piece.id]) : instrument.selectedVariation !== undefined ? String(instrument.selectedVariation) : state.sectionPattern ?? '0',
       // A solo should be audible immediately, even when the arrangement mask
       // normally holds this layer back until a later section.
       mask: audition || state.soloId === piece.id || piece.checkEnsemble ? undefined : instrument.mask,
@@ -81,6 +95,8 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
       groove: !manual && instrument.groove ? state.grooves?.[instrument.groove.groove]?.lanes[instrument.groove.lane] : undefined,
       automations: instrument.automations,
       controls: {
+        ...(instrument.distortion ? {distort:`${instrument.distortion}:${instrument.distortionMix??.25}`} : {}),
+        ...(!unpitched && instrument.pitchEnvelope ? {penv:instrument.pitchEnvelope,patt:instrument.pitchAttack??.15} : {}),
         s: source?.kind === 'sample' ? sampleRegistration(source).sound : instrument.sound,
         ...(unpitched ? { speed: pitch } : {}),
         gain: instrument.gain * (fx?.gain ?? 1),
@@ -111,22 +127,51 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
     ...samples.map(sample => `samples(${JSON.stringify(sample.map)})`),
     'stack(',
     ...voices.map(v => {
-      const eventType = v.unpitched ? 'n' : 'note'
-      const source = v.phrases.length > 1
-        ? `${JSON.stringify(v.sectionPattern)}.pickRestart([${v.phrases.map(phrase => `${eventType}(${JSON.stringify(phrase)})`).join(', ')}])`
-        : `${eventType}(${JSON.stringify(v.notes)})`
-      const mask = v.mask ? `.mask(${JSON.stringify(v.mask)})` : ''
-      const groove = v.groove ? `.struct(${patternBankCode(v.groove.rhythms, v.sectionPattern)}).velocity(${patternBankCode(v.groove.accents, v.sectionPattern)})` : ''
-      const automation = Object.entries(v.automations ?? {}).map(([key, value]) => `.${key}(${automationCode(value, v.sectionPattern)}${key === 'gain' ? `.mul(${Number(v.controls.gain)})` : key === 'lpf' && v.preview ? `.withValue(x => Math.min(x, ${v.controls.lpf}))` : ''})`).join('')
       const mix = state.volume * Math.min(1, Math.sqrt(10 / Math.max(1, voices.filter(voice => !voice.preview).length)))
-      return `  // ${v.piece.id} · ${v.instrument.name.replace(/[\r\n]/g, ' ')}${v.preview ? ' · audition' : ''}\n  ${source}${groove}${mask}\n    ${Object.entries(v.controls).map(([key, value]) => `.${key}(${JSON.stringify(value)})`).join('')}${automation}.postgain(${mix}).orbit(${v.orbit}),`
+      return `  // ${v.piece.id} · ${v.instrument.name.replace(/[\r\n]/g, ' ')}${v.preview ? ' · audition' : ''}\n  ${voiceCode(v)}.postgain(${mix}).orbit(${v.orbit}),`
     }),
     voices.length ? ')' : '  silence\n)',
   ].join('\n')
 }
 
+function voiceCode(voice: VoiceSpec): string {
+  if (voice.performance) {
+    const plan = voice.performance
+    const variations = [...new Set(plan.steps.filter(step=>step.active).map(step=>step.variation))]
+    const declarations = variations.map(index=>`const part${index} = ${voiceCode({...voice,performance:undefined,sectionPattern:String(index)})};`).join('\n    ')
+    const banks = plan.steps.map(step=>step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence')
+    const selector = JSON.stringify(performancePattern(plan, true))
+    const form = plan.restart ? `pickRestart([${banks.join(', ')}], mini(${selector}))` : `stack(${banks.map((bank, i) => `${bank}.mask(mini(${selector}).withValue(v => Number(v) === ${i}))`).join(', ')})`
+    return `(() => {\n    ${declarations}\n    return ${form};\n  })()`
+  }
+  const event = voice.unpitched ? 'n' : 'note'
+  const fixed = /^\d+$/.test(voice.sectionPattern) ? Number(voice.sectionPattern) : undefined
+  const banks = voice.phrases.map((phrase, i) => {
+    const roll = voice.pianoRolls?.[i]
+    let source = roll ? (roll.notes.length ? `stack(${roll.notes.map(n => {
+      const chunks: string[] = []
+      if (n.start) chunks.push(`[${n.start}, silence]`)
+      const overrides = {...(n.slide && !voice.unpitched ? {penv:n.slide,pattack:n.slideSeconds??.15} : {}), ...(n.pan !== undefined ? {pan:n.pan} : {})}
+      chunks.push(`[${n.duration}, ${event}(${n.degree}).velocity(${n.velocity}).withValue(v => ({...v, ccOverrides: ${JSON.stringify(overrides)}}))]`)
+      if (n.start+n.duration<roll.bars) chunks.push(`[${roll.bars-n.start-n.duration}, silence]`)
+      return `timeCat(${chunks.join(', ')}).slow(${roll.bars})`
+    }).join(', ')})` : 'silence') : `${event}(${JSON.stringify(phrase)})`
+    if (!roll && voice.groove) source += `.struct(${JSON.stringify(voice.groove.rhythms[(fixed??i)%voice.groove.rhythms.length])}).velocity(${JSON.stringify(voice.groove.accents[(fixed??i)%voice.groove.accents.length])})`
+    return source
+  })
+  let source = fixed !== undefined ? banks[fixed % banks.length] : voice.pianoRolls?.some(Boolean)
+    ? `stack(${banks.map((bank,i)=>`${bank}.mask(mini(${JSON.stringify(voice.sectionPattern)}).withValue(v => Number(v) % ${banks.length} === ${i}))`).join(', ')})`
+    : voice.phrases.length > 1 ? `pickRestart([${voice.phrases.map(p=>`${event}(${JSON.stringify(p)})`).join(', ')}], mini(${JSON.stringify(voice.sectionPattern)}))` : `${event}(${JSON.stringify(voice.notes)})`
+  if (voice.groove && fixed === undefined && !voice.pianoRolls?.some(Boolean)) source += `.struct(${patternBankCode(voice.groove.rhythms,voice.sectionPattern)}).velocity(${patternBankCode(voice.groove.accents,voice.sectionPattern)})`
+  if (voice.mask) source += `.mask(${JSON.stringify(voice.mask)})`
+  source += Object.entries(voice.controls).map(([key,value])=>`.${key}(${JSON.stringify(value)})`).join('')
+  source += Object.entries(voice.automations??{}).map(([key,value])=>`.${key}(${automationCode(value,voice.sectionPattern)}${key==='gain'?`.mul(${Number(voice.controls.gain)})`:key==='lpf'&&voice.preview?`.withValue(x => Math.min(x, ${voice.controls.lpf}))`:''})`).join('')
+  return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}))`
+}
+
 function patternBankCode(patterns: string[], section: string) {
-  return patterns.length === 1 ? `mini(${JSON.stringify(patterns[0])})` : `${JSON.stringify(section)}.pickRestart([${patterns.map(p => `mini(${JSON.stringify(p)})`).join(', ')}])`
+  if(/^\d+$/.test(section))return `mini(${JSON.stringify(patterns[Number(section)%patterns.length])})`
+  return patterns.length === 1 ? `mini(${JSON.stringify(patterns[0])})` : `pickRestart([${patterns.map(p => `mini(${JSON.stringify(p)})`).join(', ')}], mini(${JSON.stringify(section)}))`
 }
 function automationCode(value: Automation, section: string) {
   return value.kind === 'pattern' ? patternBankCode(value.patterns, section) : `${value.kind === 'sine' ? 'sine' : 'saw'}.range(${value.min}, ${value.max}).slow(${value.cycles})`
@@ -147,32 +192,69 @@ function loadLibrary() {
   }).catch(error => { library = undefined; throw error })
 }
 
-export function compileVoice(api: Strudel, voice: VoiceSpec) {
+export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
+  if(voice.performance){
+    const plan=voice.performance
+    const compiled=new Map<string,StrudelPattern>()
+    const banks=plan.steps.map(step=>{
+      if(!step.active)return api.silence
+      const key=`${step.variation}:${voice.unpitched?0:step.transpose}`
+      let pattern=compiled.get(key)
+      if(!pattern){pattern=compileVoice(api,{...voice,performance:undefined,sectionPattern:String(step.variation)});if(!voice.unpitched&&step.transpose)pattern=pattern.transpose(step.transpose);compiled.set(key,pattern)}
+      return pattern
+    })
+    const selector=performancePattern(plan,true)
+    return plan.restart?(api as StrudelWithPick).pickRestart(banks,selector):api.stack(...banks.map((p,i)=>p.mask(api.mini(selector).withValue((v:number)=>Number(v)===i))))
+  }
   const events = voice.unpitched ? api.n : api.note
-  let pattern = voice.phrases.length > 1
-    ? (api as StrudelWithPick).pickRestart(voice.phrases.map(phrase => events(phrase)), voice.sectionPattern)
-    : events(voice.notes)
-  if (voice.groove) pattern = pattern.struct(patternBank(api, voice.groove.rhythms, voice.sectionPattern)).velocity(patternBank(api, voice.groove.accents, voice.sectionPattern))
+  const fixed=/^\d+$/.test(voice.sectionPattern)?Number(voice.sectionPattern):undefined
+  const banks=voice.phrases.map((phrase,index)=>{
+    const roll=voice.pianoRolls?.[index]
+    let pattern=roll ? (roll.notes.length ? api.stack(...roll.notes.map(n=>{
+      const chunks: [number,any][]=[]
+      if(n.start>0)chunks.push([n.start,api.silence])
+      let event=events(n.degree).velocity(n.velocity)
+      if(n.slide&&!voice.unpitched)event=event.withValue((v:object)=>({...v,ccSlide:n.slide,ccSlideTime:n.slideSeconds??.15}))
+      if(n.pan!==undefined)event=event.withValue((v:object)=>({...v,ccPan:n.pan}))
+      chunks.push([n.duration,event])
+      if(n.start+n.duration<roll.bars)chunks.push([roll.bars-n.start-n.duration,api.silence])
+      return (api as Strudel & {timeCat:(...chunks:[number,any][])=>StrudelPattern}).timeCat(...chunks).slow(roll.bars)
+    })) : api.silence) : events(phrase)
+    if(voice.groove&&!roll)pattern=pattern.struct(api.mini(voice.groove.rhythms[(fixed??index)%voice.groove.rhythms.length])).velocity(api.mini(voice.groove.accents[(fixed??index)%voice.groove.accents.length]))
+    return pattern
+  })
+  // Legacy banks retain their original independent groove selection. Piano banks
+  // own note timing; global-phase selection lets different loop lengths coexist.
+  let pattern = fixed!==undefined ? banks[fixed%banks.length] : voice.pianoRolls?.some(Boolean)
+    ? api.stack(...banks.map((bank,index)=>bank.mask(api.mini(voice.sectionPattern).withValue((v:number)=>Number(v)%banks.length===index))))
+    : voice.phrases.length > 1
+      ? (api as StrudelWithPick).pickRestart(voice.phrases.map(phrase=>events(phrase)),voice.sectionPattern)
+      : events(voice.notes)
+  if(voice.groove&&fixed===undefined&&!voice.pianoRolls?.some(Boolean))pattern=pattern.struct(patternBank(api,voice.groove.rhythms,voice.sectionPattern)).velocity(patternBank(api,voice.groove.accents,voice.sectionPattern))
   if (voice.mask) pattern = pattern.mask(voice.mask)
   for (const [key, value] of Object.entries(voice.controls)) pattern = pattern[key](value)
-  for (const [key, value] of Object.entries(voice.automations ?? {})) {
+  for (const [key, original] of Object.entries(voice.automations ?? {})) {
+    const value=fixed!==undefined&&original.kind==='pattern'?{...original,patterns:[original.patterns[fixed%original.patterns.length]]}:original
     let control = automationPattern(api, value, voice.sectionPattern)
     if (key === 'gain') control = control.mul(Number(voice.controls.gain))
     if (key === 'lpf' && voice.preview) control = control.withValue((x: number) => Math.min(x, Number(voice.controls.lpf)))
     pattern = pattern[key](control)
   }
-  return pattern.orbit(voice.orbit).withValue((value: object) => ({ ...value, ccVoice: voice.key }))
+  return pattern.orbit(voice.orbit).withValue((value: any) => {
+    const {ccSlide,ccSlideTime,ccPan,...rest}=value
+    return {...rest,...(ccSlide!==undefined?{penv:ccSlide,pattack:ccSlideTime}:{}),...(ccPan!==undefined?{pan:ccPan}:{}),ccVoice:voice.key}
+  })
 }
 
 // Only the inspected voice gets a variation preview. Compile once per edit and
 // cache four-cycle windows; UI clock ticks never rebuild these patterns.
-export function compileVoiceVariations(api: Strudel, voice: VoiceSpec) {
+export function compileVoiceVariations(api: Strudel, voice: VoiceSpec, limit=24) {
   const banks = [voice.phrases.length, voice.groove?.rhythms.length ?? 1, voice.groove?.accents.length ?? 1,
     ...Object.values(voice.automations ?? {}).map(a => a.kind === 'pattern' ? a.patterns.length : 1)]
   const gcd = (a: number, b: number): number => b ? gcd(b, a % b) : a
-  const count = banks.reduce((a, b) => a * b / gcd(a, b), 1)
+  const count = Math.min(limit, banks.reduce((a, b) => a * b / gcd(a, b), 1))
   const timeline = api.mini(voice.sectionPattern)
-  const patterns = Array.from({ length: count }, (_, index) => compileVoice(api, { ...voice, sectionPattern: String(index), mask: undefined }))
+  const patterns = Array.from({ length: count }, (_, index) => compileVoice(api, { ...voice, performance:undefined, sectionPattern: String(index), mask: undefined }))
   const actual = compileVoice(api, { ...voice, mask: undefined })
   const cache = new Map<number, { key: string; events: NoteEvent[] }>()
   let cachedCycle = -1, sectionEvents: any[] = []
@@ -183,7 +265,7 @@ export function compileVoiceVariations(api: Strudel, voice: VoiceSpec) {
     }
     const section = sectionEvents.find(h => Number(h.part.begin) <= cycle && Number(h.part.end) > cycle)
     const index = ((Number(section?.value ?? 0) % count) + count) % count
-    const banked = banks.some(n => n > 1)
+    const banked = voice.performance ? voice.performance.restart : !/^\d+$/.test(voice.sectionPattern) && !voice.pianoRolls?.some(Boolean) && banks.some(n => n > 1)
     const sectionStart = banked ? Number(section?.whole?.begin ?? 0) : 0
     const phase = Math.max(0, cycle - sectionStart)
     return patterns.map((pattern, i) => {
@@ -208,10 +290,10 @@ export function compileVoiceVariations(api: Strudel, voice: VoiceSpec) {
   }
 }
 
-export async function prepareVoiceVariations(state: MusicSnapshot, id: string) {
+export async function prepareVoiceVariations(state: MusicSnapshot, id: string, limit=24) {
   const api = await loadLibrary()
   const voice = voiceSpecs({ ...state, playing: true, pieces: state.pieces.filter(p => p.id === id).map(p => ({ ...p, active: true })) }, null)[0]
-  return voice ? compileVoiceVariations(api, voice) : null
+  return voice ? compileVoiceVariations(api, voice, limit) : null
 }
 
 // Validate inactive tracks too, without opening an AudioContext or playing sound.
@@ -219,9 +301,9 @@ export async function validateMusicSnapshot(state: MusicSnapshot) {
   const api = await loadLibrary()
   for (const voice of voiceSpecs({ ...state, playing: true, pieces: state.pieces.map(p => ({ ...p, active: true })) }, null)) {
     // Audit all sections without entry masks hiding invalid or very dense parts.
-    for (let section = 0; section < 4; section++) {
-      const pattern = compileVoice(api, { ...voice, mask: undefined, sectionPattern: String(section) })
-      for (let cycle = 0; cycle < 4; cycle++) {
+    for (let section = 0; section < Math.max(voice.phrases.length,4); section++) {
+      const pattern = compileVoice(api, { ...voice, performance: undefined, mask: undefined, sectionPattern: String(section) })
+      for (let cycle = 0; cycle < 8; cycle++) {
         if (pattern.queryArc(cycle, cycle + 1).length > 128) throw new Error(`${voice.instrument.name}: reduza a densidade do padrão.`)
       }
     }
@@ -249,6 +331,10 @@ export class MusicRuntime {
   private api?: Strudel
   private scheduler: any
   private scheduledLoops: unknown[] | undefined
+  private targetBpm = 120
+  private sourceState?: MusicSnapshot
+  private reactionQueue = new ReactionQueue()
+  private rampBars = 0
   private state?: MusicSnapshot
   private preview: Preview | null = null
   private unlockAudition: Preview | null = null
@@ -272,7 +358,7 @@ export class MusicRuntime {
   private sectionCache?: { source: string; pattern: StrudelPattern }
   private maskCache = new Map<string, StrudelPattern>()
   private manualHit?: { voice: VoiceSpec; value: any; start: number; end: number }
-  constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor()) {}
+  constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
 
   // Preload JS only. AudioContext is created/resumed from an interaction.
   preload() { void loadLibrary().catch(this.error) }
@@ -300,7 +386,11 @@ export class MusicRuntime {
     this.analyser = context.createAnalyser()
     this.analyser.fftSize = 256
     this.teamMixer = new TeamMixer(context, this.analyser)
-    this.scheduler = new s.Cyclist({
+    this.scheduler = new MusicTransport({
+      onBoundary: (cycle: number) => {
+        const transition = this.reactionQueue.advance(cycle)
+        if (transition.changed) { this.rampBars = transition.bars; this.resolveState(); this.refresh() }
+      },
       // More scheduling headroom on touch devices; manual notes keep their
       // independent 30 ms response and the monitor follows this latency.
       latency: constrained ? .18 : .1,
@@ -316,7 +406,29 @@ export class MusicRuntime {
     this.monitorTimer = setInterval(() => { if (this.scheduler?.started && this.monitor.hasSubscribers()) this.publishFrame() }, constrained ? 150 : 100)
   }
 
-  update(state: MusicSnapshot) { this.state = state; this.refresh() }
+  update(state: MusicSnapshot) {
+    this.sourceState = state
+    const input=state.reactionInput
+    this.targetBpm=input?.lockedBpm ?? (input?applyReactions(state,input.config,input.context).snapshot.bpm:state.bpm)
+    this.rampBars=input ? this.reactionQueue.update(input.config,input.context,!!this.scheduler?.started&&state.playing,this.scheduler?.lastEnd??0,input.scope) : 0
+    this.resolveState()
+    this.refresh()
+  }
+  private resolveState() {
+    if(!this.sourceState)return
+    const input=this.sourceState.reactionInput
+    const resolved=input?applyReactions(this.sourceState,input.config,input.context,this.reactionQueue.entries):undefined
+    this.state=resolved?{...resolved.snapshot,reactionDescriptions:resolved.descriptions}:this.sourceState
+    if(input?.lockedBpm!==undefined){this.state={...this.state,bpm:input.lockedBpm};this.rampBars=0}
+    this.onResolved?.(this.state)
+  }
+  private transportFrame() {
+    const cycle=this.scheduler?.cycle??0
+    return { bpm:this.scheduler?.started ? this.scheduler?.tempo?.bpmAt(cycle)??this.state?.bpm??120 : this.state?.bpm??120,
+      targetBpm:this.targetBpm, scale:this.state?.scale??[],
+      ramp:this.scheduler?.started?this.scheduler?.tempo?.transition(cycle):undefined,
+      pending:[...this.reactionQueue.pending].map(([id,p])=>({id,cycle:p.cycle,trigger:p.entry.rule.trigger})) }
+  }
 
   audition(id: string, square: Square, mode: Preview['mode'] = 'manual') {
     if (this.preview?.id === id && this.preview.square === square && this.preview.mode === mode) return
@@ -463,7 +575,7 @@ export class MusicRuntime {
           values: last ? { gain: Number(last.gain) * Number(last.velocity ?? 1), lpf: Number(last.cutoff ?? last.lpf), pan: Number(last.pan), room: Number(last.room), delay: Number(last.delay) } : {},
         }
       }
-      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * 4) + 1, section, tracks })
+      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * 4) + 1, section, tracks, transport: this.transportFrame() })
     } catch (error) { this.error(error) }
   }
 
@@ -514,7 +626,7 @@ export class MusicRuntime {
   private refresh() {
     if (!this.state || this.disposed) return
     if (!this.api || !this.scheduler) {
-      this.monitor.publish({ running: false, cycle: 0, beat: 1, section: 0, tracks: Object.fromEntries(this.state.pieces.map(piece => [piece.id, {
+      this.monitor.publish({ running: false, cycle: 0, beat: 1, section: 0, transport: this.transportFrame(), tracks: Object.fromEntries(this.state.pieces.map(piece => [piece.id, {
         status: this.state!.soloId && this.state!.soloId !== piece.id ? 'solo-muted' : piece.active ? 'paused' : 'inactive', notes: [], events: [], values: {},
       }])) })
       return
@@ -544,7 +656,8 @@ export class MusicRuntime {
         }
         orbit.output.gain.setTargetAtTime(this.state.volume * denseMixAttenuation, time, 0.015)
       }
-      this.scheduler.setCps(this.state.bpm / 240)
+      this.scheduler.setCps(this.state.bpm / 240, this.rampBars)
+      this.rampBars = 0
       if (changed) {
         const pattern = compiledLoops.length ? this.api.stack(...compiledLoops) : this.api.silence
         void this.scheduler.setPattern(pattern)
@@ -595,4 +708,16 @@ export class MusicRuntime {
     this.analyser?.disconnect()
     this.teamMixer?.dispose()
   }
+}
+
+/** Convert a bounded window of a source variation to editable scale degrees. */
+export async function preparePianoRoll(state:MusicSnapshot,id:string,index:number,bars=4):Promise<PianoRoll> {
+  const api=await loadLibrary()
+  const voice=voiceSpecs({...state,playing:true,pieces:state.pieces.map(p=>({...p,active:true}))},null).find(v=>v.piece.id===id)
+  if(!voice)throw new Error('Peça inexistente.')
+  const phrases=voice.instrument.phrases?.length?voice.instrument.phrases:[voice.instrument.notes]
+  const raw={...voice,performance:undefined,phrases,notes:phrases[0],pianoRolls:undefined,unpitched:false,mask:undefined,sectionPattern:String(index)}
+  const haps=compileVoice(api,raw).queryArc(0,bars)
+  if(haps.length>128)throw new Error('Mais de 128 notas nesta janela. Reduza a duração antes de converter.')
+  return {bars,notes:haps.map((h:any)=>({start:Math.max(0,Number(h.whole.begin)),duration:Math.min(bars,Number(h.whole.end))-Math.max(0,Number(h.whole.begin)),degree:Number(h.value.note),velocity:Math.max(0,Math.min(1,Number(h.value.velocity??1)))})).filter((n:{duration:number})=>n.duration>=1/48)}
 }

@@ -1,3 +1,5 @@
+import { performanceSchema } from './performance'
+import { pianoRollSchema } from './piano-roll'
 import { z } from 'zod'
 import { DEFAULT_MOVEMENT, instrumentFor, piecesFromHistory } from './model'
 import { patternRecipe } from './pattern-library'
@@ -9,14 +11,8 @@ import { reactionsSchema } from './reactions'
 
 export const SOUNDS = ['sbd', 'sine', 'triangle', 'square', 'sawtooth', 'supersaw', 'white', 'pink', 'brown'] as const
 export const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
-export const SCALES = {
-  'Pentatônica menor': [0, 3, 5, 7, 10],
-  'Pentatônica maior': [0, 2, 4, 7, 9],
-  'Maior': [0, 2, 4, 5, 7, 9, 11],
-  'Menor natural': [0, 2, 3, 5, 7, 8, 10],
-  'Dórica': [0, 2, 3, 5, 7, 9, 10],
-  'Mixolídia': [0, 2, 4, 5, 7, 9, 10],
-} as const
+export { SCALE_INTERVALS as SCALES } from './scales'
+import { SCALE_INTERVALS as SCALES, SCALE_NAMES } from './scales'
 
 const finite = (min: number, max: number) => z.number().finite().min(min).max(max)
 // A deliberately bounded subset of mini-notation; never arbitrary JavaScript.
@@ -36,7 +32,7 @@ export function hasMaskBudget(mask: string) {
   return /^[xX\d~\s[\]<>*/!@]+$/.test(mask) && hasControlPatternBudget(mask.replace(/[xX]/g, '1').replace(/~/g, '0'), 0, 1)
 }
 
-export const automationSchema = z.record(z.enum(['gain', 'lpf', 'pan', 'room', 'delay']), z.discriminatedUnion('kind', [
+export const automationSchema = z.record(z.enum(['gain', 'lpf', 'pan', 'room', 'delay', 'penv', 'patt', 'distort']), z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('pattern'), patterns: z.array(z.string()).min(1).max(4) }),
   z.object({ kind: z.literal('sine'), min: z.number().finite(), max: z.number().finite(), cycles: finite(0.25, 32) }),
   z.object({ kind: z.literal('ramp'), min: z.number().finite(), max: z.number().finite(), cycles: finite(0.25, 32) }),
@@ -66,7 +62,12 @@ const instrumentSchema = z.object({
   octave: finite(0, 7).int(), gain: finite(0, 1), attack: finite(0.001, 2),
   release: finite(0.01, 2), lpf: finite(20, 20000), hpf: finite(0, 20000),
   decay: finite(0.01, 2).optional(), sustain: finite(0, 1).optional(), clip: finite(0.01, 1).optional(),
-  phrases: z.array(z.string().refine(hasPatternBudget, 'Variação inválida.')).min(1).max(4).optional(),
+  phrases: z.array(z.string().refine(hasPatternBudget, 'Variação inválida.')).min(1).max(8).optional(),
+  pianoOnly: z.boolean().optional(),
+  pianoRolls: z.array(pianoRollSchema.nullable()).max(8).optional(),
+  performance: performanceSchema.optional(),
+  distortion: finite(0,10).optional(), distortionMix: finite(0,1).optional(), pitchEnvelope: finite(-24,24).optional(), pitchAttack: finite(.001,2).optional(),
+  selectedVariation: z.number().int().min(0).max(7).optional(),
   mask: z.string().refine(hasMaskBudget, 'Máscara inválida.').optional(),
   source: sourceSchema.optional(), automations: automationSchema.optional(),
   groove: z.object({ groove: z.string().max(80), lane: z.string().max(80) }).optional(),
@@ -85,10 +86,11 @@ const pieceSchema = z.object({
 })
 export const creativeSchema = z.object({
   reactions: reactionsSchema,
+  catalogRevision: z.string().max(80).optional(),
   version: z.literal(4), name: z.string().trim().min(1).max(80),
   cityId: z.string().trim().regex(/^[a-z0-9-]+$/).optional(),
   bpm: finite(30, 240), volume: finite(0, 1), root: z.enum(ROOTS),
-  scale: z.enum(['Pentatônica menor', 'Pentatônica maior', 'Maior', 'Menor natural', 'Dórica', 'Mixolídia']),
+  scale: z.enum(SCALE_NAMES),
   sectionPattern: z.string().refine(hasPatternBudget, 'Timeline inválida.'),
   pieces: z.array(pieceSchema).length(32),
   instruments: z.record(instrumentSchema), effects: z.record(effectsSchema), mappings: z.record(mappingSchema),

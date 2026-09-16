@@ -1,0 +1,2668 @@
+{
+  "reactions": {
+    "minimumPieces": 4,
+    "rules": [
+      {
+        "id": "check-band",
+        "trigger": "check",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "activate",
+            "value": 0,
+            "scale": "Maior"
+          }
+        ]
+      }
+    ]
+  },
+  "version": 4,
+  "name": "Mouth Breather · estudo eefano",
+  "bpm": 215,
+  "volume": 0.65,
+  "root": "C",
+  "scale": "Chromatic",
+  "sectionPattern": "0",
+  "pieces": [
+    {
+      "id": "b:a8",
+      "slot": 0,
+      "origin": "a8",
+      "square": "a8",
+      "type": "r",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:b8",
+      "slot": 1,
+      "origin": "b8",
+      "square": "b8",
+      "type": "n",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:c8",
+      "slot": 2,
+      "origin": "c8",
+      "square": "c8",
+      "type": "b",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:d8",
+      "slot": 3,
+      "origin": "d8",
+      "square": "d8",
+      "type": "q",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:e8",
+      "slot": 4,
+      "origin": "e8",
+      "square": "e8",
+      "type": "k",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:f8",
+      "slot": 5,
+      "origin": "f8",
+      "square": "f8",
+      "type": "b",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:g8",
+      "slot": 6,
+      "origin": "g8",
+      "square": "g8",
+      "type": "n",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:h8",
+      "slot": 7,
+      "origin": "h8",
+      "square": "h8",
+      "type": "r",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:a7",
+      "slot": 8,
+      "origin": "a7",
+      "square": "a7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:b7",
+      "slot": 9,
+      "origin": "b7",
+      "square": "b7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:c7",
+      "slot": 10,
+      "origin": "c7",
+      "square": "c7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:d7",
+      "slot": 11,
+      "origin": "d7",
+      "square": "d7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:e7",
+      "slot": 12,
+      "origin": "e7",
+      "square": "e7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:f7",
+      "slot": 13,
+      "origin": "f7",
+      "square": "f7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:g7",
+      "slot": 14,
+      "origin": "g7",
+      "square": "g7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "b:h7",
+      "slot": 15,
+      "origin": "h7",
+      "square": "h7",
+      "type": "p",
+      "color": "b",
+      "active": false
+    },
+    {
+      "id": "w:a2",
+      "slot": 16,
+      "origin": "a2",
+      "square": "a2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:b2",
+      "slot": 17,
+      "origin": "b2",
+      "square": "b2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:c2",
+      "slot": 18,
+      "origin": "c2",
+      "square": "c2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:d2",
+      "slot": 19,
+      "origin": "d2",
+      "square": "d2",
+      "type": "p",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:e2",
+      "slot": 20,
+      "origin": "e2",
+      "square": "e2",
+      "type": "p",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:f2",
+      "slot": 21,
+      "origin": "f2",
+      "square": "f2",
+      "type": "p",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:g2",
+      "slot": 22,
+      "origin": "g2",
+      "square": "g2",
+      "type": "p",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:h2",
+      "slot": 23,
+      "origin": "h2",
+      "square": "h2",
+      "type": "p",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:a1",
+      "slot": 24,
+      "origin": "a1",
+      "square": "a1",
+      "type": "r",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:b1",
+      "slot": 25,
+      "origin": "b1",
+      "square": "b1",
+      "type": "n",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:c1",
+      "slot": 26,
+      "origin": "c1",
+      "square": "c1",
+      "type": "b",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:d1",
+      "slot": 27,
+      "origin": "d1",
+      "square": "d1",
+      "type": "q",
+      "color": "w",
+      "active": true
+    },
+    {
+      "id": "w:e1",
+      "slot": 28,
+      "origin": "e1",
+      "square": "e1",
+      "type": "k",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:f1",
+      "slot": 29,
+      "origin": "f1",
+      "square": "f1",
+      "type": "b",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:g1",
+      "slot": 30,
+      "origin": "g1",
+      "square": "g1",
+      "type": "n",
+      "color": "w",
+      "active": false
+    },
+    {
+      "id": "w:h1",
+      "slot": 31,
+      "origin": "h1",
+      "square": "h1",
+      "type": "r",
+      "color": "w",
+      "active": false
+    }
+  ],
+  "instruments": {
+    "b:a8": {
+      "name": "Sopro eletrônico",
+      "behavior": "phrase",
+      "sound": "square",
+      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
+      "octave": 4,
+      "gain": 0.24,
+      "attack": 0.06,
+      "release": 0.12,
+      "lpf": 1600,
+      "hpf": 180
+    },
+    "b:b8": {
+      "name": "Baixo analógico",
+      "behavior": "phrase",
+      "sound": "sawtooth",
+      "notes": "<[0 ~ 0 2] [0 4 ~ 2]>",
+      "octave": 2,
+      "gain": 0.42,
+      "attack": 0.008,
+      "release": 0.08,
+      "lpf": 900,
+      "hpf": 30
+    },
+    "b:c8": {
+      "name": "Teclas sequenciadas",
+      "behavior": "phrase",
+      "sound": "triangle",
+      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
+      "octave": 4,
+      "gain": 0.32,
+      "attack": 0.01,
+      "release": 0.16,
+      "lpf": 7000,
+      "hpf": 180
+    },
+    "b:d8": {
+      "name": "Melodia principal",
+      "behavior": "phrase",
+      "sound": "triangle",
+      "notes": "<[~ [4 3] 2 ~] [[2 4] ~ 3 [2 ~]]>",
+      "octave": 5,
+      "gain": 0.32,
+      "attack": 0.02,
+      "release": 0.15,
+      "lpf": 6000,
+      "hpf": 300
+    },
+    "b:e8": {
+      "name": "Cordas sintetizadas",
+      "behavior": "sustain",
+      "sound": "supersaw",
+      "notes": "<[0,2,4] [0,3,4]>/2",
+      "octave": 3,
+      "gain": 0.18,
+      "attack": 0.3,
+      "release": 0.3,
+      "lpf": 1600,
+      "hpf": 120
+    },
+    "b:f8": {
+      "name": "Teclas sequenciadas",
+      "behavior": "phrase",
+      "sound": "triangle",
+      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
+      "octave": 4,
+      "gain": 0.32,
+      "attack": 0.01,
+      "release": 0.16,
+      "lpf": 7000,
+      "hpf": 180
+    },
+    "b:g8": {
+      "name": "Baixo analógico",
+      "behavior": "phrase",
+      "sound": "sawtooth",
+      "notes": "<[0 ~ 0 2] [0 4 ~ 2]>",
+      "octave": 2,
+      "gain": 0.42,
+      "attack": 0.008,
+      "release": 0.08,
+      "lpf": 900,
+      "hpf": 30
+    },
+    "b:h8": {
+      "name": "Sopro eletrônico",
+      "behavior": "phrase",
+      "sound": "square",
+      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
+      "octave": 4,
+      "gain": 0.24,
+      "attack": 0.06,
+      "release": 0.12,
+      "lpf": 1600,
+      "hpf": 180
+    },
+    "b:a7": {
+      "name": "Bumbo",
+      "behavior": "pulse",
+      "sound": "sbd",
+      "notes": "0 0 0 0",
+      "octave": 2,
+      "gain": 0.62,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 900,
+      "hpf": 0
+    },
+    "b:b7": {
+      "name": "Caixa",
+      "behavior": "pulse",
+      "sound": "white",
+      "notes": "~ 0 ~ 0",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 6500,
+      "hpf": 1200
+    },
+    "b:c7": {
+      "name": "Chimbal",
+      "behavior": "pulse",
+      "sound": "white",
+      "notes": "0*8",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 14000,
+      "hpf": 7000
+    },
+    "b:d7": {
+      "name": "Clap eletrônico",
+      "behavior": "pulse",
+      "sound": "pink",
+      "notes": "~ 0 ~ [0 ~]",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 6000,
+      "hpf": 1800
+    },
+    "b:e7": {
+      "name": "Tom",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "<[~ ~ 0 ~] [~ 0 ~ 2]>",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 1500,
+      "hpf": 0
+    },
+    "b:f7": {
+      "name": "Chimbal aberto",
+      "behavior": "pulse",
+      "sound": "white",
+      "notes": "~ 0 ~ 0",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.16,
+      "lpf": 12000,
+      "hpf": 6000
+    },
+    "b:g7": {
+      "name": "Rim eletrônico",
+      "behavior": "pulse",
+      "sound": "triangle",
+      "notes": "<[~ 0 ~ ~] [~ ~ 0 ~]>",
+      "octave": 5,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 6500,
+      "hpf": 900
+    },
+    "b:h7": {
+      "name": "Percussão",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "<[~ ~ ~ 0] [~ 2 ~ 0]>",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 2200,
+      "hpf": 100
+    },
+    "w:a2": {
+      "name": "Bateria · bd",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "~",
+      "octave": 2,
+      "gain": 0.48,
+      "attack": 0.003,
+      "release": 0.09,
+      "lpf": 1800,
+      "hpf": 30,
+      "decay": 0.15,
+      "sustain": 0.65,
+      "clip": 0.95,
+      "phrases": [
+        "~"
+      ],
+      "pianoOnly": true,
+      "pianoRolls": [
+        {
+          "bars": 3,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.625,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.125,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.875,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.125,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 8,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          }
+        ]
+      },
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "kick",
+        "variant": 0,
+        "pitched": false
+      }
+    },
+    "w:b2": {
+      "name": "Bateria · sd",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "~",
+      "octave": 2,
+      "gain": 0.3,
+      "attack": 0.003,
+      "release": 0.09,
+      "lpf": 9000,
+      "hpf": 30,
+      "decay": 0.15,
+      "sustain": 0.65,
+      "clip": 0.95,
+      "phrases": [
+        "~"
+      ],
+      "pianoOnly": true,
+      "pianoRolls": [
+        {
+          "bars": 3,
+          "notes": [
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 8,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          }
+        ]
+      },
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "snare",
+        "variant": 0,
+        "pitched": false
+      }
+    },
+    "w:c2": {
+      "name": "Bateria · oh",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "~",
+      "octave": 2,
+      "gain": 0.12,
+      "attack": 0.003,
+      "release": 0.09,
+      "lpf": 9000,
+      "hpf": 30,
+      "decay": 0.15,
+      "sustain": 0.65,
+      "clip": 0.95,
+      "phrases": [
+        "~"
+      ],
+      "pianoOnly": true,
+      "pianoRolls": [
+        {
+          "bars": 3,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 8,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          }
+        ]
+      },
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-electro-v1",
+        "asset": "open-hat",
+        "variant": 0,
+        "pitched": false
+      }
+    },
+    "w:d2": {
+      "name": "Bateria · cr",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "~",
+      "octave": 2,
+      "gain": 0.14,
+      "attack": 0.003,
+      "release": 0.09,
+      "lpf": 9000,
+      "hpf": 30,
+      "decay": 0.15,
+      "sustain": 0.65,
+      "clip": 0.95,
+      "phrases": [
+        "~"
+      ],
+      "pianoOnly": true,
+      "pianoRolls": [
+        {
+          "bars": 3,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 1.5,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 1.5,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 8,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          }
+        ]
+      },
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-world-v1",
+        "asset": "crash",
+        "variant": 0,
+        "pitched": false
+      }
+    },
+    "w:e2": {
+      "name": "Tom",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "<[~ ~ 0 ~] [~ 0 ~ 2]>",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 1500,
+      "hpf": 0
+    },
+    "w:f2": {
+      "name": "Chimbal aberto",
+      "behavior": "pulse",
+      "sound": "white",
+      "notes": "~ 0 ~ 0",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.16,
+      "lpf": 12000,
+      "hpf": 6000
+    },
+    "w:g2": {
+      "name": "Rim eletrônico",
+      "behavior": "pulse",
+      "sound": "triangle",
+      "notes": "<[~ 0 ~ ~] [~ ~ 0 ~]>",
+      "octave": 5,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 6500,
+      "hpf": 900
+    },
+    "w:h2": {
+      "name": "Percussão",
+      "behavior": "pulse",
+      "sound": "sine",
+      "notes": "<[~ ~ ~ 0] [~ 2 ~ 0]>",
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.035,
+      "lpf": 2200,
+      "hpf": 100
+    },
+    "w:a1": {
+      "name": "Sopro eletrônico",
+      "behavior": "phrase",
+      "sound": "square",
+      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
+      "octave": 4,
+      "gain": 0.24,
+      "attack": 0.06,
+      "release": 0.12,
+      "lpf": 1600,
+      "hpf": 180
+    },
+    "w:b1": {
+      "name": "Baixo · frase quebrada",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~",
+      "octave": 2,
+      "gain": 0.33,
+      "attack": 0.003,
+      "release": 0.06,
+      "lpf": 9000,
+      "hpf": 30,
+      "decay": 0.15,
+      "sustain": 0.65,
+      "clip": 0.95,
+      "phrases": [
+        "~"
+      ],
+      "pianoOnly": true,
+      "pianoRolls": [
+        {
+          "bars": 3,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.125,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.875,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.875,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.125,
+              "duration": 0.125,
+              "degree": 1,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.125,
+              "degree": 5,
+              "velocity": 1
+            },
+            {
+              "start": 1.375,
+              "duration": 0.125,
+              "degree": 1,
+              "velocity": 1
+            },
+            {
+              "start": 2.625,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.125,
+              "degree": 5,
+              "velocity": 1
+            },
+            {
+              "start": 2.875,
+              "duration": 0.125,
+              "degree": 7,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -5,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -7,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 8,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -5,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -7,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          }
+        ]
+      },
+      "distortion": 5,
+      "distortionMix": 0.31,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-jazz-v1",
+        "asset": "pluck",
+        "variant": 0,
+        "pitched": true
+      }
+    },
+    "w:c1": {
+      "name": "Teclas sequenciadas",
+      "behavior": "phrase",
+      "sound": "triangle",
+      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
+      "octave": 4,
+      "gain": 0.32,
+      "attack": 0.01,
+      "release": 0.16,
+      "lpf": 7000,
+      "hpf": 180
+    },
+    "w:d1": {
+      "name": "Guitarra · riff e queda",
+      "behavior": "phrase",
+      "sound": "sine",
+      "notes": "~",
+      "octave": 3,
+      "gain": 0.34,
+      "attack": 0.003,
+      "release": 0.09,
+      "lpf": 3000,
+      "hpf": 80,
+      "decay": 0.15,
+      "sustain": 0.65,
+      "clip": 0.95,
+      "phrases": [
+        "~",
+        "~"
+      ],
+      "pianoOnly": true,
+      "pianoRolls": [
+        {
+          "bars": 3,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.125,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 0.125,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.125,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.875,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 0.875,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 0.875,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.125,
+              "duration": 0.125,
+              "degree": 1,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1.125,
+              "duration": 0.125,
+              "degree": 8,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.125,
+              "duration": 0.125,
+              "degree": 13,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.375,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1.375,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.375,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.875,
+              "duration": 0.375,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 1.875,
+              "duration": 0.375,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 1.875,
+              "duration": 0.375,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.625,
+              "duration": 0.125,
+              "degree": 1,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 2.625,
+              "duration": 0.125,
+              "degree": 8,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.625,
+              "duration": 0.125,
+              "degree": 13,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.125,
+              "degree": 7,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.125,
+              "degree": 12,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.875,
+              "duration": 0.125,
+              "degree": 0,
+              "pan": 0.51,
+              "velocity": 1
+            },
+            {
+              "start": 2.875,
+              "duration": 0.125,
+              "degree": 5,
+              "pan": 0.49,
+              "velocity": 1
+            },
+            {
+              "start": 2.875,
+              "duration": 0.125,
+              "degree": 10,
+              "pan": 0.49,
+              "velocity": 1
+            }
+          ]
+        },
+        {
+          "bars": 6,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.375,
+              "degree": -8,
+              "slide": -3,
+              "slideSeconds": 0.6,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 0.375,
+              "degree": -1,
+              "slide": -3,
+              "slideSeconds": 0.6,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 0.375,
+              "degree": 4,
+              "slide": -3,
+              "slideSeconds": 0.6,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -5,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -7,
+            "active": true
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 8,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 48,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -5,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": -7,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 0,
+            "transpose": 0,
+            "active": false
+          }
+        ]
+      },
+      "distortion": 10,
+      "distortionMix": 0.17,
+      "source": {
+        "kind": "sample",
+        "bank": "chicken-world-v1",
+        "asset": "guitar",
+        "variant": 0,
+        "pitched": true
+      }
+    },
+    "w:e1": {
+      "name": "Cordas sintetizadas",
+      "behavior": "sustain",
+      "sound": "supersaw",
+      "notes": "<[0,2,4] [0,3,4]>/2",
+      "octave": 3,
+      "gain": 0.18,
+      "attack": 0.3,
+      "release": 0.3,
+      "lpf": 1600,
+      "hpf": 120
+    },
+    "w:f1": {
+      "name": "Teclas sequenciadas",
+      "behavior": "phrase",
+      "sound": "triangle",
+      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
+      "octave": 4,
+      "gain": 0.32,
+      "attack": 0.01,
+      "release": 0.16,
+      "lpf": 7000,
+      "hpf": 180
+    },
+    "w:g1": {
+      "name": "Baixo analógico",
+      "behavior": "phrase",
+      "sound": "sawtooth",
+      "notes": "<[0 ~ 0 2] [0 4 ~ 2]>",
+      "octave": 2,
+      "gain": 0.42,
+      "attack": 0.008,
+      "release": 0.08,
+      "lpf": 900,
+      "hpf": 30
+    },
+    "w:h1": {
+      "name": "Sopro eletrônico",
+      "behavior": "phrase",
+      "sound": "square",
+      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
+      "octave": 4,
+      "gain": 0.24,
+      "attack": 0.06,
+      "release": 0.12,
+      "lpf": 1600,
+      "hpf": 180
+    }
+  },
+  "effects": {
+    "b:a8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:b8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:c8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:d8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:e8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:f8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:g8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:h8": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:a7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:b7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:c7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:d7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:e7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:f7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:g7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "b:h7": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:a2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.3,
+      "decay": 0.15
+    },
+    "w:b2": {
+      "gain": 1,
+      "pitch": 0.88,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.3,
+      "decay": 0.15
+    },
+    "w:c2": {
+      "gain": 1,
+      "pitch": 0.9,
+      "pan": -0.1,
+      "delay": 0,
+      "reverb": 0.3,
+      "decay": 0.15
+    },
+    "w:d2": {
+      "gain": 1,
+      "pitch": 0.95,
+      "pan": 0.1,
+      "delay": 0,
+      "reverb": 0.3,
+      "decay": 0.15
+    },
+    "w:e2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:f2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:g2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:h2": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:a1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:b1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.2,
+      "decay": 0.15
+    },
+    "w:c1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:d1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.1,
+      "decay": 0.15
+    },
+    "w:e1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:f1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:g1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    },
+    "w:h1": {
+      "gain": 1,
+      "pitch": 1,
+      "pan": 0,
+      "delay": 0,
+      "reverb": 0.12,
+      "decay": 0.15
+    }
+  },
+  "mappings": {
+    "b:a8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:b8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:c8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:d8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:e8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:f8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:g8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:h8": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:a7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:b7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:c7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:d7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:e7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:f7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:g7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "b:h7": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:a2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0,
+      "previewFilter": false
+    },
+    "w:b2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0,
+      "previewFilter": false
+    },
+    "w:c2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0,
+      "previewFilter": false
+    },
+    "w:d2": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0,
+      "previewFilter": false
+    },
+    "w:e2": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:f2": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:g2": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:h2": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:a1": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:b1": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0,
+      "previewFilter": false
+    },
+    "w:c1": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:d1": {
+      "fileDegrees": 0,
+      "rankDegrees": 0,
+      "panWidth": 0,
+      "previewFilter": false
+    },
+    "w:e1": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:f1": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:g1": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    },
+    "w:h1": {
+      "fileDegrees": 1,
+      "rankDegrees": 0.5,
+      "panWidth": 0.5,
+      "previewFilter": true
+    }
+  },
+  "grooves": {}
+}

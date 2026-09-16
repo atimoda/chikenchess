@@ -1,4 +1,7 @@
 export const AUTOMATION_TARGETS = {
+  penv: { label: 'Slide · semitons', min: -24, max: 24, initial: '<0 0 0 -3>' },
+  patt: { label: 'Tempo do slide · s', min: .001, max: 2, initial: '.15' },
+  distort: { label: 'Distorção', min: 0, max: 10, initial: '<1 2 1 3>' },
   gain: { label: 'Acento / ganho ×', min: 0, max: 2, initial: '1 .55 .8 .55' },
   lpf: { label: 'Passa-baixas · Hz', min: 20, max: 20000, initial: '<800 1600 3200 1600>' },
   pan: { label: 'Pan · 0 esquerda / 1 direita', min: 0, max: 1, initial: '.25 .75' },

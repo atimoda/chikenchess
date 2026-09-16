@@ -35,7 +35,10 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
   kit.bpm = Math.max(60, Math.min(175, city.bpm + pick([-20, -12, -6, 0, 6, 12, 20])))
   kit.volume = between(.65, .8)
   kit.root = pick(ROOTS)
-  kit.scale = pick(Object.keys(SCALES) as Array<keyof typeof SCALES>)
+  // Preserve existing factory seeds; newly generated variations explore the full catalog.
+  kit.scale = pick(variation === '01'
+    ? ['Pentatônica menor', 'Pentatônica maior', 'Maior', 'Menor natural', 'Dórica', 'Mixolídia'] as const
+    : Object.keys(SCALES) as Array<keyof typeof SCALES>)
   kit.sectionPattern = pick(['[0@4 1@4 2@4 1@4]/16', '[0@2 1@2 2@4]/8', '[0@4 2@4 1@4 2@4]/16'])
 
   // Shared rhythmic lanes: choose an ensemble feel, then vary its sections.
@@ -84,7 +87,7 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
       panWidth: between(.15, .6), previewFilter: random() > .25,
     }
     if (percussion) {
-      const bank = SAMPLE_BANKS[0]
+      const bank = SAMPLE_BANKS.find(b=>b.id==='chicken-electro-v1')!
       const asset = bank.assets.find(a => a.id === assets[role])!
       Object.assign(instrument, {
         name: `${asset.name} · ${piece.origin}`, behavior: 'pulse', sound: 'sine',
@@ -114,7 +117,7 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
       })
       // Occasionally use the tuned sample as a melodic voice, on any chess role.
       if (!bass && !harmony && random() > .6) {
-        instrument.source = { kind: 'sample', bank: SAMPLE_BANKS[0].id, asset: 'bell', variant: pick([0, 1]), pitched: true }
+        instrument.source = { kind: 'sample', bank: 'chicken-electro-v1', asset: 'bell', variant: pick([0, 1]), pitched: true }
         instrument.name = `Sino sequenciado · ${piece.origin}`
       }
     }
