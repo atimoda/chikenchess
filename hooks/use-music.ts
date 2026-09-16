@@ -5,7 +5,7 @@ import type { Square } from 'chess.js'
 import type { CityData } from '@/lib/cities-data'
 import type { SquareEffects } from '@/lib/types'
 import { instrumentFor, gameMusicStateFromHistory, type InstrumentPerformanceEdit } from '@/lib/music/model'
-import { MusicRuntime, renderMusicCode, type Preview, type MusicPulse } from '@/lib/music/runtime'
+import { MusicRuntime, renderMusicCode, type Preview, type MusicPulse, type MusicSnapshot } from '@/lib/music/runtime'
 import { defaultCityKit, loadCityKit } from '@/lib/music/city-kits'
 import { scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { createMusicMonitor } from '@/lib/music/monitor'
@@ -46,8 +46,10 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     teamMixes,
     title: kit ? `${city.name} · ${kit.name}` : city.name,
   }), [pieces, kit, city.scale, city.name, effectiveBpm, tuning, volume, playing, effects, teamMixes])
-  const resolved = useMemo(() => kit ? applyReactions(baseSnapshot, kit.reactions, context) : { snapshot:baseSnapshot, descriptions:[] }, [baseSnapshot,kit,context])
-  const snapshot = useMemo(() => quartzLock ? { ...resolved.snapshot, bpm: kit?.bpm ?? bpm } : resolved.snapshot, [quartzLock,resolved.snapshot,kit?.bpm,bpm])
+  const [audible, setAudible] = useState<MusicSnapshot | null>(null)
+  const input = useMemo(() => ({...baseSnapshot,reactionInput:kit?{config:kit.reactions,context,scope:city.id,lockedBpm:quartzLock?kit.bpm:undefined}:undefined}),[baseSnapshot,kit,context,city.id,quartzLock])
+  const resolved = useMemo(() => kit ? applyReactions(baseSnapshot,kit.reactions,context) : {snapshot:baseSnapshot,descriptions:[]},[baseSnapshot,kit,context])
+  const snapshot: MusicSnapshot = audible ?? resolved.snapshot
   const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active).map(p => p.square)), [snapshot.pieces])
   const code = useMemo(() => enabled && showCode ? renderMusicCode(snapshot, preview) : '', [enabled, showCode, snapshot, preview])
 
@@ -63,16 +65,16 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   }, [city.id])
   useEffect(() => {
     if (!enabled) return
-    const engine = new MusicRuntime(setPulse, e => setError(e instanceof Error ? e.message : String(e)), monitor)
+    const engine = new MusicRuntime(setPulse, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
     runtime.current = engine
     engine.preload()
     return () => { engine.dispose(); runtime.current = null }
   }, [enabled, monitor])
   useEffect(() => {
     const mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
-    const timer = setTimeout(() => runtime.current?.update(snapshot), mobile ? 50 : 16)
+    const timer = setTimeout(() => runtime.current?.update(input), mobile ? 50 : 16)
     return () => clearTimeout(timer)
-  }, [snapshot])
+  }, [input])
   useEffect(() => {
     if (enabled && playing) void runtime.current?.unlock()
   }, [enabled, playing])
@@ -125,7 +127,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   return {
     enabled, audition, endAudition, select, reset, selected, effects, setEffects, snapshot, teamMixes, updateTeamMix,
     deckClock: { finePitch, quartzLock, effectiveBpm: snapshot.bpm, originalBpm: kit?.bpm ?? bpm, setFinePitch, setQuartzLock },
-    code, preview, pulse, error, getFrequencyData, monitor, reactionDescriptions: resolved.descriptions,
+    code, preview, pulse, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,
     kitVolume: kit?.volume ?? null,

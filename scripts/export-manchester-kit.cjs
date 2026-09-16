@@ -18,7 +18,7 @@ function load(file) {
   mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, file)
   return mod.exports
 }
-const kit = load(path.join(root, 'lib/music/manchester-kit.ts')).createManchesterJazzKit()
+const kit = load(path.join(root, 'lib/music/city-kits.ts')).defaultCityKit('manchester-1999')
 const snapshot = load(path.join(root, 'lib/music/creative.ts')).creativeSnapshot(kit, true)
 const code = load(path.join(root, 'lib/music/runtime.ts')).renderMusicCode(snapshot, null)
 const dest = path.join(root, 'public/presets')

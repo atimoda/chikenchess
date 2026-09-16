@@ -20,20 +20,17 @@ export type Trigger = keyof typeof TRIGGERS
 export type Occurrence = { trigger: Trigger; color: 'w' | 'b'; ply: number }
 export interface ReactionContext { ply: number; states: Occurrence[]; events: Occurrence[] }
 export const ACTIONS = { transpose: 'Transpor (semitons; 2 = 1 tom)', bpm: 'Alterar BPM (%)', scale: 'Trocar escala paralela', relative: 'Relativa maior/menor', mode: 'Rotação modal (graus)', invert: 'Inverter contorno melódico', variation: 'Forçar variação (0=A, 1=B…)', gain: 'Alterar ganho (%)', lpf: 'Filtro passa-baixas (Hz)', activate: 'Ativar banda' } as const
-export const SCALE_INTERVALS = {
-  'Maior': [0, 2, 4, 5, 7, 9, 11], 'Menor natural': [0, 2, 3, 5, 7, 8, 10],
-  'Dórica': [0, 2, 3, 5, 7, 9, 10], 'Mixolídia': [0, 2, 4, 5, 7, 9, 10],
-  'Pentatônica menor': [0, 3, 5, 7, 10], 'Pentatônica maior': [0, 2, 4, 7, 9],
-} as const
+export { SCALE_INTERVALS } from './scales'
+import { SCALE_INTERVALS } from './scales'
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
-export const actionSchema = z.object({ type: z.enum(keys(ACTIONS)), value: z.number().finite().min(-100).max(20000).default(0), scale: z.enum(keys(SCALE_INTERVALS)).default('Maior') }).superRefine((a, ctx) => {
-  const limits: Record<keyof typeof ACTIONS, [number, number]> = { transpose: [-12,12], bpm: [-30,30], scale: [0,0], relative:[0,0], mode:[0,6], invert:[0,0], variation:[0,3], gain:[-100,100], lpf:[20,20000], activate:[0,0] }
+export const actionSchema = z.object({ type: z.enum(keys(ACTIONS)), rampBars: z.number().int().min(0).max(16).optional(), value: z.number().finite().min(-100).max(20000).default(0), scale: z.enum(keys(SCALE_INTERVALS)).default('Maior') }).superRefine((a, ctx) => {
+  const limits: Record<keyof typeof ACTIONS, [number, number]> = { transpose: [-12,12], bpm: [-30,30], scale: [0,0], relative:[0,0], mode:[0,11], invert:[0,0], variation:[0,7], gain:[-100,100], lpf:[20,20000], activate:[0,0] }
   const [lo,hi]=limits[a.type]
   if(a.value<lo || a.value>hi || (['transpose','mode','variation'].includes(a.type) && !Number.isInteger(a.value))) ctx.addIssue({code:'custom',message:'Valor fora do limite da ação.'})
 })
-export const reactionSchema = z.object({ id: z.string().min(1).max(80), trigger: z.enum(keys(TRIGGERS)), enabled: z.boolean(), target: z.enum(['both','w','b','actor','opponent']), duration: z.number().int().min(1).max(32), actions: z.array(actionSchema).max(12) })
+export const reactionSchema = z.object({ id: z.string().min(1).max(80), trigger: z.enum(keys(TRIGGERS)), enabled: z.boolean(), quantize: z.boolean().default(false), target: z.enum(['both','w','b','actor','opponent']), duration: z.number().int().min(1).max(32), actions: z.array(actionSchema).max(12) })
 export type Reaction = z.infer<typeof reactionSchema>
-export const defaultReactions = (): Reaction[] => [{ id:'check-band',trigger:'check',enabled:true,target:'actor',duration:1,actions:[{type:'activate',value:0,scale:'Maior'}] }]
+export const defaultReactions = (): Reaction[] => [{ id:'check-band',trigger:'check',enabled:true,quantize:false,target:'actor',duration:1,actions:[{type:'activate',value:0,scale:'Maior'}] }]
 export const reactionsSchema = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(48).default(defaultReactions) }).default({ minimumPieces:4,rules:defaultReactions() })
 export type Reactions = z.infer<typeof reactionsSchema>
 const other = (c:'w'|'b') => c==='w'?'b':'w'
@@ -80,13 +77,14 @@ const pc=(note:string)=>{const m=/^([A-G])([#b]?)/i.exec(note)!; return (({C:0,D
 const note=(n:number)=>pitchNames[((n%12)+12)%12]+'4'
 
 /** Recompute overlays from the base every time: no drift, no mutation of the kit. */
-export function applyReactions(base:MusicSnapshot, config:Reactions, context:ReactionContext) {
+export function applyReactions(base:MusicSnapshot, config:Reactions, context:ReactionContext, timed?: ReadonlyMap<string, TimedReaction>) {
   const result={...base,pieces:base.pieces.map(p=>({...p})),effects:Object.fromEntries(Object.entries(base.effects).map(([id,fx])=>[id,{...fx}])),instruments:{...base.instruments},sectionOverrides:{...base.sectionOverrides}}
   const descriptions:string[]=[]
-  for(const rule of config.rules){
+  for(const configured of config.rules){
+    const entry=timed?.get(configured.id)
+    const rule=entry?.rule ?? configured
     if(!rule.enabled)continue
-    const matches = rule.trigger in STATES ? context.states : context.events.filter(e=>context.ply-e.ply>=0 && context.ply-e.ply<rule.duration)
-    const hit=matches.filter(e=>e.trigger===rule.trigger).at(-1)
+    const hit=entry ? entry.hit : reactionHit(rule,context)
     if(!hit)continue
     const color=rule.target==='actor'?hit.color:rule.target==='opponent'?other(hit.color):rule.target
     const ids=result.pieces.filter(p=>color==='both'||p.color===color).map(p=>p.id)
@@ -116,11 +114,21 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         if(action.type==='gain'&&fx)fx.gain=Math.max(0,Math.min(2,fx.gain*(1+action.value/100)))
         if(action.type==='transpose'&&fx&&!(inst.source?.kind==='sample'&&!inst.source.pitched))fx.pitch*=2**(action.value/12)
         if(action.type==='lpf') {const automations={...inst.automations};delete automations.lpf;result.instruments[id]={...inst,lpf:action.value,automations};if(fx)fx.lpf=action.value}
-        if(action.type==='invert'&&inst.behavior!=='pulse'){const flip=(s:string)=>s.replace(/(^|[\s[<,])(-?\d+)/g,(_,p,n)=>p+(-Number(n)));result.instruments[id]={...inst,notes:flip(inst.notes),phrases:inst.phrases?.map(flip)}}
+        if(action.type==='invert'&&inst.behavior!=='pulse'){const flip=(s:string)=>s.replace(/(^|[\s[<,])(-?\d+)/g,(_,p,n)=>p+(-Number(n)));result.instruments[id]={...inst,notes:flip(inst.notes),phrases:inst.phrases?.map(flip),pianoRolls:inst.pianoRolls?.map(roll=>roll?{...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}:null)}}
       }
       descriptions.push(`${TRIGGERS[rule.trigger]} → ${ACTIONS[action.type]} ${action.type==='scale'?action.scale:action.value || ''}`)
     }
   }
   for(const fx of Object.values(result.effects))fx.pitch=Math.max(.125,Math.min(8,fx.pitch))
   return {snapshot:result,descriptions}
+}
+
+export type TimedReaction = { rule: Reaction; hit: Occurrence | undefined }
+export function reactionHit(rule: Reaction, context: ReactionContext) {
+  const matches = rule.trigger in STATES ? context.states : context.events.filter(e => context.ply-e.ply>=0 && context.ply-e.ply<rule.duration)
+  return matches.filter(e=>e.trigger===rule.trigger).at(-1)
+}
+/** Only active influences are queued; inactive edits need no transport work. */
+export function reactionEntries(config: Reactions, context: ReactionContext) {
+  return new Map(config.rules.map(rule => [rule.id, { rule, hit: rule.enabled ? reactionHit(rule,context) : undefined }]))
 }

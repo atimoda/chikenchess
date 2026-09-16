@@ -6,7 +6,8 @@ export interface TrackFrame {
   events: NoteEvent[]
   values: Partial<Record<'gain' | 'lpf' | 'pan' | 'room' | 'delay', number>>
 }
-export interface MusicFrame { running: boolean; cycle: number; beat: number; section: number; tracks: Record<string, TrackFrame> }
+export interface TransportFrame { bpm:number; targetBpm:number; scale:string[]; ramp?:{from:number;target:number;start:number;end:number;progress:number}; pending:{id:string;cycle:number;trigger:string}[] }
+export interface MusicFrame { transport?:TransportFrame; running: boolean; cycle: number; beat: number; section: number; tracks: Record<string, TrackFrame> }
 export const EMPTY_MUSIC_FRAME: MusicFrame = { running: false, cycle: 0, beat: 1, section: 0, tracks: {} }
 
 // Subscribers are tiny playback views. Clock ticks never rebuild the editor,

@@ -1,7 +1,6 @@
 import { parseCreativeSession, type CreativeSession } from './creative'
 import { cities } from '../cities-data'
-import { createRandomCityKit } from './random-kit'
-import { createManchesterJazzKit, MANCHESTER_JAZZ_CITY } from './manchester-kit'
+import { createStyledCityKit, STYLE_REVISION } from './styled-kits'
 
 export const CITY_KIT_STORAGE_PREFIX = 'chickenchess:city-kit:v1:'
 
@@ -14,9 +13,8 @@ export function cityKitStorageKey(cityId: string) {
 }
 
 export function defaultCityKit(cityId: string): CreativeSession | null {
-  if (cityId === MANCHESTER_JAZZ_CITY) return createManchesterJazzKit()
   const city = cities.find(city => city.id === cityId)
-  return city ? createRandomCityKit(city) : null
+  return city ? createStyledCityKit(city) : null
 }
 
 export function prepareCityKitForCreative(session: CreativeSession, cityId: string): CreativeSession {
@@ -27,6 +25,14 @@ export function prepareCityKitForCreative(session: CreativeSession, cityId: stri
   }))
 }
 
+export function previousCityKit(cityId: string): CreativeSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const saved = window.localStorage.getItem(`${CITY_KIT_STORAGE_PREFIX}backup:${STYLE_REVISION}:${cityId}`)
+    return saved ? parseCreativeSession(saved) : null
+  } catch { return null }
+}
+
 export function loadCityKit(cityId: string): CreativeSession | null {
   const fallback = defaultCityKit(cityId)
   if (typeof window === 'undefined') return fallback
@@ -34,7 +40,16 @@ export function loadCityKit(cityId: string): CreativeSession | null {
     const saved = window.localStorage.getItem(cityKitStorageKey(cityId))
     if (!saved) return fallback
     const parsed = parseCreativeSession(saved)
-    return parsed.cityId === cityId ? parsed : fallback
+    if (parsed.cityId !== cityId) return fallback
+    if (parsed.catalogRevision === STYLE_REVISION || !fallback) return parsed
+    // Publish the requested new collection once, retaining the exact previous save.
+    // If backup/storage fails, preserve the user's existing kit.
+    try {
+      const backupKey = `${CITY_KIT_STORAGE_PREFIX}backup:${STYLE_REVISION}:${cityId}`
+      if (!window.localStorage.getItem(backupKey)) window.localStorage.setItem(backupKey, saved)
+      window.localStorage.setItem(cityKitStorageKey(cityId), JSON.stringify(fallback))
+      return fallback
+    } catch { return parsed }
   } catch {
     return fallback
   }

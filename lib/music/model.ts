@@ -1,3 +1,5 @@
+import type { Performance } from './performance'
+import type { PianoRoll } from './piano-roll'
 import { Chess, type PieceSymbol, type Square } from 'chess.js'
 import type { SampleSource } from './sample-banks'
 import type { Automations } from './automation'
@@ -30,6 +32,14 @@ export interface Instrument {
   sustain?: number
   clip?: number
   phrases?: string[]
+  pianoOnly?: boolean
+  pianoRolls?: (PianoRoll | null)[]
+  selectedVariation?: number
+  performance?: Performance
+  distortion?: number
+  distortionMix?: number
+  pitchEnvelope?: number
+  pitchAttack?: number
   mask?: string
   source?: { kind: 'synth' } | SampleSource
   automations?: Automations
