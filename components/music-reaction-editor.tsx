@@ -15,10 +15,7 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
   const activate=(id:Trigger)=>{
     setTrigger(id)
     if(id in STATES)onContext({...context,states:[{trigger:id,color,ply:context.ply}]})
-    else{
-      const ply=context.ply+1
-      onContext({...context,ply,events:[...context.events,{trigger:id,color,ply}].slice(-64)})
-    }
+    else onContext({...context,events:[...context.events.filter(event=>event.trigger!==id),{trigger:id,color,ply:context.ply}].slice(-64)})
   }
   const changeColor=(next:'w'|'b')=>{
     setColor(next)
@@ -31,13 +28,11 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
   }
   const isState=trigger!==null&&trigger in STATES
   return <section aria-label="Estados e Eventos" style={{padding:12,border:'1px solid #35443a',background:'#19221d',borderRadius:8}}>
-    <h2>Estados e Eventos<InfoTip label="Simulação">Clique num item do catálogo para ativá-lo no motor musical e abrir suas regras. As configurações fazem parte do kit atual e ficam vinculadas à cidade quando o kit da fase é salvo.</InfoTip></h2>
-    <details open><summary>Catálogo completo de estados e eventos</summary>
+    <h2>Estados e Eventos<InfoTip label="Simulação">Clique num item para ativá-lo no motor musical e abrir suas regras. Um estado contínuo e eventos temporários podem influenciar a música ao mesmo tempo; escolher outro estado substitui o anterior. Eventos permanecem ativos pela duração das regras e só o botão “Avançar meio-lance” faz o relógio da simulação avançar. As configurações fazem parte do kit atual e ficam vinculadas à cidade quando o kit da fase é salvo.</InfoTip></h2>
       <ul style={{display:'flex',flexWrap:'wrap',gap:5,listStyle:'none',padding:0,margin:'8px 0'}}>{Object.entries(TRIGGERS).map(([id,label])=>{
         const key=id as Trigger,count=config.rules.filter(rule=>rule.trigger===key).length
         return <li key={id}><button aria-pressed={isActive(key)} onClick={()=>activate(key)}>{label} · {count} {count===1?'regra':'regras'}</button></li>
       })}</ul>
-    </details>
     {trigger&&<div style={{borderTop:'1px solid #405247',marginTop:12,paddingTop:12}}>
       <h3 style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,fontSize:15}}>Alterando: {TRIGGERS[trigger]}<InfoTip label="Duração e prioridades">{isState?'As influências retornam à base quando o estado termina.':'Cada clique renova o evento sem acumular a mesma regra. A duração conta meios-lances.'} Regras seguem a ordem salva; percentuais multiplicam, e a última escala, variação ou filtro prevalece.</InfoTip></h3>
       <label><span style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>Lado do estado/evento<InfoTip label="Lado do gatilho">Em cheque, este é o lado atacante. Em perda de peças ou formação mínima, é o lado afetado.</InfoTip></span><select value={color} onChange={e=>changeColor(e.target.value as 'w'|'b')}><option value="w">Brancas</option><option value="b">Pretas</option></select></label>
@@ -48,7 +43,7 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
         <button onClick={()=>onContext({ply:0,states:[],events:[]})}>Limpar simulação</button>
         <button disabled={config.rules.length>=48} onClick={()=>onChange({...config,rules:[...config.rules,{id:`rule-${Date.now()}-${config.rules.length}`,trigger,enabled:true,quantize:false,target:'both',duration:4,actions:[]}]})}>Adicionar regra</button>
       </div>
-      <label><HelpLabel label="Formação mínima · peças restantes por lado (inclui rei)">Limiar de material restante que dispara eventos de formação mínima. Inclui o rei; não conta apenas as vozes ativas.</HelpLabel><input type="number" min={2} max={15} value={config.minimumPieces} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=2&&n<=15)onChange({...config,minimumPieces:n})}} /></label>
+      {(trigger==='minimumOne'||trigger==='minimumBoth')&&<label><HelpLabel label="Formação mínima · peças restantes por lado (inclui rei)">Este limiar pertence somente aos eventos de formação mínima. Eles disparam quando restam no máximo esta quantidade de peças no tabuleiro para um lado; o rei entra na contagem.</HelpLabel><input type="number" min={2} max={15} value={config.minimumPieces} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=2&&n<=15)onChange({...config,minimumPieces:n})}} /></label>}
       {config.rules.filter(rule=>rule.trigger===trigger).map(rule=><fieldset key={rule.id} style={{border:'1px solid #45534a',padding:8,margin:'8px 0'}}>
         <legend>{TRIGGERS[rule.trigger]}</legend>
         <label><input type="checkbox" checked={rule.enabled} onChange={e=>patch(rule.id,{enabled:e.target.checked})}/>Regra habilitada</label>

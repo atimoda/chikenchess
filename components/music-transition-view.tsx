@@ -8,7 +8,7 @@ export function MusicTransitionView({monitor,fallbackBpm}:{monitor:MusicMonitor;
  const bpm=t?.bpm??fallbackBpm, targetBpm=t?.targetBpm??fallbackBpm, pending=t?.pending??[]
  const r=t?.ramp, progress=r?.progress??1, ramping=progress<1
  return <section aria-label="Transições musicais" style={{padding:10,border:'1px solid #405247',borderRadius:6,background:'#152019'}}>
-  <strong>Relógio e transições<InfoTip label="Ler o relógio musical">Quatro tempos por compasso. A linha amarela mostra o avanço da rampa.</InfoTip></strong>
+  <strong>Relógio e transições<InfoTip label="Ler o relógio musical">Nesta versão, o relógio usa sempre quatro tempos por compasso. A subdivisão da grade muda as partes dentro de cada tempo, sem alterar o compasso. A linha amarela mostra o avanço da rampa.</InfoTip></strong>
   <div style={{display:'flex',justifyContent:'space-between',fontVariantNumeric:'tabular-nums',marginTop:8}}><span>Agora <b>{bpm.toFixed(1)} BPM</b></span><span>Destino {targetBpm.toFixed(1)}</span></div>
   <svg viewBox="0 0 300 54" style={{display:'block',width:'100%',height:54}} role="img" aria-label={ramping?`Rampa ${Math.round(progress*100)} por cento`:'BPM estável'}>
    {[0,1,2,3,4].map(i=><line key={i} x1={i*75} x2={i*75} y1={4} y2={50} stroke="#34473c"/>)}
