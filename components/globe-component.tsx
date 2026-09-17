@@ -14,7 +14,7 @@ function GlobeGeography() {
   const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
   const coast = useMemo(() => coastlineSegments(svg), [svg])
   const grid = useMemo(() => globeGridSegments(), [])
-  const uniforms = useMemo(() => ({ color: { value: new Color('#91ad9e') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
+  const uniforms = useMemo(() => ({ color: { value: new Color('#39ff14') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
   return <>
     <lineSegments raycast={() => {}}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[grid, 3]} /></bufferGeometry>
@@ -24,7 +24,7 @@ function GlobeGeography() {
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[coast, 3]} /></bufferGeometry>
       <shaderMaterial transparent depthWrite={false} uniforms={uniforms}
         vertexShader="varying vec3 worldPoint; void main() { vec4 p = modelMatrix * vec4(position, 1.0); worldPoint = p.xyz; gl_Position = projectionMatrix * viewMatrix * p; }"
-        fragmentShader="uniform vec3 color; uniform vec3 sun; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .32 * (.35 + .65 * light)); }" />
+        fragmentShader="uniform vec3 color; uniform vec3 sun; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .7 * (.4 + .6 * light)); }" />
     </lineSegments>
   </>
 }
