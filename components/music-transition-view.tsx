@@ -17,8 +17,6 @@ export function MusicTransitionView({monitor}:{monitor:MusicMonitor}){
   </svg>
   <small>{ramping?`Mudança gradual em ${(r!.end-r!.start).toFixed(0)} compassos · ${Math.round(progress*100)}%`:'Sem rampa em andamento'}</small>
   <div style={{display:'flex',gap:3,margin:'8px 0'}}>{[0,1,2,3].map(i=><div key={i} style={{flex:1,textAlign:'center',padding:4,background:frame.beat===i+1&&frame.running?'#557440':'#26362c'}}>{i+1}</div>)}</div>
-  
-  <p style={{minHeight:24,margin:'6px 0'}}>Notas disponíveis: {t.scale.join(' · ')}</p>
   <div style={{minHeight:36}}>{t.pending.length?t.pending.map(p=><div key={p.id}>{TRIGGERS[p.trigger as Trigger]} → compasso {p.cycle+1} · em {Math.max(0,(p.cycle-frame.cycle)*4).toFixed(1)} tempos</div>):'Nenhuma mudança aguardando a virada.'}</div>
  </section>
 }

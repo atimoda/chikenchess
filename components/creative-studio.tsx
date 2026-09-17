@@ -339,7 +339,7 @@ export function CreativeStudio() {
         <label><HelpLabel label="Escala">Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
         <Range label="Volume geral" value={session.volume} min={0} max={1} onChange={volume => setSession(s => ({ ...s, volume }))} />
         <span className={styles.status}><i className={playing ? styles.running : ''} />{playing ? 'Em execução' : 'Pausado'} · {music.snapshot.pieces.filter(p => p.active).length}/32 ativas{soloId ? ' · solo' : ''}</span>
-        <MusicTransportReadout monitor={music.monitor} />
+        <MusicTransportReadout monitor={music.monitor} showScale />
       </section>
 
       <div className={styles.columns}>

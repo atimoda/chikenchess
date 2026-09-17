@@ -12,13 +12,14 @@ function noteLabel(note: number | null) {
   const n = Math.round(note)
   return `${['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][((n % 12) + 12) % 12]}${Math.floor(n / 12) - 1}`
 }
-export function MusicTransportReadout({ monitor }: { monitor: MusicMonitor }) {
+export function MusicTransportReadout({ monitor, showScale = false }: { monitor: MusicMonitor; showScale?: boolean }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   return <div className={styles.transport} aria-label="Relógio musical">
     <span>{frame.running ? 'Em execução' : 'Parado'} · Seção <b>{String.fromCharCode(65 + Math.max(0, frame.section % 8))}</b></span>
     <span>Compasso {Math.floor(frame.cycle) + 1}</span>
     {frame.transport&&<span aria-label="BPM em execução">{frame.transport.bpm.toFixed(1)} → {frame.transport.targetBpm.toFixed(1)} BPM {frame.transport.ramp&&frame.transport.ramp.progress<1&&<progress aria-label="Avanço da rampa" max={1} value={frame.transport.ramp.progress} style={{width:60}}/>}{frame.transport.pending.length>0&&` · ${frame.transport.pending.length} mudança(s) na virada`}</span>}
     <div className={styles.beats} aria-label={`Tempo ${frame.beat} de 4`}>{[1, 2, 3, 4].map(beat => <i key={beat} data-on={frame.running && frame.beat === beat} />)}</div>
+    {showScale&&frame.transport&&<span className={styles.scale}>Notas disponíveis: {frame.transport.scale.join(' · ')}</span>}
   </div>
 }
 export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: string }) {
