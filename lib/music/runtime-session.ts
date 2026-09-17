@@ -1,5 +1,6 @@
 // Own the audio session: scheduler, mixer, gestures, cancellation and monitor lifecycle.
 import type { Square } from 'chess.js'
+import { ManualReverbCache } from './manual-reverb-cache'
 import { instrumentFor } from './model'
 import { MusicTransport } from './transport'
 import { ReactionQueue } from './reaction-queue'
@@ -33,11 +34,14 @@ export class MusicRuntime {
   private starting = false
   private analyser?: AnalyserNode
   private teamMixer?: TeamMixer
+  private manualReverbs = new ManualReverbCache()
+  private preparedManualOrbits = new WeakSet<object>()
   private connectedOrbits = new Set<number>()
   private visualInterval = 1 / 15
   private visualBuckets = new Map<number, { events: Map<string, MusicPulse>; timer: ReturnType<typeof setTimeout> }>()
   private visualCursor = 0
   private compiled = new Map<string, { signature: string; pattern: StrudelPattern }>()
+  private compiledBySpec = new WeakMap<VoiceSpec, StrudelPattern>()
   private loading = new Set<string>()
   private sampleErrors = new Set<string>()
   private monitorTimer?: ReturnType<typeof setInterval>
@@ -119,17 +123,20 @@ export class MusicRuntime {
 
   audition(id: string, square: Square, mode: Preview['mode'] = 'manual') {
     if (this.preview?.id === id && this.preview.square === square && this.preview.mode === mode) return
+    const crossing = mode === 'manual' && this.preview?.mode === 'manual' && this.preview.id === id && !!this.api && !!this.scheduler
     const requested = { id, square, mode }
     if (this.preview?.mode === 'manual') this.stopManualHit()
     this.preview = requested
-    this.refresh()
+    // Only entry/exit changes the accompaniment. Crossing a square changes one voice.
+    if (!crossing) this.refresh()
     // A short immediate note gives tactile feedback even before the next onset.
     // Keep only the latest square while unlocking/loading audio. Manual gestures
     // cancelled before readiness must never produce a delayed note.
       this.unlockAudition = requested
-      void this.unlock().then(async () => {
+      const ready = this.api?.getAudioContext().state === 'running' ? Promise.resolve() : this.unlock()
+      void ready.then(async () => {
         const source = this.state?.instruments?.[id]?.source
-        if (source?.kind === 'sample' && this.api) await ensureSample(this.api, source)
+        if (source?.kind === 'sample' && this.api && !loadedSamples.has(sampleRegistration(source).sound)) await ensureSample(this.api, source)
         if (this.disposed) return
         const currentMatches = this.preview === requested
         const pendingMatches = this.unlockAudition === requested
@@ -155,7 +162,7 @@ export class MusicRuntime {
     if (!this.api || !this.state || this.disposed) return
     // Build from the requested square as the pointer may already be up by the
     // time the browser grants audio access on the first interaction.
-    const voice = voiceSpecs(this.state, requested).find(v => v.preview)
+    const voice = voiceSpecs({ ...this.state, pieces: this.state.pieces.filter(p => p.id === requested.id) }, requested)[0]
     if (!voice) return
     const pattern = this.patternFor(voice)
     // A groove lane may be resting for an entire section. The tactile note
@@ -169,18 +176,23 @@ export class MusicRuntime {
       this.manualHit = { voice, value: hap.value, start: time, end: time + duration }
       // A previous manual note's orbit was detached when entering this square.
       // Reattach the new note to the current mix before submitting its attack.
-      this.refresh()
+      this.voices.set(voice.key, voice)
+      this.connectVoice(voice)
+      this.publishFrame()
     }
     void this.api.webaudioOutput(hap, 0, duration, this.state.bpm / 240, time).catch(this.error)
     this.scheduleVisual(voice, time, duration)
   }
 
   private patternFor(voice: VoiceSpec) {
+    const sameSpec = this.compiledBySpec.get(voice)
+    if (sameSpec) return sameSpec
     const signature = JSON.stringify(voice)
     const cached = this.compiled.get(voice.key)
-    if (cached?.signature === signature) return cached.pattern
+    if (cached?.signature === signature) { this.compiledBySpec.set(voice, cached.pattern); return cached.pattern }
     const pattern = compileVoice(this.api!, voice)
     this.compiled.set(voice.key, { signature, pattern })
+    this.compiledBySpec.set(voice, pattern)
     return pattern
   }
 
@@ -310,6 +322,22 @@ export class MusicRuntime {
     this.connectedOrbits.delete(orbit)
   }
 
+  private connectVoice(voice: VoiceSpec, loopCount = [...this.voices.values()].filter(v => !v.preview).length) {
+    if (!this.api || !this.state) return
+    const orbit = this.api.getSuperdoughAudioController().getOrbit(voice.orbit, [0, 1])
+    if (voice.manual && orbit.getReverb && !this.preparedManualOrbits.has(orbit)) {
+      this.manualReverbs.attach(orbit, this.api.getAudioContext())
+      this.preparedManualOrbits.add(orbit)
+    }
+    if (!this.connectedOrbits.has(voice.orbit) && this.analyser) {
+      if (this.teamMixer) this.teamMixer.connect(orbit.output, voice.piece.color)
+      else orbit.output.connect(this.analyser)
+      this.connectedOrbits.add(voice.orbit)
+    }
+    const attenuation = Math.min(1, Math.sqrt(10 / Math.max(1, loopCount)))
+    orbit.output.gain.setTargetAtTime(this.state.volume * attenuation, this.api.getAudioContext().currentTime, .015)
+  }
+
   private refresh() {
     if (!this.state || this.disposed) return
     if (!this.api || !this.scheduler) {
@@ -329,20 +357,9 @@ export class MusicRuntime {
       this.voices = next
       for (const mask of this.maskCache.keys()) if (!specs.some(voice => voice.mask === mask)) this.maskCache.delete(mask)
       for (const key of this.compiled.keys()) if (!next.has(key)) { this.compiled.delete(key); this.displayCache.delete(key) }
-      const controller = this.api.getSuperdoughAudioController()
-      const time = this.api.getAudioContext().currentTime
-      const loopCount = specs.filter(voice => !voice.preview).length
-      const denseMixAttenuation = Math.min(1, Math.sqrt(10 / Math.max(1, loopCount)))
       this.teamMixer?.update(this.state.teamMixes ?? createTeamMixes())
-      for (const voice of specs) {
-        const orbit = controller.getOrbit(voice.orbit, [0, 1])
-        if (!this.connectedOrbits.has(voice.orbit) && this.analyser) {
-          if (this.teamMixer) this.teamMixer.connect(orbit.output, voice.piece.color)
-          else orbit.output.connect(this.analyser)
-          this.connectedOrbits.add(voice.orbit)
-        }
-        orbit.output.gain.setTargetAtTime(this.state.volume * denseMixAttenuation, time, 0.015)
-      }
+      const loopCount = specs.filter(v => !v.preview).length
+      for (const voice of specs) this.connectVoice(voice, loopCount)
       this.scheduler.setCps(this.state.bpm / 240, this.rampBars)
       this.rampBars = 0
       if (changed) {
@@ -389,6 +406,7 @@ export class MusicRuntime {
     this.clearVisuals()
     for (const voice of this.voices.values()) this.removeOrbit(voice.orbit)
     this.voices.clear()
+    this.manualReverbs.clear()
     this.compiled.clear()
     this.displayCache.clear()
     this.maskCache.clear()

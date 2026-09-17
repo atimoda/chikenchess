@@ -159,6 +159,14 @@ Na partida, o arraste captura o ponteiro na casa estável, inclusive em touch, e
 
 O acompanhamento só é reenviado ao scheduler quando seus padrões mudam, não a cada casa atravessada em uma audição. Painéis musicais fechados não montam os gráficos; código Strudel oculto não é regenerado, e o monitor periódico consulta padrões apenas com assinantes. Dispositivos restritos usam DPR 1 no globo e agendamento de loops com antecipação de 180 ms (desktop 100 ms); audição manual mantém seu caminho de baixa latência. Esses cortes de trabalho não equivalem a aprovação de desempenho/áudio em celular físico.
 
+### Otimização de arraste e exportação — 16/09
+
+Durante a travessia entre casas da mesma peça, só a voz manual muda; entrada e saída do gesto continuam suspendendo/restaurando a banda. Notas, cancelamento, carregamento, cheque e prioridades anteriores permanecem. No Criativo, a imagem acompanha mouse/toque por transformação de DOM; soltura/cancelamento remove a imagem temporária. O código Strudel é gerado somente com seu painel aberto, onde aparecem contagens estruturais (não nós DSP ativos).
+
+O reverb manual reutiliza o buffer de impulso por configuração, com cache limitado ao runtime; cada ataque conserva seu próprio nó, e a cauda cancelada não retorna na casa seguinte. O impulso aleatório deixa de ser regenerado em toda casa, mantendo a mesma configuração acústica. Alterar configuração ou encontrar buffer ainda pendente usa a fábrica original. Encerrar o runtime limpa o cache. Loops continuam com orbits individuais.
+
+Notas explícitas são agrupadas por início/duração e controles compatíveis; sobreposições permanecem separadas. Playback consome segmentos diretamente e exportação usa mini-notation ponderada. Seções, andamento, instrumentos, envelopes e regras não mudam; saves conservam o schema atual. Decisões, medições e limitações em `docs/CPU_OPTIMIZATION.md`.
+
 ## Mapa e entrada na fase
 
 - Abrir uma cidade orienta a câmera para seu pin; popups podem ser reposicionados.

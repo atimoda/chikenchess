@@ -57,3 +57,5 @@ Strudel references: [samples](https://strudel.cc/learn/samples/), [effects](http
 - `scripts/export-mouth-breather.cjs`: extracts the supplied study's exact note timing using real Strudel and builds a six-piece preset with local synthetic timbres. The entire form, guitar/bass pitches, drum onsets and exported score are regression-tested.
 - `piano-roll.ts` also stores optional per-note pitch envelopes and pan. Envelope time becomes canonical `pattack`; per-note values override instrument controls after automation. `pianoOnly` identifies scores composed directly as notes, without a textual restoration source.
 - `components/info-tip.tsx`: hover/focus/touch help portalled above scrolling columns. Escape/outside press dismisses; pressing help does not edit the associated control.
+
+- `roll-optimizer.ts`: finite event lanes shared by compiler/exporter; `manual-reverb-cache.ts`: bounded impulse reuse with isolated effect nodes. Measurements and rejected substitutions: `docs/CPU_OPTIMIZATION.md`.

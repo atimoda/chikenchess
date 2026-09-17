@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Square } from 'chess.js'
 import { creativeSnapshot, type CreativeSession } from '@/lib/music/creative'
 import { MusicRuntime, renderMusicCode, type MusicPulse, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
+import { strudelCodeStats } from '@/lib/music/code-export'
 import { createMusicMonitor } from '@/lib/music/monitor'
 import { applyReactions, type ReactionContext } from '@/lib/music/reactions'
 
-export function useCreativeMusic(session: CreativeSession, playing: boolean, soloId: string | null, context: ReactionContext) {
+export function useCreativeMusic(session: CreativeSession, playing: boolean, soloId: string | null, context: ReactionContext, showCode = false) {
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
   const [preview, setPreview] = useState<Preview | null>(null)
@@ -17,7 +18,9 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   const input = useMemo(() => ({...creativeSnapshot(session,playing,soloId), reactionInput:{config:session.reactions,context,scope:session.cityId??session.name}}),[session,playing,soloId,context])
   const resolved = useMemo(() => applyReactions(input,session.reactions,context),[input,session.reactions,context])
   const snapshot = audible ?? resolved.snapshot
-  const code = useMemo(() => renderMusicCode(snapshot, preview), [snapshot, preview])
+  const code = useMemo(() => showCode ? renderMusicCode(snapshot, preview) : '', [snapshot, preview, showCode])
+
+  const codeStats = useMemo(() => showCode ? strudelCodeStats(code) : null, [code, showCode])
 
   useEffect(() => {
     const engine = new MusicRuntime(setPulse, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
@@ -56,5 +59,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, endAudition, preview, pulse, error, code, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
+  return { audition, endAudition, preview, pulse, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
 }

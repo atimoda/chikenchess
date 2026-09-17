@@ -9,6 +9,8 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Tom, graus, identidade e ativação | `lib/music/model.ts`, `reactions.ts` | `runtime-types.ts`; histórico de xadrez |
 | Estados/eventos, quantização e BPM | `reactions.ts`, `reaction-queue.ts`, `transport.ts` | `components/music-reaction-editor.tsx`; `music-transition-view.tsx` |
 | Controles que chegam a cada voz | `lib/music/voice-spec.ts` | `model.ts`, `sample-banks.ts`, `runtime-types.ts` |
+| Agrupamento de notas / exportação compacta | `lib/music/roll-optimizer.ts` | `pattern-compiler.ts`, `code-export.ts`; preserva sobreposições |
+| Reverb durante arraste | `lib/music/manual-reverb-cache.ts` | `runtime-session.ts`; adapter Superdough, nunca compartilha nós ativos |
 | Notas, grooves, slides, seções executadas | `lib/music/pattern-compiler.ts` | `performance.ts`, `piano-roll.ts`, `automation.ts`, `grooves.ts` |
 | Código Strudel exibido/exportado | `lib/music/code-export.ts` | Deve permanecer equivalente ao compilador; teste de exportação |
 | Prévia, ponteiro, conversão e validação de padrões | `lib/music/pattern-inspection.ts` | `components/music-piano-editor.tsx`, `music-playback.tsx` |
@@ -50,8 +52,8 @@ O histórico da conversa não é documentação de entrada obrigatória. Ao inic
 
 Subagentes são úteis para trabalho independente, com arquivos de escrita separados, resultado verificável e contexto mínimo. Um agente leve pode executar extrações mecânicas ou levantar referências de código; o principal retém decisões de arquitetura/áudio e revisão. Delegar a mesma investigação a vários agentes ou repassar todo o histórico aumenta consumo. Não há porcentagem de economia garantida: medir tarefas comparáveis antes de afirmar redução de tokens.
 
-## Próxima interação: custo de execução
+## Custo de execução
 
-Investigar com medições: montagem/atualização dos painéis, consultas do monitor, recompilação por edição, agendamento/áudio e globo. A reorganização desta etapa não é uma otimização de CPU nem aprovação de desempenho mobile. Não alterar comportamento musical junto de uma simples movimentação de código.
+Primeira rodada implementada e medida em `docs/CPU_OPTIMIZATION.md`; benchmarks em `scripts/benchmark-{drag,rolls}.cjs`. Próximas investigações com medições: montagem/atualização dos painéis, consultas do monitor, recompilação por edição, agendamento/áudio e globo. A reorganização desta etapa não é uma otimização de CPU nem aprovação de desempenho mobile. Não alterar comportamento musical junto de uma simples movimentação de código.
 
 Ainda há arquivos grandes fora desta extração (`chess-game.tsx`, `world-map.tsx`, `globe-component.tsx` e engine nativa). Separá-los deve acompanhar uma responsabilidade concreta a alterar; quantidade de arquivos, por si só, não mede eficiência.

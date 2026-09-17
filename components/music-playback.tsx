@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { memo, useEffect, useState, useSyncExternalStore } from 'react'
 import { VOICE_STATUS_LABELS, type MusicMonitor, type VoiceStatus } from '@/lib/music/monitor'
 import { prepareVoiceVariations, type MusicSnapshot } from '@/lib/music/runtime'
 import { MusicPianoEditor } from './music-piano-editor'
@@ -25,7 +25,7 @@ export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: st
   const status = useSyncExternalStore<VoiceStatus>(monitor.subscribe, () => monitor.getSnapshot().tracks[id]?.status ?? 'inactive', () => 'inactive')
   return <span className={styles.badge} data-status={status}>{VOICE_STATUS_LABELS[status]}</span>
 }
-export function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, instrument, onInstrumentChange }: { instrument?:Instrument; onInstrumentChange?:(patch:Partial<Pick<Instrument,'phrases'|'pianoRolls'|'selectedVariation'>>)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean }) {
+export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, instrument, onInstrumentChange }: { instrument?:Instrument; onInstrumentChange?:(patch:Partial<Pick<Instrument,'phrases'|'pianoRolls'|'selectedVariation'>>)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const track = frame.tracks[id]
   const [preview, setPreview] = useState<{ read: Awaited<ReturnType<typeof prepareVoiceVariations>>; snapshot: MusicSnapshot; id: string } | null>(null)
@@ -64,4 +64,4 @@ export function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expan
     }
     <div className={styles.values}>{Object.entries(track?.values ?? {}).filter(([, value]) => Number.isFinite(value)).map(([key, value]) => <span key={key}>{key}: {key === 'lpf' ? `${Math.round(value!)} Hz` : value!.toFixed(2)}</span>)}</div>
   </div>
-}
+})

@@ -8,7 +8,7 @@ import { MusicTransitionView } from './music-transition-view'
 import Link from 'next/link'
 import { MusicReactionEditor } from './music-reaction-editor'
 import type { ReactionContext } from '@/lib/music/reactions'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Download, FlaskConical, Pause, Play, Save, Upload } from 'lucide-react'
 import { PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
@@ -59,10 +59,12 @@ export function CreativeStudio() {
   const [formError, setFormError] = useState('')
   const drag = useRef<{ id: string; square: string; origin: string; x: number; y: number; moved: boolean } | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
+  const dragVisualRef = useRef<HTMLSpanElement>(null)
   const [dragVisual, setDragVisual] = useState<{ id: string; svg: keyof typeof PiecesSVG; x: number; y: number } | null>(null)
   const suppressClick = useRef(false)
   const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
-  const music = useCreativeMusic(session, playing, soloId, simulation)
+  const [showCode, setShowCode] = useState(false)
+  const music = useCreativeMusic(session, playing, soloId, simulation, showCode)
   const selected = session.pieces.find(p => p.id === selectedId)!
   const instrument = session.instruments[selectedId]
   const effects = session.effects[selectedId]
@@ -125,9 +127,9 @@ export function CreativeStudio() {
     return () => { window.removeEventListener('blur', cancel); window.removeEventListener('keydown', escape) }
   }, [music.endAudition])
 
-  function updateInstrument(update: Partial<Instrument>) {
+  const updateInstrument = useCallback((update: Partial<Instrument>) => {
     setSession(s => ({ ...s, instruments: { ...s.instruments, [selectedId]: { ...s.instruments[selectedId], ...update } } }))
-  }
+  }, [selectedId])
   function updateEffects(update: Partial<Effects>) {
     setSession(s => ({ ...s, effects: { ...s.effects, [selectedId]: { ...s.effects[selectedId], ...update } } }))
   }
@@ -235,12 +237,13 @@ export function CreativeStudio() {
     const piece = session.pieces.find(item => item.id === id)
     const rect = boardRef.current?.getBoundingClientRect()
     if (!piece || !rect) return
-    setDragVisual({
-      id,
-      svg: `${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG,
-      x: (event.clientX - rect.left) * (boardRef.current!.offsetWidth / rect.width) - boardRef.current!.clientLeft,
-      y: (event.clientY - rect.top) * (boardRef.current!.offsetHeight / rect.height) - boardRef.current!.clientTop,
-    })
+    const x = (event.clientX - rect.left) * (boardRef.current!.offsetWidth / rect.width) - boardRef.current!.clientLeft
+    const y = (event.clientY - rect.top) * (boardRef.current!.offsetHeight / rect.height) - boardRef.current!.clientTop
+    if (dragVisualRef.current) {
+      dragVisualRef.current.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(1.06)`
+    } else {
+      setDragVisual({ id, svg: `${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG, x, y })
+    }
   }
   function pointerDown(event: React.PointerEvent, square: string) {
     if (event.button !== 0) return
@@ -344,7 +347,7 @@ export function CreativeStudio() {
                   {piece?.active && dragVisual?.id !== piece.id && <span className={styles.activeDot} />}
                 </button>
               })}
-              {dragVisual && <span data-creative-drag={dragVisual.id} className={styles.dragPiece} style={{ left: dragVisual.x, top: dragVisual.y }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
+              {dragVisual && <span ref={dragVisualRef} data-creative-drag={dragVisual.id} className={styles.dragPiece} style={{ left: 0, top: 0, transform: `translate(${dragVisual.x}px, ${dragVisual.y}px) translate(-50%, -50%) scale(1.06)` }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
             </div>
 
             <div className={styles.actions}>
@@ -442,7 +445,7 @@ export function CreativeStudio() {
           <div className={styles.pair}><label><HelpLabel label="Kits salvos">Escolha uma configuração da biblioteca local e use Carregar kit para trazê-la à bancada.</HelpLabel><select value={chosenKit} onChange={e => setChosenKit(e.target.value)}><option value="">Escolha um kit</option>{kits.map(kit => <option key={kit.name}>{kit.name}</option>)}</select></label><button disabled={!chosenKit} onClick={() => { const kit = kits.find(k => k.name === chosenKit); if (kit) void loadSession(kit) }}>Carregar kit</button></div>
         </div>
       </section>
-      <details className={`${styles.panel} ${styles.code}`}><summary>Código Strudel em execução<InfoTip label="Código em execução">Visão gerada pelas vozes ativas e pela prévia. Para editar, use os controles do instrumento.</InfoTip></summary><pre>{music.code}</pre></details>
+      <details className={`${styles.panel} ${styles.code}`} onToggle={event => setShowCode(event.currentTarget.open)}><summary>Código Strudel em execução<InfoTip label="Código em execução">Visão gerada pelas vozes ativas e pela prévia. Para editar, use os controles do instrumento.</InfoTip></summary>{music.codeStats && <p>Exportação: {(music.codeStats.bytes / 1024).toFixed(1)} KB · {music.codeStats.stacks} stacks · {music.codeStats.timeCats} timeCat · {music.codeStats.orbits} orbits · {music.codeStats.filters} filtros declarados<InfoTip label="Métricas da exportação">Contagens do código gerado, não de nós de áudio ativos. Efeitos e vozes realmente em execução variam durante a música.</InfoTip></p>}<pre>{music.code}</pre></details>
     </fieldset>
     <div className={styles.notice} role="status" aria-live="polite">{!ready ? 'Abrindo bancada…' : busy ? 'Validando padrões…' : music.error ? `Áudio: ${music.error}` : notice || 'Selecione uma peça ou carregue uma formação para começar.'}</div>
   </main>

@@ -1,4 +1,5 @@
 // Strudel pattern construction only. No AudioContext, React or playback lifecycle.
+import { optimizeRoll } from './roll-optimizer'
 import { performancePattern } from './performance'
 import type { Automation } from './automation'
 import type { Strudel, StrudelPattern, StrudelWithPick, VoiceSpec } from './runtime-types'
@@ -27,17 +28,18 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
   const events = voice.unpitched ? api.n : api.note
   const fixed=/^\d+$/.test(voice.sectionPattern)?Number(voice.sectionPattern):undefined
   const banks=voice.phrases.map((phrase,index)=>{
+    if (fixed !== undefined && index !== fixed % voice.phrases.length) return api.silence
+    if (fixed === undefined && !voice.pianoRolls?.some(Boolean)) return api.silence
     const roll=voice.pianoRolls?.[index]
-    let pattern=roll ? (roll.notes.length ? api.stack(...roll.notes.map(n=>{
-      const chunks: [number,any][]=[]
-      if(n.start>0)chunks.push([n.start,api.silence])
-      let event=events(n.degree).velocity(n.velocity)
-      if(n.slide&&!voice.unpitched)event=event.withValue((v:object)=>({...v,ccSlide:n.slide,ccSlideTime:n.slideSeconds??.15}))
-      if(n.pan!==undefined)event=event.withValue((v:object)=>({...v,ccPan:n.pan}))
-      chunks.push([n.duration,event])
-      if(n.start+n.duration<roll.bars)chunks.push([roll.bars-n.start-n.duration,api.silence])
-      return (api as Strudel & {timeCat:(...chunks:[number,any][])=>StrudelPattern}).timeCat(...chunks).slow(roll.bars)
-    })) : api.silence) : events(phrase)
+    const lanes = roll ? optimizeRoll(roll).map(lane => {
+      const chunks: [number, StrudelPattern][] = lane.segments.map(segment => [segment.duration,
+        !segment.notes ? api.silence : segment.notes.length === 1 ? events(segment.notes[0]) : api.stack(...segment.notes.map(note => events(note)))])
+      let pattern = (api as Strudel & {timeCat:(...chunks:[number,StrudelPattern][])=>StrudelPattern}).timeCat(...chunks).velocity(lane.velocity).slow(roll.bars)
+      if (lane.slide && !voice.unpitched) pattern = pattern.withValue((v: object) => ({ ...v, ccSlide: lane.slide, ccSlideTime: lane.slideSeconds ?? .15 }))
+      if (lane.pan !== undefined) pattern = pattern.withValue((v: object) => ({ ...v, ccPan: lane.pan }))
+      return pattern
+    }) : undefined
+    let pattern = lanes ? (lanes.length === 0 ? api.silence : lanes.length === 1 ? lanes[0] : api.stack(...lanes)) : events(phrase)
     if(voice.groove&&!roll)pattern=pattern.struct(api.mini(voice.groove.rhythms[(fixed??index)%voice.groove.rhythms.length])).velocity(api.mini(voice.groove.accents[(fixed??index)%voice.groove.accents.length]))
     return pattern
   })

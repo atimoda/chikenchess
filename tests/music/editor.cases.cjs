@@ -13,7 +13,7 @@ test('editable notes keep their durations and independent loop lengths in real S
  const hits=compileVoice(api,v).queryArc(0,3).filter(h=>h.hasOnset())
  assert.deepEqual(hits.map(h=>Number(h.whole.begin)),[0,.75,1.5,2.25])
  assert.ok(hits.every(h=>Number(h.whole.end.sub(h.whole.begin))===.125))
- assert.ok(renderMusicCode(creative.creativeSnapshot(parsed,true),null).includes('timeCat('))
+ assert.ok(!renderMusicCode(creative.creativeSnapshot(parsed,true),null).includes('timeCat('))
  const {resizeRoll}=loadTs('lib/music/piano-roll.ts')
  assert.deepEqual(resizeRoll({bars:2,notes:[{start:.5,duration:1,degree:0,velocity:1},{start:1.5,duration:.5,degree:2,velocity:1}]},1).notes,[{start:.5,duration:.5,degree:0,velocity:1}])
 })

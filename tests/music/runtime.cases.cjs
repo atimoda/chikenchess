@@ -79,10 +79,14 @@ test('crossing squares during manual play does not resubmit unchanged accompanim
   assert.equal(patternUpdates(), 1)
   runtime.audition('w:g1', 'f3'); await Promise.resolve()
   assert.equal(patternUpdates(), 2) // suspend the held piece's loop
+  let fullRefreshes = 0
+  const refresh = runtime.refresh.bind(runtime)
+  runtime.refresh = () => { fullRefreshes++; return refresh() }
   for (const square of ['f4', 'g4', 'h4', 'h5', 'g5']) {
     runtime.audition('w:g1', square); await Promise.resolve()
   }
   assert.equal(attacks.length, 6)
+  assert.equal(fullRefreshes, 0, 'crossing squares must not rebuild accompaniment')
   assert.equal(patternUpdates(), 2)
   runtime.endAudition()
   assert.equal(patternUpdates(), 3)
