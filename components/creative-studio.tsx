@@ -306,7 +306,7 @@ export function CreativeStudio() {
 </section>
       <section className={styles.transport} aria-label="Controles da sessão">
         <button className={styles.primary} onClick={() => { if (playing) stop(); else setPlaying(true) }} aria-pressed={playing}>
-          {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pausar' : 'Tocar arranjo'}
+          {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pause' : 'Play'}
         </button>
         <label><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /></label>
         <label><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel><select value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
@@ -318,10 +318,10 @@ export function CreativeStudio() {
 
       <div className={styles.columns}>
           <div className={styles.boardColumn}><section className={`${styles.panel} ${styles.boardPanel}`}>
-            <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>01 / TABULEIRO LIVRE</span><h2>Experimente o movimento<InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></h2></div><div className={styles.segmented}>
+            <div className={styles.sectionHeader}><div className={styles.segmented}>
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
-            </div></div>
+            </div><InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></div>
             <div ref={boardRef} className={styles.board} role="group" aria-label="Tabuleiro criativo">
               {squares.map((square, index) => {
                 const piece = music.snapshot.pieces.find(p => p.square === square)

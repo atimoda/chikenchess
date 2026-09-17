@@ -1,5 +1,5 @@
 .studio { min-height: 100dvh; background: #101615; color: #e9ede9; padding: 28px clamp(16px, 3vw, 48px) 76px; font-size: 14px; }
-.header { max-width: 1480px; margin: 0 auto 26px; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.header { max-width: 1920px; margin: 0 auto 26px; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
 .identity { display: flex; gap: 20px; align-items: center; }
 .identity > a { padding: 12px; border: 1px solid #37423e; border-radius: 50%; }
 .header h1 { font-size: 26px; font-weight: 600; letter-spacing: -.6px; display: flex; align-items: center; gap: 10px; }
@@ -7,7 +7,7 @@
 .eyebrow { display: block; font-size: 10px; letter-spacing: 1.8px; font-family: var(--font-geist-mono), monospace; color: #98aaa0; margin-bottom: 6px; }
 .header p { color: #d0d8d2; font-size: 13px; line-height: 1.6; }
 .header p span { color: #94a49a; }
-.workspace { max-width: 1480px; margin: auto; border: 0; min-width: 0; }
+.workspace { max-width: 1920px; margin: auto; border: 0; min-width: 0; }
 .studio button, .upload { border: 1px solid #45534a; background: #25312b; border-radius: 6px; padding: 8px 11px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: background .12s, border-color .12s; color: #e0e9df; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .studio button:hover, .upload:hover { background: #374b3b; border-color: #7f9b81; }
 .studio button:disabled, .workspace:disabled .upload { opacity: .45; cursor: wait; }
@@ -29,7 +29,7 @@
 .columns > * { min-width: 0; }
 .boardPanel { position: sticky; top: 16px; align-self: start; }
 .controlColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; }
-.controlColumn { display: grid; align-content: start; gap: 14px; min-width: 0; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; padding-right: 5px; scrollbar-color: #58695a #151d18; }
+.controlColumn { display: grid; align-content: start; gap: 14px; min-width: 0; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior-y: auto; padding-right: 5px; scrollbar-color: #58695a #151d18; }
 .controlColumn::-webkit-scrollbar { width: 8px; }
 .controlColumn::-webkit-scrollbar-track { background: #151d18; border-radius: 999px; }
 .controlColumn::-webkit-scrollbar-thumb { background: #58695a; border-radius: 999px; border: 2px solid #151d18; }
@@ -100,7 +100,7 @@
 
 /* v0.3.2: compact columns, one scroll surface per column. */
 .columns, .controlColumns { gap: 0; }
-.boardColumn { min-width: 0; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+.boardColumn { min-width: 0; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior-y: auto; }
 .boardPanel { position: static; }
 .board { position: relative; }
 .panel, .inspector .panel { padding: 12px; }
