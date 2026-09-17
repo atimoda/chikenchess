@@ -1,11 +1,13 @@
 'use client'
 import { InfoTip, HelpLabel } from './info-tip'
-import { useState } from 'react'
-import { ACTIONS, STATES, TRIGGERS, SCALE_INTERVALS, type Trigger, type Reactions, type ReactionContext, type Reaction } from '@/lib/music/reactions'
+import { useRef, useState } from 'react'
+import { Power, Settings } from 'lucide-react'
+import { ACTIONS, EVENTS, STATES, TRIGGERS, SCALE_INTERVALS, type Trigger, type Reactions, type ReactionContext, type Reaction } from '@/lib/music/reactions'
 
 type Props={config:Reactions;onChange:(config:Reactions)=>void;context:ReactionContext;onContext:(context:ReactionContext)=>void;descriptions:string[];bpm:number;scale:string[]}
 export function MusicReactionEditor({config,onChange,context,onContext,descriptions,bpm,scale}:Props){
   const [trigger,setTrigger]=useState<Trigger|null>(null),[color,setColor]=useState<'w'|'b'>('w')
+  const editorRef=useRef<HTMLDivElement>(null)
   const patch=(id:string,change:Partial<Reaction>)=>onChange({...config,rules:config.rules.map(rule=>rule.id===id?{...rule,...change}:rule)})
   const isActive=(id:Trigger)=>{
     if(id in STATES)return context.states.some(state=>state.trigger===id)
@@ -14,8 +16,8 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
   }
   const activate=(id:Trigger)=>{
     setTrigger(id)
-    if(id in STATES)onContext({...context,states:[{trigger:id,color,ply:context.ply}]})
-    else onContext({...context,events:[...context.events.filter(event=>event.trigger!==id),{trigger:id,color,ply:context.ply}].slice(-64)})
+    if(id in STATES)onContext({...context,states:isActive(id)?context.states.filter(state=>state.trigger!==id):[{trigger:id,color,ply:context.ply}]})
+    else onContext({...context,events:isActive(id)?context.events.filter(event=>event.trigger!==id):[...context.events.filter(event=>event.trigger!==id),{trigger:id,color,ply:context.ply}].slice(-64)})
   }
   const changeColor=(next:'w'|'b')=>{
     setColor(next)
@@ -27,20 +29,26 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
     }
   }
   const isState=trigger!==null&&trigger in STATES
+  const triggerList=(entries:Record<string,string>)=><ul style={{display:'flex',flexWrap:'wrap',gap:5,listStyle:'none',padding:0,margin:'6px 0 12px'}}>{Object.entries(entries).map(([id,label])=>{
+    const key=id as Trigger,count=config.rules.filter(rule=>rule.trigger===key).length,editing=trigger===key
+    return <li key={id} style={{position:'relative',display:'inline-flex'}}>
+      <button style={{paddingRight:editing?36:11}} aria-pressed={isActive(key)} onClick={()=>activate(key)}>{label} · {count} {count===1?'regra':'regras'}</button>
+      {editing&&<button type="button" aria-label={`Ir para edição de ${label}`} title="Ir para edição" onClick={()=>editorRef.current?.scrollIntoView({behavior:'smooth',block:'start'})} style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',width:24,height:24,minWidth:24,padding:0,borderRadius:'50%',color:'#fff'}}><Settings size={13}/></button>}
+    </li>
+  })}</ul>
   return <section aria-label="Estados e Eventos" style={{padding:12,border:'1px solid #35443a',background:'#19221d',borderRadius:8}}>
-    <h2>Estados e Eventos<InfoTip label="Simulação">Clique num item para ativá-lo no motor musical e abrir suas regras. Um estado contínuo e eventos temporários podem influenciar a música ao mesmo tempo; escolher outro estado substitui o anterior. Eventos permanecem ativos pela duração das regras e só o botão “Avançar meio-lance” faz o relógio da simulação avançar. As configurações fazem parte do kit atual e ficam vinculadas à cidade quando o kit da fase é salvo.</InfoTip></h2>
-      <ul style={{display:'flex',flexWrap:'wrap',gap:5,listStyle:'none',padding:0,margin:'8px 0'}}>{Object.entries(TRIGGERS).map(([id,label])=>{
-        const key=id as Trigger,count=config.rules.filter(rule=>rule.trigger===key).length
-        return <li key={id}><button aria-pressed={isActive(key)} onClick={()=>activate(key)}>{label} · {count} {count===1?'regra':'regras'}</button></li>
-      })}</ul>
-    {trigger&&<div style={{borderTop:'1px solid #405247',marginTop:12,paddingTop:12}}>
-      <h3 style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,fontSize:15}}>Alterando: {TRIGGERS[trigger]}<InfoTip label="Duração e prioridades">{isState?'As influências retornam à base quando o estado termina.':'Cada clique renova o evento sem acumular a mesma regra. A duração conta meios-lances.'} Regras seguem a ordem salva; percentuais multiplicam, e a última escala, variação ou filtro prevalece.</InfoTip></h3>
+    <h2>Estados e Eventos<InfoTip label="Simulação">Clique num item para ligá-lo e abrir suas regras; clique novamente para desligá-lo. Um estado contínuo e vários eventos temporários podem influenciar a música ao mesmo tempo; escolher outro estado substitui o anterior. Eventos permanecem ativos pela duração das regras e só o botão “Avançar meio-lance” faz o relógio da simulação avançar. As configurações fazem parte do kit atual e ficam vinculadas à cidade quando o kit da fase é salvo.</InfoTip></h2>
+    <h3 style={{fontSize:12,marginTop:10}}>Estados</h3>
+    {triggerList(STATES)}
+    <h3 style={{fontSize:12}}>Eventos</h3>
+    {triggerList(EVENTS)}
+    {trigger&&<div ref={editorRef} style={{borderTop:'1px solid #405247',marginTop:12,paddingTop:12,scrollMarginTop:12}}>
+      <h3 style={{display:'flex',alignItems:'center',gap:6,fontSize:15}}><span style={{flex:1}}>{isState?'Estado':'Evento'}: {TRIGGERS[trigger]}</span><button type="button" aria-label={`${isActive(trigger)?'Desativar':'Ativar'} ${TRIGGERS[trigger]}`} title={isActive(trigger)?'Desativar':'Ativar'} aria-pressed={isActive(trigger)} onClick={()=>activate(trigger)} style={{width:30,height:30,minWidth:30,padding:0,borderRadius:'50%'}}><Power size={15}/></button><InfoTip label="Duração e prioridades">{isState?'As influências retornam à base quando o estado termina.':'Cada nova ativação renova o evento sem acumular a mesma regra. A duração conta meios-lances.'} Regras seguem a ordem salva; percentuais multiplicam, e a última escala, variação ou filtro prevalece.</InfoTip></h3>
       <label><span style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>Lado do estado/evento<InfoTip label="Lado do gatilho">Em cheque, este é o lado atacante. Em perda de peças ou formação mínima, é o lado afetado.</InfoTip></span><select value={color} onChange={e=>changeColor(e.target.value as 'w'|'b')}><option value="w">Brancas</option><option value="b">Pretas</option></select></label>
       <output aria-live="polite">{bpm.toFixed(1)} BPM · {scale.join(' ')} · meio-lance {context.ply}</output>
       <ul>{descriptions.length?descriptions.map((description,index)=><li key={index}>{description}</li>):<li>Nenhuma influência configurada em execução.</li>}</ul>
       <div style={{display:'flex',gap:4,flexWrap:'wrap',margin:'8px 0'}}>
         <button onClick={()=>onContext({...context,ply:context.ply+1})}>Avançar meio-lance</button>
-        <button onClick={()=>onContext({ply:0,states:[],events:[]})}>Limpar simulação</button>
         <button disabled={config.rules.length>=48} onClick={()=>onChange({...config,rules:[...config.rules,{id:`rule-${Date.now()}-${config.rules.length}`,trigger,enabled:true,quantize:false,target:'both',duration:4,actions:[]}]})}>Adicionar regra</button>
       </div>
       {(trigger==='minimumOne'||trigger==='minimumBoth')&&<label><HelpLabel label="Formação mínima · peças restantes por lado (inclui rei)">Este limiar pertence somente aos eventos de formação mínima. Eles disparam quando restam no máximo esta quantidade de peças no tabuleiro para um lado; o rei entra na contagem.</HelpLabel><input type="number" min={2} max={15} value={config.minimumPieces} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=2&&n<=15)onChange({...config,minimumPieces:n})}} /></label>}

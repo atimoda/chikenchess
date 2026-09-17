@@ -338,7 +338,7 @@ export function CreativeStudio() {
           <label><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel></label>
           <label><select aria-label="Tônica" value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel></label>
           <label><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select><HelpLabel label={`Escala (${music.snapshot.scale.join(' · ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel></label>
-          <Range label="Volume geral" value={session.volume} min={0} max={1} onChange={volume => setSession(s => ({ ...s, volume }))} />
+          <Range label="Volume geral" value={session.volume} min={0} max={1} help={false} onChange={volume => setSession(s => ({ ...s, volume }))} />
           <MusicTransportReadout monitor={music.monitor} activeCount={activeCount} solo={!!soloId} />
         </section>
         <div className={styles.transitionSlot}><MusicTransitionView monitor={music.monitor} fallbackBpm={session.bpm} /></div>
@@ -386,7 +386,17 @@ export function CreativeStudio() {
 
           </section>
 
-          <MusicReactionEditor config={session.reactions} onChange={reactions=>setSession(s=>({...s,reactions}))} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} /></div>
+          <MusicReactionEditor config={session.reactions} onChange={reactions=>setSession(s=>({...s,reactions}))} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} />
+
+          <section className={`${styles.panel} ${styles.bandPanel}`}>
+            <div className={styles.sectionHeader}><h2>32 vozes independentes</h2></div>
+            <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
+              <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
+                <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span><span>{session.instruments[p.id].name}<MusicVoiceBadge monitor={music.monitor} id={p.id} /></span></button>
+                <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
+              </div>)}</div>)}</div>
+          </section>
+        </div>
         <div className={styles.controlColumns}>
         <div className={styles.controlColumn}>
         <aside className={styles.inspector} aria-label="Editor do instrumento">
@@ -453,15 +463,6 @@ export function CreativeStudio() {
           onApplyAutomations={async automations => {
             await applyMusicalConfiguration({ ...session, instruments: { ...session.instruments, [selectedId]: { ...instrument, automations } } })
           }} />
-
-        <section className={`${styles.panel} ${styles.bandPanel}`}>
-          <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>04 / SUA BANDA</span><h2>32 vozes independentes</h2></div><span className={styles.hint}>● loop ativo</span></div>
-          <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
-            <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
-              <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span><span>{session.instruments[p.id].name}<MusicVoiceBadge monitor={music.monitor} id={p.id} /></span></button>
-              <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
-            </div>)}</div>)}</div>
-        </section>
         </div>
         </div>
       </div>
