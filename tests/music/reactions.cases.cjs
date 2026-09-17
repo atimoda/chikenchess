@@ -76,6 +76,8 @@ test('kit reactions round-trip, restore base, expire and never accumulate on rer
   assert.equal(first.snapshot.sectionOverrides['w:d1'],2)
   assert.deepEqual(first,applyReactions(base,config,context))
   assert.equal(applyReactions(base,config,{...context,ply:7}).snapshot.bpm,base.bpm)
+  const infinite=reactionsSchema.parse({rules:[{...config.rules[0],duration:0}]})
+  assert.equal(applyReactions(base,infinite,{...context,ply:999}).snapshot.bpm,base.bpm*1.1)
   assert.equal(base.scale[0],'C4')
   assert.deepEqual(creative.parseCreativeSession(JSON.stringify({...kit,reactions:config})).reactions,config)
   assert.throws(()=>reactionsSchema.parse({...config,rules:[{...config.rules[0],actions:[{type:'bpm',value:500}]}]}))

@@ -11,8 +11,9 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
   const patch=(id:string,change:Partial<Reaction>)=>onChange({...config,rules:config.rules.map(rule=>rule.id===id?{...rule,...change}:rule)})
   const isActive=(id:Trigger)=>{
     if(id in STATES)return context.states.some(state=>state.trigger===id)
-    const duration=Math.max(1,...config.rules.filter(rule=>rule.enabled&&rule.trigger===id).map(rule=>rule.duration))
-    return context.events.some(event=>event.trigger===id&&context.ply-event.ply<duration)
+    const durations=config.rules.filter(rule=>rule.enabled&&rule.trigger===id).map(rule=>rule.duration)
+    const indefinite=durations.includes(0),duration=Math.max(1,...durations)
+    return context.events.some(event=>event.trigger===id&&context.ply-event.ply>=0&&(indefinite||context.ply-event.ply<duration))
   }
   const activate=(id:Trigger)=>{
     setTrigger(id)
@@ -57,7 +58,7 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
         <label><input type="checkbox" checked={rule.enabled} onChange={e=>patch(rule.id,{enabled:e.target.checked})}/>Regra habilitada</label>
         <label><input type="checkbox" checked={rule.quantize} onChange={e=>patch(rule.id,{quantize:e.target.checked})}/>Aplicar na virada do compasso<InfoTip label="Virada do compasso">Inclui entrada, alterações e retorno. Desmarcado: próximos ataques disponíveis. Pausado: aplica agora.</InfoTip></label>
         <label><HelpLabel label="Alvo das ações por peça">Escolhe as vozes afetadas. BPM e troca de escala continuam globais; os demais parâmetros respeitam o lado.</HelpLabel><select value={rule.target} onChange={e=>patch(rule.id,{target:e.target.value as Reaction['target']})}><option value="both">Ambos</option><option value="actor">Lado do gatilho</option><option value="opponent">Oponente do gatilho</option><option value="w">Brancas</option><option value="b">Pretas</option></select></label>
-        {!isState&&<label><HelpLabel label="Duração (meios-lances)">Quantas jogadas individuais o efeito permanece. Cada movimento de um lado conta como um meio-lance.</HelpLabel><input type="number" min={1} max={32} value={rule.duration} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=1&&n<=32)patch(rule.id,{duration:n})}}/></label>}
+        {!isState&&<label><HelpLabel label="Duração (meios-lances; 0 = infinita)">Quantas jogadas individuais o efeito permanece. Cada movimento de um lado conta como um meio-lance. Zero mantém o evento até o fim da partida ou até a simulação ser desligada.</HelpLabel><input type="number" min={0} max={32} value={rule.duration} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=0&&n<=32)patch(rule.id,{duration:n})}}/></label>}
         {rule.actions.map((action,index)=>{
           const change=(next:Partial<typeof action>)=>patch(rule.id,{actions:rule.actions.map((value,actionIndex)=>actionIndex===index?{...value,...next}:value)})
           const ranges:Record<string,[number,number]>={transpose:[-12,12],bpm:[-30,30],mode:[0,11],variation:[0,7],gain:[-100,100],lpf:[20,20000]}

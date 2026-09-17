@@ -70,6 +70,8 @@
 .voice.chosenVoice { background: #304132; }
 .voice .voiceName { flex: 1; min-width: 0; justify-content: start; padding: 7px 8px; font-size: 11px; text-align: left; border: 0; background: transparent; }
 .voiceName span { color: #afbc9f; font-family: monospace; margin-right: 4px; }
+.voice .voiceSolo { width: 28px; padding: 0; background: transparent; border: 0; color: #849389; font: 600 10px/1 monospace; }
+.voiceSolo[aria-pressed='true'] { color: #fff; }
 .voice .voiceToggle { width: 28px; padding: 0; background: transparent; border: 0; }
 .voiceToggle[aria-pressed='true'] span { color: #c0e494; }
 .inspector .panel { padding: 20px; }

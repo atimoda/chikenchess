@@ -28,7 +28,7 @@ export const actionSchema = z.object({ type: z.enum(keys(ACTIONS)), rampBars: z.
   const [lo,hi]=limits[a.type]
   if(a.value<lo || a.value>hi || (['transpose','mode','variation'].includes(a.type) && !Number.isInteger(a.value))) ctx.addIssue({code:'custom',message:'Valor fora do limite da ação.'})
 })
-export const reactionSchema = z.object({ id: z.string().min(1).max(80), trigger: z.enum(keys(TRIGGERS)), enabled: z.boolean(), quantize: z.boolean().default(false), target: z.enum(['both','w','b','actor','opponent']), duration: z.number().int().min(1).max(32), actions: z.array(actionSchema).max(12) })
+export const reactionSchema = z.object({ id: z.string().min(1).max(80), trigger: z.enum(keys(TRIGGERS)), enabled: z.boolean(), quantize: z.boolean().default(false), target: z.enum(['both','w','b','actor','opponent']), duration: z.number().int().min(0).max(32), actions: z.array(actionSchema).max(12) })
 export type Reaction = z.infer<typeof reactionSchema>
 export const defaultReactions = (): Reaction[] => [{ id:'check-band',trigger:'check',enabled:true,quantize:false,target:'actor',duration:1,actions:[{type:'activate',value:0,scale:'Maior'}] }]
 export const reactionsSchema = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(48).default(defaultReactions) }).default({ minimumPieces:4,rules:defaultReactions() })
@@ -125,7 +125,7 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
 
 export type TimedReaction = { rule: Reaction; hit: Occurrence | undefined }
 export function reactionHit(rule: Reaction, context: ReactionContext) {
-  const matches = rule.trigger in STATES ? context.states : context.events.filter(e => context.ply-e.ply>=0 && context.ply-e.ply<rule.duration)
+  const matches = rule.trigger in STATES ? context.states : context.events.filter(e => context.ply-e.ply>=0 && (rule.duration===0 || context.ply-e.ply<rule.duration))
   return matches.filter(e=>e.trigger===rule.trigger).at(-1)
 }
 /** Only active influences are queued; inactive edits need no transport work. */

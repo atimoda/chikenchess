@@ -132,7 +132,7 @@ O bloco abaixo do tabuleiro no Criativo separa **Estados** e **Eventos** em duas
 
 Em cheque/mate, o lado do gatilho é o atacante. Em perda de uma família/formação mínima de um lado, é o lado afetado. Nos demais eventos, é quem executou o lance; nas fases/empates é quem tem a vez. O Criativo permite escolher explicitamente esse lado. A partida pode ter estados simultâneos; no Criativo, clicar em outro estado contínuo substitui o anterior, enquanto eventos ainda vigentes permanecem ativos. Simular mate/empate não encerra a bancada; na partida o encerramento real continua tendo prioridade sobre áudio e ativação.
 
-Cada regra tem gatilho, habilitação, alvo (ambos, brancas, pretas, lado do gatilho, oponente), ações e, para eventos, duração de 1–32 **meios-lances**. Regra de estado deixa de agir ao sair dele. Evento deixa de agir quando o histórico avança sua duração; nova ocorrência renova o efeito, não soma outra aplicação da mesma regra. “Avançar meio-lance” e “Limpar simulação” permitem verificar a expiração/retorno.
+Cada regra tem gatilho, habilitação, alvo (ambos, brancas, pretas, lado do gatilho, oponente), ações e, para eventos, duração de 0–32 **meios-lances**. Zero mantém a influência pelo restante da partida depois da ocorrência; no Criativo, ela permanece até o evento ser desligado. Nos demais valores, o evento deixa de agir quando o histórico avança sua duração; nova ocorrência renova o efeito, não soma outra aplicação da mesma regra. Regra de estado deixa de agir ao sair dele. “Avançar meio-lance” permite verificar a expiração/retorno.
 
 Ações: transposição de −12 a +12 semitons (2 = um tom), BPM ±30%, escala paralela, relativa maior/menor natural, rotação modal, inversão do contorno melódico, variação A–H, ganho −100 a +100%, filtro passa-baixas 20–20000 Hz e ativação temporária da banda. BPM e troca/relativa/rotação de escala são globais, mesmo se o alvo for uma equipe. Transposição, ganho, filtro, inversão, variação e ativação respeitam o alvo. Inversão espelha graus, não inverte o áudio. Relativa só age sobre maior/menor natural; em outras escalas a UI informa que foi ignorada. “Escala complementar” não recebe definição arbitrária. Forçar variação seleciona também seus bancos de groove e automação.
 
@@ -221,6 +221,8 @@ Variações explícitas são a fonte de ritmo daquela variação; o groove salvo
 
 
 ### Seções próprias, slides e ajuda contextual — 16/09
+
+Na lista **32 vozes independentes**, cada linha apresenta Solo imediatamente antes do controle de ativação. Esse Solo usa o mesmo estado do botão do instrumento selecionado; ativá-lo por qualquer um dos pontos atualiza o outro, inicia a execução e ativa a voz correspondente. Nos parâmetros do instrumento, a ordem é Afinação e envelope, Filtros e efeitos, Movimento → música e, por último, Acentos e automações.
 
 No Criativo, **Fraseado e seções da peça** habilita um arranjo por instrumento: até 24 blocos, 0,25–64 tempos por bloco, até 512 tempos no total. Cada bloco escolhe variação A–H, presença/pausa e transposição cromática de −24 a +24 semitons. A faixa proporcional mostra os comprimentos, a seção em execução e sua porcentagem; clicar nela seleciona o bloco para editar. Desabilitar arranjo próprio volta à timeline global. Pausar/recarregar reinicia o transporte e a forma.
 

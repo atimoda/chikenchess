@@ -153,6 +153,15 @@ export function CreativeStudio() {
     else if (activeCount === 1) setPlaying(false)
     setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: !p.active } : p) }))
   }
+  function toggleSolo(id: string) {
+    music.endAudition()
+    const nextSolo = soloId === id ? null : id
+    setSoloId(nextSolo)
+    if (nextSolo) {
+      setPlaying(true)
+      setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: true } : p) }))
+    }
+  }
   function stop() { setPlaying(false); music.endAudition(); drag.current = null; setNotice('Arranjo pausado.') }
   function select(id: string) { music.endAudition(); setSelectedId(id) }
 
@@ -393,6 +402,7 @@ export function CreativeStudio() {
             <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
               <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
                 <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span><span>{session.instruments[p.id].name}<MusicVoiceBadge monitor={music.monitor} id={p.id} /></span></button>
+                <button className={styles.voiceSolo} aria-label={`${soloId === p.id ? 'Desativar' : 'Ativar'} solo ${p.id}`} title="Solo" aria-pressed={soloId === p.id} onClick={() => toggleSolo(p.id)}>S</button>
                 <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
               </div>)}</div>)}</div>
           </section>
@@ -414,7 +424,7 @@ export function CreativeStudio() {
             </div>
             <div className={styles.actions}>
               <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={selected.active ? 'Desativar loop' : 'Ativar loop'} title={selected.active ? 'Loop ativo' : music.preview?.id === selectedId ? 'Prévia temporária' : 'Loop inativo'} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
-              <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) { setPlaying(true); setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) } }}>Solo</button>
+              <button aria-pressed={soloId === selectedId} onClick={() => toggleSolo(selectedId)}>Solo</button>
             </div>
             <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
             <MusicPerformanceControls override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
