@@ -364,7 +364,7 @@ export function CreativeStudio() {
         <div className={styles.controlColumn}>
         <aside className={styles.inspector} aria-label="Editor do instrumento">
           <section className={styles.panel}>
-            <span className={styles.eyebrow}>02 / INSTRUMENTO</span>
+            <span className={styles.eyebrow}>Selected Instrument</span>
             <div className={styles.instrumentTitle}><h2>{pieceNames[selected.type]} · {selected.origin}</h2><span>em {selected.square}</span></div>
             <label><HelpLabel label="Nome do instrumento">Nome livre desta voz, salvo no kit e independente do tipo de peça.</HelpLabel><input maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrumento' })} /></label>
             <div className={styles.actions}>
