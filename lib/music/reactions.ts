@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js'
 import { z } from 'zod'
-import type { MusicSnapshot } from './runtime'
+import type { MusicSnapshot } from './runtime-types'
 
 export const STATES = {
   opening: 'Abertura (até 20 meios-lances)', middle: 'Meio-jogo', endgame: 'Final (até 10 peças)',

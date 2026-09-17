@@ -2,6 +2,20 @@
 
 Atualizado em 16/09/2026 — v0.3.2 (The Creative). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
+## Leitura por assunto
+
+| Assunto | Seção a consultar |
+| --- | --- |
+| Ativação, captura, cheque, pausa e gesto | [Ações e efeitos](#ações-e-efeitos-implementados--todas-as-cidades) e [Movimento](#movimento-e-interpretação) |
+| Piece/Board Params e DJ | [Widgets](#widgets-da-partida) e [Mixer](#mixer-dj-na-partida) |
+| Kits, migração, laboratório | [Criativo e persistência](#criativo-e-persistência) e [Escopo](#escopo-e-dados) |
+| Regras, transições e BPM | [Estados e Eventos](#estados-e-eventos--v032) |
+| Piano roll, seções e slides | [Editor](#editor-de-variações--v032) e [Seções próprias](#seções-próprias-slides-e-ajuda-contextual--1609) |
+| Globo e cidades | [Mapa](#mapa-e-entrada-na-fase) |
+| Processamento | [Gestos e custo](#gestos-e-custo-de-processamento) |
+
+Localização do código e checks: `docs/CODEBASE_MAP.md`. Consulte as seções relacionadas ao pedido, incluindo suas prioridades; a agenda completa não é pré-requisito de toda alteração.
+
 ## Escopo e dados
 
 A engine Strudel é usada pelas 13 fases cadastradas (12 cidades; Manchester tem duas épocas) e pelo Criativo. Todas compartilham as regras abaixo; sons de interface, introdução e encerramento continuam nativos. A compilação dos loops nativos fica desabilitada quando a fase usa Strudel.
@@ -145,6 +159,14 @@ Na partida, o arraste captura o ponteiro na casa estável, inclusive em touch, e
 
 O acompanhamento só é reenviado ao scheduler quando seus padrões mudam, não a cada casa atravessada em uma audição. Painéis musicais fechados não montam os gráficos; código Strudel oculto não é regenerado, e o monitor periódico consulta padrões apenas com assinantes. Dispositivos restritos usam DPR 1 no globo e agendamento de loops com antecipação de 180 ms (desktop 100 ms); audição manual mantém seu caminho de baixa latência. Esses cortes de trabalho não equivalem a aprovação de desempenho/áudio em celular físico.
 
+### Otimização de arraste e exportação — 16/09
+
+Durante a travessia entre casas da mesma peça, só a voz manual muda; entrada e saída do gesto continuam suspendendo/restaurando a banda. Notas, cancelamento, carregamento, cheque e prioridades anteriores permanecem. No Criativo, a imagem acompanha mouse/toque por transformação de DOM; soltura/cancelamento remove a imagem temporária. O código Strudel é gerado somente com seu painel aberto, onde aparecem contagens estruturais (não nós DSP ativos).
+
+O reverb manual reutiliza o buffer de impulso por configuração, com cache limitado ao runtime; cada ataque conserva seu próprio nó, e a cauda cancelada não retorna na casa seguinte. O impulso aleatório deixa de ser regenerado em toda casa, mantendo a mesma configuração acústica. Alterar configuração ou encontrar buffer ainda pendente usa a fábrica original. Encerrar o runtime limpa o cache. Loops continuam com orbits individuais.
+
+Notas explícitas são agrupadas por início/duração e controles compatíveis; sobreposições permanecem separadas. Playback consome segmentos diretamente e exportação usa mini-notation ponderada. Seções, andamento, instrumentos, envelopes e regras não mudam; saves conservam o schema atual. Decisões, medições e limitações em `docs/CPU_OPTIMIZATION.md`.
+
 ## Mapa e entrada na fase
 
 - Abrir uma cidade orienta a câmera para seu pin; popups podem ser reposicionados.
@@ -172,7 +194,7 @@ ChickenChess cooperativo/invertido, ovos de ouro, multiplayer, vestiário, admin
 
 Toda mudança de regra, gesto, controle ou persistência deve atualizar a linha correspondente neste documento, com gatilho, efeito, retorno/prioridade e escopo. `MUSIC_ENGINE_PLAN.md` mantém a agenda futura; este documento descreve o presente.
 
-Fontes principais: `lib/music/model.ts`, `lib/music/runtime.ts`, `hooks/use-music.ts`, `components/chess-game.tsx`, `components/creative-studio.tsx`, `components/ui/draggable.tsx`, `components/globe-component.tsx`. Regressões em `tests/music.test.cjs` cobrem cheque/saída/mate/capturas/undo, interrupção do loop no arraste, cancelamento, frase pelo botão e chegada ao pin.
+Fontes principais: `lib/music/model.ts`, `lib/music/runtime-session.ts` e módulos descritos em `docs/CODEBASE_MAP.md`, `hooks/use-music.ts`, `components/chess-game.tsx`, `components/creative-studio.tsx`, `components/ui/draggable.tsx`, `components/globe-component.tsx`. Regressões em `tests/music.test.cjs` cobrem cheque/saída/mate/capturas/undo, interrupção do loop no arraste, cancelamento, frase pelo botão e chegada ao pin.
 
 ### Catálogo de escalas compartilhado
 
@@ -206,3 +228,8 @@ Kits compostos diretamente em notas explícitas usam `pianoOnly`; não exibem um
 As instruções do Criativo ficam em **? dentro de um círculo preto**, junto ao rótulo ou título. Hover/foco mostra a dica; clique/toque fixa e um segundo clique/toque fecha. Escape ou pressão fora também fecha. A dica é posicionada no viewport por portal, acompanha scroll/resize e tem rolagem própria quando necessário, sem ser cortada pelas colunas. Abrir a dica não modifica campos nem aciona o cabeçalho/controle que a contém. Valores efetivos, estados, erros e resultados permanecem visíveis.
 
 **Estudo Mouth Breather** carrega o preset separado de seis peças ativas, sem vincular/sobrescrever uma cidade. Tem 17 seções e 488 tempos a 215 BPM; as partes originais de guitarra e baixo foram comparadas com consultas Strudel ao exemplo fornecido. Fontes, limitações e regeneração estão em `MUSIC_STYLE_REFERENCES.md`. O banco Chicken World pode ser usado por qualquer peça nas fases ou no Criativo. Carregar uma cidade volta às 16 brancas ativas na bancada; partidas continuam começando silenciosas.
+
+
+### Reorganização interna — 16/09
+
+Contratos, especificações de voz, compilação, exportação, inspeção e carregamento foram extraídos da fachada `runtime.ts`; a sessão continua dona do relógio, mixer, gestos e cancelamento. Perfis de cidades ficam em `kit-profiles/`, com o mesmo compositor e dados. O painel de parâmetros do Criativo recebe valores/callbacks e mantém o estado no compositor da tela. Testes foram separados por assunto com agregação compatível. Nenhum gatilho, efeito, prioridade, retorno, escopo por modo ou formato salvo mudou nesta reorganização. A revisão de processamento da aplicação é uma etapa posterior.

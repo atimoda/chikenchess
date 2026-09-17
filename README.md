@@ -28,3 +28,7 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+## Desenvolvimento
+
+Mapa do código e testes por assunto: [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md). Regras atuais: [GAME_MECHANICS.md](GAME_MECHANICS.md). Agenda futura: [MUSIC_ENGINE_PLAN.md](MUSIC_ENGINE_PLAN.md).

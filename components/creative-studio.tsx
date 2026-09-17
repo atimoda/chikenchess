@@ -1,4 +1,6 @@
 'use client'
+import { Range } from './creative/parameter-range'
+import { InstrumentParameters } from './creative/instrument-parameters'
 import { MusicPerformanceControls } from './music-performance-controls'
 import { InfoTip, HelpLabel } from './info-tip'
 import { MusicTransitionView } from './music-transition-view'
@@ -6,7 +8,7 @@ import { MusicTransitionView } from './music-transition-view'
 import Link from 'next/link'
 import { MusicReactionEditor } from './music-reaction-editor'
 import type { ReactionContext } from '@/lib/music/reactions'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Download, FlaskConical, Pause, Play, Save, Upload } from 'lucide-react'
 import { PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
@@ -17,7 +19,7 @@ import { EDITABLE_CITY_KITS, cityKitStorageKey, defaultCityKit, loadCityKit, pre
 import { getCityById } from '@/lib/cities-data'
 import { STYLE_REVISION } from '@/lib/music/styled-kits'
 import { createRandomCityKit } from '@/lib/music/random-kit'
-import { SampleSourceControls, AutomationControls, GrooveControls } from './music-lab-controls'
+import { SampleSourceControls, GrooveControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
 import { VersionChangelog } from './version-changelog'
 import styles from './creative-studio.module.css'
@@ -34,23 +36,6 @@ function messageOf(error: unknown) {
     return error.issues.slice(0, 2).map((issue: { message: string; path: string[] }) => `${issue.path.join('.')}: ${issue.message}`).join(' ')
   }
   return error instanceof Error ? error.message : 'Não foi possível carregar a configuração.'
-}
-
-const RANGE_HELP: Record<string,string> = {
- 'Volume geral':'Controla o volume da banda inteira.', 'Oitava':'Registro das notas deste instrumento. Cada oitava dobra ou divide a frequência por dois.',
- 'Ganho do instrumento':'Volume base desta voz, multiplicado pelos acentos e pelo ganho da peça.', 'Ataque':'Tempo para a nota atingir seu volume. Curto produz ataque definido; longo produz entrada suave.',
- 'Sustentação':'Nível mantido após o decaimento, enquanto a nota dura.', 'Liberação':'Tempo de saída da nota depois de encerrar sua duração.',
- 'Duração da nota (fração)':'Fração da duração rítmica ocupada pelo som. Valores menores deixam mais espaço entre ataques.',
- 'Passa-baixas':'Atenua frequências acima do corte. Reduzir deixa o timbre mais fechado.', 'Passa-altas':'Atenua frequências abaixo do corte. Aumentar remove graves.',
- 'Pan':'Posição estéreo: valores negativos deslocam para a esquerda, positivos para a direita.', 'Reverb':'Quantidade de ambiência e cauda reverberante.', 'Delay':'Quantidade de repetições do som.',
-}
-function Range({ label, value, min, max, step = 0.01, unit = '', onChange }: {
-  label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void
-}) {
-  return <label className={styles.range}>
-    <span>{label}<InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta ${label.toLowerCase()} nesta configuração. Intervalo: ${min} a ${max}${unit}.`}</InfoTip><output>{Number(value.toFixed(3))}{unit}</output></span>
-    <input type="range" aria-label={label} min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} />
-  </label>
 }
 
 export function CreativeStudio() {
@@ -74,10 +59,12 @@ export function CreativeStudio() {
   const [formError, setFormError] = useState('')
   const drag = useRef<{ id: string; square: string; origin: string; x: number; y: number; moved: boolean } | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
+  const dragVisualRef = useRef<HTMLSpanElement>(null)
   const [dragVisual, setDragVisual] = useState<{ id: string; svg: keyof typeof PiecesSVG; x: number; y: number } | null>(null)
   const suppressClick = useRef(false)
   const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
-  const music = useCreativeMusic(session, playing, soloId, simulation)
+  const [showCode, setShowCode] = useState(false)
+  const music = useCreativeMusic(session, playing, soloId, simulation, showCode)
   const selected = session.pieces.find(p => p.id === selectedId)!
   const instrument = session.instruments[selectedId]
   const effects = session.effects[selectedId]
@@ -140,9 +127,9 @@ export function CreativeStudio() {
     return () => { window.removeEventListener('blur', cancel); window.removeEventListener('keydown', escape) }
   }, [music.endAudition])
 
-  function updateInstrument(update: Partial<Instrument>) {
+  const updateInstrument = useCallback((update: Partial<Instrument>) => {
     setSession(s => ({ ...s, instruments: { ...s.instruments, [selectedId]: { ...s.instruments[selectedId], ...update } } }))
-  }
+  }, [selectedId])
   function updateEffects(update: Partial<Effects>) {
     setSession(s => ({ ...s, effects: { ...s.effects, [selectedId]: { ...s.effects[selectedId], ...update } } }))
   }
@@ -250,12 +237,13 @@ export function CreativeStudio() {
     const piece = session.pieces.find(item => item.id === id)
     const rect = boardRef.current?.getBoundingClientRect()
     if (!piece || !rect) return
-    setDragVisual({
-      id,
-      svg: `${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG,
-      x: (event.clientX - rect.left) * (boardRef.current!.offsetWidth / rect.width) - boardRef.current!.clientLeft,
-      y: (event.clientY - rect.top) * (boardRef.current!.offsetHeight / rect.height) - boardRef.current!.clientTop,
-    })
+    const x = (event.clientX - rect.left) * (boardRef.current!.offsetWidth / rect.width) - boardRef.current!.clientLeft
+    const y = (event.clientY - rect.top) * (boardRef.current!.offsetHeight / rect.height) - boardRef.current!.clientTop
+    if (dragVisualRef.current) {
+      dragVisualRef.current.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(1.06)`
+    } else {
+      setDragVisual({ id, svg: `${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG, x, y })
+    }
   }
   function pointerDown(event: React.PointerEvent, square: string) {
     if (event.button !== 0) return
@@ -359,7 +347,7 @@ export function CreativeStudio() {
                   {piece?.active && dragVisual?.id !== piece.id && <span className={styles.activeDot} />}
                 </button>
               })}
-              {dragVisual && <span data-creative-drag={dragVisual.id} className={styles.dragPiece} style={{ left: dragVisual.x, top: dragVisual.y }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
+              {dragVisual && <span ref={dragVisualRef} data-creative-drag={dragVisual.id} className={styles.dragPiece} style={{ left: 0, top: 0, transform: `translate(${dragVisual.x}px, ${dragVisual.y}px) translate(-50%, -50%) scale(1.06)` }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
             </div>
 
             <div className={styles.actions}>
@@ -425,39 +413,11 @@ export function CreativeStudio() {
         </div>
 
         <div className={styles.controlColumn}>
-        <aside className={styles.inspector} aria-label="Parâmetros do instrumento">
-          <section className={styles.panel}>
-            <span className={styles.eyebrow}>03 / PARÂMETROS</span>
-            <div className={styles.instrumentTitle}><h2>Som e movimento</h2><span>{instrument.name}</span></div>
-            <AutomationControls id={selectedId} instrument={instrument} onApply={async automations => {
-              await applyMusicalConfiguration({ ...session, instruments: { ...session.instruments, [selectedId]: { ...instrument, automations } } })
-            }} />
-            <details open><summary>Afinação e envelope</summary><div className={styles.controls}>
-              <Range label="Oitava" value={instrument.octave} min={0} max={7} step={1} onChange={octave => updateInstrument({ octave })} />
-              <Range label="Ganho do instrumento" value={instrument.gain} min={0} max={1} onChange={gain => updateInstrument({ gain })} />
-              <Range label="Ataque" value={instrument.attack} min={0.001} max={2} step={0.001} unit=" s" onChange={attack => updateInstrument({ attack })} />
-              <Range label="Decaimento" value={effects.decay} min={0.01} max={2} unit=" s" onChange={decay => updateEffects({ decay })} />
-              <Range label="Sustentação" value={instrument.sustain ?? (instrument.behavior === 'pulse' ? 0 : 0.55)} min={0} max={1} onChange={sustain => updateInstrument({ sustain })} />
-              <Range label="Liberação" value={instrument.release} min={0.01} max={2} unit=" s" onChange={release => updateInstrument({ release })} />
-              <Range label="Duração da nota (fração)" value={instrument.clip ?? (instrument.behavior === 'pulse' ? 0.12 : instrument.behavior === 'sustain' ? 0.95 : 0.7)} min={0.01} max={1} onChange={clip => updateInstrument({ clip })} />
-            </div></details>
-            <details open><summary>Filtros e efeitos</summary><div className={styles.controls}>
-              <Range label="Passa-baixas" value={instrument.lpf} min={20} max={20000} step={10} unit=" Hz" onChange={lpf => updateInstrument({ lpf })} />
-              <Range label="Passa-altas" value={instrument.hpf} min={0} max={20000} step={10} unit=" Hz" onChange={hpf => updateInstrument({ hpf })} />
-              <Range label="Ganho adicional" value={effects.gain} min={0} max={2} onChange={gain => updateEffects({ gain })} />
-              <Range label="Pitch (multiplicador)" value={effects.pitch} min={0.5} max={2} onChange={pitch => updateEffects({ pitch })} />
-              <Range label="Pan adicional" value={effects.pan} min={-1} max={1} onChange={pan => updateEffects({ pan })} />
-              <Range label="Reverb" value={effects.reverb} min={0} max={1} onChange={reverb => updateEffects({ reverb })} />
-              <Range label="Delay pontuado" value={effects.delay} min={0} max={1} onChange={delay => updateEffects({ delay })} />
-            </div></details>
-            <details open><summary>Movimento → música<InfoTip label="Movimento e música">{instrument.behavior === 'pulse' ? 'Percussão mantém os graus ao mover; pan e filtro continuam reagindo.' : 'Deslocamentos partem da casa original. Avanço segue a cor da peça. O resultado é arredondado para graus inteiros e limitado a ±12 graus.'}</InfoTip></summary><div className={styles.controls}>
-              <Range label="Graus por coluna" value={mapping.fileDegrees} min={-4} max={4} step={0.5} onChange={fileDegrees => updateMapping({ fileDegrees })} />
-              <Range label="Graus por avanço" value={mapping.rankDegrees} min={-4} max={4} step={0.5} onChange={rankDegrees => updateMapping({ rankDegrees })} />
-              <Range label="Abertura estéreo do tabuleiro" value={mapping.panWidth} min={0} max={1} onChange={panWidth => updateMapping({ panWidth })} />
-              <label className={styles.check}><input type="checkbox" checked={mapping.previewFilter} onChange={e => updateMapping({ previewFilter: e.target.checked })} />Altura da casa modula o filtro na prévia</label>
-            </div></details>
-          </section>
-        </aside>
+        <InstrumentParameters selectedId={selectedId} instrument={instrument} effects={effects} mapping={mapping}
+          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
+          onApplyAutomations={async automations => {
+            await applyMusicalConfiguration({ ...session, instruments: { ...session.instruments, [selectedId]: { ...instrument, automations } } })
+          }} />
 
         <section className={`${styles.panel} ${styles.bandPanel}`}>
           <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>04 / SUA BANDA</span><h2>32 vozes independentes</h2></div><span className={styles.hint}>● loop ativo</span></div>
@@ -485,7 +445,7 @@ export function CreativeStudio() {
           <div className={styles.pair}><label><HelpLabel label="Kits salvos">Escolha uma configuração da biblioteca local e use Carregar kit para trazê-la à bancada.</HelpLabel><select value={chosenKit} onChange={e => setChosenKit(e.target.value)}><option value="">Escolha um kit</option>{kits.map(kit => <option key={kit.name}>{kit.name}</option>)}</select></label><button disabled={!chosenKit} onClick={() => { const kit = kits.find(k => k.name === chosenKit); if (kit) void loadSession(kit) }}>Carregar kit</button></div>
         </div>
       </section>
-      <details className={`${styles.panel} ${styles.code}`}><summary>Código Strudel em execução<InfoTip label="Código em execução">Visão gerada pelas vozes ativas e pela prévia. Para editar, use os controles do instrumento.</InfoTip></summary><pre>{music.code}</pre></details>
+      <details className={`${styles.panel} ${styles.code}`} onToggle={event => setShowCode(event.currentTarget.open)}><summary>Código Strudel em execução<InfoTip label="Código em execução">Visão gerada pelas vozes ativas e pela prévia. Para editar, use os controles do instrumento.</InfoTip></summary>{music.codeStats && <p>Exportação: {(music.codeStats.bytes / 1024).toFixed(1)} KB · {music.codeStats.stacks} stacks · {music.codeStats.timeCats} timeCat · {music.codeStats.orbits} orbits · {music.codeStats.filters} filtros declarados<InfoTip label="Métricas da exportação">Contagens do código gerado, não de nós de áudio ativos. Efeitos e vozes realmente em execução variam durante a música.</InfoTip></p>}<pre>{music.code}</pre></details>
     </fieldset>
     <div className={styles.notice} role="status" aria-live="polite">{!ready ? 'Abrindo bancada…' : busy ? 'Validando padrões…' : music.error ? `Áudio: ${music.error}` : notice || 'Selecione uma peça ou carregue uma formação para começar.'}</div>
   </main>

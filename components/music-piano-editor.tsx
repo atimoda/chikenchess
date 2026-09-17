@@ -1,13 +1,13 @@
 'use client'
 import {performancePosition} from '@/lib/music/performance'
 import { InfoTip } from './info-tip'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { Instrument } from '@/lib/music/model'
 import type { MusicMonitor } from '@/lib/music/monitor'
 import { preparePianoRoll, prepareVoiceVariations, type MusicSnapshot } from '@/lib/music/runtime'
 import { resizeRoll, type PianoRoll, type PianoNote } from '@/lib/music/piano-roll'
 
-export function MusicPianoEditor({snapshot,id,monitor,instrument,onChange}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:Partial<Pick<Instrument,'phrases'|'pianoRolls'|'selectedVariation'>>)=>void}){
+export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:Partial<Pick<Instrument,'phrases'|'pianoRolls'|'selectedVariation'>>)=>void}){
  const frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot)
  const [read,setRead]=useState<Awaited<ReturnType<typeof prepareVoiceVariations>>>(null),[error,setError]=useState('')
  const [selectedNote,setSelectedNote]=useState<{index:number;note:number}|null>(null)
@@ -71,4 +71,4 @@ export function MusicPianoEditor({snapshot,id,monitor,instrument,onChange}:{snap
   })}
   <div style={{display:'flex',gap:4,marginTop:8}}><button disabled={phrases.length>=8} onClick={()=>onChange({phrases:[...phrases,phrases.at(-1)??'~'],pianoRolls:[...(instrument.pianoRolls??phrases.map(()=>null)),null]})}>Adicionar variação</button><button disabled={phrases.length<=1} onClick={()=>onChange({phrases:phrases.slice(0,-1),pianoRolls:instrument.pianoRolls?.slice(0,phrases.length-1),selectedVariation:instrument.selectedVariation!==undefined?Math.min(instrument.selectedVariation,phrases.length-2):undefined})}>Remover última variação</button></div>
  </section>
-}
+})
