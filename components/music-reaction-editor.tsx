@@ -1,5 +1,6 @@
 'use client'
 import { InfoTip, HelpLabel } from './info-tip'
+import { CompactNumberInput } from './compact-number-input'
 import { useRef, useState } from 'react'
 import { Power, Settings } from 'lucide-react'
 import { ACTIONS, EVENTS, STATES, TRIGGERS, SCALE_INTERVALS, type Trigger, type Reactions, type ReactionContext, type Reaction } from '@/lib/music/reactions'
@@ -64,7 +65,7 @@ export function MusicReactionEditor({config,onChange,context,onContext,descripti
           const ranges:Record<string,[number,number]>={transpose:[-12,12],bpm:[-30,30],mode:[0,11],variation:[0,7],gain:[-100,100],lpf:[20,20000]}
           return <div key={index} style={{borderTop:'1px solid #35443a',paddingTop:8,marginTop:8}}>
             <label><span style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>Influência<InfoTip label="Transformações musicais">Relativa conserva as notas entre maior e menor natural. Rotação modal troca a tônica dentro das mesmas notas. Inversão espelha os graus da melodia.</InfoTip></span><select value={action.type} onChange={e=>change({type:e.target.value as typeof action.type,value:e.target.value==='lpf'?4000:0})}>{Object.entries(ACTIONS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
-            {ranges[action.type]&&<label><HelpLabel label="Valor">Intensidade da influência na unidade indicada: semitons, porcentagem, graus, índice de variação ou hertz.</HelpLabel><input type="number" min={ranges[action.type][0]} max={ranges[action.type][1]} value={action.value} onChange={e=>{const n=Number(e.target.value),[lo,hi]=ranges[action.type];if(Number.isFinite(n)&&n>=lo&&n<=hi&&(!['transpose','mode','variation'].includes(action.type)||Number.isInteger(n)))change({value:n})}}/></label>}
+            {ranges[action.type]&&<label><HelpLabel label="Valor">Intensidade da influência na unidade indicada: semitons, porcentagem, graus, índice de variação ou hertz.</HelpLabel><CompactNumberInput ariaLabel="Valor" min={ranges[action.type][0]} max={ranges[action.type][1]} value={action.value} onChange={n=>{if(!['transpose','mode','variation'].includes(action.type)||Number.isInteger(n))change({value:n})}}/></label>}
             {action.type==='bpm'&&<label><HelpLabel label="Rampa de BPM (compassos; 0 = salto)">Duração da transição de velocidade. Zero troca diretamente; de 1 a 16 faz uma mudança gradual, inclusive no retorno.</HelpLabel><input type="number" min={0} max={16} value={action.rampBars??0} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=0&&n<=16)change({rampBars:n})}}/></label>}
             {action.type==='scale'&&<label><HelpLabel label="Escala de destino">Escala aplicada enquanto esta influência estiver em execução, usando a tônica resultante das regras anteriores.</HelpLabel><select value={action.scale} onChange={e=>change({scale:e.target.value as typeof action.scale})}>{Object.keys(SCALE_INTERVALS).map(name=><option key={name}>{name}</option>)}</select></label>}
             <button onClick={()=>patch(rule.id,{actions:rule.actions.filter((_,actionIndex)=>actionIndex!==index)})}>Remover influência</button>

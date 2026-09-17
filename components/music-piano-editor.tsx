@@ -65,7 +65,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
        const p=point(e,bars,low,high),notes=roll.notes.map(n=>({...n}))
        if(hit<0&&notes.length>=128){setError('Limite de 128 notas por variação.');return}
        const note=hit<0?notes.push({start:p.start,duration:quantum,degree:p.degree,velocity:.8})-1:hit
-       setSelectedNote({index,note});const rect=target.getBoundingClientRect();const mode=hit<0?'draw':e.clientX>rect.right-8?'resize':'move'
+       setSelectedNote({index,note});const mode=hit<0?'draw':target.dataset.mode==='resize'?'resize':'move'
        drag.current={index,note,origin:{...notes[note]},start:p.start,degree:p.degree,mode,roll:{bars,notes}};setDraft({index,roll:{bars,notes}})
       }}
       onPointerMove={e=>{const d=drag.current;if(!d||d.index!==index)return;const p=point(e,bars,low,high),n={...d.origin};if(d.mode==='move'){n.start=Math.max(0,Math.min(bars-n.duration,d.origin.start+p.start-d.start));n.degree=Math.max(-48,Math.min(48,d.origin.degree+p.degree-d.degree))}else n.duration=Math.max(quantum,Math.min(bars-n.start,p.start-n.start+quantum));d.roll={bars,notes:d.roll.notes.map((v,i)=>i===d.note?n:v)};setDraft({index,roll:d.roll})}}
@@ -74,7 +74,10 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       {Array.from({length:high-low+2},(_,i)=><line key={`h${i}`} x1={0} x2={480} y1={i*rowHeight} y2={i*rowHeight} stroke={i%7===0?'#485740':'#213329'}/>)}
       {Array.from({length:Math.ceil(bars/quantum)+1},(_,i)=><line key={`v${i}`} x1={i*quantum/bars*480} x2={i*quantum/bars*480} y1={0} y2={264} stroke={i%(division*4)===0?'#617652':i%division===0?'#3a503e':'#213329'}/>)}
       {Array.from({length:high-low+1},(_,i)=>high-i).filter(degree=>degree%7===0).map(degree=><text key={`degree${degree}`} x={2} y={(high-degree)*rowHeight+rowHeight-2} fill="#a6b7a7" fontSize={8} pointerEvents="none">{degree===0?'0 · tônica':degree}</text>)}
-      {roll.notes.map((n,j)=><rect data-note={j} key={j} x={n.start/bars*480} y={(high-n.degree)*rowHeight+1} width={Math.max(2,n.duration/bars*480-1)} height={Math.max(2,rowHeight-2)} rx={2} fill={sounding&&present&&cursor>=n.start&&cursor<n.start+n.duration?'#f4e8a5':n.slide?'#dfa67a':'#8fb987'} stroke={selectedNote?.index===index&&selectedNote.note===j?'#fff':'none'} strokeWidth={selectedNote?.index===index&&selectedNote.note===j?2:0} onClick={e=>{e.stopPropagation();clickNote(index,roll,j)}}><title>Grau {n.degree} · tempo {(n.start*4+1).toFixed(2)} · duração {(n.duration*4).toFixed(2)} tempos · duplo clique apaga</title></rect>)}
+      {roll.notes.map((n,j)=>{const x=n.start/bars*480,width=Math.max(2,n.duration/bars*480-1),handle=Math.min(10,width);return <g key={j}>
+       <rect data-note={j} x={x} y={(high-n.degree)*rowHeight+1} width={width} height={Math.max(2,rowHeight-2)} rx={2} fill={sounding&&present&&cursor>=n.start&&cursor<n.start+n.duration?'#f4e8a5':n.slide?'#dfa67a':'#8fb987'} stroke={selectedNote?.index===index&&selectedNote.note===j?'#fff':'none'} strokeWidth={selectedNote?.index===index&&selectedNote.note===j?2:0} style={{cursor:'grab'}} onClick={e=>{e.stopPropagation();clickNote(index,roll,j)}}><title>Grau {n.degree} · tempo {(n.start*4+1).toFixed(2)} · duração {(n.duration*4).toFixed(2)} tempos · duplo clique apaga</title></rect>
+       <rect data-note={j} data-mode="resize" x={x+width-handle} y={(high-n.degree)*rowHeight+1} width={handle} height={Math.max(2,rowHeight-2)} fill="transparent" style={{cursor:'ew-resize'}} onClick={e=>{e.stopPropagation();clickNote(index,roll,j)}} />
+      </g>})}
       {sounding&&present&&<line data-playhead x1={cursor/bars*480} x2={cursor/bars*480} y1={0} y2={264} stroke="#fff1b7" strokeWidth={2}/>}
      </svg>
      {selectedNote?.index===index&&roll.notes[selectedNote.note]&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
