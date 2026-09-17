@@ -3,6 +3,7 @@
 .beats { display: flex; gap: 5px; }
 .beats i { width: 8px; height: 8px; border-radius: 50%; background: #485448; }
 .beats i[data-on='true'] { background: #e1eeac; }
+.scale { color: #d0dccb; }
 .voice { padding: 12px 0; min-height: 150px; }
 .variations { height: 174px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; font: 10px monospace; }
 .variation { padding: 5px; margin-bottom: 7px; border: 1px solid #34463b; border-radius: 5px; }

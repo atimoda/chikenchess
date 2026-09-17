@@ -10,12 +10,11 @@ const RANGE_HELP: Record<string,string> = {
  'Passa-baixas':'Atenua frequências acima do corte. Reduzir deixa o timbre mais fechado.', 'Passa-altas':'Atenua frequências abaixo do corte. Aumentar remove graves.',
  'Pan':'Posição estéreo: valores negativos deslocam para a esquerda, positivos para a direita.', 'Reverb':'Quantidade de ambiência e cauda reverberante.', 'Delay':'Quantidade de repetições do som.',
 }
-export function Range({ label, value, min, max, step = 0.01, unit = '', onChange }: {
-  label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void
+export function Range({ label, value, min, max, step = 0.01, unit = '', help = true, onChange }: {
+  label: string; value: number; min: number; max: number; step?: number; unit?: string; help?: boolean; onChange: (value: number) => void
 }) {
   return <label className={styles.range}>
-    <span>{label}<InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta ${label.toLowerCase()} nesta configuração. Intervalo: ${min} a ${max}${unit}.`}</InfoTip><output>{Number(value.toFixed(3))}{unit}</output></span>
+    <span>{label}{help&&<InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta ${label.toLowerCase()} nesta configuração. Intervalo: ${min} a ${max}${unit}.`}</InfoTip>}<output>{Number(value.toFixed(3))}{unit}</output></span>
     <input type="range" aria-label={label} min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} />
   </label>
 }
-

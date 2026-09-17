@@ -27,7 +27,6 @@ export function InstrumentParameters({selectedId, instrument, effects, mapping, 
           <section className={styles.panel}>
             <span className={styles.eyebrow}>03 / PARÂMETROS</span>
             <div className={styles.instrumentTitle}><h2>Som e movimento</h2><span>{instrument.name}</span></div>
-            <AutomationControls id={selectedId} instrument={instrument} onApply={onApplyAutomations} />
             <details open><summary>Afinação e envelope</summary><div className={styles.controls}>
               <Range label="Oitava" value={instrument.octave} min={0} max={7} step={1} onChange={octave => updateInstrument({ octave })} />
               <Range label="Ganho do instrumento" value={instrument.gain} min={0} max={1} onChange={gain => updateInstrument({ gain })} />
@@ -52,6 +51,7 @@ export function InstrumentParameters({selectedId, instrument, effects, mapping, 
               <Range label="Abertura estéreo do tabuleiro" value={mapping.panWidth} min={0} max={1} onChange={panWidth => updateMapping({ panWidth })} />
               <label className={styles.check}><input type="checkbox" checked={mapping.previewFilter} onChange={e => updateMapping({ previewFilter: e.target.checked })} />Altura da casa modula o filtro na prévia</label>
             </div></details>
+            <AutomationControls id={selectedId} instrument={instrument} onApply={onApplyAutomations} />
           </section>
         </aside>
   )

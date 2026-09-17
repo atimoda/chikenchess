@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { ArrowLeft, Volume2, VolumeX, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
+import { ArrowLeft, Music2, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, unlockNextCity } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
@@ -107,8 +107,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [isStartPressed, setIsStartPressed] = useState(false)
 
   const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([])
-  const [isMuted, setIsMuted] = useState(false)
-  const previousVolumeRef = useRef(0.8)
+  const [musicEngineOn, setMusicEngineOn] = useState(true)
 
   const [isBackgroundDark, setIsBackgroundDark] = useState(false)
 
@@ -365,7 +364,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     targetSide?: 'left' | 'right' | 'top' | 'bottom'
   }[]>([])
 
-  const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume, liveCodeOn && (!isMobile || mobileControlsOpen))
+  const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume, liveCodeOn && (!isMobile || mobileControlsOpen), musicEngineOn)
 
   const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects, !music.enabled)
 
@@ -856,40 +855,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setIsPlaying((prev) => !prev)
   }, [togglePlayback, isPlaying])
 
-  const handleToggleMute = useCallback(() => {
-    if (isMuted) {
-        // Unmute
-        setIsMuted(false)
-        const targetVol = previousVolumeRef.current
-        
-        // Animate volume up
-        let vol = 0
-        const fadeInterval = setInterval(() => {
-            vol += 0.05
-            if (vol >= targetVol) {
-                vol = targetVol
-                clearInterval(fadeInterval)
-            }
-            handleGlobalEffectChange("volume", vol)
-        }, 300 / (targetVol / 0.05)) // 300ms duration
-        
-    } else {
-        // Mute
-        previousVolumeRef.current = globalEffects.volume
-        setIsMuted(true)
-        
-        // Animate volume down
-        let vol = globalEffects.volume
-        const fadeInterval = setInterval(() => {
-            vol -= 0.05
-            if (vol <= 0) {
-                vol = 0
-                clearInterval(fadeInterval)
-            }
-            handleGlobalEffectChange("volume", vol)
-        }, 300 / (globalEffects.volume / 0.05)) // 300ms duration
-    }
-  }, [isMuted, globalEffects.volume, handleGlobalEffectChange])
+  const handleToggleMusicEngine = useCallback(() => setMusicEngineOn(current => !current), [])
 
   const hasStarted = moveHistory.length > 0
 
@@ -1213,12 +1179,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       return (
           <>
             <SpectrogramWidget
-                getFrequencyData={music.enabled ? music.getFrequencyData : undefined}
+                getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
                 ref={spectrogramHandleRef}
                 toggleRef={spectrogramToggleRef}
                 isOn={spectrogramOn}
                 onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
-                isPlaying={isPlaying || (music.enabled && !!music.preview)}
+                isPlaying={music.engineActive && (isPlaying || !!music.preview)}
                 cityColor={city.color}
                 position={mobileMode ? undefined : (spectrogramPosition || undefined)}
                 onPositionChange={(pos) => setSpectrogramPosition(pos)}
@@ -1296,7 +1262,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <LiveCodeWidget
-                playback={liveCodeOn && music.enabled ? <>
+                playback={liveCodeOn && music.enabled && music.engineActive ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">Arraste uma peça para tocar · {music.activeSquares.size} vozes ativas</span>}</div>
                   {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
                   {music.reactionDescriptions.map((description, i) => <div key={i}>{description}</div>)}
@@ -1308,7 +1274,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 pattern={music.enabled ? music.code : currentPattern}
                 city={city}
                 cityColor={city.color}
-                isPlaying={isPlaying}
+                isPlaying={music.engineActive && isPlaying}
                 position={mobileMode ? undefined : (liveCodePosition || undefined)}
                 onPositionChange={(pos) => setLiveCodePosition(pos)}
                 isOn={liveCodeOn}
@@ -1716,11 +1682,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <Button 
                 variant="outline" 
                 size="icon" 
-                onClick={handleToggleMute} 
+                onClick={handleToggleMusicEngine}
+                aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
+                aria-pressed={musicEngineOn}
                 className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
                 style={{ "--city-neon": city.color } as React.CSSProperties}
             >
-                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                <Music2 className={`w-4 h-4 ${musicEngineOn ? '' : 'opacity-35'}`} />
             </Button>
             <Button 
                 variant="outline" 
@@ -1852,9 +1820,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   isThinking={isThinking} 
                   synthSelectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
                   activeSquares={music.enabled ? music.activeSquares : activeSquares}
-                  onPieceHold={music.enabled ? music.audition : undefined}
-                  onPieceRelease={music.enabled ? music.endAudition : undefined}
-                  musicPulse={music.enabled ? music.pulse : null}
+                  onPieceHold={music.enabled && music.engineActive ? music.audition : undefined}
+                  onPieceRelease={music.enabled && music.engineActive ? music.endAudition : undefined}
+                  musicPulse={music.enabled && music.engineActive ? music.pulse : null}
                   onBoardClick={(square) => {
                     if (music.enabled) { music.select(square); return }
                     setSynthSelectedSquare(square)
@@ -1866,7 +1834,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     }
                   }}
                   onDragOverSquare={(from, to) => {
-                    if (music.enabled) { music.audition(from, to); return }
+                    if (music.enabled) {
+                      if (music.engineActive) music.audition(from, to)
+                      return
+                    }
                     if (from === to) return
                     const piece = game.get(from as Square)
                     if (!piece) return

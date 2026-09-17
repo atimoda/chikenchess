@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { MusicReactionEditor } from './music-reaction-editor'
 import type { ReactionContext } from '@/lib/music/reactions'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Download, FlaskConical, Pause, Play, Save, Upload } from 'lucide-react'
+import { ArrowLeft, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
 import { PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
@@ -64,6 +64,7 @@ export function CreativeStudio() {
   const suppressClick = useRef(false)
   const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
   const [showCode, setShowCode] = useState(false)
+  const [editingInstrumentName, setEditingInstrumentName] = useState(false)
   const music = useCreativeMusic(session, playing, soloId, simulation, showCode)
   const selected = session.pieces.find(p => p.id === selectedId)!
   const instrument = session.instruments[selectedId]
@@ -113,6 +114,7 @@ export function CreativeStudio() {
   }, [session, ready])
 
   useEffect(() => { setPattern(instrument.notes); setRecipeId(''); setPatternError('') }, [selectedId, instrument.notes])
+  useEffect(() => setEditingInstrumentName(false), [selectedId])
   useEffect(() => {
     setPhrases(instrument.phrases?.length ? instrument.phrases : [instrument.notes])
     setMask(instrument.mask ?? '')
@@ -150,6 +152,15 @@ export function CreativeStudio() {
     if (!currentlyActive) setPlaying(true)
     else if (activeCount === 1) setPlaying(false)
     setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: !p.active } : p) }))
+  }
+  function toggleSolo(id: string) {
+    music.endAudition()
+    const nextSolo = soloId === id ? null : id
+    setSoloId(nextSolo)
+    if (nextSolo) {
+      setPlaying(true)
+      setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: true } : p) }))
+    }
   }
   function stop() { setPlaying(false); music.endAudition(); drag.current = null; setNotice('Arranjo pausado.') }
   function select(id: string) { music.endAudition(); setSelectedId(id) }
@@ -291,8 +302,10 @@ export function CreativeStudio() {
     </header>
 
     <fieldset disabled={!ready || busy} className={styles.workspace}>
-<section className={styles.transport} aria-label="Kit atual">            <label className={styles.hint}><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>Kit atual do Criativo<InfoTip label="Carregar e experimentar kits">Cada cidade tem um arranjo próprio inspirado no estilo e na época. A coleção anterior fica disponível em Kit anterior. Gere variações e use Salvar kit da fase para adotá-las na próxima partida.</InfoTip></span><select aria-label="Cidade do kit" value={stageCityId} onChange={e => setStageCityId(e.target.value)}>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
-            <div className={styles.actions}>
+      <section className={`${styles.panel} ${styles.kitHub}`} aria-label="Kit atual e biblioteca">
+        <div className={styles.kitStage}>
+          <label><span className={styles.helpCaption}>Kit atual do Criativo<InfoTip label="Carregar e experimentar kits">Cada cidade tem um arranjo próprio inspirado no estilo e na época. A coleção anterior fica disponível em Kit anterior. Gere variações e salve o kit da fase para adotá-las na próxima partida.</InfoTip></span><select aria-label="Cidade do kit" value={stageCityId} onChange={e => setStageCityId(e.target.value)}>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+          <div className={styles.actions}>
               <button className={styles.primary} onClick={() => void loadStageKit(stageCityId)}>Carregar kit da cidade</button>
               <button onClick={() => void loadSession(defaultCityKit(stageCityId)!, true)}>Kit inicial da cidade</button>
               <button onClick={() => {
@@ -302,26 +315,50 @@ export function CreativeStudio() {
               <button onClick={() => {const previous=previousCityKit(stageCityId);if(previous)void loadSession(prepareCityKitForCreative(previous,stageCityId),true);else setNotice('Não existe kit anterior guardado para esta cidade.')}}>Kit anterior</button>
               <button onClick={async () => {try {const response=await window.fetch('/presets/mouth-breather.json');if(!response.ok)throw new Error('Preset indisponível');await loadSession(parseCreativeSession(await response.text()),true)}catch(error){setNotice(messageOf(error))}}}>Estudo Mouth Breather</button>
               <button onClick={() => void loadSession(createDusseldorfSession(), true)}>Düsseldorf original · samples</button>
-</div>
-</section>
-      <section className={styles.transport} aria-label="Controles da sessão">
-        <button className={styles.primary} onClick={() => { if (playing) stop(); else setPlaying(true) }} aria-pressed={playing}>
-          {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pausar' : 'Tocar arranjo'}
-        </button>
-        <label><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /></label>
-        <label><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel><select value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
-        <label><HelpLabel label="Escala">Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
-        <Range label="Volume geral" value={session.volume} min={0} max={1} onChange={volume => setSession(s => ({ ...s, volume }))} />
-        <span className={styles.status}><i className={playing ? styles.running : ''} />{playing ? 'Em execução' : 'Pausado'} · {music.snapshot.pieces.filter(p => p.active).length}/32 ativas{soloId ? ' · solo' : ''}</span>
-        <MusicTransportReadout monitor={music.monitor} />
+          </div>
+        </div>
+        <div className={styles.kitLibrary}>
+          <div className={styles.kitLibraryHeader}><span>Biblioteca e fase</span><InfoTip label="Salvar kits e fases">Vincule o kit a uma cidade para usá-lo na partida. No Criativo, o kit da fase liga as 16 peças brancas para audição; na partida, cada peça entra após seu primeiro movimento.</InfoTip></div>
+          <div className={styles.kitFields}>
+            <label>Nome do kit<input maxLength={80} value={session.name} onChange={e => setSession(s => ({ ...s, name: e.target.value }))} /></label>
+            <label>Fase vinculada<select value={session.cityId ?? ''} onChange={e => setSession(s => ({ ...s, cityId: e.target.value || undefined }))}><option value="">Somente biblioteca local</option>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+            <label>Kits salvos<select value={chosenKit} onChange={e => setChosenKit(e.target.value)}><option value="">Escolha um kit</option>{kits.map(kit => <option key={kit.name}>{kit.name}</option>)}</select></label>
+          </div>
+          <div className={styles.actions}>
+            <button disabled={!session.cityId} onClick={() => session.cityId && void loadStageKit(session.cityId, false)}>Recarregar da fase</button>
+            <button className={session.cityId ? styles.primary : undefined} onClick={saveKit}><Save size={15} />{session.cityId ? 'Salvar kit da fase' : 'Salvar kit'}</button>
+            <button onClick={exportKit}><Download size={15} />Exportar kit</button>
+            <label className={styles.upload}><Upload size={15} />Importar kit<input type="file" accept=".json,application/json" aria-label="Importar kit JSON" onChange={async e => {
+              const file = e.target.files?.[0]; e.target.value = ''
+              if (!file) return
+              if (file.size > 150000) { setNotice('Arquivo de kit muito grande. Limite: 150 KB.'); return }
+              try { await loadSession(parseCreativeSession(await file.text())) } catch (error) { setNotice(`Kit não importado: ${messageOf(error)}`) }
+            }} /></label>
+            <button onClick={() => { if (confirm('Começar um rascunho novo? Exporte ou salve o atual se quiser mantê-lo.')) void loadSession(createCreativeSession()) }}>Novo rascunho</button>
+            <button disabled={!chosenKit} onClick={() => { const kit = kits.find(k => k.name === chosenKit); if (kit) void loadSession(kit) }}>Carregar kit salvo</button>
+          </div>
+        </div>
       </section>
+      <div className={styles.sessionRow}>
+        <section className={styles.transport} aria-label="Controles da sessão">
+          <button className={styles.primary} onClick={() => { if (playing) stop(); else setPlaying(true) }} aria-pressed={playing}>
+            {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pause' : 'Play'}
+          </button>
+          <label><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel></label>
+          <label><select aria-label="Tônica" value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel></label>
+          <label><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select><HelpLabel label={`Escala (${music.snapshot.scale.join(' · ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel></label>
+          <Range label="Volume geral" value={session.volume} min={0} max={1} help={false} onChange={volume => setSession(s => ({ ...s, volume }))} />
+          <MusicTransportReadout monitor={music.monitor} activeCount={activeCount} solo={!!soloId} />
+        </section>
+        <div className={styles.transitionSlot}><MusicTransitionView monitor={music.monitor} fallbackBpm={session.bpm} /></div>
+      </div>
 
       <div className={styles.columns}>
           <div className={styles.boardColumn}><section className={`${styles.panel} ${styles.boardPanel}`}>
-            <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>01 / TABULEIRO LIVRE</span><h2>Experimente o movimento<InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></h2></div><div className={styles.segmented}>
+            <div className={styles.sectionHeader}><div className={styles.segmented}>
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
-            </div></div>
+            </div><InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></div>
             <div ref={boardRef} className={styles.board} role="group" aria-label="Tabuleiro criativo">
               {squares.map((square, index) => {
                 const piece = music.snapshot.pieces.find(p => p.square === square)
@@ -358,20 +395,38 @@ export function CreativeStudio() {
 
           </section>
 
-        <MusicTransitionView monitor={music.monitor} />
-          <MusicReactionEditor config={session.reactions} onChange={reactions=>setSession(s=>({...s,reactions}))} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} /></div>
+          <MusicReactionEditor config={session.reactions} onChange={reactions=>setSession(s=>({...s,reactions}))} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} />
+
+          <section className={`${styles.panel} ${styles.bandPanel}`}>
+            <div className={styles.sectionHeader}><h2>32 vozes independentes</h2></div>
+            <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
+              <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
+                <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span><span>{session.instruments[p.id].name}<MusicVoiceBadge monitor={music.monitor} id={p.id} /></span></button>
+                <button className={styles.voiceSolo} aria-label={`${soloId === p.id ? 'Desativar' : 'Ativar'} solo ${p.id}`} title="Solo" aria-pressed={soloId === p.id} onClick={() => toggleSolo(p.id)}>S</button>
+                <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
+              </div>)}</div>)}</div>
+          </section>
+        </div>
         <div className={styles.controlColumns}>
         <div className={styles.controlColumn}>
         <aside className={styles.inspector} aria-label="Editor do instrumento">
           <section className={styles.panel}>
-            <span className={styles.eyebrow}>02 / INSTRUMENTO</span>
-            <div className={styles.instrumentTitle}><h2>{pieceNames[selected.type]} · {selected.origin}</h2><span>em {selected.square}</span></div>
-            <label><HelpLabel label="Nome do instrumento">Nome livre desta voz, salvo no kit e independente do tipo de peça.</HelpLabel><input maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrumento' })} /></label>
-            <div className={styles.actions}>
-              <button aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}>{selected.active ? 'Loop ativo' : 'Ativar loop'}</button>
-              <button aria-pressed={soloId === selectedId} onClick={() => { music.endAudition(); setSoloId(soloId === selectedId ? null : selectedId); if (soloId !== selectedId) { setPlaying(true); setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === selectedId ? { ...p, active: true } : p) })) } }}>Solo</button>
+            <span className={styles.eyebrow}>Selected Instrument</span>
+            <div className={styles.instrumentIdentity}>
+              <span className={styles.instrumentAvatar} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[`${selected.color}${selected.type.toUpperCase()}` as keyof typeof PiecesSVG] }} />
+              <div className={styles.instrumentHeading}>
+                <div className={styles.instrumentTitle}>
+                  {editingInstrumentName ? <input autoFocus aria-label="Nome do instrumento" maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrumento' })} onBlur={() => setEditingInstrumentName(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur() }} /> : <h2>{instrument.name}</h2>}
+                  <button type="button" className={styles.editName} aria-label="Editar nome do instrumento" title="Editar nome" onClick={() => setEditingInstrumentName(true)}><Pencil size={14} /></button>
+                </div>
+                <span className={styles.instrumentMeta}>{pieceNames[selected.type]} - {selected.origin} - em {selected.square} - <MusicVoiceBadge monitor={music.monitor} id={selectedId} /></span>
+              </div>
             </div>
-            <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} expanded monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
+            <div className={styles.actions}>
+              <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={selected.active ? 'Desativar loop' : 'Ativar loop'} title={selected.active ? 'Loop ativo' : music.preview?.id === selectedId ? 'Prévia temporária' : 'Loop inativo'} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
+              <button aria-pressed={soloId === selectedId} onClick={() => toggleSolo(selectedId)}>Solo</button>
+            </div>
+            <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
             <MusicPerformanceControls override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
             <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
             <div className={styles.pair}><label><span className={styles.helpCaption}>Comportamento<InfoTip label="Comportamento do instrumento">Comportamento, fonte e afinação independem do tipo de peça.</InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulso / percussão</option><option value="phrase">Frase / sequenciador</option><option value="sustain">Sustentado / acordes</option></select></label>
@@ -418,33 +473,10 @@ export function CreativeStudio() {
           onApplyAutomations={async automations => {
             await applyMusicalConfiguration({ ...session, instruments: { ...session.instruments, [selectedId]: { ...instrument, automations } } })
           }} />
-
-        <section className={`${styles.panel} ${styles.bandPanel}`}>
-          <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>04 / SUA BANDA</span><h2>32 vozes independentes</h2></div><span className={styles.hint}>● loop ativo</span></div>
-          <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
-            <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
-              <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span><span>{session.instruments[p.id].name}<MusicVoiceBadge monitor={music.monitor} id={p.id} /></span></button>
-              <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
-            </div>)}</div>)}</div>
-        </section>
         </div>
         </div>
       </div>
 
-      <section className={`${styles.panel} ${styles.kitPanel}`} aria-label="Biblioteca de kits">
-        <div><span className={styles.eyebrow}>05 / KITS E FASES</span><h2>Guarde o que funcionou<InfoTip label="Salvar kits e fases">Vincule o kit a uma cidade para usá-lo na partida. No Criativo, o kit da fase liga as 16 peças brancas para audição; na partida, cada peça entra após seu primeiro movimento.</InfoTip></h2></div>
-        <div className={styles.kitControls}>
-          <label><HelpLabel label="Nome do kit">Nome usado na biblioteca local e na exportação JSON.</HelpLabel><input maxLength={80} value={session.name} onChange={e => setSession(s => ({ ...s, name: e.target.value }))} /></label>
-          <div className={styles.pair}><label><HelpLabel label="Fase vinculada">Associa este kit a uma cidade e época. Salvar kit da fase o disponibiliza para a próxima partida neste navegador.</HelpLabel><select value={session.cityId ?? ''} onChange={e => setSession(s => ({ ...s, cityId: e.target.value || undefined }))}><option value="">Somente biblioteca local</option>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label><button disabled={!session.cityId} onClick={() => session.cityId && void loadStageKit(session.cityId, false)}>Recarregar da fase</button></div>
-          <div className={styles.actions}><button className={session.cityId ? styles.primary : undefined} onClick={saveKit}><Save size={15} />{session.cityId ? 'Salvar kit da fase' : 'Salvar kit'}</button><button onClick={exportKit}><Download size={15} />Exportar kit</button><label className={styles.upload}><Upload size={15} />Importar kit<input type="file" accept=".json,application/json" aria-label="Importar kit JSON" onChange={async e => {
-            const file = e.target.files?.[0]; e.target.value = ''
-            if (!file) return
-            if (file.size > 150000) { setNotice('Arquivo de kit muito grande. Limite: 150 KB.'); return }
-            try { await loadSession(parseCreativeSession(await file.text())) } catch (error) { setNotice(`Kit não importado: ${messageOf(error)}`) }
-          }} /></label><button onClick={() => { if (confirm('Começar um rascunho novo? Exporte ou salve o atual se quiser mantê-lo.')) void loadSession(createCreativeSession()) }}>Novo rascunho</button></div>
-          <div className={styles.pair}><label><HelpLabel label="Kits salvos">Escolha uma configuração da biblioteca local e use Carregar kit para trazê-la à bancada.</HelpLabel><select value={chosenKit} onChange={e => setChosenKit(e.target.value)}><option value="">Escolha um kit</option>{kits.map(kit => <option key={kit.name}>{kit.name}</option>)}</select></label><button disabled={!chosenKit} onClick={() => { const kit = kits.find(k => k.name === chosenKit); if (kit) void loadSession(kit) }}>Carregar kit</button></div>
-        </div>
-      </section>
       <details className={`${styles.panel} ${styles.code}`} onToggle={event => setShowCode(event.currentTarget.open)}><summary>Código Strudel em execução<InfoTip label="Código em execução">Visão gerada pelas vozes ativas e pela prévia. Para editar, use os controles do instrumento.</InfoTip></summary>{music.codeStats && <p>Exportação: {(music.codeStats.bytes / 1024).toFixed(1)} KB · {music.codeStats.stacks} stacks · {music.codeStats.timeCats} timeCat · {music.codeStats.orbits} orbits · {music.codeStats.filters} filtros declarados<InfoTip label="Métricas da exportação">Contagens do código gerado, não de nós de áudio ativos. Efeitos e vozes realmente em execução variam durante a música.</InfoTip></p>}<pre>{music.code}</pre></details>
     </fieldset>
     <div className={styles.notice} role="status" aria-live="polite">{!ready ? 'Abrindo bancada…' : busy ? 'Validando padrões…' : music.error ? `Áudio: ${music.error}` : notice || 'Selecione uma peça ou carregue uma formação para começar.'}</div>
