@@ -6,7 +6,7 @@ export interface TrackFrame {
   events: NoteEvent[]
   values: Partial<Record<'gain' | 'lpf' | 'pan' | 'room' | 'delay', number>>
 }
-export interface TransportFrame { bpm:number; targetBpm:number; scale:string[]; ramp?:{from:number;target:number;start:number;end:number;progress:number}; pending:{id:string;cycle:number;trigger:string}[] }
+export interface TransportFrame { bpm:number; targetBpm:number; scale:string[]; harmony:HarmonyPlanId; ramp?:{from:number;target:number;start:number;end:number;progress:number}; pending:{id:string;cycle:number;trigger:string}[] }
 export interface MusicFrame { transport?:TransportFrame; running: boolean; cycle: number; beat: number; section: number; tracks: Record<string, TrackFrame> }
 export const EMPTY_MUSIC_FRAME: MusicFrame = { running: false, cycle: 0, beat: 1, section: 0, tracks: {} }
 
@@ -28,3 +28,4 @@ export const VOICE_STATUS_LABELS: Record<VoiceStatus, string> = {
   inactive: 'Inativa', paused: 'Transporte pausado', 'solo-muted': 'Fora do solo', loading: 'Carregando sample',
   error: 'Erro no sample', masked: 'Pausa de seção', rest: 'Pausa da frase', note: 'Tocando',
 }
+import type { HarmonyPlanId } from './harmony'

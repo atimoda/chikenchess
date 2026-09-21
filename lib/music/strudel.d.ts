@@ -17,5 +17,6 @@ declare module '@strudel/web' {
   export const saw: any
   export const samples: any
   export const loadBuffer: any
+  export const pick: any
   export const pickRestart: any
 }

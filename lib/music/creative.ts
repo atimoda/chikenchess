@@ -7,7 +7,8 @@ import type { MusicSnapshot } from './runtime-types'
 import { AUTOMATION_TARGETS, hasControlPatternBudget } from './automation'
 import { sampleAsset } from './sample-banks'
 import { electronicGrooves } from './grooves'
-import { reactionsSchema } from './reactions'
+import { defaultReactions, isLegacyReactionPreset, REACTION_PRESET_REVISION, reactionsSchema } from './reactions'
+import { HARMONY_PLAN_IDS } from './harmony'
 
 export const SOUNDS = ['sbd', 'sine', 'triangle', 'square', 'sawtooth', 'supersaw', 'white', 'pink', 'brown'] as const
 export const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
@@ -86,6 +87,8 @@ const pieceSchema = z.object({
 })
 export const creativeSchema = z.object({
   reactions: reactionsSchema,
+  reactionPresetRevision: z.string().max(80).default(REACTION_PRESET_REVISION),
+  harmony: z.enum(HARMONY_PLAN_IDS).default('static'),
   catalogRevision: z.string().max(80).optional(),
   version: z.literal(4), name: z.string().trim().min(1).max(80),
   cityId: z.string().trim().regex(/^[a-z0-9-]+$/).optional(),
@@ -130,6 +133,7 @@ export function creativeSnapshot(session: CreativeSession, playing: boolean, sol
   return {
     title: session.name, bpm: session.bpm, volume: session.volume, playing,
     sectionPattern: session.sectionPattern,
+    harmony: session.harmony,
     grooves: session.grooves,
     soloId,
     scale: scaleForCreativeSession(session),
@@ -168,6 +172,16 @@ export function parseCreativeSession(text: string): CreativeSession {
   if (data?.version === 3) {
     data.version = 4
     data.grooves = electronicGrooves()
+  }
+  // Replace old factory presets; authored rules win while missing triggers gain defaults.
+  if (data?.reactionPresetRevision !== REACTION_PRESET_REVISION) {
+    if (!data?.reactions || isLegacyReactionPreset(data.reactions)) {
+      data.reactions = { minimumPieces: data?.reactions?.minimumPieces ?? 4, rules: defaultReactions() }
+    } else {
+      const configured = new Set((data.reactions.rules ?? []).map((rule:{trigger?:string})=>rule.trigger))
+      data.reactions.rules = [...(data.reactions.rules ?? []), ...defaultReactions().filter(rule=>!configured.has(rule.trigger))]
+    }
+    data.reactionPresetRevision = REACTION_PRESET_REVISION
   }
   // Repair the old factory timeline: <...> already spans 16 cycles; /16
   // accidentally stretched it to 256. Preserve other authored timelines.

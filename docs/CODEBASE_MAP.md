@@ -7,8 +7,10 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Pedido | Entrada principal | Dependências / contratos relevantes |
 | --- | --- | --- |
 | Tom, graus, identidade e ativação | `lib/music/model.ts`, `reactions.ts` | `runtime-types.ts`; histórico de xadrez |
+| Plano harmônico, cifras e voicings | `lib/music/harmony.ts`, `voice-spec.ts` | `creative.ts`, `reactions.ts`, `monitor.ts`; cada seção resolve centro, tríade e inversão |
 | Estados/eventos, quantização e BPM | `reactions.ts`, `reaction-queue.ts`, `transport.ts` | `components/music-reaction-editor.tsx`; `music-transition-view.tsx` |
 | Controles que chegam a cada voz | `lib/music/voice-spec.ts` | `model.ts`, `sample-banks.ts`, `runtime-types.ts` |
+| Orbits de efeitos e ciclo de vida dos buses | `lib/music/voice-spec.ts`, `runtime-session.ts` | Quatro buses de loop (dois/equipe); audições isoladas; `team-mixer.ts` recebe a saída por equipe |
 | Agrupamento de notas / exportação compacta | `lib/music/roll-optimizer.ts` | `pattern-compiler.ts`, `code-export.ts`; preserva sobreposições |
 | Reverb durante arraste | `lib/music/manual-reverb-cache.ts` | `runtime-session.ts`; adapter Superdough, nunca compartilha nós ativos |
 | Notas, grooves, slides, seções executadas | `lib/music/pattern-compiler.ts` | `performance.ts`, `piano-roll.ts`, `automation.ts`, `grooves.ts` |

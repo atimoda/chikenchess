@@ -81,16 +81,32 @@ test('city kit persistence round-trips sources, automation and shared grooves', 
   } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
 })
 
+test('kit library keeps one user kit per city and releases a moved kit previous city', () => {
+  const { updateKitLibrary } = loadTs('lib/music/city-kits.ts')
+  const first = { ...creative.createCreativeSession(), name: 'Primeiro', cityId: 'berlin' }
+  const second = { ...creative.createCreativeSession(), name: 'Segundo', cityId: 'berlin' }
+  const replaced = updateKitLibrary([first], second)
+  assert.equal(replaced.kits.find(kit => kit.name === 'Primeiro').cityId, undefined)
+  assert.equal(replaced.kits.find(kit => kit.name === 'Segundo').cityId, 'berlin')
+  assert.deepEqual(replaced.releasedCityIds, [])
+  const moved = updateKitLibrary(replaced.kits, { ...second, cityId: 'paris' })
+  assert.equal(moved.kits.find(kit => kit.name === 'Segundo').cityId, 'paris')
+  assert.deepEqual(moved.releasedCityIds, ['berlin'])
+})
+
 test('every city has a reproducible, distinct kit with roles independent of chess type', () => {
   const { cities } = loadTs('lib/cities-data.ts')
   const { defaultCityKit, EDITABLE_CITY_KITS } = loadTs('lib/music/city-kits.ts')
   const { createRandomCityKit } = loadTs('lib/music/random-kit.ts')
+  const { REACTION_PRESET_REVISION, TRIGGERS } = loadTs('lib/music/reactions.ts')
   assert.deepEqual(EDITABLE_CITY_KITS.map(c => c.id), cities.map(c => c.id))
   const fingerprints = new Set(), kingBehaviors = new Set()
   for (const city of cities) {
     const kit = defaultCityKit(city.id)
     assert.deepEqual(kit, defaultCityKit(city.id))
     assert.equal(kit.cityId, city.id)
+    assert.equal(kit.reactionPresetRevision, REACTION_PRESET_REVISION)
+    assert.deepEqual(new Set(kit.reactions.rules.map(rule => rule.trigger)), new Set(Object.keys(TRIGGERS)))
     assert.equal(kit.pieces.filter(p => p.active).length, 16)
     assert.ok(kit.pieces.filter(p => p.active).every(p => p.color === 'w'))
     assert.deepEqual(creative.parseCreativeSession(JSON.stringify(kit)), JSON.parse(JSON.stringify(kit)))

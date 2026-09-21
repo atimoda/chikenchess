@@ -4,6 +4,53 @@ const { loadTs, strudel } = require('../helpers/music.cjs')
 const { voiceSpecs, renderMusicCode, compileVoice } = loadTs('lib/music/runtime.ts')
 const creative = loadTs('lib/music/creative.ts')
 
+test('shared harmony moves melodic banks together and leaves pulse voices unchanged', () => {
+ const kit=creative.createCreativeSession();kit.scale='Maior';kit.sectionPattern='1'
+ for(const piece of kit.pieces)piece.active=['w:b1','w:a2'].includes(piece.id)
+ const base=creative.creativeSnapshot(kit,true),harmonic={...base,harmony:'cadence'}
+ const baseVoices=voiceSpecs(base,null),harmonicVoices=voiceSpecs(harmonic,null)
+ const number=pattern=>Number(pattern.match(/-?\d+(?:\.\d+)?/)[0])
+ const baseBass=baseVoices.find(voice=>voice.piece.id==='w:b1'),harmonicBass=harmonicVoices.find(voice=>voice.piece.id==='w:b1')
+ assert.equal(harmonicBass.phrases.length,4)
+ assert.equal(number(harmonicBass.phrases[1])-number(baseBass.phrases[0]),5)
+ assert.deepEqual(harmonicVoices.find(voice=>voice.piece.id==='w:a2').phrases,baseVoices.find(voice=>voice.piece.id==='w:a2').phrases)
+ kit.instruments['w:b1'].pianoRolls=[{bars:1,notes:[{start:0,duration:.5,degree:0,velocity:1}]}]
+ const rollBase=voiceSpecs(creative.creativeSnapshot(kit,true),null).find(voice=>voice.piece.id==='w:b1')
+ kit.harmony='cadence'
+ const rollHarmony=voiceSpecs(creative.creativeSnapshot(kit,true),null).find(voice=>voice.piece.id==='w:b1')
+ assert.equal(rollHarmony.pianoRolls[1].notes[0].degree-rollBase.pianoRolls[0].notes[0].degree,5)
+})
+
+test('moving harmony generates one voiced diatonic triad per sustain onset', async () => {
+ const {harmonyFrame}=loadTs('lib/music/harmony.ts')
+ const kit=creative.createCreativeSession(),id='w:e1'
+ kit.scale='Maior';kit.harmony='cadence';kit.sectionPattern='1';kit.pieces.forEach(piece=>piece.active=piece.id===id)
+ Object.assign(kit.instruments[id],{behavior:'sustain',phrases:['[0,2,4] ~ 2'],pianoRolls:undefined,groove:undefined,automations:undefined,mask:undefined})
+ const phraseVoice=voiceSpecs(creative.creativeSnapshot(kit,true),null)[0]
+ assert.match(phraseVoice.phrases[1],/\[48,53,57\]/)
+ assert.equal((phraseVoice.phrases[1].match(/48,53,57/g)??[]).length,2,'an authored chord and a single note each become one voiced triad')
+ const played=compileVoice(await strudel(),phraseVoice).queryArc(0,.01).map(event=>Number(event.value.note)).sort((a,b)=>a-b)
+ assert.deepEqual(played,[48,53,57])
+ assert.deepEqual(harmonyFrame('cadence',creative.creativeSnapshot(kit,true).scale,1),{
+  plan:'cadence',planLabel:'Cadência · I–IV–V–I',section:1,degree:3,roman:'IV',
+  chordDegrees:[3,5,7],chordNotes:['F','A','C'],chordName:'F',quality:'maior',
+ })
+ assert.deepEqual(harmonyFrame('static',['C4','C#4','D4','D#4','E4','F4','F#4','G4','G#4','A4','A#4','B4'],0).chordNotes,['C','E','G'])
+ kit.instruments[id].pianoRolls=[{bars:1,notes:[
+  {start:0,duration:.5,degree:0,velocity:1},{start:0,duration:.5,degree:2,velocity:.8},{start:.5,duration:.5,degree:4,velocity:.7},
+ ]}]
+ const rollVoice=voiceSpecs(creative.creativeSnapshot(kit,true),null)[0],notes=rollVoice.pianoRolls[1].notes
+ assert.equal(notes.length,6)
+ assert.deepEqual([...new Set(notes.filter(note=>note.start===0).map(note=>note.degree))],[48,53,57])
+})
+
+test('static harmony preserves authored sustain voicings', () => {
+ const kit=creative.createCreativeSession(),id='w:e1'
+ kit.scale='Maior';kit.harmony='static';kit.pieces.forEach(piece=>piece.active=piece.id===id)
+ Object.assign(kit.instruments[id],{behavior:'sustain',phrases:['[0,3,6]'],pianoRolls:undefined,groove:undefined,automations:undefined,mask:undefined})
+ assert.match(voiceSpecs(creative.creativeSnapshot(kit,true),null)[0].phrases[0],/\[48,53,59\]/)
+})
+
 test('editable notes keep their durations and independent loop lengths in real Strudel', async () => {
  const api=await strudel(),kit=creative.createDusseldorfSession()
  kit.instruments['w:b1'].pianoRolls=[{bars:.75,notes:[{start:0,duration:.125,degree:0,velocity:.7}]}]
