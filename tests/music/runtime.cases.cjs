@@ -50,6 +50,31 @@ test('pattern edits and an empty active band preserve the running transport', as
   assert.equal(runtime.monitor.getSnapshot().cycle, cycle)
 })
 
+test('a shared loop bus stays connected until its final voice leaves', async () => {
+  const api = await strudel()
+  const nodes = {}, disconnects = new Map()
+  const controller = { nodes, getOrbit(id) { return nodes[id] ??= {
+    disconnect() { disconnects.set(id, (disconnects.get(id) ?? 0) + 1) },
+    output: { gain: { setTargetAtTime() {} } },
+  } } }
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.scheduler = { started: true, lastBegin: 0, lastTick: 0, latency: 0, cps: .5, setCps(v) { this.cps = v }, setPattern() {}, stop() {} }
+  runtime.api = { ...api, getAudioContext: () => ({ currentTime: 0 }), getSuperdoughAudioController: () => controller }
+  runtime.publishFrame = () => {}
+  const full = { ...state(), pieces: model.piecesFromHistory([]).map(piece => ({ ...piece, active: true })) }
+  runtime.update(full)
+  const bus = 0
+  const members = voiceSpecs(full, null).filter(voice => voice.orbit === bus).map(voice => voice.piece.id)
+  assert.ok(members.length > 1)
+  runtime.update({ ...full, pieces: full.pieces.map(piece => piece.id === members[0] ? { ...piece, active: false } : piece) })
+  assert.equal(disconnects.get(bus), undefined)
+  assert.ok(nodes[bus])
+  runtime.update({ ...full, pieces: full.pieces.map(piece => members.includes(piece.id) ? { ...piece, active: false } : piece) })
+  assert.equal(disconnects.get(bus), 1)
+  assert.equal(nodes[bus], undefined)
+  runtime.dispose()
+})
+
 test('pausing while the audio clock starts leaves playback and its monitor stopped', async () => {
   const api = await strudel()
   let finishStart

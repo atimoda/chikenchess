@@ -5,6 +5,45 @@ const model = loadTs('lib/music/model.ts')
 const { voiceSpecs, renderMusicCode, compileVoice, compileVoiceVariations } = loadTs('lib/music/runtime.ts')
 const patterns = loadTs('lib/music/pattern-library.ts')
 const creative = loadTs('lib/music/creative.ts')
+const cityKits = loadTs('lib/music/city-kits.ts')
+
+test('loop voices use four shared effect buses while previews remain isolated', () => {
+  const kit = cityKits.defaultCityKit('detroit')
+  const snapshot = creative.creativeSnapshot(kit, true)
+  snapshot.pieces = snapshot.pieces.map(piece => ({ ...piece, active: true }))
+  const voices = voiceSpecs(snapshot, null)
+  assert.deepEqual([...new Set(voices.map(voice => voice.orbit))].sort(), [0, 1, 2, 3])
+  assert.deepEqual([...new Set(voices.filter(v => v.piece.color === 'w').map(v => v.orbit))].sort(), [0, 1])
+  assert.deepEqual([...new Set(voices.filter(v => v.piece.color === 'b').map(v => v.orbit))].sort(), [2, 3])
+  const piece = snapshot.pieces.find(piece => piece.id === 'w:b1')
+  const preview = voiceSpecs(snapshot, { id: piece.id, square: piece.square, mode: 'manual' }).find(v => v.piece.id === piece.id)
+  assert.equal(preview.orbit, 64 + piece.slot)
+})
+
+test('continuous performances use pick with the same events as global-phase masks', async () => {
+  const api = await strudel()
+  const kit = cityKits.defaultCityKit('dusseldorf')
+  const voice = voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.performance && !v.performance.restart)
+  assert.ok(voice)
+  const plan = voice.performance
+  const selector = loadTs('lib/music/performance.ts').performancePattern(plan, true)
+  const banks = plan.steps.map(step => {
+    if (!step.active) return api.silence
+    let bank = compileVoice(api, { ...voice, performance: undefined, sectionPattern: String(step.variation) })
+    if (!voice.unpitched && step.transpose) bank = bank.transpose(step.transpose)
+    return bank
+  })
+  const reference = api.stack(...banks.map((bank, index) => bank.mask(api.mini(selector).withValue(value => Number(value) === index))))
+  const values = pattern => pattern.queryArc(0, 24).map(hap => ({
+    begin: Number(hap.whole?.begin ?? hap.part.begin), end: Number(hap.whole?.end ?? hap.part.end),
+    note: hap.value.note, n: hap.value.n, gain: hap.value.gain, cutoff: hap.value.cutoff,
+    pan: hap.value.pan, room: hap.value.room,
+  })).sort((a, b) => a.begin - b.begin || a.end - b.end || String(a.note ?? a.n).localeCompare(String(b.note ?? b.n)))
+  assert.deepEqual(values(compileVoice(api, voice)), values(reference))
+  const code = renderMusicCode(creative.creativeSnapshot(kit, true), null)
+  assert.match(code, /return pick\(\[/)
+  assert.doesNotMatch(code, /\.mask\(mini\([^)]*\)\.withValue\(v => Number\(v\) ===/)
+})
 
 test('Düsseldorf formation coordinates phrase banks and entrances on one timeline', () => {
   const lab = creative.createDusseldorfSession()

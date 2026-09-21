@@ -15,9 +15,10 @@ import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { PATTERN_RECIPES, patternRecipe } from '@/lib/music/pattern-library'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
-import { EDITABLE_CITY_KITS, cityKitStorageKey, defaultCityKit, loadCityKit, previousCityKit, prepareCityKitForCreative } from '@/lib/music/city-kits'
+import { EDITABLE_CITY_KITS, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, updateKitLibrary } from '@/lib/music/city-kits'
 import { getCityById } from '@/lib/cities-data'
 import { STYLE_REVISION } from '@/lib/music/styled-kits'
+import { HARMONY_PLANS, type HarmonyPlanId } from '@/lib/music/harmony'
 import { createRandomCityKit } from '@/lib/music/random-kit'
 import { SampleSourceControls, GrooveControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
@@ -27,6 +28,10 @@ import styles from './creative-studio.module.css'
 const pieceNames = { p: 'Peão', n: 'Cavalo', b: 'Bispo', r: 'Torre', q: 'Rainha', k: 'Rei' }
 const squares = Array.from({ length: 64 }, (_, i) => `${'abcdefgh'[i % 8]}${8 - Math.floor(i / 8)}`)
 const PRESETS_STORAGE = `${CREATIVE_STORAGE}:kits`
+const MOUTH_BREATHER_KIT = 'builtin:mouth-breather'
+const DUSSELDORF_ORIGINAL_KIT = 'builtin:dusseldorf-original'
+const DEFAULT_KIT_PREFIX = 'default:'
+const USER_KIT_PREFIX = 'user:'
 type Instrument = CreativeSession['instruments'][string]
 type Effects = CreativeSession['effects'][string]
 type Mapping = CreativeSession['mappings'][string]
@@ -48,8 +53,7 @@ export function CreativeStudio() {
   const [mode, setMode] = useState<'move' | 'play'>('move')
   const [notice, setNotice] = useState('')
   const [kits, setKits] = useState<CreativeSession[]>([])
-  const [chosenKit, setChosenKit] = useState('')
-  const [stageCityId, setStageCityId] = useState('dusseldorf')
+  const [selectedKit, setSelectedKit] = useState('')
   const [pattern, setPattern] = useState('')
   const [recipeId, setRecipeId] = useState('')
   const [patternError, setPatternError] = useState('')
@@ -74,6 +78,11 @@ export function CreativeStudio() {
   const chosenRecipe = patternRecipe(recipeId)
   const savedPhrases = instrument.phrases?.length ? instrument.phrases : [instrument.notes]
   const formDirty = sectionPattern !== session.sectionPattern || mask !== (instrument.mask ?? '') || JSON.stringify(phrases) !== JSON.stringify(savedPhrases)
+  const cityName = (cityId?: string) => EDITABLE_CITY_KITS.find(city => city.id === cityId)?.name
+  const kitLabel = (kit: CreativeSession) => `${kit.name}${cityName(kit.cityId) ? ` (${cityName(kit.cityId)})` : ''}`
+  const linkedUserCities = new Set(kits.flatMap(kit => kit.cityId ? [kit.cityId] : []))
+  const selectedUserKit = selectedKit.startsWith(USER_KIT_PREFIX) ? kits.find(kit => kit.name === selectedKit.slice(USER_KIT_PREFIX.length)) : undefined
+  const selectedCityId = selectedKit.startsWith(DEFAULT_KIT_PREFIX) ? selectedKit.slice(DEFAULT_KIT_PREFIX.length) : selectedUserKit?.cityId
 
   useEffect(() => {
     let cancelled = false
@@ -82,19 +91,35 @@ export function CreativeStudio() {
         const requestedCity = new window.URLSearchParams(window.location.search).get('city')
         const requestedKit = requestedCity ? loadCityKit(requestedCity) : null
         const saved = requestedKit ? JSON.stringify(prepareCityKitForCreative(requestedKit, requestedCity!)) : localStorage.getItem(CREATIVE_STORAGE)
+        let restored: CreativeSession | undefined
         if (saved) {
           const parsed = parseCreativeSession(saved)
           await validateMusicSnapshot(creativeSnapshot(parsed, false))
           if (!cancelled) {
+            restored = parsed
             setSession(parsed)
-            if (parsed.cityId && getCityById(parsed.cityId)) setStageCityId(parsed.cityId)
           }
         }
         const savedKits: unknown = JSON.parse(localStorage.getItem(PRESETS_STORAGE) ?? '[]')
         if (Array.isArray(savedKits) && !cancelled) {
-          setKits(savedKits.slice(0, 30).flatMap(kit => {
+          const parsed = savedKits.slice(0, 30).flatMap(kit => {
             try { return [parseCreativeSession(JSON.stringify(kit))] } catch { return [] }
-          }))
+          })
+          const activeCustom = new Map<string, CreativeSession>()
+          for (const city of EDITABLE_CITY_KITS) {
+            const active = loadCityKit(city.id), standard = defaultCityKit(city.id)
+            if (active && standard && JSON.stringify(active) !== JSON.stringify(standard)) activeCustom.set(city.id, active)
+          }
+          const byName = new Map(parsed.map(kit => [kit.name, kit]))
+          for (const kit of activeCustom.values()) byName.set(kit.name, kit)
+          const normalized = [...byName.values()].map(kit => kit.cityId && activeCustom.get(kit.cityId)?.name !== kit.name ? { ...kit, cityId: undefined } : kit).slice(-30)
+          setKits(normalized)
+          localStorage.setItem(PRESETS_STORAGE, JSON.stringify(normalized))
+          if (restored) {
+            const user = normalized.find(kit => kit.name === restored!.name)
+            const standard = restored.cityId && defaultCityKit(restored.cityId)?.name === restored.name
+            setSelectedKit(user ? `${USER_KIT_PREFIX}${user.name}` : standard ? `${DEFAULT_KIT_PREFIX}${restored.cityId}` : restored.name === 'Mouth Breather · estudo eefano' ? MOUTH_BREATHER_KIT : restored.name === 'Düsseldorf · Electro 01' ? DUSSELDORF_ORIGINAL_KIT : '')
+          }
         }
       } catch (error) {
         if (!cancelled) setNotice(`Não foi possível restaurar o rascunho: ${messageOf(error)}`)
@@ -141,7 +166,7 @@ export function CreativeStudio() {
       const clean = parseCreativeSession(JSON.stringify(candidate))
       await validateMusicSnapshot(creativeSnapshot(clean, false))
       setSession(clean)
-      setNotice('Configuração aplicada ao kit. Salve o kit da fase para usar na próxima partida.')
+      setNotice('Configuração aplicada ao kit. Salve o kit para manter as alterações e, se desejar, vinculá-lo a uma fase.')
     } finally { setBusy(false) }
   }
   function updateMapping(update: Partial<Mapping>) {
@@ -207,27 +232,61 @@ export function CreativeStudio() {
     try {
       await validateMusicSnapshot(creativeSnapshot(next, false))
       music.endAudition(); drag.current = null; setDragVisual(null); setSoloId(null); setSimulation({ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}); setSession(next); setPlaying(autoplay)
-      if (next.cityId && getCityById(next.cityId)) setStageCityId(next.cityId)
       setNotice(`Kit “${next.name}” carregado${autoplay ? ' e tocando' : ' e pausado'}.`)
     } catch (error) { setNotice(`Kit não carregado: ${messageOf(error)}`) }
     finally { setBusy(false) }
   }
-  async function loadStageKit(cityId: string, autoplay = true) {
-    const cityKit = loadCityKit(cityId)
-    if (!cityKit) { setNotice('Esta fase ainda não usa a nova engine de kits.'); return }
-    await loadSession(prepareCityKitForCreative(cityKit, cityId), autoplay)
+  async function loadSelectedKit() {
+    if (!selectedKit) return
+    if (selectedKit.startsWith(USER_KIT_PREFIX)) {
+      const kit = kits.find(item => item.name === selectedKit.slice(USER_KIT_PREFIX.length))
+      if (kit) await loadSession(kit, true)
+      return
+    }
+    if (selectedKit.startsWith(DEFAULT_KIT_PREFIX)) {
+      const cityId = selectedKit.slice(DEFAULT_KIT_PREFIX.length), kit = defaultCityKit(cityId)
+      if (kit) await loadSession(kit, true)
+      return
+    }
+    if (selectedKit === DUSSELDORF_ORIGINAL_KIT) {
+      await loadSession({ ...createDusseldorfSession(), cityId: undefined }, true)
+      return
+    }
+    if (selectedKit === MOUTH_BREATHER_KIT) {
+      try {
+        const response = await window.fetch('/presets/mouth-breather.json')
+        if (!response.ok) throw new Error('Preset indisponível')
+        await loadSession(parseCreativeSession(await response.text()), true)
+      } catch (error) { setNotice(messageOf(error)) }
+    }
   }
   function saveKit() {
     if (!session.name.trim()) { setNotice('Dê um nome ao kit antes de salvar.'); return }
     const clean = parseCreativeSession(JSON.stringify({...session, catalogRevision: STYLE_REVISION}))
-    const next = [...kits.filter(k => k.name !== clean.name), clean].slice(-30)
+    let replacedLink = false
+    if (clean.cityId) {
+      const customConflict = kits.find(kit => kit.cityId === clean.cityId && kit.name !== clean.name)
+      const standard = defaultCityKit(clean.cityId)
+      const standardConflict = !kits.some(kit => kit.cityId === clean.cityId) && standard?.name !== clean.name ? standard : undefined
+      const conflict = customConflict ?? standardConflict
+      const city = cityName(clean.cityId)
+      if (conflict && !window.confirm(`${city ?? 'Esta cidade'} já tem o kit “${conflict.name}” vinculado. Deseja vincular “${clean.name}” à cidade? O vínculo anterior será removido.`)) return
+      replacedLink = Boolean(conflict)
+    }
+    const updated = updateKitLibrary(kits, clean)
     try {
-      localStorage.setItem(PRESETS_STORAGE, JSON.stringify(next))
+      for (const cityId of updated.releasedCityIds) {
+        const current = localStorage.getItem(cityKitStorageKey(cityId))
+        if (current) {
+          try { if (parseCreativeSession(current).name === clean.name) localStorage.removeItem(cityKitStorageKey(cityId)) } catch { /* corrupt slots already fall back to the default */ }
+        }
+      }
+      localStorage.setItem(PRESETS_STORAGE, JSON.stringify(updated.kits))
       if (clean.cityId) localStorage.setItem(cityKitStorageKey(clean.cityId), JSON.stringify(clean))
-      setKits(next); setChosenKit(clean.name)
+      setKits(updated.kits); setSession(clean); setSelectedKit(`${USER_KIT_PREFIX}${clean.name}`)
       const city = EDITABLE_CITY_KITS.find(item => item.id === clean.cityId)
       setNotice(city
-        ? `Kit “${clean.name}” salvo e vinculado à fase ${city.name}. A próxima partida já usará esta configuração.`
+        ? `Kit “${clean.name}” salvo e vinculado à fase ${city.name}.${replacedLink ? ' O vínculo anterior dessa cidade foi removido.' : ''}`
         : `Kit “${clean.name}” salvo neste navegador. Salvar com o mesmo nome atualiza o kit.`)
     } catch { setNotice('Não foi possível salvar localmente. Use Exportar kit.') }
   }
@@ -304,38 +363,35 @@ export function CreativeStudio() {
     <fieldset disabled={!ready || busy} className={styles.workspace}>
       <section className={`${styles.panel} ${styles.kitHub}`} aria-label="Kit atual e biblioteca">
         <div className={styles.kitStage}>
-          <label><span className={styles.helpCaption}>Kit atual do Criativo<InfoTip label="Carregar e experimentar kits">Cada cidade tem um arranjo próprio inspirado no estilo e na época. A coleção anterior fica disponível em Kit anterior. Gere variações e salve o kit da fase para adotá-las na próxima partida.</InfoTip></span><select aria-label="Cidade do kit" value={stageCityId} onChange={e => setStageCityId(e.target.value)}>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+          <label><span className={styles.helpCaption}>Kit atual do Criativo<InfoTip label="Carregar e experimentar kits">Escolha entre seus kits salvos, os kits padrão das cidades e os estudos independentes. O nome da cidade aparece entre parênteses somente no kit atualmente vinculado a ela.</InfoTip></span><select aria-label="Kit atual do Criativo" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
+            <option value="">Rascunho atual</option>
+            {kits.length>0&&<optgroup label="Meus kits">{kits.map(kit=><option key={kit.name} value={`${USER_KIT_PREFIX}${kit.name}`}>{kitLabel(kit)}</option>)}</optgroup>}
+            <optgroup label="Kits padrão">{EDITABLE_CITY_KITS.map(city=>{const kit=defaultCityKit(city.id)!;return <option key={city.id} value={`${DEFAULT_KIT_PREFIX}${city.id}`}>{kit.name}{linkedUserCities.has(city.id)?'':` (${city.name})`}</option>})}</optgroup>
+            <optgroup label="Estudos e originais"><option value={MOUTH_BREATHER_KIT}>Mouth Breather · estudo eefano</option><option value={DUSSELDORF_ORIGINAL_KIT}>Düsseldorf · Electro 01</option></optgroup>
+          </select></label>
           <div className={styles.actions}>
-              <button className={styles.primary} onClick={() => void loadStageKit(stageCityId)}>Carregar kit da cidade</button>
-              <button onClick={() => void loadSession(defaultCityKit(stageCityId)!, true)}>Kit inicial da cidade</button>
+              <button className={styles.primary} disabled={!selectedKit} onClick={() => void loadSelectedKit()}>Carregar kit</button>
               <button onClick={() => {
-                const city = getCityById(stageCityId)
-                if (city) void loadSession(createRandomCityKit(city, Math.random().toString(36).slice(2, 8)), true)
-              }}>Gerar kit aleatório</button>
-              <button onClick={() => {const previous=previousCityKit(stageCityId);if(previous)void loadSession(prepareCityKitForCreative(previous,stageCityId),true);else setNotice('Não existe kit anterior guardado para esta cidade.')}}>Kit anterior</button>
-              <button onClick={async () => {try {const response=await window.fetch('/presets/mouth-breather.json');if(!response.ok)throw new Error('Preset indisponível');await loadSession(parseCreativeSession(await response.text()),true)}catch(error){setNotice(messageOf(error))}}}>Estudo Mouth Breather</button>
-              <button onClick={() => void loadSession(createDusseldorfSession(), true)}>Düsseldorf original · samples</button>
+                const city = selectedCityId ? getCityById(selectedCityId) : null
+                if (city) { setSelectedKit(''); void loadSession(createRandomCityKit(city, Math.random().toString(36).slice(2, 8)), true) }
+              }} disabled={!selectedCityId}>Gerar kit aleatório</button>
           </div>
         </div>
         <div className={styles.kitLibrary}>
-          <div className={styles.kitLibraryHeader}><span>Biblioteca e fase</span><InfoTip label="Salvar kits e fases">Vincule o kit a uma cidade para usá-lo na partida. No Criativo, o kit da fase liga as 16 peças brancas para audição; na partida, cada peça entra após seu primeiro movimento.</InfoTip></div>
           <div className={styles.kitFields}>
             <label>Nome do kit<input maxLength={80} value={session.name} onChange={e => setSession(s => ({ ...s, name: e.target.value }))} /></label>
-            <label>Fase vinculada<select value={session.cityId ?? ''} onChange={e => setSession(s => ({ ...s, cityId: e.target.value || undefined }))}><option value="">Somente biblioteca local</option>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
-            <label>Kits salvos<select value={chosenKit} onChange={e => setChosenKit(e.target.value)}><option value="">Escolha um kit</option>{kits.map(kit => <option key={kit.name}>{kit.name}</option>)}</select></label>
+            <label><span className={styles.helpCaption}>Fase vinculada<InfoTip label="Vincular kit à fase">Uma cidade usa somente um kit salvo por vez. Ao substituir um vínculo existente, o kit anterior continua na biblioteca sem cidade.</InfoTip></span><select value={session.cityId ?? ''} onChange={e => setSession(s => ({ ...s, cityId: e.target.value || undefined }))}><option value="">Nenhuma cidade</option>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
           </div>
           <div className={styles.actions}>
-            <button disabled={!session.cityId} onClick={() => session.cityId && void loadStageKit(session.cityId, false)}>Recarregar da fase</button>
-            <button className={session.cityId ? styles.primary : undefined} onClick={saveKit}><Save size={15} />{session.cityId ? 'Salvar kit da fase' : 'Salvar kit'}</button>
+            <button className={styles.primary} onClick={saveKit}><Save size={15} />Salvar kit</button>
             <button onClick={exportKit}><Download size={15} />Exportar kit</button>
             <label className={styles.upload}><Upload size={15} />Importar kit<input type="file" accept=".json,application/json" aria-label="Importar kit JSON" onChange={async e => {
               const file = e.target.files?.[0]; e.target.value = ''
               if (!file) return
               if (file.size > 150000) { setNotice('Arquivo de kit muito grande. Limite: 150 KB.'); return }
-              try { await loadSession(parseCreativeSession(await file.text())) } catch (error) { setNotice(`Kit não importado: ${messageOf(error)}`) }
+              try { setSelectedKit(''); await loadSession(parseCreativeSession(await file.text())) } catch (error) { setNotice(`Kit não importado: ${messageOf(error)}`) }
             }} /></label>
-            <button onClick={() => { if (confirm('Começar um rascunho novo? Exporte ou salve o atual se quiser mantê-lo.')) void loadSession(createCreativeSession()) }}>Novo rascunho</button>
-            <button disabled={!chosenKit} onClick={() => { const kit = kits.find(k => k.name === chosenKit); if (kit) void loadSession(kit) }}>Carregar kit salvo</button>
+            <button onClick={() => { if (confirm('Começar um rascunho novo? Exporte ou salve o atual se quiser mantê-lo.')) { setSelectedKit(''); void loadSession(createCreativeSession()) } }}>Novo rascunho</button>
           </div>
         </div>
       </section>
@@ -344,9 +400,10 @@ export function CreativeStudio() {
           <button className={styles.primary} onClick={() => { if (playing) stop(); else setPlaying(true) }} aria-pressed={playing}>
             {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pause' : 'Play'}
           </button>
-          <label><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel></label>
-          <label><select aria-label="Tônica" value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel></label>
-          <label><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select><HelpLabel label={`Escala (${music.snapshot.scale.join(' · ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel></label>
+          <label><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /></label>
+          <label><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel><select aria-label="Tônica" value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
+          <label><HelpLabel label={`Escala (${music.snapshot.scale.join(' · ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
+          <label><HelpLabel label="Harmonia">Plano comum por seção para baixo, acordes e melodias. Planos móveis geram tríades nas vozes sustentadas e usam condução curta entre seções.</HelpLabel><select aria-label="Harmonia" value={session.harmony} onChange={e => setSession(s => ({ ...s, harmony: e.target.value as HarmonyPlanId }))}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label>
           <Range label="Volume geral" value={session.volume} min={0} max={1} help={false} onChange={volume => setSession(s => ({ ...s, volume }))} />
           <MusicTransportReadout monitor={music.monitor} activeCount={activeCount} solo={!!soloId} />
         </section>

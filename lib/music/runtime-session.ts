@@ -14,7 +14,7 @@ import { compileVoice } from './pattern-compiler'
 import { loadLibrary, ensureSample, loadedSamples } from './strudel-loader'
 import type { Strudel, StrudelPattern, MusicSnapshot, MusicPulse, Preview, VoiceSpec } from './runtime-types'
 
-/** One owned scheduler, with a separate orbit for each voice and temporary audition. */
+/** One owned scheduler, with shared loop effect buses and isolated temporary auditions. */
 export class MusicRuntime {
   private api?: Strudel
   private scheduler: any
@@ -116,7 +116,7 @@ export class MusicRuntime {
   private transportFrame() {
     const cycle=this.scheduler?.cycle??0
     return { bpm:this.scheduler?.started ? this.scheduler?.tempo?.bpmAt(cycle)??this.state?.bpm??120 : this.state?.bpm??120,
-      targetBpm:this.targetBpm, scale:this.state?.scale??[],
+      targetBpm:this.targetBpm, scale:this.state?.scale??[], harmony:this.state?.harmony??'static',
       ramp:this.scheduler?.started?this.scheduler?.tempo?.transition(cycle):undefined,
       pending:[...this.reactionQueue.pending].map(([id,p])=>({id,cycle:p.cycle,trigger:p.entry.rule.trigger})) }
   }
@@ -315,8 +315,8 @@ export class MusicRuntime {
 
   private removeOrbit(orbit: number) {
     const controller = this.api?.getSuperdoughAudioController()
-    // Disconnecting a removed voice also prevents already scheduled attacks and
-    // effect tails from leaking into a later audition on the same piece.
+    // Manual previews own an orbit. Loop buses are removed only after their last
+    // voice leaves, so one capture never disconnects a surviving peer.
     controller?.nodes[orbit]?.disconnect()
     if (controller) delete controller.nodes[orbit]
     this.connectedOrbits.delete(orbit)
@@ -353,7 +353,9 @@ export class MusicRuntime {
       const compiledLoops = loops.map(v => this.patternFor(v))
       const changed = !this.scheduledLoops || compiledLoops.length !== this.scheduledLoops.length || compiledLoops.some((p, i) => p !== this.scheduledLoops![i])
       const next = new Map(specs.map(v => [v.key, v]))
-      for (const [key, voice] of this.voices) if (!next.has(key) || next.get(key)?.manual !== voice.manual) this.removeOrbit(voice.orbit)
+      const nextOrbits = new Set([...next.values()].map(voice => voice.orbit))
+      const previousOrbits = new Set([...this.voices.values()].map(voice => voice.orbit))
+      for (const orbit of previousOrbits) if (!nextOrbits.has(orbit)) this.removeOrbit(orbit)
       this.voices = next
       for (const mask of this.maskCache.keys()) if (!specs.some(voice => voice.mask === mask)) this.maskCache.delete(mask)
       for (const key of this.compiled.keys()) if (!next.has(key)) { this.compiled.delete(key); this.displayCache.delete(key) }
@@ -404,7 +406,7 @@ export class MusicRuntime {
     this.scheduler?.stop()
     if (this.monitorTimer) clearInterval(this.monitorTimer)
     this.clearVisuals()
-    for (const voice of this.voices.values()) this.removeOrbit(voice.orbit)
+    for (const orbit of new Set([...this.voices.values()].map(voice => voice.orbit))) this.removeOrbit(orbit)
     this.voices.clear()
     this.manualReverbs.clear()
     this.compiled.clear()

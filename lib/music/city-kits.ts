@@ -54,3 +54,12 @@ export function loadCityKit(cityId: string): CreativeSession | null {
     return fallback
   }
 }
+
+/** Replace one named library kit and keep at most one user kit linked per city. */
+export function updateKitLibrary(kits: readonly CreativeSession[], saved: CreativeSession, limit = 30) {
+  const previous = kits.find(kit => kit.name === saved.name)
+  const releasedCityIds = previous?.cityId && previous.cityId !== saved.cityId ? [previous.cityId] : []
+  const remaining = kits.filter(kit => kit.name !== saved.name).map(kit =>
+    saved.cityId && kit.cityId === saved.cityId ? { ...kit, cityId: undefined } : kit)
+  return { kits: [...remaining, saved].slice(-limit), releasedCityIds }
+}

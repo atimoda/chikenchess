@@ -8,16 +8,21 @@ import type { TeamMixes } from './team-mixer'
 import type { Instrument, MovementMapping, MusicPiece } from './model'
 import type { Automations } from './automation'
 import type { Groove, GrooveLane } from './grooves'
+import type { HarmonyPlanId } from './harmony'
 
 export type Strudel = typeof import('@strudel/web')
 export type StrudelPattern = ReturnType<Strudel['note']>
-export type StrudelWithPick = Strudel & { pickRestart: (lookup: StrudelPattern[], selector: string) => StrudelPattern }
+export type StrudelWithPick = Strudel & {
+  pick: (lookup: StrudelPattern[], selector: string) => StrudelPattern
+  pickRestart: (lookup: StrudelPattern[], selector: string) => StrudelPattern
+}
 
 export interface MusicSnapshot {
   reactionDescriptions?: string[]
   reactionInput?: {config: Reactions; context: ReactionContext; scope: string; lockedBpm?: number}
 
   sectionOverrides?: Record<string, number>
+  harmony?: HarmonyPlanId
   pieces: MusicPiece[]
   scale: string[]
   bpm: number

@@ -11,6 +11,7 @@ test('creative session configures all 32 persistent voices and starts silent', (
   assert.equal(Object.keys(lab.instruments).length, 32)
   assert.equal(Object.keys(lab.effects).length, 32)
   assert.equal(Object.keys(lab.mappings).length, 32)
+  assert.equal(lab.harmony, 'static')
   assert.equal(voiceSpecs(creative.creativeSnapshot(lab, true), null).length, 0)
   assert.deepEqual(creative.parseCreativeSession(JSON.stringify(lab)), JSON.parse(JSON.stringify(lab)))
 })

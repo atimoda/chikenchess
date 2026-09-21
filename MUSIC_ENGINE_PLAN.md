@@ -1,16 +1,16 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 16/09/2026 — v0.3.2. Status: nova engine nas 13 fases / 12 cidades, 13 kits compostos por contexto de cidade e época, bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e visualização de todas as variações implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+Atualizado em 20/09/2026 — v0.3.2. Status: nova engine nas 13 fases / 12 cidades, 13 kits compostos por contexto de cidade e época, bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e visualização de todas as variações implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
 
 ## Entrega de 16/09 — composição e comparação
 
 Infotips compactas, piano roll alinhado em todas as linhas, seções próprias com durações assimétricas/pausas/transposições, slides por nota e distorção entregues. Estudo Mouth Breather preserva o material temporal/melódico do script com timbres locais aproximados. As 13 fases receberam arranjos próprios; migração mantém backup local. `MUSIC_STYLE_REFERENCES.md` registra referências, datas, diferenças e limitações. Esta revisão substitui os defaults sorteados; o gerador permanece como ferramenta de experimentação.
 
-Próxima etapa: escutar e comparar as formações pequenas/completas em um aparelho físico, medindo densidade e custo; depois implementar progressão harmônica compartilhada e condução de vozes. Evitar adicionar mais camadas antes de ajustar ganho, registro, espaços de resposta e articulação dos kits entregues. Samples acústicos mais expressivos e suporte a legato verdadeiro exigem outra rodada de desenho e validação.
+Próxima etapa: escutar e comparar as formações pequenas/completas em um aparelho físico, medindo densidade e custo dos quatro buses de efeitos. Os centros harmônicos, tríades e condução curta já estão implementados; a próxima rodada harmônica deve partir de testes A/B antes de acrescentar tétrades, extensões ou preparação de cadência. Evitar adicionar mais camadas antes de ajustar ganho, registro, espaços de resposta e articulação dos kits entregues. Samples acústicos mais expressivos e suporte a legato verdadeiro exigem outra rodada de desenho e validação.
 
 ## Próximo ciclo de implementação
 
-**v0.3.2 — The Creative:** regras de estados/eventos configuráveis por kit, simulador no Criativo e aplicação compartilhada na partida entregues. Próxima prioridade sonora: (1) validar em aparelho físico o agendamento antecipado e as rampas entregues; (2) condução de vozes/acordes comuns para evitar saltos; (3) arranjo com limites por camada, respostas e destaque sem excesso de densidade; (4) refinar samples/articulações com escuta comparativa e medir celular físico. A simulação agora permite comparar esses comportamentos antes de vincular presets mais expressivos aos eventos raros.
+**v0.3.2 — The Creative:** regras de estados/eventos configuráveis por kit, simulador no Criativo e aplicação compartilhada na partida entregues. Próxima prioridade sonora: (1) validar em celular físico o score de 32 vozes com quatro buses e registrar underruns/temperatura/latência; (2) comparar planos estático e móveis com o mesmo histórico, ajustando registros e tríades já entregues; (3) criar orçamento por papel musical para densidade, respostas e destaque; (4) só então prototipar tétrades/extensões e articulações mais ricas. A simulação permite comparar esses comportamentos antes de ampliar as regras.
 
 
 **Entregue em 13/09:** Manchester · 1999 / Northern Jazz Breaks é o primeiro default composto a partir de referência, com quatro seções, 11 samples sintéticos novos e separação de épocas no mesmo local. O arquivo FLAC de Get a Move On! foi analisado numericamente; a medição não equivale a uma transcrição auditiva. Próxima escuta com o usuário: avaliar identidade dos sopros, balanço com 16/32 peças e evolução por lances. Primeiro refinar esse kit; depois expandir articulações/motivo-resposta e a harmonia global. Detalhes e limites em `MUSIC_REFERENCE_GET_A_MOVE_ON.md`.
@@ -23,28 +23,23 @@ Reverse deve ler áudio capturado para trás; inverter a ordem de notas Strudel 
 
 Na revisão mobile foram retirados reenvios redundantes de acompanhamento, consultas de painéis ocultos e renderizações React a cada pixel de arraste; loops ganham maior antecipação em dispositivos restritos. Próxima medição: aparelho físico, kit completo e interação simultânea, observando falhas de áudio, tempo de frame e custo por voz/efeito. A simulação touch de navegador valida gestos, não aprova qualidade de áudio nem desempenho real.
 
+Na segunda rodada, performances contínuas passaram de máscaras paralelas para `pick` e os loops passaram de até 32 orbits de efeitos para quatro buses compartilhados, dois por equipe. A identidade e os controles por voz continuam nos eventos; o runtime mantém o bus enquanto houver qualquer integrante ativo. O próximo gate técnico é repetir o cenário de 32 vozes em build de produção num celular real e comparar 4 buses com o fallback de 2 buses ou reverb reduzido somente se ainda houver underruns.
+
 1. **Transições musicais — base entregue:** fila por compasso, cancelamento, fase preservada, rampas de BPM e indicadores. Validar em aparelho físico; limites de seção e preparação harmônica continuam como extensões.
-2. **Direção harmônica compartilhada:** separar tônica/escala de acorde e graus preferenciais por seção; baixo e harmonia sustentam uma progressão, melodias escolhem notas com condução de vozes. Kits podem manter harmonia estática. Comparar A/B com o mesmo histórico de lances.
+2. **Direção harmônica compartilhada — centros e tríades entregues:** planos por seção deslocam juntos baixo e melodias; vozes sustentadas formam tríades diatônicas com inversões de menor movimento, enquanto o monitor expõe plano, grau, cifra e notas correntes. Próximo passo: comparar A/B com o mesmo histórico de lances e então acrescentar tétrades, extensões e graus preferenciais por estilo.
 3. **Groove e articulação:** swing comum configurável, microvariações determinísticas de tempo/velocidade, notas fantasmas e fraseado de pergunta/resposta. Evoluir o vocabulário de timbres e articulações por evidência de escuta. Estudo de Manchester em `MUSIC_REFERENCE_GET_A_MOVE_ON.md`.
-4. **Eventos raros, configuráveis por kit:** implementar inicialmente apenas uma ou duas regras da proposta abaixo, com acionamento manual no Criativo, indicador do motivo e cancelamento. Não ligar todas as regras ao mesmo tempo.
+4. **Curadoria dos Estados e Eventos:** o preset completo já cobre os 26 gatilhos com intensidades proporcionais à frequência. A próxima rodada é escuta A/B por kit, simplificando ou desabilitando combinações que disputem espaço no arranjo.
 5. **Curadoria e orçamento de áudio:** escutar formações de 1, 4, 8, 16 e 32 vozes e cheques, medir picos, densidade e custo em celular físico; comparar o eletrônico original, um kit contrastante e os sorteios. Ajustar limites antes de novos modos/loja/multiplayer.
 
 O sorteio por cidade está implementado; os kits salvos continuam prioritários. A aleatoriedade serve à experimentação, sem substituir a curadoria dos estilos. A referência eletrônica original permanece acessível no Criativo.
 
-### Proposta de contexto musical por eventos raros — ainda não implementada
+### Próxima extensão: acordes e condução de vozes
 
-Eventos já podem modificar tônica, escala e BPM por regras do kit. Os presets padrão não ligam essas modulações automaticamente. As receitas abaixo continuam como propostas para experimentação:
+O preset de reações atual usa somente ações que o runtime executa de fato: BPM, escala, relativa, modo, plano harmônico, transposição, contorno, variação, ganho, filtro e ativação. A tabela exata do comportamento entregue fica em `GAME_MECHANICS.md`.
 
-| Gatilho | Proposta musical | Proteção contra excesso |
-| --- | --- | --- |
-| Primeiro roque da partida | Pequeno aumento de BPM (2–3%), com rampa de quatro compassos, marcando a passagem à seção B | Uma vez por partida; próximo limite de seção; teto definido no kit |
-| Ambas as equipes atingem quatro vozes permanentemente ativadas | Abrir uma seção harmônica nova; em kits menores, experimentar eólica → dórica conservando a tônica | Uma vez; ignorar ativação temporária por cheque; opção do kit, não mudança universal |
-| Saída das duas rainhas do tabuleiro | Marcar o final com BPM 3% menor; em outra receita, passar ao relativo maior/menor conservando o conjunto de notas | Limiar de material e mudança única; usar apenas uma transformação por receita |
-| Primeira promoção | Clímax com modulação preparada para tonalidade vizinha, por exemplo a quinta, ou para o relativo | Próxima seção; uma vez; condução harmônica antes de transpor todas as vozes |
+O `HarmonyPlan` compartilhado e sua ação de reação já existem: escolhem centros em graus da escala por seção e preservam o material de cada voz. Final, saída das rainhas, formação mínima dos dois lados e promoção estreiam essa ação; captura e cheque permanecem mudanças locais/dinâmicas por serem frequentes.
 
-Começar pelo roque e pela entrada no final. Modulação por promoção depende da direção harmônica. Evitar mudar escala/tom/BPM a cada cheque ou captura: o cheque já tem efeito coletivo forte. Relativos só fazem sentido quando a escala de origem admite essa relação; não converter arbitrariamente qualquer escala para maior/menor.
-
-Regras globais propostas: intervalo mínimo de 16 compassos entre mudanças de contexto, até duas mudanças harmônicas por partida e edição manual com prioridade (suspende automação daquele parâmetro até reativação explícita). Desfazer um lance cancela o evento pendente ou reconstrói o contexto devido; pausa/fim de jogo suspende a fila. Nenhuma regra toca peça capturada ou muda a ativação permanente. Todos esses controles devem ser visíveis e simuláveis no Criativo antes de entrar no jogo.
+A próxima camada deve representar acorde, voicing e notas-alvo separadamente do centro. Proteções propostas: intervalo mínimo entre modulações estruturais, condução com menor deslocamento possível, registros próprios por papel e prioridade para edição manual. Undo e saída da regra já reconstroem o plano devido sobre a base; essa propriedade precisa ser preservada.
 
 A primeira regra tática coletiva ativa temporariamente a banda atacante durante cheque. O arraste suspende o loop da peça e toca por entrada em casa. Os widgets da partida agora reúnem transporte/código, execução por peça e tom/escala global; a entrada pelo mapa aproxima a câmera do pin antes da fase. Estados táticos mais complexos continuam sujeitos à validação musical da base.
 
@@ -377,4 +372,4 @@ Essas decisões são variáveis de laboratório. Não bloqueiam a definição de
 
 A v0.3.2 inclui catálogo compartilhado de 19 nomes de escalas (Aeolian equivale à menor natural), opção de espera por compasso por regra e indicadores de pendência. O agendamento agora usa diretamente o relógio de áudio; afinações além de 12-TET e menor melódica dependente da direção ainda são futuras.
 
-Entregue neste ciclo: scheduler por AudioContext com fila em limites de compasso, rampas de BPM 0–16 compassos e visualização de transições; seleção A–H e editor de notas com mouse, duração independente e grade binária/ternária no Criativo. Próxima etapa de composição: harmonia/acordes compartilhados, condução de vozes e arranjo adaptativo. Editor touch, gramáticas melódicas e modulações harmônicas preparadas continuam futuros.
+Entregue neste ciclo: scheduler por AudioContext com fila em limites de compasso, rampas de BPM 0–16 compassos e visualização de transições; seleção A–H e editor de notas com mouse, duração independente e grade binária/ternária no Criativo; centros harmônicos compartilhados, tríades diatônicas e condução curta entre seções. Próxima etapa de composição: graus preferenciais por estilo, tétrades/extensões e arranjo adaptativo. Editor touch, gramáticas melódicas e modulações harmônicas preparadas continuam futuros.

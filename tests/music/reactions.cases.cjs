@@ -65,6 +65,57 @@ test('reaction ledger detects castling, captures, depleted families, thresholds,
   assert.ok(reactionContext(repeat).states.some(e=>e.trigger==='repetition'))
 })
 
+test('factory reaction preset covers every trigger and every implemented influence', () => {
+  const { ACTIONS, TRIGGERS, defaultReactions }=loadTs('lib/music/reactions.ts')
+  const rules=defaultReactions()
+  assert.equal(rules.length,Object.keys(TRIGGERS).length)
+  assert.deepEqual(new Set(rules.map(rule=>rule.trigger)),new Set(Object.keys(TRIGGERS)))
+  assert.deepEqual(new Set(rules.flatMap(rule=>rule.actions.map(action=>action.type))),new Set(Object.keys(ACTIONS)))
+  assert.deepEqual(rules.find(rule=>rule.trigger==='capture').actions.map(action=>[action.type,action.value]),[['gain',3]])
+  assert.equal(rules.find(rule=>rule.trigger==='noQueens').duration,0)
+  assert.ok(rules.find(rule=>rule.trigger==='promotion').actions.some(action=>action.type==='transpose'&&action.value===12))
+  assert.equal(rules.find(rule=>rule.trigger==='endgame').actions.find(action=>action.type==='harmony').harmony,'cadence')
+})
+
+test('harmony reactions replace and restore the shared plan without rewriting the kit', () => {
+  const { applyReactions, reactionsSchema }=loadTs('lib/music/reactions.ts')
+  const kit=creative.createCreativeSession(),base=creative.creativeSnapshot(kit,true)
+  const config=reactionsSchema.parse({rules:[{id:'harmony',trigger:'endgame',enabled:true,quantize:false,target:'both',duration:1,actions:[{type:'harmony',harmony:'descent'}]}]})
+  const active=applyReactions(base,config,{ply:30,states:[{trigger:'endgame',color:'w',ply:30}],events:[]})
+  assert.equal(active.snapshot.harmony,'descent')
+  assert.ok(active.descriptions[0].includes('Descendente'))
+  assert.equal(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.harmony,'static')
+  assert.equal(kit.harmony,'static')
+  assert.throws(()=>reactionsSchema.parse({rules:[{...config.rules[0],actions:[{type:'harmony',harmony:'unknown'}]}]}))
+})
+
+test('draw triggers distinguish stalemate from the fifty-move rule', () => {
+  const { reactionContext }=loadTs('lib/music/reactions.ts')
+  const stalemate=reactionContext([],4,'7k/5Q2/6K1/8/8/8/8/8 b - - 0 1').states.map(state=>state.trigger)
+  assert.ok(stalemate.includes('stalemate'))
+  assert.ok(!stalemate.includes('draw'))
+  const fifty=reactionContext([],4,'7k/8/8/8/8/8/R7/K7 w - - 100 51').states.map(state=>state.trigger)
+  assert.ok(fifty.includes('draw'))
+  assert.ok(!fifty.includes('stalemate'))
+})
+
+test('legacy factory reactions upgrade while authored reaction sets remain intact', () => {
+  const { REACTION_PRESET_REVISION, defaultReactions }=loadTs('lib/music/reactions.ts')
+  const kit=creative.createCreativeSession()
+  const legacy={...kit,reactionPresetRevision:undefined,reactions:{minimumPieces:6,rules:[{id:'check-band',trigger:'check',enabled:true,quantize:false,target:'actor',duration:1,actions:[{type:'activate',value:0,scale:'Maior'}]}]}}
+  const upgraded=creative.parseCreativeSession(JSON.stringify(legacy))
+  assert.equal(upgraded.reactionPresetRevision,REACTION_PRESET_REVISION)
+  assert.equal(upgraded.reactions.minimumPieces,6)
+  assert.deepEqual(upgraded.reactions.rules,defaultReactions())
+  const previousFactory={...kit,reactionPresetRevision:'reactions-2026-09-20-v1',reactions:{minimumPieces:4,rules:defaultReactions().map(rule=>({...rule,actions:rule.actions.filter(action=>action.type!=='harmony').map(({harmony,...action})=>action)}))}}
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(previousFactory)).reactions.rules,defaultReactions())
+  const custom={...kit,reactionPresetRevision:undefined,reactions:{minimumPieces:4,rules:[{id:'mine',trigger:'capture',enabled:true,quantize:false,target:'actor',duration:3,actions:[{type:'gain',value:9,scale:'Maior',harmony:'static'}]}]}}
+  const merged=creative.parseCreativeSession(JSON.stringify(custom)).reactions
+  assert.deepEqual(merged.rules[0],custom.reactions.rules[0])
+  assert.equal(merged.rules.length,Object.keys(loadTs('lib/music/reactions.ts').TRIGGERS).length)
+  assert.equal(new Set(merged.rules.map(rule=>rule.trigger)).size,Object.keys(loadTs('lib/music/reactions.ts').TRIGGERS).length)
+})
+
 test('kit reactions round-trip, restore base, expire and never accumulate on rerender', () => {
   const { applyReactions, reactionsSchema }=loadTs('lib/music/reactions.ts')
   const kit=creative.createCreativeSession(), base=creative.creativeSnapshot(kit,true)

@@ -23,7 +23,8 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       return pattern
     })
     const selector=performancePattern(plan,true)
-    return plan.restart?(api as StrudelWithPick).pickRestart(banks,selector):api.stack(...banks.map((p,i)=>p.mask(api.mini(selector).withValue((v:number)=>Number(v)===i))))
+    const picker=api as StrudelWithPick
+    return plan.restart?picker.pickRestart(banks,selector):picker.pick(banks,selector)
   }
   const events = voice.unpitched ? api.n : api.note
   const fixed=/^\d+$/.test(voice.sectionPattern)?Number(voice.sectionPattern):undefined

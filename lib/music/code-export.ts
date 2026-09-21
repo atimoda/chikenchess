@@ -32,7 +32,7 @@ function voiceCode(voice: VoiceSpec): string {
     const declarations = variations.map(index=>`const part${index} = ${voiceCode({...voice,performance:undefined,sectionPattern:String(index)})};`).join('\n    ')
     const banks = plan.steps.map(step=>step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence')
     const selector = JSON.stringify(performancePattern(plan, true))
-    const form = plan.restart ? `pickRestart([${banks.join(', ')}], mini(${selector}))` : stackCode(banks.map((bank, i) => `${bank}.mask(mini(${selector}).withValue(v => Number(v) === ${i}))`))
+    const form = `${plan.restart ? 'pickRestart' : 'pick'}([${banks.join(', ')}], mini(${selector}))`
     return `(() => {\n    ${declarations}\n    return ${form};\n  })()`
   }
   const event = voice.unpitched ? 'n' : 'note'
