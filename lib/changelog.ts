@@ -1,7 +1,26 @@
-export const RELEASE_LABEL = 'v0.3.2'
+export const RELEASE_LABEL = 'v0.3.3'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.3.3', date: '21/09/2026', title: 'Engine leve e harmônica', groups: [
+    { title: 'Desempenho para bandas completas', items: [
+      'As 32 vozes agora compartilham quatro buses de efeitos, dois por equipe, reduzindo de 32 para quatro os reverbs simultâneos sem retirar os controles individuais das peças.',
+      'Arranjos contínuos consultam somente a variação em execução; reinícios de frase continuam respeitando a entrada de cada seção.',
+      'Capturar ou desativar uma peça não interrompe outras vozes do mesmo bus. Audições pelo tabuleiro continuam isoladas e podem ser canceladas imediatamente.',
+      'Arraste, monitor e código Strudel evitam recomputações desnecessárias; a exportação de 32 vozes passa a declarar apenas quatro orbits.',
+    ] },
+    { title: 'Harmonia e Estados/Eventos', items: [
+      'Planos harmônicos por seção movem baixo e melodias em conjunto; vozes sustentadas podem formar tríades com inversões de menor deslocamento.',
+      'O relógio mostra centro, acorde e notas da harmonia atual, e regras podem trocar o plano temporariamente sem reescrever o kit.',
+      'Todos os Estados e Eventos recebem defaults musicais proporcionais à frequência e importância do gatilho, inclusive nos kits existentes.',
+      'Estados e Eventos foram separados em listas, aceitam liga/desliga pelo editor e indicam claramente qual regra está sendo editada.',
+    ] },
+    { title: 'Biblioteca e bancada Criativo', items: [
+      'Kits salvos e padrões aparecem juntos no seletor principal, com a cidade vinculada ao lado do nome quando existir.',
+      'Cada cidade mantém no máximo um kit vinculado; ao substituir o vínculo, o kit anterior permanece salvo sem cidade.',
+      'Controles do transporte, variações, Solo, lista de vozes e edição numérica foram reorganizados para leitura e operação mais diretas.',
+    ] },
+  ] },
   { version: '0.3.2', date: '16/09/2026', title: 'The Creative', groups: [
     { title: 'Arranjos e timbres', items: [
       'Seções por peça com durações diferentes, entradas/pausas, transposição e reinício opcional da frase.',

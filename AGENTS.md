@@ -5,6 +5,13 @@
 - Mantenha ideias futuras separadas do comportamento atual. A agenda mais ampla fica em `MUSIC_ENGINE_PLAN.md`.
 - Ao validar alterações musicais, execute os testes pertinentes de `npm run test:music` e a checagem TypeScript. Não confunda teste de padrões com aprovação da qualidade musical ou desempenho em aparelho físico.
 
+# Versão e changelog
+
+- Toda alteração de funcionalidade, correção funcional ou nova funcionalidade deve, na mesma entrega, ganhar uma entrada clara no topo de `lib/changelog.ts` e incrementar ao menos a versão patch atual (por exemplo, `0.3.1` → `0.3.2`). Não reutilize uma versão já publicada para comportamento novo.
+- Sincronize a versão em `package.json`, `package-lock.json` (raiz e pacote principal), `RELEASE_LABEL`, primeira entrada de `CHANGELOG` e referências de “versão atual” na documentação. O número exibido no mapa, na partida e no Criativo vem de `RELEASE_LABEL`.
+- O changelog deve descrever o efeito perceptível para quem testa, sem detalhes internos desnecessários. Refatorações, testes ou documentação sem mudança funcional não exigem versão nova por si só.
+- Antes de concluir, rode o teste de consistência da versão junto da suíte pertinente e confirme que o número novo aparece na interface.
+
 # Trabalho com contexto reduzido
 
 - Comece por `docs/CODEBASE_MAP.md`; localize a funcionalidade e leia somente os módulos necessários. Em `GAME_MECHANICS.md`, consulte o índice, as prioridades e as seções aplicáveis; não é necessário reler a agenda e todas as referências a cada ajuste.

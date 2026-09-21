@@ -15,6 +15,7 @@
 | `globe.cases.cjs` | 3 | Voo, geometria e direção do gesto |
 | `optimization.cases.cjs` | 2 | Equivalência de lanes/acordes e isolamento do cache de reverb |
 | `studies.cases.cjs` | 4 | Estudo Mouth Breather e equivalência da exportação |
+| `release.cases.cjs` | 1 | Sincronia entre package, lockfile e versão/changelog exibidos |
 
 Para uma área: `node --test tests/music/editor.cases.cjs`.
 Para um relatório completo explícito: `node --test --test-reporter=tap tests/music.test.cjs`.

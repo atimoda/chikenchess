@@ -1,6 +1,6 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 20/09/2026 — v0.3.2. Status: nova engine nas 13 fases / 12 cidades, 13 kits compostos por contexto de cidade e época, bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e visualização de todas as variações implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+Atualizado em 21/09/2026 — v0.3.3. Status: nova engine nas 13 fases / 12 cidades, 13 kits compostos por contexto de cidade e época, bancada Criativo, kits de cidade locais, samples, automações, grooves compartilhados e visualização de todas as variações implementados; validação musical em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
 
 ## Entrega de 16/09 — composição e comparação
 
@@ -10,7 +10,7 @@ Próxima etapa: escutar e comparar as formações pequenas/completas em um apare
 
 ## Próximo ciclo de implementação
 
-**v0.3.2 — The Creative:** regras de estados/eventos configuráveis por kit, simulador no Criativo e aplicação compartilhada na partida entregues. Próxima prioridade sonora: (1) validar em celular físico o score de 32 vozes com quatro buses e registrar underruns/temperatura/latência; (2) comparar planos estático e móveis com o mesmo histórico, ajustando registros e tríades já entregues; (3) criar orçamento por papel musical para densidade, respostas e destaque; (4) só então prototipar tétrades/extensões e articulações mais ricas. A simulação permite comparar esses comportamentos antes de ampliar as regras.
+**v0.3.3 — Engine leve e harmônica:** quatro buses de efeitos, seleção contínua mais enxuta, centros/acordes compartilhados e defaults completos de Estados/Eventos entregues. Próxima prioridade sonora: (1) validar em celular físico o score de 32 vozes e registrar underruns/temperatura/latência; (2) comparar planos estático e móveis com o mesmo histórico, ajustando registros e tríades; (3) criar orçamento por papel musical para densidade, respostas e destaque; (4) só então prototipar tétrades/extensões e articulações mais ricas. A simulação permite comparar esses comportamentos antes de ampliar as regras.
 
 
 **Entregue em 13/09:** Manchester · 1999 / Northern Jazz Breaks é o primeiro default composto a partir de referência, com quatro seções, 11 samples sintéticos novos e separação de épocas no mesmo local. O arquivo FLAC de Get a Move On! foi analisado numericamente; a medição não equivale a uma transcrição auditiva. Próxima escuta com o usuário: avaliar identidade dos sopros, balanço com 16/32 peças e evolução por lances. Primeiro refinar esse kit; depois expandir articulações/motivo-resposta e a harmonia global. Detalhes e limites em `MUSIC_REFERENCE_GET_A_MOVE_ON.md`.
