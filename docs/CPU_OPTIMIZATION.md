@@ -1,4 +1,4 @@
-# CPU: arraste e padrões — v0.3.2
+# CPU: arraste e padrões — v0.3.3
 
 Branch: `codex/cpu-drag-optimization`. O código exportado não é avaliado pelo playback: `pattern-compiler.ts` constrói objetos Strudel; `code-export.ts` produz texto. Otimizar só o texto não resolve o arraste.
 

@@ -1,0 +1,16 @@
+const { test } = require('node:test')
+const assert = require('node:assert/strict')
+const { loadTs } = require('../helpers/music.cjs')
+const packageJson = require('../../package.json')
+const packageLock = require('../../package-lock.json')
+const { RELEASE_LABEL, CHANGELOG } = loadTs('lib/changelog.ts')
+
+test('package, lockfile and visible changelog publish the same current version', () => {
+  assert.match(packageJson.version, /^\d+\.\d+\.\d+$/)
+  assert.equal(packageLock.version, packageJson.version)
+  assert.equal(packageLock.packages[''].version, packageJson.version)
+  assert.equal(RELEASE_LABEL, `v${packageJson.version}`)
+  assert.equal(CHANGELOG[0].version, packageJson.version)
+  assert.match(CHANGELOG[0].date, /^\d{2}\/\d{2}\/\d{4}$/)
+  assert.ok(CHANGELOG[0].groups.some(group => group.items.length > 0))
+})

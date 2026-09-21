@@ -1,4 +1,4 @@
-# Referências musicais — coleção v0.3.2
+# Referências musicais — coleção v0.3.3
 
 Atualizado em 16/09/2026. A coleção está em `lib/music/styled-kits.ts`; os defaults das 13 fases usam esses dados. Os padrões são composições originais inspiradas nos recursos de cada linguagem, não transcrições ou reconstruções históricas das gravações citadas. Pesquisa de repertório e datas não equivale a análise auditiva. As diferenças de época abaixo são intencionais e explícitas.
 

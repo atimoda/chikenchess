@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 16/09/2026 — v0.3.2 (The Creative). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 21/09/2026 — v0.3.3 (Engine leve e harmônica). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 
@@ -220,7 +220,7 @@ Notas explícitas são agrupadas por início/duração e controles compatíveis;
 - A linha entre popup e pin fica com 50% da opacidade quando o pin passa para trás do horizonte da esfera; volta à opacidade normal quando reaparece. A posição real do pin e a perspectiva da câmera determinam essa mudança, sem atualização React por frame.
 - O título do popup não exibe pontos de recompensa. O rodapé mostra `Reward: X PTS`, usando o valor real da próxima vitória: 1.000 na primeira conquista ou 200 na repetição.
 - O clique de um pin (tom e prato reverso de abertura) usa 30% do ganho anterior, redução de 70%; o pulso de hover usa 70%, redução de 30%. Sons de arraste dos popups e do botão Enter board conservam seus ajustes.
-- Clicar em `v0.3.2` abre o changelog com rolagem interna, disponível no mapa, na partida e no Criativo. Escape, botão de fechar ou clique fora encerram o popup; o histórico fica em `lib/changelog.ts`.
+- Clicar no número da versão atual abre o changelog com rolagem interna, disponível no mapa, na partida e no Criativo. Escape, botão de fechar ou clique fora encerram o popup; o histórico fica em `lib/changelog.ts`.
 
 ## Estados e ideias ainda não associados à engine Strudel
 
