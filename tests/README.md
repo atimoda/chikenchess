@@ -8,11 +8,12 @@
 | `creative.cases.cjs` | 6 | Sessão, edição, validação e migração básica |
 | `patterns.cases.cjs` | 10 | Compilação, groove, automação e prévias |
 | `kits.cases.cjs` | 10 | Cidades, samples, catálogo e persistência |
-| `runtime.cases.cjs` | 7 | Monitor, transporte ativo e gestos temporários |
+| `runtime.cases.cjs` | 10 | Monitor, pulsos isolados, buses por capacidade, transporte ativo e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |
 | `editor.cases.cjs` | 4 | Duração, forma, variações e slides por nota |
-| `globe.cases.cjs` | 3 | Voo, geometria e direção do gesto |
+| `globe.cases.cjs` | 4 | Voo, geometria, direção do gesto e compensação do popup |
+| `progression.cases.cjs` | 3 | Migração, recompensa, saldo de ovos e pontos históricos |
 | `optimization.cases.cjs` | 2 | Equivalência de lanes/acordes e isolamento do cache de reverb |
 | `studies.cases.cjs` | 4 | Estudo Mouth Breather e equivalência da exportação |
 | `release.cases.cjs` | 1 | Sincronia entre package, lockfile e versão/changelog exibidos |

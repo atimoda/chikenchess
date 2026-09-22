@@ -328,7 +328,36 @@ const rawCities: Omit<CityData, "coordinates">[] = [
         "Survive."
     ]
   },
-  // 11. Paris (1995)
+  // 11. Johannesburg (1994)
+  {
+    id: "johannesburg",
+    name: "Johannesburg",
+    country: "South Africa",
+    year: 1994,
+    genre: "Kwaito / Township House",
+    description: "House desacelerado e reinventado em Soweto: baixo profundo, piano, percussão e vozes da nova África do Sul.",
+    bpm: 108,
+    scale: ["F#4", "A4", "B4", "C#4", "E4"],
+    geoCoordinates: { lat: -26.2041, lng: 28.0473 },
+    color: "#ff7a45",
+    image: "https://unsplash.com/photos/NpRg40RKuxo/download?force=true&w=800",
+    samples: {
+      kick: "bd:4",
+      snare: "sd:3",
+      hihat: "hh:4",
+      bass: "bass:4",
+      pad: "piano:0",
+      lead: "synth:3",
+    },
+    introPhrases: [
+      "Jozi, 1994.",
+      "Slow the house down.",
+      "Let the township answer.",
+      "A new country finds its pulse.",
+      "Yebo. Make your move."
+    ]
+  },
+  // 12. Paris (1995)
   {
     id: "paris",
     name: "Paris",
@@ -357,7 +386,7 @@ const rawCities: Omit<CityData, "coordinates">[] = [
         "Allez."
     ]
   },
-  // 12. Vienna (1780)
+  // 13. Vienna (1780)
   {
     id: "vienna",
     name: "Vienna",

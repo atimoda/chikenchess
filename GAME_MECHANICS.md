@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 21/09/2026 — v0.3.3 (Engine leve e harmônica). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 21/09/2026 — v0.4.2 (Gestos contínuos). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 
@@ -12,17 +12,26 @@ Atualizado em 21/09/2026 — v0.3.3 (Engine leve e harmônica). Referência de c
 | Regras, transições e BPM | [Estados e Eventos](#estados-e-eventos--v032) |
 | Piano roll, seções e slides | [Editor](#editor-de-variações--v032) e [Seções próprias](#seções-próprias-slides-e-ajuda-contextual--1609) |
 | Globo e cidades | [Mapa](#mapa-e-entrada-na-fase) |
+| Perfil, pontuação e ovos | [Progresso](#progresso-e-ovos-dourados) |
 | Processamento | [Gestos e custo](#gestos-e-custo-de-processamento) |
 
 Localização do código e checks: `docs/CODEBASE_MAP.md`. Consulte as seções relacionadas ao pedido, incluindo suas prioridades; a agenda completa não é pré-requisito de toda alteração.
 
 ## Escopo e dados
 
-A engine Strudel é usada pelas 13 fases cadastradas (12 cidades; Manchester tem duas épocas) e pelo Criativo. Todas compartilham as regras abaixo; sons de interface, introdução e encerramento continuam nativos. A compilação dos loops nativos fica desabilitada quando a fase usa Strudel.
+A engine Strudel é usada pelas 14 fases cadastradas (13 cidades; Manchester tem duas épocas) e pelo Criativo. Todas compartilham as regras abaixo; sons de interface, introdução e encerramento continuam nativos. A compilação dos loops nativos fica desabilitada quando a fase usa Strudel.
 
-As 13 fases usam kits compostos por contexto de cidade/época em `lib/music/styled-kits.ts`, incluindo Northern Jazz Breaks de Manchester 1999. Referências e limites históricos estão em `MUSIC_STYLE_REFERENCES.md`. O botão de sorteio continua disponível separadamente. Os papéis sonoros independem do tipo de peça; Vienna usa peões afinados, cordas/madeiras e tímpano. As cidades eletrônicas mantêm fundamentos rítmicos regulares ou quebrados, com linhas de comprimentos distintos e variações de filtro, acento, fonte e presença.
+As 14 fases usam kits compostos por contexto de cidade/época em `lib/music/kit-profiles/`, incluindo Northern Jazz Breaks de Manchester 1999 e Johannesburg 1994/Kwaito. Referências e limites históricos estão em `MUSIC_STYLE_REFERENCES.md`. O botão de sorteio continua disponível separadamente. Cada perfil descreve 16 papéis por equipe com fonte, comportamento, frase, registro, envelope, efeitos e uma forma própria. O tipo da peça de xadrez não determina o papel sonoro.
 
-A coleção tem `catalogRevision`. Na primeira leitura de um kit salvo anterior à revisão atual, o navegador guarda seu JSON exato em uma chave de backup por cidade/revisão e adota o novo default. **Kit anterior** recupera a cópia para comparar/exportar; **Salvar kit da fase** pode adotá-la novamente. Saves feitos pelo Criativo recebem a revisão atual, inclusive kits importados/antigos restaurados, e conservam prioridade nas próximas leituras. Se não for possível gravar o backup ou o novo kit, conserva-se o salvo antigo. A atualização é local e por cidade, conforme ela é carregada; não publica dados em servidor.
+Cada voz possui presença por seção, banco de variação e, quando necessário, transposição própria. Isso funciona como direção de densidade e protagonismo: fundamentos podem atravessar a forma, respostas entram depois, solos ocupam trechos reservados e texturas saem para abrir espaço. As equipes espelham a distribuição inicial do mesmo kit; movimento, captura, cheque, Solo e edição continuam operando por identidade. O editor de seções já expõe essa forma por peça. Os planos harmônicos de cada cidade movem centros e acordes junto com a forma.
+
+A coleção tem `catalogRevision`. Na primeira leitura de um kit salvo anterior à revisão atual, o navegador guarda seu JSON exato em uma chave de backup por cidade/revisão e adota o novo default. **Kit anterior** recupera a cópia para comparar/exportar; **Salvar kit** pode adotá-la novamente. Saves feitos pelo Criativo recebem a revisão atual, inclusive kits importados/antigos restaurados, e conservam prioridade nas próximas leituras. Se não for possível gravar o backup ou o novo kit, conserva-se o salvo antigo. A atualização é local e por cidade, conforme ela é carregada; não publica dados em servidor.
+
+## Progresso e ovos dourados
+
+O perfil local começa com **10 ovos dourados** de presente e 10 pontos históricos. Toda vitória contra uma cidade, inclusive repetida, acrescenta **10 ovos** ao inventário e **10 pontos** à conta. O saldo de ovos é moeda gastável por poderes e loja; os pontos nunca são consumidos e medem todos os ovos recebidos na história. Conquistar uma cidade pela primeira vez ainda registra a cidade e sua bandeira, mas não muda o valor da recompensa.
+
+Perfis do sistema antigo são migrados uma única vez pela quantidade real de vitórias: presente inicial + 10 por vitória. Os antigos prêmios de 1.000/200 pontos não viram moeda, evitando saldos inflados. Gastar exige um inteiro positivo, falha sem alterar o perfil quando não há saldo e jamais reduz pontos, vitórias ou cidades conquistadas. Os ranks usam os pontos históricos nos marcos 0, 40, 80, 120 e 250.
 
 | Dado | Significado | Duração / origem |
 | --- | --- | --- |
@@ -60,7 +69,7 @@ Manchester 1988 mantém seu ID, kit e salvamento. As duas épocas compartilham u
 | **Dar cheque** | **Todas as peças sobreviventes da equipe atacante ficam ativas.** Suas máscaras de entrada são temporariamente ignoradas. As pausas internas das frases/grooves e os volumes editados continuam valendo | Todas recebem marca ativa; Strudel informa “CHEQUE · banda branca/preta completa”; Piece Params identifica uma ativação temporária |
 | **Sair do cheque** | Remove o efeito de equipe. Voltam a tocar apenas as peças já movimentadas; máscaras originais voltam a valer | Marcas e indicadores voltam ao estado calculado pelo histórico |
 | Undo/redo | Reconstitui posição, capturas, peças já movimentadas e efeito de cheque | Edições manuais de som continuam associadas aos IDs |
-| Xeque-mate | Encerra a reprodução e executa o som de encerramento; o encerramento tem prioridade sobre a banda do cheque | Resultado e recompensa/progresso existentes da fase |
+| Xeque-mate | Encerra a reprodução e executa o som de encerramento; vitória do jogador concede 10 ovos e 10 pontos uma única vez para aquela posição final | Resultado, saldo, pontuação histórica e progresso da fase |
 | Empate / afogamento | Encerra a reprodução e executa o som de empate | Resultado da partida |
 | Pausar / retomar | Pausa todos os loops. Retomar reinicia o transporte; gestos manuais ainda podem ser ouvidos quando pausado | Indicador de transporte |
 | Nota musical no cabeçalho da partida | Desliga ou liga a engine generativa inteira. Desligar encerra transporte, loops, prévias, monitor e análise de frequência; o volume configurado é preservado | Ícone de nota fica atenuado quando desligado; sons pontuais da interface permanecem independentes |
@@ -191,9 +200,9 @@ O relógio continua compartilhado. Fine pitch (±8%) altera BPM e afinação de 
 
 ## Gestos e custo de processamento
 
-Na partida, o arraste captura o ponteiro na casa estável, inclusive em touch, e move a imagem por transformação de DOM; não depende de eventos no SVG que desaparece ao pegar a peça. As casas percorridas continuam disparando audição e pulsos visuais. Soltar confirma a jogada válida; cancelar/blur/Escape restaura o loop conforme as regras anteriores.
+Na partida, o arraste captura o ponteiro na casa estável, inclusive em touch, e move a imagem por transformação de DOM; não depende de eventos no SVG que desaparece ao pegar a peça. A casa inicial e cada nova casa atravessada disparam uma nota avulsa. O canal manual isolado permanece conectado durante o gesto e só é removido ao soltar/cancelar, evitando recriar reverb e saída a cada casa. O quadrado de passagem e o estado React da partida não são refeitos por ataque. Soltar confirma a jogada válida; cancelar/blur/Escape restaura o loop conforme as regras anteriores.
 
-O acompanhamento só é reenviado ao scheduler quando seus padrões mudam, não a cada casa atravessada em uma audição. Painéis musicais fechados não montam os gráficos; código Strudel oculto não é regenerado, e o monitor periódico consulta padrões apenas com assinantes. Dispositivos restritos usam DPR 1 no globo e agendamento de loops com antecipação de 180 ms (desktop 100 ms); audição manual mantém seu caminho de baixa latência. Esses cortes de trabalho não equivalem a aprovação de desempenho/áudio em celular físico.
+O acompanhamento só é reenviado ao scheduler quando seus padrões mudam, não a cada casa atravessada em uma audição. Painéis musicais fechados não montam os gráficos; código Strudel oculto não é regenerado, e o monitor periódico consulta padrões apenas com assinantes. Dispositivos restritos usam DPR 1 no globo e agendamento de loops com antecipação de 180 ms (desktop 100 ms); audição manual mantém seu caminho de baixa latência. Os flashes de nota são publicados por um monitor próprio: apenas o marcador sobre o tabuleiro assina os pulsos, sem renderizar novamente a partida ou o Criativo a cada ataque. Esses cortes de trabalho não equivalem a aprovação de desempenho/áudio em celular físico.
 
 ### Otimização de arraste e exportação — 16/09
 
@@ -201,7 +210,7 @@ Durante a travessia entre casas da mesma peça, só a voz manual muda; entrada e
 
 O reverb manual reutiliza o buffer de impulso por configuração, com cache limitado ao runtime; cada ataque conserva seu próprio nó, e a cauda cancelada não retorna na casa seguinte. O impulso aleatório deixa de ser regenerado em toda casa, mantendo a mesma configuração acústica. Alterar configuração ou encontrar buffer ainda pendente usa a fábrica original. Encerrar o runtime limpa o cache. A audição manual continua em um orbit exclusivo para permitir cancelamento imediato.
 
-Os loops usam quatro buses de efeitos do Superdough: dois para Brancas e dois para Pretas, distribuídos de forma estável pelo slot da peça. Filtro, ganho, pan, envelope e sends continuam calculados por evento e por voz; o compartilhamento reduz apenas a duplicação de reverb/delay. Remover uma peça bloqueia seus novos ataques, mas não desconecta o bus enquanto outra peça do grupo estiver ativa; por isso uma nota ou cauda já iniciada termina naturalmente. Quando a última voz deixa o grupo, o orbit é desconectado. Os dois buses posteriores de ganho/EQ por equipe continuam depois desses efeitos.
+No desktop, os loops usam quatro buses de efeitos do Superdough: dois para Brancas e dois para Pretas, distribuídos de forma estável pelo slot da peça. Em aparelhos restritos, usam dois buses, um por equipe. Filtro, ganho, pan, envelope e sends continuam calculados por evento e por voz; o compartilhamento reduz apenas a duplicação de reverb/delay e não remove vozes ou notas. Remover uma peça bloqueia seus novos ataques, mas não desconecta o bus enquanto outra peça do grupo estiver ativa; por isso uma nota ou cauda já iniciada termina naturalmente. Quando a última voz deixa o grupo, o orbit é desconectado. Os dois buses posteriores de ganho/EQ por equipe continuam depois desses efeitos.
 
 Notas explícitas são agrupadas por início/duração e controles compatíveis; sobreposições permanecem separadas. Playback consome segmentos diretamente e exportação usa mini-notation ponderada. Seções, andamento, instrumentos, envelopes e regras não mudam; saves conservam o schema atual. Decisões, medições e limitações em `docs/CPU_OPTIMIZATION.md`.
 
@@ -212,13 +221,13 @@ Notas explícitas são agrupadas por início/duração e controles compatíveis;
 - Arrastar interrompe a centralização anterior. O giro automático espera terminar o gesto e mais 800 ms, sem inércia concorrente. Dois dedos mantêm o pinch e acrescentam giro do globo no mesmo sentido visual do gesto pelo ângulo entre os dedos (sinal do roll da câmera corrigido); isso não gira o tabuleiro da partida.
 - Na apresentação da cidade, o quadro de informações pode ser arrastado pelo fundo com mouse ou touch; Start match fica acima dele. No cabeçalho mobile, Modo Criativo fica na linha abaixo de About/maximizar.
 - Segurar o fundo de um popup reduz a escala para 92%, usando o ponto pressionado como origem; não há rotação durante esse gesto. O arraste mantém o whistle contínuo e acrescenta ataques curtos na pressão, durante o deslocamento e ao soltar. Botões internos conservam suas próprias ações e sons.
-- Um popup aberto não interrompe o giro de espera: depois de a câmera terminar de centralizar a cidade, o globo volta a girar. Passar o cursor sobre um pin pausa esse giro e amplia o pin em 15%; ao sair, o relógio de espera volta a contar.
+- Um popup aberto não interrompe nem reduz o giro de espera: depois de a câmera terminar de centralizar a cidade, o globo volta à velocidade normal. O quadro compensa dois terços do deslocamento projetado do pin e, portanto, percorre a tela a um terço da velocidade do marcador; a linha continua ligada à posição real. Arrastar o popup também não pausa nem reinicia o relógio do giro. Passar o cursor sobre um pin visível pausa e amplia o pin em 15%; marcadores atrás da esfera ignoram hover, clique e toque.
 - Cidades conquistadas são lidas do perfil local e ganham uma bandeira verde acima do pin, além do halo de conquista existente.
 - “Enter board” conduz a câmera à cidade por cerca de 1,4 s e só então abre a fase. A direção considera a rotação atual do globo; comandos de câmera ficam suspensos durante essa transição.
 - A preferência de movimento reduzido encurta a transição. A introdução atual da fase continua existindo após a chegada.
 - A superfície usa o litoral geográfico real do Natural Earth 1:110m, incluindo ilhas principais, convertido do SVG local em segmentos vetoriais sobre a esfera, sem textura rasterizada nem fronteiras regionais. O traço do contorno dos continentes usa a cor verde neon (`#39ff14`), com sombreado suave pela direção do sol. A grade de latitudes/longitudes a cada 15° permanece visível. O detalhe geográfico continua limitado à resolução da fonte cartográfica. O sol tem halo radial e a lua é pequena e fosca, iluminada pela direção do sol. Nenhum efeito de áudio depende desse fundo.
 - A linha entre popup e pin fica com 50% da opacidade quando o pin passa para trás do horizonte da esfera; volta à opacidade normal quando reaparece. A posição real do pin e a perspectiva da câmera determinam essa mudança, sem atualização React por frame.
-- O título do popup não exibe pontos de recompensa. O rodapé mostra `Reward: X PTS`, usando o valor real da próxima vitória: 1.000 na primeira conquista ou 200 na repetição.
+- O título do popup não exibe a recompensa. O rodapé mostra `Reward: 10 golden eggs`; primeira conquista e repetição concedem o mesmo valor.
 - O clique de um pin (tom e prato reverso de abertura) usa 30% do ganho anterior, redução de 70%; o pulso de hover usa 70%, redução de 30%. Sons de arraste dos popups e do botão Enter board conservam seus ajustes.
 - Clicar no número da versão atual abre o changelog com rolagem interna, disponível no mapa, na partida e no Criativo. Escape, botão de fechar ou clique fora encerram o popup; o histórico fica em `lib/changelog.ts`.
 
@@ -226,7 +235,7 @@ Notas explícitas são agrupadas por início/duração e controles compatíveis;
 
 Contagem de ameaças sofridas/produzidas, ameaça à rainha, mobilidade legal, proximidade do rei, estados “tenso/excitado”, bônus de captura, destaque elaborado da última peça e modulação por vitória provável não estão implementados. Vantagem material e eventos abaixo já podem controlar parâmetros por regras do kit. O efeito de equipe durante cheque é a primeira regra tática coletiva.
 
-ChickenChess cooperativo/invertido, ovos de ouro, multiplayer, vestiário, administração/publicação de kits e mundo por época continuam planejados. A partida atual segue o xadrez clássico contra IA.
+ChickenChess cooperativo/invertido, poderes que gastam ovos, loja, multiplayer, vestiário, administração/publicação de kits e mundo por época continuam planejados. A partida atual segue o xadrez clássico contra IA.
 
 ## Manutenção e verificação
 

@@ -43,6 +43,10 @@ export const cityCoordinates: Record<string, { x: number; y: number }> = {
     "x": 29.33,
     "y": 74.14
   },
+  "johannesburg": {
+    "x": 53.8,
+    "y": 76.2
+  },
   "paris": {
     "x": 42.91,
     "y": 27.36

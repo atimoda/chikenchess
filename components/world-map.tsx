@@ -973,11 +973,19 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               </span>
             </div>
             
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-muted-foreground">Score:</span>
-              <span className="font-bold text-primary text-sm tracking-wide">
-                🏆 {(playerProfile?.points || 0).toLocaleString()} <span className="text-[10px] text-muted-foreground">PTS</span>
-              </span>
+            <div className="space-y-1 border-t border-border/50 pt-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-muted-foreground">Golden eggs:</span>
+                <span className="font-bold text-amber-300 text-sm tracking-wide">
+                  🥚 {(playerProfile?.goldenEggs || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-muted-foreground">Historical score:</span>
+                <span className="font-semibold text-primary tracking-wide">
+                  🏆 {(playerProfile?.points || 0).toLocaleString()} PTS
+                </span>
+              </div>
             </div>
 
             <div className="space-y-1 pt-1 border-t border-border/50">

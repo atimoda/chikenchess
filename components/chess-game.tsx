@@ -72,6 +72,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
  
   const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
+  const rewardedCheckmateFenRef = useRef<string | null>(null)
   const evalStockfishRef = useRef<Worker | null>(null)
   const evalSideToMoveRef = useRef<"w" | "b">("w")
   const evalLastScoreRef = useRef<number | null>(null)
@@ -544,11 +545,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       playCheckmate() // Play checkmate sound
 
       // If White (Player) won
-      if (winner === "White") {
+      if (winner === "White" && rewardedCheckmateFenRef.current !== game.fen()) {
+        rewardedCheckmateFenRef.current = game.fen()
         const result = conquerCity(city.id)
         const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
-        toast.success(`CITY CONQUERED! +${result.earnedPoints.toLocaleString()} PTS 🎵`, {
-          description: `${result.isFirstTime ? "First conquest reward claimed!" : "Conquest bonus earned!"}${rankMsg} (Total: ${result.profile.points.toLocaleString()} PTS)`,
+        toast.success(`CITY CONQUERED! +${result.earnedEggs} GOLDEN EGGS 🥚`, {
+          description: `${result.isFirstTime ? "City added to your conquests!" : "Victory reward claimed again!"}${rankMsg} (Basket: ${result.profile.goldenEggs.toLocaleString()} eggs · Historical: ${result.profile.points.toLocaleString()} PTS)`,
           duration: Infinity,
           action: {
             label: "RETURN TO MAP",
@@ -557,7 +559,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         })
       } else {
         toast.error("DEFEAT!", {
-          description: "Try again to conquer this city and claim the points."
+          description: "Try again to conquer this city and earn 10 golden eggs."
         })
       }
     } else if (game.isDraw() || game.isStalemate()) {
@@ -729,6 +731,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setIsEvaluating(false)
     evalPendingRef.current = false
     setIsBackgroundDark(false)
+    rewardedCheckmateFenRef.current = null
   }, [])
 
   const undoMove = useCallback(() => {
@@ -1734,8 +1737,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                             engineRef.current.playSeatbelt()
                         }
                         const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
-                        toast.success(`CITY CONQUERED! +${result.earnedPoints.toLocaleString()} PTS 🎵`, {
-                            description: `${result.isFirstTime ? "First conquest reward claimed!" : "Conquest bonus earned!"}${rankMsg} (Total: ${result.profile.points.toLocaleString()} PTS)`,
+                        toast.success(`CITY CONQUERED! +${result.earnedEggs} GOLDEN EGGS 🥚`, {
+                            description: `${result.isFirstTime ? "City added to your conquests!" : "Victory reward claimed again!"}${rankMsg} (Basket: ${result.profile.goldenEggs.toLocaleString()} eggs · Historical: ${result.profile.points.toLocaleString()} PTS)`,
                             duration: Infinity,
                             action: {
                                 label: "RETURN TO MAP",
@@ -1822,7 +1825,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   activeSquares={music.enabled ? music.activeSquares : activeSquares}
                   onPieceHold={music.enabled && music.engineActive ? music.audition : undefined}
                   onPieceRelease={music.enabled && music.engineActive ? music.endAudition : undefined}
-                  musicPulse={music.enabled && music.engineActive ? music.pulse : null}
+                  musicPulseMonitor={music.enabled && music.engineActive ? music.pulseMonitor : undefined}
                   onBoardClick={(square) => {
                     if (music.enabled) { music.select(square); return }
                     setSynthSelectedSquare(square)

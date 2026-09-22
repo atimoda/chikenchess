@@ -12,6 +12,7 @@ import { profile as london } from './london'
 import { profile as saopaulo } from './saopaulo'
 import { profile as paris } from './paris'
 import { profile as vienna } from './vienna'
+import { profile as johannesburg } from './johannesburg'
 
 export const STYLE_PROFILES: Record<string, StyleProfile> = {
   dusseldorf,
@@ -26,4 +27,5 @@ export const STYLE_PROFILES: Record<string, StyleProfile> = {
   saopaulo,
   paris,
   vienna,
+  johannesburg,
 }

@@ -2,8 +2,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const { loadTs, strudel } = require('../helpers/music.cjs')
-const fixtureDirectory = path.resolve(__dirname, '..')
+const { loadTs } = require('../helpers/music.cjs')
 
 test('city flight ends above the selected world pin, even from the opposite side', () => {
   const { Vector3, Quaternion } = require('three')
@@ -24,7 +23,7 @@ test('vector coastlines and globe grid remain above the sphere without joining s
   const { coastlineSegments, globeGridSegments, pinIsBehindGlobe } = loadTs('lib/globe-geography.ts')
   const { Vector3 } = require('three')
   assert.equal(coastlineSegments('<path d="M0,512 M1024,512"/>').length, 0)
-  const coastline = coastlineSegments(fs.readFileSync(path.resolve(fixtureDirectory, '../public/world_map_contours.svg'), 'utf8'))
+  const coastline = coastlineSegments(fs.readFileSync(path.resolve('public/world_map_contours.svg'), 'utf8'))
   const grid = globeGridSegments()
   assert.ok(coastline.length > 1000 && coastline.length < 150000)
   for (const positions of [coastline, grid]) for (let i = 0; i < positions.length; i += 6) {
@@ -45,4 +44,10 @@ test('two-finger screen rotation projects globe landmarks in the same direction'
   const after=marker.clone().project(camera),screenDelta=Math.atan2(-after.y,after.x)-Math.atan2(-before.y,before.x)
   assert.ok(Math.abs(screenDelta-gesture)<1e-8)
  }
+})
+
+test('standby popup travels one third of its pin while globe speed stays unchanged', () => {
+  const { popupStandbyCompensation } = loadTs('lib/globe-navigation.ts')
+  const pinTravel = 12
+  assert.equal(pinTravel + popupStandbyCompensation(pinTravel), 4)
 })

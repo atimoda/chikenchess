@@ -5,10 +5,10 @@ import type { Square } from 'chess.js'
 import type { CityData } from '@/lib/cities-data'
 import type { SquareEffects } from '@/lib/types'
 import { instrumentFor, gameMusicStateFromHistory, type InstrumentPerformanceEdit } from '@/lib/music/model'
-import { MusicRuntime, renderMusicCode, type Preview, type MusicPulse, type MusicSnapshot } from '@/lib/music/runtime'
+import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
 import { defaultCityKit, loadCityKit } from '@/lib/music/city-kits'
 import { scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
-import { createMusicMonitor } from '@/lib/music/monitor'
+import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
 import { createTeamMixes, resolveDeckClock, type TeamMix } from '@/lib/music/team-mixer'
 import { applyReactions, reactionContext } from '@/lib/music/reactions'
 
@@ -27,10 +27,10 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const [effects, setEffects] = useState<Record<string, SquareEffects>>(builtInKit?.effects ?? {})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Preview | null>(null)
-  const [pulse, setPulse] = useState<MusicPulse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
+  const pulseMonitor = useMemo(createMusicPulseMonitor, [])
   const baseSnapshot = useMemo(() => ({
     pieces: pieces.map(p => ({ ...p, active: p.activation === 'move', checkEnsemble: false })),
     scale: kit ? scaleForCreativeSession(kit) : city.scale,
@@ -66,15 +66,15 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   useEffect(() => {
     if (!enabled || !engineActive) {
       setPreview(null)
-      setPulse(null)
+      pulseMonitor.clear()
       setAudible(null)
       return
     }
-    const engine = new MusicRuntime(setPulse, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
+    const engine = new MusicRuntime(pulseMonitor.publish, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
     runtime.current = engine
     engine.preload()
-    return () => { engine.dispose(); runtime.current = null }
-  }, [enabled, engineActive, monitor])
+    return () => { engine.dispose(); pulseMonitor.clear(); runtime.current = null }
+  }, [enabled, engineActive, monitor, pulseMonitor])
   useEffect(() => {
     const mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
     if (!engineActive) return
@@ -94,7 +94,11 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     const piece = pieces.find(p => p.square === from)
     if (!piece) return
     setSelectedId(piece.id)
-    setPreview({ id: piece.id, square: to, mode: 'manual' })
+    // The runtime owns the live square. Keeping React state stable while the
+    // pointer crosses the board avoids rerendering the whole match per note.
+    setPreview(current => current?.id === piece.id && current.mode === 'manual'
+      ? current
+      : { id: piece.id, square: to, mode: 'manual' })
     runtime.current?.audition(piece.id, to)
   }, [pieces, engineActive])
   const endAudition = useCallback(() => {
@@ -134,7 +138,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   return {
     enabled, engineActive, audition, endAudition, select, reset, selected, effects, setEffects, snapshot, teamMixes, updateTeamMix,
     deckClock: { finePitch, quartzLock, effectiveBpm: snapshot.bpm, originalBpm: kit?.bpm ?? bpm, setFinePitch, setQuartzLock },
-    code, preview, pulse, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
+    code, preview, pulseMonitor, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,
     kitVolume: kit?.volume ?? null,

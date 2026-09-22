@@ -4,7 +4,7 @@ import { useRef } from "react"
 import { getCityEras, type CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
 import { Draggable } from "@/components/ui/draggable"
-import { POINTS_FIRST_CONQUEST, POINTS_REPLAY_WIN } from '@/lib/game-progression'
+import { GOLDEN_EGGS_PER_CITY_WIN } from '@/lib/game-progression'
 
 export interface CityPopupProps {
   city: CityData
@@ -34,7 +34,7 @@ export interface CityPopupProps {
   isEntering: boolean
   onEnter: () => void
   scale: number
-  onDragMove: () => void
+  onDragMove?: () => void
   onDragStart?: (e?: React.MouseEvent | React.TouchEvent) => void
   onDragEnd?: () => void
   transformOrigin?: string
@@ -82,7 +82,7 @@ export const CityPopup = ({
           lastDragAccent.current = Date.now()
           playMapSound('popup_drag')
         }
-        onDragMove()
+        onDragMove?.()
       }}
       onDragStart={(e) => {
         bringToFront(city.id)
@@ -233,7 +233,7 @@ export const CityPopup = ({
                 TARGET BPM: <span style={{ color: city.color }}>{city.bpm}</span>
               </span>
               <span className="text-[10px] text-muted-foreground/70">
-                Reward: {(isConquered ? POINTS_REPLAY_WIN : POINTS_FIRST_CONQUEST).toLocaleString('en-US')} PTS
+                Reward: {GOLDEN_EGGS_PER_CITY_WIN} golden eggs 🥚
               </span>
             </div>
               <button 

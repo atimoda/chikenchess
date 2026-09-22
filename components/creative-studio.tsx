@@ -4,6 +4,7 @@ import { InstrumentParameters } from './creative/instrument-parameters'
 import { MusicPerformanceControls } from './music-performance-controls'
 import { InfoTip, HelpLabel } from './info-tip'
 import { MusicTransitionView } from './music-transition-view'
+import { MusicPulseOverlay } from './music-pulse-overlay'
 
 import Link from 'next/link'
 import { MusicReactionEditor } from './music-reaction-editor'
@@ -421,10 +422,9 @@ export function CreativeStudio() {
                 const piece = music.snapshot.pieces.find(p => p.square === square)
                 const chosen = piece?.id === selectedId
                 const preview = music.preview?.square === square
-                const pulse = music.pulse?.square === square
                 return <button key={square} type="button" data-creative-square={square}
                   aria-label={`${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'branco' : 'preto'} · ${session.instruments[piece.id].name} · ${piece.active ? 'ativo' : 'inativo'}` : ' · vazia'}`}
-                  aria-pressed={chosen} className={`${styles.square} ${(Math.floor(index / 8) + index % 8) % 2 ? styles.dark : styles.light} ${chosen ? styles.selected : ''} ${preview ? styles.preview : ''} ${pulse ? styles.pulse : ''}`}
+                  aria-pressed={chosen} className={`${styles.square} ${(Math.floor(index / 8) + index % 8) % 2 ? styles.dark : styles.light} ${chosen ? styles.selected : ''} ${preview ? styles.preview : ''}`}
                   onPointerDown={e => pointerDown(e, square)} onPointerMove={pointerMove} onPointerUp={pointerUp}
                   onPointerCancel={() => { drag.current = null; setDragVisual(null); music.endAudition(); suppressClick.current = true }}
                   onLostPointerCapture={() => { if (drag.current) { drag.current = null; setDragVisual(null); music.endAudition() } }}
@@ -441,6 +441,7 @@ export function CreativeStudio() {
                   {piece?.active && dragVisual?.id !== piece.id && <span className={styles.activeDot} />}
                 </button>
               })}
+              <MusicPulseOverlay monitor={music.pulseMonitor} variant="creative" />
               {dragVisual && <span ref={dragVisualRef} data-creative-drag={dragVisual.id} className={styles.dragPiece} style={{ left: 0, top: 0, transform: `translate(${dragVisual.x}px, ${dragVisual.y}px) translate(-50%, -50%) scale(1.06)` }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
             </div>
 

@@ -24,6 +24,35 @@ export function createMusicMonitor() {
   }
 }
 export type MusicMonitor = ReturnType<typeof createMusicMonitor>
+
+// Musical flashes are intentionally kept outside React page state. A pulse may
+// arrive several times per second; only the tiny board overlay should subscribe.
+export function createMusicPulseMonitor() {
+  let pulse: import('./runtime-types').MusicPulse | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const listeners = new Set<() => void>()
+  const notify = () => listeners.forEach(listener => listener())
+  const clear = () => {
+    if (timer) clearTimeout(timer)
+    timer = undefined
+    if (pulse === null) return
+    pulse = null
+    notify()
+  }
+  return {
+    subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+    getSnapshot: () => pulse,
+    getServerSnapshot: () => null,
+    publish: (next: import('./runtime-types').MusicPulse) => {
+      if (timer) clearTimeout(timer)
+      pulse = next
+      notify()
+      timer = setTimeout(clear, Math.max(80, Math.min(350, next.duration * 1000)))
+    },
+    clear,
+  }
+}
+export type MusicPulseMonitor = ReturnType<typeof createMusicPulseMonitor>
 export const VOICE_STATUS_LABELS: Record<VoiceStatus, string> = {
   inactive: 'Inativa', paused: 'Transporte pausado', 'solo-muted': 'Fora do solo', loading: 'Carregando sample',
   error: 'Erro no sample', masked: 'Pausa de seção', rest: 'Pausa da frase', note: 'Tocando',

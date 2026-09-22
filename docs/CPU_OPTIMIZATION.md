@@ -1,4 +1,4 @@
-# CPU: arraste e padrões — v0.3.3
+# CPU: arraste e padrões — v0.3.4
 
 Branch: `codex/cpu-drag-optimization`. O código exportado não é avaliado pelo playback: `pattern-compiler.ts` constrói objetos Strudel; `code-export.ts` produz texto. Otimizar só o texto não resolve o arraste.
 
@@ -66,3 +66,9 @@ O ganho de consulta foi de 47–51%, sem reduzir eventos. Na exportação, a mes
 Seleções contínuas de performance agora usam `pick`; seleções com reinício continuam em `pickRestart`. O teste compara 24 compassos de eventos e controles contra a árvore anterior de máscaras. No score Detroit completo, isso elimina as 40 máscaras de seleção e reduz 85 → 77 stacks. Uma repetição quente do benchmark deu 622 → 611 ms para a mesma consulta; a diferença foi pequena nessa rodada, portanto a redução inicial de 47–51% não é tratada como ganho garantido de CPU.
 
 Os 32 loops agora se distribuem em quatro orbits de efeitos, dois por equipe. Cada ataque preserva filtro, ganho, pan, envelope e sends; audição manual usa orbit exclusivo. A remoção é por referência de bus: capturar/desativar uma voz não derruba suas companheiras, e a última voz desconecta o orbit. O score Detroit completo ficou em 63.417 bytes, 77 stacks, 284 filtros, zero máscaras e quatro orbits. O teste sintético anterior indica quatro reverbs em vez de 32 e nenhum `skip query: too late` na janela de cinco segundos, mas a aprovação final ainda depende do build de produção em celular físico.
+
+## Retorno do celular e terceira implementação — 21/09
+
+O teste físico da v0.3.3 ainda apresentou atraso nas cidades e, em menor grau, no Criativo. As duas telas já usavam o mesmo runtime, compilador compacto e quatro buses; portanto a diferença restante não era uma otimização restrita ao editor. A partida também recebia cada pulso pelo estado React do componente completo, fazendo tabuleiro, controles e widgets participarem de atualizações visuais recorrentes.
+
+Na v0.3.4, os pulsos passam por uma store externa e apenas um overlay do tabuleiro assina as mudanças. A página não recebe mais `setState` por ataque. Aparelhos detectados como restritos usam ainda dois buses de efeitos, um por equipe, configuração que no ensaio anterior manteve as 32 vozes e não registrou `skip query: too late`; desktop conserva quatro. Notas, polifonia configurada, filtros, envelopes, pan e quantidade do send de cada evento permanecem. O compartilhamento maior pode aproximar a textura das caudas de peças da mesma equipe. A melhora final precisa ser repetida no mesmo celular e no build de produção.

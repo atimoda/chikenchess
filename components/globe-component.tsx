@@ -1,12 +1,12 @@
 "use client"
 
-import { useRef, useState, useEffect, useMemo, Suspense } from 'react'
+import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
 import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace } from 'three'
 import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup } from './city-popup'
-import { cityDirection, cityFlightPose } from '@/lib/globe-navigation'
+import { cityDirection, cityFlightPose, popupStandbyCompensation } from '@/lib/globe-navigation'
 import { isConstrainedDevice } from '@/lib/performance'
 import { coastlineSegments, globeGridSegments, pinIsBehindGlobe } from '@/lib/globe-geography'
 
@@ -55,6 +55,36 @@ interface GlobeProps {
 
 const GLOBE_RADIUS = 2
 const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
+
+type PopupLineState = { startX: number; startY: number; cpX: number; cpY: number; endX: number; endY: number; handlePath: string }
+
+function popupLineState(position: { x: number; y: number }, jitter: number, dragging: boolean, dragAnchor: { x: number; y: number }): PopupLineState {
+  const startX = 0, startY = 0, width = 288, height = 450
+  const left = { x: position.x, y: position.y + height / 2 }
+  const right = { x: position.x + width, y: position.y + height / 2 }
+  const top = { x: position.x + width / 2, y: position.y }
+  const distance = (point: { x: number; y: number }) => point.x ** 2 + point.y ** 2
+  const minimum = Math.min(distance(left), distance(right), distance(top))
+  const side: 'left' | 'right' | 'top' = minimum === distance(top) ? 'top' : minimum === distance(left) ? 'left' : 'right'
+  let endX = side === 'left' ? left.x : side === 'right' ? right.x : top.x
+  let endY = side === 'top' ? top.y : (side === 'left' ? left.y : right.y) - 40
+  let cpX = side === 'top' ? jitter : (startX + endX) / 2
+  let cpY = side === 'top' ? (startY + endY) / 2 : (startY + endY) / 2 + (endY < 0 ? 50 : -50)
+  if (dragging) {
+    endX = position.x + dragAnchor.x
+    endY = position.y + dragAnchor.y
+    cpX = (startX + endX) / 2
+    const arc = Math.min(Math.hypot(endX - startX, endY - startY) * .266, 66)
+    cpY = (startY + endY) / 2 + (endY < 0 ? arc : -arc)
+  }
+  const r = 4
+  const handlePath = dragging ? '' : side === 'left'
+    ? `M ${endX} ${endY - r} A ${r} ${r} 0 0 0 ${endX} ${endY + r}`
+    : side === 'right'
+      ? `M ${endX} ${endY - r} A ${r} ${r} 0 0 1 ${endX} ${endY + r}`
+      : `M ${endX - r} ${endY} A ${r} ${r} 0 0 1 ${endX + r} ${endY}`
+  return { startX, startY, cpX, cpY, endX, endY, handlePath }
+}
 
 // Separate component to handle Popup state locally and avoid full re-renders during drag
 const PulsingRing = ({ city, isOpen, isHoveredProp }: { city: CityData, isOpen: boolean, isHoveredProp: boolean }) => {
@@ -129,7 +159,7 @@ const PopupContainer = ({
     isEntering,
     setEnteringCityId,
     setIsDraggingPopup,
-    handleInteraction,
+    standbyRef,
     onEraSelect,
 }: any) => {
     // Local state for smooth dragging
@@ -139,8 +169,22 @@ const PopupContainer = ({
     const wrapperRef = useRef<HTMLDivElement>(null)
     const anchorRef = useRef<Group>(null)
     const lineRef = useRef<SVGSVGElement>(null)
+    const cablePathRef = useRef<ComponentRef<'path'>>(null)
+    const handlePathRef = useRef<ComponentRef<'path'>>(null)
     const worldPin = useMemo(() => new Vector3(), [])
-    useFrame(({ camera }) => {
+    const projectedPin = useMemo(() => new Vector3(), [])
+    const previousProjectedPin = useRef<{ x: number; y: number } | null>(null)
+    const slowOffset = useRef({ x: 0, y: 0 })
+    const topCurveJitter = useRef((Math.random() - 0.5) * 20)
+
+    // Track drag start position for anchor
+    const dragAnchor = useRef({ x: 31, y: 8 }) // Default to handle center
+
+    const lastLineState = useRef<PopupLineState>({ startX: 0, startY: 0, cpX: 0, cpY: 0, endX: 0, endY: 0, handlePath: '' })
+    const [isDraggingLocal, setIsDraggingLocal] = useState(false)
+    const draggingRef = useRef(false)
+
+    useFrame(({ camera, size }) => {
       if (!anchorRef.current || !lineRef.current) return
       anchorRef.current.getWorldPosition(worldPin)
       const behind = pinIsBehindGlobe(worldPin, camera.position)
@@ -149,15 +193,21 @@ const PopupContainer = ({
         lineRef.current.style.opacity = opacity
         lineRef.current.dataset.pinHidden = String(behind)
       }
-    })
-    const topCurveJitter = useRef((Math.random() - 0.5) * 20)
-    
-    // Track drag start position for anchor
-    const dragAnchor = useRef({ x: 31, y: 8 }) // Default to handle center
-    
-    // Store last calculated line state to freeze it during closing animation
-    const lastLineState = useRef({ 
-        startX: 0, startY: 0, cpX: 0, cpY: 0, endX: 0, endY: 0, handlePath: "" 
+
+      projectedPin.copy(worldPin).project(camera)
+      const screen = { x: (projectedPin.x + 1) * size.width / 2, y: (1 - projectedPin.y) * size.height / 2 }
+      const previous = previousProjectedPin.current
+      if (standbyRef.current && previous && !popup.isClosing) {
+        slowOffset.current.x += popupStandbyCompensation(screen.x - previous.x)
+        slowOffset.current.y += popupStandbyCompensation(screen.y - previous.y)
+        if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
+        const visualPosition = { x: localPosRef.current.x + slowOffset.current.x, y: localPosRef.current.y + slowOffset.current.y }
+        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current, dragAnchor.current)
+        lastLineState.current = nextLine
+        cablePathRef.current?.setAttribute('d', `M 0 0 Q ${nextLine.cpX} ${nextLine.cpY} ${nextLine.endX} ${nextLine.endY}`)
+        handlePathRef.current?.setAttribute('d', nextLine.handlePath)
+      }
+      previousProjectedPin.current = screen
     })
 
     // Sync local state when global state changes (e.g. from other interactions or init)
@@ -172,102 +222,16 @@ const PopupContainer = ({
         if (positionFrame.current !== null) cancelAnimationFrame(positionFrame.current)
     }, [])
 
-    const popupWidth = 288 // w-72
-    const popupHeight = 450 // Approximate height of the card
-    
-    // Connection Logic
-    // Pin is at 0,0 relative to this container
-    let startX = 0
-    let startY = 0
-    
-    // Find closest side connection point
-    // Calculate distances to center of each side
-    const leftCenter = { x: localPos.x, y: localPos.y + popupHeight/2 }
-    const rightCenter = { x: localPos.x + popupWidth, y: localPos.y + popupHeight/2 }
-    const topCenter = { x: localPos.x + popupWidth/2, y: localPos.y }
-    
-    // Distances squared
-    const dLeft = Math.pow(leftCenter.x - startX, 2) + Math.pow(leftCenter.y - startY, 2)
-    const dRight = Math.pow(rightCenter.x - startX, 2) + Math.pow(rightCenter.y - startY, 2)
-    const dTop = Math.pow(topCenter.x - startX, 2) + Math.pow(topCenter.y - startY, 2)
-    
-    let endX, endY, side, cpX, cpY, handlePath = ""
-    
-    // We need to know if we are currently dragging.
-    const [isDraggingLocal, setIsDraggingLocal] = useState(false)
-
-    // Calculate line state only if NOT closing (freeze otherwise)
-    if (!popup.isClosing) {
-        // Determine closest side
-        const minD = Math.min(dLeft, dRight, dTop)
-        
-        if (minD === dTop) {
-            endX = topCenter.x
-            endY = topCenter.y
-            side = 'top'
-            cpX = startX + topCurveJitter.current
-            cpY = (startY + endY) / 2
-        } else if (minD === dLeft) {
-            endX = leftCenter.x
-            endY = leftCenter.y - 40 // Adjust visual anchor
-            side = 'left'
-            cpX = (startX + endX) / 2
-            
-            // Curve based on vertical position
-            if (endY < 0) cpY = (startY + endY) / 2 + 50
-            else cpY = (startY + endY) / 2 - 50
-        } else { // Right
-            endX = rightCenter.x
-            endY = rightCenter.y - 40 // Adjust visual anchor
-            side = 'right'
-            cpX = (startX + endX) / 2
-            
-            // Curve based on vertical position
-            if (endY < 0) cpY = (startY + endY) / 2 + 50
-            else cpY = (startY + endY) / 2 - 50
-        }
-
-        // Override connection point if dragging
-        if (isDraggingLocal) {
-            endX = localPos.x + dragAnchor.current.x
-            endY = localPos.y + dragAnchor.current.y
-            // Update control points for smooth line to handle
-            // Simple quadratic to the handle
-            const midX = (startX + endX) / 2
-            const midY = (startY + endY) / 2
-            cpX = midX
-            const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
-            let arcHeight = Math.min(dist * 0.266, 66)
-            if (endY < 0) {
-                 cpY = midY + arcHeight 
-            } else {
-                 cpY = midY - arcHeight 
-            }
-        }
-
-        // Handle path
-        const r = 4
-        if (!isDraggingLocal) {
-            if (side === 'left') {
-                handlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 0 ${endX} ${endY + r}`
-            } else if (side === 'right') {
-                handlePath = `M ${endX} ${endY - r} A ${r} ${r} 0 0 1 ${endX} ${endY + r}`
-            } else if (side === 'top') {
-                handlePath = `M ${endX - r} ${endY} A ${r} ${r} 0 0 1 ${endX + r} ${endY}`
-            }
-        }
-        
-        // Update ref
-        lastLineState.current = { startX, startY, cpX, cpY, endX, endY, handlePath }
-    } else {
-        // Use frozen state
-        ({ startX, startY, cpX, cpY, endX, endY, handlePath } = lastLineState.current)
-    }
+    const currentLine = popup.isClosing
+      ? lastLineState.current
+      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal, dragAnchor.current)
+    if (!popup.isClosing) lastLineState.current = currentLine
+    const { cpX, cpY, endX, endY, handlePath } = currentLine
 
     const lineElement = (
         <svg ref={lineRef} aria-label="Conexão com o pin da cidade" style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none', width: 1, height: 1, transition: 'opacity .2s' }}>
-            <path 
-              d={`M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
+            <path ref={cablePathRef}
+              d={`M 0 0 Q ${cpX} ${cpY} ${endX} ${endY}`}
               stroke={city.color} 
               strokeWidth="2" 
               strokeDasharray="4 4"
@@ -275,7 +239,7 @@ const PopupContainer = ({
               className={popup.isClosing ? "animate-line-exit" : (isDraggingLocal ? "" : "animate-line-slow")}
             />
             <circle cx={0} cy={0} r="3" fill={city.color} />
-            {!isDraggingLocal && <path d={handlePath} fill={city.color} />}
+            <path ref={handlePathRef} d={handlePath} fill={city.color} />
         </svg>
     )
 
@@ -319,12 +283,10 @@ const PopupContainer = ({
                         onEnter={() => setEnteringCityId(city.id)}
                         scale={1}
                         transformOrigin={isDraggingLocal ? `${dragAnchor.current.x}px ${dragAnchor.current.y}px` : undefined}
-                        onDragMove={() => {
-                            handleInteraction()
-                        }}
                         onDragStart={(e) => {
                             setIsDraggingPopup(true)
                             setIsDraggingLocal(true)
+                            draggingRef.current = true
                             
                             if (e && wrapperRef.current) {
                                 const rect = wrapperRef.current.getBoundingClientRect()
@@ -351,12 +313,11 @@ const PopupContainer = ({
                                 dragAnchor.current = { x: 31, y: 8 }
                             }
                             
-                            handleInteraction()
                         }}
                         onDragEnd={() => {
                             setIsDraggingPopup(false)
                             setIsDraggingLocal(false)
-                            handleInteraction()
+                            draggingRef.current = false
                             // Sync to global state on drag end
                             updatePopupPosition(city.id, localPosRef.current.x, localPosRef.current.y)
                         }}
@@ -409,6 +370,9 @@ const GlobeContent = ({
   useEffect(() => { sunGlow.colorSpace = SRGBColorSpace }, [sunGlow])
   
   const { camera, gl } = useThree()
+  const eventPin = useMemo(() => new Vector3(), [])
+  const isHiddenPin = (object: { getWorldPosition: (target: Vector3) => Vector3 }) =>
+    pinIsBehindGlobe(object.getWorldPosition(eventPin), camera.position)
   useEffect(() => {
     document.body.style.cursor = ''
     return () => { gl.domElement.style.cursor = ''; document.body.style.cursor = '' }
@@ -562,7 +526,7 @@ const GlobeContent = ({
     
     // A city card does not stop the idle globe. Only a direct gesture, flight or
     // pin hover pauses it; a just-opened card resumes as soon as centering ends.
-    const canRotate = introZoomComplete && !isInteracting.current && !isDraggingPopup && !hoveredPinId && !targetCameraPos && timeSinceInteraction > 800
+    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && !targetCameraPos && timeSinceInteraction > 800
     if (canRotate) {
         if (!isStandby.current) {
             isStandby.current = true
@@ -747,6 +711,7 @@ const GlobeContent = ({
                 {/* City Pin */}
                 <mesh 
                     onClick={(e) => {
+                        if (isHiddenPin(e.object)) return
                         // Keep onClick for desktop/mouse standard behavior if it works
                         if (("pointerType" in e.nativeEvent ? e.nativeEvent.pointerType : "mouse") === 'mouse') {
                             e.stopPropagation()
@@ -756,11 +721,16 @@ const GlobeContent = ({
                         }
                     }}
                     onPointerDown={(e) => {
+                        if (isHiddenPin(e.object)) return
                         e.stopPropagation() // Prevent globe drag start
                         ;(e.target as Element).setPointerCapture(e.pointerId)
                         touchStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() }
                     }}
                     onPointerUp={(e) => {
+                        if (isHiddenPin(e.object)) {
+                            touchStartRef.current = null
+                            return
+                        }
                         e.stopPropagation()
                         ;(e.target as Element).releasePointerCapture(e.pointerId)
                         if (touchStartRef.current) {
@@ -778,6 +748,7 @@ const GlobeContent = ({
                         }
                     }}
                     onPointerEnter={(e) => {
+                        if (isHiddenPin(e.object)) return
                         e.stopPropagation()
                         gl.domElement.style.cursor = 'pointer'
                         playMapSound("bd", true)
@@ -846,7 +817,7 @@ const GlobeContent = ({
                           isEntering={enteringCityId === city.id}
                           setEnteringCityId={(id: string | null) => { if (!enteringCityId) setEnteringCityId(id) }}
                           setIsDraggingPopup={setIsDraggingPopup}
-                          handleInteraction={handleInteraction}
+                          standbyRef={isStandby}
                       />
                 )}
               </group>

@@ -1,5 +1,10 @@
 import { MathUtils, Quaternion, Vector3 } from 'three'
 
+/** Counter-move a screen-space popup so its net idle travel is one third of its pin. */
+export function popupStandbyCompensation(anchorDelta: number) {
+  return anchorDelta * -2 / 3
+}
+
 export function cityDirection(lat: number, lng: number, radius = 2) {
   const phi = MathUtils.degToRad(90 - lat), theta = MathUtils.degToRad(lng + 180)
   return new Vector3(-radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta))

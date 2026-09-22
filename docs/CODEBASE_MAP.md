@@ -10,15 +10,15 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Plano harmônico, cifras e voicings | `lib/music/harmony.ts`, `voice-spec.ts` | `creative.ts`, `reactions.ts`, `monitor.ts`; cada seção resolve centro, tríade e inversão |
 | Estados/eventos, quantização e BPM | `reactions.ts`, `reaction-queue.ts`, `transport.ts` | `components/music-reaction-editor.tsx`; `music-transition-view.tsx` |
 | Controles que chegam a cada voz | `lib/music/voice-spec.ts` | `model.ts`, `sample-banks.ts`, `runtime-types.ts` |
-| Orbits de efeitos e ciclo de vida dos buses | `lib/music/voice-spec.ts`, `runtime-session.ts` | Quatro buses de loop (dois/equipe); audições isoladas; `team-mixer.ts` recebe a saída por equipe |
+| Orbits de efeitos e ciclo de vida dos buses | `lib/music/voice-spec.ts`, `runtime-session.ts` | Quatro buses no desktop, dois em aparelho restrito; audições isoladas; `team-mixer.ts` recebe a saída por equipe |
 | Agrupamento de notas / exportação compacta | `lib/music/roll-optimizer.ts` | `pattern-compiler.ts`, `code-export.ts`; preserva sobreposições |
 | Reverb durante arraste | `lib/music/manual-reverb-cache.ts` | `runtime-session.ts`; adapter Superdough, nunca compartilha nós ativos |
 | Notas, grooves, slides, seções executadas | `lib/music/pattern-compiler.ts` | `performance.ts`, `piano-roll.ts`, `automation.ts`, `grooves.ts` |
 | Código Strudel exibido/exportado | `lib/music/code-export.ts` | Deve permanecer equivalente ao compilador; teste de exportação |
-| Prévia, ponteiro, conversão e validação de padrões | `lib/music/pattern-inspection.ts` | `components/music-piano-editor.tsx`, `music-playback.tsx` |
+| Prévia, ponteiro, pulsos, conversão e validação | `lib/music/pattern-inspection.ts`, `monitor.ts` | `components/music-piano-editor.tsx`, `music-playback.tsx`, `music-pulse-overlay.tsx` |
 | Playback, gesto manual, cancelamento, mixer e lifecycle | `lib/music/runtime-session.ts` | `transport.ts`, `team-mixer.ts`, `monitor.ts`, `strudel-loader.ts` |
 | Timbre/sample e carregamento | `sample-banks.ts`, `strudel-loader.ts` | `public/samples/`, geradores em `scripts/` |
-| Uma cidade/estilo | `lib/music/kit-profiles/<cidade>.ts` | `styled-kits.ts` compõe; `kit-profiles/catalog.ts` registra |
+| Uma cidade/estilo | `lib/music/kit-profiles/<cidade>.ts` | 16 papéis, timbres, padrões e presença por seção; `styled-kits.ts` compõe e `kit-profiles/catalog.ts` registra |
 | Manchester 1999 | `lib/music/manchester-kit.ts` | Complementos de seções em `styled-kits.ts` |
 | Salvar/importar/migrar kits | `creative.ts`, `city-kits.ts` | Schema v4 e backup por revisão |
 | Bancada, seleção e sessão do Criativo | `components/creative-studio.tsx` | `hooks/use-creative-music.ts`; estado pertence ao compositor da tela |
@@ -26,6 +26,7 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Ajuda contextual | `components/info-tip.tsx` + `.module.css` | Hover, foco, toque e portal |
 | Partida/widgets | `components/chess-game.tsx`, `hooks/use-music.ts` | Componentes `*-widget`, `ui/draggable.tsx` |
 | Globo/câmera/popup/entrada | `components/world-map.tsx`, `globe-component.tsx`, `city-popup.tsx` | `lib/globe-navigation.ts`, `globe-geography.ts` |
+| Perfil, ovos, pontuação e ranks | `lib/game-progression.ts` | Persistência local, migração, recompensa de vitória e débito futuro |
 
 **Nomes legados:** `lib/strudel-engine.ts` gera/analisa a notação antiga; não é o compilador Strudel atual. `lib/audio-engine.ts` e `hooks/use-audio.ts` pertencem ao caminho nativo/legado, ainda usado para áudio auxiliar. Para os loops atuais, comece em `lib/music/`. Não remova esses módulos sem verificar seus consumidores.
 

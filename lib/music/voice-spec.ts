@@ -8,10 +8,12 @@ import { HARMONY_PLANS, harmonyFrame, type HarmonyPlanId } from './harmony'
 const gcd = (a:number,b:number):number => b ? gcd(b,a%b) : a
 const lcm = (a:number,b:number) => a / gcd(a,b) * b
 
-// Loop voices share four effect buses: two decorrelated tails per team. Preview
-// voices stay isolated so cancelling a gesture can still remove its exact tail.
-function effectOrbit(piece: { color: 'w' | 'b'; slot: number }, audition: boolean) {
-  return audition ? 64 + piece.slot : (piece.color === 'w' ? 0 : 2) + piece.slot % 2
+// Desktop loops share four effect buses; constrained devices use one per team.
+// Preview voices stay isolated so cancelling a gesture can remove its exact tail.
+function effectOrbit(piece: { color: 'w' | 'b'; slot: number }, audition: boolean, effectBuses: 2 | 4) {
+  if (audition) return 64 + piece.slot
+  if (effectBuses === 2) return piece.color === 'w' ? 0 : 1
+  return (piece.color === 'w' ? 0 : 2) + piece.slot % 2
 }
 
 function chordVoicings(plan: HarmonyPlanId, scale: readonly string[], octave: number, offset: number, pitch: number) {
@@ -38,7 +40,7 @@ function chordPattern(pattern:string,notes:readonly number[]){
   return collapsed.replace(/(^|[\s[<,])(-?\d+)/g,(_,prefix)=>`${prefix}${chord}`).replace(/__CHORD_\d+__/g,chord)
 }
 
-export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): VoiceSpec[] {
+export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effectBuses: 2 | 4 = 4): VoiceSpec[] {
   return state.pieces.filter(p => (state.playing && p.active) || p.id === preview?.id).map(piece => {
     const audition = piece.id === preview?.id
     const manual = audition && preview?.mode === 'manual'
@@ -72,7 +74,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null): Voice
     return {
       performance,
       key: `${piece.id}:${audition ? 'preview' : 'loop'}`, piece, square, preview: audition, manual,
-      orbit: effectOrbit(piece, audition), notes,
+      orbit: effectOrbit(piece, audition, effectBuses), notes,
       phrases,
       pianoRolls: sourceRolls&&Array.from({length:bankCount},(_,index)=>{const roll=sourceRolls[index%sourceRolls.length];if(!roll)return null
         if(generatedChords){
