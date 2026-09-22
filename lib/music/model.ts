@@ -53,7 +53,7 @@ export interface MovementMapping {
   previewFilter: boolean
 }
 
-export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'automations'>>
+export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'automations' | 'phrases' | 'pianoRolls' | 'selectedVariation'>>
 
 export const DEFAULT_MOVEMENT: MovementMapping = {
   fileDegrees: 1, rankDegrees: 0.5, panWidth: 0.5, previewFilter: true,

@@ -6,6 +6,12 @@
 .scale { color: #d0dccb; }
 .voice { padding: 12px 0; min-height: 150px; }
 .variations { height: 174px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; font: 10px monospace; }
+.variations[data-tabbed='true'] { height: 124px; overflow: hidden; }
+.variationViewer { min-width: 0; }
+.variationTabs { display: flex; gap: 4px; margin-bottom: 6px; overflow-x: auto; scrollbar-width: thin; }
+.variationTabs button { min-width: 27px; height: 25px; border: 1px solid #34463b; border-radius: 4px; color: #89988d; font: 10px monospace; background: #111a15; }
+.variationTabs button[data-active='true'] { border-color: #82a85f; color: #c2db91; }
+.variationTabs button[data-fixed='true'] { color: #fff; box-shadow: inset 0 0 0 1px #fff8; }
 .variation { padding: 5px; margin-bottom: 7px; border: 1px solid #34463b; border-radius: 5px; }
 .variation[data-active='true'] { border-color: #c2db91; }
 .variationLabel { display: flex; justify-content: space-between; gap: 6px; height: 22px; color: #b6c7b9; }

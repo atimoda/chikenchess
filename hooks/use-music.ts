@@ -9,7 +9,8 @@ import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from 
 import { defaultCityKit, loadCityKit } from '@/lib/music/city-kits'
 import { scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
-import { createTeamMixes, resolveDeckClock, type TeamMix } from '@/lib/music/team-mixer'
+import { createTeamMixes, type TeamMix } from '@/lib/music/team-mixer'
+import type { HarmonyPlanId } from '@/lib/music/harmony'
 import { applyReactions, reactionContext } from '@/lib/music/reactions'
 
 export function useMusic(history: string[], city: CityData, playing: boolean, bpm: number, volume: number, showCode = true, engineActive = true) {
@@ -17,9 +18,6 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const enabled = builtInKit !== null
   const [kit, setKit] = useState<CreativeSession | null>(builtInKit)
   const [teamMixes, setTeamMixes] = useState(createTeamMixes)
-  const [finePitch, setFinePitch] = useState(0)
-  const [quartzLock, setQuartzLock] = useState(false)
-  const { tuning, bpm: effectiveBpm } = resolveDeckClock(bpm, kit?.bpm ?? bpm, finePitch, quartzLock)
   const updateTeamMix = useCallback((color: 'w' | 'b', patch: Partial<TeamMix>) => setTeamMixes(current => ({ ...current, [color]: { ...current[color], ...patch } })), [])
   const gameMusicState = useMemo(() => gameMusicStateFromHistory(history), [history])
   const pieces = gameMusicState.pieces
@@ -34,8 +32,9 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const baseSnapshot = useMemo(() => ({
     pieces: pieces.map(p => ({ ...p, active: p.activation === 'move', checkEnsemble: false })),
     scale: kit ? scaleForCreativeSession(kit) : city.scale,
-    bpm: effectiveBpm,
-    tuning,
+    harmony: kit?.harmony,
+    bpm,
+    tuning: 1,
     volume,
     playing,
     effects,
@@ -45,9 +44,9 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     grooves: kit?.grooves,
     teamMixes,
     title: kit ? `${city.name} · ${kit.name}` : city.name,
-  }), [pieces, kit, city.scale, city.name, effectiveBpm, tuning, volume, playing, effects, teamMixes])
+  }), [pieces, kit, city.scale, city.name, bpm, volume, playing, effects, teamMixes])
   const [audible, setAudible] = useState<MusicSnapshot | null>(null)
-  const input = useMemo(() => ({...baseSnapshot,reactionInput:kit?{config:kit.reactions,context,scope:city.id,lockedBpm:quartzLock?kit.bpm:undefined}:undefined}),[baseSnapshot,kit,context,city.id,quartzLock])
+  const input = useMemo(() => ({...baseSnapshot,reactionInput:kit?{config:kit.reactions,context,scope:city.id}:undefined}),[baseSnapshot,kit,context,city.id])
   const resolved = useMemo(() => kit ? applyReactions(baseSnapshot,kit.reactions,context) : {snapshot:baseSnapshot,descriptions:[]},[baseSnapshot,kit,context])
   const snapshot: MusicSnapshot = audible ?? resolved.snapshot
   const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active).map(p => p.square)), [snapshot.pieces])
@@ -57,7 +56,6 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     const resolved = loadCityKit(city.id)
     setKit(resolved)
     setTeamMixes(createTeamMixes())
-    setFinePitch(0); setQuartzLock(false)
     setEffects(resolved?.effects ?? {})
     setSelectedId(null)
     setPreview(null)
@@ -131,19 +129,22 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const setTonality = useCallback((root: CreativeSession['root'], scale: CreativeSession['scale']) => {
     setKit(current => current && ({ ...current, root, scale }))
   }, [])
+  const setHarmony = useCallback((harmony: HarmonyPlanId) => {
+    setKit(current => current && ({ ...current, harmony }))
+  }, [])
   const getFrequencyData = useCallback((data: Uint8Array<ArrayBuffer>) => {
     if (runtime.current) runtime.current.getFrequencyData(data)
     else data.fill(0)
   }, [])
   return {
     enabled, engineActive, audition, endAudition, select, reset, selected, effects, setEffects, snapshot, teamMixes, updateTeamMix,
-    deckClock: { finePitch, quartzLock, effectiveBpm: snapshot.bpm, originalBpm: kit?.bpm ?? bpm, setFinePitch, setQuartzLock },
     code, preview, pulseMonitor, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,
     kitVolume: kit?.volume ?? null,
-    instrument, updateInstrument, setPieceEffect, setTonality,
+    instrument, updateInstrument, setPieceEffect, setTonality, setHarmony,
     tonality: kit ? { root: kit.root, scale: kit.scale } : undefined,
+    harmony: kit?.harmony,
     attackingColor: gameMusicState.attackingColor, activeSquares,
   }
 }

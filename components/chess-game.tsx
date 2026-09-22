@@ -14,6 +14,7 @@ import { SynthControlPanel } from "./synth-control-panel"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceReadout } from './music-playback'
+import { MusicHarmonyReadout } from './music-transition-view'
 import { VersionChangelog } from './version-changelog'
 import { Draggable } from './ui/draggable'
 import { useAudio } from "@/hooks/use-audio"
@@ -27,6 +28,7 @@ import { conquerCity, unlockNextCity } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
 import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
+import { ChessEvaluationQueue } from "@/lib/chess-evaluation"
 
 import {
   DropdownMenu,
@@ -74,12 +76,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const gameRef = useRef(game)
   const rewardedCheckmateFenRef = useRef<string | null>(null)
   const evalStockfishRef = useRef<Worker | null>(null)
-  const evalSideToMoveRef = useRef<"w" | "b">("w")
-  const evalLastScoreRef = useRef<number | null>(null)
-  const evalPendingRef = useRef(false)
-  const evalPendingFenRef = useRef<string | null>(null)
-  const evalCacheRef = useRef<Map<string, number>>(new Map())
-  const lastEvalScoreRef = useRef<number | null>(null)
+  const evaluationQueueRef = useRef<ChessEvaluationQueue | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const centerContainerRef = useRef<HTMLDivElement | null>(null)
   const knobsRef = useRef<HTMLDivElement | null>(null)
@@ -440,96 +437,31 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }
     }
 
-    if (!isConstrainedDevice()) {
-      const evalWorker = new Worker("/stockfish.js")
-      evalStockfishRef.current = evalWorker
-      evalWorker.postMessage("uci")
-      evalWorker.postMessage("isready")
-      evalWorker.onmessage = (event) => {
-        const message = event.data as string
-        if (message.startsWith("info")) {
-          const mateMatch = message.match(/score mate (-?\d+)/)
-          const cpMatch = message.match(/score cp (-?\d+)/)
-          if (mateMatch) {
-            const mate = parseInt(mateMatch[1], 10)
-            const baseScore = mate > 0 ? 10000 : -10000
-            const side = evalSideToMoveRef.current
-            evalLastScoreRef.current = side === "w" ? baseScore : -baseScore
-          } else if (cpMatch) {
-            const cp = parseInt(cpMatch[1], 10)
-            const side = evalSideToMoveRef.current
-            evalLastScoreRef.current = side === "w" ? cp : -cp
-          }
-        } else if (message.startsWith("bestmove")) {
-          const finalScore = evalLastScoreRef.current
-          if (finalScore != null && evalPendingRef.current) {
-            setLastEvalScore(finalScore)
-            lastEvalScoreRef.current = finalScore
-            if (evalPendingFenRef.current) {
-              evalCacheRef.current.set(evalPendingFenRef.current, finalScore)
-            }
-          }
-          evalPendingRef.current = false
-          setIsEvaluating(false)
-        }
-      }
-    }
+    const constrained = isConstrainedDevice()
+    const evalWorker = new Worker("/stockfish.js")
+    evalStockfishRef.current = evalWorker
+    const evaluationQueue = new ChessEvaluationQueue(evalWorker, {
+      onBusy: setIsEvaluating,
+      onScore: setLastEvalScore,
+    }, constrained ? 3 : 10)
+    evaluationQueueRef.current = evaluationQueue
+    evalWorker.postMessage("uci")
+    evalWorker.postMessage("isready")
+    evalWorker.onmessage = (event) => evaluationQueue.handleMessage(String(event.data))
 
     return () => {
       stockfishRef.current?.terminate()
       evalStockfishRef.current?.terminate()
+      evaluationQueueRef.current = null
     }
   }, [])
 
   const requestEvaluation = useCallback((gameInstance: Chess) => {
-    if (!evalStockfishRef.current) {
+    if (!evaluationQueueRef.current) {
       setIsEvaluating(false)
       return
     }
-    const fen = gameInstance.fen()
-    
-    // Check cache first
-    if (evalCacheRef.current.has(fen)) {
-      console.log("Evaluation Cache Hit for FEN:", fen)
-      const cachedScore = evalCacheRef.current.get(fen)!
-      setLastEvalScore(cachedScore)
-      lastEvalScoreRef.current = cachedScore
-      evalPendingRef.current = false
-      setIsEvaluating(false)
-      return
-    }
-    
-    // Try to find a cache entry without move counters if direct match fails
-    const fenParts = fen.split(' ')
-    const fenPosition = fenParts.slice(0, 4).join(' ') // Position + Turn + Castling + EnPassant
-    
-    // Check if any key in cache starts with this position
-    // This is O(N) but N (moves in game) is small.
-    for (const [key, value] of evalCacheRef.current.entries()) {
-        if (key.startsWith(fenPosition)) {
-            console.log("Evaluation Cache Soft Hit for FEN:", fen, "Matches:", key)
-            setLastEvalScore(value)
-            lastEvalScoreRef.current = value
-            evalPendingRef.current = false
-            setIsEvaluating(false)
-            return
-        }
-    }
-
-    console.log("Evaluation Cache Miss for FEN:", fen)
-
-    evalSideToMoveRef.current = gameInstance.turn()
-    evalLastScoreRef.current = null
-    evalPendingRef.current = true
-    lastEvalScoreRef.current = null
-    evalPendingFenRef.current = fen
-    setIsEvaluating(true)
-    
-    if (evalStockfishRef.current) {
-      evalStockfishRef.current.postMessage("stop")
-      evalStockfishRef.current.postMessage(`position fen ${fen}`)
-      evalStockfishRef.current.postMessage("go depth 10")
-    }
+    evaluationQueueRef.current.request(gameInstance.fen(), gameInstance.turn())
   }, [])
 
   // Update pattern when board changes
@@ -653,12 +585,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setMoveHistory((prev) => [...prev, move.san])
       setRedoStack([]) // Clear redo stack on new move
       
-      // Auto-enable spectrogram on first move
-      if (moveHistory.length === 0 && !isConstrainedDevice()) {
-          setSpectrogramOn(true)
-          setLiveCodeOn(true)
-      }
-
       updateCapturedPieces(move)
       setSquareEffects((prev) => {
         const next = { ...prev }
@@ -717,7 +643,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const resetGame = useCallback(() => {
     stockfishRef.current?.postMessage("stop")
-    evalStockfishRef.current?.postMessage("stop")
+    evaluationQueueRef.current?.reset()
     setGame(new Chess())
     setMoveHistory([])
     setRedoStack([])
@@ -729,7 +655,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     music.reset()
     setLastEvalScore(null)
     setIsEvaluating(false)
-    evalPendingRef.current = false
     setIsBackgroundDark(false)
     rewardedCheckmateFenRef.current = null
   }, [])
@@ -1200,7 +1125,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onInstrumentChange={music.updateInstrument}
                 playback={knobsOn && music.enabled && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
-                  <MusicVoiceReadout monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} />
+                  <MusicVoiceReadout variationTabs instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} />
                 </> : undefined}
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
@@ -1218,6 +1143,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                         p: "Pawn", n: "Knight", b: "Bishop", r: "Rook", q: "Queen", k: "King",
                     }
                     return `${piece.color === "w" ? "White" : "Black"} ${pieceNameMap[piece.type]} - ${instrumentMap[piece.type]}`
+                })()}
+                pieceSvg={(() => {
+                    if (music.enabled && music.selected) return PiecesSVG[`${music.selected.color}${music.selected.type.toUpperCase()}` as keyof typeof PiecesSVG]
+                    if (!synthSelectedSquare) return null
+                    const piece = game.get(synthSelectedSquare as Square)
+                    return piece ? PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG] : null
                 })()}
                 effects={music.enabled ? (music.selected ? music.effects[music.selected.id] ?? { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 } : DEFAULT_EFFECTS) : synthSelectedSquare ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS : DEFAULT_EFFECTS}
                 onEffectChange={(key, value) => {
@@ -1246,9 +1177,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <GlobalControlPanel
                 teamMixes={music.enabled ? music.teamMixes : undefined}
                 onTeamMixChange={music.updateTeamMix}
-                deckClock={music.enabled ? music.deckClock : undefined}
                 tonality={music.tonality}
                 onTonalityChange={music.setTonality}
+                harmony={music.harmony}
+                onHarmonyChange={music.setHarmony}
                 showAmbience={!music.enabled}
                 ref={globalPanelRef}
                 toggleRef={globalPanelToggleRef}
@@ -1266,10 +1198,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
             <LiveCodeWidget
                 playback={liveCodeOn && music.enabled && music.engineActive ? <>
-                  <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">Arraste uma peça para tocar · {music.activeSquares.size} vozes ativas</span>}</div>
+                  <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
                   {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
                   {music.reactionDescriptions.map((description, i) => <div key={i}>{description}</div>)}
                   <MusicTransportReadout monitor={music.monitor} />
+                  <MusicHarmonyReadout monitor={music.monitor} />
                 </> : undefined}
                 ref={liveCodeRef}
                 toggleRef={liveCodeToggleRef}
@@ -1596,12 +1529,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       {/* Header */}
       <header 
         className={cn(
-          "absolute top-0 left-0 w-full z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000",
+          "absolute top-0 left-0 w-full z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000 pointer-events-none",
           introPhase === 0 ? "opacity-100" : (introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")
         )}
         style={{ "--city-neon": city.color } as React.CSSProperties}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 pointer-events-auto">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -1622,7 +1555,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           </div>
         </div>
 
-        <div className={cn("flex items-center gap-2 md:gap-4 transition-opacity duration-500", introPhase === 0 ? "opacity-0" : "opacity-100")}>
+        <div className={cn("flex items-center gap-2 md:gap-4 transition-opacity duration-500 pointer-events-auto", introPhase === 0 ? "opacity-0" : "opacity-100")}>
           {/* Status */}
           <div
             className={`text-xs md:text-sm font-mono px-3 py-1 rounded-full ${gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "animate-pulse" : ""
@@ -2068,7 +2001,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
       {isMobile && <Dialog open={mobileControlsOpen} onOpenChange={setMobileControlsOpen}>
         <DialogContent className="z-[130] max-h-[88dvh] overflow-y-auto bg-black border-white/20 p-5 text-white">
-          <DialogHeader><DialogTitle>Parâmetros musicais</DialogTitle><DialogDescription>Selecione uma peça no tabuleiro para ajustar seu instrumento. Tom e escala afetam toda a banda.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Parâmetros musicais</DialogTitle><DialogDescription>Selecione uma peça no tabuleiro para ajustar seu instrumento. Tom, escala e progressão afetam toda a banda.</DialogDescription></DialogHeader>
           <div className="flex flex-col gap-3 [&>[data-widget=piece]]:order-first [&>[data-widget=spectrum]]:order-last">{widgetsContent(true)}</div>
         </DialogContent>
       </Dialog>}

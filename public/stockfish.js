@@ -392,6 +392,25 @@ function findBestMove(fen, depth) {
 // Worker message handling
 let currentFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 let searchDepth = 4
+let searchTimer = null
+
+function scheduleSearch() {
+  const fen = currentFen
+  const depth = searchDepth
+  if (searchTimer !== null) clearTimeout(searchTimer)
+  searchTimer = setTimeout(
+    () => {
+      searchTimer = null
+      const bestMove = findBestMove(fen, depth)
+      if (bestMove) {
+        self.postMessage(`bestmove ${bestMove.from}${bestMove.to}${bestMove.promotion || ""}`)
+      } else {
+        self.postMessage("bestmove (none)")
+      }
+    },
+    200 + Math.random() * 500,
+  )
+}
 
 self.onmessage = (e) => {
   const command = e.data
@@ -407,18 +426,7 @@ self.onmessage = (e) => {
   } else if (command.startsWith("go depth")) {
     searchDepth = Number.parseInt(command.split(" ")[2]) || 4
     searchDepth = Math.min(searchDepth, 5)
-
-    setTimeout(
-      () => {
-        const bestMove = findBestMove(currentFen, searchDepth)
-        if (bestMove) {
-          self.postMessage(`bestmove ${bestMove.from}${bestMove.to}${bestMove.promotion || ""}`)
-        } else {
-          self.postMessage("bestmove (none)")
-        }
-      },
-      200 + Math.random() * 500,
-    )
+    scheduleSearch()
   } else if (command.startsWith("eval depth")) {
     let depth = Number.parseInt(command.split(" ")[2]) || 4
     depth = Math.min(depth, 5)
@@ -428,16 +436,10 @@ self.onmessage = (e) => {
     const whiteScore = chess.turn === "w" ? score : -score
     self.postMessage(`eval ${whiteScore}`)
   } else if (command.startsWith("go")) {
-    setTimeout(
-      () => {
-        const bestMove = findBestMove(currentFen, searchDepth)
-        if (bestMove) {
-          self.postMessage(`bestmove ${bestMove.from}${bestMove.to}${bestMove.promotion || ""}`)
-        } else {
-          self.postMessage("bestmove (none)")
-        }
-      },
-      200 + Math.random() * 500,
-    )
+    scheduleSearch()
+  } else if (command === "stop" && searchTimer !== null) {
+    clearTimeout(searchTimer)
+    searchTimer = null
+    self.postMessage("bestmove (none)")
   }
 }

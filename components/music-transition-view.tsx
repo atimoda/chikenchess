@@ -4,10 +4,21 @@ import { useSyncExternalStore } from 'react'
 import type { MusicMonitor } from '@/lib/music/monitor'
 import { TRIGGERS, type Trigger } from '@/lib/music/reactions'
 import { harmonyFrame } from '@/lib/music/harmony'
+
+export function MusicHarmonyReadout({monitor}:{monitor:MusicMonitor}){
+ const frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot), t=frame.transport
+ if(!t)return null
+ const harmony=harmonyFrame(t.harmony,t.scale,frame.section)
+ return <div aria-label="Harmonia em execução" style={{borderTop:'1px solid #34473c',paddingTop:8,lineHeight:1.45,font:'inherit'}}>
+  <small style={{display:'block',color:'#93a79a'}}>Harmonia agora · seção {String.fromCharCode(65+Math.max(0,frame.section%8))}</small>
+  <b>{harmony.roman} · {harmony.chordName}</b> <span style={{color:'#b7c8b9'}}>({harmony.chordNotes.join('–')})</span>
+  <small style={{display:'block',color:'#93a79a'}}>{harmony.planLabel}{t.harmony==='static'?' · voicing autoral':' · tríade com condução de vozes'}</small>
+ </div>
+}
+
 export function MusicTransitionView({monitor,fallbackBpm}:{monitor:MusicMonitor;fallbackBpm:number}){
  const frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot), t=frame.transport
  const bpm=t?.bpm??fallbackBpm, targetBpm=t?.targetBpm??fallbackBpm, pending=t?.pending??[]
- const harmony=t&&harmonyFrame(t.harmony,t.scale,frame.section)
  const r=t?.ramp, progress=r?.progress??1, ramping=progress<1
  return <section aria-label="Transições musicais" style={{padding:10,border:'1px solid #405247',borderRadius:6,background:'#152019'}}>
   <strong>Relógio e transições<InfoTip label="Ler o relógio musical">Nesta versão, o relógio usa sempre quatro tempos por compasso. A subdivisão da grade muda as partes dentro de cada tempo, sem alterar o compasso. A linha amarela mostra o avanço da rampa.</InfoTip></strong>
@@ -19,11 +30,7 @@ export function MusicTransitionView({monitor,fallbackBpm}:{monitor:MusicMonitor;
   </svg>
   <small>{ramping?`Mudança gradual em ${(r!.end-r!.start).toFixed(0)} compassos · ${Math.round(progress*100)}%`:'Sem rampa em andamento'}</small>
   <div style={{display:'flex',gap:3,margin:'8px 0'}}>{[0,1,2,3].map(i=><div key={i} style={{flex:1,textAlign:'center',padding:4,background:frame.beat===i+1&&frame.running?'#557440':'#26362c'}}>{i+1}</div>)}</div>
-  {harmony&&<div aria-label="Harmonia em execução" style={{borderTop:'1px solid #34473c',paddingTop:8,lineHeight:1.45}}>
-   <small style={{display:'block',color:'#93a79a'}}>Harmonia agora · seção {String.fromCharCode(65+Math.max(0,frame.section%8))}</small>
-   <b>{harmony.roman} · {harmony.chordName}</b> <span style={{color:'#b7c8b9'}}>({harmony.chordNotes.join('–')})</span>
-   <small style={{display:'block',color:'#93a79a'}}>{harmony.planLabel}{t.harmony==='static'?' · voicing autoral':' · tríade com condução de vozes'}</small>
-  </div>}
+  <MusicHarmonyReadout monitor={monitor}/>
   {pending.length>0&&<div>{pending.map(p=><div key={p.id}>{TRIGGERS[p.trigger as Trigger]} → compasso {p.cycle+1} · em {Math.max(0,(p.cycle-frame.cycle)*4).toFixed(1)} tempos</div>)}</div>}
  </section>
 }

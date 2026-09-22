@@ -24,6 +24,7 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   playback?: React.ReactNode
   instrument?: Instrument | null
   onInstrumentChange?: (patch: InstrumentPerformanceEdit) => void
+  pieceSvg?: string | null
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -41,6 +42,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   playback,
   instrument,
   onInstrumentChange,
+  pieceSvg,
   ...props
 }, ref) => {
   const panelStyle = {
@@ -126,16 +128,17 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       {/* Main Content - z-50 */}
       <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px] max-w-full", !isOn && "opacity-50 grayscale")}>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-center mb-2 px-1 h-4 relative">
-             <span className={cn(
-               "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300",
-               isOn && selectedSquare ? "text-[var(--city-neon)]" : "text-muted-foreground"
-             )}>
-                PIECE PARAMS
-             </span>
+          <div className="flex items-center gap-3 mb-1 px-2 min-h-12 relative">
+            {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={{ __html: pieceSvg }} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
+            <div className="min-w-0">
+              <h2 className={cn(
+                "truncate text-sm font-mono font-bold transition-colors duration-300",
+                isOn && selectedSquare ? "text-[var(--city-neon)]" : "text-muted-foreground"
+              )}>{selectedSquare ? selectedPieceInfo ?? 'Instrumento' : 'Selecione uma peça'}</h2>
+              {selectedSquare && <span className="text-[10px] font-mono text-white/50">Casa {selectedSquare}</span>}
+            </div>
           </div>
-          <div className="h-4 overflow-hidden text-center text-xs text-white/80" aria-live="polite">{selectedSquare ? `${selectedSquare} · ${selectedPieceInfo ?? 'Instrumento'}` : 'Selecione uma peça'}</div>
-          <div className="h-[275px] overflow-hidden">{playback}</div>
+          <div className="h-[215px] overflow-hidden">{playback}</div>
           
           <div
             className={cn(
@@ -227,7 +230,6 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               <Knob label="DURAÇÃO" value={instrument.clip ?? .7} min={.05} max={1} formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
             </>}
           </div>
-          {instrument && <p className="text-[10px] text-white/50">Arraste os knobs ou use as setas. Filtro, pan e efeitos assumem o controle da automação ao editar. Ganho mantém os acentos.</p>}
         </div>
       </div>
     </Draggable>

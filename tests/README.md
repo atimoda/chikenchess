@@ -13,6 +13,7 @@
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |
 | `editor.cases.cjs` | 4 | Duração, forma, variações e slides por nota |
 | `globe.cases.cjs` | 4 | Voo, geometria, direção do gesto e compensação do popup |
+| `evaluation.cases.cjs` | 3 | Fila de análise, cancelamento do worker, resultados atrasados, undo/redo rápido e cache por FEN exato |
 | `progression.cases.cjs` | 3 | Migração, recompensa, saldo de ovos e pontos históricos |
 | `optimization.cases.cjs` | 2 | Equivalência de lanes/acordes e isolamento do cache de reverb |
 | `studies.cases.cjs` | 4 | Estudo Mouth Breather e equivalência da exportação |

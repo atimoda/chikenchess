@@ -215,7 +215,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
                 STRUDEL
              </span>
           </div>
-          {playback && <div className="shrink-0 text-[10px] font-mono space-y-1">{playback}</div>}
+          {playback && <div className="shrink-0 space-y-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
           
           <div className="flex-1 w-full flex flex-col gap-2 min-h-0">
             
