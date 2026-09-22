@@ -4,7 +4,8 @@ import type React from "react"
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import type { Chess, Square, Move } from "chess.js"
-import type { MusicPulse } from "@/lib/music/runtime"
+import type { MusicPulseMonitor } from "@/lib/music/monitor"
+import { MusicPulseOverlay } from "./music-pulse-overlay"
 import { cn } from "@/lib/utils"
 
 interface ChessgroundBoardProps {
@@ -13,7 +14,7 @@ interface ChessgroundBoardProps {
   onBoardClick?: (square: Square) => void
   onPieceHold?: (square: Square) => void
   onPieceRelease?: () => void
-  musicPulse?: MusicPulse | null
+  musicPulseMonitor?: MusicPulseMonitor
   onDragOverSquare?: (from: Square, to: Square) => void
   cityColor: string
   isThinking: boolean
@@ -55,7 +56,7 @@ export function ChessgroundBoard({
   onDragOverSquare,
   onPieceHold,
   onPieceRelease,
-  musicPulse,
+  musicPulseMonitor,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -71,19 +72,12 @@ export function ChessgroundBoard({
   } | null>(null)
   const dragPieceRef = useRef<typeof dragPiece>(null)
   const dragGhostRef = useRef<HTMLDivElement>(null)
+  const dragHighlightRef = useRef<HTMLDivElement>(null)
   const heldSquareRef = useRef<Square | null>(null)
-  const [pulseSquare, setPulseSquare] = useState<Square | null>(null)
   const lastHoverSquareRef = useRef<Square | null>(null)
   const selectionLastSquareRef = useRef<Square | null>(null)
   const dragHighlightTimeoutRef = useRef<number | null>(null)
   const [isSelectingSquares, setIsSelectingSquares] = useState(false)
-
-  useEffect(() => {
-    if (!musicPulse) return
-    setPulseSquare(musicPulse.square)
-    const timer = window.setTimeout(() => setPulseSquare(null), Math.min(350, musicPulse.duration * 1000))
-    return () => window.clearTimeout(timer)
-  }, [musicPulse])
 
   useEffect(() => {
     const release = () => {
@@ -96,6 +90,7 @@ export function ChessgroundBoard({
       setDragPiece(null)
       setLegalMoves([])
       lastHoverSquareRef.current = null
+      if (dragHighlightRef.current) dragHighlightRef.current.style.opacity = '0'
     }
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') cancel() }
     window.addEventListener('pointerup', release)
@@ -187,11 +182,11 @@ export function ChessgroundBoard({
   // Animation Loop
   useEffect(() => {
       if (animatingPiece) {
-          const startTime = performance.now()
+          const startTime = globalThis.performance.now()
           const duration = 200 // ms
           
           const animate = () => {
-              const now = performance.now()
+              const now = globalThis.performance.now()
               const elapsed = now - startTime
               const progress = Math.min(elapsed / duration, 1)
               
@@ -235,38 +230,6 @@ export function ChessgroundBoard({
       }
       prevHistoryLen.current = history.length
   }, [game])
-
-  // Calculate opposite color for last move highlight
-  // We need a complementary color to the neon city color
-  // Simple approach: parse hex or use HSL rotation if possible, but for now let's just use a contrasting static color or simple logic.
-  // The user asked for "contrary" color.
-  // If cityColor is passed as hex, we can try to find a complementary one.
-  // Or simpler: if it's warm, use cool, etc.
-  // But let's try to be more precise if we can. 
-  // Since cityColor comes from props and is a hex string (usually).
-  
-  const getComplementaryColor = (hex: string) => {
-    // Basic hex to rgb
-    let r = 0, g = 0, b = 0;
-    if (hex.startsWith('#')) {
-      if (hex.length === 4) {
-        r = parseInt(hex[1] + hex[1], 16);
-        g = parseInt(hex[2] + hex[2], 16);
-        b = parseInt(hex[3] + hex[3], 16);
-      } else if (hex.length === 7) {
-        r = parseInt(hex[1] + hex[2], 16);
-        g = parseInt(hex[3] + hex[4], 16);
-        b = parseInt(hex[5] + hex[6], 16);
-      }
-    }
-    // Invert
-    const compR = 255 - r;
-    const compG = 255 - g;
-    const compB = 255 - b;
-    return `rgba(${compR}, ${compG}, ${compB}, 0.15)`;
-  }
-
-  const lastMoveColor = getComplementaryColor(cityColor);
 
   // Find king position for check highlight
   const findKingSquare = useCallback((): Square | null => {
@@ -397,11 +360,6 @@ export function ChessgroundBoard({
     [game, turn, onPieceHold],
   )
 
-  const [dragHighlight, setDragHighlight] = useState<{ square: Square | null; visible: boolean }>({
-    square: null,
-    visible: false,
-  })
-
   const handleDragMove = useCallback(
     (e: MouseEvent | TouchEvent) => {
       const dragPiece = dragPieceRef.current
@@ -426,14 +384,19 @@ export function ChessgroundBoard({
         const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
         if (lastHoverSquareRef.current !== targetSquare) {
           lastHoverSquareRef.current = targetSquare
-          setDragHighlight({ square: targetSquare, visible: true })
+          if (dragHighlightRef.current) {
+            dragHighlightRef.current.style.transform = `translate(${file * 100}%, ${rank * 100}%)`
+            dragHighlightRef.current.style.opacity = '1'
+            dragHighlightRef.current.style.boxShadow = '0 0 12px rgba(251, 146, 60, 0.8)'
+          }
           if (dragHighlightTimeoutRef.current !== null) {
             window.clearTimeout(dragHighlightTimeoutRef.current)
           }
           dragHighlightTimeoutRef.current = window.setTimeout(() => {
-            setDragHighlight((prev) =>
-              prev.square === targetSquare ? { ...prev, visible: false } : prev,
-            )
+            if (lastHoverSquareRef.current === targetSquare && dragHighlightRef.current) {
+              dragHighlightRef.current.style.opacity = '0'
+              dragHighlightRef.current.style.boxShadow = '0 0 0 rgba(0,0,0,0)'
+            }
           }, 1000)
           if (onDragOverSquare) {
             onDragOverSquare(dragPiece.from, targetSquare)
@@ -441,6 +404,7 @@ export function ChessgroundBoard({
         }
       } else {
         lastHoverSquareRef.current = null
+        if (dragHighlightRef.current) dragHighlightRef.current.style.opacity = '0'
       }
     },
     [onDragOverSquare],
@@ -526,6 +490,7 @@ export function ChessgroundBoard({
 
       setDragPiece(null)
       lastHoverSquareRef.current = null
+      if (dragHighlightRef.current) dragHighlightRef.current.style.opacity = '0'
       setIsSelectingSquares(false)
       selectionLastSquareRef.current = null
       if (didMove) {
@@ -683,24 +648,6 @@ export function ChessgroundBoard({
                   if (hasPiece) handleDragStart(e, square)
                 }}
               >
-                {pulseSquare === square && <span data-musical-pulse={square} className="absolute inset-1 rounded border-2 border-cyan-200 bg-cyan-200/20 pointer-events-none z-30" />}
-                {dragHighlight.square === square && (
-                  <div
-                    className={cn(
-                      "absolute inset-0 pointer-events-none rounded-none",
-                      dragHighlight.visible ? "opacity-100" : "opacity-0",
-                    )}
-                    style={{
-                      border: "2px solid #fb923c",
-                      boxShadow: dragHighlight.visible
-                        ? "0 0 12px rgba(251, 146, 60, 0.8)"
-                        : "0 0 0 rgba(0,0,0,0)",
-                      transition: "opacity 1s ease-out, box-shadow 1s ease-out",
-                      zIndex: 15,
-                    }}
-                  />
-                )}
-
                 {isActive && (
                   <>
                     <div
@@ -774,6 +721,13 @@ export function ChessgroundBoard({
             )
           }),
         )}
+        <div
+          ref={dragHighlightRef}
+          aria-hidden="true"
+          className="absolute left-0 top-0 w-[12.5%] h-[12.5%] pointer-events-none opacity-0"
+          style={{ border: '2px solid #fb923c', transition: 'opacity 1s ease-out, box-shadow 1s ease-out', zIndex: 15 }}
+        />
+        {musicPulseMonitor && <MusicPulseOverlay monitor={musicPulseMonitor} />}
       </div>
 
       {/* Animating piece */}

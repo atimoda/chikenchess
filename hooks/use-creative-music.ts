@@ -3,18 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Square } from 'chess.js'
 import { creativeSnapshot, type CreativeSession } from '@/lib/music/creative'
-import { MusicRuntime, renderMusicCode, type MusicPulse, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
+import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
 import { strudelCodeStats } from '@/lib/music/code-export'
-import { createMusicMonitor } from '@/lib/music/monitor'
+import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
 import { applyReactions, type ReactionContext } from '@/lib/music/reactions'
 
 export function useCreativeMusic(session: CreativeSession, playing: boolean, soloId: string | null, context: ReactionContext, showCode = false) {
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
   const [preview, setPreview] = useState<Preview | null>(null)
-  const [pulse, setPulse] = useState<MusicPulse | null>(null)
   const [error, setError] = useState('')
   const [audible, setAudible] = useState<MusicSnapshot | null>(null)
+  const pulseMonitor = useMemo(createMusicPulseMonitor, [])
   const input = useMemo(() => ({...creativeSnapshot(session,playing,soloId), reactionInput:{config:session.reactions,context,scope:session.cityId??session.name}}),[session,playing,soloId,context])
   const resolved = useMemo(() => applyReactions(input,session.reactions,context),[input,session.reactions,context])
   const snapshot = audible ?? resolved.snapshot
@@ -23,11 +23,11 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   const codeStats = useMemo(() => showCode ? strudelCodeStats(code) : null, [code, showCode])
 
   useEffect(() => {
-    const engine = new MusicRuntime(setPulse, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
+    const engine = new MusicRuntime(pulseMonitor.publish, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
     runtime.current = engine
     engine.preload()
-    return () => { engine.dispose(); runtime.current = null }
-  }, [monitor])
+    return () => { engine.dispose(); pulseMonitor.clear(); runtime.current = null }
+  }, [monitor, pulseMonitor])
   useEffect(() => {
     // Coalesce continuous slider updates. Fifty milliseconds still feels immediate
     // on touch while avoiding a full Strudel graph compilation for every pointer event.
@@ -38,12 +38,6 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   useEffect(() => {
     if (playing) { setError(''); void runtime.current?.unlock() }
   }, [playing])
-  useEffect(() => {
-    if (!pulse) return
-    const timer = setTimeout(() => setPulse(null), Math.max(80, Math.min(220, pulse.duration * 1000)))
-    return () => clearTimeout(timer)
-  }, [pulse])
-
   const audition = useCallback((id: string, square: string, mode: Preview['mode'] = 'manual') => {
     setPreview({ id, square: square as Square, mode })
     runtime.current?.audition(id, square as Square, mode)
@@ -59,5 +53,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, endAudition, preview, pulse, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
+  return { audition, endAudition, preview, pulseMonitor, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
 }

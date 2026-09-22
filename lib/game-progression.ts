@@ -5,8 +5,15 @@ import { cities } from "./cities-data"
 const COOKIE_NAME = "chikenchess_player"
 const LEGACY_STORAGE_KEY = "chikenchess_campaign"
 
+export const PLAYER_PROFILE_VERSION = 1
+export const STARTING_GOLDEN_EGGS = 10
+export const GOLDEN_EGGS_PER_CITY_WIN = 10
+
 export interface PlayerProfile {
+    profileVersion: number
     conqueredCityIds: string[]
+    goldenEggs: number
+    /** Lifetime total of golden eggs earned. Spending eggs never reduces it. */
     points: number
     rank: string
     winsCount: number
@@ -16,34 +23,82 @@ export interface PlayerProfile {
 
 export const RANK_TIERS = [
     { minPoints: 0, title: "Novice Beatmaker" },
-    { minPoints: 1000, title: "Rhythm Apprentice" },
-    { minPoints: 3000, title: "Groove Master" },
-    { minPoints: 5000, title: "Synth Virtuoso" },
-    { minPoints: 7000, title: "Grandmaster Producer" },
+    { minPoints: 40, title: "Rhythm Apprentice" },
+    { minPoints: 80, title: "Groove Master" },
+    { minPoints: 120, title: "Synth Virtuoso" },
+    { minPoints: 250, title: "Grandmaster Producer" },
 ]
-
-export const POINTS_FIRST_CONQUEST = 1000
-export const POINTS_REPLAY_WIN = 200
 
 export function calculateRank(points: number): string {
     for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
-        if (points >= RANK_TIERS[i].minPoints) {
-            return RANK_TIERS[i].title
-        }
+        if (points >= RANK_TIERS[i].minPoints) return RANK_TIERS[i].title
     }
     return RANK_TIERS[0].title
 }
 
-const INITIAL_PROFILE: PlayerProfile = {
-    conqueredCityIds: [],
-    points: 0,
-    rank: "Novice Beatmaker",
-    winsCount: 0,
-    lastPlayedCityId: null,
-    updatedAt: Date.now(),
+function integer(value: unknown, fallback = 0) {
+    return typeof value === "number" && Number.isFinite(value)
+        ? Math.max(0, Math.floor(value))
+        : fallback
 }
 
-// Cookie helpers
+function createInitialProfile(now = Date.now()): PlayerProfile {
+    return {
+        profileVersion: PLAYER_PROFILE_VERSION,
+        conqueredCityIds: [],
+        goldenEggs: STARTING_GOLDEN_EGGS,
+        points: STARTING_GOLDEN_EGGS,
+        rank: calculateRank(STARTING_GOLDEN_EGGS),
+        winsCount: 0,
+        lastPlayedCityId: null,
+        updatedAt: now,
+    }
+}
+
+/**
+ * Brings both the old points-only profile and the current profile to the
+ * spendable-egg economy. Old 1,000/200 point rewards are deliberately not
+ * converted into currency; prior victories are each worth the current ten
+ * eggs, plus the one-time starting gift.
+ */
+export function normalizePlayerProfile(raw: unknown, now = Date.now()): PlayerProfile {
+    if (!raw || typeof raw !== "object") return createInitialProfile(now)
+    const candidate = raw as Partial<PlayerProfile>
+    const conqueredCityIds = Array.isArray(candidate.conqueredCityIds)
+        ? [...new Set(candidate.conqueredCityIds.filter((id): id is string => typeof id === "string"))]
+        : []
+    const winsCount = integer(candidate.winsCount, conqueredCityIds.length)
+    const isCurrent = candidate.profileVersion === PLAYER_PROFILE_VERSION
+        && typeof candidate.goldenEggs === "number"
+
+    if (!isCurrent) {
+        const earned = STARTING_GOLDEN_EGGS + winsCount * GOLDEN_EGGS_PER_CITY_WIN
+        return {
+            profileVersion: PLAYER_PROFILE_VERSION,
+            conqueredCityIds,
+            goldenEggs: earned,
+            points: earned,
+            rank: calculateRank(earned),
+            winsCount,
+            lastPlayedCityId: typeof candidate.lastPlayedCityId === "string" ? candidate.lastPlayedCityId : null,
+            updatedAt: now,
+        }
+    }
+
+    const goldenEggs = integer(candidate.goldenEggs)
+    const points = Math.max(goldenEggs, integer(candidate.points))
+    return {
+        profileVersion: PLAYER_PROFILE_VERSION,
+        conqueredCityIds,
+        goldenEggs,
+        points,
+        rank: calculateRank(points),
+        winsCount,
+        lastPlayedCityId: typeof candidate.lastPlayedCityId === "string" ? candidate.lastPlayedCityId : null,
+        updatedAt: integer(candidate.updatedAt, now),
+    }
+}
+
 function readCookie(name: string): string | null {
     if (typeof document === "undefined") return null
     const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'))
@@ -62,63 +117,50 @@ function eraseCookie(name: string) {
 }
 
 export function getPlayerProfile(): PlayerProfile {
-    if (typeof window === "undefined") return INITIAL_PROFILE
+    if (typeof window === "undefined") return createInitialProfile()
 
-    // 1. Try reading from cookie first
     const cookieData = readCookie(COOKIE_NAME)
     if (cookieData) {
         try {
-            const parsed = JSON.parse(cookieData)
-            return {
-                ...INITIAL_PROFILE,
-                ...parsed,
-                rank: calculateRank(parsed.points || 0),
-            }
+            const profile = normalizePlayerProfile(JSON.parse(cookieData))
+            savePlayerProfile(profile)
+            return profile
         } catch {
-            // fallback
+            // Continue with the mirrored local copy.
         }
     }
 
-    // 2. Fallback to localStorage
     const localData = localStorage.getItem(COOKIE_NAME)
     if (localData) {
         try {
-            const parsed = JSON.parse(localData)
-            const profile = {
-                ...INITIAL_PROFILE,
-                ...parsed,
-                rank: calculateRank(parsed.points || 0),
-            }
-            // Sync to cookie
-            writeCookie(COOKIE_NAME, JSON.stringify(profile))
+            const profile = normalizePlayerProfile(JSON.parse(localData))
+            savePlayerProfile(profile)
             return profile
         } catch {
-            // fallback
+            // Continue with the legacy campaign data.
         }
     }
 
-    // 3. Migrate from legacy campaign state if present
     const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
     if (legacy) {
         try {
             const parsedLegacy = JSON.parse(legacy)
-            const completed = parsedLegacy.completedCityIds || []
-            const profile: PlayerProfile = {
+            const completed = Array.isArray(parsedLegacy.completedCityIds) ? parsedLegacy.completedCityIds : []
+            const profile = normalizePlayerProfile({
                 conqueredCityIds: completed,
-                points: completed.length * POINTS_FIRST_CONQUEST,
-                rank: calculateRank(completed.length * POINTS_FIRST_CONQUEST),
                 winsCount: completed.length,
-                lastPlayedCityId: parsedLegacy.lastPlayedCityId || null,
-                updatedAt: Date.now(),
-            }
+                lastPlayedCityId: parsedLegacy.lastPlayedCityId,
+            })
             savePlayerProfile(profile)
             return profile
         } catch {
-            // ignore
+            // Start a clean profile if the old payload is corrupt.
         }
     }
 
-    return INITIAL_PROFILE
+    const profile = createInitialProfile()
+    savePlayerProfile(profile)
+    return profile
 }
 
 export function savePlayerProfile(profile: PlayerProfile) {
@@ -130,6 +172,7 @@ export function savePlayerProfile(profile: PlayerProfile) {
 
 export interface ConquestResult {
     profile: PlayerProfile
+    earnedEggs: number
     earnedPoints: number
     isFirstTime: boolean
     oldRank: string
@@ -137,26 +180,25 @@ export interface ConquestResult {
     rankedUp: boolean
 }
 
-export function conquerCity(cityId: string): ConquestResult {
-    const profile = getPlayerProfile()
-    const oldRank = profile.rank
-    const isFirstTime = !profile.conqueredCityIds.includes(cityId)
-    const earnedPoints = isFirstTime ? POINTS_FIRST_CONQUEST : POINTS_REPLAY_WIN
-
-    if (isFirstTime) {
-        profile.conqueredCityIds.push(cityId)
+export function applyCityVictory(source: PlayerProfile, cityId: string, now = Date.now()): ConquestResult {
+    const current = normalizePlayerProfile(source, now)
+    const oldRank = current.rank
+    const isFirstTime = !current.conqueredCityIds.includes(cityId)
+    const points = current.points + GOLDEN_EGGS_PER_CITY_WIN
+    const profile: PlayerProfile = {
+        ...current,
+        conqueredCityIds: isFirstTime ? [...current.conqueredCityIds, cityId] : current.conqueredCityIds,
+        goldenEggs: current.goldenEggs + GOLDEN_EGGS_PER_CITY_WIN,
+        points,
+        rank: calculateRank(points),
+        winsCount: current.winsCount + 1,
+        lastPlayedCityId: cityId,
+        updatedAt: now,
     }
-    profile.points += earnedPoints
-    profile.winsCount += 1
-    profile.lastPlayedCityId = cityId
-    profile.updatedAt = Date.now()
-    profile.rank = calculateRank(profile.points)
-
-    savePlayerProfile(profile)
-
     return {
         profile,
-        earnedPoints,
+        earnedEggs: GOLDEN_EGGS_PER_CITY_WIN,
+        earnedPoints: GOLDEN_EGGS_PER_CITY_WIN,
         isFirstTime,
         oldRank,
         newRank: profile.rank,
@@ -164,23 +206,40 @@ export function conquerCity(cityId: string): ConquestResult {
     }
 }
 
-// In v3.0, all cities are unlocked and playable from the start!
+export function conquerCity(cityId: string): ConquestResult {
+    const result = applyCityVictory(getPlayerProfile(), cityId)
+    savePlayerProfile(result.profile)
+    return result
+}
+
+export function applyGoldenEggSpend(source: PlayerProfile, amount: number, now = Date.now()): PlayerProfile | null {
+    if (!Number.isInteger(amount) || amount <= 0) return null
+    const current = normalizePlayerProfile(source, now)
+    if (current.goldenEggs < amount) return null
+    return { ...current, goldenEggs: current.goldenEggs - amount, updatedAt: now }
+}
+
+export function spendGoldenEggs(amount: number): PlayerProfile | null {
+    const profile = applyGoldenEggSpend(getPlayerProfile(), amount)
+    if (profile) savePlayerProfile(profile)
+    return profile
+}
+
 export function isCityUnlocked(_cityId: string): boolean {
     return true
 }
 
 export function isCityConquered(cityId: string): boolean {
-    const profile = getPlayerProfile()
-    return profile.conqueredCityIds.includes(cityId)
+    return getPlayerProfile().conqueredCityIds.includes(cityId)
 }
 
-// Backward-compat for legacy calls
 export function getCampaignState() {
     const profile = getPlayerProfile()
     return {
-        unlockedCityIds: cities.map(c => c.id), // All cities unlocked in v3.0!
+        unlockedCityIds: cities.map(c => c.id),
         completedCityIds: profile.conqueredCityIds,
         lastPlayedCityId: profile.lastPlayedCityId,
+        goldenEggs: profile.goldenEggs,
         points: profile.points,
         rank: profile.rank,
     }

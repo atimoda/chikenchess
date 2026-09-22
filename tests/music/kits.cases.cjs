@@ -1,3 +1,4 @@
+/* global __dirname */
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -5,7 +6,6 @@ const path = require('node:path')
 const { loadTs, strudel } = require('../helpers/music.cjs')
 const model = loadTs('lib/music/model.ts')
 const { voiceSpecs, compileVoice } = loadTs('lib/music/runtime.ts')
-const patterns = loadTs('lib/music/pattern-library.ts')
 const creative = loadTs('lib/music/creative.ts')
 const fixtureDirectory = path.resolve(__dirname, '..')
 
@@ -115,9 +115,11 @@ test('every city has a reproducible, distinct kit with roles independent of ches
     for (const color of ['w', 'b']) {
       const instruments = kit.pieces.filter(p => p.color === color).map(p => kit.instruments[p.id])
       assert.equal(instruments.length,16)
-      assert.equal(instruments.filter(i=>i.behavior==='pulse').length,city.id==='vienna'?0:8)
+      const pulseCount=instruments.filter(i=>i.behavior==='pulse').length
+      assert.ok(pulseCount<16)
       assert.ok(instruments.some(i=>i.behavior==='phrase'))
-      assert.ok(instruments.every(i=>i.performance||city.id==='manchester-1999'))
+      assert.ok(instruments.some(i=>i.behavior==='sustain'))
+      assert.ok(instruments.every(i=>i.performance))
     }
     const variant = createRandomCityKit(city, 'test-variation')
     assert.notDeepEqual(kit.instruments, variant.instruments)
@@ -127,6 +129,35 @@ test('every city has a reproducible, distinct kit with roles independent of ches
   assert.equal(fingerprints.size, cities.length)
   assert.ok(kingBehaviors.size > 1)
   assert.equal(defaultCityKit('unknown'), null)
+})
+
+test('curated arrangements vary density, timbre and harmonic direction by city', () => {
+  const { cities, getCityById } = loadTs('lib/cities-data.ts')
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  assert.equal(cities.length, 14)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 13)
+  const jozi = getCityById('johannesburg')
+  assert.equal(jozi.year, 1994)
+  assert.match(jozi.genre, /Kwaito/)
+  for (const city of cities) {
+    const kit = defaultCityKit(city.id)
+    const white = kit.pieces.filter(piece => piece.color === 'w')
+    const instruments = white.map(piece => kit.instruments[piece.id])
+    const sections = instruments[0].performance.steps.length
+    const density = Array.from({ length: sections }, (_, index) => instruments.filter(instrument => instrument.performance.steps[index].active).length)
+    const timbres = new Set(instruments.map(instrument => instrument.source?.kind === 'sample'
+      ? `${instrument.source.bank}/${instrument.source.asset}/${instrument.source.variant}`
+      : `synth/${instrument.sound}`))
+    assert.ok(new Set(density).size > 1, `${city.id}: section density changes`)
+    assert.ok(new Set(instruments.map(instrument => instrument.name)).size >= 10, `${city.id}: authored roles`)
+    assert.ok(timbres.size >= 4, `${city.id}: timbral palette`)
+    assert.notEqual(kit.harmony, 'static', `${city.id}: harmonic plan`)
+  }
+  const johannesburg = defaultCityKit('johannesburg')
+  assert.equal(johannesburg.bpm, 108)
+  assert.match(johannesburg.name, /Jozi/)
+  assert.ok(Object.values(johannesburg.instruments).some(instrument => instrument.name.includes('Piano township')))
+  assert.ok(Object.values(johannesburg.instruments).some(instrument => instrument.name.includes('Guitarra mbaqanga')))
 })
 
 test('every city voice produces bounded, in-scale Strudel events in every section', async () => {

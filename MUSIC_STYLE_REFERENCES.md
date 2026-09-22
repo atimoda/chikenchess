@@ -1,6 +1,6 @@
-# Referências musicais — coleção v0.3.3
+# Referências musicais — coleção v0.4.0
 
-Atualizado em 16/09/2026. A coleção está em `lib/music/styled-kits.ts`; os defaults das 13 fases usam esses dados. Os padrões são composições originais inspiradas nos recursos de cada linguagem, não transcrições ou reconstruções históricas das gravações citadas. Pesquisa de repertório e datas não equivale a análise auditiva. As diferenças de época abaixo são intencionais e explícitas.
+Atualizado em 21/09/2026. A coleção está em `lib/music/kit-profiles/`; os defaults das 14 fases usam esses dados. Os padrões são composições originais inspiradas nos recursos de cada linguagem, não transcrições ou reconstruções históricas das gravações citadas. Pesquisa de repertório e datas não equivale a análise auditiva. As diferenças de época abaixo são intencionais e explícitas.
 
 | Fase | Kit / direção de arranjo | Referência e contexto |
 | --- | --- | --- |
@@ -15,6 +15,7 @@ Atualizado em 16/09/2026. A coleção está em `lib/music/styled-kits.ts`; os de
 | Tokyo · 1991 | Mosaico: timbres sintéticos percussivos, deslocamentos de acentos, frases em sete e cinco tempos | [YMO, BGM — catálogo Sony](https://www.sonymusic.co.jp/artist/YMO/discography/MHCL-10111). O disco é de 1981, um antecedente; não foi apresentado como sucesso de 1991. Escolha de direção para a bancada, não representação de toda a música japonesa. |
 | London · 1992 | Breaks: bateria quebrada rápida, notas fantasma, stabs e baixo espaçado | [The Prodigy, Experience (1992), XL](https://shop.xlrecordings.com/release/346455-the-prodigy-experience). Linguagem rave/breakbeat, sem chamar todo o período de jungle consolidado. |
 | São Paulo · 1993 | Subsolo: techno, percussão adicional, baixo insistente e pequenos cortes | [Ruído na Metrópole — relatos da cena](https://www.ruidonametropole.com.br/). Krawitz antecede a fase; Hell’s Club abriu em 1994. Não se atribui um suposto hit específico paulistano a 1993. |
+| Johannesburg · 1994 | Jozi: house desacelerado, piano, baixo elástico, percussão em contratempo, guitarra de resposta e chamadas vocais | [South African History Online — história do Kwaito](https://sahistory.org.za/article/history-kwaito-music). A fonte descreve a combinação de house desacelerado com piano, percussão e melodias africanas e situa o gênero na África do Sul dos anos 1990. A fase usa Johannesburg/Soweto como centro cultural, sem atribuir a uma só cidade toda a formação do gênero. |
 | Paris · 1995 | Da Seine: baixo com síncopes, guitarra, filtro por seção e escala blues | [Daft Punk — catálogo oficial](https://www.daftpunk.com/), [Da Funk (1995)](https://en.wikipedia.org/wiki/Da_Funk). |
 | Vienna · 1780 | Salão: linhas tonais, cordas, madeiras, baixo e tímpanos; peões afinados, sem bateria eletrônica | [Mozart, K.338 — Mozarteum](https://kv.mozarteum.at/en/work/symphony-in-c-4426). Composta em Salzburg em 1780: referência austríaca, não alegação de composição/estreia em Viena. |
 

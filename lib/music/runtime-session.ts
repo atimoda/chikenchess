@@ -38,6 +38,7 @@ export class MusicRuntime {
   private preparedManualOrbits = new WeakSet<object>()
   private connectedOrbits = new Set<number>()
   private visualInterval = 1 / 15
+  private effectBuses: 2 | 4 = 4
   private visualBuckets = new Map<number, { events: Map<string, MusicPulse>; timer: ReturnType<typeof setTimeout> }>()
   private visualCursor = 0
   private compiled = new Map<string, { signature: string; pattern: StrudelPattern }>()
@@ -71,6 +72,7 @@ export class MusicRuntime {
     this.api = s
     const constrained = isConstrainedDevice()
     this.visualInterval = 1 / (constrained ? 8 : 15)
+    this.effectBuses = constrained ? 2 : 4
     await s.initAudio({ maxPolyphony: constrained ? 32 : 64 })
     if (this.disposed) return
     const context: AudioContext = s.getAudioContext()
@@ -125,7 +127,9 @@ export class MusicRuntime {
     if (this.preview?.id === id && this.preview.square === square && this.preview.mode === mode) return
     const crossing = mode === 'manual' && this.preview?.mode === 'manual' && this.preview.id === id && !!this.api && !!this.scheduler
     const requested = { id, square, mode }
-    if (this.preview?.mode === 'manual') this.stopManualHit()
+    // Keep the dedicated manual orbit connected while crossing squares. Rebuilding
+    // its reverb/output graph for every cell caused a hitch and could drop attacks.
+    if (this.preview?.mode === 'manual' && !crossing) this.stopManualHit()
     this.preview = requested
     // Only entry/exit changes the accompaniment. Crossing a square changes one voice.
     if (!crossing) this.refresh()
@@ -162,7 +166,7 @@ export class MusicRuntime {
     if (!this.api || !this.state || this.disposed) return
     // Build from the requested square as the pointer may already be up by the
     // time the browser grants audio access on the first interaction.
-    const voice = voiceSpecs({ ...this.state, pieces: this.state.pieces.filter(p => p.id === requested.id) }, requested)[0]
+    const voice = voiceSpecs({ ...this.state, pieces: this.state.pieces.filter(p => p.id === requested.id) }, requested, this.effectBuses)[0]
     if (!voice) return
     const pattern = this.patternFor(voice)
     // A groove lane may be resting for an entire section. The tactile note
@@ -347,7 +351,7 @@ export class MusicRuntime {
       return
     }
     try {
-      const specs = voiceSpecs(this.state, this.preview).filter(voice => this.sampleReady(voice))
+      const specs = voiceSpecs(this.state, this.preview, this.effectBuses).filter(voice => this.sampleReady(voice))
       // Compile first: invalid edits must not tear down the last valid voices.
       const loops = specs.filter(voice => !voice.manual)
       const compiledLoops = loops.map(v => this.patternFor(v))

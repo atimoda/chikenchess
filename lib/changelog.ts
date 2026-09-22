@@ -1,7 +1,49 @@
-export const RELEASE_LABEL = 'v0.3.3'
+export const RELEASE_LABEL = 'v0.4.2'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.2', date: '21/09/2026', title: 'Gestos contínuos', groups: [
+    { title: 'Globo e cidades', items: [
+      'O globo conserva sua velocidade de espera quando um popup está aberto; somente o cartão percorre a tela três vezes mais devagar.',
+      'Marcadores que estão atrás da esfera deixam de responder a hover, clique e toque.',
+    ] },
+    { title: 'Tabuleiro como instrumento', items: [
+      'Arrastar uma peça volta a tocar uma nota avulsa na casa inicial e em cada nova casa atravessada.',
+      'O gesto reutiliza o mesmo canal de áudio manual até a soltura, evitando recriar efeitos por casa e reduzindo a pequena trava do arraste.',
+      'A posição do destaque e a prévia transitória são atualizadas sem renderizar novamente a partida inteira a cada nota.',
+    ] },
+  ] },
+  { version: '0.4.1', date: '21/09/2026', title: 'Ovos dourados', groups: [
+    { title: 'Inventário e progresso', items: [
+      'Cada perfil começa com 10 ovos dourados; toda vitória de cidade, inclusive repetida, concede mais 10 ovos.',
+      'Cada ovo recebido também vale um ponto histórico. Gastar ovos no futuro preservará a pontuação, as vitórias e as cidades conquistadas.',
+      'Perfis antigos são migrados pela quantidade real de vitórias, sem transformar os antigos prêmios de 1.000/200 pontos em milhares de ovos.',
+    ] },
+    { title: 'Globo e interface', items: [
+      'Arrastar o popup de uma cidade não interrompe o giro automático do globo.',
+      'Com um popup aberto, o giro de espera e o quadro ancorado ao pin passam a um terço da velocidade.',
+      'O botão do changelog deixa de depender do ID variável do gatilho Radix, eliminando a divergência de hidratação em aria-controls.',
+    ] },
+  ] },
+  { version: '0.4.0', date: '21/09/2026', title: 'Atlas sonoro', groups: [
+    { title: 'Uma banda própria para cada cidade', items: [
+      'Os kits das cidades foram recompostos com levadas, timbres, registros, envelopes, efeitos e planos harmônicos próprios; baixo, bateria, harmonia, melodia e textura deixam de seguir o mesmo molde entre fases.',
+      'Cada uma das 16 peças recebe uma função autoral e uma forma por seção: bases permanecem, respostas entram depois, solos ocupam trechos reservados e camadas saem para abrir espaço.',
+      'As formas valem no Criativo e nas partidas. Capturas, movimentos, cheque, Solo e edição continuam acompanhando a identidade de cada peça.',
+    ] },
+    { title: 'Johannesburg · 1994', items: [
+      'Nova cidade dedicada ao Kwaito: house desacelerado a 108 BPM, piano township, baixo elástico, conga, shaker, pandeiro, guitarra mbaqanga e chamadas vocais.',
+      'O mapa passa a ter 13 cidades e 14 fases; Manchester continua com as épocas de 1988 e 1999.',
+      'Kits salvos da coleção anterior recebem backup local recuperável quando a nova versão da cidade é carregada pela primeira vez.',
+    ] },
+  ] },
+  { version: '0.3.4', date: '21/09/2026', title: 'Fôlego no celular', groups: [
+    { title: 'Áudio e interface', items: [
+      'Celulares e outros aparelhos restritos passam a compartilhar um bus de efeitos por equipe, reduzindo os reverbs simultâneos de quatro para dois sem retirar vozes, notas ou controles das peças.',
+      'Os pulsos musicais atualizam somente o pequeno marcador do tabuleiro; a partida e a bancada Criativo deixam de renderizar a tela inteira a cada ataque.',
+      'Desktop mantém dois buses por equipe, enquanto audições manuais continuam isoladas e podem ser canceladas imediatamente.',
+    ] },
+  ] },
   { version: '0.3.3', date: '21/09/2026', title: 'Engine leve e harmônica', groups: [
     { title: 'Desempenho para bandas completas', items: [
       'As 32 vozes agora compartilham quatro buses de efeitos, dois por equipe, reduzindo de 32 para quatro os reverbs simultâneos sem retirar os controles individuais das peças.',

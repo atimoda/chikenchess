@@ -1,9 +1,9 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const path = require('node:path')
 const { loadTs, strudel } = require('../helpers/music.cjs')
 const model = loadTs('lib/music/model.ts')
 const { voiceSpecs, MusicRuntime } = loadTs('lib/music/runtime.ts')
+const { createMusicPulseMonitor } = loadTs('lib/music/monitor.ts')
 const creative = loadTs('lib/music/creative.ts')
 const state = (history = []) => ({ pieces: model.piecesFromHistory(history), scale: ['C4','Eb4','F4','G4','Bb4'], bpm: 118, volume: 0.8, playing: true, effects: {} })
 
@@ -75,6 +75,30 @@ test('a shared loop bus stays connected until its final voice leaves', async () 
   runtime.dispose()
 })
 
+test('constrained playback uses one effect bus per team without merging their voices', () => {
+  const full = { ...state(), pieces: model.piecesFromHistory([]).map(piece => ({ ...piece, active: true })) }
+  const desktop = voiceSpecs(full, null)
+  const constrained = voiceSpecs(full, null, 2)
+  assert.deepEqual([...new Set(desktop.map(voice => voice.orbit))].sort(), [0, 1, 2, 3])
+  assert.deepEqual([...new Set(constrained.filter(voice => voice.piece.color === 'w').map(voice => voice.orbit))], [0])
+  assert.deepEqual([...new Set(constrained.filter(voice => voice.piece.color === 'b').map(voice => voice.orbit))], [1])
+  assert.equal(constrained.length, desktop.length)
+})
+
+test('visual pulse monitor updates and clears without owning page state', () => {
+  const monitor = createMusicPulseMonitor()
+  let notifications = 0
+  const unsubscribe = monitor.subscribe(() => { notifications++ })
+  const pulse = { id: 'w:b1', square: 'c3', preview: false, duration: 1 }
+  monitor.publish(pulse)
+  assert.equal(monitor.getSnapshot(), pulse)
+  assert.equal(notifications, 1)
+  monitor.clear()
+  assert.equal(monitor.getSnapshot(), null)
+  assert.equal(notifications, 2)
+  unsubscribe()
+})
+
 test('pausing while the audio clock starts leaves playback and its monitor stopped', async () => {
   const api = await strudel()
   let finishStart
@@ -99,7 +123,7 @@ test('pausing while the audio clock starts leaves playback and its monitor stopp
 })
 
 test('crossing squares during manual play does not resubmit unchanged accompaniment', async () => {
-  const { runtime, attacks, patternUpdates } = await manualRuntime()
+  const { runtime, attacks, patternUpdates, manualDisconnects } = await manualRuntime()
   runtime.update(state(['Nf3', 'Nc6']))
   assert.equal(patternUpdates(), 1)
   runtime.audition('w:g1', 'f3'); await Promise.resolve()
@@ -113,7 +137,9 @@ test('crossing squares during manual play does not resubmit unchanged accompanim
   assert.equal(attacks.length, 6)
   assert.equal(fullRefreshes, 0, 'crossing squares must not rebuild accompaniment')
   assert.equal(patternUpdates(), 2)
+  assert.equal(manualDisconnects(), 0, 'crossing squares must reuse the manual audio graph')
   runtime.endAudition()
+  assert.equal(manualDisconnects(), 1, 'releasing the piece removes its isolated manual graph')
   assert.equal(patternUpdates(), 3)
   runtime.dispose()
 })
@@ -159,9 +185,10 @@ async function manualRuntime() {
   let pattern, time = 0, patternUpdates = 0
   const attacks = []
   const nodes = {}
+  let disconnects = 0
   const runtime = new MusicRuntime(() => {}, error => { throw error })
   runtime.scheduler = { started: true, lastBegin: 0, lastTick: 0, latency: 0, cps: .5, setCps(v) { this.cps = v }, setPattern(v) { pattern = v; patternUpdates++ }, stop() { this.started = false } }
-  runtime.api = { ...api, getAudioContext: () => ({ currentTime: time }), getSuperdoughAudioController: () => ({ nodes, getOrbit: id => nodes[id] ??= { disconnect() {}, output: { gain: { setTargetAtTime() {} } } } }), webaudioOutput: async hap => { attacks.push(hap.value) } }
+  runtime.api = { ...api, getAudioContext: () => ({ currentTime: time }), getSuperdoughAudioController: () => ({ nodes, getOrbit: id => nodes[id] ??= { disconnect() { if (id >= 64) disconnects++ }, output: { gain: { setTargetAtTime() {} } } } }), webaudioOutput: async hap => { attacks.push(hap.value) } }
   runtime.unlock = async () => {}
-  return { runtime, attacks, pattern: () => pattern, patternUpdates: () => patternUpdates, advance: seconds => { time = seconds; runtime.publishFrame() } }
+  return { runtime, attacks, pattern: () => pattern, patternUpdates: () => patternUpdates, manualDisconnects: () => disconnects, advance: seconds => { time = seconds; runtime.publishFrame() } }
 }

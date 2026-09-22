@@ -50,14 +50,13 @@
 .sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .segmented { display: flex; background: #111a14; padding: 3px; border-radius: 7px; flex-shrink: 0; }
 .segmented button { background: transparent; border-color: transparent; padding: 7px 10px; }
-.board { width: min(100%, 560px); margin: 0 auto; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); aspect-ratio: 1; border: 5px solid #354439; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
+.board { position: relative; width: min(100%, 560px); margin: 0 auto; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); aspect-ratio: 1; border: 5px solid #354439; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
 .board .square { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: 0; position: relative; border: 0; border-radius: 0; color: #a2b09b; touch-action: none; }
 .board .light { background: #6a7c64; color: #d8e4ce; }
 .board .dark { background: #354535; color: #a0b39a; }
 .board .square:hover { background: #7a9062; }
 .board .square.selected { background: #879b5f; box-shadow: inset 0 0 0 3px #dbea9f; }
 .board .square.preview { background: #779c85; box-shadow: inset 0 0 0 3px #98e8ce; }
-.board .square.pulse { background: #aebd65; }
 .coordinate { position: absolute; left: 4px; top: 2px; font-size: 9px; opacity: .85; pointer-events: none; }
 .piece { width: 76%; height: 76%; pointer-events: none; filter: drop-shadow(0 2px 1px #0007); }
 .piece svg { display: block; width: 100%; height: 100%; }
