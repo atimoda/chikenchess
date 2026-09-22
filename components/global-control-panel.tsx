@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { ROOTS, SCALES, type CreativeSession } from '@/lib/music/creative'
+import { HARMONY_PLANS, type HarmonyPlanId } from '@/lib/music/harmony'
 import type { TeamMix, TeamMixes } from '@/lib/music/team-mixer'
 
 interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   showAmbience?: boolean
   teamMixes?: TeamMixes
   onTeamMixChange?: (color: 'w' | 'b', patch: Partial<TeamMix>) => void
-  deckClock?: { finePitch: number; quartzLock: boolean; effectiveBpm: number; originalBpm: number; setFinePitch: (value: number) => void; setQuartzLock: (value: boolean) => void }
   effects: GlobalEffects
   onEffectChange: (effect: keyof GlobalEffects, value: number) => void
   cityColor: string
@@ -27,13 +27,14 @@ interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivEleme
   onToggle: () => void
   tonality?: Pick<CreativeSession, 'root' | 'scale'>
   onTonalityChange?: (root: CreativeSession['root'], scale: CreativeSession['scale']) => void
+  harmony?: HarmonyPlanId
+  onHarmonyChange?: (harmony: HarmonyPlanId) => void
 }
 
 export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelProps>(({
   showAmbience = true,
   teamMixes,
   onTeamMixChange,
-  deckClock,
   effects,
   onEffectChange,
   cityColor,
@@ -45,6 +46,8 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
   onToggle,
   tonality,
   onTonalityChange,
+  harmony,
+  onHarmonyChange,
   ...props
 }, ref) => {
   const panelStyle = {
@@ -155,7 +158,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
             {/* BPM Slider */}
             <div className={cn("px-2 py-1 mb-2", !isOn && "pointer-events-none")}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono text-muted-foreground">{deckClock ? 'BPM BASE' : 'BPM'}</span>
+                <span className="text-[10px] font-mono text-muted-foreground">BPM</span>
                 <span className="text-[10px] font-mono text-[var(--city-neon)]">{effects.bpm.toFixed(0)}</span>
               </div>
               <Slider
@@ -168,21 +171,16 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
               />
             </div>
 
-            {deckClock && <fieldset disabled={!isOn} className="px-2 space-y-2 text-[10px] font-mono text-white/70" data-no-drag aria-label="Velocidade dos decks">
-              <div className="flex items-center justify-between gap-2"><span>{deckClock.effectiveBpm.toFixed(1)} BPM · equipes sincronizadas</span><button type="button" aria-pressed={deckClock.quartzLock} onClick={() => deckClock.setQuartzLock(!deckClock.quartzLock)} className={cn('border rounded px-2 py-1', deckClock.quartzLock ? 'text-primary border-primary' : 'border-white/20')}>Quartz lock</button></div>
-              <label className={cn('block', deckClock.quartzLock && 'opacity-40')}>Fine pitch · {deckClock.finePitch > 0 ? '+' : ''}{deckClock.finePitch.toFixed(1)}%
-                <input aria-label="Fine pitch dos decks" type="range" min={-8} max={8} step={.1} value={deckClock.finePitch} onChange={e => deckClock.setFinePitch(Number(e.target.value))} className="w-full mt-2" />
-              </label>
-              <p className="text-white/45">{deckClock.quartzLock ? `Travado no kit: ${deckClock.originalBpm} BPM. O slider fica preparado para destravar.` : 'Fine pitch altera velocidade e afinação das duas equipes juntas.'}</p>
-            </fieldset>}
-            {tonality && <fieldset disabled={!isOn} className="grid grid-cols-[.7fr_1.3fr] gap-2 px-2" data-no-drag>
+            {tonality && harmony && <fieldset disabled={!isOn} className="grid grid-cols-[.45fr_.9fr_1.35fr] gap-2 px-2" data-no-drag>
               <label className="text-[10px] font-mono text-muted-foreground">TOM
                 <select aria-label="Tom da partida" className="mt-1 w-full rounded border border-white/20 bg-neutral-950 p-2 text-xs text-white" value={tonality.root} onChange={e => onTonalityChange?.(e.target.value as CreativeSession['root'], tonality.scale)}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select>
               </label>
               <label className="text-[10px] font-mono text-muted-foreground">ESCALA
                 <select aria-label="Escala da partida" className="mt-1 w-full rounded border border-white/20 bg-neutral-950 p-2 text-xs text-white" value={tonality.scale} onChange={e => onTonalityChange?.(tonality.root, e.target.value as CreativeSession['scale'])}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select>
               </label>
-              <p className="col-span-2 text-[10px] text-white/50">Todas as vozes afinadas seguem o tom e a escala. Alterações valem nesta partida.</p>
+              <label className="text-[10px] font-mono text-muted-foreground">PROGRESSÃO
+                <select aria-label="Progressão da partida" className="mt-1 w-full rounded border border-white/20 bg-neutral-950 p-2 text-xs text-white" value={harmony} onChange={e => onHarmonyChange?.(e.target.value as HarmonyPlanId)}>{Object.entries(HARMONY_PLANS).map(([id, plan]) => <option key={id} value={id}>{plan.label}</option>)}</select>
+              </label>
             </fieldset>}
 
             {teamMixes && onTeamMixChange && <fieldset disabled={!isOn} className="border-t border-white/15 pt-3" data-no-drag aria-label="Mixer por equipe">
@@ -191,7 +189,6 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
                 <Knob label="GAIN EQUIPE" value={teamMixes[mixerSide].gain} min={0} max={1.5} onChange={gain => onTeamMixChange(mixerSide, { gain })} neon={isOn} />
                 {(['bass', 'mids', 'highs'] as const).map((band, i) => <Knob key={band} label={['GRAVES dB', 'MÉDIOS dB', 'AGUDOS dB'][i]} value={teamMixes[mixerSide][band]} min={-12} max={12} onChange={value => onTeamMixChange(mixerSide, { [band]: value })} neon={isOn} />)}
               </div>
-              <p className="text-[10px] text-white/50 px-2 mt-2">Mixagem da equipe selecionada, incluindo efeitos. Ajustes temporários desta partida.</p>
             </fieldset>}
             {showAmbience && <div className="grid grid-cols-3 gap-2 mt-2">
               <Knob

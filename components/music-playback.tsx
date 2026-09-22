@@ -4,7 +4,7 @@ import { memo, useEffect, useState, useSyncExternalStore } from 'react'
 import { VOICE_STATUS_LABELS, type MusicMonitor, type VoiceStatus } from '@/lib/music/monitor'
 import { prepareVoiceVariations, type MusicSnapshot } from '@/lib/music/runtime'
 import { MusicPianoEditor } from './music-piano-editor'
-import type { Instrument } from '@/lib/music/model'
+import type { Instrument, InstrumentPerformanceEdit } from '@/lib/music/model'
 import styles from './music-playback.module.css'
 
 function noteLabel(note: number | null) {
@@ -26,33 +26,45 @@ export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: st
   const status = useSyncExternalStore<VoiceStatus>(monitor.subscribe, () => monitor.getSnapshot().tracks[id]?.status ?? 'inactive', () => 'inactive')
   return <span className={styles.badge} data-status={status}>{VOICE_STATUS_LABELS[status]}</span>
 }
-export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, showStatus = true, instrument, onInstrumentChange }: { instrument?:Instrument; onInstrumentChange?:(patch:Partial<Pick<Instrument,'phrases'|'pianoRolls'|'selectedVariation'>>)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean; showStatus?: boolean }) {
+export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, showStatus = true, instrument, onInstrumentChange, variationTabs = false }: { instrument?:Instrument; onInstrumentChange?:(patch:InstrumentPerformanceEdit)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean; showStatus?: boolean; variationTabs?: boolean }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const track = frame.tracks[id]
   const [preview, setPreview] = useState<{ read: Awaited<ReturnType<typeof prepareVoiceVariations>>; snapshot: MusicSnapshot; id: string } | null>(null)
   const [error, setError] = useState('')
   const editable=!!instrument&&!!onInstrumentChange
+  const pianoEditor=editable&&!variationTabs
   useEffect(() => {
-    if(editable)return
+    if(pianoEditor)return
     let cancelled = false
     setError('')
     void prepareVoiceVariations(snapshot, id).then(read => {
       if (!cancelled) setPreview({ read, snapshot, id })
     }).catch(() => { if (!cancelled) setError('Não foi possível desenhar as variações.') })
     return () => { cancelled = true }
-  }, [snapshot, id, editable])
+  }, [snapshot, id, pianoEditor])
   const rows = preview?.snapshot === snapshot && preview.id === id ? preview.read?.(frame.cycle) ?? [] : []
   const running = frame.running && !manual && ['note', 'rest', 'masked'].includes(track?.status ?? '')
-  const notes = rows.flatMap(row => row.events.flatMap(event => event.note == null ? [] : [event.note]))
+  const activeRow = rows.find(row => row.active) ?? rows[0]
+  const visibleRows = variationTabs ? activeRow ? [activeRow] : [] : rows
+  const sourceVariationCount = Math.max(1, instrument?.phrases?.length ?? 0, instrument?.pianoRolls?.length ?? 0, instrument ? 0 : rows.length)
+  const activeTab = activeRow ? activeRow.index % sourceVariationCount : 0
+  const notes = visibleRows.flatMap(row => row.events.flatMap(event => event.note == null ? [] : [event.note]))
   const bottom = notes.length ? Math.min(...notes) : 0
   const top = notes.length ? Math.max(...notes) : 0
   return <div className={styles.voice} aria-label="Execução do instrumento">
     {showStatus&&<div className={styles.line}><MusicVoiceBadge monitor={monitor} id={id} /><span>{track?.notes.map(noteLabel).join(' + ')}</span></div>}
-    {instrument && onInstrumentChange ? <MusicPianoEditor snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange}/> : <div className={styles.variations} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Variações salvas da peça">
+    {pianoEditor ? <MusicPianoEditor snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange}/> : <div className={styles.variationViewer}>
+      {variationTabs && instrument && onInstrumentChange && <div className={styles.variationTabs} role="tablist" aria-label="Variações do instrumento">
+        {Array.from({ length: sourceVariationCount }, (_, index) => {
+          const fixed = instrument.selectedVariation === index
+          return <button key={index} type="button" role="tab" aria-selected={activeTab === index} aria-pressed={fixed} data-active={activeTab === index} data-fixed={fixed} onClick={() => onInstrumentChange({ selectedVariation: fixed ? undefined : index })}>{String.fromCharCode(65 + index)}</button>
+        })}
+      </div>}
+      <div className={styles.variations} data-tabbed={variationTabs || undefined} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Variações salvas da peça">
       {!rows.length && <p>{error || 'Preparando variações…'}</p>}
-      {rows.map(row => <div key={row.index} className={styles.variation} data-active={running && row.active}>
-        <div className={styles.variationLabel}><b>Variação {String.fromCharCode(65 + row.index)}</b><span>{running && row.active ? 'Em execução' : `Compassos ${row.start + 1}–${row.start + 4}`}</span></div>
-        <svg viewBox="0 0 300 66" role="img" aria-label={`Notas e pausas da variação ${String.fromCharCode(65 + row.index)}`}>
+      {visibleRows.map(row => <div key={row.index} className={styles.variation} data-active={running && row.active}>
+        <div className={styles.variationLabel}><b>Variação {String.fromCharCode(65 + row.index % sourceVariationCount)}</b><span>{running && row.active ? 'Em execução' : `Compassos ${row.start + 1}–${row.start + 4}`}</span></div>
+        <svg viewBox="0 0 300 66" role="img" aria-label={`Notas e pausas da variação ${String.fromCharCode(65 + row.index % sourceVariationCount)}`}>
           {Array.from({ length: 17 }, (_, i) => <line key={i} x1={i * 18.75} x2={i * 18.75} y1="0" y2="66" stroke={i % 4 ? '#26362b' : '#415246'} />)}
           {row.events.map((event, index) => <rect key={index} x={event.start * 75} y={event.note == null ? 24 : 48 - (event.note - bottom) / Math.max(1, top - bottom) * 38}
             width={Math.max(1, (event.end - event.start) * 75 - 1)} height="12" rx="2" opacity={Math.max(.15, Math.min(1, event.gain * 2))}
@@ -61,6 +73,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
         </svg>
         <div className={styles.notation} title={row.rhythm ?? row.phrase}>{row.rhythm ?? row.phrase}</div>
       </div>)}
+      </div>
     </div>
     }
     <div className={styles.values}>{Object.entries(track?.values ?? {}).filter(([, value]) => Number.isFinite(value)).map(([key, value]) => <span key={key}>{key}: {key === 'lpf' ? `${Math.round(value!)} Hz` : value!.toFixed(2)}</span>)}</div>

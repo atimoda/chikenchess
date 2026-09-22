@@ -1,7 +1,33 @@
-export const RELEASE_LABEL = 'v0.4.2'
+export const RELEASE_LABEL = 'v0.4.4'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.4', date: '22/09/2026', title: 'Leitura da partida', groups: [
+    { title: 'Debug musical', items: [
+      'O widget Strudel mostra a harmonia corrente, com seção, grau, acorde, notas e plano harmônico, usando a mesma tipografia das demais linhas de debug.',
+      'A instrução de arrastar uma peça sai do monitor; a contagem de vozes ativas permanece.',
+    ] },
+    { title: 'Chance e histórico', items: [
+      'A análise passa por uma fila serial ligada ao FEN: respostas atrasadas não podem mais sobrescrever o termômetro depois de undo/redo.',
+      'Cliques rápidos conservam somente a posição mais recente na fila, enquanto retornos a um FEN completo já analisado usam o cache correspondente.',
+      'A Chance também volta a ser calculada em celulares e aparelhos restritos, usando profundidade menor para limitar o uso de CPU.',
+    ] },
+  ] },
+  { version: '0.4.3', date: '21/09/2026', title: 'Widgets da partida', groups: [
+    { title: 'Controles musicais', items: [
+      'Spectrogram e Strudel deixam de abrir automaticamente no primeiro lance.',
+      'Board Params reúne Tom, Escala e Progressão na mesma linha e remove fine pitch, quartz lock e as legendas auxiliares de tom e mixer.',
+      'A Progressão altera o plano harmônico base da partida, mantendo a prioridade temporária das influências de Estado e Evento.',
+    ] },
+    { title: 'Instrumento selecionado', items: [
+      'Piece Params passa a usar a imagem da peça e o nome do instrumento como cabeçalho.',
+      'O monitor mostra somente a variação corrente; abas A–H permitem fixar uma variação e um segundo clique devolve o controle à sequência musical.',
+      'Com o widget desligado, o monitor de variações permanece desmontado para não consumir processamento.',
+    ] },
+    { title: 'Camadas da interface', items: [
+      'A área vazia do cabeçalho deixa os cliques passarem para widgets posicionados atrás dela; os controles visíveis continuam interativos.',
+    ] },
+  ] },
   { version: '0.4.2', date: '21/09/2026', title: 'Gestos contínuos', groups: [
     { title: 'Globo e cidades', items: [
       'O globo conserva sua velocidade de espera quando um popup está aberto; somente o cartão percorre a tela três vezes mais devagar.',
