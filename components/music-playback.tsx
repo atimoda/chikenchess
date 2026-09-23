@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { VOICE_STATUS_LABELS, type MusicMonitor, type VoiceStatus } from '@/lib/music/monitor'
 import { prepareVoiceVariations, type MusicSnapshot } from '@/lib/music/runtime'
-import { MUSIC_GRID_DIVISIONS, MusicPianoEditor, gridDivisionLabel } from './music-piano-editor'
+import { MUSIC_GRID_DIVISIONS, MusicPianoEditor, defaultGridDivision, gridDivisionLabel } from './music-piano-editor'
 import type { Instrument, InstrumentPerformanceEdit } from '@/lib/music/model'
 import { reverseVariation, randomizeVariation } from '@/lib/music/variation-edit'
 import { resizeRoll } from '@/lib/music/piano-roll'
@@ -47,7 +47,8 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
   for(const key of VOICE_VALUE_KEYS){const value=track?.values[key];if(Number.isFinite(value))stableValues.current.values[key]=value}
   const [preview, setPreview] = useState<{ read: Awaited<ReturnType<typeof prepareVoiceVariations>>; snapshot: MusicSnapshot; id: string } | null>(null)
   const [error, setError] = useState('')
-  const [division,setDivision]=useState(snapshot.meter==='6/8'||snapshot.meter==='12/8'?3:4)
+  const [division,setDivision]=useState(defaultGridDivision(snapshot.meter))
+  useEffect(() => setDivision(defaultGridDivision(snapshot.meter)), [snapshot.meter])
   const editable=!!instrument&&!!onInstrumentChange
   const pianoEditor=editable&&!variationTabs
   useEffect(() => {

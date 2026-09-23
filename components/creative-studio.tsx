@@ -417,7 +417,7 @@ export function CreativeStudio() {
             <div className={styles.sectionHeader}><div className={styles.segmented}>
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
-            </div><InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></div>
+            </div><InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir uma nota por casa. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Duplo clique na peça liga ou desliga seu loop. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></div>
             <div ref={boardRef} className={styles.board} role="group" aria-label="Tabuleiro criativo">
               {squares.map((square, index) => {
                 const piece = music.snapshot.pieces.find(p => p.square === square)
@@ -435,6 +435,7 @@ export function CreativeStudio() {
                     if (piece) select(piece.id)
                     else { setPlaying(true); setSession(s => moveCreativePiece(s, selectedId, square)) }
                   }}
+                  onDoubleClick={() => { if (mode === 'move' && piece) { select(piece.id); toggleActive(piece.id) } }}
                   onKeyDown={e => { if (mode === 'play' && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); if (!e.repeat) music.audition(selectedId, square) } }}
                   onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') music.endAudition() }} onBlur={() => { if (!drag.current) music.endAudition() }}>
                   <span className={styles.coordinate}>{square}</span>

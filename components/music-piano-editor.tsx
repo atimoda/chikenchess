@@ -27,6 +27,10 @@ export function gridDivisionLabel(value:number,meter:Meter='4/4') {
  return MUSIC_GRID_DIVISIONS.find(option=>option.value===value)?.label??String(value)
 }
 
+export function defaultGridDivision(meter:Meter='4/4') {
+ return meter==='3/4'?2:meter==='6/8'||meter==='12/8'?3:4
+}
+
 function slideGraphEnd(seconds:number, semitones:number) {
  return {
   x:8+Math.max(.001,Math.min(2,seconds))/2*144,
@@ -40,10 +44,11 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
  const frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot)
  const [read,setRead]=useState<Awaited<ReturnType<typeof prepareVoiceVariations>>>(null),[error,setError]=useState('')
  const [selectedNote,setSelectedNote]=useState<{index:number;note:number}|null>(null)
- const [draft,setDraft]=useState<{index:number;roll:PianoRoll}|null>(null),[localDivision,setLocalDivision]=useState(snapshot.meter==='6/8'||snapshot.meter==='12/8'?3:4)
+ const [draft,setDraft]=useState<{index:number;roll:PianoRoll}|null>(null),[localDivision,setLocalDivision]=useState(defaultGridDivision(snapshot.meter))
  const pulses=beatsPerBar(snapshot.meter)
  const division=controlledDivision??localDivision
  const setDivision=(value:number)=>{setLocalDivision(value);onDivisionChange?.(value)}
+ useEffect(()=>{setLocalDivision(defaultGridDivision(snapshot.meter))},[snapshot.meter])
  const drag=useRef<{index:number;note:number;sourceNote:number;origin:PianoNote;start:number;degree:number;mode:'draw'|'move'|'resize';roll:PianoRoll;copy:boolean;moved:boolean}|null>(null)
  const lastNoteClick=useRef<{index:number;note:number;time:number}|null>(null)
  const phrases=instrument.phrases?.length?instrument.phrases:[instrument.notes]

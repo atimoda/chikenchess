@@ -1,7 +1,16 @@
-export const RELEASE_LABEL = 'v0.4.42'
+export const RELEASE_LABEL = 'v0.4.43'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.43', date: '23/09/2026', title: 'Audição no Criativo', groups: [
+    { title: 'Tabuleiro', items: [
+      'Arrastar uma peça volta a tocar uma nota por casa mesmo quando o áudio ainda estava suspenso.',
+      'Duplo clique numa peça alterna sua ativação no modo Mover, sem mudar sua posição.',
+    ] },
+    { title: 'Editor', items: [
+      'A grade abre com duas partes em 3/4 e três partes em 6/8 ou 12/8; a escolha ainda pode ser ajustada livremente.',
+    ] },
+  ] },
   { version: '0.4.42', date: '23/09/2026', title: 'Campanhas e novas levadas', groups: [
     { title: 'Mapa', items: [
       'As fases agora aparecem em três campanhas numa lista à esquerda do globo; hover centraliza a cidade e clique abre seu popup.',

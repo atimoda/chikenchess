@@ -18,6 +18,7 @@ import type { Strudel, StrudelPattern, MusicSnapshot, MusicPulse, Preview, Voice
 /** One owned scheduler, with shared loop effect buses and isolated temporary auditions. */
 export class MusicRuntime {
   private api?: Strudel
+  private preloadedApi?: Strudel
   private scheduler: any
   private scheduledLoops: unknown[] | undefined
   private targetBpm = 120
@@ -55,15 +56,20 @@ export class MusicRuntime {
   constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
 
   // Preload JS only. AudioContext is created/resumed from an interaction.
-  preload() { void loadLibrary().catch(this.error) }
+  preload() { void loadLibrary().then(api => { if (!this.disposed) this.preloadedApi = api }).catch(this.error) }
 
   async unlock() {
     if (this.disposed || !this.pageVisible) return
+    // initAudio can be waiting for resume after a prior, non-gesture Play update.
+    // Resume now, within this pointer/key event, before waiting for that init.
+    const context = (this.api ?? this.preloadedApi)?.getAudioContext()
+    const resume = context?.state === 'suspended' ? context.resume() : Promise.resolve()
     if (!this.ready) this.ready = this.initialize().catch(error => { this.ready = undefined; throw error })
     try {
-      await this.ready
+      await Promise.all([this.ready, resume])
       if (this.disposed || !this.pageVisible) return
-      await this.api!.getAudioContext().resume()
+      const liveContext = this.api!.getAudioContext()
+      if (liveContext.state !== 'running') await liveContext.resume()
       this.refresh()
     } catch (error) { this.error(error) }
   }
@@ -161,7 +167,7 @@ export class MusicRuntime {
     // Keep only the latest square while unlocking/loading audio. Manual gestures
     // cancelled before readiness must never produce a delayed note.
       this.unlockAudition = requested
-      const ready = this.api?.getAudioContext().state === 'running' ? Promise.resolve() : this.unlock()
+      const ready = this.scheduler && this.api?.getAudioContext().state === 'running' ? Promise.resolve() : this.unlock()
       void ready.then(async () => {
         const source = this.state?.instruments?.[id]?.source
         if (source?.kind === 'sample' && this.api && !loadedSamples.has(sampleRegistration(source).sound)) await ensureSample(this.api, source)

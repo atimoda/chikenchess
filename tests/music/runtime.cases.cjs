@@ -50,6 +50,22 @@ test('visibility waits for audio initialization before suspending or resuming', 
   runtime.dispose()
 })
 
+test('a later Creative gesture resumes audio before awaiting an earlier suspended initialization', async () => {
+  let finishInitialization
+  let resumes = 0
+  const context = {
+    state: 'suspended',
+    resume() { resumes++; this.state = 'running'; finishInitialization(); return Promise.resolve() },
+  }
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.api = { getAudioContext: () => context }
+  runtime.ready = new Promise(resolve => { finishInitialization = resolve })
+  runtime.refresh = () => {}
+  await runtime.unlock()
+  assert.equal(resumes, 1)
+  runtime.dispose()
+})
+
 test('playback monitor distinguishes inactive, rhythmic rest and section rest', async () => {
   const api = await strudel()
   const lab = creative.createCreativeSession()
