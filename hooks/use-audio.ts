@@ -23,7 +23,17 @@ export function useAudio(
     engineRef.current = getAudioEngine()
     setIsInitialized(true)
 
+    const stopWhenHidden = () => {
+      if (document.visibilityState !== 'visible') {
+        engineRef.current?.stop()
+        engineRef.current?.stopAmbience()
+        void engineRef.current?.context?.suspend()
+      }
+    }
+    document.addEventListener('visibilitychange', stopWhenHidden)
+
     return () => {
+      document.removeEventListener('visibilitychange', stopWhenHidden)
       engineRef.current?.stop()
       engineRef.current?.stopAmbience()
     }

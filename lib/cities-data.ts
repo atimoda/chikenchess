@@ -340,7 +340,7 @@ const rawCities: Omit<CityData, "coordinates">[] = [
     scale: ["F#4", "A4", "B4", "C#4", "E4"],
     geoCoordinates: { lat: -26.2041, lng: 28.0473 },
     color: "#ff7a45",
-    image: "https://unsplash.com/photos/NpRg40RKuxo/download?force=true&w=800",
+    image: "https://images.unsplash.com/photo-1577948000111-9c970dfe3743?auto=format&fit=crop&fm=jpg&q=80&w=800",
     samples: {
       kick: "bd:4",
       snare: "sd:3",

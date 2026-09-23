@@ -1,7 +1,223 @@
-export const RELEASE_LABEL = 'v0.4.4'
+export const RELEASE_LABEL = 'v0.4.38'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.38', date: '23/09/2026', title: 'Cores da cidade nos controles da partida', groups: [
+    { title: 'Partida', items: [
+      'Os sliders de Board Params e os botões de energia dos widgets acompanham as cores da cidade, com branco desligado e azul no hover.',
+    ] },
+  ] },
+  { version: '0.4.37', date: '23/09/2026', title: 'Espectrograma mais amplo e legível', groups: [
+    { title: 'Partida', items: [
+      'O espectrograma usa o fundo do widget, ocupa melhor sua área e capta picos entre as frequências exibidas.',
+    ] },
+  ] },
+  { version: '0.4.36', date: '23/09/2026', title: 'Destaque das casas ativas mais limpo', groups: [
+    { title: 'Partida', items: [
+      'As casas ativas deixam de ter sombra no botão e contorno de 1 px; a borda branca da seleção permanece.',
+    ] },
+  ] },
+  { version: '0.4.35', date: '23/09/2026', title: 'Controles da partida mais claros', groups: [
+    { title: 'Partida', items: [
+      'O cabeçalho mostra a dificuldade selecionada com espaçamento uniforme entre os controles; os links de melhores e piores jogadas usam cinza.',
+    ] },
+  ] },
+  { version: '0.4.34', date: '23/09/2026', title: 'Pontuação do perfil mais discreta', groups: [
+    { title: 'Mapa', items: [
+      'A pontuação histórica aparece em cinza e usa “points” como unidade.',
+    ] },
+  ] },
+  { version: '0.4.33', date: '23/09/2026', title: 'Popups acompanham o limite do globo', groups: [
+    { title: 'Mapa', items: [
+      'Durante o arraste e o giro, popups fora da esfera ficam no máximo 50 px além da circunferência visível.',
+    ] },
+  ] },
+  { version: '0.4.32', date: '23/09/2026', title: 'Perfil do jogador mais claro', groups: [
+    { title: 'Mapa', items: [
+      'Rank, ovos e pontuação aparecem juntos sem cartão separado; o avatar ganha destaque e os ícones de ovo e conquista ficam nos indicadores correspondentes.',
+    ] },
+  ] },
+  { version: '0.4.31', date: '23/09/2026', title: 'Acabamento dos controles do globo', groups: [
+    { title: 'Mapa', items: [
+      'Popups de cidade recortam o fundo nos cantos arredondados; versão e Modo Criativo ficam clicáveis em toda a área, com hover escuro consistente.',
+    ] },
+  ] },
+  { version: '0.4.30', date: '23/09/2026', title: 'Perfil e controles refinados', groups: [
+    { title: 'Mapa', items: [
+      'Os botões do globo usam hover escuro; o perfil mostra os ovos ao lado do avatar e exibe as cidades conquistadas com título atualizado.',
+    ] },
+  ] },
+  { version: '0.4.29', date: '23/09/2026', title: 'Ações do mapa mais consistentes', groups: [
+    { title: 'Mapa', items: [
+      'Modo Criativo fica ao lado da versão; o botão de tela cheia destaca e amplia o ícone no hover, e o perfil mostra “golden eggs” sem moldura.',
+    ] },
+  ] },
+  { version: '0.4.28', date: '23/09/2026', title: 'Perfil do jogador em popup', groups: [
+    { title: 'Mapa', items: [
+      'O perfil e a redefinição do progresso ficam no popup do avatar com a contagem de ovos; Modo Criativo fica no canto inferior esquerdo.',
+    ] },
+  ] },
+  { version: '0.4.27', date: '23/09/2026', title: 'Widgets podem ser arrastados atrás da área central', groups: [
+    { title: 'Partida', items: [
+      'A área vazia ao redor do tabuleiro e dos controles de jogo deixa passar os gestos para os widgets posicionados atrás.',
+    ] },
+  ] },
+  { version: '0.4.26', date: '23/09/2026', title: 'Dificuldade da IA atualiza a próxima jogada', groups: [
+    { title: 'Partida', items: [
+      'Alterar a dificuldade durante a análise ou a espera reinicia a busca com o nível escolhido; o menu identifica o nível real do Stockfish.',
+      'Os atalhos de melhores/piores jogadas têm mais espaço acima e usam barra como separador.',
+    ] },
+  ] },
+  { version: '0.4.25', date: '23/09/2026', title: 'Subtítulo da introdução mais leve', groups: [
+    { title: 'Partida', items: [
+      'O gênero e o ano aparecem sem negrito e sem cursor de ponteiro na tela de introdução.',
+    ] },
+  ] },
+  { version: '0.4.24', date: '23/09/2026', title: 'Pins alternam a abertura do popup', groups: [
+    { title: 'Mapa', items: [
+      'Clicar no pin de uma cidade com popup aberto agora fecha esse popup.',
+    ] },
+  ] },
+  { version: '0.4.23', date: '23/09/2026', title: 'Scroll do globo também funciona sobre popups', groups: [
+    { title: 'Mapa', items: [
+      'A roda do mouse continua controlando o zoom do globo mesmo quando o cursor está sobre um popup.',
+    ] },
+  ] },
+  { version: '0.4.22', date: '23/09/2026', title: 'Popups ficam acima das linhas', groups: [
+    { title: 'Mapa', items: [
+      'Os cartões das cidades permanecem à frente das linhas e vêm para a frente dos outros popups ao serem clicados ou arrastados.',
+    ] },
+  ] },
+  { version: '0.4.21', date: '23/09/2026', title: 'Conexão usa o lado próximo da borda', groups: [
+    { title: 'Mapa', items: [
+      'A linha dos pins ocultos agora procura o ponto mais próximo da circunferência visível, no mesmo lado da cidade.',
+    ] },
+  ] },
+  { version: '0.4.20', date: '23/09/2026', title: 'Linhas de conexão acompanham o globo', groups: [
+    { title: 'Mapa', items: [
+      'Quando um pin fica atrás do globo, sua linha se conecta à borda visível mais próxima e volta ao pin quando ele reaparece.',
+    ] },
+  ] },
+  { version: '0.4.19', date: '23/09/2026', title: 'Popups mais limpos e foto de Johannesburg corrigida', groups: [
+    { title: 'Mapa', items: [
+      'Os popups deixam de mostrar BPM e recompensa; o selo CONQUERED permanece visível no rodapé das cidades conquistadas.',
+      'A foto de Johannesburg volta a carregar no popup.',
+    ] },
+  ] },
+  { version: '0.4.18', date: '23/09/2026', title: 'Conquista visível no rodapé da cidade', groups: [
+    { title: 'Mapa', items: [
+      'Cidades conquistadas agora exibem o selo CONQUERED junto da recompensa, deixando o título livre para o nome da cidade.',
+    ] },
+  ] },
+  { version: '0.4.17', date: '22/09/2026', title: 'Criativo mais claro e silencioso fora da aba', groups: [
+    { title: 'Modo Criativo', items: [
+      'O áudio pausa ao sair da aba e volta apenas se a sessão estava tocando.',
+      'Distorção e seu nível ficam em Filtros e efeitos; as dicas esclarecem o arranjo compartilhado e o slide da peça.',
+      'Escolher Timbre sintetizado funciona mesmo após usar samples e muda a fonte para Síntese.',
+    ] },
+  ] },
+  { version: '0.4.16', date: '22/09/2026', title: 'Widgets e leitura da partida', groups: [
+    { title: 'Partida', items: [
+      'Widgets desligados podem ser arrastados também sobre seus controles, sem que knobs ou sliders bloqueiem o gesto.',
+      'O estado Your move/AI Analysing aparece entre os botões de controle e o histórico de jogadas.',
+    ] },
+  ] },
+  { version: '0.4.15', date: '22/09/2026', title: 'Entrada na fase mais direta', groups: [
+    { title: 'Apresentação da cidade', items: [
+      'O nome da cidade aparece maior, com gênero e ano logo abaixo, sem o antigo quadro de informações.',
+      'A partida começa automaticamente após quatro segundos; clicar em qualquer ponto da apresentação antecipa a entrada.',
+    ] },
+  ] },
+  { version: '0.4.14', date: '22/09/2026', title: 'Controles de partida padronizados', groups: [
+    { title: 'Som e variações', items: [
+      'O slide de nota começa em 0,5 s; sliders nos valores padrão aparecem cinza e ficam azuis quando ajustados.',
+      'Piece Params combina LPF e HPF num controle centralizado e ganha Drive para a distorção da peça.',
+      'O som pausa ao sair da aba e volta apenas se a partida já estava tocando.',
+    ] },
+    { title: 'Partida e widgets', items: [
+      'Todas as fases começam com a IA no Easy; após calcular, ela espera de 0,5 a 3 segundos antes de jogar.',
+      'Os widgets usam borda fina, título branco, botões de energia consistentes e podem ser arrastados pelo corpo; Strudel passa a se chamar Debug.',
+      'Os knobs mostram rótulos em maiúsculas e valores brancos; os atalhos de jogadas não exibem mais “Bisbilhotar”.',
+    ] },
+  ] },
+  { version: '0.4.13', date: '22/09/2026', title: 'Mixer separado e edição de notas mais direta', groups: [
+    { title: 'Partida', items: [
+      'O mixer ganhou um widget próprio com controles simultâneos para Brancas e Pretas; Low, Mid e Hi substituem os nomes longos do EQ.',
+      'Os nomes dos knobs aparecem acima dos controles, e os valores ficam abaixo. O contorno das peças pretas ficou mais suave.',
+      'A barra de chance fica sem número; o estado da partida aparece centralizado abaixo dela, antes dos atalhos de melhores e piores jogadas.',
+    ] },
+    { title: 'Variações', items: [
+      'O duplo clique apaga notas do piano roll, e Alt ao arrastar duplica a nota com duração e parâmetros de articulação preservados.',
+    ] },
+  ] },
+  { version: '0.4.12', date: '22/09/2026', title: 'Painéis mais estáveis e legíveis', groups: [
+    { title: 'Tabuleiro e parâmetros', items: [
+      'As peças pretas recebem contorno branco para preservar detalhes internos e silhuetas sobre todas as casas.',
+      'O editor compacto perde a borda externa e ganha espaço entre o piano roll e os sliders de articulação.',
+      'Gain, LPF, pan, room e delay permanecem visíveis entre ataques; com Piece Params desligado, o cabeçalho deixa de atualizar o estado da voz.',
+    ] },
+    { title: 'Strudel', items: [
+      'As listas de três melhores e três piores jogadas saem do widget, mantendo as setas disponíveis sob a barra de avaliação.',
+      'Harmonia agora passa a reunir o rótulo e o acorde numa única linha, sem repetir a seção corrente.',
+      'Os seletores harmônicos da partida e do Criativo mostram primeiro a progressão e depois seu nome, como I–IV–V–I - Cadência.',
+    ] },
+  ] },
+  { version: '0.4.11', date: '22/09/2026', title: 'Leitura visual das variações', groups: [
+    { title: 'Editor e tabuleiro', items: [
+      'O comprimento horizontal da rampa agora acompanha o tempo do slide, sem repetir os valores numa legenda sob o gráfico.',
+      'A variação fixada recebe um pin acima da aba, e o painel ampliado mostra editor e parâmetros da execução sem rolagem vertical interna.',
+      'Desligar o loop remove também a borda e o sombreado de peça ativa no tabuleiro, mantendo a ativação musical guardada e a audição manual disponível.',
+    ] },
+  ] },
+  { version: '0.4.10', date: '22/09/2026', title: 'Editor de variações compacto', groups: [
+    { title: 'Espelho musical', items: [
+      'Inverter passa a espelhar as notas no tempo dentro da duração inteira da variação, mantendo alturas e durações e trocando a direção de cada slide.',
+      'Padrões em mini-notação também espelham sequências, pausas e grupos temporais sem desmontar acordes simultâneos.',
+    ] },
+    { title: 'Controles reorganizados', items: [
+      'Subdivisão, inversão, randomização e duração ficam juntos na barra de ações; o liga/desliga do loop vai para o canto superior direito do widget.',
+      'O estado da voz acompanha o código da casa no subtítulo, e o editor remove títulos e campos redundantes.',
+      'Slide, tempo, acento e pan usam sliders compactos em duas colunas; pan começa centralizado e a exclusão usa um botão de lixeira junto ao gráfico.',
+      'Ao desligar o loop, todo o bloco de variações fica esmaecido enquanto a audição manual da peça continua disponível.',
+    ] },
+  ] },
+  { version: '0.4.9', date: '22/09/2026', title: 'Afinação do slide', groups: [
+    { title: 'Editor de notas', items: [
+      'A distância do slide de cada nota passa a usar um slider de −24 a +24 semitons, com o valor corrente sempre visível.',
+    ] },
+  ] },
+  { version: '0.4.8', date: '22/09/2026', title: 'Ajuste de articulação', groups: [
+    { title: 'Editor de notas', items: [
+      'O tempo do slide de cada nota passa a usar um slider e mantém o valor em segundos visível durante o ajuste.',
+    ] },
+  ] },
+  { version: '0.4.7', date: '22/09/2026', title: 'Variações durante a partida', groups: [
+    { title: 'Edição da peça selecionada', items: [
+      'Piece Params permite editar as notas da variação corrente com o mesmo piano roll do Criativo.',
+      'As ações por ícone invertem ou randomizam somente as alturas da variação escolhida, preservando seu ritmo e sua duração.',
+      'O botão de energia desliga os loops automáticos da peça sem impedir as notas avulsas tocadas ao arrastá-la pelo tabuleiro.',
+    ] },
+  ] },
+  { version: '0.4.6', date: '22/09/2026', title: 'Stockfish com orçamento de análise', groups: [
+    { title: 'Leitura confiável da posição', items: [
+      'Stockfish Lite real substitui a engine simplificada na análise e nas jogadas da adversária.',
+      'A barra mostra avaliação a favor das brancas, sem a antiga porcentagem invertida de Chance; o número acompanha a divisão visual e mates têm indicação própria.',
+      'Os links sob a barra desenham por três segundos as três melhores ou piores jogadas, com setas verdes/vermelhas e a variação esperada na ponta.',
+      'O Strudel também mostra as três melhores e três piores opções estimadas, com origem, destino e promoção explícitos.',
+    ] },
+    { title: 'Teste de desempenho', items: [
+      'Um único worker compartilha o trabalho da análise e da adversária, com limites de tempo e nós e reutilização das posições já analisadas.',
+      'A avaliação aparece antes do ranking; o painel informa tempo de busca, nós e profundidade para acompanhar o custo.',
+      'Comparações incompletas são sinalizadas, e undo/reset descartam respostas e jogadas antigas.',
+    ] },
+  ] },
+  { version: '0.4.5', date: '22/09/2026', title: 'Análise de movimentos', groups: [
+    { title: 'Melhores e piores opções', items: [
+      'O debug do Strudel lista os cinco melhores e os cinco piores movimentos legais assim que a análise da posição fica pronta.',
+      'O ranking reaproveita a mesma busca do termômetro e exibe notação SAN com avaliação relativa ao lado que joga.',
+      'A análise deixa de esperar o atraso artificial da adversária; os 200–700 ms continuam somente para dar ritmo à resposta da IA.',
+    ] },
+  ] },
   { version: '0.4.4', date: '22/09/2026', title: 'Leitura da partida', groups: [
     { title: 'Debug musical', items: [
       'O widget Strudel mostra a harmonia corrente, com seção, grau, acorde, notas e plano harmônico, usando a mesma tipografia das demais linhas de debug.',

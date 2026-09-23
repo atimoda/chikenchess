@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
 import { VersionChangelog } from './version-changelog'
 import { RELEASE_LABEL } from '@/lib/changelog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
 
 import { Button } from "@/components/ui/button"
 import { Plus, Minus, Maximize, Minimize } from "lucide-react"
@@ -41,6 +42,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string } | null>(null)
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
   const [showAbout, setShowAbout] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(100)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -541,7 +543,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     playMapSound("bossdr220_lt", true)
     
     if (openPopups[city.id] && !openPopups[city.id].isClosing) {
-      bringToFront(city.id)
+      closePopup(city.id)
       return
     }
 
@@ -862,14 +864,13 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           </div>
         </div>
 
-        <div className="absolute top-6 right-6 grid grid-cols-[auto_auto] justify-items-end items-center gap-x-4 gap-y-2 md:flex pointer-events-auto text-xs font-mono">
-          <Link href="/creative" className="row-start-2 col-span-2 md:order-none rounded-md border border-primary/40 bg-black/60 px-3 py-2 text-primary hover:bg-primary/15">Modo Criativo</Link>
+        <div className="absolute top-6 right-6 flex items-center gap-3 pointer-events-auto text-xs font-mono">
           <button
             onClick={(e) => {
                 e.preventDefault()
                 setShowAbout(true)
             }}
-            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4 bg-transparent border-none cursor-pointer"
+            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4 bg-transparent border-none"
           >
             About
           </button>
@@ -878,9 +879,20 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             variant="ghost" 
             size="icon" 
             onClick={toggleFullscreen} 
-            className="text-muted-foreground hover:text-foreground hover:bg-white/10"
+            className="group border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
-            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            {isFullscreen ? <Minimize className="w-4 h-4 transition-transform duration-200 group-hover:scale-125" /> : <Maximize className="w-4 h-4 transition-transform duration-200 group-hover:scale-125" />}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="default"
+            aria-label={`Abrir perfil do jogador. ${playerProfile?.goldenEggs ?? 0} ovos dourados`}
+            onClick={() => setShowProfile(true)}
+            className="h-9 gap-[7px] border-white/10 bg-black/50 px-3 font-mono text-xs text-amber-300 backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
+          >
+            <span>{(playerProfile?.goldenEggs ?? 0).toLocaleString()} golden eggs</span>
+            <span aria-hidden="true" className="text-xl">🐔</span>
           </Button>
         </div>
 
@@ -904,6 +916,59 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           Select your stage
         </div>
       </header>
+
+      <Dialog open={showProfile} onOpenChange={setShowProfile}>
+        <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]" closeLabel="Fechar perfil">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <span aria-hidden="true" className="text-5xl leading-none">🐔</span>
+              <DialogTitle className="font-mono text-xl">Sir Clucks-a-Lot</DialogTitle>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4 font-mono">
+            <div className="space-y-3 font-mono">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Rank</span>
+                <span className="text-xs font-bold text-amber-300">🎖️ {playerProfile?.rank || "Novice Beatmaker"}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Golden eggs</span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-bold tracking-wide text-amber-300">
+                  <svg aria-hidden="true" viewBox="0 0 16 20" className="h-4 w-3.5">
+                    <path d="M8 1.5c-3.2 0-6 6.3-6 11.3a6 6 0 0 0 12 0c0-5-2.8-11.3-6-11.3Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.2" />
+                    <path d="M5 6.5c-.9 1.7-1.5 3.8-1.5 5.5" fill="none" stroke="#fef08a" strokeLinecap="round" strokeWidth="1.2" />
+                  </svg>
+                  {(playerProfile?.goldenEggs || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Historical score</span>
+                <span className="tracking-wide text-muted-foreground">{(playerProfile?.points || 0).toLocaleString()} points</span>
+              </div>
+            </div>
+            <div className="space-y-2 pt-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏆</span>Cities conquered</span>
+                <span><strong className="text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((playerProfile?.conqueredCityIds?.length || 0) / cities.length) * 100}%` }} />
+              </div>
+            </div>
+            <div className="flex justify-end border-t border-white/10 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("Reset Campaign Progress?")) resetCampaign()
+                }}
+                className="rounded border border-white/10 px-3 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-rose-200"
+              >
+                RESET SAVE
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* About Popup */}
       {showAbout && (
@@ -960,73 +1025,11 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       {/* UI OVERLAY LAYER */}
       <div className="absolute inset-0 z-40 overflow-hidden pointer-events-none">
         
-        {/* Player Progress & Rank HUD (Fixed Bottom Left) */}
-        <div 
-          className="absolute bottom-4 left-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-md shadow-xl pointer-events-auto min-w-[240px]"
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Rank</span>
-              <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(234,179,8,0.2)]">
-                🎖️ {playerProfile?.rank || "Novice Beatmaker"}
-              </span>
-            </div>
-            
-            <div className="space-y-1 border-t border-border/50 pt-2">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-muted-foreground">Golden eggs:</span>
-                <span className="font-bold text-amber-300 text-sm tracking-wide">
-                  🥚 {(playerProfile?.goldenEggs || 0).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-muted-foreground">Historical score:</span>
-                <span className="font-semibold text-primary tracking-wide">
-                  🏆 {(playerProfile?.points || 0).toLocaleString()} PTS
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1 pt-1 border-t border-border/50">
-              <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-                <span>Conquered</span>
-                <span>
-                  <strong className="text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}
-                </span>
-              </div>
-              <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-500"
-                  style={{ width: `${(((playerProfile?.conqueredCityIds?.length || 0) / cities.length)) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Bottom Right Info & Controls */}
         <div 
-          className="flex absolute bottom-4 right-4 items-center gap-4 pointer-events-auto z-50 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
-          <div className="flex items-center gap-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-             <VersionChangelog />
-          </div>
-
-          <div className="h-4 w-px bg-border" />
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              if (confirm("Reset Campaign Progress?")) {
-                resetCampaign()
-              }
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="px-3 py-1 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-white/10 border border-transparent hover:border-white/10 rounded transition-all"
-          >
-            RESET SAVE
-          </button>
+          className="flex fixed bottom-4 right-4 items-stretch gap-2 pointer-events-auto z-50">
+          <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Modo Criativo</Link>
+          <VersionChangelog mapButton />
         </div>
       </div>
 
@@ -1036,7 +1039,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               variant="outline"
               size="icon"
               onClick={() => handleZoom('in')}
-              className="bg-black/50 backdrop-blur-md border-white/10 hover:bg-primary hover:text-white hover:border-primary hover:shadow-[0_0_10px_var(--primary)] transition-all"
+              className="bg-black/50 backdrop-blur-md border-white/10 hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:border-primary hover:shadow-[0_0_10px_var(--primary)] transition-all"
           >
               <Plus className="w-4 h-4" />
           </Button>
@@ -1044,7 +1047,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               variant="outline"
               size="icon"
               onClick={() => handleZoom('out')}
-              className="bg-black/50 backdrop-blur-md border-white/10 hover:bg-primary hover:text-white hover:border-primary hover:shadow-[0_0_10px_var(--primary)] transition-all"
+              className="bg-black/50 backdrop-blur-md border-white/10 hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:border-primary hover:shadow-[0_0_10px_var(--primary)] transition-all"
           >
               <Minus className="w-4 h-4" />
           </Button>
@@ -1052,7 +1055,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               variant="outline"
               size="icon"
               onClick={() => handleZoom('reset')}
-              className="bg-black/50 backdrop-blur-md border-white/10 hover:bg-primary hover:text-white hover:border-primary hover:shadow-[0_0_10px_var(--primary)] transition-all text-[10px] font-mono"
+              className="bg-black/50 backdrop-blur-md border-white/10 hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:border-primary hover:shadow-[0_0_10px_var(--primary)] transition-all text-[10px] font-mono"
           >
               100%
           </Button>

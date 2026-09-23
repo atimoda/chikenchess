@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react"
 import { Chess, type Move, type Square } from "chess.js"
 import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
-import { ChessgroundBoard, PiecesSVG } from "./chessground-board"
+import { ChessgroundBoard, PiecesSVG, type AnalysisArrow } from "./chessground-board"
 import { LiveCodeOverlay } from "./live-code-overlay"
 import { LiveCodeWidget } from "./live-code-widget"
 import { AudioVisualizer } from "./audio-visualizer"
@@ -13,10 +13,9 @@ import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
-import { MusicTransportReadout, MusicVoiceReadout } from './music-playback'
+import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './music-playback'
 import { MusicHarmonyReadout } from './music-transition-view'
 import { VersionChangelog } from './version-changelog'
-import { Draggable } from './ui/draggable'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -26,9 +25,10 @@ import { ArrowLeft, Music2, Settings2, Undo2, Redo2, Pause, Power, Play, Check, 
 import { toast } from "sonner"
 import { conquerCity, unlockNextCity } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
+import { MixerWidget } from "./mixer-widget"
 import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
-import { ChessEvaluationQueue } from "@/lib/chess-evaluation"
+import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, type ChessMoveAnalysis } from "@/lib/chess-evaluation"
 
 import {
   DropdownMenu,
@@ -44,38 +44,60 @@ interface ChessGameProps {
   onBack: () => void
 }
 
+function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis | null; status?: string }) {
+  if (status) return <div className="text-white/40">{status}</div>
+  if (!analysis) return <div className="text-white/40">Analisando movimentos…</div>
+  return <div aria-label="Desempenho da análise" className="border-t border-white/15 pt-2">
+    <div className="text-white/40">Estimativa · {analysis.side === 'w' ? 'brancas' : 'pretas'} a jogar · avaliação {analysis.quickMs} ms / prof. {analysis.quickDepth} · ranking {analysis.engineMs} ms / prof. {analysis.depth} · {(analysis.quickNodes + analysis.nodes).toLocaleString()} nós</div>
+    {!analysis.complete&&<div className="text-white/40">Orçamento esgotado antes de comparar todas as jogadas.</div>}
+  </div>
+}
+
 export function ChessGame({ city, onBack }: ChessGameProps) {
   const [game, setGame] = useState(new Chess())
   const [currentPattern, setCurrentPattern] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
+  const [tabVisible, setTabVisible] = useState(true)
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [moveHistory, setMoveHistory] = useState<string[]>([])
   const [redoStack, setRedoStack] = useState<string[]>([]) // Stack of SAN moves to redo
   const [gameStatus, setGameStatus] = useState<string>("Your move")
-  const [aiDepth, setAiDepth] = useState(10) // Initialize with default, update in useEffect
+  const [aiDepth, setAiDepth] = useState(5)
+  const aiDifficultyLabel = aiDepth === 5 ? "Easy" : aiDepth === 10 ? "Medium" : aiDepth === 15 ? "Hard" : "Expert"
   const [capturedPieces, setCapturedPieces] = useState<{ white: string[]; black: string[] }>({
     white: [],
     black: [],
   })
   
-  // Sync aiDepth when city changes
+  // Every city starts on Easy; the menu can override it for this match.
   useEffect(() => {
-    console.log("City changed to:", city.name, "Default Depth:", city.aiDepth)
-    setAiDepth(city.aiDepth || 10)
-  }, [city])
+    setAiDepth(5)
+  }, [city.id])
+
+  useEffect(() => {
+    const updateVisibility = () => setTabVisible(document.visibilityState === 'visible')
+    updateVisibility()
+    document.addEventListener('visibilitychange', updateVisibility)
+    return () => document.removeEventListener('visibilitychange', updateVisibility)
+  }, [])
 
   const [activeSquares, setActiveSquares] = useState<Set<string>>(new Set())
   const [synthSelectedSquare, setSynthSelectedSquare] = useState<string | null>(null)
   const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
   const [globalEffects, setGlobalEffects] = useState<GlobalEffects>({ ...DEFAULT_GLOBAL_EFFECTS, bpm: city.bpm })
   const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
+  const [lastEvalMate, setLastEvalMate] = useState<number | null>(null)
+  const [evaluationError, setEvaluationError] = useState<string | null>(null)
+  const aiMoveCallbackRef = useRef<(uci: string) => void>(() => {})
+  const aiMoveTimerRef = useRef<number | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
+  const [moveAnalysis, setMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
+  const [analysisArrows, setAnalysisArrows] = useState<AnalysisArrow[]>([])
+  const analysisArrowTimeoutRef = useRef<number | null>(null)
  
-  const stockfishRef = useRef<Worker | null>(null)
   const gameRef = useRef(game)
   const rewardedCheckmateFenRef = useRef<string | null>(null)
-  const evalStockfishRef = useRef<Worker | null>(null)
   const evaluationQueueRef = useRef<ChessEvaluationQueue | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const centerContainerRef = useRef<HTMLDivElement | null>(null)
@@ -85,6 +107,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const globalPanelRef = useRef<HTMLDivElement | null>(null)
   const globalPanelHandleRef = useRef<HTMLDivElement | null>(null)
   const globalPanelToggleRef = useRef<HTMLButtonElement | null>(null)
+  const mixerRef = useRef<HTMLDivElement | null>(null)
+  const mixerHandleRef = useRef<HTMLDivElement | null>(null)
+  const mixerToggleRef = useRef<HTMLButtonElement | null>(null)
   const liveCodeRef = useRef<HTMLDivElement | null>(null)
   const liveCodeHandleRef = useRef<HTMLDivElement | null>(null)
   const liveCodeToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -92,17 +117,22 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const movesTickerRef = useRef<HTMLDivElement>(null)
   const [knobsPosition, setKnobsPosition] = useState<{ x: number; y: number } | null>(null)
   const [globalPanelPosition, setGlobalPanelPosition] = useState<{ x: number; y: number } | null>(null)
+  const [mixerPosition, setMixerPosition] = useState<{ x: number; y: number } | null>(null)
   const [spectrogramPosition, setSpectrogramPosition] = useState<{ x: number; y: number } | null>(null)
   const [liveCodePosition, setLiveCodePosition] = useState<{ x: number; y: number } | null>(null)
   
   // Intro State
-  // 0 = Intro Text, 1 = Intro Boxes, 2 = Board Descend, 3 = Game Active
+  // 0 = Intro Text, 1 = City Title, 2 = Board Descend, 3 = Game Active
   const [introPhase, setIntroPhase] = useState(0)
   const [currentIntroLine, setCurrentIntroLine] = useState(0)
   const [showIntroButton, setShowIntroButton] = useState(false)
-  const [showStartButton, setShowStartButton] = useState(false)
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
-  const [isStartPressed, setIsStartPressed] = useState(false)
+  const introStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const introStartRequestedRef = useRef(false)
+
+  useEffect(() => () => {
+    if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
+  }, [])
 
   const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([])
   const [musicEngineOn, setMusicEngineOn] = useState(true)
@@ -154,12 +184,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             // Hide widgets on mobile by default or position off-screen/managed via CSS visibility
             setKnobsPosition({ x: 0, y: 0 })
             setGlobalPanelPosition({ x: 0, y: 0 })
+            setMixerPosition({ x: 0, y: 0 })
             setSpectrogramPosition({ x: 0, y: 0 })
             setLiveCodePosition({ x: 0, y: 0 })
             
             // Turn off widgets on mobile to maintain clean zero-scroll view
             setKnobsOn(false)
             setGlobalPanelOn(false)
+            setMixerOn(false)
             setSpectrogramOn(false)
             setLiveCodeOn(false)
         } else {
@@ -180,10 +212,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             // Random distance from center line (20 to 40px)
             const getCenterPadding = () => 20 + Math.random() * (40 - 20)
 
-            // Leave room for the taller DJ mixer and keep the code below it.
+            // Keep Board Params, mixer, and Strudel stacked on the left.
             setGlobalPanelPosition({ 
                 x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
                 y: headerH
+            })
+            setMixerPosition({
+                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
+                y: headerH + 260
             })
 
             // Compact spectrum below the taller piece inspector.
@@ -202,12 +238,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             // Transport and code below Board Params, clear of Piece Params.
             setLiveCodePosition({
                 x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
-                y: headerH + 600
+                y: headerH + 530
             })
             
             // Default states
             setSpectrogramOn(false)
             setGlobalPanelOn(false)
+            setMixerOn(false)
             setKnobsOn(false)
             setLiveCodeOn(false)
         }
@@ -255,21 +292,20 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       // const clickAudio = new Audio('/sounds/click.mp3') // Placeholder
       playSquareSample('e4') // Reusing for now as requested for click
 
-      // Fade out text, move to Phase 1 (Boxes)
+      // Show the city title for four seconds, with an optional click to advance.
       setIntroPhase(1)
-      setTimeout(() => {
-          setShowIntroBoxes(true)
-          // Play box appear sound
-          playSquareSample('e4') // Example sound
-          setTimeout(() => {
-             setShowStartButton(true)
-          }, 1000)
-      }, 2000) // Increased to 2000ms as requested
+      setShowIntroBoxes(true)
+      introStartRequestedRef.current = false
+      if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
+      introStartTimerRef.current = setTimeout(() => handleStartGame(), 4000)
   }
 
   const handleStartGame = () => {
-      // Phase 1.5: Hide button, Darken Background
-      setShowStartButton(false)
+      if (introStartRequestedRef.current) return
+      introStartRequestedRef.current = true
+      if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
+      introStartTimerRef.current = null
+      // Fade out the city title, then darken the background.
       setShowIntroBoxes(false)
       setIsBackgroundDark(true)
       
@@ -330,6 +366,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
     const [knobsOn, setKnobsOn] = useState(false)
   const [globalPanelOn, setGlobalPanelOn] = useState(false)
+  const [mixerOn, setMixerOn] = useState(false)
   const [spectrogramOn, setSpectrogramOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
   
@@ -362,9 +399,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     targetSide?: 'left' | 'right' | 'top' | 'bottom'
   }[]>([])
 
-  const music = useMusic(moveHistory, city, isPlaying, globalEffects.bpm, globalEffects.volume, liveCodeOn && (!isMobile || mobileControlsOpen), musicEngineOn)
+  const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, liveCodeOn && (!isMobile || mobileControlsOpen), musicEngineOn)
+  useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
-  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying, activeSquares, squareEffects, !music.enabled)
+  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying && tabVisible, activeSquares, squareEffects, !music.enabled)
 
   // A city kit owns its initial tempo. The global control can still change it
   // freely after the kit has been loaded for this match.
@@ -416,53 +454,102 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     gameRef.current = game
   }, [game])
 
-  // Initialize Stockfish
+  // One single-thread engine, shared by evaluation and opponent play.
   useEffect(() => {
-    stockfishRef.current = new Worker("/stockfish.js")
-    stockfishRef.current.postMessage("uci")
-    stockfishRef.current.postMessage("isready")
-
-    stockfishRef.current.onmessage = (event) => {
-      const message = event.data as string
-      // console.log("Stockfish says:", message)
-      if (message.startsWith("bestmove")) {
-        console.log("Stockfish returned bestmove:", message)
-        const moveStr = message.split(" ")[1]
-        if (moveStr && moveStr !== "(none)") {
-          makeAIMove(moveStr)
-        } else {
-            console.warn("Stockfish returned no move:", message)
-        }
-        setIsThinking(false)
-      }
-    }
-
-    const constrained = isConstrainedDevice()
-    const evalWorker = new Worker("/stockfish.js")
-    evalStockfishRef.current = evalWorker
-    const evaluationQueue = new ChessEvaluationQueue(evalWorker, {
+    const worker = new Worker(STOCKFISH_WORKER_URL)
+    const queue = new ChessEvaluationQueue(worker, {
       onBusy: setIsEvaluating,
-      onScore: setLastEvalScore,
-    }, constrained ? 3 : 10)
-    evaluationQueueRef.current = evaluationQueue
-    evalWorker.postMessage("uci")
-    evalWorker.postMessage("isready")
-    evalWorker.onmessage = (event) => evaluationQueue.handleMessage(String(event.data))
-
+      onScore: (score, mate) => { setLastEvalScore(score); setLastEvalMate(mate) },
+      onAnalysis: setMoveAnalysis,
+      onMove: (uci, fen) => {
+        if (gameRef.current.fen() !== fen) return
+        if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
+        aiMoveTimerRef.current = window.setTimeout(() => {
+          aiMoveTimerRef.current = null
+          if (gameRef.current.fen() !== fen) return
+          aiMoveCallbackRef.current(uci)
+          setIsThinking(false)
+        }, 500 + Math.random() * 2500)
+      },
+      onError: message => {
+        if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
+        aiMoveTimerRef.current = null
+        worker.terminate(); setEvaluationError(message); setLastEvalScore(null); setIsThinking(false)
+      },
+    }, isConstrainedDevice())
+    evaluationQueueRef.current = queue
+    worker.onmessage = event => queue.handleMessage(String(event.data))
+    worker.onerror = () => queue.fail()
+    worker.onmessageerror = () => queue.fail()
+    queue.initialize()
     return () => {
-      stockfishRef.current?.terminate()
-      evalStockfishRef.current?.terminate()
-      evaluationQueueRef.current = null
+      if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
+      aiMoveTimerRef.current = null
+      queue.reset(); worker.terminate(); evaluationQueueRef.current = null
     }
   }, [])
 
-  const requestEvaluation = useCallback((gameInstance: Chess) => {
-    if (!evaluationQueueRef.current) {
-      setIsEvaluating(false)
+  const requestEvaluation = useCallback((gameInstance: Chess, opponentSkill?: number) => {
+    if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
+    aiMoveTimerRef.current = null
+    if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
+    analysisArrowTimeoutRef.current = null
+    setAnalysisArrows([])
+    gameRef.current = gameInstance
+    if (gameInstance.isGameOver()) {
+      evaluationQueueRef.current?.reset()
+      setLastEvalScore(gameInstance.isCheckmate() ? (gameInstance.turn() === 'w' ? -100000 : 100000) : 0)
+      setLastEvalMate(gameInstance.isCheckmate() ? 0 : null)
+      setIsThinking(false)
       return
     }
-    evaluationQueueRef.current.request(gameInstance.fen(), gameInstance.turn())
+    setLastEvalScore(null)
+    setLastEvalMate(null)
+    const candidates = gameInstance.moves({ verbose: true }).map(move => ({
+      uci: `${move.from}${move.to}${move.promotion ?? ''}`, san: move.san,
+    }))
+    const history = gameInstance.history({ verbose: true })
+    const position = history.length
+      ? `position fen ${history[0].before} moves ${history.map(move => `${move.from}${move.to}${move.promotion ?? ''}`).join(' ')}`
+      : `position fen ${gameInstance.fen()}`
+    evaluationQueueRef.current?.request(gameInstance.fen(), gameInstance.turn(), candidates, { position, skill: opponentSkill })
   }, [])
+
+  const handleAIDifficultyChange = useCallback((level: number) => {
+    setAiDepth(level)
+    const skill = level === 5 ? 0 : level === 10 ? 5 : level === 15 ? 12 : 20
+    if (aiMoveTimerRef.current !== null && gameRef.current.turn() === 'b') {
+      window.clearTimeout(aiMoveTimerRef.current)
+      aiMoveTimerRef.current = null
+      setIsThinking(true)
+      requestEvaluation(gameRef.current, skill)
+    } else {
+      evaluationQueueRef.current?.setSkill(skill)
+    }
+  }, [requestEvaluation])
+
+  useEffect(() => () => {
+    if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
+  }, [])
+
+  const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
+    if (!moveAnalysis?.complete || moveAnalysis.fen !== gameRef.current.fen()) return
+    if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
+    setAnalysisArrows(moveAnalysis[kind].map(move => ({
+      from: move.uci.slice(0, 2) as Square,
+      to: move.uci.slice(2, 4) as Square,
+      label: formatEvaluation(move.change, move.changeMate),
+      tone: kind,
+    })))
+    analysisArrowTimeoutRef.current = window.setTimeout(() => {
+      setAnalysisArrows([])
+      analysisArrowTimeoutRef.current = null
+    }, 3000)
+  }, [moveAnalysis])
+
+  useEffect(() => {
+    if (introPhase === 3) requestEvaluation(gameRef.current)
+  }, [introPhase, requestEvaluation])
 
   // Update pattern when board changes
   useEffect(() => {
@@ -533,7 +620,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         return
       }
 
-      const gameCopy = new Chess(currentGame.fen())
+      const gameCopy = new Chess()
+      gameCopy.loadPgn(currentGame.pgn())
       try {
         const from = moveStr.slice(0, 2)
         const to = moveStr.slice(2, 4)
@@ -556,6 +644,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
         if (move) {
           setGame(gameCopy)
+          requestEvaluation(gameCopy)
           setMoveHistory((prev) => [...prev, move.san])
           updateCapturedPieces(move)
           setSynthSelectedSquare(null) // Clear selection on AI move
@@ -577,8 +666,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         console.warn("Failed to apply AI move:", moveStr, e)
       }
     },
-    [updateCapturedPieces],
+    [updateCapturedPieces, requestEvaluation],
   )
+
+  useEffect(() => { aiMoveCallbackRef.current = makeAIMove }, [makeAIMove])
 
   const handlePlayerMove = useCallback(
     (move: Move) => {
@@ -606,26 +697,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         togglePlayback()
       }
 
-      // Undo to get the clean state, then redo
-      const gameCopy = new Chess(game.fen())
+      // Preserve repetition history when copying the updated game.
+      const gameCopy = new Chess()
+      gameCopy.loadPgn(game.pgn())
       setGame(gameCopy)
       gameRef.current = gameCopy // Ensure ref is updated immediately to prevent race conditions with AI
 
-      // Trigger AI move
-      console.log("Player moved. Checking game over:", gameCopy.isGameOver())
-      if (!gameCopy.isGameOver()) {
-        setIsThinking(true)
-        console.log("Triggering AI for FEN:", gameCopy.fen())
-        setTimeout(() => {
-          stockfishRef.current?.postMessage(`position fen ${gameCopy.fen()}`)
-          const effectiveDepth = isConstrainedDevice() ? Math.min(aiDepth, 6) : aiDepth
-          stockfishRef.current?.postMessage(`go depth ${effectiveDepth}`)
-        }, 300)
-      } else {
-        console.log("Game over detected, AI not triggered.")
-      }
+      if (!gameCopy.isGameOver()) setIsThinking(true)
 
-      // Update active squares for Player
       setActiveSquares(prev => {
         const next = new Set(prev)
         next.delete(move.from)
@@ -636,15 +715,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         }
         return next
       })
-      requestEvaluation(gameCopy)
+      requestEvaluation(gameCopy, aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20)
     },
     [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation],
   )
 
   const resetGame = useCallback(() => {
-    stockfishRef.current?.postMessage("stop")
     evaluationQueueRef.current?.reset()
-    setGame(new Chess())
+    const freshGame = new Chess()
+    gameRef.current = freshGame
+    setGame(freshGame)
     setMoveHistory([])
     setRedoStack([])
     setIsThinking(false)
@@ -654,10 +734,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setSquareEffects({})
     music.reset()
     setLastEvalScore(null)
+    setLastEvalMate(null)
     setIsEvaluating(false)
     setIsBackgroundDark(false)
     rewardedCheckmateFenRef.current = null
-  }, [])
+    requestEvaluation(freshGame)
+  }, [requestEvaluation])
 
   const undoMove = useCallback(() => {
     if (moveHistory.length === 0) return
@@ -698,11 +780,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }
     })
 
-    // Stop AI if thinking
-    if (isAiThinking) {
-        setIsThinking(false)
-        stockfishRef.current?.postMessage("stop")
-    }
+    // requestEvaluation cancels any pending opponent result before switching position.
+    setIsThinking(false)
 
     // Save undone moves to stack in reverse order (LIFO for redo)
     const movesToUndo = moveHistory.slice(-stepsToUndo).reverse()
@@ -713,8 +792,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setCapturedPieces(newCapturedPieces as { white: string[], black: string[] })
     setActiveSquares(newActiveSquares)
 
-    // Force FEN update and request evaluation with slight delay to ensure state consistency
-    // Also log to debug FEN mismatch
+    // Re-evaluate the reconstructed position with its repetition history.
     console.log("Undo to FEN:", newGame.fen())
     requestEvaluation(newGame)
   }, [moveHistory, requestEvaluation])
@@ -726,7 +804,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     const moveSan = redoStack[redoStack.length - 1]
     const newRedoStack = redoStack.slice(0, -1)
 
-    const gameCopy = new Chess(game.fen())
+    const gameCopy = new Chess()
+      gameCopy.loadPgn(game.pgn())
     const nextCaptured = { white: [...capturedPieces.white], black: [...capturedPieces.black] }
     const nextActiveSquares = new Set(activeSquares)
 
@@ -777,7 +856,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     if (!isPlaying) {
         // Auto-activate Board Params (Global Control Panel) when play starts
         setGlobalPanelOn(true)
-        setActiveWidgetOrder(prev => prev.includes('globalPanel') ? prev : [...prev, 'globalPanel'])
+        setMixerOn(true)
+        setActiveWidgetOrder(prev => [...prev.filter(id => id !== 'globalPanel' && id !== 'mixer'), 'globalPanel', 'mixer'])
     }
     await togglePlayback()
     setIsPlaying((prev) => !prev)
@@ -795,18 +875,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       })
       
       if (globalPanelRef.current) observer.observe(globalPanelRef.current)
+      if (mixerRef.current) observer.observe(mixerRef.current)
       if (spectrogramHandleRef.current) observer.observe(spectrogramHandleRef.current)
       if (liveCodeRef.current) observer.observe(liveCodeRef.current)
       if (knobsRef.current) observer.observe(knobsRef.current)
       
       return () => observer.disconnect()
-  }, [globalPanelOn, spectrogramOn, liveCodeOn, knobsOn, introPhase])
+  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, introPhase])
 
-  const whiteAdvantage =
-    lastEvalScore === null ? 0.5 : 1 / (1 + Math.pow(10, -lastEvalScore / 400))
-  // Invert percent as requested: "se estiver mostrando 35%, mostre 65%"
-  const whitePercent = 100 - Math.round(whiteAdvantage * 100)
-  const blackPercent = 100 - whitePercent
+  // Visual balance only, not a probability model. +5 pawns fills the bar.
+  const whitePercent = lastEvalScore === null ? 50 : 50 + Math.max(-50, Math.min(50, lastEvalScore / 10))
 
   useEffect(() => {
     if (!rootRef.current || !boardAreaRef.current) {
@@ -822,6 +900,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     // --- CHAIN CONNECTIONS (MST) ---
     const widgets = {
         'globalPanel': { ref: globalPanelRef, on: globalPanelOn },
+        'mixer': { ref: mixerRef, on: mixerOn },
         'spectrogram': { ref: spectrogramHandleRef, on: spectrogramOn },
         'liveCode': { ref: liveCodeRef, on: liveCodeOn }
     }
@@ -1093,7 +1172,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setKnobsConnection(null)
     }
 
-  }, [synthSelectedSquare, knobsPosition, globalPanelPosition, spectrogramPosition, liveCodePosition, knobsOn, globalPanelOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick])
+  }, [synthSelectedSquare, knobsPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick])
 
   const handleWidgetHeaderClick = (id: string) => {
     setActiveWidgetOrder(prev => {
@@ -1125,11 +1204,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onInstrumentChange={music.updateInstrument}
                 playback={knobsOn && music.enabled && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
-                  <MusicVoiceReadout variationTabs instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} />
+                  <MusicVoiceReadout variationTabs showStatus={false} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} />
                 </> : undefined}
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
                 selectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
+                selectedStatus={music.enabled && music.selected ? <MusicVoiceBadge monitor={music.monitor} id={music.selected.id} /> : undefined}
                 selectedPieceInfo={(() => {
                     if (music.enabled) return music.instrument?.name ?? null
                     if (!synthSelectedSquare) return null
@@ -1175,8 +1255,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <GlobalControlPanel
-                teamMixes={music.enabled ? music.teamMixes : undefined}
-                onTeamMixChange={music.updateTeamMix}
                 tonality={music.tonality}
                 onTonalityChange={music.setTonality}
                 harmony={music.harmony}
@@ -1196,6 +1274,21 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onClickCapture={() => handleWidgetHeaderClick('globalPanel')}
             />
 
+            <MixerWidget
+                teamMixes={music.teamMixes}
+                onTeamMixChange={music.updateTeamMix}
+                ref={mixerRef}
+                handleRef={mixerHandleRef}
+                toggleRef={mixerToggleRef}
+                cityColor={city.color}
+                position={mobileMode ? undefined : (mixerPosition || undefined)}
+                onPositionChange={setMixerPosition}
+                isOn={mixerOn}
+                onToggle={() => toggleWidget('mixer', setMixerOn)}
+                style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('mixer') + 10 }}
+                onClickCapture={() => handleWidgetHeaderClick('mixer')}
+            />
+
             <LiveCodeWidget
                 playback={liveCodeOn && music.enabled && music.engineActive ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
@@ -1203,6 +1296,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   {music.reactionDescriptions.map((description, i) => <div key={i}>{description}</div>)}
                   <MusicTransportReadout monitor={music.monitor} />
                   <MusicHarmonyReadout monitor={music.monitor} />
+                  <MoveAnalysisReadout analysis={moveAnalysis} status={evaluationError ?? (game.isGameOver() ? "Partida encerrada." : undefined)} />
                 </> : undefined}
                 ref={liveCodeRef}
                 toggleRef={liveCodeToggleRef}
@@ -1292,10 +1386,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       {introPhase < 3 && (
           <div className={cn(
               "absolute inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-all duration-[3000ms]",
-              introPhase === 0 ? "bg-background" : "bg-transparent pointer-events-none"
-          )} onClick={skipIntro}>
+              introPhase === 0 ? "bg-background" : introPhase === 1 ? "bg-transparent" : "bg-transparent pointer-events-none"
+          )} onClick={() => {
+              if (introPhase === 0) skipIntro()
+              if (introPhase === 1) handleStartGame()
+          }}>
               {/* Pointer Events Wrapper for Interactive Elements */}
-              <div className="contents pointer-events-auto">
+              <div className={cn("contents", introPhase < 2 ? "pointer-events-auto" : "pointer-events-none")}>
               
               {/* Intro Phase 0: Text Lines */}
               {introPhase === 0 && (
@@ -1352,174 +1449,27 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   </div>
               )}
 
-              {/* Intro Phase 1 & 2: Info Boxes & Start */}
-                      {(introPhase === 1 || introPhase === 2) && (
-                          <div className={cn(
-                              "flex flex-col items-center gap-8 w-full max-w-4xl px-4 pointer-events-auto",
-                          )}>
-                        <div className="flex flex-col items-center gap-6 w-full max-w-md">
-                            {/* Title Outside Box */}
-                            <h2 
-                                className={cn(
-                                    "text-3xl md:text-4xl font-black flex items-center gap-3 transition-all duration-1000 delay-500", // Added 500ms delay
-                                    showIntroBoxes && !isStartPressed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
-                                    isStartPressed && "duration-100 opacity-0"
-                                )}
-                                style={{ 
-                                    color: 'black',
-                                    textShadow: `0 0 15px ${city.color}, 0 0 30px ${city.color}`
-                                }}
-                            >
-                                {city.name.toUpperCase()}
-                            </h2>
-
-                            {/* Box 1: City Stats */}
-                            <Draggable
-                                dragFromBackground
-                                className={cn(
-                                    "bg-black/80 border border-white/10 backdrop-blur-md p-6 rounded-xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] transition-[opacity,transform] duration-1000 w-full cursor-grab active:cursor-grabbing select-none",
-                                    showIntroBoxes && !isStartPressed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
-                                    isStartPressed && "duration-100 opacity-0"
-                                )}
-                                style={{ position: 'relative', borderColor: `${city.color}40`, touchAction: 'none' }}
-                                aria-label="Informações da cidade"
-                            >
-                                {/* Description Moved to Top & Resized */}
-                                <div className="mb-6 text-base md:text-lg text-white/90 italic leading-relaxed font-light border-b border-white/10 pb-4">
-                                    "{city.description}"
-                                </div>
-
-                                <div className="space-y-3 font-mono text-sm">
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-muted-foreground">GENRE</span>
-                                        <span className="text-white font-bold">{city.genre}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-muted-foreground">BPM</span>
-                                        <span>{city.bpm}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-muted-foreground">SCALE</span>
-                                        <span className="truncate max-w-[200px] text-right">{city.scale.join(" ")}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-muted-foreground">AI LEVEL</span>
-                                        <span className="text-yellow-400">
-                                            {city.aiDepth === 5 ? "EASY (Depth 5)" :
-                                             city.aiDepth === 10 ? "MEDIUM (Depth 10)" :
-                                             city.aiDepth === 15 ? "HARD (Depth 15)" :
-                                             "EXPERT (Depth 20)"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </Draggable>
-                        </div>
-
-                        {/* Sound Kit Box HIDDEN for now */}
-                        {false && (
-                            <div className="hidden">
-                                {/* Original Sound Kit Code was here */}
-                            </div>
-                        )}
-
-                        <div className={cn(
-                            "relative z-30 mt-8 transition-all duration-1000 delay-400",
-                            showStartButton ? "opacity-100 translate-y-0" : "opacity-0 translate-y-0"
-                        )}>
-                            <Button
-                                className="cursor-pointer relative overflow-hidden bg-black hover:bg-black/80 text-black font-bold text-xl px-16 py-8 tracking-widest uppercase shadow-[0_0_30px_var(--city-neon)] hover:shadow-[0_0_50px_var(--city-neon)] hover:scale-105 transition-all duration-300 group"
-                                style={{ "--city-neon": city.color } as React.CSSProperties}
-                                onMouseDown={(e) => {
-                                    e.stopPropagation()
-                                    setIsStartPressed(true)
-                                    if (engineRef.current) {
-                                        // Pitch shift -1 tone (-2 semitones)
-                                        engineRef.current.setAmbiencePitch(Math.pow(2, -2 / 12))
-                                    }
-                                }}
-                                onMouseUp={(e) => {
-                                    e.stopPropagation()
-                                    handleStartGame()
-                                }}
-                                onMouseLeave={() => {
-                                    if (isStartPressed && introPhase < 3) {
-                                        setIsStartPressed(false)
-                                        if (engineRef.current) {
-                                            engineRef.current.setAmbiencePitch(1)
-                                        }
-                                    }
-                                    engineRef.current?.stopAmbience()
-                                }}
-                                onMouseEnter={() => {
-                                    if (engineRef.current) {
-                                        if (engineRef.current.context?.state === 'suspended') {
-                                            engineRef.current.context.resume()
-                                        }
-                                        engineRef.current.startAmbience(city.scale, city.id)
-                                        engineRef.current.setGlobalVolume(0.5)
-
-                                        // Play default hover sound (BD)
-                                        const ctx = engineRef.current.context
-                                        if (ctx) {
-                                             const t = ctx.currentTime
-                                             const pitchVar = 0.9 + Math.random() * 0.2
-                                             const osc = ctx.createOscillator()
-                                             const gain = ctx.createGain()
-                                             osc.frequency.setValueAtTime(150 * pitchVar, t)
-                                             osc.frequency.exponentialRampToValueAtTime(40 * pitchVar, t + 0.1)
-                                             gain.gain.setValueAtTime(0.15, t)
-                                             gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1)
-                                             osc.connect(gain)
-                                             gain.connect(ctx.destination)
-                                             osc.start(t)
-                                             osc.stop(t + 0.1)
-                                        }
-                                    }
-                                }}
-                                onMouseMove={(e) => {
-                                    const rect = e.currentTarget.getBoundingClientRect()
-                                    const x = e.clientX - rect.left
-                                    const y = e.clientY - rect.top
-                                    const width = rect.width
-                                    e.currentTarget.style.setProperty("--mouse-x", `${x}px`)
-                                    e.currentTarget.style.setProperty("--mouse-y", `${y}px`)
-                                    
-                                    // Calculate proximity to center for radial size
-                                    // 0 = center, 0.5 = edge (normalized)
-                                    const centerX = width / 2
-                                    const distFromCenter = Math.abs(x - centerX) / width // 0 to 0.5
-                                    // Map 0 -> 150px, 0.5 -> 50px
-                                    const maxRadius = 150
-                                    const minRadius = 50
-                                    const radius = maxRadius - (distFromCenter * 2 * (maxRadius - minRadius))
-                                    e.currentTarget.style.setProperty("--radial-radius", `${radius}px`)
-
-                                    if (engineRef.current) {
-                                        // Pitch shift: -2 to +2 semitones (4 semitones range)
-                                        const normalizedX = x / width
-                                        const semitones = (normalizedX * 4) - 2
-                                        const pitch = Math.pow(2, semitones / 12)
-                                        engineRef.current.setAmbiencePitch(pitch)
-                                    }
-                                }}
-                            >
-                                {/* Radial Gradient Background */}
-                                <div 
-                                    className={cn(
-                                        "absolute inset-0 transition-opacity duration-300 pointer-events-none",
-                                        isStartPressed ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                                    )}
-                                    style={{
-                                        background: isStartPressed 
-                                            ? `radial-gradient(circle var(--radial-radius, 150px) at var(--mouse-x, 30%) var(--mouse-y, 30%), white 0%, var(--city-neon) 40%, transparent 70%)`
-                                            : `radial-gradient(circle var(--radial-radius, 150px) at var(--mouse-x, 50%) var(--mouse-y, 50%), white 0%, var(--city-neon) 40%, transparent 80%)`,
-                                        mixBlendMode: 'screen'
-                                    }}
-                                />
-                                {/* Button Text */}
-                                <span className="relative z-10 text-[var(--city-neon)] group-hover:text-black transition-colors duration-300">START MATCH</span>
-                            </Button>
-                        </div>
+              {/* Intro Phase 1 & 2: City title before the board enters */}
+              {(introPhase === 1 || introPhase === 2) && (
+                  <div className="flex flex-col items-center gap-3 md:gap-4 w-full px-4 text-center">
+                      <h2
+                          className={cn(
+                              "text-5xl md:text-7xl lg:text-8xl font-black transition-all duration-700",
+                              showIntroBoxes ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                          )}
+                          style={{ color: 'black', textShadow: `0 0 15px ${city.color}, 0 0 30px ${city.color}` }}
+                      >
+                          {city.name.toUpperCase()}
+                      </h2>
+                      <p
+                          className={cn(
+                              "text-3xl md:text-4xl font-normal transition-all duration-700",
+                              showIntroBoxes ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                          )}
+                          style={{ color: 'black', textShadow: `0 0 15px ${city.color}, 0 0 30px ${city.color}` }}
+                      >
+                          {city.genre} ({city.year})
+                      </p>
                   </div>
               )}
           </div>
@@ -1555,65 +1505,48 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           </div>
         </div>
 
-        <div className={cn("flex items-center gap-2 md:gap-4 transition-opacity duration-500 pointer-events-auto", introPhase === 0 ? "opacity-0" : "opacity-100")}>
-          {/* Status */}
-          <div
-            className={`text-xs md:text-sm font-mono px-3 py-1 rounded-full ${gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "animate-pulse" : ""
-              }`}
-            style={{
-              backgroundColor:
-                gameStatus.includes("CHECK") || gameStatus.includes("MATE")
-                  ? "rgba(239, 68, 68, 0.2)"
-                  : `${city.color}20`,
-              color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color,
-              border: `1px solid ${gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color}40`,
-            }}
-          >
-            {gameStatus}
-          </div>
-
+        <div className={cn("flex items-center gap-3 transition-opacity duration-500 pointer-events-auto", introPhase === 0 ? "opacity-0" : "opacity-100")}>
           {/* Settings */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
-                size="icon" 
-                className="hidden md:flex bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-[var(--hover-color)] active:text-black"
+                size="sm"
+                aria-label={`Dificuldade da IA: ${aiDifficultyLabel}`}
+                className="hidden md:flex min-w-16 justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-[var(--hover-color)] active:text-black"
                 style={{
                     "--hover-color": city.color
                 } as React.CSSProperties}
               >
-                <Settings2 className="w-4 h-4" />
+                <span className="px-1 text-xs font-mono">{aiDifficultyLabel}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
-                AI Difficulty: <span className="text-[var(--city-neon)] font-bold">
-                  {aiDepth === 5 ? "Easy" : aiDepth === 10 ? "Medium" : aiDepth === 15 ? "Hard" : "Expert"}
-                </span>
+                AI Difficulty: <span className="text-[var(--city-neon)] font-bold">{aiDifficultyLabel}</span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setAiDepth(5)} className={cn("justify-between", aiDepth === 5 && "bg-accent text-accent-foreground font-bold")}>
-                Easy (Depth 5)
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(5)} className={cn("justify-between", aiDepth === 5 && "bg-accent text-accent-foreground font-bold")}>
+                Easy (Skill 0)
                 {aiDepth === 5 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAiDepth(10)} className={cn("justify-between", aiDepth === 10 && "bg-accent text-accent-foreground font-bold")}>
-                Medium (Depth 10)
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(10)} className={cn("justify-between", aiDepth === 10 && "bg-accent text-accent-foreground font-bold")}>
+                Medium (Skill 5)
                 {aiDepth === 10 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAiDepth(15)} className={cn("justify-between", aiDepth === 15 && "bg-accent text-accent-foreground font-bold")}>
-                Hard (Depth 15)
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(15)} className={cn("justify-between", aiDepth === 15 && "bg-accent text-accent-foreground font-bold")}>
+                Hard (Skill 12)
                 {aiDepth === 15 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAiDepth(20)} className={cn("justify-between", aiDepth === 20 && "bg-accent text-accent-foreground font-bold")}>
-                Expert (Depth 20)
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(20)} className={cn("justify-between", aiDepth === 20 && "bg-accent text-accent-foreground font-bold")}>
+                Expert (Skill 20)
                 {aiDepth === 20 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           {/* Audio toggle */}
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             {isMobile && <Button variant="outline" size="icon" aria-label="Parâmetros musicais" onClick={() => { setKnobsOn(true); setGlobalPanelOn(true); setLiveCodeOn(true); setMobileControlsOpen(true) }}><Settings2 className="w-4 h-4" /></Button>}
             <Button 
                 variant="outline" 
@@ -1639,7 +1572,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
       </header>
 
-      <div className="relative w-full h-full flex flex-col lg:block justify-start pt-4 lg:pt-0">
+      <div className="relative w-full h-full flex flex-col lg:block justify-start pt-4 lg:pt-0 pointer-events-none">
         
         {/* Footer - Fixed Bottom */}
         <div className={cn(
@@ -1691,7 +1624,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         {/* Animated Descent for Phase 2 -> 3 */}
         <div 
             className={cn(
-                "flex flex-col items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 transition-all duration-[2000ms] ease-out px-2",
+            "flex flex-col items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 transition-all duration-[2000ms] ease-out px-2 pointer-events-none",
                 introPhase < 2 ? "-translate-y-[150vh]" : introPhase === 2 ? "translate-y-[25vh]" : "lg:pt-6"
             )}
             style={{
@@ -1701,14 +1634,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             }}
         >
           <div
-            className="w-full max-w-full flex flex-col items-center relative"
+            className="w-full max-w-full flex flex-col items-center relative pointer-events-none"
             ref={centerContainerRef}
           >
 
 
 
 
-            <div className="flex justify-between gap-0.5 min-h-[2rem] h-8 w-full px-4 lg:px-0">
+            <div className="flex justify-between gap-0.5 min-h-[2rem] h-8 w-full px-4 lg:px-0 pointer-events-none">
               <div className="flex justify-start gap-0.5">
                 {capturedPieces.black.map((p, i) => (
                   <div
@@ -1738,10 +1671,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20">
+            <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20 pointer-events-none">
               {/* Board Area - Moved to Top */}
               <div
-                className="w-[min(90vw,calc(100dvh-270px),512px)] aspect-square relative z-20 mb-2 sm:mb-4"
+                className="w-[min(90vw,calc(100dvh-270px),512px)] aspect-square relative z-20 mb-2 sm:mb-4 pointer-events-auto"
                 ref={boardAreaRef}
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -1759,6 +1692,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   onPieceHold={music.enabled && music.engineActive ? music.audition : undefined}
                   onPieceRelease={music.enabled && music.engineActive ? music.endAudition : undefined}
                   musicPulseMonitor={music.enabled && music.engineActive ? music.pulseMonitor : undefined}
+                  analysisArrows={analysisArrows}
                   onBoardClick={(square) => {
                     if (music.enabled) { music.select(square); return }
                     setSynthSelectedSquare(square)
@@ -1790,7 +1724,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
               {/* Time Control Buttons - Moved Below Board */}
               <div className={cn(
-                  "flex w-full items-center mb-2 sm:mb-4 gap-2 justify-center relative z-50 transition-opacity duration-1000",
+                  "flex w-full items-center mb-2 sm:mb-4 gap-2 justify-center relative z-50 transition-opacity duration-1000 pointer-events-none",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -1842,9 +1776,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 </div>
               </div>
 
+              <div className={cn(
+                  "mb-2 text-center text-xs font-mono transition-opacity duration-1000 pointer-events-none",
+                  introPhase < 3 ? "opacity-0" : "opacity-100",
+                  (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse"
+                )}
+                style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
+              >{gameStatus}</div>
+
               {/* Moves Ticker - Moved ABOVE Eval */}
               <div 
-                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-1.5 px-1 relative z-20 overflow-hidden"
+                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-1.5 px-1 relative z-20 overflow-hidden pointer-events-auto"
                >
                    <div
                       ref={movesTickerRef}
@@ -1864,31 +1806,41 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                    </div>
               </div>
 
-              {/* Eval Bar */}
+              {/* Evaluation bar, marker, and temporary move hints */}
               <div className={cn(
-                  "w-[90vw] max-w-[512px] h-2 bg-black/40 rounded-[12px] overflow-hidden flex flex-col relative mb-1 border border-white/10 relative transition-opacity duration-1000 pointer-events-none select-none",
+                  "w-[90vw] max-w-[512px] mb-2 sm:mb-6 transition-opacity duration-1000 pointer-events-none",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
-                <div className="w-full h-2 relative overflow-hidden">
-                    <div 
-                      className="absolute inset-y-0 left-0 bg-white transition-all duration-1000 ease-in-out"
-                      style={{ width: `${whitePercent}%` }} // Show White%
-                    />
-                    {isEvaluating && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-30">
-                            <Loader2 className="w-2 h-2 text-white animate-spin" />
-                        </div>
-                    )}
+                <div className="h-2 bg-black/40 rounded-[12px] overflow-hidden relative border border-white/10 pointer-events-auto select-none" role="img" aria-label={`Avaliação da posição: ${evaluationError ? 'indisponível' : lastEvalScore === null ? 'em análise' : formatEvaluation(lastEvalScore, lastEvalMate)}`}>
+                  <div
+                    className="absolute inset-y-0 left-0 bg-white transition-all duration-1000 ease-in-out"
+                    style={{ width: `${whitePercent}%` }}
+                  />
+                  {isEvaluating && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-30">
+                      <Loader2 className="w-2 h-2 text-white animate-spin" />
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              <div className={cn(
-                  "w-[90vw] max-w-[512px] flex justify-start mb-2 sm:mb-6 transition-opacity duration-1000",
-                  introPhase < 3 ? "opacity-0" : "opacity-100"
-              )}>
-                  <span className="text-[10px] text-white/80 font-mono tracking-wide">
-                      Chance ({whitePercent}%)
-                  </span>
+                <div className="mt-1.5 flex items-center justify-center gap-1 text-xs font-mono text-white/55">
+                  <button
+                    type="button"
+                    disabled={!moveAnalysis?.complete || !!evaluationError}
+                    onClick={() => showAnalysisArrows("best")}
+                    className="pointer-events-auto text-white/55 underline underline-offset-2 transition-colors hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    melhores jogadas
+                  </button>
+                  <span>/</span>
+                  <button
+                    type="button"
+                    disabled={!moveAnalysis?.complete || !!evaluationError}
+                    onClick={() => showAnalysisArrows("worst")}
+                    className="pointer-events-auto text-white/55 underline underline-offset-2 transition-colors hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    piores jogadas
+                  </button>
+                </div>
               </div>
             </div>
           </div>

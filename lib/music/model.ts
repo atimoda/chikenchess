@@ -35,6 +35,7 @@ export interface Instrument {
   pianoOnly?: boolean
   pianoRolls?: (PianoRoll | null)[]
   selectedVariation?: number
+  loopEnabled?: boolean
   performance?: Performance
   distortion?: number
   distortionMix?: number
@@ -53,7 +54,7 @@ export interface MovementMapping {
   previewFilter: boolean
 }
 
-export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'automations' | 'phrases' | 'pianoRolls' | 'selectedVariation'>>
+export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'notes' | 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'automations' | 'phrases' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled'>>
 
 export const DEFAULT_MOVEMENT: MovementMapping = {
   fileDegrees: 1, rankDegrees: 0.5, panWidth: 0.5, previewFilter: true,

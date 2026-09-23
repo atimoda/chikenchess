@@ -2,11 +2,11 @@ export const HARMONY_PLAN_IDS = ['static', 'cadence', 'circle', 'descent', 'asce
 export type HarmonyPlanId = typeof HARMONY_PLAN_IDS[number]
 
 export const HARMONY_PLANS: Record<HarmonyPlanId, { label: string; degrees: readonly number[] }> = {
-  static: { label: 'Estática · I', degrees: [0] },
-  cadence: { label: 'Cadência · I–IV–V–I', degrees: [0, 3, 4, 0] },
-  circle: { label: 'Circular · I–V–ii–vi', degrees: [0, 4, 1, 5] },
-  descent: { label: 'Descendente · i–VII–VI–V', degrees: [0, -1, -2, -3] },
-  ascent: { label: 'Ascendente · I–ii–IV–V', degrees: [0, 1, 3, 4] },
+  static: { label: 'I - Estática', degrees: [0] },
+  cadence: { label: 'I–IV–V–I - Cadência', degrees: [0, 3, 4, 0] },
+  circle: { label: 'I–V–ii–vi - Circular', degrees: [0, 4, 1, 5] },
+  descent: { label: 'i–VII–VI–V - Descendente', degrees: [0, -1, -2, -3] },
+  ascent: { label: 'I–ii–IV–V - Ascendente', degrees: [0, 1, 3, 4] },
 }
 
 const ROMAN_DEGREES = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'] as const

@@ -3,6 +3,39 @@ const assert = require('node:assert/strict')
 const { loadTs, strudel } = require('../helpers/music.cjs')
 const { voiceSpecs, renderMusicCode, compileVoice } = loadTs('lib/music/runtime.ts')
 const creative = loadTs('lib/music/creative.ts')
+const variationEdit = loadTs('lib/music/variation-edit.ts')
+
+test('variation actions mirror time, invert slides, and affect only the selected bank', () => {
+ const instrument={...creative.createCreativeSession().instruments['w:b1'],notes:'0 [2 4] ~ -1*2',phrases:['0 [2 4] ~ -1*2','6 5 4']}
+ const reversed=variationEdit.reverseVariation(instrument,0)
+ assert.equal(reversed.phrases[0],'-1*2 ~ [4 2] 0')
+ assert.equal(reversed.phrases[1],'6 5 4')
+ assert.equal(reversed.notes,reversed.phrases[0])
+ const rolls={...instrument,pianoRolls:[{bars:1,notes:[
+  {start:0,duration:.25,degree:0,velocity:1,slide:3},{start:.25,duration:.5,degree:4,velocity:.8,slide:-2},{start:.75,duration:.25,degree:2,velocity:.7},
+ ]},null]}
+ assert.deepEqual(variationEdit.reverseVariation(rolls,0).pianoRolls[0].notes,[
+  {start:0,duration:.25,degree:2,velocity:.7},
+  {start:.25,duration:.5,degree:4,velocity:.8,slide:2},
+  {start:.75,duration:.25,degree:0,velocity:1,slide:-3},
+ ])
+ const values=[0,.2,.99,.5];let cursor=0
+ const randomized=variationEdit.randomizeVariation(instrument,0,()=>values[cursor++])
+ assert.equal(randomized.phrases[0],'-1 [0 4] ~ 2*2')
+ assert.equal(randomized.phrases[1],'6 5 4')
+})
+
+test('turning variations off silences the loop but preserves manual board notes', async () => {
+ const api=await strudel(),kit=creative.createCreativeSession(),id='w:b1'
+ kit.pieces.forEach(piece=>piece.active=piece.id===id)
+ kit.instruments[id].loopEnabled=false
+ const snapshot=creative.creativeSnapshot(kit,true)
+ const loop=voiceSpecs(snapshot,null).find(voice=>voice.piece.id===id)
+ assert.equal(compileVoice(api,loop).queryArc(0,4).length,0)
+ const manual=voiceSpecs(snapshot,{id,square:'b1',mode:'manual'}).find(voice=>voice.piece.id===id)
+ assert.ok(compileVoice(api,manual).queryArc(0,1).some(event=>event.hasOnset()))
+ assert.equal(creative.parseCreativeSession(JSON.stringify(kit)).instruments[id].loopEnabled,false)
+})
 
 test('shared harmony moves melodic banks together and leaves pulse voices unchanged', () => {
  const kit=creative.createCreativeSession();kit.scale='Maior';kit.sectionPattern='1'
@@ -32,7 +65,7 @@ test('moving harmony generates one voiced diatonic triad per sustain onset', asy
  const played=compileVoice(await strudel(),phraseVoice).queryArc(0,.01).map(event=>Number(event.value.note)).sort((a,b)=>a-b)
  assert.deepEqual(played,[48,53,57])
  assert.deepEqual(harmonyFrame('cadence',creative.creativeSnapshot(kit,true).scale,1),{
-  plan:'cadence',planLabel:'Cadência · I–IV–V–I',section:1,degree:3,roman:'IV',
+  plan:'cadence',planLabel:'I–IV–V–I - Cadência',section:1,degree:3,roman:'IV',
   chordDegrees:[3,5,7],chordNotes:['F','A','C'],chordName:'F',quality:'maior',
  })
  assert.deepEqual(harmonyFrame('static',['C4','C#4','D4','D#4','E4','F4','F#4','G4','G#4','A4','A#4','B4'],0).chordNotes,['C','E','G'])
@@ -92,9 +125,10 @@ test('section form preserves asymmetric lengths, silence, transpose and restart 
 test('per-note slide uses canonical pattack and pan overrides after global controls', async () => {
  const api=await strudel(),kit=creative.createCreativeSession()
  kit.pieces.forEach(p=>p.active=p.id==='w:b1')
- Object.assign(kit.instruments['w:b1'],{phrases:['0'],groove:undefined,automations:undefined,mask:undefined,performance:undefined,pitchEnvelope:2,pitchAttack:.1,pianoRolls:[{bars:1,notes:[{start:0,duration:.5,degree:0,velocity:.7,slide:-3,slideSeconds:.6,pan:.49},{start:.5,duration:.5,degree:2,velocity:1}]}]})
+ Object.assign(kit.instruments['w:b1'],{phrases:['0'],groove:undefined,automations:undefined,mask:undefined,performance:undefined,pitchEnvelope:2,pitchAttack:.1,pianoRolls:[{bars:1,notes:[{start:0,duration:.5,degree:0,velocity:.7,slide:-3,slideSeconds:.6,pan:.49},{start:.5,duration:.25,degree:2,velocity:1},{start:.75,duration:.25,degree:4,velocity:.8,slide:3}]}]})
  const snapshot=creative.creativeSnapshot(kit,true),events=compileVoice(api,voiceSpecs(snapshot,null)[0]).queryArc(0,1)
  assert.equal(events[0].value.penv,-3);assert.equal(events[0].value.pattack,.6);assert.equal(events[0].value.pan,.49)
  assert.equal(events[1].value.penv,2);assert.equal(events[1].value.pattack,.1)
+ assert.equal(events[2].value.penv,3);assert.equal(events[2].value.pattack,.5)
  assert.equal(events[0].value.ccSlide,undefined)
 })

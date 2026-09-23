@@ -10,8 +10,7 @@ export function MusicHarmonyReadout({monitor}:{monitor:MusicMonitor}){
  if(!t)return null
  const harmony=harmonyFrame(t.harmony,t.scale,frame.section)
  return <div aria-label="Harmonia em execução" style={{borderTop:'1px solid #34473c',paddingTop:8,lineHeight:1.45,font:'inherit'}}>
-  <small style={{display:'block',color:'#93a79a'}}>Harmonia agora · seção {String.fromCharCode(65+Math.max(0,frame.section%8))}</small>
-  <b>{harmony.roman} · {harmony.chordName}</b> <span style={{color:'#b7c8b9'}}>({harmony.chordNotes.join('–')})</span>
+  <div><span style={{color:'#93a79a'}}>Harmonia agora · </span><b>{harmony.roman} · {harmony.chordName}</b> <span style={{color:'#b7c8b9'}}>({harmony.chordNotes.join('–')})</span></div>
   <small style={{display:'block',color:'#93a79a'}}>{harmony.planLabel}{t.harmony==='static'?' · voicing autoral':' · tríade com condução de vozes'}</small>
  </div>
 }

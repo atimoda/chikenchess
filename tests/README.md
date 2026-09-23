@@ -8,12 +8,12 @@
 | `creative.cases.cjs` | 6 | Sessão, edição, validação e migração básica |
 | `patterns.cases.cjs` | 10 | Compilação, groove, automação e prévias |
 | `kits.cases.cjs` | 10 | Cidades, samples, catálogo e persistência |
-| `runtime.cases.cjs` | 10 | Monitor, pulsos isolados, buses por capacidade, transporte ativo e gestos temporários |
+| `runtime.cases.cjs` | 13 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |
-| `editor.cases.cjs` | 4 | Duração, forma, variações e slides por nota |
+| `editor.cases.cjs` | 9 | Duração, forma, edição/espelho de variações, loop por peça e slides por nota |
 | `globe.cases.cjs` | 4 | Voo, geometria, direção do gesto e compensação do popup |
-| `evaluation.cases.cjs` | 3 | Fila de análise, cancelamento do worker, resultados atrasados, undo/redo rápido e cache por FEN exato |
+| `evaluation.cases.cjs` | 11 | UCI, orçamento, sinais/mate, ranking completo, cancelamento, cache com histórico, mudanças de dificuldade durante a busca e integração com Stockfish Lite real |
 | `progression.cases.cjs` | 3 | Migração, recompensa, saldo de ovos e pontos históricos |
 | `optimization.cases.cjs` | 2 | Equivalência de lanes/acordes e isolamento do cache de reverb |
 | `studies.cases.cjs` | 4 | Estudo Mouth Breather e equivalência da exportação |

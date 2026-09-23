@@ -44,6 +44,8 @@ export function InstrumentParameters({selectedId, instrument, effects, mapping, 
               <Range label="Pan adicional" value={effects.pan} min={-1} max={1} onChange={pan => updateEffects({ pan })} />
               <Range label="Reverb" value={effects.reverb} min={0} max={1} onChange={reverb => updateEffects({ reverb })} />
               <Range label="Delay pontuado" value={effects.delay} min={0} max={1} onChange={delay => updateEffects({ delay })} />
+              <Range label="Distorção" value={instrument.distortion ?? 0} min={0} max={10} step={0.1} onChange={distortion => updateInstrument({ distortion })} />
+              <Range label="Nível da distorção" value={instrument.distortionMix ?? 0.25} min={0} max={1} onChange={distortionMix => updateInstrument({ distortionMix })} />
             </div></details>
             <details open><summary>Movimento → música<InfoTip label="Movimento e música">{instrument.behavior === 'pulse' ? 'Percussão mantém os graus ao mover; pan e filtro continuam reagindo.' : 'Deslocamentos partem da casa original. Avanço segue a cor da peça. O resultado é arredondado para graus inteiros e limitado a ±12 graus.'}</InfoTip></summary><div className={styles.controls}>
               <Range label="Graus por coluna" value={mapping.fileDegrees} min={-4} max={4} step={0.5} onChange={fileDegrees => updateMapping({ fileDegrees })} />

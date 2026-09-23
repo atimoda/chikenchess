@@ -9,6 +9,7 @@ const RANGE_HELP: Record<string,string> = {
  'Duração da nota (fração)':'Fração da duração rítmica ocupada pelo som. Valores menores deixam mais espaço entre ataques.',
  'Passa-baixas':'Atenua frequências acima do corte. Reduzir deixa o timbre mais fechado.', 'Passa-altas':'Atenua frequências abaixo do corte. Aumentar remove graves.',
  'Pan':'Posição estéreo: valores negativos deslocam para a esquerda, positivos para a direita.', 'Reverb':'Quantidade de ambiência e cauda reverberante.', 'Delay':'Quantidade de repetições do som.',
+ 'Distorção':'Saturação de 0 a 10 aplicada a este instrumento em todas as variações.', 'Nível da distorção':'Controla o volume do efeito no Strudel (distortvol). Não é uma porcentagem de mistura seco/molhado; ajuste o ganho ao comparar timbres.',
 }
 export function Range({ label, value, min, max, step = 0.01, unit = '', help = true, onChange }: {
   label: string; value: number; min: number; max: number; step?: number; unit?: string; help?: boolean; onChange: (value: number) => void

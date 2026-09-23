@@ -21,6 +21,14 @@ interface ChessgroundBoardProps {
   orientation?: "white" | "black"
   synthSelectedSquare?: Square | null
   activeSquares?: Set<string>
+  analysisArrows?: AnalysisArrow[]
+}
+
+export interface AnalysisArrow {
+  from: Square
+  to: Square
+  label: string
+  tone: "best" | "worst"
 }
 
 const COLUMNS = ["a", "b", "c", "d", "e", "f", "g", "h"]
@@ -57,6 +65,7 @@ export function ChessgroundBoard({
   onPieceHold,
   onPieceRelease,
   musicPulseMonitor,
+  analysisArrows = [],
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -583,6 +592,9 @@ export function ChessgroundBoard({
           .board-square-dark {
             background-color: color-mix(in srgb, var(--city-color) 60%, rgba(150, 150, 150, 0.75) 80%);
           }
+          :global(.black-piece-outline svg *) {
+            stroke: rgba(255, 255, 255, .3) !important;
+          }
         `}</style>
         {ROWS.map((row, rowIndex) =>
           COLUMNS.map((col, colIndex) => {
@@ -619,7 +631,6 @@ export function ChessgroundBoard({
                     "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]",
                 )}
                 style={{
-                  boxShadow: isActive ? `inset 0 0 0 2px ${cityColor}, 0 0 10px ${cityColor}80` : undefined,
                   backgroundColor: isKingInCheck
                     ? "rgba(239, 68, 68, 0.6)"
                     : isSelected
@@ -653,7 +664,6 @@ export function ChessgroundBoard({
                     <div
                       className="absolute inset-0 pointer-events-none rounded-none active-border-fade"
                       style={{
-                        border: `1px solid ${cityColor}`,
                         boxShadow: `0 0 16px ${cityColor}`,
                         zIndex: 13,
                       }}
@@ -686,7 +696,7 @@ export function ChessgroundBoard({
                 {/* Piece */}
                 {piece && !isDragging && !isAnimatingTo && (
                   <div
-                    className={cn("w-[85%] h-[85%] transition-transform duration-150", isSelected && "scale-105")}
+                    className={cn("w-[85%] h-[85%] transition-transform duration-150", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
                     style={{
                       filter: isSelected 
                         ? `drop-shadow(0 0 8px ${cityColor})` 
@@ -730,6 +740,85 @@ export function ChessgroundBoard({
         {musicPulseMonitor && <MusicPulseOverlay monitor={musicPulseMonitor} />}
       </div>
 
+      {analysisArrows.length > 0 && (
+        <svg
+          aria-label="Sugestões de jogadas"
+          className="absolute inset-0 z-30 h-full w-full overflow-visible pointer-events-none"
+          viewBox="0 0 800 800"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <marker id="analysis-arrow-best" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#34d399" />
+            </marker>
+            <marker id="analysis-arrow-worst" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#fb7185" />
+            </marker>
+          </defs>
+          {analysisArrows.map((arrow, index) => {
+            const from = getCoords(arrow.from)
+            const to = getCoords(arrow.to)
+            const x1 = from.x * 8 + 50
+            const y1 = from.y * 8 + 50
+            const x2 = to.x * 8 + 50
+            const y2 = to.y * 8 + 50
+            const dx = x2 - x1
+            const dy = y2 - y1
+            const length = Math.max(1, Math.hypot(dx, dy))
+            const endX = x2 - (dx / length) * 30
+            const endY = y2 - (dy / length) * 30
+            const color = arrow.tone === "best" ? "#34d399" : "#fb7185"
+            return (
+              <g key={`${arrow.from}-${arrow.to}-${index}`}>
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={endX}
+                  y2={endY}
+                  stroke="rgba(0, 0, 0, 0.75)"
+                  strokeWidth="18"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={endX}
+                  y2={endY}
+                  stroke={color}
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  markerEnd={`url(#analysis-arrow-${arrow.tone})`}
+                />
+                <g transform={`translate(${x2} ${y2})`}>
+                  <rect
+                    x="-33"
+                    y="-16"
+                    width="66"
+                    height="32"
+                    rx="10"
+                    fill="rgba(0, 0, 0, 0.88)"
+                    stroke={color}
+                    strokeWidth="3"
+                  />
+                  <text
+                    x="0"
+                    y="1"
+                    fill={color}
+                    fontSize="18"
+                    fontWeight="700"
+                    fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {arrow.label}
+                  </text>
+                </g>
+              </g>
+            )
+          })}
+        </svg>
+      )}
+
       {/* Animating piece */}
       {animatingPiece && (
         <div
@@ -741,7 +830,7 @@ export function ChessgroundBoard({
           }}
         >
              <div
-                className="w-[85%] h-[85%]"
+                className={cn("w-[85%] h-[85%]", animatingPiece.piece.startsWith('b') && "black-piece-outline")}
                 style={{
                   filter: `drop-shadow(0 0 12px ${cityColor})`,
                 }}
@@ -757,7 +846,7 @@ export function ChessgroundBoard({
         <div
           data-dragged-piece={dragPiece.from}
           ref={dragGhostRef}
-          className="absolute pointer-events-none z-50 w-16 h-16"
+          className={cn("absolute pointer-events-none z-50 w-16 h-16", dragPiece.piece.startsWith('b') && "black-piece-outline")}
           style={{
             left: 0,
             top: 0,

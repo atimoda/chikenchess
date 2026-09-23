@@ -24,6 +24,7 @@ export function Knob({ value, min, max, step = .01, label, onChange, formatValue
   const amount = Math.max(0, Math.min(1, toAmount(value)))
   const finish = () => { drag.current = null; setDragging(false) }
   return <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")} data-no-drag>
+    <span className="text-[10px] uppercase font-mono text-muted-foreground text-center">{label}</span>
     <div role="slider" aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={formatValue?.(value)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
       className={cn("relative w-10 h-10 rounded-full bg-secondary border border-border group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]", neon ? "cursor-ew-resize hover:border-[var(--city-neon)]" : "cursor-default", dragging && "border-white")}
       onPointerDown={event => {
@@ -63,9 +64,6 @@ export function Knob({ value, min, max, step = .01, label, onChange, formatValue
         <div className={cn("absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 rounded-full", neon ? "bg-foreground/50 group-hover:bg-white" : "bg-foreground/20")} />
       </div>
     </div>
-    <div className="flex flex-col items-center">
-      <span className="text-[10px] uppercase font-mono text-muted-foreground">{label}</span>
-      <span className={cn("text-[10px] font-mono font-bold", neon ? "text-[var(--city-neon)]" : "text-muted-foreground")}>{formatValue ? formatValue(value) : value.toFixed(2)}</span>
-    </div>
+    <span className="text-[10px] font-mono font-bold text-white">{formatValue ? formatValue(value) : value.toFixed(2)}</span>
   </div>
 }
