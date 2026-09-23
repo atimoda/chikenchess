@@ -870,7 +870,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                 e.preventDefault()
                 setShowAbout(true)
             }}
-            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4 bg-transparent border-none"
+            className="cursor-pointer rounded-md border border-transparent bg-transparent px-3 py-2 text-muted-foreground transition-colors hover:border-white/10 hover:bg-black/80 hover:text-foreground"
           >
             About
           </button>
@@ -879,7 +879,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             variant="ghost" 
             size="icon" 
             onClick={toggleFullscreen} 
-            className="group border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
+            className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
             {isFullscreen ? <Minimize className="w-4 h-4 transition-transform duration-200 group-hover:scale-125" /> : <Maximize className="w-4 h-4 transition-transform duration-200 group-hover:scale-125" />}
           </Button>
@@ -889,7 +889,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             size="default"
             aria-label={`Abrir perfil do jogador. ${playerProfile?.goldenEggs ?? 0} ovos dourados`}
             onClick={() => setShowProfile(true)}
-            className="h-9 gap-[7px] border-white/10 bg-black/50 px-3 font-mono text-xs text-amber-300 backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
+            className="h-9 cursor-pointer gap-[7px] border-white/10 bg-black/50 px-3 font-mono text-xs text-amber-300 backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
             <span>{(playerProfile?.goldenEggs ?? 0).toLocaleString()} golden eggs</span>
             <span aria-hidden="true" className="text-xl">🐔</span>
@@ -984,7 +984,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
 
-                <h2 className="text-2xl font-mono font-bold mb-1 text-primary">chickenchess</h2>
+                <h2 className="mb-1 flex items-center gap-3 font-mono text-2xl font-bold text-primary"><img src="/chickenchess-logo.png" alt="" className="h-16 w-16 object-contain" />chickenchess</h2>
                 
                 <p className="text-xs font-bold text-muted-foreground mb-4">{RELEASE_LABEL}</p>
 
@@ -994,17 +994,13 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                     </p>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4 leading-relaxed mt-6">
-                    This is an independent project built with love and lots of coffee. The idea emerged after dozens of chess games played while listening to electronic music, by cousins Thiago Horta and Rodrigo Zecchinelli. If you enjoy the experience and want to help the development, consider making a donation. Every bit helps us develop more features.
+                    This is an independent project built with love and lots of coffee. The idea emerged after dozens of chess games played while listening to electronic music, by cousins Thiago Atimoda and Rodrigo Zecchinelli. If you enjoy the experience and want to help the development, consider making a donation. Every bit helps us develop more features.
                 </p>
                 
                 <div className="mb-6 space-y-3">
                     <div>
-                         <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">For feedback and discussions, Join our Discord:</p>
-                         <a href="https://discord.gg/Ps66QJdc" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">https://discord.gg/Ps66QJdc</a>
-                    </div>
-                    <div>
                         <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">General Contact:</p>
-                        <a href="mailto:info@chickenchess.com" className="text-sm text-primary hover:underline">info@chickenchess.com</a>
+                        <a href="mailto:atimoda@gmail.com" className="text-sm text-primary hover:underline">atimoda@gmail.com</a>
                     </div>
                 </div>
 

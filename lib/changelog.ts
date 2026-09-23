@@ -1,7 +1,17 @@
-export const RELEASE_LABEL = 'v0.4.38'
+export const RELEASE_LABEL = 'v0.4.40'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.40', date: '23/09/2026', title: 'Logotipo maior no Sobre', groups: [
+    { title: 'Mapa', items: [
+      'O logotipo fica maior ao lado do nome no painel Sobre.',
+    ] },
+  ] },
+  { version: '0.4.39', date: '23/09/2026', title: 'Identidade visual completa', groups: [
+    { title: 'Mapa', items: [
+      'O logotipo aparece nos ícones do navegador e nas prévias ao compartilhar; controles do cabeçalho e informações de contato foram atualizados.',
+    ] },
+  ] },
   { version: '0.4.38', date: '23/09/2026', title: 'Cores da cidade nos controles da partida', groups: [
     { title: 'Partida', items: [
       'Os sliders de Board Params e os botões de energia dos widgets acompanham as cores da cidade, com branco desligado e azul no hover.',
