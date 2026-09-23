@@ -8,7 +8,7 @@
 | `creative.cases.cjs` | 6 | Sessão, edição, validação e migração básica |
 | `patterns.cases.cjs` | 10 | Compilação, groove, automação e prévias |
 | `kits.cases.cjs` | 10 | Cidades, samples, catálogo e persistência |
-| `runtime.cases.cjs` | 14 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba e gestos temporários |
+| `runtime.cases.cjs` | 16 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |
 | `editor.cases.cjs` | 9 | Duração, forma, edição/espelho de variações, loop por peça e slides por nota |
