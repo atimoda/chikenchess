@@ -350,7 +350,7 @@ export function CreativeStudio() {
     suppressClick.current = current.moved || mode === 'play'
     drag.current = null
     setDragVisual(null)
-    music.finishAudition()
+    music.endAudition()
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
   }
 

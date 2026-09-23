@@ -47,15 +47,11 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   }, [playing])
   const audition = useCallback((id: string, square: string, mode: Preview['mode'] = 'manual') => {
     setPreview({ id, square: square as Square, mode })
-    runtime.current?.audition(id, square as Square, mode)
-  }, [])
+    runtime.current?.audition(id, square as Square, mode, input)
+  }, [input])
   const endAudition = useCallback(() => {
     setPreview(null)
     runtime.current?.endAudition()
-  }, [])
-  const finishAudition = useCallback(() => {
-    setPreview(null)
-    runtime.current?.finishAudition()
   }, [])
   useEffect(() => {
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') endAudition() }
@@ -64,5 +60,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, endAudition, finishAudition, preview, pulseMonitor, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
+  return { audition, endAudition, preview, pulseMonitor, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
 }

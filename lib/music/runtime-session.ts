@@ -28,7 +28,6 @@ export class MusicRuntime {
   private state?: MusicSnapshot
   private preview: Preview | null = null
   private unlockAudition: Preview | null = null
-  private releasedAudition: Preview | null = null
   private voices = new Map<string, VoiceSpec>()
   private ready?: Promise<void>
   private disposed = false
@@ -154,11 +153,14 @@ export class MusicRuntime {
       pending:[...this.reactionQueue.pending].map(([id,p])=>({id,cycle:p.cycle,trigger:p.entry.rule.trigger})) }
   }
 
-  audition(id: string, square: Square, mode: Preview['mode'] = 'manual') {
+  audition(id: string, square: Square, mode: Preview['mode'] = 'manual', latestState?: MusicSnapshot) {
+    // Creative coalesces state updates for continuous controls. Flush the
+    // current snapshot before a gesture so first-use previews never race a
+    // delayed React effect and build from an absent or stale instrument map.
+    if (latestState && this.sourceState !== latestState) this.update(latestState)
     if (this.preview?.id === id && this.preview.square === square && this.preview.mode === mode) return
     const crossing = mode === 'manual' && this.preview?.mode === 'manual' && this.preview.id === id && !!this.api && !!this.scheduler
     const requested = { id, square, mode }
-    this.releasedAudition = null
     // Keep the dedicated manual orbit connected while crossing squares. Rebuilding
     // its reverb/output graph for every cell caused a hitch and could drop attacks.
     if (this.preview?.mode === 'manual' && !crossing) this.stopManualHit()
@@ -179,39 +181,11 @@ export class MusicRuntime {
         if (!currentMatches && !pendingMatches) return
         if (pendingMatches) this.unlockAudition = null
         this.triggerPreview(requested)
-        if (this.releasedAudition === requested) {
-          this.releasedAudition = null
-          const hit = this.manualHit
-          if (hit) {
-            const timer = setTimeout(() => {
-              this.visualTimers.delete(timer)
-              if (this.manualHit === hit) {
-                this.stopManualHit()
-                this.refresh()
-              }
-            }, Math.max(0, (hit.end - this.api!.getAudioContext().currentTime) * 1000))
-            this.visualTimers.add(timer)
-          }
-        }
       }).catch(this.error)
   }
 
   endAudition() {
-    this.releasedAudition = null
     if (this.preview?.mode === 'manual') this.unlockAudition = null
-    this.stopManualHit()
-    this.preview = null
-    this.refresh()
-  }
-
-  // A completed Creative drag may finish before first-time audio/sample setup.
-  // Preserve its latest square so the gesture still gets one tactile attack;
-  // pointer cancellation continues to use endAudition() and stays silent.
-  finishAudition() {
-    const pending = this.preview?.mode === 'manual' && this.unlockAudition === this.preview
-      ? this.preview
-      : null
-    this.releasedAudition = pending
     this.stopManualHit()
     this.preview = null
     this.refresh()

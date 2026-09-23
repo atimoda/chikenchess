@@ -1,10 +1,10 @@
-export const RELEASE_LABEL = 'v0.4.47'
+export const RELEASE_LABEL = 'v0.4.48'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
-  { version: '0.4.47', date: '23/09/2026', title: 'Audição confiável no Criativo', groups: [
+  { version: '0.4.48', date: '23/09/2026', title: 'Prévia do Criativo sincronizada', groups: [
     { title: 'Tabuleiro', items: [
-      'Ao concluir um arraste, a última casa ainda toca mesmo se o áudio ou o sample terminarem de carregar depois do gesto; cancelamentos continuam silenciosos.',
+      'O gesto de audição usa imediatamente o estado e os instrumentos atuais do kit, inclusive ao tocar um sample logo após carregar ou editar a formação.',
     ] },
   ] },
   { version: '0.4.46', date: '23/09/2026', title: 'Presença das variações', groups: [

@@ -239,18 +239,12 @@ test('cancelled loading gestures stay silent; the dedicated audition button stil
   runtime.dispose()
 })
 
-test('a completed Creative drag plays its last crossed square if first audio setup is still pending', async () => {
+test('Creative audition flushes the latest snapshot before previewing its piece', async () => {
   const { runtime, attacks } = await manualRuntime()
-  const pendingUnlocks = []
-  runtime.unlock = () => new Promise(resolve => pendingUnlocks.push(resolve))
   const lab = creative.createCreativeSession()
   runtime.scheduler.start = async () => { runtime.scheduler.started = true }
-  runtime.update(creative.creativeSnapshot(lab, false))
-  runtime.audition('w:e1', 'e1')
-  runtime.audition('w:e1', 'e4')
-  runtime.finishAudition()
-  assert.equal(pendingUnlocks.length, 2)
-  pendingUnlocks.forEach(resolve => resolve())
+  const latest = creative.creativeSnapshot(lab, false)
+  runtime.audition('w:e1', 'e4', 'manual', latest)
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(attacks.length, 1)
   assert.equal(runtime.manualHit.voice.square, 'e4')
