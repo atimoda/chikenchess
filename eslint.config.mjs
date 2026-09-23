@@ -8,7 +8,7 @@ export default [
       "node_modules/**",
       ".next/**",
       "dist/**",
-      "public/stockfish.js",
+      "public/engine/stockfish-19-lite-single.js",
       "scripts/**",
     ],
   },

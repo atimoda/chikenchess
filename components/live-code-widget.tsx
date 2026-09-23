@@ -54,10 +54,6 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
     ? "rgba(255,255,255,0.1)" 
     : "rgba(255,255,255,0.3)"
 
-  const toggleIconColor = !isOn 
-    ? "var(--city-neon)" 
-    : "#60a5fa"
-
   const codeRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll when pattern updates
@@ -147,7 +143,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
       <div 
         className={cn(
             "absolute inset-0 z-50 rounded-md transition-all duration-300",
-            isOn ? "border-2 bg-black/80 backdrop-blur-md opacity-100" : "border bg-black/60 backdrop-blur-sm opacity-60",
+            isOn ? "border bg-black/80 backdrop-blur-md opacity-100" : "border bg-black/60 backdrop-blur-sm opacity-60",
             "border-white/30"
         )}
         style={{
@@ -159,14 +155,15 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
-        aria-label={isOn ? 'Desligar Strudel' : 'Ligar Strudel'}
+        aria-label={isOn ? 'Desligar Debug' : 'Ligar Debug'}
         ref={toggleRef}
         className={cn(
-          "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group hover:cursor-pointer",
+          "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
-          borderColor: widgetBorderColor, 
-          color: toggleIconColor,
+          ...panelStyle,
+          borderColor: widgetBorderColor,
           top: -5, 
           left: -8,
           boxShadow: isOn ? `0 0 10px ${cityColor}40` : "none"
@@ -201,7 +198,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
       {/* Invisible Drag Handle Header - z-60 */}
       <div 
         ref={effectiveHandleRef}
-        className="absolute inset-x-0 top-0 h-8 cursor-grab active:cursor-grabbing z-60"
+        className="absolute inset-x-0 top-0 h-8 z-60"
       />
 
       {/* Main Content - z-50 */}
@@ -210,9 +207,9 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
           <div className="flex items-center justify-center mb-2 px-1 h-4 relative w-full shrink-0">
              <span className={cn(
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300 text-center",
-               isOn ? "text-[var(--city-neon)]" : "text-muted-foreground"
+               "text-white"
              )}>
-                STRUDEL
+                DEBUG
              </span>
           </div>
           {playback && <div className="shrink-0 space-y-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
@@ -221,7 +218,6 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
             
             <div 
                 ref={codeRef}
-                data-no-drag
                 className="flex-1 p-2 font-mono text-xs leading-relaxed overflow-y-auto bg-black/40 rounded inner-shadow custom-scrollbar h-full"
             >
                 {/* Scrollbar styling for Webkit/Blink */}
@@ -253,6 +249,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
         </div>
       </div>
+      {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}
       </Resizable>
     </Draggable>
   )

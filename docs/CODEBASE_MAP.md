@@ -15,8 +15,8 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Reverb durante arraste | `lib/music/manual-reverb-cache.ts` | `runtime-session.ts`; adapter Superdough, nunca compartilha nós ativos |
 | Notas, grooves, slides, seções executadas | `lib/music/pattern-compiler.ts` | `performance.ts`, `piano-roll.ts`, `automation.ts`, `grooves.ts` |
 | Código Strudel exibido/exportado | `lib/music/code-export.ts` | Deve permanecer equivalente ao compilador; teste de exportação |
-| Prévia, ponteiro, pulsos, conversão e validação | `lib/music/pattern-inspection.ts`, `monitor.ts` | `components/music-piano-editor.tsx`, `music-playback.tsx`, `music-pulse-overlay.tsx` |
-| Playback, gesto manual, cancelamento, mixer e lifecycle | `lib/music/runtime-session.ts` | `transport.ts`, `team-mixer.ts`, `monitor.ts`, `strudel-loader.ts` |
+| Prévia, ponteiro, pulsos, conversão e validação | `lib/music/pattern-inspection.ts`, `monitor.ts` | `lib/music/variation-edit.ts`; `components/music-piano-editor.tsx`, `music-playback.tsx`, `music-pulse-overlay.tsx` |
+| Playback, gesto manual, cancelamento, mixer e lifecycle | `lib/music/runtime-session.ts` | `transport.ts`, `team-mixer.ts`, `monitor.ts`, `strudel-loader.ts`; `hooks/use-music.ts` acompanha a visibilidade da aba |
 | Timbre/sample e carregamento | `sample-banks.ts`, `strudel-loader.ts` | `public/samples/`, geradores em `scripts/` |
 | Uma cidade/estilo | `lib/music/kit-profiles/<cidade>.ts` | 16 papéis, timbres, padrões e presença por seção; `styled-kits.ts` compõe e `kit-profiles/catalog.ts` registra |
 | Manchester 1999 | `lib/music/manchester-kit.ts` | Complementos de seções em `styled-kits.ts` |
@@ -24,7 +24,8 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Bancada, seleção e sessão do Criativo | `components/creative-studio.tsx` | `hooks/use-creative-music.ts`; estado pertence ao compositor da tela |
 | Knobs/ranges de som e movimento do Criativo | `components/creative/instrument-parameters.tsx` | `parameter-range.tsx` contém campo/ajuda comuns |
 | Ajuda contextual | `components/info-tip.tsx` + `.module.css` | Hover, foco, toque e portal |
-| Partida/widgets | `components/chess-game.tsx`, `hooks/use-music.ts` | Componentes `*-widget`, `ui/draggable.tsx` |
+| Avaliação e adversária | `lib/chess-evaluation.ts`, `components/chess-game.tsx` | `public/engine/` contém Stockfish Lite; orçamento e cache no controlador; benchmark em `scripts/benchmark-chess.cjs`; medições em `docs/CHESS_ANALYSIS.md` |
+| Partida/widgets | `components/chess-game.tsx`, `hooks/use-music.ts` | `synth-control-panel.tsx` contém filtro LPF/HPF e Drive; `mixer-widget.tsx` separa o mixer por equipe; `global-control-panel.tsx` mantém Board Params; `knob.tsx` define a ordem nome/controle/valor; `ui/draggable.tsx` move os painéis |
 | Globo/câmera/popup/entrada | `components/world-map.tsx`, `globe-component.tsx`, `city-popup.tsx` | `lib/globe-navigation.ts`, `globe-geography.ts` |
 | Perfil, ovos, pontuação e ranks | `lib/game-progression.ts` | Persistência local, migração, recompensa de vitória e débito futuro |
 

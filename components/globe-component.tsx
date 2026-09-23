@@ -8,7 +8,7 @@ import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation } from '@/lib/globe-navigation'
 import { isConstrainedDevice } from '@/lib/performance'
-import { coastlineSegments, globeGridSegments, pinIsBehindGlobe } from '@/lib/globe-geography'
+import { clampPopupToGlobe, coastlineSegments, globeGridSegments, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
 function GlobeGeography() {
   const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
@@ -58,12 +58,12 @@ const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
 
 type PopupLineState = { startX: number; startY: number; cpX: number; cpY: number; endX: number; endY: number; handlePath: string }
 
-function popupLineState(position: { x: number; y: number }, jitter: number, dragging: boolean, dragAnchor: { x: number; y: number }): PopupLineState {
-  const startX = 0, startY = 0, width = 288, height = 450
+function popupLineState(position: { x: number; y: number }, jitter: number, dragging: boolean, dragAnchor: { x: number; y: number }, start = { x: 0, y: 0 }): PopupLineState {
+  const startX = start.x, startY = start.y, width = 288, height = 450
   const left = { x: position.x, y: position.y + height / 2 }
   const right = { x: position.x + width, y: position.y + height / 2 }
   const top = { x: position.x + width / 2, y: position.y }
-  const distance = (point: { x: number; y: number }) => point.x ** 2 + point.y ** 2
+  const distance = (point: { x: number; y: number }) => (point.x - startX) ** 2 + (point.y - startY) ** 2
   const minimum = Math.min(distance(left), distance(right), distance(top))
   const side: 'left' | 'right' | 'top' = minimum === distance(top) ? 'top' : minimum === distance(left) ? 'left' : 'right'
   let endX = side === 'left' ? left.x : side === 'right' ? right.x : top.x
@@ -164,16 +164,24 @@ const PopupContainer = ({
 }: any) => {
     // Local state for smooth dragging
     const [localPos, setLocalPos] = useState({ x: popup.x, y: popup.y })
+    const { gl } = useThree()
     const localPosRef = useRef({ x: popup.x, y: popup.y })
     const positionFrame = useRef<number | null>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
     const anchorRef = useRef<Group>(null)
     const lineRef = useRef<SVGSVGElement>(null)
     const cablePathRef = useRef<ComponentRef<'path'>>(null)
+    const lineStartRef = useRef<ComponentRef<'circle'>>(null)
     const handlePathRef = useRef<ComponentRef<'path'>>(null)
     const worldPin = useMemo(() => new Vector3(), [])
     const projectedPin = useMemo(() => new Vector3(), [])
+    const cameraPosition = useMemo(() => new Vector3(), [])
+    const cameraUp = useMemo(() => new Vector3(), [])
+    const projectedCenter = useMemo(() => new Vector3(), [])
+    const projectedEdge = useMemo(() => new Vector3(), [])
     const previousProjectedPin = useRef<{ x: number; y: number } | null>(null)
+    const globeCircle = useRef({ x: 0, y: 0, radius: 0 })
+    const lineStartOffset = useRef({ x: 0, y: 0 })
     const slowOffset = useRef({ x: 0, y: 0 })
     const topCurveJitter = useRef((Math.random() - 0.5) * 20)
 
@@ -196,15 +204,56 @@ const PopupContainer = ({
 
       projectedPin.copy(worldPin).project(camera)
       const screen = { x: (projectedPin.x + 1) * size.width / 2, y: (1 - projectedPin.y) * size.height / 2 }
+      cameraPosition.setFromMatrixPosition(camera.matrixWorld)
+      const cameraDistance = Math.max(cameraPosition.length(), GLOBE_RADIUS + 1e-4)
+      cameraUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize()
+      projectedCenter.set(0, 0, 0).project(camera)
+      projectedEdge.copy(cameraPosition).normalize()
+        .multiplyScalar(GLOBE_RADIUS * GLOBE_RADIUS / cameraDistance)
+        .addScaledVector(cameraUp, GLOBE_RADIUS * Math.sqrt(Math.max(0, 1 - GLOBE_RADIUS * GLOBE_RADIUS / (cameraDistance * cameraDistance))))
+        .project(camera)
+      const centerX = (projectedCenter.x + 1) * size.width / 2
+      const centerY = (1 - projectedCenter.y) * size.height / 2
+      const edgeX = (projectedEdge.x + 1) * size.width / 2
+      const edgeY = (1 - projectedEdge.y) * size.height / 2
+      globeCircle.current = { x: centerX, y: centerY, radius: Math.hypot(edgeX - centerX, edgeY - centerY) }
+      lineStartOffset.current = { x: 0, y: 0 }
+      if (behind) {
+        const silhouette = nearestGlobeSilhouettePoint(new Vector3(), worldPin, camera, GLOBE_RADIUS, size)
+        if (silhouette) {
+          const projectedSilhouette = silhouette.project(camera)
+          lineStartOffset.current = {
+            x: (projectedSilhouette.x - projectedPin.x) * size.width / 2,
+            y: -(projectedSilhouette.y - projectedPin.y) * size.height / 2,
+          }
+        }
+      }
       const previous = previousProjectedPin.current
       if (standbyRef.current && previous && !popup.isClosing) {
         slowOffset.current.x += popupStandbyCompensation(screen.x - previous.x)
         slowOffset.current.y += popupStandbyCompensation(screen.y - previous.y)
-        if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
+      }
+      if (!popup.isClosing && !draggingRef.current && wrapperRef.current) {
+        const panel = wrapperRef.current.querySelector<HTMLElement>('[data-popup-surface]')
+        if (panel) {
+          const rect = panel.getBoundingClientRect()
+          const current = {
+            x: screen.x + localPosRef.current.x + slowOffset.current.x,
+            y: screen.y + localPosRef.current.y + slowOffset.current.y,
+          }
+          const constrained = clampPopupToGlobe(current, { width: rect.width, height: rect.height }, globeCircle.current)
+          slowOffset.current.x += constrained.x - current.x
+          slowOffset.current.y += constrained.y - current.y
+        }
+      }
+      if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
+      if (!popup.isClosing) {
         const visualPosition = { x: localPosRef.current.x + slowOffset.current.x, y: localPosRef.current.y + slowOffset.current.y }
-        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current, dragAnchor.current)
+        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current, dragAnchor.current, lineStartOffset.current)
         lastLineState.current = nextLine
-        cablePathRef.current?.setAttribute('d', `M 0 0 Q ${nextLine.cpX} ${nextLine.cpY} ${nextLine.endX} ${nextLine.endY}`)
+        cablePathRef.current?.setAttribute('d', `M ${nextLine.startX} ${nextLine.startY} Q ${nextLine.cpX} ${nextLine.cpY} ${nextLine.endX} ${nextLine.endY}`)
+        lineStartRef.current?.setAttribute('cx', String(nextLine.startX))
+        lineStartRef.current?.setAttribute('cy', String(nextLine.startY))
         handlePathRef.current?.setAttribute('d', nextLine.handlePath)
       }
       previousProjectedPin.current = screen
@@ -224,33 +273,44 @@ const PopupContainer = ({
 
     const currentLine = popup.isClosing
       ? lastLineState.current
-      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal, dragAnchor.current)
+      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal, dragAnchor.current, lineStartOffset.current)
     if (!popup.isClosing) lastLineState.current = currentLine
     const { cpX, cpY, endX, endY, handlePath } = currentLine
 
     const lineElement = (
         <svg ref={lineRef} aria-label="Conexão com o pin da cidade" style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none', width: 1, height: 1, transition: 'opacity .2s' }}>
             <path ref={cablePathRef}
-              d={`M 0 0 Q ${cpX} ${cpY} ${endX} ${endY}`}
+              d={`M ${currentLine.startX} ${currentLine.startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
               stroke={city.color} 
               strokeWidth="2" 
               strokeDasharray="4 4"
               fill="none"
               className={popup.isClosing ? "animate-line-exit" : (isDraggingLocal ? "" : "animate-line-slow")}
             />
-            <circle cx={0} cy={0} r="3" fill={city.color} />
+            <circle ref={lineStartRef} cx={currentLine.startX} cy={currentLine.startY} r="3" fill={city.color} />
             <path ref={handlePathRef} d={handlePath} fill={city.color} />
         </svg>
     )
 
     return (
         <group ref={anchorRef}>
-            <Html style={{ pointerEvents: 'none', zIndex: 10 }}>
+            <Html zIndexRange={[0, 0]} style={{ pointerEvents: 'none', zIndex: 0 }}>
                 {lineElement}
             </Html>
-            <Html style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
+            <Html zIndexRange={[1000 + popup.zIndex, 1000 + popup.zIndex]} style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
                 <div ref={wrapperRef} style={{ pointerEvents: 'auto', position: 'relative' }}
-                    onPointerDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+                    onPointerDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+                    onWheel={event => {
+                      event.preventDefault()
+                      gl.domElement.dispatchEvent(new window.WheelEvent('wheel', {
+                        deltaX: event.deltaX,
+                        deltaY: event.deltaY,
+                        deltaZ: event.deltaZ,
+                        deltaMode: event.deltaMode,
+                        bubbles: true,
+                        cancelable: true,
+                      }))
+                    }}>
                     <CityPopup
                         onEraSelect={onEraSelect}
                         city={city}
@@ -261,7 +321,20 @@ const PopupContainer = ({
                         bringToFront={bringToFront}
                         closePopup={onPopupClose}
                         updatePopupPosition={(id, x, y) => {
-                            localPosRef.current = { x, y }
+                            let next = { x, y }
+                            const wrapper = wrapperRef.current
+                            const panel = wrapper?.querySelector<HTMLElement>('[data-popup-surface]')
+                            if (wrapper && panel && globeCircle.current.radius > 0) {
+                                const anchor = wrapper.getBoundingClientRect()
+                                const rect = panel.getBoundingClientRect()
+                                const constrained = clampPopupToGlobe(
+                                  { x: anchor.left + x, y: anchor.top + y },
+                                  { width: rect.width, height: rect.height },
+                                  globeCircle.current,
+                                )
+                                next = { x: constrained.x - anchor.left, y: constrained.y - anchor.top }
+                            }
+                            localPosRef.current = next
                             // Pointer events may arrive faster than the display. One
                             // React update per frame keeps the card and cable together
                             // without compiling the whole popup tree several times.

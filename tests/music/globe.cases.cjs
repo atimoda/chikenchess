@@ -51,3 +51,14 @@ test('standby popup travels one third of its pin while globe speed stays unchang
   const pinTravel = 12
   assert.equal(pinTravel + popupStandbyCompensation(pinTravel), 4)
 })
+
+test('popup stays at most 50 pixels beyond the globe circumference', () => {
+  const { clampPopupToGlobe } = loadTs('lib/globe-geography.ts')
+  const circle = { x: 400, y: 300, radius: 200 }
+  const panel = { width: 288, height: 450 }
+  const outside = clampPopupToGlobe({ x: 700, y: 100 }, panel, circle)
+  const closestX = Math.max(outside.x, Math.min(circle.x, outside.x + panel.width))
+  const closestY = Math.max(outside.y, Math.min(circle.y, outside.y + panel.height))
+  assert.ok(Math.abs(Math.hypot(closestX - circle.x, closestY - circle.y) - 250) < 1e-8)
+  assert.deepEqual(clampPopupToGlobe({ x: 500, y: 200 }, panel, circle), { x: 500, y: 200 })
+})

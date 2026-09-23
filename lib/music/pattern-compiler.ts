@@ -12,6 +12,7 @@ function automationPattern(api: Strudel, value: Automation, section: string) {
 }
 
 export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
+  if (!voice.manual && voice.instrument.loopEnabled === false) return api.silence
   if(voice.performance){
     const plan=voice.performance
     const compiled=new Map<string,StrudelPattern>()
@@ -36,7 +37,7 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       const chunks: [number, StrudelPattern][] = lane.segments.map(segment => [segment.duration,
         !segment.notes ? api.silence : segment.notes.length === 1 ? events(segment.notes[0]) : api.stack(...segment.notes.map(note => events(note)))])
       let pattern = (api as Strudel & {timeCat:(...chunks:[number,StrudelPattern][])=>StrudelPattern}).timeCat(...chunks).velocity(lane.velocity).slow(roll.bars)
-      if (lane.slide && !voice.unpitched) pattern = pattern.withValue((v: object) => ({ ...v, ccSlide: lane.slide, ccSlideTime: lane.slideSeconds ?? .15 }))
+      if (lane.slide && !voice.unpitched) pattern = pattern.withValue((v: object) => ({ ...v, ccSlide: lane.slide, ccSlideTime: lane.slideSeconds ?? .5 }))
       if (lane.pan !== undefined) pattern = pattern.withValue((v: object) => ({ ...v, ccPan: lane.pan }))
       return pattern
     }) : undefined

@@ -29,6 +29,7 @@ export class MusicRuntime {
   private voices = new Map<string, VoiceSpec>()
   private ready?: Promise<void>
   private disposed = false
+  private pageVisible = true
   private generation = 0
   private visualTimers = new Set<ReturnType<typeof setTimeout>>()
   private starting = false
@@ -56,14 +57,36 @@ export class MusicRuntime {
   preload() { void loadLibrary().catch(this.error) }
 
   async unlock() {
-    if (this.disposed) return
+    if (this.disposed || !this.pageVisible) return
     if (!this.ready) this.ready = this.initialize().catch(error => { this.ready = undefined; throw error })
     try {
       await this.ready
-      if (this.disposed) return
+      if (this.disposed || !this.pageVisible) return
       await this.api!.getAudioContext().resume()
       this.refresh()
     } catch (error) { this.error(error) }
+  }
+
+  setPageVisible(visible: boolean) {
+    if (this.pageVisible === visible || this.disposed) return
+    this.pageVisible = visible
+    if (!visible) {
+      this.unlockAudition = null
+      this.endAudition()
+      this.scheduler?.stop()
+      this.clearVisuals()
+      if (this.api) {
+        const ready = this.ready
+        void (async () => {
+          if (ready) await ready
+          if (this.disposed || this.pageVisible || !this.api) return
+          await this.api.getAudioContext().suspend()
+          if (this.pageVisible) void this.unlock()
+        })().catch(this.error)
+      }
+    } else if (this.api || this.state?.playing) {
+      void this.unlock()
+    }
   }
 
   private async initialize() {
@@ -163,7 +186,7 @@ export class MusicRuntime {
   }
 
   private triggerPreview(requested: Preview) {
-    if (!this.api || !this.state || this.disposed) return
+    if (!this.api || !this.state || this.disposed || !this.pageVisible) return
     // Build from the requested square as the pointer may already be up by the
     // time the browser grants audio access on the first interaction.
     const voice = voiceSpecs({ ...this.state, pieces: this.state.pieces.filter(p => p.id === requested.id) }, requested, this.effectBuses)[0]
@@ -351,7 +374,7 @@ export class MusicRuntime {
       return
     }
     try {
-      const specs = voiceSpecs(this.state, this.preview, this.effectBuses).filter(voice => this.sampleReady(voice))
+      const specs = voiceSpecs(this.pageVisible ? this.state : { ...this.state, playing: false }, this.pageVisible ? this.preview : null, this.effectBuses).filter(voice => this.sampleReady(voice))
       // Compile first: invalid edits must not tear down the last valid voices.
       const loops = specs.filter(voice => !voice.manual)
       const compiledLoops = loops.map(v => this.patternFor(v))
@@ -373,7 +396,7 @@ export class MusicRuntime {
         void this.scheduler.setPattern(pattern)
         this.scheduledLoops = compiledLoops
       }
-      const shouldRun = this.state.playing || specs.length > 0
+      const shouldRun = this.pageVisible && (this.state.playing || specs.length > 0)
       if (shouldRun && !this.scheduler.started && !this.starting) {
         this.starting = true
         void this.scheduler.start().then(() => {

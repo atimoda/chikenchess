@@ -25,6 +25,22 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   instrument?: Instrument | null
   onInstrumentChange?: (patch: InstrumentPerformanceEdit) => void
   pieceSvg?: string | null
+  selectedStatus?: React.ReactNode
+}
+
+const FILTER_RANGE = Math.log(1000)
+const filterDialValue = (lpf = 20000, hpf = 0) => {
+  const low = lpf < 20000 ? -Math.log(20000 / Math.max(20, lpf)) / FILTER_RANGE : 0
+  const high = hpf > 0 ? .01 + .99 * Math.log(Math.max(20, hpf) / 20) / FILTER_RANGE : 0
+  return Math.abs(low) >= high ? low : high
+}
+const filterDialHertz = (value: number) => value < 0
+  ? Math.round(20000 / Math.pow(1000, -value))
+  : Math.round(20 * Math.pow(1000, Math.max(0, value - .01) / .99))
+const filterDialLabel = (value: number) => {
+  if (value === 0) return 'OFF'
+  const hz = filterDialHertz(value)
+  return `${value < 0 ? 'LPF' : 'HPF'} ${hz >= 1000 ? `${(hz / 1000).toFixed(1)}k` : `${hz}Hz`}`
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -43,6 +59,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   instrument,
   onInstrumentChange,
   pieceSvg,
+  selectedStatus,
   ...props
 }, ref) => {
   const panelStyle = {
@@ -52,18 +69,9 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
 
-  // Define styling based on state
-  // Off: Border rgba(255,255,255,0.1), Icons White
-  // On/Inactive: Border rgba(255,255,255,0.3), Icons matches border, Toggle Blue
-  // On/Active: Border cityColor, Icons cityColor
-  
   const widgetBorderColor = !isOn 
     ? "rgba(255,255,255,0.1)" 
-    : (selectedSquare ? cityColor : "rgba(255,255,255,0.3)")
-
-  const toggleIconColor = !isOn 
-    ? "var(--city-neon)" 
-    : (selectedSquare ? "var(--city-neon)" : "#60a5fa")
+    : "rgba(255,255,255,0.3)"
 
   return (
     <Draggable
@@ -87,8 +95,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       <div 
         className={cn(
             "absolute inset-0 z-50 rounded-md transition-all duration-300",
-            isOn ? "border-2 bg-black/80 backdrop-blur-md opacity-100" : "border bg-black/60 backdrop-blur-sm opacity-60",
-            selectedSquare ? "border-white/70" : "border-white/30",
+            isOn ? "border bg-black/80 backdrop-blur-md opacity-100" : "border bg-black/60 backdrop-blur-sm opacity-60",
+            "border-white/30",
         )}
         style={{
             ...panelStyle,
@@ -102,11 +110,12 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         aria-label={isOn ? 'Desligar Piece Params' : 'Ligar Piece Params'}
         ref={toggleRef}
         className={cn(
-          "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group hover:cursor-pointer",
+          "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
-          borderColor: widgetBorderColor, 
-          color: toggleIconColor,
+          ...panelStyle,
+          borderColor: widgetBorderColor,
           top: -5, 
           left: -8,
           boxShadow: isOn ? `0 0 10px ${cityColor}40` : "none"
@@ -119,26 +128,41 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         <Power className={cn("w-4 h-4", isOn ? "drop-shadow-[0_0_8px_currentColor]" : "")} />
       </button>
 
+      {isOn && selectedSquare && instrument && onInstrumentChange && <button
+        type="button"
+        aria-label={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
+        title={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
+        aria-pressed={instrument.loopEnabled === false}
+        className={cn(
+          "absolute right-2 top-2 z-70 flex h-7 w-7 items-center justify-center rounded border bg-background p-0 transition-all",
+          instrument.loopEnabled === false ? "border-red-400/70 text-red-300 opacity-100" : "border-white/25 text-white/60"
+        )}
+        onClick={(event) => {
+          event.stopPropagation()
+          onInstrumentChange({ loopEnabled: instrument.loopEnabled === false })
+        }}
+      ><Power className="h-3.5 w-3.5" /></button>}
+
       {/* Invisible Drag Handle Header - z-60 */}
       <div 
         ref={effectiveHandleRef}
-        className="absolute inset-x-0 top-0 h-8 cursor-grab active:cursor-grabbing z-60"
+        className="absolute inset-x-0 top-0 h-8 z-60"
       />
 
       {/* Main Content - z-50 */}
       <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px] max-w-full", !isOn && "opacity-50 grayscale")}>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3 mb-1 px-2 min-h-12 relative">
+          <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
             {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={{ __html: pieceSvg }} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
             <div className="min-w-0">
               <h2 className={cn(
                 "truncate text-sm font-mono font-bold transition-colors duration-300",
-                isOn && selectedSquare ? "text-[var(--city-neon)]" : "text-muted-foreground"
+                "text-white"
               )}>{selectedSquare ? selectedPieceInfo ?? 'Instrumento' : 'Selecione uma peça'}</h2>
-              {selectedSquare && <span className="text-[10px] font-mono text-white/50">Casa {selectedSquare}</span>}
+              {selectedSquare && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
-          <div className="h-[215px] overflow-hidden">{playback}</div>
+          <div className="min-h-[390px]">{playback}</div>
           
           <div
             className={cn(
@@ -190,22 +214,25 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             />
             
             <Knob
-              label="HPF"
-              value={effects.hpf ?? 0}
-              min={0}
-              max={20000}
-              logarithmic
-              onChange={(v) => onEffectChange("hpf", v)}
+              label="LPF / HPF"
+              value={filterDialValue(effects.lpf, effects.hpf)}
+              min={-1}
+              max={1}
+              step={.01}
+              formatValue={filterDialLabel}
+              onChange={(value) => {
+                onEffectChange("lpf", value < 0 ? filterDialHertz(value) : 20000)
+                onEffectChange("hpf", value > 0 ? filterDialHertz(value) : 0)
+              }}
               neon={isOn}
             />
             <Knob
-              label="LPF"
-              value={effects.lpf ?? 20000}
-              min={20}
-              max={20000}
-              logarithmic
-              onChange={(v) => onEffectChange("lpf", v)}
-              neon={isOn}
+              label="DRIVE"
+              value={instrument?.distortion ?? 0}
+              min={0}
+              max={10}
+              onChange={distortion => onInstrumentChange?.({ distortion })}
+              neon={isOn && !!selectedSquare && !!instrument}
             />
             <Knob
               label="REVERB"
@@ -232,6 +259,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
           </div>
         </div>
       </div>
+      {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}
     </Draggable>
   )
 })

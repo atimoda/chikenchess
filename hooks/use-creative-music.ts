@@ -26,7 +26,14 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     const engine = new MusicRuntime(pulseMonitor.publish, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
     runtime.current = engine
     engine.preload()
-    return () => { engine.dispose(); pulseMonitor.clear(); runtime.current = null }
+    const onVisibilityChange = () => {
+      const visible = document.visibilityState === 'visible'
+      if (!visible) setPreview(null)
+      engine.setPageVisible(visible)
+    }
+    onVisibilityChange()
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => { document.removeEventListener('visibilitychange', onVisibilityChange); engine.dispose(); pulseMonitor.clear(); runtime.current = null }
   }, [monitor, pulseMonitor])
   useEffect(() => {
     // Coalesce continuous slider updates. Fifty milliseconds still feels immediate

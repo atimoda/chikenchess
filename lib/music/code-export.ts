@@ -42,7 +42,7 @@ function voiceCode(voice: VoiceSpec): string {
     if (fixed === undefined && !voice.pianoRolls?.some(Boolean)) return 'silence'
     const roll = voice.pianoRolls?.[i]
     const lanes = roll ? optimizeRoll(roll).map(lane => {
-      const overrides = { ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .15 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}) }
+      const overrides = { ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .5 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}) }
       return `${event}(${JSON.stringify(rollLaneNotation(lane))}).velocity(${lane.velocity}).slow(${roll.bars}).withValue(v => ({...v, ccOverrides: ${JSON.stringify(overrides)}}))`
     }) : undefined
     let source = lanes ? stackCode(lanes) : `${event}(${JSON.stringify(phrase)})`

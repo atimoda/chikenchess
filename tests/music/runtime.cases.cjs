@@ -7,6 +7,49 @@ const { createMusicPulseMonitor } = loadTs('lib/music/monitor.ts')
 const creative = loadTs('lib/music/creative.ts')
 const state = (history = []) => ({ pieces: model.piecesFromHistory(history), scale: ['C4','Eb4','F4','G4','Bb4'], bpm: 118, volume: 0.8, playing: true, effects: {} })
 
+test('hiding the match stops its scheduler and suspends the audio context', async () => {
+  let stops = 0, suspends = 0
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.scheduler = { stop: () => { stops++ } }
+  runtime.api = { getAudioContext: () => ({ suspend: async () => { suspends++ } }) }
+  runtime.setPageVisible(false)
+  await Promise.resolve()
+  assert.equal(stops, 1)
+  assert.equal(suspends, 1)
+  runtime.dispose()
+})
+
+test('returning to the Creative tab unlocks only an intended playing session', () => {
+  let unlocks = 0
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.unlock = async () => { unlocks++ }
+  runtime.state = state()
+  runtime.setPageVisible(false)
+  runtime.setPageVisible(true)
+  assert.equal(unlocks, 1)
+  runtime.state = { ...state(), playing: false }
+  runtime.setPageVisible(false)
+  runtime.setPageVisible(true)
+  assert.equal(unlocks, 1)
+  runtime.dispose()
+})
+
+test('visibility waits for audio initialization before suspending or resuming', async () => {
+  let finishInitialization, suspends = 0, resumes = 0
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.ready = new Promise(resolve => { finishInitialization = resolve })
+  runtime.api = { getAudioContext: () => ({ suspend: async () => { suspends++ }, resume: async () => { resumes++ } }) }
+  runtime.state = state()
+  runtime.refresh = () => {}
+  runtime.setPageVisible(false)
+  runtime.setPageVisible(true)
+  finishInitialization()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(suspends, 0)
+  assert.equal(resumes, 1)
+  runtime.dispose()
+})
+
 test('playback monitor distinguishes inactive, rhythmic rest and section rest', async () => {
   const api = await strudel()
   const lab = creative.createCreativeSession()

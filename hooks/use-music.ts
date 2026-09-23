@@ -49,7 +49,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const input = useMemo(() => ({...baseSnapshot,reactionInput:kit?{config:kit.reactions,context,scope:city.id}:undefined}),[baseSnapshot,kit,context,city.id])
   const resolved = useMemo(() => kit ? applyReactions(baseSnapshot,kit.reactions,context) : {snapshot:baseSnapshot,descriptions:[]},[baseSnapshot,kit,context])
   const snapshot: MusicSnapshot = audible ?? resolved.snapshot
-  const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active).map(p => p.square)), [snapshot.pieces])
+  const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active && snapshot.instruments?.[p.id]?.loopEnabled !== false).map(p => p.square)), [snapshot.pieces, snapshot.instruments])
   const code = useMemo(() => enabled && engineActive && showCode ? renderMusicCode(snapshot, preview) : '', [enabled, engineActive, showCode, snapshot, preview])
 
   useEffect(() => {
@@ -71,7 +71,10 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     const engine = new MusicRuntime(pulseMonitor.publish, e => setError(e instanceof Error ? e.message : String(e)), monitor, setAudible)
     runtime.current = engine
     engine.preload()
-    return () => { engine.dispose(); pulseMonitor.clear(); runtime.current = null }
+    const onVisibilityChange = () => engine.setPageVisible(document.visibilityState === 'visible')
+    onVisibilityChange()
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => { document.removeEventListener('visibilitychange', onVisibilityChange); engine.dispose(); pulseMonitor.clear(); runtime.current = null }
   }, [enabled, engineActive, monitor, pulseMonitor])
   useEffect(() => {
     const mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768

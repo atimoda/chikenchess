@@ -69,6 +69,7 @@ const instrumentSchema = z.object({
   performance: performanceSchema.optional(),
   distortion: finite(0,10).optional(), distortionMix: finite(0,1).optional(), pitchEnvelope: finite(-24,24).optional(), pitchAttack: finite(.001,2).optional(),
   selectedVariation: z.number().int().min(0).max(7).optional(),
+  loopEnabled: z.boolean().optional(),
   mask: z.string().refine(hasMaskBudget, 'Máscara inválida.').optional(),
   source: sourceSchema.optional(), automations: automationSchema.optional(),
   groove: z.object({ groove: z.string().max(80), lane: z.string().max(80) }).optional(),
