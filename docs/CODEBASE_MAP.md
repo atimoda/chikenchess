@@ -9,6 +9,7 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Tom, graus, identidade e ativação | `lib/music/model.ts`, `reactions.ts` | `runtime-types.ts`; histórico de xadrez |
 | Plano harmônico, cifras e voicings | `lib/music/harmony.ts`, `voice-spec.ts` | `creative.ts`, `reactions.ts`, `monitor.ts`; cada seção resolve centro, tríade e inversão |
 | Estados/eventos, quantização e BPM | `reactions.ts`, `reaction-queue.ts`, `transport.ts` | `components/music-reaction-editor.tsx`; `music-transition-view.tsx` |
+| Compasso, pulso e subdivisão | `lib/music/meter.ts`, `transport.ts` | `creative.ts` persiste 4/4–12/8; `styled-kits.ts` compõe; `performance.ts`, `music-piano-editor.tsx` e `music-playback.tsx` seguem o mesmo pulso |
 | Controles que chegam a cada voz | `lib/music/voice-spec.ts` | `model.ts`, `sample-banks.ts`, `runtime-types.ts` |
 | Orbits de efeitos e ciclo de vida dos buses | `lib/music/voice-spec.ts`, `runtime-session.ts` | Quatro buses no desktop, dois em aparelho restrito; audições isoladas; `team-mixer.ts` recebe a saída por equipe |
 | Agrupamento de notas / exportação compacta | `lib/music/roll-optimizer.ts` | `pattern-compiler.ts`, `code-export.ts`; preserva sobreposições |
@@ -27,6 +28,7 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Avaliação e adversária | `lib/chess-evaluation.ts`, `components/chess-game.tsx` | `public/engine/` contém Stockfish Lite; orçamento e cache no controlador; benchmark em `scripts/benchmark-chess.cjs`; medições em `docs/CHESS_ANALYSIS.md` |
 | Partida/widgets | `components/chess-game.tsx`, `hooks/use-music.ts` | `synth-control-panel.tsx` contém filtro LPF/HPF e Drive; `mixer-widget.tsx` separa o mixer por equipe; `global-control-panel.tsx` mantém Board Params; `knob.tsx` define a ordem nome/controle/valor; `ui/draggable.tsx` move os painéis |
 | Globo/câmera/popup/entrada | `components/world-map.tsx`, `globe-component.tsx`, `city-popup.tsx` | `lib/globe-navigation.ts`, `globe-geography.ts` |
+| Campanhas e lista do mapa | `lib/campaigns.ts`, `components/campaign-city-list.tsx` | `lib/cities-data.ts` associa cada fase; `world-map.tsx` envia foco para a câmera e abre popups |
 | Perfil, ovos, pontuação e ranks | `lib/game-progression.ts` | Persistência local, migração, recompensa de vitória e débito futuro |
 
 **Nomes legados:** `lib/strudel-engine.ts` gera/analisa a notação antiga; não é o compilador Strudel atual. `lib/audio-engine.ts` e `hooks/use-audio.ts` pertencem ao caminho nativo/legado, ainda usado para áudio auxiliar. Para os loops atuais, comece em `lib/music/`. Não remova esses módulos sem verificar seus consumidores.

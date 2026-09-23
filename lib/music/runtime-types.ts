@@ -9,6 +9,7 @@ import type { Instrument, MovementMapping, MusicPiece } from './model'
 import type { Automations } from './automation'
 import type { Groove, GrooveLane } from './grooves'
 import type { HarmonyPlanId } from './harmony'
+import type { Meter } from './meter'
 
 export type Strudel = typeof import('@strudel/web')
 export type StrudelPattern = ReturnType<Strudel['note']>
@@ -26,6 +27,7 @@ export interface MusicSnapshot {
   pieces: MusicPiece[]
   scale: string[]
   bpm: number
+  meter?: Meter
   volume: number
   playing: boolean
   effects: Record<string, SquareEffects>
@@ -42,6 +44,7 @@ export interface Preview { id: string; square: Square; mode?: 'manual' | 'patter
 export interface MusicPulse { id: string; square: Square; preview: boolean; duration: number }
 export interface VoiceSpec {
   performance?: Performance
+  beatsPerBar?: number
 
   key: string
   piece: MusicPiece

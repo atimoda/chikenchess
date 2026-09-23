@@ -51,6 +51,7 @@ interface GlobeProps {
   setEnteringCityId: (id: string | null) => void
   zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>
   onZoomChange?: (zoom: number) => void
+  focusedCityId?: string | null
 }
 
 const GLOBE_RADIUS = 2
@@ -422,7 +423,8 @@ const GlobeContent = ({
   enteringCityId,
   setEnteringCityId,
   zoomRef,
-  onZoomChange
+  onZoomChange,
+  focusedCityId,
 }: GlobeProps) => {
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
@@ -487,6 +489,14 @@ const GlobeContent = ({
   }, [gl, camera, enteringCityId])
 
   const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
+  useEffect(() => {
+    if (!focusedCityId || !globeRef.current || enteringCityId) return
+    const city = cities.find(candidate => candidate.id === focusedCityId)
+    if (!city) return
+    const target = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, camera.position.length()))
+    setTargetCameraPos(target)
+    lastInteractionTime.current = Date.now()
+  }, [focusedCityId, cities, enteringCityId, camera])
   const entryFlight = useRef<{ city: CityData; from: Vector3; up: Vector3; pin: Vector3; elapsed: number; duration: number; done: boolean } | null>(null)
   useEffect(() => {
     const city = cities.find(candidate => candidate.id === enteringCityId)
@@ -599,7 +609,7 @@ const GlobeContent = ({
     
     // A city card does not stop the idle globe. Only a direct gesture, flight or
     // pin hover pauses it; a just-opened card resumes as soon as centering ends.
-    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && !targetCameraPos && timeSinceInteraction > 800
+    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && !focusedCityId && !targetCameraPos && timeSinceInteraction > 800
     if (canRotate) {
         if (!isStandby.current) {
             isStandby.current = true

@@ -1,7 +1,10 @@
 import { cityCoordinates } from "./city-coordinates"
+import type { CampaignId } from './campaigns'
 
 export interface CityData {
   id: string
+  campaigns: CampaignId[]
+  meter?: '4/4' | '3/4' | '6/8' | '12/8'
   name: string
   country: string
   year: number
@@ -25,7 +28,7 @@ export interface CityData {
   aiDepth?: number
 }
 
-const rawCities: Omit<CityData, "coordinates">[] = [
+const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
   // 1. Düsseldorf (1970)
   {
     id: "dusseldorf",
@@ -415,10 +418,48 @@ const rawCities: Omit<CityData, "coordinates">[] = [
         "Compose your victory."
     ]
   },
+  {
+    id: 'buenos-aires-1940', name: 'Buenos Aires', country: 'Argentina', year: 1940,
+    genre: 'Vals criollo / 3/4', description: 'An original three-beat ballad with reed, guitar and a turning bass.',
+    bpm: 132, meter: '3/4', scale: ['A3','B3','C4','D4','E4','F4','G4'],
+    geoCoordinates: { lat: -34.6037, lng: -58.3816 }, color: '#ef8979',
+    image: 'https://images.unsplash.com/photo-1589909202802-8f4aadce1849?q=80&w=800&auto=format&fit=crop',
+    samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
+    introPhrases: ['Three steps, one turning story.', 'Hear the city in the reeds.', 'Follow the waltz.']
+  },
+  {
+    id: 'dublin-1990', name: 'Dublin', country: 'Ireland', year: 1990,
+    genre: 'Folk ballad / double jig · 6/8', description: 'A new six-eighths tune: two pulses, three eighths each, with flute and guitar in call and response.',
+    bpm: 96, meter: '6/8', scale: ['D4','E4','F#4','G4','A4','B4','C#5'],
+    geoCoordinates: { lat: 53.3498, lng: -6.2603 }, color: '#85d0a2',
+    image: 'https://images.unsplash.com/photo-1549918864-48ac978761a4?q=80&w=800&auto=format&fit=crop',
+    samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
+    introPhrases: ['Two pulses, six steps.', 'Let the flute answer.', 'Follow the jig.']
+  },
+  {
+    id: 'new-orleans-1953', name: 'New Orleans', country: 'USA', year: 1953,
+    genre: 'Slow blues ballad / 12/8', description: 'An original slow blues in four triplet pulses, with rolling piano, guitar and brass responses.',
+    bpm: 76, meter: '12/8', scale: ['C4','Eb4','F4','Gb4','G4','Bb4'],
+    geoCoordinates: { lat: 29.9511, lng: -90.0715 }, color: '#e8b779',
+    image: 'https://images.unsplash.com/photo-1533587851505-d119e13fa0d7?q=80&w=800&auto=format&fit=crop',
+    samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
+    introPhrases: ['Four slow pulses.', 'Each carries three steps.', 'Let the blues answer.']
+  },
 ]
+
+const campaignMembership: Record<string, CampaignId[]> = {
+  dusseldorf: ['electronic-history'], nyc: ['electronic-history'], chicago: ['electronic-history'],
+  detroit: ['electronic-history'], ibiza: ['electronic-history'], manchester: ['electronic-history'],
+  berlin: ['electronic-history'], tokyo: ['electronic-history'], london: ['electronic-history'],
+  saopaulo: ['electronic-history'], johannesburg: ['electronic-history'], paris: ['electronic-history'],
+  'manchester-1999': ['electronic-history', 'world-ballads'], 'buenos-aires-1940': ['world-ballads'],
+  'dublin-1990': ['world-ballads'], 'new-orleans-1953': ['world-ballads'],
+  vienna: ['classical'],
+}
 
 export const cities: CityData[] = rawCities.map(city => ({
   ...city,
+  campaigns: campaignMembership[city.id] ?? [],
   coordinates: cityCoordinates[city.id] || { x: 50, y: 50 } // Fallback
 }))
 

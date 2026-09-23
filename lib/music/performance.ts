@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-/** Musical time stays in beats; the transport always uses four beats per cycle. */
+/** Musical time stays in pulses; one transport cycle is one bar. */
 export const performanceSchema = z.object({
   restart: z.boolean().default(true),
   steps: z.array(z.object({
@@ -18,15 +18,15 @@ export const performanceSchema = z.object({
 export type Performance = z.infer<typeof performanceSchema>
 
 /** Square brackets preserve the intended total length, unlike slow angle groups. */
-export function performancePattern(performance: Performance, indices = false) {
+export function performancePattern(performance: Performance, indices = false, beatsPerBar = 4) {
   const beats = performance.steps.reduce((sum, step) => sum + step.beats, 0)
   const steps = performance.steps.map((step, index) => `${indices ? index : step.variation}@${step.beats}`)
-  return `[${steps.join(' ')}]/${beats / 4}`
+  return `[${steps.join(' ')}]/${beats / beatsPerBar}`
 }
 
-export function performancePosition(performance: Performance, cycle: number) {
+export function performancePosition(performance: Performance, cycle: number, beatsPerBar = 4) {
   const total = performance.steps.reduce((sum, step) => sum + step.beats, 0)
-  const time = ((cycle * 4) % total + total) % total
+  const time = ((cycle * beatsPerBar) % total + total) % total
   let start = 0
   for (let index = 0; index < performance.steps.length; index++) {
     const step = performance.steps[index]

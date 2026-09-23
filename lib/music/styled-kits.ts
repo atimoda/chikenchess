@@ -5,18 +5,28 @@ import type { PianoRoll } from './piano-roll'
 import { createManchesterJazzKit } from './manchester-kit'
 import type { CityData } from '../cities-data'
 import type { PartProfile, ProfileSource, StyleProfile } from './kit-profiles/types'
+import { beatsPerBar, type Meter } from './meter'
 
 export const STYLE_REVISION = 'styles-2026-09-21-v2'
 
 const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1' } as const
 const WHITE_SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2'] as const
 
-export function phraseRoll(text: string, bars: number, swing = 0, gate = .65): PianoRoll {
+export function phraseRoll(text: string, bars: number, swing = 0, gate = .65, meter: Meter = '4/4'): PianoRoll {
   const tokens = text.trim().split(/\s+/)
   const unit = bars / tokens.length
+  const pulseSlots = tokens.length / bars / beatsPerBar(meter)
+  const accent = (index: number) => {
+    if (meter === '4/4') return index % 2 ? .72 : 1
+    const slotsInBar = tokens.length / bars
+    const phase = index % slotsInBar
+    if (Math.abs(phase) < .001) return 1
+    if (Math.abs(phase / pulseSlots - Math.round(phase / pulseSlots)) < .001) return meter === '3/4' ? .77 : .84
+    return .62
+  }
   return { bars, notes: tokens.flatMap((token, index) => token === '.' ? [] : token.split(',').map(degree => {
     const start = (index + (index % 2 ? swing : 0)) * unit
-    return { start, duration: Math.max(.01, Math.min(unit * gate, bars - start)), degree: Number(degree), velocity: index % 2 ? .72 : 1 }
+    return { start, duration: Math.max(.01, Math.min(unit * gate, bars - start)), degree: Number(degree), velocity: accent(index) }
   })) }
 }
 
@@ -29,9 +39,9 @@ function canonicalOrigin(origin: string, color: 'w' | 'b') {
   return color === 'w' ? origin : `${origin[0]}${9 - Number(origin[1])}`
 }
 
-function sectionPattern(sections: number[]) {
+function sectionPattern(sections: number[], pulses = 4) {
   const total = sections.reduce((sum, beats) => sum + beats, 0)
-  return `[${sections.map((beats, index) => `${Math.min(index, 3)}@${beats}`).join(' ')}]/${total / 4}`
+  return `[${sections.map((beats, index) => `${Math.min(index, 3)}@${beats}`).join(' ')}]/${total / pulses}`
 }
 
 function barsFor(part: PartProfile, variation: number) {
@@ -45,7 +55,7 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
   Object.assign(instrument, {
     name: part.name, behavior: part.behavior, source: profileSource(part.source), sound: part.source.kind === 'synth' ? part.source.sound : 'sine', notes: '0',
     pianoOnly: true, phrases: ['~', '~', '~', '~'],
-    pianoRolls: patterns.map((pattern, index) => phraseRoll(pattern, barsFor(part, index), part.swing ?? profile.swing, part.gate ?? (part.behavior === 'sustain' ? .88 : .62))),
+    pianoRolls: patterns.map((pattern, index) => phraseRoll(pattern, barsFor(part, index), part.swing ?? profile.swing, part.gate ?? (part.behavior === 'sustain' ? .88 : .62), profile.meter)),
     octave: part.octave ?? 3, gain: part.gain ?? .18, attack: part.attack ?? .008, decay: part.decay ?? .18, sustain: part.sustain ?? .6,
     release: part.release ?? .12, clip: part.clip ?? .9, lpf: part.lpf ?? 9000, hpf: part.hpf ?? 20,
     distortion: part.distortion, distortionMix: part.distortionMix, pitchEnvelope: part.pitchEnvelope, pitchAttack: part.pitchAttack,
@@ -85,8 +95,8 @@ export function createStyledCityKit(city: CityData): CreativeSession {
   if (!profile) throw new Error(`Perfil ausente: ${city.id}`)
   if (profile.parts.length !== WHITE_SLOTS.length) throw new Error(`Perfil incompleto: ${city.id} tem ${profile.parts.length}/16 vozes.`)
   const kit = createCreativeSession()
-  Object.assign(kit, { catalogRevision: STYLE_REVISION, cityId: city.id, name: profile.name, bpm: profile.bpm, root: profile.root, scale: profile.scale,
-    harmony: profile.harmony, volume: .68, grooves: {}, sectionPattern: sectionPattern(profile.sections) })
+  Object.assign(kit, { catalogRevision: STYLE_REVISION, cityId: city.id, name: profile.name, bpm: profile.bpm, meter: profile.meter ?? '4/4', root: profile.root, scale: profile.scale,
+    harmony: profile.harmony, volume: .68, grooves: {}, sectionPattern: sectionPattern(profile.sections, beatsPerBar(profile.meter)) })
   for (const piece of kit.pieces) {
     piece.active = piece.color === 'w'
     const slot = WHITE_SLOTS.indexOf(canonicalOrigin(piece.origin, piece.color) as typeof WHITE_SLOTS[number])

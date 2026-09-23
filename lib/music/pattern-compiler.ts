@@ -23,7 +23,7 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       if(!pattern){pattern=compileVoice(api,{...voice,performance:undefined,sectionPattern:String(step.variation)});if(!voice.unpitched&&step.transpose)pattern=pattern.transpose(step.transpose);compiled.set(key,pattern)}
       return pattern
     })
-    const selector=performancePattern(plan,true)
+    const selector=performancePattern(plan,true,voice.beatsPerBar)
     const picker=api as StrudelWithPick
     return plan.restart?picker.pickRestart(banks,selector):picker.pick(banks,selector)
   }

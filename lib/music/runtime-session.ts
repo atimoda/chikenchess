@@ -3,6 +3,7 @@ import type { Square } from 'chess.js'
 import { ManualReverbCache } from './manual-reverb-cache'
 import { instrumentFor } from './model'
 import { MusicTransport } from './transport'
+import { beatsPerBar } from './meter'
 import { ReactionQueue } from './reaction-queue'
 import { applyReactions } from './reactions'
 import { isConstrainedDevice } from '../performance'
@@ -141,7 +142,7 @@ export class MusicRuntime {
   private transportFrame() {
     const cycle=this.scheduler?.cycle??0
     return { bpm:this.scheduler?.started ? this.scheduler?.tempo?.bpmAt(cycle)??this.state?.bpm??120 : this.state?.bpm??120,
-      targetBpm:this.targetBpm, scale:this.state?.scale??[], harmony:this.state?.harmony??'static',
+      targetBpm:this.targetBpm, meter:this.state?.meter??'4/4', scale:this.state?.scale??[], harmony:this.state?.harmony??'static',
       ramp:this.scheduler?.started?this.scheduler?.tempo?.transition(cycle):undefined,
       pending:[...this.reactionQueue.pending].map(([id,p])=>({id,cycle:p.cycle,trigger:p.entry.rule.trigger})) }
   }
@@ -207,7 +208,7 @@ export class MusicRuntime {
       this.connectVoice(voice)
       this.publishFrame()
     }
-    void this.api.webaudioOutput(hap, 0, duration, this.state.bpm / 240, time).catch(this.error)
+    void this.api.webaudioOutput(hap, 0, duration, this.state.bpm / (60 * beatsPerBar(this.state.meter)), time).catch(this.error)
     this.scheduleVisual(voice, time, duration)
   }
 
@@ -280,7 +281,7 @@ export class MusicRuntime {
         const pattern = this.patternFor(voice)
         let cached = this.displayCache.get(voice.key)
         if (!cached || cached.pattern !== pattern || cached.cycle !== cycleIndex) {
-          const haps = pattern.queryArc(cycleIndex, cycleIndex + 1, { _cps: this.state.bpm / 240 })
+          const haps = pattern.queryArc(cycleIndex, cycleIndex + 1, { _cps: this.state.bpm / (60 * beatsPerBar(this.state.meter)) })
           const events: NoteEvent[] = haps.slice(0, 128).map((hap: any) => ({
             start: Math.max(cycleIndex, Number(hap.whole?.begin ?? hap.part.begin)),
             end: Math.min(cycleIndex + 1, Number(hap.whole?.end ?? hap.part.end)),
@@ -301,7 +302,7 @@ export class MusicRuntime {
           values: last ? { gain: Number(last.gain) * Number(last.velocity ?? 1), lpf: Number(last.cutoff ?? last.lpf), pan: Number(last.pan), room: Number(last.room), delay: Number(last.delay) } : {},
         }
       }
-      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * 4) + 1, section, tracks, transport: this.transportFrame() })
+      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section, tracks, transport: this.transportFrame() })
     } catch (error) { this.error(error) }
   }
 
@@ -389,7 +390,8 @@ export class MusicRuntime {
       this.teamMixer?.update(this.state.teamMixes ?? createTeamMixes())
       const loopCount = specs.filter(v => !v.preview).length
       for (const voice of specs) this.connectVoice(voice, loopCount)
-      this.scheduler.setCps(this.state.bpm / 240, this.rampBars)
+      this.scheduler.setMeter?.(beatsPerBar(this.state.meter))
+      this.scheduler.setCps(this.state.bpm / (60 * beatsPerBar(this.state.meter)), this.rampBars)
       this.rampBars = 0
       if (changed) {
         const pattern = compiledLoops.length ? this.api.stack(...compiledLoops) : this.api.silence

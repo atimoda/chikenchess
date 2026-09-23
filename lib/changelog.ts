@@ -1,7 +1,17 @@
-export const RELEASE_LABEL = 'v0.4.41'
+export const RELEASE_LABEL = 'v0.4.42'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.42', date: '23/09/2026', title: 'Campanhas e novas levadas', groups: [
+    { title: 'Mapa', items: [
+      'As fases agora aparecem em três campanhas numa lista à esquerda do globo; hover centraliza a cidade e clique abre seu popup.',
+      'Buenos Aires, Dublin e New Orleans chegam à campanha World ballads, junto com Manchester 1999; Vienna aparece em Classical music.',
+    ] },
+    { title: 'Música', items: [
+      'Três composições originais exploram 3/4, 6/8 e 12/8, com duração real dos compassos, acentos e relógio próprios.',
+      'O Criativo permite escolher o compasso; kits antigos continuam em 4/4.',
+    ] },
+  ] },
   { version: '0.4.41', date: '23/09/2026', title: 'Ícones com fundo transparente', groups: [
     { title: 'Identidade visual', items: [
       'Favicons e ícones do app exibem a silhueta do logotipo sem um quadrado de fundo.',

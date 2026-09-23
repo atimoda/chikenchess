@@ -13,6 +13,9 @@ import { profile as saopaulo } from './saopaulo'
 import { profile as paris } from './paris'
 import { profile as vienna } from './vienna'
 import { profile as johannesburg } from './johannesburg'
+import { profile as buenosAires1940 } from './buenos-aires-1940'
+import { profile as dublin1990 } from './dublin-1990'
+import { profile as newOrleans1953 } from './new-orleans-1953'
 
 export const STYLE_PROFILES: Record<string, StyleProfile> = {
   dusseldorf,
@@ -28,4 +31,7 @@ export const STYLE_PROFILES: Record<string, StyleProfile> = {
   paris,
   vienna,
   johannesburg,
+  'buenos-aires-1940': buenosAires1940,
+  'dublin-1990': dublin1990,
+  'new-orleans-1953': newOrleans1953,
 }

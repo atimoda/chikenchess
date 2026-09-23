@@ -1,5 +1,6 @@
 import type { Automations } from '../automation'
 import type { CreativeSession } from '../creative'
+import type { Meter } from '../meter'
 import type { Behavior, MovementMapping } from '../model'
 
 export type PartRole = 'rhythm' | 'bass' | 'harmony' | 'melody' | 'response' | 'texture'
@@ -48,6 +49,7 @@ export type PartProfile = {
 export type StyleProfile = {
   name: string
   bpm: number
+  meter?: Meter
   root: CreativeSession['root']
   scale: CreativeSession['scale']
   harmony: CreativeSession['harmony']

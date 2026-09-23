@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react'
 import type { MusicMonitor } from '@/lib/music/monitor'
 import { TRIGGERS, type Trigger } from '@/lib/music/reactions'
 import { harmonyFrame } from '@/lib/music/harmony'
+import { beatsPerBar } from '@/lib/music/meter'
 
 export function MusicHarmonyReadout({monitor}:{monitor:MusicMonitor}){
  const frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot), t=frame.transport
@@ -20,7 +21,7 @@ export function MusicTransitionView({monitor,fallbackBpm}:{monitor:MusicMonitor;
  const bpm=t?.bpm??fallbackBpm, targetBpm=t?.targetBpm??fallbackBpm, pending=t?.pending??[]
  const r=t?.ramp, progress=r?.progress??1, ramping=progress<1
  return <section aria-label="Transições musicais" style={{padding:10,border:'1px solid #405247',borderRadius:6,background:'#152019'}}>
-  <strong>Relógio e transições<InfoTip label="Ler o relógio musical">Nesta versão, o relógio usa sempre quatro tempos por compasso. A subdivisão da grade muda as partes dentro de cada tempo, sem alterar o compasso. A linha amarela mostra o avanço da rampa.</InfoTip></strong>
+  <strong>Relógio e transições<InfoTip label="Ler o relógio musical">O compasso define quantos pulsos há em cada ciclo. Em 6/8 e 12/8, cada pulso vale uma semínima pontuada e tem três colcheias. A linha amarela mostra a rampa de BPM.</InfoTip></strong>
   <div style={{display:'flex',justifyContent:'space-between',fontVariantNumeric:'tabular-nums',marginTop:8}}><span>Agora <b>{bpm.toFixed(1)} BPM</b></span><span>Destino {targetBpm.toFixed(1)}</span></div>
   <svg viewBox="0 0 300 54" style={{display:'block',width:'100%',height:54}} role="img" aria-label={ramping?`Rampa ${Math.round(progress*100)} por cento`:'BPM estável'}>
    {[0,1,2,3,4].map(i=><line key={i} x1={i*75} x2={i*75} y1={4} y2={50} stroke="#34473c"/>)}
@@ -28,8 +29,8 @@ export function MusicTransitionView({monitor,fallbackBpm}:{monitor:MusicMonitor;
    <line x1={progress*300} x2={progress*300} y1={0} y2={54} stroke="#ffe7a8" strokeWidth={3}/>
   </svg>
   <small>{ramping?`Mudança gradual em ${(r!.end-r!.start).toFixed(0)} compassos · ${Math.round(progress*100)}%`:'Sem rampa em andamento'}</small>
-  <div style={{display:'flex',gap:3,margin:'8px 0'}}>{[0,1,2,3].map(i=><div key={i} style={{flex:1,textAlign:'center',padding:4,background:frame.beat===i+1&&frame.running?'#557440':'#26362c'}}>{i+1}</div>)}</div>
+  <div style={{display:'flex',gap:3,margin:'8px 0'}}>{Array.from({length:beatsPerBar(t?.meter)},(_,i)=><div key={i} style={{flex:1,textAlign:'center',padding:4,background:frame.beat===i+1&&frame.running?'#557440':'#26362c'}}>{i+1}</div>)}</div>
   <MusicHarmonyReadout monitor={monitor}/>
-  {pending.length>0&&<div>{pending.map(p=><div key={p.id}>{TRIGGERS[p.trigger as Trigger]} → compasso {p.cycle+1} · em {Math.max(0,(p.cycle-frame.cycle)*4).toFixed(1)} tempos</div>)}</div>}
+  {pending.length>0&&<div>{pending.map(p=><div key={p.id}>{TRIGGERS[p.trigger as Trigger]} → compasso {p.cycle+1} · em {Math.max(0,(p.cycle-frame.cycle)*beatsPerBar(t?.meter)).toFixed(1)} tempos</div>)}</div>}
  </section>
 }

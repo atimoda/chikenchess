@@ -1,6 +1,6 @@
 # Referências musicais — coleção v0.4.0
 
-Atualizado em 21/09/2026. A coleção está em `lib/music/kit-profiles/`; os defaults das 14 fases usam esses dados. Os padrões são composições originais inspiradas nos recursos de cada linguagem, não transcrições ou reconstruções históricas das gravações citadas. Pesquisa de repertório e datas não equivale a análise auditiva. As diferenças de época abaixo são intencionais e explícitas.
+Atualizado em 23/09/2026. A coleção está em `lib/music/kit-profiles/`; os defaults das 17 fases usam esses dados. Os padrões são composições originais inspiradas nos recursos de cada linguagem, não transcrições ou reconstruções históricas das gravações citadas. Pesquisa de repertório e datas não equivale a análise auditiva. As diferenças de época abaixo são intencionais e explícitas.
 
 | Fase | Kit / direção de arranjo | Referência e contexto |
 | --- | --- | --- |
@@ -18,6 +18,9 @@ Atualizado em 21/09/2026. A coleção está em `lib/music/kit-profiles/`; os def
 | Johannesburg · 1994 | Jozi: house desacelerado, piano, baixo elástico, percussão em contratempo, guitarra de resposta e chamadas vocais | [South African History Online — história do Kwaito](https://sahistory.org.za/article/history-kwaito-music). A fonte descreve a combinação de house desacelerado com piano, percussão e melodias africanas e situa o gênero na África do Sul dos anos 1990. A fase usa Johannesburg/Soweto como centro cultural, sem atribuir a uma só cidade toda a formação do gênero. |
 | Paris · 1995 | Da Seine: baixo com síncopes, guitarra, filtro por seção e escala blues | [Daft Punk — catálogo oficial](https://www.daftpunk.com/), [Da Funk (1995)](https://en.wikipedia.org/wiki/Da_Funk). |
 | Vienna · 1780 | Salão: linhas tonais, cordas, madeiras, baixo e tímpanos; peões afinados, sem bateria eletrônica | [Mozart, K.338 — Mozarteum](https://kv.mozarteum.at/en/work/symphony-in-c-4426). Composta em Salzburg em 1780: referência austríaca, não alegação de composição/estreia em Viena. |
+| Buenos Aires · 1940 | Vals criollo original em 3/4: baixo no primeiro pulso, acordes no segundo e terceiro, palheta e guitarra em resposta | [Secretaria de Cultura argentina — Aníbal Troilo e o vals Romance de Barrio](https://www.argentina.gob.ar/node/431575). O ano é ambientação da fase, não data de invenção do gênero nem transcrição do vals citado. |
+| Dublin · 1990 | Balada/jig original em 6/8: dois grupos de três colcheias, flauta, guitarra e cordas em pergunta/resposta | [Arquivo Comhaltas — John Brady's Jig, publicado em Dublin nos anos 1990, notado em 6/8](https://archive.comhaltas.ie/compositions/596). A fase não copia a melodia arquivada. |
+| New Orleans · 1953 | Slow blues original em 12/8: quatro grupos ternários, piano rolante, guitarra e resposta de metal | [Smithsonian Folkways — notas sobre o 12/8 de New Orleans](https://folkways-media.si.edu/docs/folkways/artwork/SFW40165.pdf) e [Library of Congress — Professor Longhair em 1953](https://www.loc.gov/programs/national-recording-preservation-board/recording-registry/descriptions-and-essays/african-americans-on-the-recording-registry/). A fase usa contexto e métrica como referência, sem reproduzir uma gravação. |
 
 ## Estudo “Mouth Breather”
 

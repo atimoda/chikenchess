@@ -134,8 +134,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 14)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 13)
+  assert.equal(cities.length, 17)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 16)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -158,6 +158,31 @@ test('curated arrangements vary density, timbre and harmonic direction by city',
   assert.match(johannesburg.name, /Jozi/)
   assert.ok(Object.values(johannesburg.instruments).some(instrument => instrument.name.includes('Piano township')))
   assert.ok(Object.values(johannesburg.instruments).some(instrument => instrument.name.includes('Guitarra mbaqanga')))
+})
+
+test('every stage belongs to its intended campaign without sharing progression IDs', () => {
+  const {cities}=loadTs('lib/cities-data.ts')
+  const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
+  assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
+  assert.ok(cities.every(city=>city.campaigns.length>0))
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[13,4,1])
+  assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['electronic-history','world-ballads'])
+  assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
+})
+
+test('the new songs place their defining phrases inside each notated bar', () => {
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const onsets = (cityId, voiceName) => {
+    const kit = defaultCityKit(cityId)
+    const instrument = Object.values(kit.instruments).find(i => i.name === voiceName)
+    assert.ok(instrument, `${cityId}: ${voiceName}`)
+    assert.equal(instrument.pianoRolls[0].bars, 1)
+    return [...new Set(instrument.pianoRolls[0].notes.map(note => Math.round(note.start * 12) / 12))]
+  }
+  assert.deepEqual(onsets('buenos-aires-1940', 'Acorde no dois'), [1 / 3])
+  assert.deepEqual(onsets('buenos-aires-1940', 'Acorde no três'), [2 / 3])
+  assert.deepEqual(onsets('dublin-1990', 'Flauta do cais'), [0, 1 / 6, 2 / 6, 3 / 6, 4 / 6, 5 / 6])
+  assert.deepEqual(onsets('new-orleans-1953', 'Piano que rola'), [0, 1 / 4, 1 / 2, 3 / 4])
 })
 
 test('every city voice produces bounded, in-scale Strudel events in every section', async () => {

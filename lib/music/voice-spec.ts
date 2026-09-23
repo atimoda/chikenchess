@@ -1,5 +1,6 @@
 // Resolve a game/Creative snapshot to per-piece control values, without querying Strudel.
 import { performancePattern } from './performance'
+import { beatsPerBar } from './meter'
 import { DEFAULT_MOVEMENT, degreeToMidi, instrumentFor } from './model'
 import { sampleRegistration } from './sample-banks'
 import type { MusicSnapshot, Preview, VoiceSpec } from './runtime-types'
@@ -73,6 +74,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
     const performance = !manual && state.sectionOverrides?.[piece.id]===undefined && instrument.selectedVariation===undefined ? instrument.performance : undefined
     return {
       performance,
+      beatsPerBar: beatsPerBar(state.meter),
       key: `${piece.id}:${audition ? 'preview' : 'loop'}`, piece, square, preview: audition, manual,
       orbit: effectOrbit(piece, audition, effectBuses), notes,
       phrases,
@@ -84,7 +86,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
         }
         return {...roll,notes:roll.notes.map(n=>({...n,degree:Number(toMidiPattern(String(n.degree),harmony[index%harmony.length]))}))}
       }),
-      sectionPattern: performance ? performancePattern(performance) : state.sectionOverrides?.[piece.id] !== undefined ? String(state.sectionOverrides[piece.id]) : instrument.selectedVariation !== undefined ? String(instrument.selectedVariation) : state.sectionPattern ?? '0',
+      sectionPattern: performance ? performancePattern(performance, false, beatsPerBar(state.meter)) : state.sectionOverrides?.[piece.id] !== undefined ? String(state.sectionOverrides[piece.id]) : instrument.selectedVariation !== undefined ? String(instrument.selectedVariation) : state.sectionPattern ?? '0',
       // A solo should be audible immediately, even when the arrangement mask
       // normally holds this layer back until a later section.
       mask: audition || state.soloId === piece.id || piece.checkEnsemble ? undefined : instrument.mask,
