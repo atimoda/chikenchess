@@ -1,7 +1,12 @@
-export const RELEASE_LABEL = 'v0.4.44'
+export const RELEASE_LABEL = 'v0.4.45'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.45', date: '23/09/2026', title: 'Abas de variação', groups: [
+    { title: 'Partida', items: [
+      'Os botões de edição da variação destacam o hover; o pin da variação fixada aparece acima da aba sem aumentar a fileira.',
+    ] },
+  ] },
   { version: '0.4.44', date: '23/09/2026', title: 'Compasso da partida', groups: [
     { title: 'Música', items: [
       'A partida agora usa o compasso do kit também no editor de variações e no relógio musical.',
