@@ -8,6 +8,7 @@ import type { Instrument, InstrumentPerformanceEdit } from '@/lib/music/model'
 import { reverseVariation, randomizeVariation } from '@/lib/music/variation-edit'
 import { resizeRoll } from '@/lib/music/piano-roll'
 import { beatsPerBar } from '@/lib/music/meter'
+import { performancePosition } from '@/lib/music/performance'
 import { ArrowLeftRight, Dices, Minus, Pin, Plus } from 'lucide-react'
 import styles from './music-playback.module.css'
 
@@ -67,6 +68,11 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
   const sourceVariationCount = Math.max(1, instrument?.phrases?.length ?? 0, instrument?.pianoRolls?.length ?? 0, instrument ? 0 : rows.length)
   const activeTab = instrument?.selectedVariation ?? (activeRow ? activeRow.index % sourceVariationCount : 0)
   const activeRoll=instrument?.pianoRolls?.[activeTab]
+  const followingPerformance=instrument?.selectedVariation===undefined&&snapshot.sectionOverrides?.[id]===undefined
+  const currentPerformance=followingPerformance&&instrument?.performance
+    ? performancePosition(instrument.performance,frame.cycle,beatsPerBar(snapshot.meter))
+    : null
+  const absentVariation=currentPerformance&&!currentPerformance.step.active?currentPerformance.step.variation%sourceVariationCount:null
   const resizeActiveVariation=(delta:number)=>{
     if(!instrument||!onInstrumentChange||!activeRoll)return
     const bars=Math.max(1/beatsPerBar(snapshot.meter),Math.min(8,activeRoll.bars+delta/beatsPerBar(snapshot.meter)*4))
@@ -82,7 +88,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
       <div className={styles.variationTabs} role="tablist" aria-label="Variações do instrumento">
         <div className={styles.variationTabList}>{Array.from({ length: sourceVariationCount }, (_, index) => {
           const fixed = instrument.selectedVariation === index
-          return <button key={index} type="button" role="tab" aria-selected={activeTab === index} aria-pressed={fixed} data-active={activeTab === index} data-fixed={fixed} onClick={() => onInstrumentChange({ selectedVariation: fixed ? undefined : index })}>{fixed&&<Pin className={styles.pinnedVariation} aria-hidden="true"/>}{String.fromCharCode(65 + index)}</button>
+          return <button key={index} type="button" role="tab" aria-selected={activeTab === index} aria-pressed={fixed} data-active={activeTab === index} data-fixed={fixed} data-absent={absentVariation===index||undefined} onClick={() => onInstrumentChange({ selectedVariation: fixed ? undefined : index })}>{fixed&&<Pin className={styles.pinnedVariation} aria-hidden="true"/>}{String.fromCharCode(65 + index)}</button>
         })}</div>
         <div className={styles.variationActions} aria-label="Ações da variação">
           <DivisionPicker value={division} onChange={setDivision} meter={snapshot.meter??'4/4'}/>

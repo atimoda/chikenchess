@@ -1,7 +1,12 @@
-export const RELEASE_LABEL = 'v0.4.45'
+export const RELEASE_LABEL = 'v0.4.46'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.46', date: '23/09/2026', title: 'Presença das variações', groups: [
+    { title: 'Partida', items: [
+      'A aba da variação fica mais discreta durante seções em que a peça não está presente; o pin sobe para ficar acima do botão.',
+    ] },
+  ] },
   { version: '0.4.45', date: '23/09/2026', title: 'Abas de variação', groups: [
     { title: 'Partida', items: [
       'Os botões de edição da variação destacam o hover; o pin da variação fixada aparece acima da aba sem aumentar a fileira.',
