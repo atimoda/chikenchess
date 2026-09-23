@@ -1,7 +1,12 @@
-export const RELEASE_LABEL = 'v0.4.40'
+export const RELEASE_LABEL = 'v0.4.41'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.41', date: '23/09/2026', title: 'Ícones com fundo transparente', groups: [
+    { title: 'Identidade visual', items: [
+      'Favicons e ícones do app exibem a silhueta do logotipo sem um quadrado de fundo.',
+    ] },
+  ] },
   { version: '0.4.40', date: '23/09/2026', title: 'Logotipo maior no Sobre', groups: [
     { title: 'Mapa', items: [
       'O logotipo fica maior ao lado do nome no painel Sobre.',
