@@ -33,6 +33,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     pieces: pieces.map(p => ({ ...p, active: p.activation === 'move', checkEnsemble: false })),
     scale: kit ? scaleForCreativeSession(kit) : city.scale,
     harmony: kit?.harmony,
+    meter: kit?.meter ?? '4/4',
     bpm,
     tuning: 1,
     volume,

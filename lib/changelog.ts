@@ -1,7 +1,12 @@
-export const RELEASE_LABEL = 'v0.4.43'
+export const RELEASE_LABEL = 'v0.4.44'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.44', date: '23/09/2026', title: 'Compasso da partida', groups: [
+    { title: 'Música', items: [
+      'A partida agora usa o compasso do kit também no editor de variações e no relógio musical.',
+    ] },
+  ] },
   { version: '0.4.43', date: '23/09/2026', title: 'Audição no Criativo', groups: [
     { title: 'Tabuleiro', items: [
       'Arrastar uma peça volta a tocar uma nota por casa mesmo quando o áudio ainda estava suspenso.',
