@@ -445,6 +445,25 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
     introPhrases: ['Four slow pulses.', 'Each carries three steps.', 'Let the blues answer.']
   },
+  // Harmonic songbook: one original, editable kit for each new progression.
+  ...([
+    ['san-diego-1999', 'San Diego', 'USA', 1999, 'Pop punk · I–V–IV', 'Fast guitar, clipped backbeat and a three-chord singalong.', 148, 'C', 32.7157, -117.1611, '#ff8b65', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['london-1970', 'London', 'UK', 1970, 'Piano pop · I–V–vi–IV', 'Piano, open chords and a slowly rising chorus.', 72, 'C', 51.5074, -0.1278, '#e5c69d', 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=800&auto=format&fit=crop'],
+    ['berkeley-2004', 'Berkeley', 'USA', 2004, 'Alternative rock · vi–IV–I–V', 'A nocturnal rock pulse with a descending minor start.', 84, 'E', 37.8715, -122.2730, '#8da1c7', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['new-york-1961', 'New York City', 'USA', 1961, 'Soul / doo-wop · I–vi–IV–V', 'A walking bass, warm keys and answering vocal-like lines.', 116, 'A', 40.7128, -74.0060, '#d99fc5', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
+    ['san-francisco-1993', 'San Francisco', 'USA', 1993, 'Folk rock · vi–IV–ii–V', 'Acoustic strums and a minor-to-dominant verse turn.', 132, 'C', 37.7749, -122.4194, '#c9a46b', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['paris-1945', 'Paris', 'France', 1945, 'Jazz / chanson · ii7–V7–Imaj7', 'A Parisian chanson setting with a jazz cadence and seventh chords.', 112, 'C', 48.8566, 2.3522, '#a0b8aa', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=800&auto=format&fit=crop'],
+    ['columbus-2013', 'Columbus', 'USA', 2013, 'Indie pop · I–IV–vi–V', 'Light acoustic motion and an upward, open chorus.', 124, 'C', 39.9612, -82.9988, '#f0cc77', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['new-york-1930', 'New York City', 'USA', 1930, 'Swing jazz · iii7–VI7–ii7–V7', 'A short rhythm-changes turnaround with four seventh chords.', 144, 'C', 40.7128, -74.0060, '#b4abdb', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
+    ['jacksonville-1974', 'Jacksonville', 'USA', 1974, 'Southern rock · IV–I–V', 'Open guitar and road-song accents around a distinct IV–I–V loop.', 98, 'C', 30.3322, -81.6557, '#d2a571', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['chicago-1958', 'Chicago', 'USA', 1958, 'Electric blues · I–IV–V', 'A bright guitar response and a walking electric blues bass.', 164, 'C', 41.8781, -87.6298, '#83b8d5', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+  ] as const).map(([id, name, country, year, genre, description, bpm, root, lat, lng, color, image]) => ({
+    id, name, country, year, genre, description, bpm,
+    scale: (root === 'E' ? ['E4','F#4','G#4','A4','B4','C#5','D#5'] : root === 'A' ? ['A3','B3','C#4','D4','E4','F#4','G#4'] : ['C4','D4','E4','F4','G4','A4','B4']),
+    geoCoordinates: { lat, lng }, color, image,
+    samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
+    introPhrases: [name + ', ' + year + '.', 'Hear the chord sequence.', 'Answer with your next move.'],
+  })),
 ]
 
 const campaignMembership: Record<string, CampaignId[]> = {
@@ -455,6 +474,11 @@ const campaignMembership: Record<string, CampaignId[]> = {
   'manchester-1999': ['electronic-history', 'world-ballads'], 'buenos-aires-1940': ['world-ballads'],
   'dublin-1990': ['world-ballads'], 'new-orleans-1953': ['world-ballads'],
   vienna: ['classical'],
+  'san-diego-1999': ['harmonic-songbook'], 'london-1970': ['harmonic-songbook'],
+  'berkeley-2004': ['harmonic-songbook'], 'new-york-1961': ['harmonic-songbook'],
+  'san-francisco-1993': ['harmonic-songbook'], 'paris-1945': ['harmonic-songbook'],
+  'columbus-2013': ['harmonic-songbook'], 'new-york-1930': ['harmonic-songbook'],
+  'jacksonville-1974': ['harmonic-songbook'], 'chicago-1958': ['harmonic-songbook'],
 }
 
 export const cities: CityData[] = rawCities.map(city => ({

@@ -37,7 +37,7 @@ export function createManchesterJazzKit(): CreativeSession {
     ['snare', 'Caixa breaks', 'chicken-jazz-v1', 'snare', 0, .34],
     ['hat', 'Chimbal longo-curto', 'chicken-electro-v1', 'hat', 1, .18],
     ['ghost', 'Caixa fantasma', 'chicken-jazz-v1', 'snare', 1, .13],
-    ['ride', 'Ride pontuado', 'chicken-jazz-v1', 'ride', 0, .18],
+    ['ride', 'Ride pontuado', 'chicken-drums-v1', 'ride', 0, .15],
     ['open', 'Chimbal de resposta', 'chicken-electro-v1', 'open-hat', 0, .12],
     ['rim', 'Rim de madeira', 'chicken-electro-v1', 'rim', 0, .19],
     ['shaker', 'Shaker sincopado', 'chicken-electro-v1', 'shaker', 0, .12],
@@ -65,8 +65,9 @@ export function createManchesterJazzKit(): CreativeSession {
         source: { kind: 'sample', bank, asset, variant, pitched: false }, groove: { groove: 'jazzBreaks', lane } })
     } else {
       const [phrase, name, asset, octave, gain, behavior] = melodic[file]
+      const keyAsset = file === 'c' ? 'rhodes' : file === 'f' ? 'grand' : asset
       Object.assign(inst, { name, behavior, octave, gain, notes: JAZZ_PHRASES[phrase][0], phrases: [...JAZZ_PHRASES[phrase]],
-        source: { kind: 'sample', bank: 'chicken-jazz-v1', asset, variant: 0, pitched: true },
+        source: { kind: 'sample', bank: asset === 'keys' ? 'chicken-keys-v1' : 'chicken-jazz-v1', asset: keyAsset, variant: 0, pitched: true },
         lpf: asset === 'pluck' ? 1400 : asset === 'keys' ? 3800 : 5500, hpf: asset === 'pluck' ? 25 : 120, clip: asset === 'keys' ? .4 : .82,
         automations: { gain: { kind: 'pattern', patterns: ['1 .78 .9 .72', '1 .85 .95 .8', '.85 .65 .8 .65', '1 .85 .95 .8'] } } })
     }

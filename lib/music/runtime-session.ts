@@ -8,7 +8,7 @@ import { ReactionQueue } from './reaction-queue'
 import { applyReactions } from './reactions'
 import { isConstrainedDevice } from '../performance'
 import { TeamMixer, createTeamMixes } from './team-mixer'
-import { sampleRegistration } from './sample-banks'
+import { sampleRegistration, type SampleSource } from './sample-banks'
 import { createMusicMonitor, type TrackFrame, type NoteEvent, type MusicMonitor } from './monitor'
 import { voiceSpecs } from './voice-spec'
 import { compileVoice } from './pattern-compiler'
@@ -53,10 +53,20 @@ export class MusicRuntime {
   private sectionCache?: { source: string; pattern: StrudelPattern }
   private maskCache = new Map<string, StrudelPattern>()
   private manualHit?: { voice: VoiceSpec; value: any; start: number; end: number }
+  private releaseTimer?: ReturnType<typeof setTimeout>
   constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
 
   // Preload JS only. AudioContext is created/resumed from an interaction.
   preload() { void loadLibrary().then(api => { if (!this.disposed) this.preloadedApi = api }).catch(this.error) }
+
+  async prepareSamples(sources: SampleSource[]) {
+    const api = await loadLibrary()
+    if (this.disposed) return
+    this.preloadedApi = api
+    const unique = new Map(sources.map(source => [sampleRegistration(source).sound, source]))
+    await Promise.all([...unique.values()].map(source => ensureSample(api, source)))
+    // Prepare assets only. Build the live graph from unlock(), inside a gesture.
+  }
 
   async unlock() {
     if (this.disposed || !this.pageVisible) return
@@ -103,7 +113,9 @@ export class MusicRuntime {
     const constrained = isConstrainedDevice()
     this.visualInterval = 1 / (constrained ? 8 : 15)
     this.effectBuses = constrained ? 2 : 4
-    await s.initAudio({ maxPolyphony: constrained ? 32 : 64 })
+    // Worklet registration can outlast a drag. The audio context and manual
+    // notes do not depend on that registration, so finish it in the background.
+    void s.initAudio({ maxPolyphony: constrained ? 32 : 64 }).catch(this.error)
     if (this.disposed) return
     const context: AudioContext = s.getAudioContext()
     this.analyser = context.createAnalyser()
@@ -153,11 +165,8 @@ export class MusicRuntime {
       pending:[...this.reactionQueue.pending].map(([id,p])=>({id,cycle:p.cycle,trigger:p.entry.rule.trigger})) }
   }
 
-  audition(id: string, square: Square, mode: Preview['mode'] = 'manual', latestState?: MusicSnapshot) {
-    // Creative coalesces state updates for continuous controls. Flush the
-    // current snapshot before a gesture so first-use previews never race a
-    // delayed React effect and build from an absent or stale instrument map.
-    if (latestState && this.sourceState !== latestState) this.update(latestState)
+  audition(id: string, square: Square, mode: Preview['mode'] = 'manual') {
+    if (this.releaseTimer) this.endAudition()
     if (this.preview?.id === id && this.preview.square === square && this.preview.mode === mode) return
     const crossing = mode === 'manual' && this.preview?.mode === 'manual' && this.preview.id === id && !!this.api && !!this.scheduler
     const requested = { id, square, mode }
@@ -185,10 +194,20 @@ export class MusicRuntime {
   }
 
   endAudition() {
+    if (this.releaseTimer) clearTimeout(this.releaseTimer)
+    this.releaseTimer = undefined
     if (this.preview?.mode === 'manual') this.unlockAudition = null
     this.stopManualHit()
     this.preview = null
     this.refresh()
+  }
+
+  releaseAudition() {
+    if (this.preview?.mode !== 'manual' || this.releaseTimer) return
+    // A tap can end before first-use compilation has submitted its attack.
+    // Keep only the last manual note alive briefly; a new gesture or an
+    // explicit cancel ends it immediately.
+    this.releaseTimer = setTimeout(() => this.endAudition(), 500)
   }
 
   private stopManualHit() {
@@ -440,6 +459,8 @@ export class MusicRuntime {
   }
   dispose() {
     this.disposed = true
+    if (this.releaseTimer) clearTimeout(this.releaseTimer)
+    this.releaseTimer = undefined
     this.unlockAudition = null
     this.stopManualHit()
     this.scheduler?.stop()

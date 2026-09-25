@@ -7,11 +7,11 @@
 | `model.cases.cjs` | 11 | Identidade, movimentos, captura, ativação, graus e pausa |
 | `creative.cases.cjs` | 6 | Sessão, edição, validação e migração básica |
 | `patterns.cases.cjs` | 10 | Compilação, groove, automação e prévias |
-| `kits.cases.cjs` | 10 | Cidades, samples, catálogo e persistência |
-| `runtime.cases.cjs` | 16 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba e gestos temporários |
+| `kits.cases.cjs` | 19 | Cidades, sete bancos de samples, curadoria de timbre, catálogo e persistência |
+| `runtime.cases.cjs` | 16 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba, preparação de samples sem grafo antecipado e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |
-| `editor.cases.cjs` | 9 | Duração, forma, edição/espelho de variações, loop por peça e slides por nota |
+| `editor.cases.cjs` | 10 | Duração, forma, progressões harmônicas, tétrades de jazz, edição/espelho de variações, loop por peça e slides por nota |
 | `globe.cases.cjs` | 4 | Voo, geometria, direção do gesto e compensação do popup |
 | `evaluation.cases.cjs` | 11 | UCI, orçamento, sinais/mate, ranking completo, cancelamento, cache com histórico, mudanças de dificuldade durante a busca e integração com Stockfish Lite real |
 | `progression.cases.cjs` | 3 | Migração, recompensa, saldo de ovos e pontos históricos |

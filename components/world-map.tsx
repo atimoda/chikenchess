@@ -47,6 +47,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [currentZoom, setCurrentZoom] = useState(100)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [focusedCityId, setFocusedCityId] = useState<string | null>(null)
+  const popupLayerRef = useRef<HTMLDivElement>(null)
 
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -795,10 +796,13 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             enteringCityId={enteringCityId}
             setEnteringCityId={setEnteringCityId}
             zoomRef={zoomRef}
+            popupLayerRef={popupLayerRef}
             onZoomChange={setCurrentZoom}
             focusedCityId={focusedCityId}
          />
       </div>
+
+      <div ref={popupLayerRef} className="absolute inset-0 z-[45] pointer-events-none" />
 
       {logoPhase === 'header' && <CampaignCityList cities={cities} onFocus={setFocusedCityId} onOpen={city => { setFocusedCityId(city.id); handleCityClick(city) }} />}
 

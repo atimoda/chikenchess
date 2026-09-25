@@ -7,9 +7,15 @@ import type { CityData } from '../cities-data'
 import type { PartProfile, ProfileSource, StyleProfile } from './kit-profiles/types'
 import { beatsPerBar, type Meter } from './meter'
 
-export const STYLE_REVISION = 'styles-2026-09-21-v2'
+export const STYLE_REVISION = 'styles-2026-09-25-v3'
+export const MANCHESTER_JAZZ_REVISION = 'manchester-2026-09-25-v4'
+export const LEGACY_STYLE_REVISIONS = ['styles-2026-09-21-v2', 'dusseldorf-2026-09-24-v3', 'new-orleans-2026-09-24-v3', 'manchester-2026-09-24-v3'] as const
+export const CITY_STYLE_REVISIONS: Record<string, string> = {
+  dusseldorf: 'dusseldorf-2026-09-25-v4',
+  'new-orleans-1953': 'new-orleans-2026-09-25-v4',
+}
 
-const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1' } as const
+const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1' } as const
 const WHITE_SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2'] as const
 
 export function phraseRoll(text: string, bars: number, swing = 0, gate = .65, meter: Meter = '4/4'): PianoRoll {
@@ -74,7 +80,7 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
 }
 
 function enrichManchesterJazzKit(kit: CreativeSession) {
-  kit.catalogRevision = STYLE_REVISION
+  kit.catalogRevision = MANCHESTER_JAZZ_REVISION
   kit.harmony = 'cadence'
   kit.sectionPattern = '[0@16 1@24 2@12 3@24]/19'
   const sections = [16, 24, 12, 24]
@@ -82,7 +88,12 @@ function enrichManchesterJazzKit(kit: CreativeSession) {
     const instrument = kit.instruments[piece.id]
     const file = piece.origin.charCodeAt(0) - 97
     const isPulse = instrument.behavior === 'pulse'
-    const active = isPulse ? [true, file < 6, file < 3, true] : piece.type === 'q' ? [false, true, false, true] : piece.type === 'k' ? [true, true, true, true] : [file % 2 === 0, true, file % 2 === 1, true]
+    const active = isPulse ? [true, file < 6, file < 3, true]
+      : file === 1 ? [true, true, true, true] // The main bass anchors sparse sections.
+      : file === 6 ? [false, true, false, true] // Its reply enters with the fuller band.
+      : piece.type === 'q' ? [false, true, false, true]
+      : piece.type === 'k' ? [true, true, true, true]
+      : [file % 2 === 0, true, file % 2 === 1, true]
     instrument.performance = { restart: instrument.behavior !== 'sustain', steps: sections.map((beats, index) => ({ beats, variation: index, transpose: index === 2 && !isPulse ? 2 : 0, active: active[index] })) }
     if (piece.origin[0] === 'd') instrument.automations = { ...instrument.automations, penv: { kind: 'pattern', patterns: ['0', '0', '0', '<0 0 0 -2>'] }, patt: { kind: 'pattern', patterns: ['.09'] } }
   }
@@ -95,7 +106,7 @@ export function createStyledCityKit(city: CityData): CreativeSession {
   if (!profile) throw new Error(`Perfil ausente: ${city.id}`)
   if (profile.parts.length !== WHITE_SLOTS.length) throw new Error(`Perfil incompleto: ${city.id} tem ${profile.parts.length}/16 vozes.`)
   const kit = createCreativeSession()
-  Object.assign(kit, { catalogRevision: STYLE_REVISION, cityId: city.id, name: profile.name, bpm: profile.bpm, meter: profile.meter ?? '4/4', root: profile.root, scale: profile.scale,
+  Object.assign(kit, { catalogRevision: CITY_STYLE_REVISIONS[city.id] ?? STYLE_REVISION, cityId: city.id, name: profile.name, bpm: profile.bpm, meter: profile.meter ?? '4/4', root: profile.root, scale: profile.scale,
     harmony: profile.harmony, volume: .68, grooves: {}, sectionPattern: sectionPattern(profile.sections, beatsPerBar(profile.meter)) })
   for (const piece of kit.pieces) {
     piece.active = piece.color === 'w'

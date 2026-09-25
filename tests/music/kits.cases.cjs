@@ -23,9 +23,26 @@ test('sample registry points to small valid local WAV files with explicit tuning
     assert.equal(file.readUInt16LE(22), 1)
     assert.ok(sampleRegistration({ kind: 'sample', bank: bank.id, asset: asset.id, variant, pitched: true }).map)
     }
-    assert.ok(bankBytes < 500_000, `${bank.id}: each bank stays below 500 KB`)
+    assert.ok(bankBytes < 700_000, `${bank.id}: each bank stays below 700 KB`)
   }
-  assert.ok(total < 1_200_000, 'three sample banks stay below 1.2 MB; assets load on demand')
+  assert.equal(SAMPLE_BANKS.length, 7)
+  assert.ok(total < 3_000_000, 'seven sample banks stay below 3 MB; assets load on demand')
+})
+
+test('new timbre banks reach the intended city styles', () => {
+  const { cities } = loadTs('lib/cities-data.ts')
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const recent = new Set(['chicken-strings-v1', 'chicken-keys-v1', 'chicken-synths-v1', 'chicken-drums-v1'])
+  for (const city of cities) {
+    const sources = Object.values(defaultCityKit(city.id).instruments).map(instrument => instrument.source)
+    assert.ok(sources.some(source => source?.kind === 'sample' && recent.has(source.bank)), `${city.id}: new timbre`)
+  }
+  const banksFor = city => new Set(Object.values(defaultCityKit(city).instruments).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source.bank] : []))
+  assert.ok(banksFor('san-diego-1999').has('chicken-strings-v1'))
+  assert.ok(banksFor('london-1970').has('chicken-keys-v1'))
+  assert.ok(banksFor('berkeley-2004').has('chicken-drums-v1'))
+  assert.ok(banksFor('tokyo').has('chicken-synths-v1'))
+  assert.notEqual(defaultCityKit('san-diego-1999').instruments['w:a1'].source.asset, defaultCityKit('paris-1945').instruments['w:a1'].source.asset)
 })
 
 test('Manchester 1999 has a curated four-section band with audible queens and gentle swung eighths', async () => {
@@ -50,6 +67,41 @@ test('Manchester 1999 has a curated four-section band with audible queens and ge
   assert.ok(Math.abs(onsets[1] - 5 / 36) < 1e-8, 'second eighth is delayed by the shared 5:4 weighting')
   assert.equal(onsets[2], .25, 'quarter-note pulse remains stable')
   assert.notDeepEqual(kit.instruments['w:b1'].phrases, kit.instruments['w:g1'].phrases, 'bass and reply are complementary')
+})
+
+test('Manchester 1999 keeps its main bass through sparse sections and reserves the reply for the full band', async () => {
+  const api = await strudel()
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const kit = defaultCityKit('manchester-1999')
+  const snapshot = creative.creativeSnapshot(kit, true)
+  const voices = voiceSpecs(snapshot, null)
+  const main = voices.find(voice => voice.piece.id === 'w:b1')
+  const reply = voices.find(voice => voice.piece.id === 'w:g1')
+  const count = (voice, from, to) => compileVoice(api, voice).queryArc(from, to).filter(event => event.hasOnset()).length
+  assert.ok(count(main, 0, 4) > 0, 'the main bass supports section A')
+  assert.ok(count(main, 10, 13) > 0, 'the main bass supports section C')
+  assert.equal(count(reply, 0, 4), 0, 'the bass reply leaves space in section A')
+  assert.ok(count(reply, 4, 10) > 0, 'the bass reply enters in section B')
+  assert.equal(count(reply, 10, 13), 0, 'the bass reply leaves space in section C')
+})
+
+test('Düsseldorf and New Orleans leave their featured voices room in later sections', async () => {
+  const api = await strudel()
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const voicesFor = cityId => voiceSpecs(creative.creativeSnapshot(defaultCityKit(cityId), true), null)
+  const events = (voices, id, from, to) => compileVoice(api, voices.find(voice => voice.piece.id === id)).queryArc(from, to).filter(event => event.hasOnset()).length
+
+  const dusseldorf = voicesFor('dusseldorf')
+  assert.ok(events(dusseldorf, 'w:g1', 0, 4) > 0, 'the diode sequence introduces section A')
+  assert.equal(events(dusseldorf, 'w:g1', 8, 10), 0, 'the diode sequence leaves section C')
+  assert.ok(events(dusseldorf, 'w:d1', 8, 10) > 0, 'the flute carries section C')
+
+  const newOrleans = voicesFor('new-orleans-1953')
+  for (const id of ['w:e1', 'w:f1']) {
+    assert.ok(events(newOrleans, id, 4, 10) > 0, `${id} answers in section B`)
+    assert.equal(events(newOrleans, id, 14, 20), 0, `${id} leaves section D`)
+  }
+  assert.ok(events(newOrleans, 'w:g2', 14, 20) > 0, 'the trumpet takes the final section')
 })
 
 test('Manchester eras share geography but keep separate kits and save keys', () => {
@@ -134,8 +186,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 17)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 16)
+  assert.equal(cities.length, 27)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 21)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -165,7 +217,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[13,4,1])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[13,4,1,10])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['electronic-history','world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
@@ -259,15 +311,62 @@ test('curated collection has finite, bounded events across all banks and full fo
  }
 })
 
-test('catalog migration backs up once and preserves subsequent edits, including restored old kits',()=>{
- const {loadCityKit,previousCityKit,cityKitStorageKey}=loadTs('lib/music/city-kits.ts'),{STYLE_REVISION}=loadTs('lib/music/styled-kits.ts')
+test('catalog migration detaches the previous kit and preserves subsequent edits',()=>{
+ const {loadCityKit,KIT_LIBRARY_STORAGE,cityKitStorageKey}=loadTs('lib/music/city-kits.ts'),{CITY_STYLE_REVISIONS}=loadTs('lib/music/styled-kits.ts')
  const old=creative.createDusseldorfSession(),memory=new Map([[cityKitStorageKey('dusseldorf'),JSON.stringify(old)]]),previous=globalThis.window
  globalThis.window={localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v)}}
  try{
-  const current=loadCityKit('dusseldorf');assert.equal(current.catalogRevision,STYLE_REVISION)
-  assert.deepEqual(previousCityKit('dusseldorf'),JSON.parse(JSON.stringify(old)))
+  const current=loadCityKit('dusseldorf');assert.equal(current.catalogRevision,CITY_STYLE_REVISIONS.dusseldorf)
+  const loose=JSON.parse(memory.get(KIT_LIBRARY_STORAGE))[0]
+  assert.equal(loose.cityId,undefined)
+  assert.match(loose.name,/ v1$/)
+  assert.deepEqual({...loose,name:old.name,cityId:old.cityId},JSON.parse(JSON.stringify(old)))
   current.name='Personal';memory.set(cityKitStorageKey('dusseldorf'),JSON.stringify(current));assert.equal(loadCityKit('dusseldorf').name,'Personal')
-  const restored={...old,catalogRevision:STYLE_REVISION};memory.set(cityKitStorageKey('dusseldorf'),JSON.stringify(restored));assert.equal(loadCityKit('dusseldorf').name,old.name)
-  assert.deepEqual(previousCityKit('dusseldorf'),JSON.parse(JSON.stringify(old)))
+  const restored={...old,catalogRevision:CITY_STYLE_REVISIONS.dusseldorf};memory.set(cityKitStorageKey('dusseldorf'),JSON.stringify(restored));assert.equal(loadCityKit('dusseldorf').name,old.name)
+  assert.equal(JSON.parse(memory.get(KIT_LIBRARY_STORAGE)).length,1)
  }finally{if(previous===undefined)delete globalThis.window;else globalThis.window=previous}
+})
+
+test('Manchester revision saves a loose v1 kit while leaving another city linked', () => {
+  const { defaultCityKit, loadCityKit, KIT_LIBRARY_STORAGE, cityKitStorageKey } = loadTs('lib/music/city-kits.ts')
+  const { STYLE_REVISION, MANCHESTER_JAZZ_REVISION } = loadTs('lib/music/styled-kits.ts')
+  const oldManchester = { ...defaultCityKit('manchester-1999'), catalogRevision: STYLE_REVISION }
+  const otherCity = { ...defaultCityKit('dusseldorf'), name: 'Düsseldorf pessoal' }
+  const memory = new Map([
+    [cityKitStorageKey('manchester-1999'), JSON.stringify(oldManchester)],
+    [cityKitStorageKey('dusseldorf'), JSON.stringify(otherCity)],
+    [KIT_LIBRARY_STORAGE, JSON.stringify([oldManchester, otherCity])],
+  ])
+  const previous = globalThis.window
+  globalThis.window = { localStorage: { getItem: key => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value) } }
+  try {
+    assert.equal(loadCityKit('manchester-1999').catalogRevision, MANCHESTER_JAZZ_REVISION)
+    const library = JSON.parse(memory.get(KIT_LIBRARY_STORAGE))
+    assert.equal(library.length, 2)
+    const loose = library[0]
+    assert.equal(loose.name, 'Manchester 1999 v1')
+    assert.equal(loose.cityId, undefined)
+    assert.deepEqual({ ...loose, name: oldManchester.name, cityId: oldManchester.cityId }, JSON.parse(JSON.stringify(oldManchester)))
+    assert.equal(library[1].cityId, 'dusseldorf')
+    assert.equal(loadCityKit('dusseldorf').name, 'Düsseldorf pessoal')
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
+})
+
+test('an existing Manchester backup becomes a loose kit without changing the current city kit', () => {
+  const { defaultCityKit, loadCityKit, KIT_LIBRARY_STORAGE, cityKitStorageKey, CITY_KIT_STORAGE_PREFIX } = loadTs('lib/music/city-kits.ts')
+  const { LEGACY_STYLE_REVISIONS } = loadTs('lib/music/styled-kits.ts')
+  const current = defaultCityKit('manchester-1999')
+  const priorRevision = LEGACY_STYLE_REVISIONS.find(revision => revision.startsWith('manchester-'))
+  const old = { ...current, catalogRevision: priorRevision }
+  const backupKey = `${CITY_KIT_STORAGE_PREFIX}backup:${priorRevision}:manchester-1999`
+  const memory = new Map([[cityKitStorageKey('manchester-1999'), JSON.stringify(current)], [backupKey, JSON.stringify(old)]])
+  const previous = globalThis.window
+  globalThis.window = { localStorage: { getItem: key => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value), removeItem: key => memory.delete(key) } }
+  try {
+    assert.deepEqual(loadCityKit('manchester-1999'), JSON.parse(JSON.stringify(current)))
+    assert.equal(memory.has(backupKey), false)
+    assert.equal(JSON.parse(memory.get(KIT_LIBRARY_STORAGE))[0].name, 'Manchester 1999 v1')
+    loadCityKit('manchester-1999')
+    assert.equal(JSON.parse(memory.get(KIT_LIBRARY_STORAGE)).length, 1)
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
 })

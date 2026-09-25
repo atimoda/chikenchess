@@ -7,6 +7,34 @@ const { createMusicPulseMonitor } = loadTs('lib/music/monitor.ts')
 const creative = loadTs('lib/music/creative.ts')
 const state = (history = []) => ({ pieces: model.piecesFromHistory(history), scale: ['C4','Eb4','F4','G4','Bb4'], bpm: 118, volume: 0.8, playing: true, effects: {} })
 
+test('Creative sample preparation leaves the live audio graph for the first gesture', async () => {
+  const loader = loadTs('lib/music/strudel-loader.ts')
+  const originalLoad = loader.loadLibrary, originalSample = loader.ensureSample
+  const prepared = []
+  let initializations = 0
+  const context = { state: 'suspended', resume() { this.state = 'running'; return Promise.resolve() } }
+  const api = { getAudioContext: () => context }
+  loader.loadLibrary = async () => api
+  loader.ensureSample = async (_api, source) => { prepared.push(source) }
+  const runtime = new MusicRuntime(() => {}, error => { throw error })
+  runtime.initialize = async () => { initializations++; runtime.api = api }
+  runtime.refresh = () => {}
+  try {
+    const sample = { kind: 'sample', bank: 'chicken-world-v1', asset: 'guitar', variant: 0, pitched: true }
+    await runtime.prepareSamples([sample, sample])
+    assert.deepEqual(prepared, [sample], 'assets remain preloaded and deduplicated')
+    assert.equal(initializations, 0, 'preloading must not build a live graph before user activation')
+    assert.equal(context.state, 'suspended')
+    await runtime.unlock()
+    assert.equal(initializations, 1)
+    assert.equal(context.state, 'running')
+  } finally {
+    runtime.dispose()
+    loader.loadLibrary = originalLoad
+    loader.ensureSample = originalSample
+  }
+})
+
 test('hiding the match stops its scheduler and suspends the audio context', async () => {
   let stops = 0, suspends = 0
   const runtime = new MusicRuntime(() => {}, error => { throw error })
@@ -239,15 +267,16 @@ test('cancelled loading gestures stay silent; the dedicated audition button stil
   runtime.dispose()
 })
 
-test('Creative audition flushes the latest snapshot before previewing its piece', async () => {
-  const { runtime, attacks } = await manualRuntime()
-  const lab = creative.createCreativeSession()
-  runtime.scheduler.start = async () => { runtime.scheduler.started = true }
-  const latest = creative.creativeSnapshot(lab, false)
-  runtime.audition('w:e1', 'e4', 'manual', latest)
-  await new Promise(resolve => setImmediate(resolve))
-  assert.equal(attacks.length, 1)
-  assert.equal(runtime.manualHit.voice.square, 'e4')
+test('releasing a Creative tap lets its first manual attack start before ending the voice', async () => {
+  const { runtime, attacks, manualDisconnects } = await manualRuntime()
+  runtime.update(state())
+  runtime.audition('w:e1', 'e1')
+  runtime.releaseAudition()
+  await Promise.resolve()
+  assert.equal(attacks.length, 1, 'a quick tap must submit its note after release')
+  assert.equal(manualDisconnects(), 0, 'release preserves the short note tail')
+  runtime.endAudition()
+  assert.equal(manualDisconnects(), 1, 'explicit cancellation removes that tail')
   runtime.dispose()
 })
 

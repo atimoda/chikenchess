@@ -18,11 +18,13 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Código Strudel exibido/exportado | `lib/music/code-export.ts` | Deve permanecer equivalente ao compilador; teste de exportação |
 | Prévia, ponteiro, pulsos, conversão e validação | `lib/music/pattern-inspection.ts`, `monitor.ts` | `lib/music/variation-edit.ts`; `components/music-piano-editor.tsx`, `music-playback.tsx`, `music-pulse-overlay.tsx` |
 | Playback, gesto manual, cancelamento, mixer e lifecycle | `lib/music/runtime-session.ts` | `transport.ts`, `team-mixer.ts`, `monitor.ts`, `strudel-loader.ts`; `hooks/use-music.ts` acompanha a visibilidade da aba |
-| Timbre/sample e carregamento | `sample-banks.ts`, `strudel-loader.ts` | `public/samples/`, geradores em `scripts/` |
+| Timbre/sample e carregamento | `sample-banks.ts`, `strudel-loader.ts` | `public/samples/README.md`, geradores em `scripts/`; quatro bancos novos em `generate-timbre-samples.py` |
 | Uma cidade/estilo | `lib/music/kit-profiles/<cidade>.ts` | 16 papéis, timbres, padrões e presença por seção; `styled-kits.ts` compõe e `kit-profiles/catalog.ts` registra |
+| Dez fases harmônicas | `lib/music/kit-profiles/harmonic-stages.ts` | Motivos e referências de cada cidade; `harmonic-stage-factory.ts` monta 16 papéis e `harmony.ts` define os acordes |
+| Curadoria de timbre nos kits anteriores | `lib/music/kit-profiles/timbre-curation.ts` | Trocas de fonte por nome de parte, aplicadas em `kit-profiles/catalog.ts`; Manchester 1999 permanece em `manchester-kit.ts` |
 | Manchester 1999 | `lib/music/manchester-kit.ts` | Complementos de seções em `styled-kits.ts` |
-| Salvar/importar/migrar kits | `creative.ts`, `city-kits.ts` | Schema v4 e backup por revisão |
-| Bancada, seleção e sessão do Criativo | `components/creative-studio.tsx` | `hooks/use-creative-music.ts`; estado pertence ao compositor da tela |
+| Salvar/importar/migrar kits | `creative.ts`, `city-kits.ts` | Schema v4; preset antigo vai para a biblioteca como kit sem cidade |
+| Bancada, seleção e sessão do Criativo | `components/creative-studio.tsx` | `components/chessground-board.tsx` compartilha desenho e arraste com a partida, usando movimento livre; `hooks/use-creative-music.ts` controla a audição |
 | Knobs/ranges de som e movimento do Criativo | `components/creative/instrument-parameters.tsx` | `parameter-range.tsx` contém campo/ajuda comuns |
 | Ajuda contextual | `components/info-tip.tsx` + `.module.css` | Hover, foco, toque e portal |
 | Avaliação e adversária | `lib/chess-evaluation.ts`, `components/chess-game.tsx` | `public/engine/` contém Stockfish Lite; orçamento e cache no controlador; benchmark em `scripts/benchmark-chess.cjs`; medições em `docs/CHESS_ANALYSIS.md` |

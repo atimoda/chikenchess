@@ -41,7 +41,7 @@ Esses intervalos de oito segundos não delimitam compassos exatos. A forma do ki
 
 ## Arranjo implementado
 
-**123 BPM · Sol dórico · A4/B8/C4/D8 compassos**, com os dois lados no relógio comum. As 16 brancas vêm ativas no Criativo. Na partida, as peças continuam entrando após seus movimentos; cheque amplia temporariamente a banda atacante.
+**123 BPM · Sol dórico · A4/B6/C3/D6 compassos**, com os dois lados no relógio comum. As 16 brancas vêm ativas no Criativo. Na partida, as peças continuam entrando após seus movimentos; cheque amplia temporariamente a banda atacante.
 
 | Peças neste kit | Papel |
 | --- | --- |
@@ -52,7 +52,7 @@ Esses intervalos de oito segundos não delimitam compassos exatos. A forma do ki
 | Rainha | Motivo principal de palheta, com quatro variações audíveis |
 | Rei | Interjeições de vogal sintetizada |
 
-Os papéis são configurações, não regras da engine. Qualquer peça pode usar qualquer fonte. Movimento lateral desloca o motivo lentamente; avanço não o transpõe, preservando sua identidade. As frases, pesos 5:4, envelopes, ganhos e fontes são editáveis. Cada voz toca em todas as seções, com pausas internas; nenhuma rainha depende do botão de audição para soar.
+Os papéis são configurações, não regras da engine. Qualquer peça pode usar qualquer fonte. Movimento lateral desloca o motivo lentamente; avanço não o transpõe, preservando sua identidade. As frases, pesos 5:4, envelopes, ganhos e fontes são editáveis. Na forma atual, o baixo principal sustenta A/B/C/D e sua resposta aparece em B/D; a palheta principal também entra em B/D. As demais vozes seguem presenças próprias por seção, com pausas internas. A rainha toca automaticamente quando sua seção chega, sem depender do botão de audição.
 
 O banco **Chicken Jazz · 01** contém 11 one-shots originais (~297 KB), mono/32 kHz: palheta em duas articulações, barítono, metal, vogal, baixo, teclas, bumbo, caixa em duas articulações e ride. São aproximações sintéticas; não são gravações realistas de sax/contrabaixo nem voz humana. Não há áudio extraído do FLAC no projeto. O código gerador e os WAVs estão disponíveis; os WAVs são CC0.
 
@@ -62,4 +62,4 @@ A partitura exportada contém os mesmos padrões da engine e requer os assets `/
 
 Testes verificam todos os 32 instrumentos nas quatro seções, escala, densidade, rainhas ativas, colcheias 5:4 e isolamento dos salvamentos de 1988/1999. No navegador, a rainha em Solo gerou sinal real sem segurar a audição; os samples carregaram sem erros.
 
-A próxima comparação com o usuário deve decidir se a palheta sintetizada tem identidade suficiente, se há espaço entre motivo/resposta e se o baixo sustenta bem formações pequenas. Fidelidade acústica e qualidade musical não são comprovadas pelos testes. O loop curto não reproduz a faixa comercial integral nem suas seções exatas.
+A próxima comparação com o usuário deve decidir se a palheta sintetizada tem identidade suficiente, se há espaço entre motivo/resposta e se o baixo revisado sustenta bem formações pequenas. Fidelidade acústica e qualidade musical não são comprovadas pelos testes. O loop curto não reproduz a faixa comercial integral nem suas seções exatas.

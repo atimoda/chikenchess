@@ -1,6 +1,18 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 23/09/2026 — v0.4.48. Status: nova engine nas 17 fases / 16 cidades, com campanhas, compassos 4/4, 3/4, 6/8 e 12/8, kits compostos por cidade e época, bancada Criativo, samples, automações, planos harmônicos e formas por voz; validação de escuta continua em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+Atualizado em 25/09/2026 — v0.4.62. Status: nova engine nas 27 fases / 21 cidades, com quatro campanhas, compassos 4/4, 3/4, 6/8 e 12/8, kits compostos por cidade e época, bancada Criativo, sete bancos locais de samples, automações, planos harmônicos e formas por voz; validação de escuta continua em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+
+## Rodada de timbres — entregue e validação pendente
+
+Quatro bancos originais acrescentam 31 one-shots de cordas/guitarras/baixos, teclas, síntese modulada e bateria acústica. As dez fases do Harmonic songbook deixam de partilhar a mesma guitarra, tecla e bateria; ganham paletas e levadas por estilo. As 17 fases anteriores recebem trocas pontuais de fontes sem mudar suas frases e formas. O kit anterior salvo localmente permanece disponível em Meus kits ao migrar para a nova revisão. Os WAVs, raízes, licenças e regeneração estão em `public/samples/README.md`.
+
+Próximo passo: escuta A/B dos timbres com formações de 4, 8 e 16 peças, em fones e alto-falantes de celular, medindo picos, mascaramento e ataques simultâneos. Os testes de arquivo e eventos não atestam realismo acústico, identidade percebida ou balanço. Só depois dessa escuta escolher quais instrumentos pedem multisamples, variação de articulação por velocidade ou substituição por gravações licenciadas.
+
+## Harmonic songbook — entregue e próximo passo
+
+Dez novas fases cobrem I–V–IV, I–V–vi–IV, vi–IV–I–V, I–vi–IV–V, vi–IV–ii–V, ii7–V7–Imaj7, I–IV–vi–V, iii7–VI7–ii7–V7, IV–I–V e I–IV–V. Cada fase associa uma cidade/época, motivo original, kit de 16 partes e referência de estilo. Os dois planos de jazz executam tétrades reais; os demais continuam com tríades. A segunda entrada vi–IV–I–V da lista de origem foi interpretada como vi–IV–ii–V pelo exemplo Am–F–Dm–G e por ampliar o repertório.
+
+Próxima validação musical: escuta A/B de cada kit com 4, 8 e 16 peças, verificação de registro, balanço e transições harmônicas em aparelho físico. Ajustar arranjo e articulação antes de acrescentar mais progressões ou vozes. As referências de canções são inspirações de linguagem e contexto; a composição do jogo não reproduz melodias gravadas.
 
 ## Próxima validação das baladas
 
@@ -8,13 +20,17 @@ Buenos Aires 1940, Dublin 1990 e New Orleans 1953 são composições originais d
 
 ## Entrega de 16/09 — composição e comparação
 
-Infotips compactas, piano roll alinhado em todas as linhas, seções próprias com durações assimétricas/pausas/transposições, slides por nota e distorção entregues. Estudo Mouth Breather preserva o material temporal/melódico do script com timbres locais aproximados. As 14 fases receberam arranjos próprios; migração mantém backup local. `MUSIC_STYLE_REFERENCES.md` registra referências, datas, diferenças e limitações. Esta revisão substitui os defaults sorteados; o gerador permanece como ferramenta de experimentação.
+Infotips compactas, piano roll alinhado em todas as linhas, seções próprias com durações assimétricas/pausas/transposições, slides por nota e distorção entregues. Estudo Mouth Breather preserva o material temporal/melódico do script com timbres locais aproximados. As 14 fases receberam arranjos próprios; ao trocar um preset, o kit anterior passa à biblioteca local sem vínculo com a cidade. `MUSIC_STYLE_REFERENCES.md` registra referências, datas, diferenças e limitações. Esta revisão substitui os defaults sorteados; o gerador permanece como ferramenta de experimentação.
 
-Próxima etapa: escutar e comparar as formações pequenas/completas em um aparelho físico, medindo densidade e custo dos quatro buses de efeitos. Os centros harmônicos, tríades e condução curta já estão implementados; a próxima rodada harmônica deve partir de testes A/B antes de acrescentar tétrades, extensões ou preparação de cadência. Evitar adicionar mais camadas antes de ajustar ganho, registro, espaços de resposta e articulação dos kits entregues. Samples acústicos mais expressivos e suporte a legato verdadeiro exigem outra rodada de desenho e validação.
+Próxima etapa: escutar e comparar as formações pequenas/completas em um aparelho físico, medindo densidade e custo dos quatro buses de efeitos. Os centros harmônicos, tríades, duas progressões com tétrades e condução curta já estão implementados; extensões adicionais e preparação de cadência dependem de escuta A/B. Ajustar ganho, registro, espaços de resposta e articulação dos kits entregues antes de adicionar camadas. Samples acústicos mais expressivos e suporte a legato verdadeiro exigem outra rodada de desenho e validação.
 
 ## Próximo ciclo de implementação
 
 **v0.4.0 — Atlas sonoro:** os defaults deixaram de compartilhar o molde fixo de oito baterias mais baixo/harmonia/melodia. Cada cidade agora distribui 16 papéis com timbres, registros, articulações e levadas próprios e usa a forma por peça para variar densidade e protagonismo entre seções. Johannesburg · 1994 acrescenta Kwaito ao mapa. A próxima validação é de escuta: comparar cada kit com 4, 8 e 16 peças, corrigir balanço e motivos que colidam, e repetir as fases mais densas no celular. Depois desse gate, a extensão de maior valor é uma biblioteca de articulações e samples mais expressivos, em vez de aumentar a quantidade de vozes.
+
+**Manchester 1999 — primeiro ajuste de curadoria:** o baixo principal sustenta as quatro seções e sua resposta entra somente em B/D, reduzindo a lacuna de graves nas formações pequenas e a sobreposição entre as duas linhas. Esta escolha ainda precisa de escuta A/B no Criativo e na partida; testes de eventos não aprovam o balanço musical.
+
+**Düsseldorf e New Orleans — segunda rodada:** em Düsseldorf a sequência de diodos apresenta A e deixa a flauta conduzir C/D; em New Orleans as respostas de guitarra e palheta concentram-se em B, deixando o trompete ocupar C/D. Escutar especialmente a passagem de B para C e a densidade de D, em formações de 4, 8 e 16 peças. Os antigos presets ficam como kits soltos em **Meus kits** para comparação, sem um fluxo de versões separado.
 
 **v0.3.4 — Fôlego no celular:** aparelhos restritos usam um bus de efeitos por equipe e os pulsos visuais deixam de renderizar a página completa. Próxima prioridade: (1) repetir no mesmo celular o cenário de cidade e Criativo, observando áudio e resposta visual separadamente; (2) registrar em telemetria local atrasos do scheduler e tarefas longas; (3) criar orçamento por papel musical para densidade e ataques simultâneos apenas se ainda houver falhas; (4) retomar comparação dos planos harmônicos depois desse gate. A simulação permite comparar esses comportamentos antes de ampliar as regras.
 

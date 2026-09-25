@@ -5,7 +5,7 @@ import type { Behavior, MovementMapping } from '../model'
 
 export type PartRole = 'rhythm' | 'bass' | 'harmony' | 'melody' | 'response' | 'texture'
 export type SynthSound = 'sbd' | 'sine' | 'triangle' | 'square' | 'sawtooth' | 'supersaw' | 'white' | 'pink' | 'brown'
-export type SampleBank = 'electro' | 'jazz' | 'world'
+export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums'
 
 export type ProfileSource =
   | { kind: 'synth'; sound: SynthSound }
@@ -63,6 +63,10 @@ export type StyleProfile = {
 export const electro = (asset: string, variant = 0, pitched = false): ProfileSource => ({ kind: 'sample', bank: 'electro', asset, variant, pitched })
 export const jazz = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'jazz', asset, variant, pitched })
 export const world = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'world', asset, variant, pitched })
+export const strings = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'strings', asset, variant, pitched })
+export const keys = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'keys', asset, variant, pitched })
+export const synths = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'synths', asset, variant, pitched })
+export const drums = (asset: string, variant = 0, pitched = false): ProfileSource => ({ kind: 'sample', bank: 'drums', asset, variant, pitched })
 export const synth = (sound: SynthSound): ProfileSource => ({ kind: 'synth', sound })
 
 type PartOptions = Omit<Partial<PartProfile>, 'role' | 'name' | 'behavior' | 'source' | 'patterns'>

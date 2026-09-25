@@ -7,6 +7,7 @@ import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from 
 import { strudelCodeStats } from '@/lib/music/code-export'
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
 import { applyReactions, type ReactionContext } from '@/lib/music/reactions'
+import type { SampleSource } from '@/lib/music/sample-banks'
 
 export function useCreativeMusic(session: CreativeSession, playing: boolean, soloId: string | null, context: ReactionContext, showCode = false) {
   const runtime = useRef<MusicRuntime | null>(null)
@@ -14,8 +15,12 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   const [preview, setPreview] = useState<Preview | null>(null)
   const [error, setError] = useState('')
   const [audible, setAudible] = useState<MusicSnapshot | null>(null)
+  const [preparedFingerprint, setPreparedFingerprint] = useState<string | null>(null)
   const pulseMonitor = useMemo(createMusicPulseMonitor, [])
   const input = useMemo(() => ({...creativeSnapshot(session,playing,soloId), reactionInput:{config:session.reactions,context,scope:session.cityId??session.name}}),[session,playing,soloId,context])
+  const sampleFingerprint = JSON.stringify(Object.values(session.instruments).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source] : []))
+  const sampleSources = useMemo(() => JSON.parse(sampleFingerprint) as SampleSource[], [sampleFingerprint])
+  const auditionReady = preparedFingerprint === sampleFingerprint
   const resolved = useMemo(() => applyReactions(input,session.reactions,context),[input,session.reactions,context])
   const snapshot = audible ?? resolved.snapshot
   const code = useMemo(() => showCode ? renderMusicCode(snapshot, preview) : '', [snapshot, preview, showCode])
@@ -36,6 +41,15 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { document.removeEventListener('visibilitychange', onVisibilityChange); engine.dispose(); pulseMonitor.clear(); runtime.current = null }
   }, [monitor, pulseMonitor])
   useEffect(() => {
+    let current = true
+    void runtime.current?.prepareSamples(sampleSources).then(() => {
+      if (current) setPreparedFingerprint(sampleFingerprint)
+    }).catch(error => {
+      if (current) { setError(error instanceof Error ? error.message : String(error)); setPreparedFingerprint(sampleFingerprint) }
+    })
+    return () => { current = false }
+  }, [sampleSources, sampleFingerprint])
+  useEffect(() => {
     // Coalesce continuous slider updates. Fifty milliseconds still feels immediate
     // on touch while avoiding a full Strudel graph compilation for every pointer event.
     const mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
@@ -46,12 +60,20 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     if (playing) { setError(''); void runtime.current?.unlock() }
   }, [playing])
   const audition = useCallback((id: string, square: string, mode: Preview['mode'] = 'manual') => {
-    setPreview({ id, square: square as Square, mode })
-    runtime.current?.audition(id, square as Square, mode, input)
-  }, [input])
+    // The runtime owns the live square; crossing cells must not rerender the studio.
+    setPreview(current => current?.id === id && current.mode === mode
+      ? current
+      : { id, square: square as Square, mode })
+    runtime.current?.audition(id, square as Square, mode)
+  }, [])
+  const unlock = useCallback(() => { void runtime.current?.unlock() }, [])
   const endAudition = useCallback(() => {
     setPreview(null)
     runtime.current?.endAudition()
+  }, [])
+  const releaseAudition = useCallback(() => {
+    setPreview(null)
+    runtime.current?.releaseAudition()
   }, [])
   useEffect(() => {
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') endAudition() }
@@ -60,5 +82,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, endAudition, preview, pulseMonitor, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
+  return { audition, auditionReady, unlock, endAudition, releaseAudition, preview, pulseMonitor, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
 }

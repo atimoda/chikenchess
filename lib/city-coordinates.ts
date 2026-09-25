@@ -57,5 +57,15 @@ export const cityCoordinates: Record<string, { x: number; y: number }> = {
   },
   "buenos-aires-1940": { "x": 30.8, "y": 75.5 },
   "dublin-1990": { "x": 41.8, "y": 20.5 },
-  "new-orleans-1953": { "x": 20.6, "y": 39.0 }
+  "new-orleans-1953": { "x": 20.6, "y": 39.0 },
+  "san-diego-1999": { "x": 12.5, "y": 35.1 },
+  "london-1970": { "x": 43.77, "y": 20.84 },
+  "berkeley-2004": { "x": 9.2, "y": 30.7 },
+  "new-york-1961": { "x": 22.57, "y": 28.18 },
+  "san-francisco-1993": { "x": 9.1, "y": 30.5 },
+  "paris-1945": { "x": 42.91, "y": 27.36 },
+  "columbus-2013": { "x": 19.5, "y": 28.4 },
+  "new-york-1930": { "x": 22.57, "y": 28.18 },
+  "jacksonville-1974": { "x": 20.3, "y": 38.6 },
+  "chicago-1958": { "x": 17.59, "y": 27.91 }
 }

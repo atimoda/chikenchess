@@ -207,10 +207,10 @@ export const CityPopup = ({
           <span className="text-xs text-muted-foreground font-mono border border-border px-1.5 py-0.5 rounded">{city.year}</span>
         </div>
 
-        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex gap-2 mb-3" data-no-drag>
+        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap gap-2 mb-3" data-no-drag>
           {getCityEras(city).map(era => <button key={era.id} type="button" disabled={isEntering} aria-pressed={era.id === city.id}
             onClick={() => onEraSelect?.(era)} className={cn('border rounded px-2 py-1 text-xs font-mono', era.id === city.id ? 'text-white border-white/60' : 'text-white/50 border-white/20')}>
-            {era.year} · {era.id === 'manchester' ? 'Acid' : 'Jazz / Breaks'}
+            {era.year} · {era.genre.split(/[·/]/)[0].trim()}
           </button>)}
         </nav>}
         <div className="mb-4 animate-content-3">

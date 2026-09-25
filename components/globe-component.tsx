@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef } from 'react'
+import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
 import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace } from 'three'
@@ -52,6 +52,7 @@ interface GlobeProps {
   zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>
   onZoomChange?: (zoom: number) => void
   focusedCityId?: string | null
+  popupLayerRef?: RefObject<HTMLDivElement | null>
 }
 
 const GLOBE_RADIUS = 2
@@ -144,6 +145,7 @@ const ConqueredFlag = ({ city }: { city: CityData }) => {
 const PopupContainer = ({
     city,
     popup, // Initial/Global state
+    popupLayerRef,
     isConquered,
     isUnlocked,
     pressedPopupState,
@@ -298,7 +300,7 @@ const PopupContainer = ({
             <Html zIndexRange={[0, 0]} style={{ pointerEvents: 'none', zIndex: 0 }}>
                 {lineElement}
             </Html>
-            <Html zIndexRange={[1000 + popup.zIndex, 1000 + popup.zIndex]} style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
+            <Html portal={popupLayerRef} zIndexRange={[1000 + popup.zIndex, 1000 + popup.zIndex]} style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
                 <div ref={wrapperRef} style={{ pointerEvents: 'auto', position: 'relative' }}
                     onPointerDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
                     onWheel={event => {
@@ -425,6 +427,7 @@ const GlobeContent = ({
   zoomRef,
   onZoomChange,
   focusedCityId,
+  popupLayerRef,
 }: GlobeProps) => {
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
@@ -884,6 +887,7 @@ const GlobeContent = ({
                           onEraSelect={(era: CityData) => { if (era.id !== city.id) { onPopupClose(city.id); handleCityClickInternal(era) } }}
                           city={city}
                           popup={popup}
+                          popupLayerRef={popupLayerRef}
                           isConquered={isConquered}
                           isUnlocked={isUnlocked}
                           pressedPopupState={pressedPopupState}
