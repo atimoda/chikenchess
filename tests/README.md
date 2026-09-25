@@ -7,7 +7,7 @@
 | `model.cases.cjs` | 11 | Identidade, movimentos, captura, ativação, graus e pausa |
 | `creative.cases.cjs` | 6 | Sessão, edição, validação e migração básica |
 | `patterns.cases.cjs` | 10 | Compilação, groove, automação e prévias |
-| `kits.cases.cjs` | 19 | Cidades, sete bancos de samples, curadoria de timbre, catálogo e persistência |
+| `kits.cases.cjs` | 20 | Cidades, descrições culturais, sete bancos de samples, curadoria de timbre, catálogo e persistência |
 | `runtime.cases.cjs` | 16 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba, preparação de samples sem grafo antecipado e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |

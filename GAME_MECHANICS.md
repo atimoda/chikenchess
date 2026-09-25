@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 25/09/2026 — v0.4.62 (lista de cidades). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 25/09/2026 — v0.4.63 (informações das novas cidades). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 
@@ -246,7 +246,8 @@ Notas explícitas são agrupadas por início/duração e controles compatíveis;
 
 - A coluna à esquerda agrupa as fases por `History of Electronic Music`, `World ballads`, `Classical music` e `Harmonic songbook`, em ordem cronológica dentro de cada campanha. Os subtítulos aparecem em maiúsculas e com 50% de opacidade. A primeira reúne 13 fases; a segunda reúne quatro; Vienna 1780 fica na terceira; as dez fases harmônicas ficam na quarta. Uma fase em duas campanhas preserva o mesmo ID, kit, progresso e pin. A lista não usa marcadores; títulos e fases usam fonte 1 px maior, seu conteúdo começa 8 px depois da borda esquerda e o hover das fases usa o verde do botão Modo Criativo. A camada da lista deixa passar cliques em áreas sem texto ou controle, e os próprios itens continuam interativos. Somente clicar numa cidade da lista a centraliza no globo e abre seu popup; hover e foco de teclado não movem a câmera. Clicar outra vez fecha o popup. Arrastar a coluna com o mouse, rolar a roda ou deslizar com touch percorre a lista quando ela excede a altura disponível; a barra de rolagem visual permanece oculta e o arraste não abre uma fase acidentalmente. Em telas estreitas, a lista começa recolhida sob o botão Campanhas.
 - Os popups das cidades aparecem numa camada acima da lista de campanhas e cidades, para que cartões e controles permaneçam visíveis e interativos quando se sobrepõem à coluna.
-- Quando uma cidade tem várias épocas, o popup mostra ano e estilo de cada uma; os botões podem quebrar em linhas e selecionar outra época conserva o mesmo pin geográfico, abrindo o kit e o progresso próprios daquele ID.
+- Quando uma cidade tem várias épocas, o popup mostra ano e estilo de cada uma; os botões usam cursor de clique, não incluem pontuação entre ano e estilo, podem quebrar em linhas e selecionar outra época conserva o mesmo pin geográfico, abrindo o kit e o progresso próprios daquele ID.
+- Nas cidades acrescentadas às campanhas recentes, o título informativo nomeia apenas o estilo; compasso e progressão ficam fora dele. A descrição apresenta cultura e movimento ligados ao estilo. A abertura mostra pelo menos três linhas poéticas antes do botão de entrada, sem repetir nome ou ano, pois ambos aparecem na tela seguinte.
 
 - Abrir uma cidade orienta a câmera para seu pin; popups podem ser reposicionados. Clicar novamente no pin enquanto seu popup está aberto fecha o popup com a animação usual.
 - Controles do globo escutam somente seu canvas, isolados dos popups. A roda do mouse sobre um popup é encaminhada ao canvas para controlar o zoom; os outros gestos do popup continuam isolados do globo. O cursor grab pertence ao canvas e é removido na saída da tela. Touch em Enter board não inicia arraste do mundo.

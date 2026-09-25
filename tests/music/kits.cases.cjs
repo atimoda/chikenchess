@@ -222,6 +222,24 @@ test('every stage belongs to its intended campaign without sharing progression I
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
 
+test('recent city stories name only the style and give a city-free poetic opening', () => {
+  const { cities } = loadTs('lib/cities-data.ts')
+  const ids = ['manchester-1999', 'johannesburg', 'buenos-aires-1940', 'dublin-1990', 'new-orleans-1953',
+    'san-diego-1999', 'london-1970', 'berkeley-2004', 'new-york-1961', 'san-francisco-1993', 'paris-1945',
+    'columbus-2013', 'new-york-1930', 'jacksonville-1974', 'chicago-1958']
+  for (const id of ids) {
+    const city = cities.find(item => item.id === id)
+    assert.ok(city, `${id}: stage exists`)
+    assert.doesNotMatch(city.genre, /(?:3\/4|6\/8|12\/8|[IV]+[–-][IV]+)/, `${id}: title describes a style, not meter or chords`)
+    assert.ok(city.description.length > 80, `${id}: description gives cultural context`)
+    assert.ok(city.introPhrases.length >= 4, `${id}: at least three intro lines precede the entry button`)
+    for (const phrase of city.introPhrases) {
+      assert.ok(!phrase.toLowerCase().includes(city.name.toLowerCase()), `${id}: intro omits the city name`)
+      assert.ok(!phrase.includes(String(city.year)), `${id}: intro omits the year`)
+    }
+  }
+})
+
 test('the new songs place their defining phrases inside each notated bar', () => {
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   const onsets = (cityId, voiceName) => {

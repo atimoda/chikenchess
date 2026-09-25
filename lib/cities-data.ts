@@ -28,6 +28,19 @@ export interface CityData {
   aiDepth?: number
 }
 
+const harmonicStageIntros: Record<string, string[]> = {
+  'san-diego-1999': ['A chord crashes through the garage.', 'Three rough chords become a shout.', 'Skate wheels answer the snare.', 'A private ache turns communal.', 'Sing it louder.'],
+  'london-1970': ['One piano fills the room.', 'A plain refrain opens outward.', 'Every voice finds the same line.', 'The quiet verse becomes a window.', 'Let the chorus rise.'],
+  'berkeley-2004': ['A low note opens the night.', 'The guitars leave space for doubt.', 'A quiet thought gathers distortion.', 'The chorus turns unease into motion.', 'Walk into the noise.'],
+  'new-york-1961': ['A bass line circles the block.', 'Voices gather around one promise.', 'A street-corner echo finds harmony.', 'Longing becomes a shared refrain.', 'Answer the lead.'],
+  'san-francisco-1993': ['A wooden string remembers the road.', 'A story takes the shape of a song.', 'The crowd carries the last line.', 'Restless voices travel together.', 'Keep the story moving.'],
+  'paris-1945': ['A voice leans close to the room.', 'The melody leaves space for a reply.', 'Nightlife turns confession into song.', 'A blue chord opens another door.', 'Let the phrase wander.'],
+  'columbus-2013': ['A small room glows after midnight.', 'A soft hook travels farther than expected.', 'Handmade songs gather strangers.', 'The bright refrain outlives the noise.', 'Keep it close.'],
+  'new-york-1930': ['Brass sparks against the ballroom air.', 'The floor answers every riff.', 'A solo steps out, then returns.', 'The band turns precision into flight.', 'Join the turning dance.'],
+  'jacksonville-1974': ['A slide guitar draws the long road.', 'Blues and country trade their stories.', 'The chorus carries regional pride.', 'Freedom rides inside rough harmony.', 'Take the open road.'],
+  'chicago-1958': ['An amplified string cuts through the room.', 'A southern memory meets city lights.', 'The band answers every bent note.', 'Hard times turn into a walking groove.', 'Let the guitar talk.'],
+}
+
 const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
   // 1. Düsseldorf (1970)
   {
@@ -207,13 +220,13 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
   // A second Manchester era, preserving the existing Haçienda chapter.
   {
     id: "manchester-1999", name: "Manchester", country: "UK", year: 1999,
-    genre: "Jazz / Breaks · sample collage",
-    description: "Manchester, 1999: Mr. Scruff, Keep It Unreal e a mistura de jazz, funk e breaks. Kit Northern Jazz Breaks inspirado em Get a Move On!: motivos de palheta, baixo sincopado e respostas curtas.",
+    genre: "Jazz / Breaks",
+    description: "British club culture turned record collecting into a living collage: jazz, funk and hip-hop breaks meet as DJs reshape the dance floor with every mix.",
     bpm: 123, scale: ["G4", "A4", "Bb4", "C4", "D4", "E4", "F4"],
     geoCoordinates: { lat: 53.4808, lng: -2.2426 }, color: "#ffb65c",
     image: "https://unsplash.com/photos/pRc34iEHRmo/download?force=true&w=800",
     samples: { kick: "bd:2", snare: "sd:2", hihat: "hh:2", bass: "bass:2", pad: "pad:2", lead: "synth:1" },
-    introPhrases: ["Manchester, 1999.", "Jazz finds the breakbeat.", "A short phrase. A new reply.", "Leave room for the next player.", "Keep the band moving."],
+    introPhrases: ["A record remembers another room.", "Brass slips through the break.", "A low pulse keeps its secret.", "Every loop leaves room for an answer.", "Let the night turn."],
   },
   // 7. Berlin (1991)
   {
@@ -338,7 +351,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     country: "South Africa",
     year: 1994,
     genre: "Kwaito / Township House",
-    description: "House desacelerado e reinventado em Soweto: baixo profundo, piano, percussão e vozes da nova África do Sul.",
+    description: "Kwaito grew from South African township life, blending slowed house with local rhythms, slang and praise poetry; its groove turned township identity into a source of pride for a new generation.",
     bpm: 108,
     scale: ["F#4", "A4", "B4", "C#4", "E4"],
     geoCoordinates: { lat: -26.2041, lng: 28.0473 },
@@ -353,11 +366,11 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
       lead: "synth:3",
     },
     introPhrases: [
-      "Jozi, 1994.",
-      "Slow the house down.",
-      "Let the township answer.",
-      "A new country finds its pulse.",
-      "Yebo. Make your move."
+      "The bass walks slowly.",
+      "A new freedom finds a voice.",
+      "Piano answers the pavement.",
+      "The groove rises from the township.",
+      "Move when the chorus calls."
     ]
   },
   // 12. Paris (1995)
@@ -420,49 +433,49 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
   },
   {
     id: 'buenos-aires-1940', name: 'Buenos Aires', country: 'Argentina', year: 1940,
-    genre: 'Vals criollo / 3/4', description: 'An original three-beat ballad with reed, guitar and a turning bass.',
+    genre: 'Vals criollo', description: 'In the Río de la Plata, vals criollo carried tango’s immigrant mix into neighborhood dance halls, where longing and elegance could share the floor.',
     bpm: 132, meter: '3/4', scale: ['A3','B3','C4','D4','E4','F4','G4'],
     geoCoordinates: { lat: -34.6037, lng: -58.3816 }, color: '#ef8979',
     image: 'https://images.unsplash.com/photo-1589909202802-8f4aadce1849?q=80&w=800&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
-    introPhrases: ['Three steps, one turning story.', 'Hear the city in the reeds.', 'Follow the waltz.']
+    introPhrases: ['An embrace turns in the dark.', 'A reed carries a sigh.', 'Each step returns changed.', 'Old longing keeps the room awake.', 'Follow the turning phrase.']
   },
   {
     id: 'dublin-1990', name: 'Dublin', country: 'Ireland', year: 1990,
-    genre: 'Folk ballad / double jig · 6/8', description: 'A new six-eighths tune: two pulses, three eighths each, with flute and guitar in call and response.',
+    genre: 'Folk ballad / double jig', description: 'Irish traditional music keeps its dance tunes alive through open sessions, where musicians pass jigs between generations and newcomers learn by listening in.',
     bpm: 96, meter: '6/8', scale: ['D4','E4','F#4','G4','A4','B4','C#5'],
     geoCoordinates: { lat: 53.3498, lng: -6.2603 }, color: '#85d0a2',
     image: 'https://images.unsplash.com/photo-1549918864-48ac978761a4?q=80&w=800&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
-    introPhrases: ['Two pulses, six steps.', 'Let the flute answer.', 'Follow the jig.']
+    introPhrases: ['A tune passes hand to hand.', 'The fiddle runs ahead of the foot.', 'Bright turns lift the room.', 'Old steps gather new voices.', 'Answer the dancing bow.']
   },
   {
     id: 'new-orleans-1953', name: 'New Orleans', country: 'USA', year: 1953,
-    genre: 'Slow blues ballad / 12/8', description: 'An original slow blues in four triplet pulses, with rolling piano, guitar and brass responses.',
+    genre: 'Slow blues ballad', description: 'Black New Orleans musicians wove blues, gospel and brass-band traditions into communal rhythm and blues, where a rolling piano turns private ache into a call for the whole room.',
     bpm: 76, meter: '12/8', scale: ['C4','Eb4','F4','Gb4','G4','Bb4'],
     geoCoordinates: { lat: 29.9511, lng: -90.0715 }, color: '#e8b779',
     image: 'https://images.unsplash.com/photo-1533587851505-d119e13fa0d7?q=80&w=800&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
-    introPhrases: ['Four slow pulses.', 'Each carries three steps.', 'Let the blues answer.']
+    introPhrases: ['Blue notes bend the lamplight.', 'The piano rolls like a river.', 'A trumpet answers the room.', 'Sorrow finds its dancing feet.', 'Let the backbeat speak.']
   },
   // Harmonic songbook: one original, editable kit for each new progression.
   ...([
-    ['san-diego-1999', 'San Diego', 'USA', 1999, 'Pop punk · I–V–IV', 'Fast guitar, clipped backbeat and a three-chord singalong.', 148, 'C', 32.7157, -117.1611, '#ff8b65', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
-    ['london-1970', 'London', 'UK', 1970, 'Piano pop · I–V–vi–IV', 'Piano, open chords and a slowly rising chorus.', 72, 'C', 51.5074, -0.1278, '#e5c69d', 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=800&auto=format&fit=crop'],
-    ['berkeley-2004', 'Berkeley', 'USA', 2004, 'Alternative rock · vi–IV–I–V', 'A nocturnal rock pulse with a descending minor start.', 84, 'E', 37.8715, -122.2730, '#8da1c7', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
-    ['new-york-1961', 'New York City', 'USA', 1961, 'Soul / doo-wop · I–vi–IV–V', 'A walking bass, warm keys and answering vocal-like lines.', 116, 'A', 40.7128, -74.0060, '#d99fc5', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
-    ['san-francisco-1993', 'San Francisco', 'USA', 1993, 'Folk rock · vi–IV–ii–V', 'Acoustic strums and a minor-to-dominant verse turn.', 132, 'C', 37.7749, -122.4194, '#c9a46b', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
-    ['paris-1945', 'Paris', 'France', 1945, 'Jazz / chanson · ii7–V7–Imaj7', 'A Parisian chanson setting with a jazz cadence and seventh chords.', 112, 'C', 48.8566, 2.3522, '#a0b8aa', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=800&auto=format&fit=crop'],
-    ['columbus-2013', 'Columbus', 'USA', 2013, 'Indie pop · I–IV–vi–V', 'Light acoustic motion and an upward, open chorus.', 124, 'C', 39.9612, -82.9988, '#f0cc77', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
-    ['new-york-1930', 'New York City', 'USA', 1930, 'Swing jazz · iii7–VI7–ii7–V7', 'A short rhythm-changes turnaround with four seventh chords.', 144, 'C', 40.7128, -74.0060, '#b4abdb', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
-    ['jacksonville-1974', 'Jacksonville', 'USA', 1974, 'Southern rock · IV–I–V', 'Open guitar and road-song accents around a distinct IV–I–V loop.', 98, 'C', 30.3322, -81.6557, '#d2a571', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
-    ['chicago-1958', 'Chicago', 'USA', 1958, 'Electric blues · I–IV–V', 'A bright guitar response and a walking electric blues bass.', 164, 'C', 41.8781, -87.6298, '#83b8d5', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['san-diego-1999', 'San Diego', 'USA', 1999, 'Pop punk', 'Pop punk grew from independent punk and skate culture: compact, melodic songs turn frustration into hooks built for a loud communal singalong.', 148, 'C', 32.7157, -117.1611, '#ff8b65', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['london-1970', 'London', 'UK', 1970, 'Piano pop', 'Piano-led pop gives the singer-songwriter’s intimate confession a wide, memorable chorus that audiences can claim as their own.', 72, 'C', 51.5074, -0.1278, '#e5c69d', 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=800&auto=format&fit=crop'],
+    ['berkeley-2004', 'Berkeley', 'USA', 2004, 'Alternative rock', 'Independent guitar scenes made distortion a way to question polish and convention; quiet tension grows into a release shared by the room.', 84, 'E', 37.8715, -122.2730, '#8da1c7', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['new-york-1961', 'New York City', 'USA', 1961, 'Soul / doo-wop', 'Doo-wop grew from Black vocal groups harmonizing on neighborhood street corners; call and response turned private devotion into shared urban expression.', 116, 'A', 40.7128, -74.0060, '#d99fc5', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
+    ['san-francisco-1993', 'San Francisco', 'USA', 1993, 'Folk rock', 'Folk rock carries oral storytelling into amplified song, joining individual witness with a countercultural call for change and community.', 132, 'C', 37.7749, -122.4194, '#c9a46b', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['paris-1945', 'Paris', 'France', 1945, 'Jazz / chanson', 'Chanson places an intimate writer’s voice at the heart of popular song, while jazz improvisation brings risk and freedom into the late-night club conversation.', 112, 'C', 48.8566, 2.3522, '#a0b8aa', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=800&auto=format&fit=crop'],
+    ['columbus-2013', 'Columbus', 'USA', 2013, 'Indie pop', 'Independent pop prizes handmade recordings, intimate lyrics and local venues; its fragile melodies invite listeners into a community without spectacle.', 124, 'C', 39.9612, -82.9988, '#f0cc77', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['new-york-1930', 'New York City', 'USA', 1930, 'Swing jazz', 'Harlem swing grew through Black bandleaders, arrangers and dancers; interlocking riffs turn improvisation into a shared urban dance.', 144, 'C', 40.7128, -74.0060, '#b4abdb', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
+    ['jacksonville-1974', 'Jacksonville', 'USA', 1974, 'Southern rock', 'Southern rock braids blues, country and rock into a regional voice; rough guitars and open-road songs turn local identity into collective pride.', 98, 'C', 30.3322, -81.6557, '#d2a571', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['chicago-1958', 'Chicago', 'USA', 1958, 'Electric blues', 'Chicago electric blues carried Delta traditions north with Black migration, amplifying guitar and harmonica for urban clubs and making displacement audible as force.', 164, 'C', 41.8781, -87.6298, '#83b8d5', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
   ] as const).map(([id, name, country, year, genre, description, bpm, root, lat, lng, color, image]) => ({
     id, name, country, year, genre, description, bpm,
     scale: (root === 'E' ? ['E4','F#4','G#4','A4','B4','C#5','D#5'] : root === 'A' ? ['A3','B3','C#4','D4','E4','F#4','G#4'] : ['C4','D4','E4','F4','G4','A4','B4']),
     geoCoordinates: { lat, lng }, color, image,
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
-    introPhrases: [name + ', ' + year + '.', 'Hear the chord sequence.', 'Answer with your next move.'],
+    introPhrases: harmonicStageIntros[id],
   })),
 ]
 
