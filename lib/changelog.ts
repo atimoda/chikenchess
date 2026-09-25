@@ -1,7 +1,13 @@
-export const RELEASE_LABEL = 'v0.4.62'
+export const RELEASE_LABEL = 'v0.4.63'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.63', date: '25/09/2026', title: 'Mais contexto para as novas cidades', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'Títulos mostram só o estilo; descrições e aberturas apresentam a cultura musical de cada fase sem repetir cidade ou ano.',
+      'As etiquetas para trocar a época deixam mais claro que são clicáveis.',
+    ] },
+  ] },
   { version: '0.4.62', date: '25/09/2026', title: 'Lista de cidades sem barra aparente', groups: [
     { title: 'Mapa', items: [
       'A listagem das campanhas continua rolando com roda, trackpad, toque e arraste, mas não mostra mais a barra de rolagem.',

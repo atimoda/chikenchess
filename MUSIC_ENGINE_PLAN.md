@@ -1,6 +1,6 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 25/09/2026 — v0.4.62. Status: nova engine nas 27 fases / 21 cidades, com quatro campanhas, compassos 4/4, 3/4, 6/8 e 12/8, kits compostos por cidade e época, bancada Criativo, sete bancos locais de samples, automações, planos harmônicos e formas por voz; validação de escuta continua em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
+Atualizado em 25/09/2026 — v0.4.63. Status: nova engine nas 27 fases / 21 cidades, com quatro campanhas, compassos 4/4, 3/4, 6/8 e 12/8, kits compostos por cidade e época, bancada Criativo, sete bancos locais de samples, automações, planos harmônicos e formas por voz; validação de escuta continua em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`, atualizado a cada mudança.
 
 ## Rodada de timbres — entregue e validação pendente
 
