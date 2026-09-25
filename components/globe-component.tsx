@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef } from 'react'
+import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
 import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace } from 'three'
@@ -51,6 +51,8 @@ interface GlobeProps {
   setEnteringCityId: (id: string | null) => void
   zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>
   onZoomChange?: (zoom: number) => void
+  focusedCityId?: string | null
+  popupLayerRef?: RefObject<HTMLDivElement | null>
 }
 
 const GLOBE_RADIUS = 2
@@ -143,6 +145,7 @@ const ConqueredFlag = ({ city }: { city: CityData }) => {
 const PopupContainer = ({
     city,
     popup, // Initial/Global state
+    popupLayerRef,
     isConquered,
     isUnlocked,
     pressedPopupState,
@@ -297,7 +300,7 @@ const PopupContainer = ({
             <Html zIndexRange={[0, 0]} style={{ pointerEvents: 'none', zIndex: 0 }}>
                 {lineElement}
             </Html>
-            <Html zIndexRange={[1000 + popup.zIndex, 1000 + popup.zIndex]} style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
+            <Html portal={popupLayerRef} zIndexRange={[1000 + popup.zIndex, 1000 + popup.zIndex]} style={{ pointerEvents: 'none', zIndex: popup.zIndex }}>
                 <div ref={wrapperRef} style={{ pointerEvents: 'auto', position: 'relative' }}
                     onPointerDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
                     onWheel={event => {
@@ -422,7 +425,9 @@ const GlobeContent = ({
   enteringCityId,
   setEnteringCityId,
   zoomRef,
-  onZoomChange
+  onZoomChange,
+  focusedCityId,
+  popupLayerRef,
 }: GlobeProps) => {
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
@@ -487,6 +492,14 @@ const GlobeContent = ({
   }, [gl, camera, enteringCityId])
 
   const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
+  useEffect(() => {
+    if (!focusedCityId || !globeRef.current || enteringCityId) return
+    const city = cities.find(candidate => candidate.id === focusedCityId)
+    if (!city) return
+    const target = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, camera.position.length()))
+    setTargetCameraPos(target)
+    lastInteractionTime.current = Date.now()
+  }, [focusedCityId, cities, enteringCityId, camera])
   const entryFlight = useRef<{ city: CityData; from: Vector3; up: Vector3; pin: Vector3; elapsed: number; duration: number; done: boolean } | null>(null)
   useEffect(() => {
     const city = cities.find(candidate => candidate.id === enteringCityId)
@@ -599,7 +612,7 @@ const GlobeContent = ({
     
     // A city card does not stop the idle globe. Only a direct gesture, flight or
     // pin hover pauses it; a just-opened card resumes as soon as centering ends.
-    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && !targetCameraPos && timeSinceInteraction > 800
+    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && !focusedCityId && !targetCameraPos && timeSinceInteraction > 800
     if (canRotate) {
         if (!isStandby.current) {
             isStandby.current = true
@@ -874,6 +887,7 @@ const GlobeContent = ({
                           onEraSelect={(era: CityData) => { if (era.id !== city.id) { onPopupClose(city.id); handleCityClickInternal(era) } }}
                           city={city}
                           popup={popup}
+                          popupLayerRef={popupLayerRef}
                           isConquered={isConquered}
                           isUnlocked={isUnlocked}
                           pressedPopupState={pressedPopupState}

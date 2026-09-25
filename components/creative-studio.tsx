@@ -4,19 +4,19 @@ import { InstrumentParameters } from './creative/instrument-parameters'
 import { MusicPerformanceControls } from './music-performance-controls'
 import { InfoTip, HelpLabel } from './info-tip'
 import { MusicTransitionView } from './music-transition-view'
-import { MusicPulseOverlay } from './music-pulse-overlay'
 
 import Link from 'next/link'
 import { MusicReactionEditor } from './music-reaction-editor'
 import type { ReactionContext } from '@/lib/music/reactions'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
+import { Chess, type Square } from 'chess.js'
 import { ArrowLeft, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
-import { PiecesSVG } from './chessground-board'
+import { ChessgroundBoard, PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { PATTERN_RECIPES, patternRecipe } from '@/lib/music/pattern-library'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
-import { EDITABLE_CITY_KITS, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, updateKitLibrary } from '@/lib/music/city-kits'
+import { EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, updateKitLibrary } from '@/lib/music/city-kits'
 import { getCityById } from '@/lib/cities-data'
 import { STYLE_REVISION } from '@/lib/music/styled-kits'
 import { HARMONY_PLANS, type HarmonyPlanId } from '@/lib/music/harmony'
@@ -27,8 +27,6 @@ import { VersionChangelog } from './version-changelog'
 import styles from './creative-studio.module.css'
 
 const pieceNames = { p: 'Peão', n: 'Cavalo', b: 'Bispo', r: 'Torre', q: 'Rainha', k: 'Rei' }
-const squares = Array.from({ length: 64 }, (_, i) => `${'abcdefgh'[i % 8]}${8 - Math.floor(i / 8)}`)
-const PRESETS_STORAGE = `${CREATIVE_STORAGE}:kits`
 const MOUTH_BREATHER_KIT = 'builtin:mouth-breather'
 const DUSSELDORF_ORIGINAL_KIT = 'builtin:dusseldorf-original'
 const DEFAULT_KIT_PREFIX = 'default:'
@@ -62,16 +60,19 @@ export function CreativeStudio() {
   const [phrases, setPhrases] = useState<string[]>(['0'])
   const [mask, setMask] = useState('')
   const [formError, setFormError] = useState('')
-  const drag = useRef<{ id: string; square: string; origin: string; x: number; y: number; moved: boolean } | null>(null)
-  const boardRef = useRef<HTMLDivElement>(null)
-  const dragVisualRef = useRef<HTMLSpanElement>(null)
-  const [dragVisual, setDragVisual] = useState<{ id: string; svg: keyof typeof PiecesSVG; x: number; y: number } | null>(null)
-  const suppressClick = useRef(false)
   const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
   const [showCode, setShowCode] = useState(false)
   const [editingInstrumentName, setEditingInstrumentName] = useState(false)
   const music = useCreativeMusic(session, playing, soloId, simulation, showCode)
   const selected = session.pieces.find(p => p.id === selectedId)!
+  const boardGame = useMemo(() => {
+    const board = new Chess()
+    board.clear()
+    for (const piece of session.pieces) board.put({ type: piece.type, color: piece.color }, piece.square as Square)
+    return board
+  }, [session.pieces])
+  const boardColor = getCityById(session.cityId ?? '')?.color ?? '#00ffaa'
+  const boardActiveSquares = useMemo(() => new Set(session.pieces.filter(piece => piece.active).map(piece => piece.square)), [session.pieces])
   const instrument = session.instruments[selectedId]
   const effects = session.effects[selectedId]
   const mapping = session.mappings[selectedId]
@@ -88,11 +89,11 @@ export function CreativeStudio() {
   useEffect(() => {
     let cancelled = false
     async function restore() {
+      let restored: CreativeSession | undefined
       try {
         const requestedCity = new window.URLSearchParams(window.location.search).get('city')
         const requestedKit = requestedCity ? loadCityKit(requestedCity) : null
         const saved = requestedKit ? JSON.stringify(prepareCityKitForCreative(requestedKit, requestedCity!)) : localStorage.getItem(CREATIVE_STORAGE)
-        let restored: CreativeSession | undefined
         if (saved) {
           const parsed = parseCreativeSession(saved)
           await validateMusicSnapshot(creativeSnapshot(parsed, false))
@@ -101,21 +102,28 @@ export function CreativeStudio() {
             setSession(parsed)
           }
         }
-        const savedKits: unknown = JSON.parse(localStorage.getItem(PRESETS_STORAGE) ?? '[]')
+      } catch (error) {
+        if (!cancelled) setNotice(`Não foi possível restaurar o rascunho: ${messageOf(error)}`)
+      }
+      try {
+        const activeCustom = new Map<string, CreativeSession>()
+        for (const city of EDITABLE_CITY_KITS) {
+          const active = loadCityKit(city.id), standard = defaultCityKit(city.id)
+          if (active && standard && JSON.stringify(active) !== JSON.stringify(standard)) activeCustom.set(city.id, active)
+        }
+        const savedKits: unknown = JSON.parse(localStorage.getItem(KIT_LIBRARY_STORAGE) ?? '[]')
         if (Array.isArray(savedKits) && !cancelled) {
           const parsed = savedKits.slice(0, 30).flatMap(kit => {
             try { return [parseCreativeSession(JSON.stringify(kit))] } catch { return [] }
           })
-          const activeCustom = new Map<string, CreativeSession>()
-          for (const city of EDITABLE_CITY_KITS) {
-            const active = loadCityKit(city.id), standard = defaultCityKit(city.id)
-            if (active && standard && JSON.stringify(active) !== JSON.stringify(standard)) activeCustom.set(city.id, active)
-          }
           const byName = new Map(parsed.map(kit => [kit.name, kit]))
           for (const kit of activeCustom.values()) byName.set(kit.name, kit)
-          const normalized = [...byName.values()].map(kit => kit.cityId && activeCustom.get(kit.cityId)?.name !== kit.name ? { ...kit, cityId: undefined } : kit).slice(-30)
+          const candidates = [...byName.values()].map(kit => kit.cityId && activeCustom.get(kit.cityId)?.name !== kit.name ? { ...kit, cityId: undefined } : kit)
+          const savedNames = new Set(parsed.map(kit => kit.name))
+          const normalized = candidates.filter(kit => savedNames.has(kit.name))
+          for (const kit of candidates) if (!savedNames.has(kit.name) && normalized.length < 30) normalized.push(kit)
           setKits(normalized)
-          localStorage.setItem(PRESETS_STORAGE, JSON.stringify(normalized))
+          localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(normalized))
           if (restored) {
             const user = normalized.find(kit => kit.name === restored!.name)
             const standard = restored.cityId && defaultCityKit(restored.cityId)?.name === restored.name
@@ -123,7 +131,7 @@ export function CreativeStudio() {
           }
         }
       } catch (error) {
-        if (!cancelled) setNotice(`Não foi possível restaurar o rascunho: ${messageOf(error)}`)
+        if (!cancelled) setNotice(`Não foi possível carregar a biblioteca de kits: ${messageOf(error)}`)
       } finally { if (!cancelled) setReady(true) }
     }
     void restore()
@@ -147,13 +155,6 @@ export function CreativeStudio() {
     setFormError('')
   }, [selectedId, instrument.notes, instrument.phrases, instrument.mask])
   useEffect(() => { setSectionPattern(session.sectionPattern); setFormError('') }, [session.sectionPattern])
-  useEffect(() => {
-    const cancel = () => { drag.current = null; setDragVisual(null); music.endAudition() }
-    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel() }
-    window.addEventListener('blur', cancel)
-    window.addEventListener('keydown', escape)
-    return () => { window.removeEventListener('blur', cancel); window.removeEventListener('keydown', escape) }
-  }, [music.endAudition])
 
   const updateInstrument = useCallback((update: Partial<Instrument>) => {
     setSession(s => ({ ...s, instruments: { ...s.instruments, [selectedId]: { ...s.instruments[selectedId], ...update } } }))
@@ -188,7 +189,7 @@ export function CreativeStudio() {
       setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: true } : p) }))
     }
   }
-  function stop() { setPlaying(false); music.endAudition(); drag.current = null; setNotice('Arranjo pausado.') }
+  function stop() { setPlaying(false); music.endAudition(); setNotice('Arranjo pausado.') }
   function select(id: string) { music.endAudition(); setSelectedId(id) }
 
   async function applyPattern() {
@@ -232,7 +233,7 @@ export function CreativeStudio() {
     setBusy(true)
     try {
       await validateMusicSnapshot(creativeSnapshot(next, false))
-      music.endAudition(); drag.current = null; setDragVisual(null); setSoloId(null); setSimulation({ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}); setSession(next); setPlaying(autoplay)
+      music.endAudition(); setSoloId(null); setSimulation({ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}); setSession(next); setPlaying(autoplay)
       setNotice(`Kit “${next.name}” carregado${autoplay ? ' e tocando' : ' e pausado'}.`)
     } catch (error) { setNotice(`Kit não carregado: ${messageOf(error)}`) }
     finally { setBusy(false) }
@@ -263,7 +264,8 @@ export function CreativeStudio() {
   }
   function saveKit() {
     if (!session.name.trim()) { setNotice('Dê um nome ao kit antes de salvar.'); return }
-    const clean = parseCreativeSession(JSON.stringify({...session, catalogRevision: STYLE_REVISION}))
+    const revision = session.cityId ? defaultCityKit(session.cityId)?.catalogRevision ?? STYLE_REVISION : STYLE_REVISION
+    const clean = parseCreativeSession(JSON.stringify({...session, catalogRevision: revision}))
     let replacedLink = false
     if (clean.cityId) {
       const customConflict = kits.find(kit => kit.cityId === clean.cityId && kit.name !== clean.name)
@@ -282,7 +284,7 @@ export function CreativeStudio() {
           try { if (parseCreativeSession(current).name === clean.name) localStorage.removeItem(cityKitStorageKey(cityId)) } catch { /* corrupt slots already fall back to the default */ }
         }
       }
-      localStorage.setItem(PRESETS_STORAGE, JSON.stringify(updated.kits))
+      localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(updated.kits))
       if (clean.cityId) localStorage.setItem(cityKitStorageKey(clean.cityId), JSON.stringify(clean))
       setKits(updated.kits); setSession(clean); setSelectedKit(`${USER_KIT_PREFIX}${clean.name}`)
       const city = EDITABLE_CITY_KITS.find(item => item.id === clean.cityId)
@@ -301,59 +303,6 @@ export function CreativeStudio() {
     setNotice('Kit exportado com instrumentos, padrões, posições e configurações.')
   }
 
-  function squareAt(event: React.PointerEvent) {
-    return document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-creative-square]')?.getAttribute('data-creative-square') ?? null
-  }
-  function updateDragVisual(event: React.PointerEvent, id: string) {
-    const piece = session.pieces.find(item => item.id === id)
-    const rect = boardRef.current?.getBoundingClientRect()
-    if (!piece || !rect) return
-    const x = (event.clientX - rect.left) * (boardRef.current!.offsetWidth / rect.width) - boardRef.current!.clientLeft
-    const y = (event.clientY - rect.top) * (boardRef.current!.offsetHeight / rect.height) - boardRef.current!.clientTop
-    if (dragVisualRef.current) {
-      dragVisualRef.current.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(1.06)`
-    } else {
-      setDragVisual({ id, svg: `${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG, x, y })
-    }
-  }
-  function pointerDown(event: React.PointerEvent, square: string) {
-    if (event.button !== 0) return
-    const piece = session.pieces.find(p => p.square === square)
-    const id = mode === 'play' ? selectedId : piece?.id
-    if (!id) return
-    suppressClick.current = false
-    if (mode === 'move') setSelectedId(id)
-    drag.current = { id, square, origin: square, x: event.clientX, y: event.clientY, moved: false }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    music.audition(id, square)
-  }
-  function pointerMove(event: React.PointerEvent) {
-    if (!drag.current) return
-    const square = squareAt(event)
-    if (Math.hypot(event.clientX - drag.current.x, event.clientY - drag.current.y) > 5) {
-      drag.current.moved = true
-      if (mode === 'move') updateDragVisual(event, drag.current.id)
-    }
-    if (square && square !== drag.current.square) {
-      drag.current.square = square
-      music.audition(drag.current.id, square)
-    }
-  }
-  function pointerUp(event: React.PointerEvent) {
-    const current = drag.current
-    if (!current) return
-    const square = squareAt(event)
-    if (mode === 'move' && current.moved && square && square !== current.origin) {
-      setPlaying(true)
-      setSession(s => moveCreativePiece(s, current.id, square))
-    }
-    suppressClick.current = current.moved || mode === 'play'
-    drag.current = null
-    setDragVisual(null)
-    music.endAudition()
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-  }
-
   return <main className={styles.studio}>
     <header className={styles.header}>
       <div className={styles.identity}><Link href="/" aria-label="Voltar ao mundo"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS LAB</span><h1><FlaskConical size={22} /> Modo Criativo</h1></div></div>
@@ -364,11 +313,14 @@ export function CreativeStudio() {
     <fieldset disabled={!ready || busy} className={styles.workspace}>
       <section className={`${styles.panel} ${styles.kitHub}`} aria-label="Kit atual e biblioteca">
         <div className={styles.kitStage}>
-          <label><span className={styles.helpCaption}>Kit atual do Criativo<InfoTip label="Carregar e experimentar kits">Escolha entre seus kits salvos, os kits padrão das cidades e os estudos independentes. O nome da cidade aparece entre parênteses somente no kit atualmente vinculado a ela.</InfoTip></span><select aria-label="Kit atual do Criativo" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
+          <label><span className={styles.helpCaption}>Kit atual do Criativo<InfoTip label="Carregar e experimentar kits">Meus kits reúne os kits salvos neste navegador e os estudos independentes. Os kits padrão das cidades ficam abaixo. O nome da cidade aparece entre parênteses somente no kit atualmente vinculado a ela.</InfoTip></span><select aria-label="Kit atual do Criativo" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
             <option value="">Rascunho atual</option>
-            {kits.length>0&&<optgroup label="Meus kits">{kits.map(kit=><option key={kit.name} value={`${USER_KIT_PREFIX}${kit.name}`}>{kitLabel(kit)}</option>)}</optgroup>}
+            <optgroup label="Meus kits">
+              {kits.map(kit=><option key={kit.name} value={`${USER_KIT_PREFIX}${kit.name}`}>{kitLabel(kit)}</option>)}
+              <option value={MOUTH_BREATHER_KIT}>Mouth Breather · estudo eefano</option>
+              <option value={DUSSELDORF_ORIGINAL_KIT}>Düsseldorf · Electro 01</option>
+            </optgroup>
             <optgroup label="Kits padrão">{EDITABLE_CITY_KITS.map(city=>{const kit=defaultCityKit(city.id)!;return <option key={city.id} value={`${DEFAULT_KIT_PREFIX}${city.id}`}>{kit.name}{linkedUserCities.has(city.id)?'':` (${city.name})`}</option>})}</optgroup>
-            <optgroup label="Estudos e originais"><option value={MOUTH_BREATHER_KIT}>Mouth Breather · estudo eefano</option><option value={DUSSELDORF_ORIGINAL_KIT}>Düsseldorf · Electro 01</option></optgroup>
           </select></label>
           <div className={styles.actions}>
               <button className={styles.primary} disabled={!selectedKit} onClick={() => void loadSelectedKit()}>Carregar kit</button>
@@ -402,6 +354,7 @@ export function CreativeStudio() {
             {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pause' : 'Play'}
           </button>
           <label><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /></label>
+          <label><HelpLabel label="Compasso">O BPM conta semínimas em 3/4 e 4/4; em 6/8 e 12/8 conta semínimas pontuadas, cada uma dividida em três colcheias. Alterar o compasso reinicia o relógio da sessão.</HelpLabel><select aria-label="Compasso" value={session.meter} onChange={e => setSession(s => ({ ...s, meter: e.target.value as CreativeSession['meter'] }))}>{['4/4','3/4','6/8','12/8'].map(meter=><option key={meter}>{meter}</option>)}</select></label>
           <label><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel><select aria-label="Tônica" value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
           <label><HelpLabel label={`Escala (${music.snapshot.scale.join(' · ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
           <label><HelpLabel label="Harmonia">Plano comum por seção para baixo, acordes e melodias. Planos móveis geram tríades nas vozes sustentadas e usam condução curta entre seções.</HelpLabel><select aria-label="Harmonia" value={session.harmony} onChange={e => setSession(s => ({ ...s, harmony: e.target.value as HarmonyPlanId }))}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label>
@@ -416,33 +369,56 @@ export function CreativeStudio() {
             <div className={styles.sectionHeader}><div className={styles.segmented}>
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
-            </div><InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></div>
-            <div ref={boardRef} className={styles.board} role="group" aria-label="Tabuleiro criativo">
-              {squares.map((square, index) => {
-                const piece = music.snapshot.pieces.find(p => p.square === square)
-                const chosen = piece?.id === selectedId
-                const preview = music.preview?.square === square
-                return <button key={square} type="button" data-creative-square={square}
-                  aria-label={`${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'branco' : 'preto'} · ${session.instruments[piece.id].name} · ${piece.active ? 'ativo' : 'inativo'}` : ' · vazia'}`}
-                  aria-pressed={chosen} className={`${styles.square} ${(Math.floor(index / 8) + index % 8) % 2 ? styles.dark : styles.light} ${chosen ? styles.selected : ''} ${preview ? styles.preview : ''}`}
-                  onPointerDown={e => pointerDown(e, square)} onPointerMove={pointerMove} onPointerUp={pointerUp}
-                  onPointerCancel={() => { drag.current = null; setDragVisual(null); music.endAudition(); suppressClick.current = true }}
-                  onLostPointerCapture={() => { if (drag.current) { drag.current = null; setDragVisual(null); music.endAudition() } }}
-                  onClick={() => {
-                    if (suppressClick.current) { suppressClick.current = false; return }
-                    if (mode === 'play') return
-                    if (piece) select(piece.id)
-                    else { setPlaying(true); setSession(s => moveCreativePiece(s, selectedId, square)) }
-                  }}
-                  onKeyDown={e => { if (mode === 'play' && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); if (!e.repeat) music.audition(selectedId, square) } }}
-                  onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') music.endAudition() }} onBlur={() => { if (!drag.current) music.endAudition() }}>
-                  <span className={styles.coordinate}>{square}</span>
-                  {piece && dragVisual?.id !== piece.id && <span className={styles.piece} dangerouslySetInnerHTML={{ __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG] }} />}
-                  {piece?.active && dragVisual?.id !== piece.id && <span className={styles.activeDot} />}
-                </button>
-              })}
-              <MusicPulseOverlay monitor={music.pulseMonitor} variant="creative" />
-              {dragVisual && <span ref={dragVisualRef} data-creative-drag={dragVisual.id} className={styles.dragPiece} style={{ left: 0, top: 0, transform: `translate(${dragVisual.x}px, ${dragVisual.y}px) translate(-50%, -50%) scale(1.06)` }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[dragVisual.svg] }} />}
+            </div><InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir uma nota por casa. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Duplo clique na peça liga ou desliga seu loop. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></div>
+            <div className={styles.board} role="group" aria-label="Tabuleiro criativo" aria-busy={!music.auditionReady}>
+              <fieldset className={styles.boardReadyGate} disabled={!music.auditionReady} onMouseDownCapture={music.unlock}>
+              <ChessgroundBoard
+                game={boardGame}
+                onMove={() => {}}
+                cityColor={boardColor}
+                isThinking={false}
+                synthSelectedSquare={selected.square as Square}
+                activeSquares={boardActiveSquares}
+                musicPulseMonitor={music.pulseMonitor}
+                onBoardClick={square => {
+                  if (mode === 'play') return
+                  const piece = session.pieces.find(item => item.square === square)
+                  // Updating the instrument editors can compile every variation.
+                  // Let the gesture submit its sample before that lower-priority render.
+                  if (piece) startTransition(() => setSelectedId(piece.id))
+                  else { setPlaying(true); setSession(current => moveCreativePiece(current, selectedId, square)) }
+                }}
+                onPieceHold={square => {
+                  const id = mode === 'play' ? selectedId : session.pieces.find(item => item.square === square)?.id
+                  if (id) music.audition(id, square)
+                }}
+                onDragOverSquare={(from, to) => {
+                  const id = mode === 'play' ? selectedId : session.pieces.find(item => item.square === from)?.id
+                  if (id) music.audition(id, to)
+                }}
+                onPieceRelease={music.releaseAudition}
+                onPieceCancel={music.endAudition}
+                freeMode={{
+                  mode,
+                  auditionPiece: { color: selected.color, type: selected.type },
+                  onMove: (from, to) => {
+                    const piece = session.pieces.find(item => item.square === from)
+                    if (!piece) return
+                    setPlaying(true)
+                    setSession(current => moveCreativePiece(current, piece.id, to))
+                  },
+                  onTogglePiece: square => {
+                    const piece = session.pieces.find(item => item.square === square)
+                    if (piece) { select(piece.id); toggleActive(piece.id) }
+                  },
+                  squareLabel: square => {
+                    const piece = session.pieces.find(item => item.square === square)
+                    return `${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'branco' : 'preto'} · ${session.instruments[piece.id].name} · ${piece.active ? 'ativo' : 'inativo'}` : ' · vazia'}`
+                  },
+                }}
+              />
+              </fieldset>
+              {!music.auditionReady && <div className={styles.boardLoading} role="status">Preparando sons do kit…</div>}
             </div>
 
             <div className={styles.actions}>

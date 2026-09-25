@@ -24,4 +24,4 @@ const code = load(path.join(root, 'lib/music/runtime.ts')).renderMusicCode(snaps
 const dest = path.join(root, 'public/presets')
 fs.mkdirSync(dest, { recursive: true })
 fs.writeFileSync(path.join(dest, 'manchester-1999.json'), JSON.stringify(kit, null, 2) + '\n')
-fs.writeFileSync(path.join(dest, 'manchester-1999.strudel'), '// Northern Jazz Breaks — original ChickenChess arrangement inspired by Get a Move On!\n// Samples are original synthesis. Serve /samples from this project when running this score.\n// 16 white voices; 123 BPM; G Dorian; A4 / B8 / C4 / D8 bars.\n' + code + '\n')
+fs.writeFileSync(path.join(dest, 'manchester-1999.strudel'), '// Northern Jazz Breaks — original ChickenChess arrangement inspired by Get a Move On!\n// Samples are original synthesis. Serve /samples from this project when running this score.\n// 16 white voices; 123 BPM; G Dorian; A4 / B6 / C3 / D6 bars.\n' + code + '\n')

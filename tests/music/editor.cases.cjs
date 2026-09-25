@@ -77,6 +77,25 @@ test('moving harmony generates one voiced diatonic triad per sustain onset', asy
  assert.deepEqual([...new Set(notes.filter(note=>note.start===0).map(note=>note.degree))],[48,53,57])
 })
 
+test('songbook plans keep their chord order and voice jazz sevenths', () => {
+ const {HARMONY_PLANS,harmonyFrame}=loadTs('lib/music/harmony.ts')
+ const scale=['C4','D4','E4','F4','G4','A4','B4']
+ const plans={
+  'pop-punk-154':[0,4,3], 'pop-1564':[0,4,5,3], 'rock-6415':[5,3,0,4],
+  'doo-wop-1645':[0,5,3,4], 'folk-rock-6425':[5,3,1,4], 'jazz-251':[1,4,0],
+  'indie-pop-1465':[0,3,5,4], 'jazz-3625':[2,5,1,4], 'southern-rock-415':[3,0,4], 'blues-145':[0,3,4],
+ }
+ for(const [plan,degrees] of Object.entries(plans))assert.deepEqual(HARMONY_PLANS[plan].degrees,degrees)
+ assert.deepEqual([0,1,2].map(i=>harmonyFrame('jazz-251',scale,i).chordName),['Dm7','G7','Cmaj7'])
+ assert.deepEqual([0,1,2,3].map(i=>harmonyFrame('jazz-3625',scale,i).chordName),['Em7','A7','Dm7','G7'])
+ const kit=creative.createCreativeSession(),id='w:e1'
+ kit.scale='Maior';kit.harmony='jazz-3625';kit.sectionPattern='1'
+ kit.pieces.forEach(piece=>piece.active=piece.id===id)
+ Object.assign(kit.instruments[id],{behavior:'sustain',phrases:['0'],pianoRolls:undefined,groove:undefined,automations:undefined,mask:undefined})
+ const chord=voiceSpecs(creative.creativeSnapshot(kit,true),null)[0].phrases[1]
+ assert.match(chord,/\[52,55,57,61\]/,'VI7 contains its chromatic major third C#')
+})
+
 test('static harmony preserves authored sustain voicings', () => {
  const kit=creative.createCreativeSession(),id='w:e1'
  kit.scale='Maior';kit.harmony='static';kit.pieces.forEach(piece=>piece.active=piece.id===id)

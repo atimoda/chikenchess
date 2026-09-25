@@ -50,19 +50,10 @@
 .sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .segmented { display: flex; background: #111a14; padding: 3px; border-radius: 7px; flex-shrink: 0; }
 .segmented button { background: transparent; border-color: transparent; padding: 7px 10px; }
-.board { position: relative; width: min(100%, 560px); margin: 0 auto; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); aspect-ratio: 1; border: 5px solid #354439; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
-.board .square { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: 0; position: relative; border: 0; border-radius: 0; color: #a2b09b; touch-action: none; }
-.board .light { background: #6a7c64; color: #d8e4ce; }
-.board .dark { background: #354535; color: #a0b39a; }
-.board .square:hover { background: #7a9062; }
-.board .square.selected { background: #879b5f; box-shadow: inset 0 0 0 3px #dbea9f; }
-.board .square.preview { background: #779c85; box-shadow: inset 0 0 0 3px #98e8ce; }
-.coordinate { position: absolute; left: 4px; top: 2px; font-size: 9px; opacity: .85; pointer-events: none; }
-.piece { width: 76%; height: 76%; pointer-events: none; filter: drop-shadow(0 2px 1px #0007); }
-.piece svg { display: block; width: 100%; height: 100%; }
-.dragPiece { position: absolute; z-index: 10; width: 12.5%; height: 12.5%; transform: translate(-50%, -50%) scale(1.06); pointer-events: none; filter: drop-shadow(0 0 9px #e8f8ad) drop-shadow(0 3px 2px #0008); }
-.dragPiece svg { display: block; width: 100%; height: 100%; }
-.activeDot { position: absolute; bottom: 4px; right: 4px; width: 6px; height: 6px; background: #e7f3a6; border-radius: 50%; box-shadow: 0 0 5px #dafa9770; pointer-events: none; }
+.board { position: relative; width: min(100%, 560px); margin: 0 auto; aspect-ratio: 1; touch-action: none; user-select: none; }
+.boardReadyGate { display: block; width: 100%; height: 100%; min-width: 0; padding: 0; margin: 0; border: 0; }
+.studio .board button[data-square] { min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; gap: 0; }
+.boardLoading { position: absolute; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; color: #e5f0e7; font-size: 12px; background: #0c140fc9; pointer-events: auto; }
 .auditionButton { touch-action: none; }
 .hint { font-size: 11px; color: #a2b0a7; line-height: 1.65; margin-top: 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
@@ -121,7 +112,7 @@
 @media (max-width: 900px) { .kitHub { grid-template-columns: 1fr; } .kitLibrary { border-left: 0; border-top: 1px solid #35443a; padding: 14px 0 0; } }
 @media (max-width: 820px) { .sessionRow { grid-template-columns: 1fr; } .sessionRow .transport { border-radius: 10px 10px 0 0; } .transitionSlot > section { border-left: 1px solid #405247 !important; border-top: 0 !important; border-radius: 0 0 10px 10px !important; } }
 @media (max-width: 720px) { .studio { padding: 18px 12px 88px; } .header { margin-bottom: 18px; } .header p { display: none; } .header h1 { font-size: 23px; } .identity { gap: 12px; } .columns { grid-template-columns: 1fr; } .boardPanel { position: static; } .controlColumns { grid-template-columns: 1fr; } .controlColumn { max-height: none; overflow: visible; padding-right: 0; } .transport { padding: 12px; gap: 12px; } .transport > .range { width: 120px; } .canvas { gap: 14px; } .voices, .bandPanel .voices { grid-template-columns: 1fr 1fr; gap: 12px; } .kitFields { grid-template-columns: 1fr; } .sectionHeader { flex-direction: row; flex-wrap: wrap; } }
-@media (max-width: 720px) and (orientation: landscape) { .studio { padding: 10px 12px 60px; } .header { margin-bottom: 10px; } .header h1 { font-size: 20px; } .identity > a { padding: 8px; } .transport { margin-bottom: 10px; padding: 9px 10px; gap: 9px; } .columns { grid-template-columns: minmax(200px, .7fr) minmax(300px, 1.3fr); gap: 10px; } .boardPanel { position: sticky; top: 8px; } .controlColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .controlColumn { max-height: calc(100dvh - 16px); overflow-y: auto; padding-right: 3px; } .panel { padding: 10px; } .panel h2 { font-size: 15px; } .sectionHeader { margin-bottom: 10px; } .board { border-width: 3px; } .hint { font-size: 10px; } .voices, .bandPanel .voices { grid-template-columns: 1fr; gap: 10px; } }
+@media (max-width: 720px) and (orientation: landscape) { .studio { padding: 10px 12px 60px; } .header { margin-bottom: 10px; } .header h1 { font-size: 20px; } .identity > a { padding: 8px; } .transport { margin-bottom: 10px; padding: 9px 10px; gap: 9px; } .columns { grid-template-columns: minmax(200px, .7fr) minmax(300px, 1.3fr); gap: 10px; } .boardPanel { position: sticky; top: 8px; } .controlColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .controlColumn { max-height: calc(100dvh - 16px); overflow-y: auto; padding-right: 3px; } .panel { padding: 10px; } .hint { font-size: 10px; } .voices, .bandPanel .voices { grid-template-columns: 1fr; gap: 10px; } }
 @media (prefers-reduced-motion: reduce) { .studio button { transition: none; } }
 
 /* v0.3.2: compact columns, one scroll surface per column. */

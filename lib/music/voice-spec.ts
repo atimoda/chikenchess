@@ -1,5 +1,6 @@
 // Resolve a game/Creative snapshot to per-piece control values, without querying Strudel.
 import { performancePattern } from './performance'
+import { beatsPerBar } from './meter'
 import { DEFAULT_MOVEMENT, degreeToMidi, instrumentFor } from './model'
 import { sampleRegistration } from './sample-banks'
 import type { MusicSnapshot, Preview, VoiceSpec } from './runtime-types'
@@ -21,12 +22,14 @@ function chordVoicings(plan: HarmonyPlanId, scale: readonly string[], octave: nu
   let previous:number[]|undefined
   return degrees.map((_,section)=>{
     const frame=harmonyFrame(plan,scale,section)
-    const root=frame.chordDegrees.map(degree=>degreeToMidi(degree+offset,scale,octave)+12*Math.log2(pitch))
-    const inversions=[root,[root[1],root[2],root[0]+12],[root[2],root[0]+12,root[1]+12]].flatMap(notes=>[-12,0,12].map(shift=>notes.map(note=>note+shift)))
+    const root=frame.chordIntervals
+      ? frame.chordIntervals.map(interval=>degreeToMidi(frame.degree+offset,scale,octave)+interval+12*Math.log2(pitch))
+      : frame.chordDegrees.map(degree=>degreeToMidi(degree+offset,scale,octave)+12*Math.log2(pitch))
+    const inversions=Array.from({length:root.length},(_,index)=>[...root.slice(index),...root.slice(0,index).map(note=>note+12)]).flatMap(notes=>[-12,0,12].map(shift=>notes.map(note=>note+shift)))
     const center=degreeToMidi(frame.degree+offset,scale,octave)+12*Math.log2(pitch)+4
     const voiced=inversions.reduce((best,candidate)=>{
-      const movement=previous?candidate.reduce((sum,n,i)=>sum+Math.abs(n-previous![i]),0):Math.abs(candidate.reduce((a,b)=>a+b,0)/3-center)
-      const bestMovement=previous?best.reduce((sum,n,i)=>sum+Math.abs(n-previous![i]),0):Math.abs(best.reduce((a,b)=>a+b,0)/3-center)
+      const movement=previous?candidate.reduce((sum,n,i)=>sum+Math.abs(n-previous![i]),0):Math.abs(candidate.reduce((a,b)=>a+b,0)/candidate.length-center)
+      const bestMovement=previous?best.reduce((sum,n,i)=>sum+Math.abs(n-previous![i]),0):Math.abs(best.reduce((a,b)=>a+b,0)/best.length-center)
       return movement<bestMovement?candidate:best
     })
     previous=voiced
@@ -73,6 +76,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
     const performance = !manual && state.sectionOverrides?.[piece.id]===undefined && instrument.selectedVariation===undefined ? instrument.performance : undefined
     return {
       performance,
+      beatsPerBar: beatsPerBar(state.meter),
       key: `${piece.id}:${audition ? 'preview' : 'loop'}`, piece, square, preview: audition, manual,
       orbit: effectOrbit(piece, audition, effectBuses), notes,
       phrases,
@@ -84,7 +88,7 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
         }
         return {...roll,notes:roll.notes.map(n=>({...n,degree:Number(toMidiPattern(String(n.degree),harmony[index%harmony.length]))}))}
       }),
-      sectionPattern: performance ? performancePattern(performance) : state.sectionOverrides?.[piece.id] !== undefined ? String(state.sectionOverrides[piece.id]) : instrument.selectedVariation !== undefined ? String(instrument.selectedVariation) : state.sectionPattern ?? '0',
+      sectionPattern: performance ? performancePattern(performance, false, beatsPerBar(state.meter)) : state.sectionOverrides?.[piece.id] !== undefined ? String(state.sectionOverrides[piece.id]) : instrument.selectedVariation !== undefined ? String(instrument.selectedVariation) : state.sectionPattern ?? '0',
       // A solo should be audible immediately, even when the arrangement mask
       // normally holds this layer back until a later section.
       mask: audition || state.soloId === piece.id || piece.checkEnsemble ? undefined : instrument.mask,

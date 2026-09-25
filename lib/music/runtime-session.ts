@@ -3,11 +3,12 @@ import type { Square } from 'chess.js'
 import { ManualReverbCache } from './manual-reverb-cache'
 import { instrumentFor } from './model'
 import { MusicTransport } from './transport'
+import { beatsPerBar } from './meter'
 import { ReactionQueue } from './reaction-queue'
 import { applyReactions } from './reactions'
 import { isConstrainedDevice } from '../performance'
 import { TeamMixer, createTeamMixes } from './team-mixer'
-import { sampleRegistration } from './sample-banks'
+import { sampleRegistration, type SampleSource } from './sample-banks'
 import { createMusicMonitor, type TrackFrame, type NoteEvent, type MusicMonitor } from './monitor'
 import { voiceSpecs } from './voice-spec'
 import { compileVoice } from './pattern-compiler'
@@ -17,6 +18,7 @@ import type { Strudel, StrudelPattern, MusicSnapshot, MusicPulse, Preview, Voice
 /** One owned scheduler, with shared loop effect buses and isolated temporary auditions. */
 export class MusicRuntime {
   private api?: Strudel
+  private preloadedApi?: Strudel
   private scheduler: any
   private scheduledLoops: unknown[] | undefined
   private targetBpm = 120
@@ -51,18 +53,33 @@ export class MusicRuntime {
   private sectionCache?: { source: string; pattern: StrudelPattern }
   private maskCache = new Map<string, StrudelPattern>()
   private manualHit?: { voice: VoiceSpec; value: any; start: number; end: number }
+  private releaseTimer?: ReturnType<typeof setTimeout>
   constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
 
   // Preload JS only. AudioContext is created/resumed from an interaction.
-  preload() { void loadLibrary().catch(this.error) }
+  preload() { void loadLibrary().then(api => { if (!this.disposed) this.preloadedApi = api }).catch(this.error) }
+
+  async prepareSamples(sources: SampleSource[]) {
+    const api = await loadLibrary()
+    if (this.disposed) return
+    this.preloadedApi = api
+    const unique = new Map(sources.map(source => [sampleRegistration(source).sound, source]))
+    await Promise.all([...unique.values()].map(source => ensureSample(api, source)))
+    // Prepare assets only. Build the live graph from unlock(), inside a gesture.
+  }
 
   async unlock() {
     if (this.disposed || !this.pageVisible) return
+    // initAudio can be waiting for resume after a prior, non-gesture Play update.
+    // Resume now, within this pointer/key event, before waiting for that init.
+    const context = (this.api ?? this.preloadedApi)?.getAudioContext()
+    const resume = context?.state === 'suspended' ? context.resume() : Promise.resolve()
     if (!this.ready) this.ready = this.initialize().catch(error => { this.ready = undefined; throw error })
     try {
-      await this.ready
+      await Promise.all([this.ready, resume])
       if (this.disposed || !this.pageVisible) return
-      await this.api!.getAudioContext().resume()
+      const liveContext = this.api!.getAudioContext()
+      if (liveContext.state !== 'running') await liveContext.resume()
       this.refresh()
     } catch (error) { this.error(error) }
   }
@@ -96,7 +113,9 @@ export class MusicRuntime {
     const constrained = isConstrainedDevice()
     this.visualInterval = 1 / (constrained ? 8 : 15)
     this.effectBuses = constrained ? 2 : 4
-    await s.initAudio({ maxPolyphony: constrained ? 32 : 64 })
+    // Worklet registration can outlast a drag. The audio context and manual
+    // notes do not depend on that registration, so finish it in the background.
+    void s.initAudio({ maxPolyphony: constrained ? 32 : 64 }).catch(this.error)
     if (this.disposed) return
     const context: AudioContext = s.getAudioContext()
     this.analyser = context.createAnalyser()
@@ -141,12 +160,13 @@ export class MusicRuntime {
   private transportFrame() {
     const cycle=this.scheduler?.cycle??0
     return { bpm:this.scheduler?.started ? this.scheduler?.tempo?.bpmAt(cycle)??this.state?.bpm??120 : this.state?.bpm??120,
-      targetBpm:this.targetBpm, scale:this.state?.scale??[], harmony:this.state?.harmony??'static',
+      targetBpm:this.targetBpm, meter:this.state?.meter??'4/4', scale:this.state?.scale??[], harmony:this.state?.harmony??'static',
       ramp:this.scheduler?.started?this.scheduler?.tempo?.transition(cycle):undefined,
       pending:[...this.reactionQueue.pending].map(([id,p])=>({id,cycle:p.cycle,trigger:p.entry.rule.trigger})) }
   }
 
   audition(id: string, square: Square, mode: Preview['mode'] = 'manual') {
+    if (this.releaseTimer) this.endAudition()
     if (this.preview?.id === id && this.preview.square === square && this.preview.mode === mode) return
     const crossing = mode === 'manual' && this.preview?.mode === 'manual' && this.preview.id === id && !!this.api && !!this.scheduler
     const requested = { id, square, mode }
@@ -160,7 +180,7 @@ export class MusicRuntime {
     // Keep only the latest square while unlocking/loading audio. Manual gestures
     // cancelled before readiness must never produce a delayed note.
       this.unlockAudition = requested
-      const ready = this.api?.getAudioContext().state === 'running' ? Promise.resolve() : this.unlock()
+      const ready = this.scheduler && this.api?.getAudioContext().state === 'running' ? Promise.resolve() : this.unlock()
       void ready.then(async () => {
         const source = this.state?.instruments?.[id]?.source
         if (source?.kind === 'sample' && this.api && !loadedSamples.has(sampleRegistration(source).sound)) await ensureSample(this.api, source)
@@ -174,10 +194,20 @@ export class MusicRuntime {
   }
 
   endAudition() {
+    if (this.releaseTimer) clearTimeout(this.releaseTimer)
+    this.releaseTimer = undefined
     if (this.preview?.mode === 'manual') this.unlockAudition = null
     this.stopManualHit()
     this.preview = null
     this.refresh()
+  }
+
+  releaseAudition() {
+    if (this.preview?.mode !== 'manual' || this.releaseTimer) return
+    // A tap can end before first-use compilation has submitted its attack.
+    // Keep only the last manual note alive briefly; a new gesture or an
+    // explicit cancel ends it immediately.
+    this.releaseTimer = setTimeout(() => this.endAudition(), 500)
   }
 
   private stopManualHit() {
@@ -207,7 +237,7 @@ export class MusicRuntime {
       this.connectVoice(voice)
       this.publishFrame()
     }
-    void this.api.webaudioOutput(hap, 0, duration, this.state.bpm / 240, time).catch(this.error)
+    void this.api.webaudioOutput(hap, 0, duration, this.state.bpm / (60 * beatsPerBar(this.state.meter)), time).catch(this.error)
     this.scheduleVisual(voice, time, duration)
   }
 
@@ -280,7 +310,7 @@ export class MusicRuntime {
         const pattern = this.patternFor(voice)
         let cached = this.displayCache.get(voice.key)
         if (!cached || cached.pattern !== pattern || cached.cycle !== cycleIndex) {
-          const haps = pattern.queryArc(cycleIndex, cycleIndex + 1, { _cps: this.state.bpm / 240 })
+          const haps = pattern.queryArc(cycleIndex, cycleIndex + 1, { _cps: this.state.bpm / (60 * beatsPerBar(this.state.meter)) })
           const events: NoteEvent[] = haps.slice(0, 128).map((hap: any) => ({
             start: Math.max(cycleIndex, Number(hap.whole?.begin ?? hap.part.begin)),
             end: Math.min(cycleIndex + 1, Number(hap.whole?.end ?? hap.part.end)),
@@ -301,7 +331,7 @@ export class MusicRuntime {
           values: last ? { gain: Number(last.gain) * Number(last.velocity ?? 1), lpf: Number(last.cutoff ?? last.lpf), pan: Number(last.pan), room: Number(last.room), delay: Number(last.delay) } : {},
         }
       }
-      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * 4) + 1, section, tracks, transport: this.transportFrame() })
+      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section, tracks, transport: this.transportFrame() })
     } catch (error) { this.error(error) }
   }
 
@@ -389,7 +419,8 @@ export class MusicRuntime {
       this.teamMixer?.update(this.state.teamMixes ?? createTeamMixes())
       const loopCount = specs.filter(v => !v.preview).length
       for (const voice of specs) this.connectVoice(voice, loopCount)
-      this.scheduler.setCps(this.state.bpm / 240, this.rampBars)
+      this.scheduler.setMeter?.(beatsPerBar(this.state.meter))
+      this.scheduler.setCps(this.state.bpm / (60 * beatsPerBar(this.state.meter)), this.rampBars)
       this.rampBars = 0
       if (changed) {
         const pattern = compiledLoops.length ? this.api.stack(...compiledLoops) : this.api.silence
@@ -428,6 +459,8 @@ export class MusicRuntime {
   }
   dispose() {
     this.disposed = true
+    if (this.releaseTimer) clearTimeout(this.releaseTimer)
+    this.releaseTimer = undefined
     this.unlockAudition = null
     this.stopManualHit()
     this.scheduler?.stop()

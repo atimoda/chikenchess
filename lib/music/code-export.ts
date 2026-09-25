@@ -1,6 +1,7 @@
 // Text export of the same voice specifications consumed by the pattern compiler.
 import { optimizeRoll, rollLaneNotation } from './roll-optimizer'
 import { performancePattern } from './performance'
+import { beatsPerBar } from './meter'
 import { sampleRegistration } from './sample-banks'
 import { voiceSpecs } from './voice-spec'
 import type { Automation } from './automation'
@@ -14,7 +15,8 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
     '// Degrees follow the shared scale; each piece keeps its instrument.',
     ...(state.teamMixes ? [`// Post-mix Web Audio buses (gain; bass/mids/highs dB): ${JSON.stringify(state.teamMixes)}`] : []),
     ...(preview?.mode === 'manual' ? [`// ${preview.id}: manual note at ${preview.square}; its loop is suspended during the gesture.`] : []),
-    `setcps(${state.bpm} / 60 / 4)`,
+    `// Meter ${state.meter ?? '4/4'}; BPM counts ${state.meter === '6/8' || state.meter === '12/8' ? 'dotted-quarter' : 'quarter'} pulses.`,
+    `setcps(${state.bpm} / 60 / ${beatsPerBar(state.meter)})`,
     ...samples.map(sample => `samples(${JSON.stringify(sample.map)})`),
   ].join('\n')
   const parts = voices.map(v => {
@@ -31,7 +33,7 @@ function voiceCode(voice: VoiceSpec): string {
     const variations = [...new Set(plan.steps.filter(step=>step.active).map(step=>step.variation))]
     const declarations = variations.map(index=>`const part${index} = ${voiceCode({...voice,performance:undefined,sectionPattern:String(index)})};`).join('\n    ')
     const banks = plan.steps.map(step=>step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence')
-    const selector = JSON.stringify(performancePattern(plan, true))
+    const selector = JSON.stringify(performancePattern(plan, true, voice.beatsPerBar))
     const form = `${plan.restart ? 'pickRestart' : 'pick'}([${banks.join(', ')}], mini(${selector}))`
     return `(() => {\n    ${declarations}\n    return ${form};\n  })()`
   }

@@ -93,7 +93,7 @@ export const creativeSchema = z.object({
   catalogRevision: z.string().max(80).optional(),
   version: z.literal(4), name: z.string().trim().min(1).max(80),
   cityId: z.string().trim().regex(/^[a-z0-9-]+$/).optional(),
-  bpm: finite(30, 240), volume: finite(0, 1), root: z.enum(ROOTS),
+  bpm: finite(30, 240), meter: z.enum(['4/4', '3/4', '6/8', '12/8']).default('4/4'), volume: finite(0, 1), root: z.enum(ROOTS),
   scale: z.enum(SCALE_NAMES),
   sectionPattern: z.string().refine(hasPatternBudget, 'Timeline inválida.'),
   pieces: z.array(pieceSchema).length(32),
@@ -123,7 +123,7 @@ export const CREATIVE_STORAGE = 'chickenchess:creative:v1'
 export function createCreativeSession(): CreativeSession {
   const pieces = piecesFromHistory([])
   return creativeSchema.parse({
-    version: 4, name: 'Meu kit eletrônico', bpm: 118, volume: 0.75, root: 'C', scale: 'Pentatônica menor', sectionPattern: '0', pieces, grooves: electronicGrooves(),
+    version: 4, name: 'Meu kit eletrônico', bpm: 118, meter: '4/4', volume: 0.75, root: 'C', scale: 'Pentatônica menor', sectionPattern: '0', pieces, grooves: electronicGrooves(),
     instruments: Object.fromEntries(pieces.map(p => [p.id, { ...instrumentFor(p) }])),
     effects: Object.fromEntries(pieces.map(p => [p.id, { gain: 1, pitch: 1, pan: 0, delay: 0, reverb: 0.12, decay: 0.15 }])),
     mappings: Object.fromEntries(pieces.map(p => [p.id, { ...DEFAULT_MOVEMENT }])),
@@ -132,7 +132,7 @@ export function createCreativeSession(): CreativeSession {
 
 export function creativeSnapshot(session: CreativeSession, playing: boolean, soloId: string | null = null): MusicSnapshot {
   return {
-    title: session.name, bpm: session.bpm, volume: session.volume, playing,
+    title: session.name, bpm: session.bpm, meter: session.meter, volume: session.volume, playing,
     sectionPattern: session.sectionPattern,
     harmony: session.harmony,
     grooves: session.grooves,

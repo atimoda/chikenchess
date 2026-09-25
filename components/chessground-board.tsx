@@ -14,6 +14,7 @@ interface ChessgroundBoardProps {
   onBoardClick?: (square: Square) => void
   onPieceHold?: (square: Square) => void
   onPieceRelease?: () => void
+  onPieceCancel?: () => void
   musicPulseMonitor?: MusicPulseMonitor
   onDragOverSquare?: (from: Square, to: Square) => void
   cityColor: string
@@ -22,6 +23,13 @@ interface ChessgroundBoardProps {
   synthSelectedSquare?: Square | null
   activeSquares?: Set<string>
   analysisArrows?: AnalysisArrow[]
+  freeMode?: {
+    mode: "move" | "play"
+    auditionPiece: { color: "w" | "b"; type: string }
+    onMove: (from: Square, to: Square) => void
+    onTogglePiece: (square: Square) => void
+    squareLabel?: (square: Square) => string
+  }
 }
 
 export interface AnalysisArrow {
@@ -64,8 +72,10 @@ export function ChessgroundBoard({
   onDragOverSquare,
   onPieceHold,
   onPieceRelease,
+  onPieceCancel,
   musicPulseMonitor,
   analysisArrows = [],
+  freeMode,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -94,7 +104,9 @@ export function ChessgroundBoard({
       onPieceRelease?.()
     }
     const cancel = () => {
-      release()
+      heldSquareRef.current = null
+      if (onPieceCancel) onPieceCancel()
+      else onPieceRelease?.()
       dragPieceRef.current = null
       setDragPiece(null)
       setLegalMoves([])
@@ -112,10 +124,10 @@ export function ChessgroundBoard({
       window.removeEventListener('blur', cancel)
       window.removeEventListener('keydown', escape)
     }
-  }, [onPieceRelease])
+  }, [onPieceRelease, onPieceCancel])
 
   const board = game.board()
-  const inCheck = game.isCheck()
+  const inCheck = freeMode ? false : game.isCheck()
   const turn = game.turn()
 
   const [animatingPiece, setAnimatingPiece] = useState<{
@@ -139,7 +151,7 @@ export function ChessgroundBoard({
 
   // Handle last move updates from props
   useEffect(() => {
-    if (game) {
+    if (!freeMode) {
       const history = game.history({ verbose: true })
       
       const lastMove = history[history.length - 1]
@@ -186,7 +198,7 @@ export function ChessgroundBoard({
       setLastMoveWhite(lastW ? { from: lastW.from, to: lastW.to } : null)
       setLastMoveBlack(lastB ? { from: lastB.from, to: lastB.to } : null)
     }
-  }, [game])
+  }, [game, freeMode])
 
   // Animation Loop
   useEffect(() => {
@@ -217,6 +229,7 @@ export function ChessgroundBoard({
   const prevHistoryLen = useRef(0)
   
   useEffect(() => {
+      if (freeMode) return
       const history = game.history({ verbose: true })
       if (history.length > prevHistoryLen.current) {
           const lastMove = history[history.length - 1]
@@ -238,7 +251,7 @@ export function ChessgroundBoard({
           }
       }
       prevHistoryLen.current = history.length
-  }, [game])
+  }, [game, freeMode])
 
   // Find king position for check highlight
   const findKingSquare = useCallback((): Square | null => {
@@ -257,6 +270,10 @@ export function ChessgroundBoard({
 
   const handleSquareClick = useCallback(
     (square: Square) => {
+      if (freeMode) {
+        onBoardClick?.(square)
+        return
+      }
       if (onBoardClick) {
         onBoardClick(square)
       }
@@ -332,27 +349,29 @@ export function ChessgroundBoard({
         }
       }
     },
-    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares],
+    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares, freeMode, onBoardClick],
   )
 
   // Handle drag and drop
   const handleDragStart = useCallback(
-    (e: React.MouseEvent | React.TouchEvent, square: Square) => {
-      if (game.get(square)) {
+    (e: React.PointerEvent, square: Square) => {
+      if (game.get(square) || freeMode?.mode === 'play') {
         heldSquareRef.current = square
         onPieceHold?.(square)
       }
-      if (!onPieceHold && (turn !== "w" || game.isGameOver())) return
+      if (!freeMode && !onPieceHold && (turn !== "w" || game.isGameOver())) return
 
-      const piece = game.get(square)
-      if (!piece || (!onPieceHold && piece.color !== "w")) return
+      const piece = freeMode?.mode === 'play' ? freeMode.auditionPiece : game.get(square)
+      if (!piece || (!freeMode && !onPieceHold && piece.color !== "w")) return
 
       if (!boardRef.current) return
 
-      e.preventDefault()
+      // In free mode the browser must deliver mousedown after pointerdown:
+      // Chromium grants mouse audio activation on mousedown, not pointerdown.
+      if (!freeMode) e.preventDefault()
       const rect = boardRef.current.getBoundingClientRect()
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
+      const clientX = e.clientX
+      const clientY = e.clientY
 
       dragPieceRef.current = {
         piece: `${piece.color}${piece.type.toUpperCase()}`,
@@ -362,11 +381,13 @@ export function ChessgroundBoard({
       }
       setDragPiece(dragPieceRef.current)
 
-      setSelectedSquare(square)
-      const moves = game.moves({ square, verbose: true })
-      setLegalMoves(moves.map((m) => m.to as Square))
+      if (!freeMode) {
+        setSelectedSquare(square)
+        const moves = game.moves({ square, verbose: true })
+        setLegalMoves(moves.map((m) => m.to as Square))
+      }
     },
-    [game, turn, onPieceHold],
+    [game, turn, onPieceHold, freeMode],
   )
 
   const handleDragMove = useCallback(
@@ -421,7 +442,7 @@ export function ChessgroundBoard({
 
   const handleBoardMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!isSelectingSquares || !boardRef.current || dragPiece) return
+      if (freeMode || !isSelectingSquares || !boardRef.current || dragPiece) return
       if (e.buttons === 0) {
         setIsSelectingSquares(false)
         selectionLastSquareRef.current = null
@@ -443,7 +464,7 @@ export function ChessgroundBoard({
         }
       }
     },
-    [isSelectingSquares, handleSquareClick, dragPiece],
+    [isSelectingSquares, handleSquareClick, dragPiece, freeMode],
   )
 
   const handleDragEnd = useCallback(
@@ -467,7 +488,13 @@ export function ChessgroundBoard({
       const rank = Math.floor((clientY - rect.top) / squareSize)
 
       let didMove = false
-      if (file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith("w") && game.turn() === "w" && !game.isGameOver()) {
+      if (file >= 0 && file < 8 && rank >= 0 && rank < 8 && freeMode) {
+        const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
+        if (freeMode.mode === 'move' && targetSquare !== dragPiece.from) {
+          freeMode.onMove(dragPiece.from, targetSquare)
+          didMove = true
+        }
+      } else if (file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith("w") && game.turn() === "w" && !game.isGameOver()) {
         const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
 
         try {
@@ -507,7 +534,7 @@ export function ChessgroundBoard({
         setLegalMoves([])
       }
     },
-    [game, onMove],
+    [game, onMove, freeMode],
   )
 
   useEffect(() => {
@@ -542,7 +569,7 @@ export function ChessgroundBoard({
 
   // Clear premove when turn changes
   useEffect(() => {
-    if (turn === "w" && premove) {
+    if (!freeMode && turn === "w" && premove) {
       // Try to execute premove
       try {
         const move = game.move({
@@ -559,7 +586,7 @@ export function ChessgroundBoard({
       }
       setPremove(null)
     }
-  }, [turn, premove, game, onMove])
+  }, [turn, premove, game, onMove, freeMode])
 
   return (
     <div className="relative select-none w-full h-full">
@@ -574,7 +601,7 @@ export function ChessgroundBoard({
 
       <div
         ref={boardRef}
-        className="grid grid-cols-8 rounded-lg overflow-hidden relative fade-transparency w-full h-full"
+        className={cn("grid grid-cols-8 overflow-hidden relative fade-transparency w-full h-full", freeMode ? "rounded-none" : "rounded-lg")}
         style={{
           boxShadow: `inset 0 0 20px ${cityColor}10`,
           touchAction: 'none',
@@ -622,7 +649,7 @@ export function ChessgroundBoard({
             return (
               <button
                 key={square}
-                aria-label={`${square}${piece ? ` ${piece.color} ${piece.type}` : " empty"}`}
+                aria-label={freeMode?.squareLabel?.(square) ?? `${square}${piece ? ` ${piece.color} ${piece.type}` : " empty"}`}
                 data-square={square}
                 className={cn(
                   "relative aspect-square flex items-center justify-center transition-colors duration-150 w-full",
@@ -649,15 +676,19 @@ export function ChessgroundBoard({
                   if (!e.isPrimary || e.button !== 0) return
                   e.currentTarget.setPointerCapture(e.pointerId)
                   const hasPiece = !!piece
-                  if (!hasPiece) {
+                  if (!freeMode && !hasPiece) {
                     setIsSelectingSquares(true)
                     selectionLastSquareRef.current = square
                   } else {
                     setIsSelectingSquares(false)
                   }
                   handleSquareClick(square)
-                  if (hasPiece) handleDragStart(e, square)
+                  if (hasPiece || freeMode?.mode === 'play') handleDragStart(e, square)
                 }}
+                onDoubleClick={() => { if (piece && freeMode?.mode === 'move') freeMode.onTogglePiece(square) }}
+                onKeyDown={e => { if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); onPieceHold?.(square) } }}
+                onKeyUp={e => { if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter')) onPieceRelease?.() }}
+                onBlur={() => { if (freeMode?.mode === 'play') { if (onPieceCancel) onPieceCancel(); else onPieceRelease?.() } }}
               >
                 {isActive && (
                   <>
@@ -694,9 +725,9 @@ export function ChessgroundBoard({
                 )}
 
                 {/* Piece */}
-                {piece && !isDragging && !isAnimatingTo && (
+                {piece && (!isDragging || freeMode?.mode === 'play') && !isAnimatingTo && (
                   <div
-                    className={cn("w-[85%] h-[85%] transition-transform duration-150", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
+                    className={cn("w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
                     style={{
                       filter: isSelected 
                         ? `drop-shadow(0 0 8px ${cityColor})` 
@@ -842,11 +873,11 @@ export function ChessgroundBoard({
       )}
 
       {/* Dragged piece */}
-      {dragPiece && (
+      {dragPiece && freeMode?.mode !== 'play' && (
         <div
           data-dragged-piece={dragPiece.from}
           ref={dragGhostRef}
-          className={cn("absolute pointer-events-none z-50 w-16 h-16", dragPiece.piece.startsWith('b') && "black-piece-outline")}
+          className={cn("absolute pointer-events-none z-50 w-16 h-16", freeMode && "[&_svg]:w-full [&_svg]:h-full", dragPiece.piece.startsWith('b') && "black-piece-outline")}
           style={{
             left: 0,
             top: 0,

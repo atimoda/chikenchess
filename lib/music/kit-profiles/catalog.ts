@@ -13,8 +13,13 @@ import { profile as saopaulo } from './saopaulo'
 import { profile as paris } from './paris'
 import { profile as vienna } from './vienna'
 import { profile as johannesburg } from './johannesburg'
+import { profile as buenosAires1940 } from './buenos-aires-1940'
+import { profile as dublin1990 } from './dublin-1990'
+import { profile as newOrleans1953 } from './new-orleans-1953'
+import { HARMONIC_STAGE_PROFILES } from './harmonic-stages'
+import { curateTimbres } from './timbre-curation'
 
-export const STYLE_PROFILES: Record<string, StyleProfile> = {
+const authoredProfiles: Record<string, StyleProfile> = {
   dusseldorf,
   nyc,
   chicago,
@@ -28,4 +33,12 @@ export const STYLE_PROFILES: Record<string, StyleProfile> = {
   paris,
   vienna,
   johannesburg,
+  'buenos-aires-1940': buenosAires1940,
+  'dublin-1990': dublin1990,
+  'new-orleans-1953': newOrleans1953,
+  ...HARMONIC_STAGE_PROFILES,
 }
+
+export const STYLE_PROFILES: Record<string, StyleProfile> = Object.fromEntries(
+  Object.entries(authoredProfiles).map(([id, profile]) => [id, curateTimbres(id, profile)]),
+)

@@ -13,21 +13,563 @@
           {
             "type": "activate",
             "value": 0,
-            "scale": "Maior"
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 6,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "phase-opening",
+        "trigger": "opening",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": -8,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "phase-middle",
+        "trigger": "middle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "phase-endgame",
+        "trigger": "endgame",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -6,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 8,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "cadence"
+          }
+        ]
+      },
+      {
+        "id": "state-mate",
+        "trigger": "mate",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "activate",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 20,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "transpose",
+            "value": 12,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-stalemate",
+        "trigger": "stalemate",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "scale",
+            "value": 0,
+            "scale": "Whole tone",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -18,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-repetition",
+        "trigger": "repetition",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "invert",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "rampBars": 2,
+            "value": -6,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-insufficient",
+        "trigger": "insufficient",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 1800,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -20,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-fifty-move",
+        "trigger": "draw",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "relative",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -8,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-advantage",
+        "trigger": "advantage",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 8,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-first-castle",
+        "trigger": "firstCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-second-castle",
+        "trigger": "secondCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-first-capture",
+        "trigger": "firstCapture",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-capture",
+        "trigger": "capture",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-queen-capture",
+        "trigger": "queenCapture",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 12,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-no-queens",
+        "trigger": "noQueens",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 0,
+        "actions": [
+          {
+            "type": "mode",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -3,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "descent"
+          }
+        ]
+      },
+      {
+        "id": "event-no-knights",
+        "trigger": "noKnights",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "transpose",
+            "value": -2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-no-rooks",
+        "trigger": "noRooks",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "gain",
+            "value": -12,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-no-bishops",
+        "trigger": "noBishops",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 3200,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-promotion",
+        "trigger": "promotion",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "transpose",
+            "value": 12,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 15,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "ascent"
+          }
+        ]
+      },
+      {
+        "id": "event-underpromotion",
+        "trigger": "underpromotion",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "invert",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-en-passant",
+        "trigger": "enPassant",
+        "enabled": true,
+        "quantize": false,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "mode",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-minimum-one",
+        "trigger": "minimumOne",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 0,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 15,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-minimum-both",
+        "trigger": "minimumBoth",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 0,
+        "actions": [
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -8,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "circle"
+          }
+        ]
+      },
+      {
+        "id": "event-quiet",
+        "trigger": "quiet",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 2400,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -10,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-check-escape",
+        "trigger": "checkEscape",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
           }
         ]
       }
     ]
   },
-  "catalogRevision": "styles-2026-09-14-v1",
+  "reactionPresetRevision": "reactions-2026-09-20-v3",
+  "harmony": "cadence",
+  "catalogRevision": "manchester-2026-09-25-v4",
   "version": 4,
   "name": "Manchester 1999 · Northern Jazz Breaks",
   "cityId": "manchester-1999",
   "bpm": 123,
+  "meter": "4/4",
   "volume": 0.72,
   "root": "G",
   "scale": "Dórica",
-  "sectionPattern": "[0@4 1@8 2@4 3@8]/24",
+  "sectionPattern": "[0@16 1@24 2@12 3@24]/19",
   "pieces": [
     {
       "id": "b:a8",
@@ -349,19 +891,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -417,19 +959,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -476,7 +1018,7 @@
         "~ [0,2,6] ~ [0,3,6]"
       ],
       "performance": {
-        "restart": true,
+        "restart": false,
         "steps": [
           {
             "beats": 16,
@@ -485,19 +1027,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -506,8 +1048,8 @@
       },
       "source": {
         "kind": "sample",
-        "bank": "chicken-jazz-v1",
-        "asset": "keys",
+        "bank": "chicken-keys-v1",
+        "asset": "rhodes",
         "variant": 0,
         "pitched": true
       },
@@ -550,22 +1092,22 @@
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -636,19 +1178,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -695,28 +1237,28 @@
         "~ ~ ~ [2,4]"
       ],
       "performance": {
-        "restart": true,
+        "restart": false,
         "steps": [
           {
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -725,8 +1267,8 @@
       },
       "source": {
         "kind": "sample",
-        "bank": "chicken-jazz-v1",
-        "asset": "keys",
+        "bank": "chicken-keys-v1",
+        "asset": "grand",
         "variant": 0,
         "pitched": true
       },
@@ -769,22 +1311,22 @@
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -837,22 +1379,22 @@
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -892,6 +1434,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -918,6 +1489,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -944,6 +1544,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -970,12 +1599,58 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
         "asset": "snare",
         "variant": 1,
         "pitched": false
+      },
+      "automations": {
+        "penv": {
+          "kind": "pattern",
+          "patterns": [
+            "0",
+            "0",
+            "0",
+            "<0 0 0 -2>"
+          ]
+        },
+        "patt": {
+          "kind": "pattern",
+          "patterns": [
+            ".09"
+          ]
+        }
       },
       "groove": {
         "groove": "jazzBreaks",
@@ -988,7 +1663,7 @@
       "sound": "sine",
       "notes": "0",
       "octave": 2,
-      "gain": 0.18,
+      "gain": 0.15,
       "attack": 0.002,
       "release": 0.04,
       "lpf": 12000,
@@ -996,9 +1671,38 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
-        "bank": "chicken-jazz-v1",
+        "bank": "chicken-drums-v1",
         "asset": "ride",
         "variant": 0,
         "pitched": false
@@ -1022,6 +1726,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -1048,6 +1781,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -1074,6 +1836,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -1100,6 +1891,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1126,6 +1946,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
@@ -1152,6 +2001,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -1178,12 +2056,58 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-jazz-v1",
         "asset": "snare",
         "variant": 1,
         "pitched": false
+      },
+      "automations": {
+        "penv": {
+          "kind": "pattern",
+          "patterns": [
+            "0",
+            "0",
+            "0",
+            "<0 0 0 -2>"
+          ]
+        },
+        "patt": {
+          "kind": "pattern",
+          "patterns": [
+            ".09"
+          ]
+        }
       },
       "groove": {
         "groove": "jazzBreaks",
@@ -1196,7 +2120,7 @@
       "sound": "sine",
       "notes": "0",
       "octave": 2,
-      "gain": 0.18,
+      "gain": 0.15,
       "attack": 0.002,
       "release": 0.04,
       "lpf": 12000,
@@ -1204,9 +2128,38 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
-        "bank": "chicken-jazz-v1",
+        "bank": "chicken-drums-v1",
         "asset": "ride",
         "variant": 0,
         "pitched": false
@@ -1230,6 +2183,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -1256,6 +2238,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -1282,6 +2293,35 @@
       "decay": 0.16,
       "sustain": 1,
       "clip": 0.9,
+      "performance": {
+        "restart": true,
+        "steps": [
+          {
+            "beats": 16,
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          {
+            "beats": 24,
+            "variation": 1,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 12,
+            "variation": 2,
+            "transpose": 0,
+            "active": false
+          },
+          {
+            "beats": 24,
+            "variation": 3,
+            "transpose": 0,
+            "active": true
+          }
+        ]
+      },
       "source": {
         "kind": "sample",
         "bank": "chicken-electro-v1",
@@ -1324,19 +2364,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -1392,19 +2432,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -1451,7 +2491,7 @@
         "~ [0,2,6] ~ [0,3,6]"
       ],
       "performance": {
-        "restart": true,
+        "restart": false,
         "steps": [
           {
             "beats": 16,
@@ -1460,19 +2500,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -1481,8 +2521,8 @@
       },
       "source": {
         "kind": "sample",
-        "bank": "chicken-jazz-v1",
-        "asset": "keys",
+        "bank": "chicken-keys-v1",
+        "asset": "rhodes",
         "variant": 0,
         "pitched": true
       },
@@ -1525,22 +2565,22 @@
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -1611,19 +2651,19 @@
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -1670,28 +2710,28 @@
         "~ ~ ~ [2,4]"
       ],
       "performance": {
-        "restart": true,
+        "restart": false,
         "steps": [
           {
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -1700,8 +2740,8 @@
       },
       "source": {
         "kind": "sample",
-        "bank": "chicken-jazz-v1",
-        "asset": "keys",
+        "bank": "chicken-keys-v1",
+        "asset": "grand",
         "variant": 0,
         "pitched": true
       },
@@ -1744,22 +2784,22 @@
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 2,
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true
@@ -1812,22 +2852,22 @@
             "beats": 16,
             "variation": 0,
             "transpose": 0,
-            "active": true
+            "active": false
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 1,
             "transpose": 0,
             "active": true
           },
           {
-            "beats": 16,
+            "beats": 12,
             "variation": 2,
-            "transpose": 0,
+            "transpose": 2,
             "active": true
           },
           {
-            "beats": 32,
+            "beats": 24,
             "variation": 3,
             "transpose": 0,
             "active": true

@@ -1,8 +1,10 @@
-import { parseCreativeSession, type CreativeSession } from './creative'
+import { CREATIVE_STORAGE, parseCreativeSession, type CreativeSession } from './creative'
 import { cities } from '../cities-data'
-import { createStyledCityKit, STYLE_REVISION } from './styled-kits'
+import { createStyledCityKit, LEGACY_STYLE_REVISIONS, STYLE_REVISION } from './styled-kits'
 
 export const CITY_KIT_STORAGE_PREFIX = 'chickenchess:city-kit:v1:'
+export const KIT_LIBRARY_STORAGE = `${CREATIVE_STORAGE}:kits`
+const MAX_LIBRARY_KITS = 30
 
 export const EDITABLE_CITY_KITS = cities.map(({ id, name, year }) => ({ id, name: `${name} · ${year}` }))
 
@@ -25,28 +27,63 @@ export function prepareCityKitForCreative(session: CreativeSession, cityId: stri
   }))
 }
 
-export function previousCityKit(cityId: string): CreativeSession | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const saved = window.localStorage.getItem(`${CITY_KIT_STORAGE_PREFIX}backup:${STYLE_REVISION}:${cityId}`)
-    return saved ? parseCreativeSession(saved) : null
-  } catch { return null }
+function looseKitContent(kit: CreativeSession) {
+  return JSON.stringify({ ...kit, name: '', cityId: undefined })
+}
+
+function preserveAsLooseKit(saved: string, cityId: string, defaultName: string) {
+  const old = parseCreativeSession(saved)
+  const rawLibrary = window.localStorage.getItem(KIT_LIBRARY_STORAGE)
+  const library: unknown = rawLibrary ? JSON.parse(rawLibrary) : []
+  if (!Array.isArray(library)) throw new Error('Biblioteca de kits inválida')
+  const kits = library.map(item => parseCreativeSession(JSON.stringify(item)))
+  const oldContent = looseKitContent(old)
+  const linkedIndex = kits.findIndex(kit => kit.cityId === cityId && looseKitContent(kit) === oldContent)
+  if (kits.some(kit => !kit.cityId && looseKitContent(kit) === oldContent)) {
+    if (linkedIndex >= 0) window.localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(kits.filter((_, index) => index !== linkedIndex)))
+    return
+  }
+  if (linkedIndex < 0 && kits.length >= MAX_LIBRARY_KITS) throw new Error('Biblioteca de kits cheia')
+
+  const city = cities.find(item => item.id === cityId)
+  const base = old.name === defaultName && city ? `${city.name} ${city.year}` : old.name
+  let version = 1
+  let name = ''
+  do {
+    const suffix = ` v${version++}`
+    name = `${base.slice(0, 80 - suffix.length).trimEnd()}${suffix}`
+  } while (kits.some((kit, index) => index !== linkedIndex && kit.name === name))
+  const detached = parseCreativeSession(JSON.stringify({ ...old, name, cityId: undefined }))
+  if (linkedIndex >= 0) kits[linkedIndex] = detached
+  else kits.push(detached)
+  window.localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(kits))
+}
+
+function importLegacyBackups(cityId: string, revision: string, defaultName: string) {
+  for (const backupRevision of new Set([...LEGACY_STYLE_REVISIONS, STYLE_REVISION, revision])) {
+    const key = `${CITY_KIT_STORAGE_PREFIX}backup:${backupRevision}:${cityId}`
+    const saved = window.localStorage.getItem(key)
+    if (!saved) continue
+    preserveAsLooseKit(saved, cityId, defaultName)
+    window.localStorage.removeItem(key)
+  }
 }
 
 export function loadCityKit(cityId: string): CreativeSession | null {
   const fallback = defaultCityKit(cityId)
+  const revision = fallback?.catalogRevision ?? STYLE_REVISION
   if (typeof window === 'undefined') return fallback
+  try { importLegacyBackups(cityId, revision, fallback?.name ?? cityId) } catch { /* Keep the backup for a later attempt. */ }
   try {
     const saved = window.localStorage.getItem(cityKitStorageKey(cityId))
     if (!saved) return fallback
     const parsed = parseCreativeSession(saved)
     if (parsed.cityId !== cityId) return fallback
-    if (parsed.catalogRevision === STYLE_REVISION || !fallback) return parsed
-    // Publish the requested new collection once, retaining the exact previous save.
-    // If backup/storage fails, preserve the user's existing kit.
+    if (parsed.catalogRevision === revision || !fallback) return parsed
+    // Keep the previous kit in the Creative library before replacing its city slot.
+    // If preservation fails, leave the existing city kit in place.
     try {
-      const backupKey = `${CITY_KIT_STORAGE_PREFIX}backup:${STYLE_REVISION}:${cityId}`
-      if (!window.localStorage.getItem(backupKey)) window.localStorage.setItem(backupKey, saved)
+      preserveAsLooseKit(saved, cityId, fallback.name)
       window.localStorage.setItem(cityKitStorageKey(cityId), JSON.stringify(fallback))
       return fallback
     } catch { return parsed }

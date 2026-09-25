@@ -1,7 +1,123 @@
-export const RELEASE_LABEL = 'v0.4.41'
+export const RELEASE_LABEL = 'v0.4.62'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.62', date: '25/09/2026', title: 'Lista de cidades sem barra aparente', groups: [
+    { title: 'Mapa', items: [
+      'A listagem das campanhas continua rolando com roda, trackpad, toque e arraste, mas não mostra mais a barra de rolagem.',
+    ] },
+  ] },
+  { version: '0.4.61', date: '25/09/2026', title: 'Mais identidade para cada kit', groups: [
+    { title: 'Música', items: [
+      'Quatro bancos novos de cordas, teclas, sintetizadores e bateria trazem guitarras elétricas e acústicas, baixos, pianos, órgão, FM, pads e percussão com ataques e texturas diferentes.',
+      'As dez fases do Harmonic songbook ganham instrumentos e levadas próprios por estilo; os kits anteriores também recebem timbres mais adequados a cada cidade.',
+      'Ao carregar um preset atualizado, a versão salva anteriormente fica em Meus kits para comparação.',
+    ] },
+  ] },
+  { version: '0.4.60', date: '24/09/2026', title: 'Dez novas fases harmônicas', groups: [
+    { title: 'Música e mapa', items: [
+      'A campanha Harmonic songbook reúne dez fases novas, cada uma com uma sequência de acordes, cidade, época e kit editável próprios.',
+      'O jazz ganha acordes de sétima em ii–V–I e iii–VI–ii–V; baixos, melodias e respostas acompanham o centro de cada seção.',
+      'Os botões de época nos popups mostram o estilo correto de cada fase e se distribuem em mais de uma linha quando necessário.',
+    ] },
+  ] },
+  { version: '0.4.59', date: '24/09/2026', title: 'Meus kits sempre à vista no Criativo', groups: [
+    { title: 'Criativo', items: [
+      'Meus kits aparece no seletor mesmo sem kits salvos e agora reúne os estudos Mouth Breather e Düsseldorf original.',
+      'Um problema no rascunho atual não impede a biblioteca de kits de carregar.',
+    ] },
+  ] },
+  { version: '0.4.58', date: '24/09/2026', title: 'Mais espaço nas músicas e kits antigos na biblioteca', groups: [
+    { title: 'Música', items: [
+      'Em Düsseldorf, a flauta ganha espaço quando entra em destaque; em New Orleans, guitarra e palheta deixam o final para o trompete.',
+    ] },
+    { title: 'Criativo', items: [
+      'Ao atualizar o kit de uma cidade, a versão anterior aparece em Meus kits com nome próprio e sem vínculo com a fase. O botão Kit anterior sai da bancada.',
+    ] },
+  ] },
+  { version: '0.4.57', date: '24/09/2026', title: 'Baixo mais presente em Manchester 1999', groups: [
+    { title: 'Música', items: [
+      'O baixo principal acompanha as quatro seções de Manchester 1999; a segunda linha responde apenas nas partes mais cheias.',
+      'Ao carregar essa cidade, o kit anterior fica disponível para comparação no Criativo.',
+    ] },
+  ] },
+  { version: '0.4.56', date: '24/09/2026', title: 'Lista de cidades mais legível', groups: [
+    { title: 'Mapa', items: [
+      'A lista ganha texto maior, subtítulos em maiúsculas e hover verde; os marcadores saem e cliques passam pelas áreas vazias.',
+    ] },
+  ] },
+  { version: '0.4.55', date: '24/09/2026', title: 'Popups acima da lista de cidades', groups: [
+    { title: 'Mapa', items: [
+      'Os popups das cidades ficam numa camada acima da lista de campanhas quando se sobrepõem a ela.',
+    ] },
+  ] },
+  { version: '0.4.54', date: '24/09/2026', title: 'Lista de cidades mais limpa', groups: [
+    { title: 'Mapa', items: [
+      'O globo só centraliza uma cidade da lista ao clicar; hover realça apenas o texto e os itens têm mais espaço entre si.',
+    ] },
+  ] },
+  { version: '0.4.53', date: '24/09/2026', title: 'Som ao trocar de peça no Criativo', groups: [
+    { title: 'Tabuleiro', items: [
+      'Clicar em outra peça toca seu sample no primeiro clique; carregar os painéis do novo instrumento não interrompe o ataque.',
+    ] },
+  ] },
+  { version: '0.4.52', date: '24/09/2026', title: 'Clique e arraste com som no Criativo', groups: [
+    { title: 'Tabuleiro', items: [
+      'O áudio do Criativo é iniciado no gesto, corrigindo o silêncio no primeiro clique e ao arrastar peças.',
+      'Atravessar casas toca uma nota por casa sem atualizar toda a bancada a cada ataque.',
+    ] },
+  ] },
+  { version: '0.4.51', date: '23/09/2026', title: 'Áudio no gesto do Criativo', groups: [
+    { title: 'Tabuleiro', items: [
+      'O tabuleiro livre permite que o primeiro clique do mouse desbloqueie o áudio antes de tocar e arrastar a peça.',
+    ] },
+  ] },
+  { version: '0.4.50', date: '23/09/2026', title: 'Notas no primeiro toque do Criativo', groups: [
+    { title: 'Tabuleiro', items: [
+      'Ao soltar rapidamente uma peça no Criativo, a prévia permanece por até 500 ms.',
+      'As peças ocupam mais espaço nas casas, que voltam a ter cantos retos.',
+    ] },
+  ] },
+  { version: '0.4.49', date: '23/09/2026', title: 'Tabuleiro compartilhado e audição no Criativo', groups: [
+    { title: 'Tabuleiro', items: [
+      'O Criativo usa o mesmo tabuleiro visual e o mesmo arraste da partida, com movimentos livres e sem adversária.',
+      'Segurar e atravessar casas dispara as notas mesmo enquanto os efeitos de áudio ainda estão carregando.',
+    ] },
+  ] },
+  { version: '0.4.46', date: '23/09/2026', title: 'Presença das variações', groups: [
+    { title: 'Partida', items: [
+      'A aba da variação fica mais discreta durante seções em que a peça não está presente; o pin sobe para ficar acima do botão.',
+    ] },
+  ] },
+  { version: '0.4.45', date: '23/09/2026', title: 'Abas de variação', groups: [
+    { title: 'Partida', items: [
+      'Os botões de edição da variação destacam o hover; o pin da variação fixada aparece acima da aba sem aumentar a fileira.',
+    ] },
+  ] },
+  { version: '0.4.44', date: '23/09/2026', title: 'Compasso da partida', groups: [
+    { title: 'Música', items: [
+      'A partida agora usa o compasso do kit também no editor de variações e no relógio musical.',
+    ] },
+  ] },
+  { version: '0.4.43', date: '23/09/2026', title: 'Audição no Criativo', groups: [
+    { title: 'Tabuleiro', items: [
+      'Arrastar uma peça volta a tocar uma nota por casa mesmo quando o áudio ainda estava suspenso.',
+      'Duplo clique numa peça alterna sua ativação no modo Mover, sem mudar sua posição.',
+    ] },
+    { title: 'Editor', items: [
+      'A grade abre com duas partes em 3/4 e três partes em 6/8 ou 12/8; a escolha ainda pode ser ajustada livremente.',
+    ] },
+  ] },
+  { version: '0.4.42', date: '23/09/2026', title: 'Campanhas e novas levadas', groups: [
+    { title: 'Mapa', items: [
+      'As fases agora aparecem em três campanhas numa lista à esquerda do globo; hover centraliza a cidade e clique abre seu popup.',
+      'Buenos Aires, Dublin e New Orleans chegam à campanha World ballads, junto com Manchester 1999; Vienna aparece em Classical music.',
+    ] },
+    { title: 'Música', items: [
+      'Três composições originais exploram 3/4, 6/8 e 12/8, com duração real dos compassos, acentos e relógio próprios.',
+      'O Criativo permite escolher o compasso; kits antigos continuam em 4/4.',
+    ] },
+  ] },
   { version: '0.4.41', date: '23/09/2026', title: 'Ícones com fundo transparente', groups: [
     { title: 'Identidade visual', items: [
       'Favicons e ícones do app exibem a silhueta do logotipo sem um quadrado de fundo.',

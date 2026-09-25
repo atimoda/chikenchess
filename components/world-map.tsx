@@ -6,6 +6,7 @@ import { cities, type CityData } from "@/lib/cities-data"
 import { getPlayerProfile, resetCampaign, type PlayerProfile } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
+import { CampaignCityList } from './campaign-city-list'
 import { VersionChangelog } from './version-changelog'
 import { RELEASE_LABEL } from '@/lib/changelog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
@@ -45,6 +46,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [showProfile, setShowProfile] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(100)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [focusedCityId, setFocusedCityId] = useState<string | null>(null)
+  const popupLayerRef = useRef<HTMLDivElement>(null)
 
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -793,9 +796,15 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             enteringCityId={enteringCityId}
             setEnteringCityId={setEnteringCityId}
             zoomRef={zoomRef}
+            popupLayerRef={popupLayerRef}
             onZoomChange={setCurrentZoom}
+            focusedCityId={focusedCityId}
          />
       </div>
+
+      <div ref={popupLayerRef} className="absolute inset-0 z-[45] pointer-events-none" />
+
+      {logoPhase === 'header' && <CampaignCityList cities={cities} onFocus={setFocusedCityId} onOpen={city => { setFocusedCityId(city.id); handleCityClick(city) }} />}
 
       <header
         className="absolute top-0 left-0 w-full z-60 flex flex-col md:flex-row items-center md:justify-between px-8 py-6 pointer-events-none gap-2"

@@ -69,6 +69,35 @@ test('audio tempo map integrates ramps exactly and preserves phase when interrup
  assert.ok(Math.abs(t.cycleAt(t.timeAt(7))-7)<1e-8)
 })
 
+test('simple and compound meters give each bar its real pulse duration', () => {
+ const {TempoMap}=loadTs('lib/music/transport.ts')
+ for(const [pulses,bpm,expected] of [[3,120,1.5],[2,90,4/3],[4,80,3]]){
+  const map=new TempoMap(bpm,0,pulses)
+  assert.ok(Math.abs(map.timeAt(1)-expected)<1e-9)
+  map.change(1,bpm*1.5,2)
+  for(const bar of [0,1,1.5,2,3,4])assert.ok(Math.abs(map.cycleAt(map.timeAt(bar))-bar)<1e-8)
+ }
+})
+
+test('three ballad stages place accents in 3/4, 6/8 and 12/8 rather than a four-beat grid', async () => {
+ const {defaultCityKit}=loadTs('lib/music/city-kits.ts')
+ const {renderMusicCode}=loadTs('lib/music/code-export.ts')
+ const checks=[
+  ['buenos-aires-1940','3/4',3,'Acorde no dois',[1/3]],
+  ['dublin-1990','6/8',2,'Batida no quatro',[1/2]],
+  ['new-orleans-1953','12/8',4,'Ride ternário',[0,2/12,3/12]],
+ ]
+ for(const [id,meter,pulses,name,onsets] of checks){
+  const kit=defaultCityKit(id),snapshot=creative.creativeSnapshot(kit,true)
+  assert.equal(kit.meter,meter)
+  const instrument=Object.values(kit.instruments).find(item=>item.name===name)
+  assert.ok(instrument,`${id} instrument`)
+  const roll=instrument.pianoRolls[0]
+  for(const onset of onsets)assert.ok(roll.notes.some(note=>Math.abs(note.start-onset)<1e-8),`${id} onset ${onset}`)
+  assert.match(renderMusicCode(snapshot,null),new RegExp(`setcps\\(${kit.bpm} / 60 / ${pulses}\\)`))
+ }
+})
+
 test('audio scheduler switches before the downbeat query and schedules through a BPM ramp', async () => {
  const {MusicTransport}=loadTs('lib/music/transport.ts');let now=0,switched=false
  const scheduled=[],boundaries=[]
