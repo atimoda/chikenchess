@@ -153,7 +153,7 @@ export const CityPopup = ({
         ref={containerRef}
         data-drag-handle="true" // Make the entire popup draggable
         data-popup-surface="true"
-        className="relative overflow-hidden p-5 rounded-lg border bg-card/95 shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
+        className="relative overflow-hidden p-5 rounded-lg border bg-card/[0.82] shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
         onClick={(e) => {
             e.stopPropagation()
         }}
@@ -207,16 +207,17 @@ export const CityPopup = ({
           <span className="text-xs text-muted-foreground font-mono border border-border px-1.5 py-0.5 rounded">{city.year}</span>
         </div>
 
-        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap gap-2 mb-3" data-no-drag>
+        <div className="mb-4 animate-content-3">
+          <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{city.genre}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{city.description}</p>
+        </div>
+
+        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-end gap-2 mb-3" data-no-drag>
           {getCityEras(city).map(era => <button key={era.id} type="button" disabled={isEntering} aria-pressed={era.id === city.id}
             onClick={() => onEraSelect?.(era)} className={cn('border rounded px-2 py-1 text-xs font-mono cursor-pointer', era.id === city.id ? 'text-white border-white/60' : 'text-white/50 border-white/20')}>
             {era.year} {era.genre.split('·')[0].trim()}
           </button>)}
         </nav>}
-        <div className="mb-4 animate-content-3">
-          <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{city.genre}</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">{city.description}</p>
-        </div>
 
         <div className="space-y-3 animate-content-4">
           <div className="flex items-center justify-between text-xs font-mono">

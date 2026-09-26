@@ -3,10 +3,11 @@
 import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
-import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace } from 'three'
+import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute } from 'three'
 import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation } from '@/lib/globe-navigation'
+import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
 import { clampPopupToGlobe, coastlineSegments, globeGridSegments, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
@@ -34,7 +35,7 @@ interface GlobeProps {
   conqueredCities?: string[]
   unlockedCities?: string[]
   openPopups: Record<string, any>
-  onCityClick: (city: CityData) => void
+  onCityClick: (city: CityData, position?: { x: number; y: number }) => void
   onPopupClose: (cityId: string) => void
   bringToFront: (id: string) => void
   updatePopupPosition: (id: string, x: number, y: number) => void
@@ -49,9 +50,11 @@ interface GlobeProps {
   pressedPopupState: { id: string } | null
   enteringCityId: string | null
   setEnteringCityId: (id: string | null) => void
-  zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>
+  zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void, zoomToPercent: (percent: number) => void, centerCity: (city: CityData) => void } | null>
   onZoomChange?: (zoom: number) => void
   focusedCityId?: string | null
+  setFocusedCityId?: (cityId: string | null) => void
+  onPinHover?: (cityId: string | null) => void
   popupLayerRef?: RefObject<HTMLDivElement | null>
 }
 
@@ -127,18 +130,71 @@ const PulsingRing = ({ city, isOpen, isHoveredProp }: { city: CityData, isOpen: 
     )
 }
 
-const ConqueredFlag = ({ city }: { city: CityData }) => {
+const ConqueredFlag = ({ city, idleRotationRef }: { city: CityData; idleRotationRef: RefObject<boolean> }) => {
+  const flagRef = useRef<Group>(null)
+  const clothRef = useRef<Group>(null)
+  const clothMeshRef = useRef<Mesh>(null)
+  const originalX = useRef<Float32Array | null>(null)
+  const cycle = useRef({ elapsed: 0, duration: 4.2 + Math.random() * 1.2, ease: 1.5 + Math.random() * .6 })
+  const motionScale = useRef({ pole: 1, cloth: 1 })
+  const reduceMotion = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const texture = useMemo(() => typeof document === 'undefined' ? null : createCityFlagTexture(city), [city])
+  useEffect(() => () => texture?.dispose(), [texture])
   const normal = cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, 1).normalize()
   const orientation = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), normal)
+  useFrame((_, delta) => {
+    if (!flagRef.current || !clothRef.current || reduceMotion) return
+    const motion = cycle.current
+    motion.elapsed += delta
+    if (motion.elapsed >= motion.duration) {
+      motion.elapsed %= motion.duration
+      motion.duration = 4.2 + Math.random() * 1.2
+      motion.ease = 1.5 + Math.random() * .6
+    }
+    const progress = motion.elapsed / motion.duration
+    const leading = progress ** motion.ease
+    const trailing = (1 - progress) ** motion.ease
+    const phase = 2 * Math.PI * leading / (leading + trailing)
+    const blend = 1 - Math.exp(-delta * 4)
+    motionScale.current.pole = MathUtils.lerp(motionScale.current.pole, idleRotationRef.current ? 1.5 : 1, blend)
+    motionScale.current.cloth = MathUtils.lerp(motionScale.current.cloth, idleRotationRef.current ? .56 : 1, blend)
+    // The whole flag pivots at the pin; the upper end traces a small figure eight.
+    flagRef.current.rotation.set(Math.sin(phase) * .17 * motionScale.current.pole, 0, Math.sin(phase * 2) * .12 * motionScale.current.pole)
+    clothRef.current.rotation.y = Math.sin(phase * 2 + .5) * .11 * motionScale.current.cloth
+    const geometry = clothMeshRef.current?.geometry
+    if (geometry) {
+      const positions = geometry.getAttribute('position') as BufferAttribute
+      if (!originalX.current) originalX.current = Float32Array.from({ length: positions.count }, (_, i) => positions.getX(i))
+      let shades = geometry.getAttribute('color') as BufferAttribute | undefined
+      if (!shades) {
+        shades = new Float32BufferAttribute(new Float32Array(positions.count * 3).fill(1), 3)
+        geometry.setAttribute('color', shades)
+      }
+      for (let i = 0; i < positions.count; i++) {
+        const distanceFromPole = (originalX.current[i] + .06) / .12
+        const ripple = phase * 2 + distanceFromPole * Math.PI * 2.4
+        positions.setX(i, originalX.current[i] - distanceFromPole * .012 * motionScale.current.cloth * (1 - Math.cos(ripple)))
+        positions.setZ(i, distanceFromPole ** 1.1 * .032 * motionScale.current.cloth * Math.sin(ripple))
+        const light = .76 + .24 * (.5 + .5 * Math.cos(ripple + .7))
+        shades.setXYZ(i, light, light, light)
+      }
+      positions.needsUpdate = true
+      shades.needsUpdate = true
+    }
+  })
   return <group quaternion={orientation}>
-    <mesh position={[0, .105, 0]}>
-      <cylinderGeometry args={[.008, .008, .21, 6]} />
-      <meshBasicMaterial color="#b9ffd1" />
-    </mesh>
-    <mesh position={[.06, .155, .004]}>
-      <planeGeometry args={[.12, .07]} />
-      <meshBasicMaterial color="#62e88b" side={DoubleSide} transparent opacity={.96} />
-    </mesh>
+    <group ref={flagRef}>
+      <mesh position={[0, .135, 0]}>
+        <cylinderGeometry args={[.008, .008, .27, 6]} />
+        <meshBasicMaterial color="#b9ffd1" />
+      </mesh>
+      <group ref={clothRef} position={[0, .27, .004]}>
+        <mesh ref={clothMeshRef} position={[.06, -.05, 0]}>
+          <planeGeometry args={[.12, .07, 8, 3]} />
+          <meshBasicMaterial color={texture ? '#ffffff' : cityFlagColor(city.color)} map={texture ?? undefined} side={DoubleSide} vertexColors toneMapped={false} />
+        </mesh>
+      </group>
+    </group>
   </group>
 }
 
@@ -315,7 +371,10 @@ const PopupContainer = ({
                       }))
                     }}>
                     <CityPopup
-                        onEraSelect={onEraSelect}
+                        onEraSelect={(era: CityData) => onEraSelect(era, {
+                          x: localPosRef.current.x + slowOffset.current.x,
+                          y: localPosRef.current.y + slowOffset.current.y + 10,
+                        })}
                         city={city}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
                         isConquered={isConquered}
@@ -427,13 +486,17 @@ const GlobeContent = ({
   zoomRef,
   onZoomChange,
   focusedCityId,
+  setFocusedCityId,
+  onPinHover,
   popupLayerRef,
 }: GlobeProps) => {
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
   const [isDraggingPopup, setIsDraggingPopup] = useState(false)
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null)
+  const suppressedPinHoverId = useRef<string | null>(null)
   const isStandby = useRef(false)
+  const idleFlagMotion = useRef(false)
   const isInteracting = useRef(false)
   const lastInteractionTime = useRef(Date.now())
   const [introZoomComplete, setIntroZoomComplete] = useState(false)
@@ -441,7 +504,13 @@ const GlobeContent = ({
   
   // Standby Rotation State
   const standbyRotationAxis = useRef(new Vector3(0, 1, 0))
-  const standbyRotationSpeed = useRef(0.1)
+  const standbyRotationSpeed = useRef(0.05)
+  const lastListHoverCityId = useRef<string | null>(null)
+  const listHoverBoost = useRef<{ axis: Vector3; elapsed: number; duration: number; initialSpeed: number } | null>(null)
+  const pinClickBoost = useRef<{ axis: Vector3; elapsed: number; duration: number; initialSpeed: number } | null>(null)
+  const centeringCamera = useRef(false)
+  const resumeStandbyAfterCenter = useRef(false)
+  const centeringCityId = useRef<string | null>(null)
 
   // Only the sun halo uses a texture; geography is vector geometry.
   const sunGlow = useLoader(TextureLoader, '/sun-glow.svg')
@@ -491,15 +560,18 @@ const GlobeContent = ({
     }
   }, [gl, camera, enteringCityId])
 
-  const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
   useEffect(() => {
-    if (!focusedCityId || !globeRef.current || enteringCityId) return
-    const city = cities.find(candidate => candidate.id === focusedCityId)
-    if (!city) return
-    const target = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, camera.position.length()))
-    setTargetCameraPos(target)
-    lastInteractionTime.current = Date.now()
-  }, [focusedCityId, cities, enteringCityId, camera])
+    const onListCityHover = (event: Event) => {
+      const cityId = (event as CustomEvent<{ cityId: string }>).detail?.cityId
+      if (!cityId) return
+      const city = cities.find(candidate => candidate.id === cityId)
+      if (city) playMapSound('pin_hover', true)
+    }
+    window.addEventListener('map-city-hover', onListCityHover)
+    return () => window.removeEventListener('map-city-hover', onListCityHover)
+  }, [cities, playMapSound])
+
+  const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
   const entryFlight = useRef<{ city: CityData; from: Vector3; up: Vector3; pin: Vector3; elapsed: number; duration: number; done: boolean } | null>(null)
   useEffect(() => {
     const city = cities.find(candidate => candidate.id === enteringCityId)
@@ -507,7 +579,10 @@ const GlobeContent = ({
     const pin = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS))
     entryFlight.current = { city, from: camera.position.clone(), up: camera.up.clone(), pin, elapsed: 0, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? .15 : 1.4, done: false }
     setTargetCameraPos(null)
+    centeringCamera.current = false
+    resumeStandbyAfterCenter.current = false
     isStandby.current = false
+    idleFlagMotion.current = false
   }, [enteringCityId, cities, camera])
 
   // Initial Zoom Animation & Standby Logic
@@ -526,6 +601,7 @@ const GlobeContent = ({
       return
     }
     
+    let standbyDelta = delta
     // Camera Animation (Centering)
     if (targetCameraPos) {
         // Spherical Interpolation (Orbit) to target
@@ -539,28 +615,35 @@ const GlobeContent = ({
         // Angle between vectors
         const angle = currentPos.angleTo(targetPos)
         
-        if (angle < 0.01 && Math.abs(dist - targetDist) < 0.01) {
+        const newDist = MathUtils.lerp(dist, targetDist, Math.min(5 * delta, 1))
+        if (centeringCamera.current && angle > 1e-6) {
+            // Camera orbit and globe rotation have opposite axes for the same
+            // apparent pin motion. End the orbit at the idle angular speed.
+            const axis = new Vector3().crossVectors(currentPos, targetPos)
+            if (axis.lengthSq() < 1e-8) axis.crossVectors(currentPos, camera.up)
+            if (axis.lengthSq() < 1e-8) axis.crossVectors(currentPos, Math.abs(currentPos.x / dist) < .9 ? new Vector3(1, 0, 0) : new Vector3(0, 0, 1))
+            axis.normalize()
+            const angularSpeed = standbyRotationSpeed.current + 2.5 * angle
+            const step = Math.min(angle, angularSpeed * delta)
+            currentPos.normalize().applyAxisAngle(axis, step).multiplyScalar(newDist)
+            if (step >= angle - 1e-6) {
+                currentPos.copy(targetPos).normalize().multiplyScalar(newDist)
+                centeringCamera.current = false
+                resumeStandbyAfterCenter.current = true
+                standbyRotationAxis.current.copy(axis).negate()
+                lastListHoverCityId.current = centeringCityId.current
+                isStandby.current = true
+                lastInteractionTime.current = Date.now() - 1000
+                standbyDelta = Math.max(0, delta - step / angularSpeed)
+            }
+        } else {
+            currentPos.lerp(targetPos, Math.min(5 * delta, 1)).normalize().multiplyScalar(newDist)
+        }
+        camera.position.copy(currentPos)
+        camera.lookAt(0, 0, 0)
+        if (!centeringCamera.current && Math.abs(dist - targetDist) < 0.01 && camera.position.angleTo(targetPos) < 0.001) {
             camera.position.copy(targetPos)
             setTargetCameraPos(null)
-        } else {
-            // Slerp direction
-            // We use quaternion slerp or vector lerp+normalize?
-            // Vector slerp:
-            // vCurrent.lerp(vTarget, alpha).normalize().multiplyScalar(interpolatedDist)
-            // But lerp is linear chord.
-            // For small steps it's fine if we re-normalize.
-            
-            const speed = 5 * delta
-            const alpha = Math.min(speed, 1)
-            
-            // Interpolate distance separately
-            const newDist = MathUtils.lerp(dist, targetDist, alpha)
-            
-            // Interpolate direction
-            currentPos.lerp(targetPos, alpha).normalize().multiplyScalar(newDist)
-            
-            camera.position.copy(currentPos)
-            camera.lookAt(0, 0, 0) // Always look at center
         }
         
     }
@@ -610,27 +693,83 @@ const GlobeContent = ({
         }
     }
     
-    // A city card does not stop the idle globe. Only a direct gesture, flight or
-    // pin hover pauses it; a just-opened card resumes as soon as centering ends.
-    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && !focusedCityId && !targetCameraPos && timeSinceInteraction > 800
+    // A city card does not stop the idle globe. A list hover steers its standby
+    // rotation toward the selected pin without commanding camera movement.
+    const hoveredListCity = focusedCityId && !hoveredPinId ? cities.find(city => city.id === focusedCityId) : null
+    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && (!targetCameraPos || resumeStandbyAfterCenter.current) && (timeSinceInteraction > 800 || !!hoveredListCity || !!pinClickBoost.current)
     if (canRotate) {
         if (!isStandby.current) {
             isStandby.current = true
-            // Initialize random rotation axis and speed
-            standbyRotationAxis.current.set(
-                (Math.random() - 0.5) * 2,
-                (Math.random() - 0.5) * 2,
-                (Math.random() - 0.5) * 2
-            ).normalize()
-            standbyRotationSpeed.current = (0.05 + Math.random() * 0.05) * 0.7 // Reduced by 30%
+            if (!pinClickBoost.current) {
+                standbyRotationAxis.current.set(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                ).normalize()
+                standbyRotationSpeed.current = (0.05 + Math.random() * 0.05) * 0.7 // Reduced by 30%
+            }
+        }
+
+        if (hoveredListCity && !pinClickBoost.current && hoveredListCity.id !== lastListHoverCityId.current && globeRef.current) {
+            // Choose the shortest arc once. Keeping this axis after the approach
+            // lets the pin pass screen center at the normal standby speed.
+            const pinDirection = globeRef.current.localToWorld(cityDirection(hoveredListCity.geoCoordinates.lat, hoveredListCity.geoCoordinates.lng, 1)).normalize()
+            const screenCenterDirection = camera.position.clone().normalize()
+            const axis = new Vector3().crossVectors(pinDirection, screenCenterDirection)
+            if (axis.lengthSq() < 1e-8 && pinDirection.dot(screenCenterDirection) < 0) {
+                // Antipodal pins have no unique shortest path; keep a stable
+                // tangent axis for that singular case.
+                axis.crossVectors(pinDirection, camera.up)
+            }
+            const angle = pinDirection.angleTo(screenCenterDirection)
+            if (axis.lengthSq() > 1e-8) {
+                axis.normalize()
+                standbyRotationAxis.current.copy(axis)
+                if (angle > .08) {
+                    const distance = angle * .7
+                    const duration = Math.min(MathUtils.clamp(.4 + angle * .9, .55, 2.5), distance / standbyRotationSpeed.current)
+                    listHoverBoost.current = {
+                        axis: axis.clone(), elapsed: 0, duration,
+                        initialSpeed: 2 * distance / duration - standbyRotationSpeed.current,
+                    }
+                }
+            }
+            lastListHoverCityId.current = hoveredListCity.id
+        } else if (!hoveredListCity && lastListHoverCityId.current) {
+            lastListHoverCityId.current = null
+            listHoverBoost.current = null
         }
         
         if (globeRef.current) {
-            // Rotate around random axis
-            globeRef.current.rotateOnWorldAxis(standbyRotationAxis.current, standbyRotationSpeed.current * delta)
+            const boost = pinClickBoost.current ?? listHoverBoost.current
+            if (boost) {
+                const previousElapsed = boost.elapsed
+                const nextElapsed = Math.min(previousElapsed + standbyDelta, boost.duration)
+                const progress = (elapsed: number) => {
+                    const u = elapsed / boost.duration
+                    return standbyRotationSpeed.current * elapsed + (boost.initialSpeed - standbyRotationSpeed.current) * boost.duration * (u - u ** 3 + .5 * u ** 4)
+                }
+                globeRef.current.rotateOnWorldAxis(boost.axis, progress(nextElapsed) - progress(previousElapsed))
+                boost.elapsed = nextElapsed
+                if (nextElapsed >= boost.duration) {
+                    if (pinClickBoost.current === boost) {
+                        pinClickBoost.current = null
+                        suppressedPinHoverId.current = null
+                    } else listHoverBoost.current = null
+                    const remaining = Math.max(0, standbyDelta - (nextElapsed - previousElapsed))
+                    if (remaining) globeRef.current.rotateOnWorldAxis(boost.axis, standbyRotationSpeed.current * remaining)
+                }
+            } else {
+                globeRef.current.rotateOnWorldAxis(standbyRotationAxis.current, standbyRotationSpeed.current * standbyDelta)
+            }
         }
+        idleFlagMotion.current = listHoverBoost.current === null && pinClickBoost.current === null
     } else {
-        isStandby.current = false
+        if (!pinClickBoost.current) isStandby.current = false
+        idleFlagMotion.current = false
+        listHoverBoost.current = null
+        if (!centeringCamera.current && !introZoomComplete) pinClickBoost.current = null
+        if (!centeringCamera.current) lastListHoverCityId.current = null
     }
 
   })
@@ -638,6 +777,54 @@ const GlobeContent = ({
   const handleInteraction = () => {
       lastInteractionTime.current = Date.now()
       isStandby.current = false
+      pinClickBoost.current = null
+      suppressedPinHoverId.current = null
+      centeringCamera.current = false
+      resumeStandbyAfterCenter.current = false
+  }
+
+  const centerCity = (city: CityData) => {
+      if (enteringCityId || !globeRef.current) return
+      pinClickBoost.current = null
+      suppressedPinHoverId.current = null
+      const direction = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, 1)).normalize()
+      const angle = camera.position.angleTo(direction)
+      if (angle < 1e-5) return
+      if (!isStandby.current) standbyRotationSpeed.current = (0.05 + Math.random() * 0.05) * 0.7
+      centeringCamera.current = true
+      centeringCityId.current = city.id
+      resumeStandbyAfterCenter.current = false
+      setTargetCameraPos(direction.multiplyScalar(camera.position.length()))
+      isStandby.current = false
+  }
+
+  const steerGlobeTowardCity = (city: CityData) => {
+      if (!globeRef.current || enteringCityId) return
+      const pinDirection = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, 1)).normalize()
+      const screenCenter = camera.position.clone().normalize()
+      const angle = pinDirection.angleTo(screenCenter)
+      const axis = new Vector3().crossVectors(pinDirection, screenCenter)
+      if (axis.lengthSq() < 1e-8) axis.crossVectors(pinDirection, camera.up)
+      if (axis.lengthSq() < 1e-8) axis.crossVectors(pinDirection, Math.abs(pinDirection.x) < .9 ? new Vector3(1, 0, 0) : new Vector3(0, 0, 1))
+      axis.normalize()
+      standbyRotationAxis.current.copy(axis)
+      listHoverBoost.current = null
+      lastListHoverCityId.current = null
+      centeringCamera.current = false
+      resumeStandbyAfterCenter.current = true
+      setTargetCameraPos(previous => previous ? camera.position.clone().normalize().multiplyScalar(previous.length()) : null)
+      if (angle > .01) {
+          const distance = angle * .3
+          const duration = Math.min(MathUtils.clamp(.4 + angle * .9, .55, 2.5), distance / standbyRotationSpeed.current)
+          pinClickBoost.current = {
+              axis: axis.clone(), elapsed: 0, duration,
+              initialSpeed: 2 * distance / duration - standbyRotationSpeed.current,
+          }
+      } else {
+          pinClickBoost.current = null
+      }
+      isStandby.current = true
+      lastInteractionTime.current = Date.now() - 1000
   }
 
   // Handle Zoom Ref
@@ -678,7 +865,12 @@ const GlobeContent = ({
                     setTargetCameraPos(new Vector3(0, 0, 5))
                     handleInteraction()
                 }
-            }
+            },
+            zoomToPercent: (percent: number) => {
+                const basePos = targetCameraPos ? targetCameraPos.clone() : camera.position.clone()
+                setTargetCameraPos(basePos.normalize().multiplyScalar(500 / percent))
+            },
+            centerCity,
         }
     }
   }, [camera, zoomRef, targetCameraPos])
@@ -689,13 +881,14 @@ const GlobeContent = ({
     if (controls) {
         const start = () => { isInteracting.current = true; setTargetCameraPos(null); handleInteraction() }
         const end = () => { isInteracting.current = false; handleInteraction() }
+        const change = () => { if (isInteracting.current) handleInteraction() }
         controls.addEventListener('start', start)
         controls.addEventListener('end', end)
-        controls.addEventListener('change', handleInteraction)
+        controls.addEventListener('change', change)
         return () => {
             controls.removeEventListener('start', start)
             controls.removeEventListener('end', end)
-            controls.removeEventListener('change', handleInteraction)
+            controls.removeEventListener('change', change)
         }
     }
   }, [])
@@ -706,25 +899,11 @@ const GlobeContent = ({
 
   const handleCityClickInternal = (city: CityData) => {
        if (enteringCityId) return
-       // Center the globe on the city
-       if (controlsRef.current && globeRef.current) {
-           const phi = (90 - city.geoCoordinates.lat) * (Math.PI / 180)
-           const theta = (city.geoCoordinates.lng + 180) * (Math.PI / 180)
-           
-           // Target position
-           const radius = 5 // Camera distance
-           const x = -(radius * Math.sin(phi) * Math.cos(theta))
-           const z = (radius * Math.sin(phi) * Math.sin(theta))
-           const y = (radius * Math.cos(phi))
-           
-           // Create vector and apply current globe rotation
-           const targetVec = new Vector3(x, y, z)
-           targetVec.applyQuaternion(globeRef.current.quaternion)
-           
-           setTargetCameraPos(targetVec)
-           // We don't update controls immediately, loop handles it
-       }
-       
+       suppressedPinHoverId.current = city.id
+       setHoveredPinId(null)
+       onPinHover?.(null)
+       setFocusedCityId?.(null)
+       steerGlobeTowardCity(city)
        onCityClick(city)
    }
 
@@ -782,7 +961,7 @@ const GlobeContent = ({
             const isConquered = (conqueredCities || []).includes(city.id)
             const isUnlocked = true // All cities playable in v3.0!
             const popup = openPopups[city.id]
-            const isHovered = hoveredPinId === city.id
+            const isHovered = hoveredPinId === city.id || focusedCityId === city.id
             const eras = getCityEras(city)
             const isLocationPin = eras[0]?.id === city.id
             const locationConquered = eras.some(era => conqueredCities.includes(era.id))
@@ -837,13 +1016,21 @@ const GlobeContent = ({
                         if (isHiddenPin(e.object)) return
                         e.stopPropagation()
                         gl.domElement.style.cursor = 'pointer'
-                        playMapSound("bd", true)
-                        if (e.pointerType === 'mouse') setHoveredPinId(city.id)
-                        handleInteraction()
+                        if (suppressedPinHoverId.current === city.id) return
+                        if (e.pointerType === 'mouse') {
+                            setHoveredPinId(city.id)
+                            setFocusedCityId?.(city.id)
+                            onPinHover?.(city.id)
+                            playMapSound("pin_kick_hover", true)
+                            handleInteraction()
+                        }
                     }}
                     onPointerOut={() => {
+                        if (suppressedPinHoverId.current === city.id && !pinClickBoost.current) suppressedPinHoverId.current = null
                         gl.domElement.style.cursor = ''
                         setHoveredPinId(current => current === city.id ? null : current)
+                        setFocusedCityId?.(null)
+                        onPinHover?.(null)
                     }}
                     scale={isHovered ? [1.15, 1.15, 1.15] : [1, 1, 1]}
                 >
@@ -876,7 +1063,7 @@ const GlobeContent = ({
                     </mesh>
                 )}
 
-                {locationConquered && <ConqueredFlag city={city} />}
+                {locationConquered && <ConqueredFlag city={city} idleRotationRef={idleFlagMotion} />}
 
                 {/* Pulse Ring Effect (Hover/Selected) */}
                 {(locationOpen || isHovered) && <PulsingRing city={city} isOpen={locationOpen} isHoveredProp={isHovered} />}
@@ -884,7 +1071,7 @@ const GlobeContent = ({
 
                 {isOpen && (
                       <PopupContainer
-                          onEraSelect={(era: CityData) => { if (era.id !== city.id) { onPopupClose(city.id); handleCityClickInternal(era) } }}
+                          onEraSelect={(era: CityData, position: { x: number; y: number }) => { if (era.id !== city.id) { onPopupClose(city.id); centerCity(era); onCityClick(era, position) } }}
                           city={city}
                           popup={popup}
                           popupLayerRef={popupLayerRef}

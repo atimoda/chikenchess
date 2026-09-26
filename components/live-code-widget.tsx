@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useRef, forwardRef, useState, useEffect } from "react"
+import { useRef, forwardRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Power, Copy, Check } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
@@ -53,40 +53,6 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   const widgetBorderColor = !isOn 
     ? "rgba(255,255,255,0.1)" 
     : "rgba(255,255,255,0.3)"
-
-  const codeRef = useRef<HTMLDivElement>(null)
-
-  // Auto-scroll when pattern updates
-  useEffect(() => {
-    if (codeRef.current) {
-        codeRef.current.scrollTop = codeRef.current.scrollHeight
-    }
-  }, [pattern])
-
-  // Syntax highlighting for Strudel patterns
-  const highlightCode = (code: string) => {
-    // Remove the first 3 lines if they are comments (start with //)
-    const lines = code.split('\n');
-    
-    // First, handle the comment removal logic requested previously
-    const filteredLines = lines.filter((line, index) => {
-        if (index < 3 && line.trim().startsWith('//')) {
-            return false;
-        }
-        return true;
-    });
-
-    // New request: Remove the first line if it is empty/blank
-    if (filteredLines.length > 0 && filteredLines[0].trim() === '') {
-        filteredLines.shift();
-    }
-
-    const filteredCode = filteredLines.join('\n');
-
-    // Text tokens preserve mini-notation brackets without interpreting HTML.
-    return filteredCode.split(/("[^"\n]*"|\/\/[^\n]*|\.\w+|\b\d+\.?\d*\b)/g).map((token, index) =>
-      <span key={index} className={token.startsWith('//') ? 'text-white/40' : token.startsWith('"') ? 'text-accent' : token.startsWith('.') ? 'text-chart-2' : /^\d/.test(token) ? 'text-chart-4' : undefined}>{token}</span>)
-  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(pattern)
@@ -178,6 +144,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
       {/* Copy Button - Top Right - z-80 (Higher than Handle) */}
       <button
+        aria-label="Copy Strudel code"
         className={cn(
           "absolute top-1.5 right-2 p-1 rounded-md transition-all z-[80] group hover:bg-white/10",
           !isOn && "pointer-events-none opacity-0"
@@ -186,8 +153,14 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
           e.stopPropagation()
           handleCopy()
         }}
-        title="Copy to clipboard"
+        title={copied ? "copied!" : "copy strudel code"}
       >
+        <span className={cn(
+          "pointer-events-none absolute right-full top-1/2 mr-0 -translate-y-1/2 whitespace-nowrap rounded bg-black/90 px-1.5 py-1 font-mono text-[9px] text-white transition-opacity",
+          copied ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}>
+          {copied ? "copied!" : "copy strudel code"}
+        </span>
         {copied ? (
           <Check className="w-3.5 h-3.5 text-green-400" />
         ) : (
@@ -213,39 +186,6 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
              </span>
           </div>
           {playback && <div className="shrink-0 space-y-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
-          
-          <div className="flex-1 w-full flex flex-col gap-2 min-h-0">
-            
-            <div 
-                ref={codeRef}
-                className="flex-1 p-2 font-mono text-xs leading-relaxed overflow-y-auto bg-black/40 rounded inner-shadow custom-scrollbar h-full"
-            >
-                {/* Scrollbar styling for Webkit/Blink */}
-                <style jsx global>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 6px;
-                    height: 6px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: rgba(0, 0, 0, 0.2);
-                    border-radius: 3px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.2);
-                    border-radius: 3px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.4);
-                }
-                .inner-shadow {
-                    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
-                }
-                `}</style>
-                <pre
-                    className="whitespace-pre-wrap break-all text-foreground/90"
-                >{highlightCode(pattern)}</pre>
-            </div>
-          </div>
 
         </div>
       </div>

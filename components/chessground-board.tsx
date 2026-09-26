@@ -12,6 +12,7 @@ interface ChessgroundBoardProps {
   game: Chess
   onMove: (move: Move) => void
   onBoardClick?: (square: Square) => void
+  onPieceDoubleTap?: (square: Square) => void
   onPieceHold?: (square: Square) => void
   onPieceRelease?: () => void
   onPieceCancel?: () => void
@@ -67,6 +68,7 @@ export function ChessgroundBoard({
   isThinking,
   orientation: _orientation = "white",
   onBoardClick,
+  onPieceDoubleTap,
   synthSelectedSquare,
   activeSquares,
   onDragOverSquare,
@@ -90,12 +92,15 @@ export function ChessgroundBoard({
     y: number
   } | null>(null)
   const dragPieceRef = useRef<typeof dragPiece>(null)
+  const dragStartedRef = useRef(false)
   const dragGhostRef = useRef<HTMLDivElement>(null)
   const dragHighlightRef = useRef<HTMLDivElement>(null)
   const heldSquareRef = useRef<Square | null>(null)
   const lastHoverSquareRef = useRef<Square | null>(null)
   const selectionLastSquareRef = useRef<Square | null>(null)
   const dragHighlightTimeoutRef = useRef<number | null>(null)
+  const tapStartRef = useRef<{ square: Square; x: number; y: number; pointerType: string } | null>(null)
+  const lastTapRef = useRef<{ square: Square; time: number; pointerType: string } | null>(null)
   const [isSelectingSquares, setIsSelectingSquares] = useState(false)
 
   useEffect(() => {
@@ -104,10 +109,13 @@ export function ChessgroundBoard({
       onPieceRelease?.()
     }
     const cancel = () => {
+      tapStartRef.current = null
+      lastTapRef.current = null
       heldSquareRef.current = null
       if (onPieceCancel) onPieceCancel()
       else onPieceRelease?.()
       dragPieceRef.current = null
+      dragStartedRef.current = false
       setDragPiece(null)
       setLegalMoves([])
       lastHoverSquareRef.current = null
@@ -379,7 +387,8 @@ export function ChessgroundBoard({
         x: (clientX - rect.left) * boardRef.current.offsetWidth / rect.width,
         y: (clientY - rect.top) * boardRef.current.offsetHeight / rect.height,
       }
-      setDragPiece(dragPieceRef.current)
+      dragStartedRef.current = !!freeMode
+      if (freeMode) setDragPiece(dragPieceRef.current)
 
       if (!freeMode) {
         setSelectedSquare(square)
@@ -402,6 +411,14 @@ export function ChessgroundBoard({
 
       const x = clientX - rect.left
       const y = clientY - rect.top
+
+      if (!dragStartedRef.current) {
+        const localX = x * boardRef.current.offsetWidth / rect.width
+        const localY = y * boardRef.current.offsetHeight / rect.height
+        if (Math.hypot(localX - dragPiece.x, localY - dragPiece.y) < 8) return
+        dragStartedRef.current = true
+        setDragPiece({ ...dragPiece, x: localX, y: localY })
+      }
 
       // Move the ghost without rerendering all 64 squares for every pixel.
       if (dragGhostRef.current) dragGhostRef.current.style.transform = `translate(${x * boardRef.current.offsetWidth / rect.width - 32}px, ${y * boardRef.current.offsetHeight / rect.height - 32}px)`
@@ -470,7 +487,9 @@ export function ChessgroundBoard({
   const handleDragEnd = useCallback(
     (e: MouseEvent | TouchEvent) => {
       const dragPiece = dragPieceRef.current
+      const didDrag = dragStartedRef.current
       dragPieceRef.current = null
+      dragStartedRef.current = false
       if (!dragPiece || !boardRef.current) {
         setDragPiece(null)
         lastHoverSquareRef.current = null
@@ -494,7 +513,7 @@ export function ChessgroundBoard({
           freeMode.onMove(dragPiece.from, targetSquare)
           didMove = true
         }
-      } else if (file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith("w") && game.turn() === "w" && !game.isGameOver()) {
+      } else if (didDrag && file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith("w") && game.turn() === "w" && !game.isGameOver()) {
         const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
 
         try {
@@ -673,19 +692,51 @@ export function ChessgroundBoard({
                             : `color-mix(in srgb, ${cityColor} 20%, #303030bf 80%)`,
                 }}
                 onPointerDown={(e) => {
-                  if (!e.isPrimary || e.button !== 0) return
+                  if (!e.isPrimary || e.button !== 0) {
+                    tapStartRef.current = null
+                    lastTapRef.current = null
+                    return
+                  }
+                  if (lastTapRef.current?.square !== square || lastTapRef.current.pointerType !== e.pointerType) lastTapRef.current = null
+                  if (!freeMode && piece?.color === 'w') {
+                    tapStartRef.current = { square, x: e.clientX, y: e.clientY, pointerType: e.pointerType }
+                  } else {
+                    tapStartRef.current = null
+                    lastTapRef.current = null
+                  }
                   e.currentTarget.setPointerCapture(e.pointerId)
                   const hasPiece = !!piece
+                  const isSecondTap = !freeMode && piece?.color === 'w' && lastTapRef.current?.square === square && Date.now() - lastTapRef.current.time < 350
                   if (!freeMode && !hasPiece) {
                     setIsSelectingSquares(true)
                     selectionLastSquareRef.current = square
                   } else {
                     setIsSelectingSquares(false)
                   }
-                  handleSquareClick(square)
+                  if (!isSecondTap) handleSquareClick(square)
                   if (hasPiece || freeMode?.mode === 'play') handleDragStart(e, square)
                 }}
-                onDoubleClick={() => { if (piece && freeMode?.mode === 'move') freeMode.onTogglePiece(square) }}
+                onPointerUp={(e) => {
+                  if (freeMode) return
+                  const start = tapStartRef.current
+                  tapStartRef.current = null
+                  if (!start || dragStartedRef.current || start.square !== square || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 12) {
+                    lastTapRef.current = null
+                    return
+                  }
+                  const last = lastTapRef.current
+                  const now = Date.now()
+                  if (last?.square === square && last.pointerType === e.pointerType && now - last.time < 350) {
+                    lastTapRef.current = null
+                    if (piece?.color === 'w') onPieceDoubleTap?.(square)
+                  } else {
+                    lastTapRef.current = { square, time: now, pointerType: e.pointerType }
+                  }
+                }}
+                onPointerCancel={() => { tapStartRef.current = null; lastTapRef.current = null }}
+                onDoubleClick={() => {
+                  if (freeMode?.mode === 'move' && piece) freeMode.onTogglePiece(square)
+                }}
                 onKeyDown={e => { if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); onPieceHold?.(square) } }}
                 onKeyUp={e => { if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter')) onPieceRelease?.() }}
                 onBlur={() => { if (freeMode?.mode === 'play') { if (onPieceCancel) onPieceCancel(); else onPieceRelease?.() } }}

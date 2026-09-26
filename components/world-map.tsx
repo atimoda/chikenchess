@@ -47,6 +47,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [currentZoom, setCurrentZoom] = useState(100)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [focusedCityId, setFocusedCityId] = useState<string | null>(null)
+  const [pinHoveredCityId, setPinHoveredCityId] = useState<string | null>(null)
   const popupLayerRef = useRef<HTMLDivElement>(null)
 
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -74,7 +75,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     }
   }
   
-  const zoomRef = useRef<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void } | null>(null)
+  const zoomRef = useRef<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void, zoomToPercent: (percent: number) => void, centerCity: (city: CityData) => void } | null>(null)
+  const popupZoomCycle = useRef<{ percent: number; direction: 1 | -1 } | null>(null)
+  const closeAllTimers = useRef<ReturnType<typeof setTimeout>[]>([])
+  useEffect(() => () => closeAllTimers.current.forEach(clearTimeout), [])
   const handleZoom = (direction: 'in' | 'out' | 'reset') => {
       if (zoomRef.current) {
           if (direction === 'in') zoomRef.current.zoomIn()
@@ -85,6 +89,8 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
   // --- AUDIO LOGIC ---
   const audioContextRef = useRef<AudioContext | null>(null)
+  const pinKickCompressorRef = useRef<DynamicsCompressorNode | null>(null)
+  const popupHatCompressorRef = useRef<DynamicsCompressorNode | null>(null)
 
   useEffect(() => {
     const initAudio = async () => {
@@ -93,6 +99,22 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             if (!Ctx) return
             const ctx = new Ctx()
             audioContextRef.current = ctx
+            const compressor = ctx.createDynamicsCompressor()
+            compressor.threshold.value = -12
+            compressor.knee.value = 6
+            compressor.ratio.value = 8
+            compressor.attack.value = .002
+            compressor.release.value = .12
+            compressor.connect(ctx.destination)
+            pinKickCompressorRef.current = compressor
+            const hatCompressor = ctx.createDynamicsCompressor()
+            hatCompressor.threshold.value = -10
+            hatCompressor.knee.value = 4
+            hatCompressor.ratio.value = 8
+            hatCompressor.attack.value = .002
+            hatCompressor.release.value = .09
+            hatCompressor.connect(ctx.destination)
+            popupHatCompressorRef.current = hatCompressor
         } catch (e) {
             console.error("Audio init failed", e)
         }
@@ -315,6 +337,67 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           gain.connect(ctx.destination)
           osc.start(t)
           osc.stop(t + duration)
+      } else if (type === "pin_kick_hover") {
+          const body = ctx.createOscillator()
+          const bodyGain = ctx.createGain()
+          const transient = ctx.createOscillator()
+          const transientGain = ctx.createGain()
+          const output = ctx.createGain()
+          const variation = 0.93 + Math.random() * 0.14
+          body.type = 'sine'
+          body.frequency.setValueAtTime(132 * variation, t)
+          body.frequency.exponentialRampToValueAtTime(43 * variation, t + .12)
+          body.frequency.exponentialRampToValueAtTime(36 * variation, t + .23)
+          bodyGain.gain.setValueAtTime(.001, t)
+          bodyGain.gain.linearRampToValueAtTime(.24, t + .006)
+          bodyGain.gain.exponentialRampToValueAtTime(.001, t + .24)
+          transient.type = 'triangle'
+          transient.frequency.setValueAtTime(320 * variation, t)
+          transient.frequency.exponentialRampToValueAtTime(95 * variation, t + .025)
+          transientGain.gain.setValueAtTime(.001, t)
+          transientGain.gain.linearRampToValueAtTime(.045, t + .003)
+          transientGain.gain.exponentialRampToValueAtTime(.001, t + .03)
+          output.gain.value = .82
+          body.connect(bodyGain)
+          transient.connect(transientGain)
+          bodyGain.connect(output)
+          transientGain.connect(output)
+          output.connect(pinKickCompressorRef.current ?? ctx.destination)
+          body.start(t)
+          transient.start(t)
+          body.stop(t + .25)
+          transient.stop(t + .035)
+      } else if (type === "pin_hover") {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          const filter = ctx.createBiquadFilter()
+          const delayA = ctx.createDelay(.2)
+          const delayB = ctx.createDelay(.2)
+          const echoGainA = ctx.createGain()
+          const echoGainB = ctx.createGain()
+          const level = (0.15 * 0.37) * (0.88 + Math.random() * 0.2)
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime((148 + Math.random() * 28) * pitchVar, t)
+          osc.frequency.exponentialRampToValueAtTime((68 + Math.random() * 12) * pitchVar, t + 0.11)
+          filter.type = 'lowpass'
+          filter.frequency.setValueAtTime(650, t)
+          gain.gain.setValueAtTime(level, t)
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11)
+          delayA.delayTime.value = .045
+          delayB.delayTime.value = .092
+          echoGainA.gain.setValueAtTime(.16, t)
+          echoGainB.gain.setValueAtTime(.075, t)
+          osc.connect(filter)
+          filter.connect(gain)
+          gain.connect(ctx.destination)
+          gain.connect(delayA)
+          gain.connect(delayB)
+          delayA.connect(echoGainA)
+          delayB.connect(echoGainB)
+          echoGainA.connect(ctx.destination)
+          echoGainB.connect(ctx.destination)
+          osc.start(t)
+          osc.stop(t + 0.11)
       } else if (type === "bd") {
           const osc = ctx.createOscillator()
           const gain = ctx.createGain()
@@ -491,6 +574,25 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           filter.connect(gain)
           gain.connect(ctx.destination)
           noise.start(t)
+      } else if (type === "alesissr16_ch") {
+          const duration = .075
+          const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate)
+          const data = buffer.getChannelData(0)
+          for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+          const noise = ctx.createBufferSource()
+          noise.buffer = buffer
+          const filter = ctx.createBiquadFilter()
+          filter.type = "highpass"
+          filter.frequency.value = 8500 * pitchVar
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(.001, t)
+          gain.gain.linearRampToValueAtTime(.14, t + .003)
+          gain.gain.exponentialRampToValueAtTime(.001, t + .065)
+          noise.connect(filter)
+          filter.connect(gain)
+          gain.connect(popupHatCompressorRef.current ?? ctx.destination)
+          noise.start(t)
+          noise.stop(t + duration)
       } else if (type === "alesissr16_oh") {
           const bufferSize = ctx.sampleRate * 0.5
           const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
@@ -506,7 +608,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3)
           noise.connect(filter)
           filter.connect(gain)
-          gain.connect(ctx.destination)
+          gain.connect(popupHatCompressorRef.current ?? ctx.destination)
           noise.start(t)
       } else {
           const isSd = type === "sd"
@@ -542,7 +644,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     setNextZIndex(n => n + 1)
   }
 
-  const handleCityClick = (city: CityData) => {
+  const handleCityClick = (city: CityData, position?: { x: number; y: number }) => {
     playMapSound("bossdr220_lt", true)
     
     if (openPopups[city.id] && !openPopups[city.id].isClosing) {
@@ -624,6 +726,11 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     x = Math.max(minX, Math.min(maxX, x))
     y = Math.max(minY, Math.min(maxY, y))
 
+    if (position) {
+      x = position.x
+      y = position.y
+    }
+
     setOpenPopups(prev => {
         if (prev[city.id] && !prev[city.id].isClosing) return prev
         return {
@@ -639,6 +746,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         }
     })
     setNextZIndex(n => n + 1)
+    const cycle = popupZoomCycle.current ?? { percent: currentZoom, direction: 1 as const }
+    const percent = cycle.direction === 1 ? Math.min(150, cycle.percent + 25) : Math.max(69, cycle.percent - 15)
+    popupZoomCycle.current = { percent, direction: percent >= 150 ? -1 : percent <= 69 ? 1 : cycle.direction }
+    requestAnimationFrame(() => zoomRef.current?.zoomToPercent(percent))
   }
 
   const [isMobile, setIsMobile] = useState(false)
@@ -698,10 +809,12 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     }))
   }
 
-  const closePopup = (id: string) => {
-    playMapSound("alesissr16_oh", true)
+  const closePopup = (id: string, hat: 'open' | 'closed' = 'open') => {
+    const active = openPopups[id]
+    if (!active || active.isClosing) return
+    playMapSound(hat === 'closed' ? "alesissr16_ch" : "alesissr16_oh", true)
     setOpenPopups(prev => {
-      if (!prev[id]) return prev
+      if (!prev[id] || prev[id].isClosing || prev[id].timestamp !== active.timestamp) return prev
       return {
         ...prev,
         [id]: { ...prev[id], isClosing: true }
@@ -711,6 +824,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     setTimeout(() => {
         setOpenPopups(prev => {
             const next = { ...prev }
+            if (next[id]?.timestamp !== active.timestamp) return prev
             delete next[id]
             return next
         })
@@ -719,6 +833,19 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     if (pressedPopupState?.id === id) {
       setPressedPopupState(null)
     }
+  }
+
+  const closeAllPopups = () => {
+    const ids = Object.keys(openPopups).filter(id => !openPopups[id].isClosing)
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[ids[i], ids[j]] = [ids[j], ids[i]]
+    }
+    let delay = 0
+    ids.forEach((id, index) => {
+      delay += 38 + Math.random() * 82
+      closeAllTimers.current.push(setTimeout(() => closePopup(id, index % 2 === 0 ? 'closed' : 'open'), delay))
+    })
   }
 
   return (
@@ -799,12 +926,14 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             popupLayerRef={popupLayerRef}
             onZoomChange={setCurrentZoom}
             focusedCityId={focusedCityId}
+            setFocusedCityId={setFocusedCityId}
+            onPinHover={setPinHoveredCityId}
          />
       </div>
 
       <div ref={popupLayerRef} className="absolute inset-0 z-[45] pointer-events-none" />
 
-      {logoPhase === 'header' && <CampaignCityList cities={cities} onFocus={setFocusedCityId} onOpen={city => { setFocusedCityId(city.id); handleCityClick(city) }} />}
+      {logoPhase === 'header' && <CampaignCityList cities={cities} conqueredCities={playerProfile?.conqueredCityIds || []} openCityIds={Object.keys(openPopups).filter(id => !openPopups[id].isClosing)} focusedCityId={focusedCityId} pinHoveredCityId={pinHoveredCityId} onFocus={setFocusedCityId} onOpen={city => { if (!openPopups[city.id] || openPopups[city.id].isClosing) zoomRef.current?.centerCity(city); handleCityClick(city) }} />}
 
       <header
         className="absolute top-0 left-0 w-full z-60 flex flex-col md:flex-row items-center md:justify-between px-8 py-6 pointer-events-none gap-2"
@@ -1028,11 +1157,12 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
       )}
 
       {/* UI OVERLAY LAYER */}
-      <div className="absolute inset-0 z-40 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 z-[70] overflow-hidden pointer-events-none">
         
         {/* Bottom Right Info & Controls */}
         <div 
           className="flex fixed bottom-4 right-4 items-stretch gap-2 pointer-events-auto z-50">
+          {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
           <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Modo Criativo</Link>
           <VersionChangelog mapButton />
         </div>

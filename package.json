@@ -1,6 +1,6 @@
 {
   "name": "chikenchess",
-  "version": "0.4.63",
+  "version": "0.4.90",
   "private": true,
   "scripts": {
     "build": "next build",

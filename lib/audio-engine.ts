@@ -224,10 +224,37 @@ export class AudioEngine {
     }
   }
 
-  playDrum(sample: string, gain: number = 0.6) {
+  playDrum(sample: string, gain: number = 0.6, pitch: number = 1) {
     if (!this.audioContext || !this.masterGain) return
     const now = this.audioContext.currentTime
-    this.playPawn(now, sample, gain, 0, "w")
+    this.playPawn(now, sample, gain, 0, "w", pitch)
+  }
+
+  async playAnalysisWhistle(direction: 'up' | 'down') {
+    if (!this.audioContext || !this.masterGain) await this.init()
+    await this.resume()
+    if (!this.audioContext || !this.masterGain) return
+
+    const time = this.audioContext.currentTime
+    const oscillator = this.audioContext.createOscillator()
+    const vibrato = this.audioContext.createOscillator()
+    const vibratoDepth = this.audioContext.createGain()
+    const envelope = this.audioContext.createGain()
+    oscillator.type = 'sine'
+    vibrato.type = 'sine'
+    vibrato.frequency.value = 5.5
+    vibratoDepth.gain.value = 8
+    oscillator.frequency.setValueAtTime(direction === 'up' ? 520 : 1250, time)
+    oscillator.frequency.exponentialRampToValueAtTime(direction === 'up' ? 1250 : 520, time + 0.32)
+    envelope.gain.setValueAtTime(0.001, time)
+    envelope.gain.exponentialRampToValueAtTime(0.18, time + 0.02)
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.36)
+    vibrato.connect(vibratoDepth).connect(oscillator.frequency)
+    oscillator.connect(envelope).connect(this.masterGain)
+    vibrato.start(time)
+    oscillator.start(time)
+    vibrato.stop(time + 0.36)
+    oscillator.stop(time + 0.36)
   }
 
   async playPieceSample(square: string, pieceType: string, pieceColor: "w" | "b", _isPreview: boolean = true) {

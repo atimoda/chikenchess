@@ -13,7 +13,7 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
   const header = [
     `// ${(state.title ?? 'Düsseldorf').replace(/[\r\n]/g, ' ')} · Strudel`,
     '// Degrees follow the shared scale; each piece keeps its instrument.',
-    ...(state.teamMixes ? [`// Post-mix Web Audio buses (gain; bass/mids/highs dB): ${JSON.stringify(state.teamMixes)}`] : []),
+    ...(state.teamMixes ? [`// Post-mix Web Audio buses (gain; bass/mids/highs dB; LPF/HPF dial -1..1): ${JSON.stringify(state.teamMixes)}`] : []),
     ...(preview?.mode === 'manual' ? [`// ${preview.id}: manual note at ${preview.square}; its loop is suspended during the gesture.`] : []),
     `// Meter ${state.meter ?? '4/4'}; BPM counts ${state.meter === '6/8' || state.meter === '12/8' ? 'dotted-quarter' : 'quarter'} pulses.`,
     `setcps(${state.bpm} / 60 / ${beatsPerBar(state.meter)})`,

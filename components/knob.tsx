@@ -23,7 +23,7 @@ export function Knob({ value, min, max, step = .01, label, onChange, formatValue
   const commit = (v: number) => onChange(Math.max(min, Math.min(max, Math.round(v / step) * step)))
   const amount = Math.max(0, Math.min(1, toAmount(value)))
   const finish = () => { drag.current = null; setDragging(false) }
-  return <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")} data-no-drag>
+  return <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")}>
     <span className="text-[10px] uppercase font-mono text-muted-foreground text-center">{label}</span>
     <div role="slider" aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={formatValue?.(value)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
       className={cn("relative w-10 h-10 rounded-full bg-secondary border border-border group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]", neon ? "cursor-ew-resize hover:border-[var(--city-neon)]" : "cursor-default", dragging && "border-white")}
@@ -61,9 +61,11 @@ export function Knob({ value, min, max, step = .01, label, onChange, formatValue
         commit(event.key === 'Home' ? min : event.key === 'End' ? max : logarithmic ? fromAmount(Math.max(0, Math.min(1, amount + direction * .02))) : value + direction * step * (event.shiftKey ? 10 : 1))
       }}>
       <div className="absolute w-full h-full rounded-full" style={{ transform: 'rotate(' + (-135 + amount * 270) + 'deg)' }}>
-        <div className={cn("absolute top-1 left-1/2 -translate-x-1/2 w-1 h-3 rounded-full", neon ? "bg-foreground/50 group-hover:bg-white" : "bg-foreground/20")} />
+        <div className={cn("absolute top-0 left-1/2 -translate-x-1/2 w-1 h-2 rounded-full", neon ? "bg-foreground/50 group-hover:bg-white" : "bg-foreground/20")} />
       </div>
+      <span className={cn("pointer-events-none absolute inset-x-0 top-[66%] -translate-y-1/2 whitespace-nowrap text-center font-mono text-[8px] font-bold leading-none transition-colors", neon ? "text-foreground/50 group-hover:text-white" : "text-foreground/20")}>
+        {formatValue ? formatValue(value) : value.toFixed(2)}
+      </span>
     </div>
-    <span className="text-[10px] font-mono font-bold text-white">{formatValue ? formatValue(value) : value.toFixed(2)}</span>
   </div>
 }
