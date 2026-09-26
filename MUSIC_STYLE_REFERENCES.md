@@ -66,3 +66,8 @@ São seis peças ativas neste estudo para corresponder às seis vozes distribuí
 O banco `chicken-world-v1` contém oito sínteses originais CC0: guitarra, cordas, flauta, marimba, conga, tímpano, pandeiro e prato. Os sete bancos locais são mono e carregados sob demanda; juntos ficam abaixo de 3 MB em PCM 16-bit. Um sample de flauta sintética não substitui um instrumento acústico multisample com articulações naturais.
 
 Referência técnica: [efeitos do Strudel](https://strudel.cc/learn/effects/). O envelope de afinação varia dentro da nota; os demais padrões de automação são amostrados a cada ataque. Portamento contínuo entre gestos e scratch de áudio continuam fora desta implementação.
+
+
+## Ampliação rítmica v0.5.0
+
+Os 18 novos estudos de Brazilian, World rhythms e das campanhas existentes estão catalogados em [Atlas rítmico](docs/RHYTHM_ATLAS.md), com cidade, época, fórmula, unidade do BPM, decisões de agrupamento e fontes. A escuta e a avaliação estilística continuam separadas da validação automática de padrões.

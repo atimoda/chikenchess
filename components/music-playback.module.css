@@ -12,7 +12,7 @@
 .variationTabs { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; min-width: 0; }
 .variationTabList { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: thin; padding-top: 13px; margin-top: -13px; }
 .variationTabList button { position: relative; overflow: visible; }
-.voice .variationTabList .pinnedVariation { position: absolute; top: -13px; left: 50%; width: 9px; height: 9px; transform: translateX(-50%); background: transparent; border-radius: 0; color: #fff; }
+.voice .variationTabList .pinnedVariation { position: absolute; top: -13px; left: 50%; width: 11px; height: 11px; transform: translateX(-50%); background: transparent; border-radius: 0; color: #82a85f; }
 .variationActions { display: flex; gap: 4px; margin-left: auto; flex: 0 0 auto; }
 .variationTabs button { min-width: 27px; height: 25px; border: 1px solid #34463b; border-radius: 4px; color: #89988d; font: 10px monospace; background: #111a15; }
 .variationTabs button[data-active='true'] { border-color: #82a85f; color: #c2db91; }
@@ -24,7 +24,9 @@
 .variationActions button:disabled { opacity: .3; }
 .divisionPicker { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 25px; flex: 0 0 27px; border: 1px solid #34463b; border-radius: 4px; color: #89988d; background: #111a15; cursor: pointer; overflow: hidden; }
 .divisionPicker:hover { border-color: #82a85f; color: #c2db91; }
-.divisionPicker select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.divisionPicker select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; color-scheme: dark; }
+.divisionPicker option { color: #e4e9e2; background: #111a15; }
+.divisionPicker option:checked { color: #c2db91; background: #26342a; }
 .divisionGrid { display: grid; width: 17px; height: 13px; border: 1px solid currentColor; }
 .divisionGrid i { min-width: 0; border-left: 1px solid currentColor; }
 .divisionGrid i:first-child { border-left: 0; }

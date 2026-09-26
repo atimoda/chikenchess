@@ -296,7 +296,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       playSquareSample('a1')
       void engineRef.current?.resume()
 
-      // Show the city title for four seconds, with an optional click to advance.
+      // Show the city title for five seconds, with an optional click to advance.
       setIntroPhase(1)
       setShowIntroBoxes(true)
       introSeatbeltTimerRef.current = setTimeout(() => {
@@ -305,7 +305,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }, 1000)
       introStartRequestedRef.current = false
       if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
-      introStartTimerRef.current = setTimeout(() => handleStartGame(), 4000)
+      introStartTimerRef.current = setTimeout(() => handleStartGame(), 5000)
   }
 
   const handleStartGame = () => {
@@ -1374,7 +1374,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       `}</style>
       {/* Background Image */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-1000"
+        className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-[3000ms]"
         style={{
             backgroundImage: `url(${city.image})`,
             filter: (!isBackgroundDark && introPhase < 3) 

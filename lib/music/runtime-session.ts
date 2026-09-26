@@ -142,6 +142,10 @@ export class MusicRuntime {
   }
 
   update(state: MusicSnapshot) {
+    if (this.sourceState && (this.sourceState.meter ?? '4/4') !== (state.meter ?? '4/4')) {
+      this.scheduler?.stop()
+      this.clearVisuals()
+    }
     this.sourceState = state
     const input=state.reactionInput
     this.targetBpm=input?.lockedBpm ?? (input?applyReactions(state,input.config,input.context).snapshot.bpm:state.bpm)

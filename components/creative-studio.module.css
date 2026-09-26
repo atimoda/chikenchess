@@ -91,7 +91,15 @@
 .triple { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .studio details { border-top: 1px solid #39473d; margin-top: 18px; padding-top: 16px; }
 .studio summary { cursor: pointer; font-size: 12px; font-weight: 500; color: #d5dfd2; }
-.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 17px 14px; padding-top: 18px; }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 10px 5px; padding-top: 18px; }
+.parameterKnob { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.parameterKnobLabel { display: flex; align-items: flex-start; justify-content: center; width: 100%; min-height: 36px; color: #b2c0b6; font-size: 10px; line-height: 1.2; text-align: center; }
+.parameterKnobLabel > span:first-child { overflow-wrap: anywhere; }
+.parameterKnobLabel [data-info-tip] { margin-left: 2px; }
+.parameterKnob [role='slider'] { width: 38px; height: 38px; background: #25372b; border-color: #526c54; }
+.parameterKnob [role='slider'] > span { top: 50%; color: #d7ebc9; font-size: 9px; }
+.parameterKnob [role='slider'] > div > div { background: #b6e5ac; }
+.wideControl { grid-column: span 2; }
 .range > span { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; }
 .range output { font-family: monospace; font-size: 10px; color: #daebc5; }
 .range input { width: 100%; accent-color: #b6dba1; height: 15px; cursor: pointer; }

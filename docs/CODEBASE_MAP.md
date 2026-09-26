@@ -9,7 +9,7 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Tom, graus, identidade e ativação | `lib/music/model.ts`, `reactions.ts` | `runtime-types.ts`; histórico de xadrez |
 | Plano harmônico, cifras e voicings | `lib/music/harmony.ts`, `voice-spec.ts` | `creative.ts`, `reactions.ts`, `monitor.ts`; cada seção resolve centro, tríade e inversão |
 | Estados/eventos, quantização e BPM | `reactions.ts`, `reaction-queue.ts`, `transport.ts` | `components/music-reaction-editor.tsx`; `music-transition-view.tsx` |
-| Compasso, pulso e subdivisão | `lib/music/meter.ts`, `transport.ts` | `creative.ts` persiste 4/4–12/8; `styled-kits.ts` compõe; `performance.ts`, `music-piano-editor.tsx` e `music-playback.tsx` seguem o mesmo pulso |
+| Compasso, pulso e subdivisão | `lib/music/meter.ts`, `transport.ts` | `creative.ts` persiste onze fórmulas via `METER_IDS`; `styled-kits.ts` compõe; `performance.ts`, `music-piano-editor.tsx` e `music-playback.tsx` seguem o mesmo pulso |
 | Controles que chegam a cada voz | `lib/music/voice-spec.ts` | `model.ts`, `sample-banks.ts`, `runtime-types.ts` |
 | Orbits de efeitos e ciclo de vida dos buses | `lib/music/voice-spec.ts`, `runtime-session.ts` | Quatro buses no desktop, dois em aparelho restrito; audições isoladas; `team-mixer.ts` recebe a saída por equipe |
 | Agrupamento de notas / exportação compacta | `lib/music/roll-optimizer.ts` | `pattern-compiler.ts`, `code-export.ts`; preserva sobreposições |
@@ -20,16 +20,17 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Playback, gesto manual, cancelamento, mixer e lifecycle | `lib/music/runtime-session.ts` | `transport.ts`, `team-mixer.ts`, `monitor.ts`, `strudel-loader.ts`; `hooks/use-music.ts` acompanha a visibilidade da aba |
 | Timbre/sample e carregamento | `sample-banks.ts`, `strudel-loader.ts` | `public/samples/README.md`, geradores em `scripts/`; quatro bancos novos em `generate-timbre-samples.py` |
 | Uma cidade/estilo | `lib/music/kit-profiles/<cidade>.ts` | 16 papéis, timbres, padrões e presença por seção; `styled-kits.ts` compõe e `kit-profiles/catalog.ts` registra |
+| Novas fases rítmicas e Brazilian | `lib/rhythm-stages.ts`, `lib/music/kit-profiles/rhythm-stages.ts` | Metadados e motivos de 18 estudos; `docs/RHYTHM_ATLAS.md` registra o catálogo; `scripts/generate-rhythm-city-art.cjs` gera os cartões vetoriais |
 | Dez fases harmônicas | `lib/music/kit-profiles/harmonic-stages.ts` | Motivos e referências de cada cidade; `harmonic-stage-factory.ts` monta 16 papéis e `harmony.ts` define os acordes |
 | Curadoria de timbre nos kits anteriores | `lib/music/kit-profiles/timbre-curation.ts` | Trocas de fonte por nome de parte, aplicadas em `kit-profiles/catalog.ts`; Manchester 1999 permanece em `manchester-kit.ts` |
 | Manchester 1999 | `lib/music/manchester-kit.ts` | Complementos de seções em `styled-kits.ts` |
 | Salvar/importar/migrar kits | `creative.ts`, `city-kits.ts` | Schema v4; preset antigo vai para a biblioteca como kit sem cidade |
 | Bancada, seleção e sessão do Criativo | `components/creative-studio.tsx` | `components/chessground-board.tsx` compartilha desenho e arraste com a partida, usando movimento livre; `hooks/use-creative-music.ts` controla a audição |
-| Knobs/ranges de som e movimento do Criativo | `components/creative/instrument-parameters.tsx` | `parameter-range.tsx` contém campo/ajuda comuns |
+| Knobs/ranges de som e movimento do Criativo | `components/creative/instrument-parameters.tsx` | `parameter-range.tsx` contém campo/ajuda comuns e adapta o knob compartilhado de `components/knob.tsx` |
 | Ajuda contextual | `components/info-tip.tsx` + `.module.css` | Hover, foco, toque e portal |
 | Avaliação e adversária | `lib/chess-evaluation.ts`, `components/chess-game.tsx` | `public/engine/` contém Stockfish Lite; orçamento e cache no controlador; benchmark em `scripts/benchmark-chess.cjs`; medições em `docs/CHESS_ANALYSIS.md` |
 | Partida/widgets | `components/chess-game.tsx`, `hooks/use-music.ts` | `synth-control-panel.tsx` contém filtro LPF/HPF e Drive; `mixer-widget.tsx` separa o mixer por equipe; `global-control-panel.tsx` mantém Board Params; `knob.tsx` define a ordem nome/controle/valor; `ui/draggable.tsx` move os painéis |
-| Globo/câmera/popup/entrada | `components/world-map.tsx`, `globe-component.tsx`, `city-popup.tsx` | `lib/globe-navigation.ts`, `globe-geography.ts`; `globe-flags.ts` desenha cores e símbolos das bandeiras |
+| Globo/câmera/popup/entrada | `components/world-map.tsx`, `globe-component.tsx`, `city-popup.tsx`; `components/chess-game.tsx` controla a introdução da fase | `lib/globe-navigation.ts`, `globe-geography.ts`; `globe-flags.ts` desenha cores e símbolos das bandeiras |
 | Campanhas e lista do mapa | `lib/campaigns.ts`, `components/campaign-city-list.tsx` | `lib/cities-data.ts` associa cada fase; `world-map.tsx` coordena foco, hover dos pins e popups |
 | Perfil, ovos, pontuação e ranks | `lib/game-progression.ts` | Persistência local, migração, recompensa de vitória e débito futuro |
 
