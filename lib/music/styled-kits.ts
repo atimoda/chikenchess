@@ -5,7 +5,7 @@ import type { PianoRoll } from './piano-roll'
 import { createManchesterJazzKit } from './manchester-kit'
 import type { CityData } from '../cities-data'
 import type { PartProfile, ProfileSource, StyleProfile } from './kit-profiles/types'
-import { beatsPerBar, type Meter } from './meter'
+import { beatsPerBar, groupStarts, type Meter } from './meter'
 
 export const STYLE_REVISION = 'styles-2026-09-25-v3'
 export const MANCHESTER_JAZZ_REVISION = 'manchester-2026-09-25-v4'
@@ -27,6 +27,7 @@ export function phraseRoll(text: string, bars: number, swing = 0, gate = .65, me
     const slotsInBar = tokens.length / bars
     const phase = index % slotsInBar
     if (Math.abs(phase) < .001) return 1
+    if ((meter.startsWith('5/') || meter.startsWith('7/')) && groupStarts(meter).some(start => Math.abs(phase / pulseSlots - start) < .001)) return .9
     if (Math.abs(phase / pulseSlots - Math.round(phase / pulseSlots)) < .001) return meter === '3/4' ? .77 : .84
     return .62
   }

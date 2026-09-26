@@ -1,3 +1,4 @@
+import { METER_IDS } from './meter'
 import { performanceSchema } from './performance'
 import { pianoRollSchema } from './piano-roll'
 import { z } from 'zod'
@@ -93,7 +94,7 @@ export const creativeSchema = z.object({
   catalogRevision: z.string().max(80).optional(),
   version: z.literal(4), name: z.string().trim().min(1).max(80),
   cityId: z.string().trim().regex(/^[a-z0-9-]+$/).optional(),
-  bpm: finite(30, 240), meter: z.enum(['4/4', '3/4', '6/8', '12/8']).default('4/4'), volume: finite(0, 1), root: z.enum(ROOTS),
+  bpm: finite(30, 240), meter: z.enum(METER_IDS).default('4/4'), volume: finite(0, 1), root: z.enum(ROOTS),
   scale: z.enum(SCALE_NAMES),
   sectionPattern: z.string().refine(hasPatternBudget, 'Timeline inválida.'),
   pieces: z.array(pieceSchema).length(32),

@@ -1,10 +1,13 @@
+import { RHYTHM_STAGES } from './rhythm-stages'
+import { scaleForCreativeSession } from './music/creative'
 import { cityCoordinates } from "./city-coordinates"
+import type { Meter } from './music/meter'
 import type { CampaignId } from './campaigns'
 
 export interface CityData {
   id: string
   campaigns: CampaignId[]
-  meter?: '4/4' | '3/4' | '6/8' | '12/8'
+  meter?: Meter
   name: string
   country: string
   year: number
@@ -55,7 +58,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     aiDepth: 15,
     geoCoordinates: { lat: 51.2277, lng: 6.7735 },
     color: "#ff3333",
-    image: "https://unsplash.com/photos/qpWvN7L0t7I/download?force=true&w=800",
+    image: "https://unsplash.com/photos/qpWvN7L0t7I/download?force=true&w=1600",
     samples: {
       kick: "bd:0", // Kraftwerk style tightly gated
       snare: "sd:5", // Electronic snap
@@ -84,7 +87,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"], // Minor Pentatonic (Funk/Soul roots)
     geoCoordinates: { lat: 40.7128, lng: -74.0060 },
     color: "#a020f0", // Purple (Studio 54 / Nightclub)
-    image: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=85&w=1600&auto=format&fit=crop",
     samples: {
       kick: "bd:5", // Acoust-electric disco kick
       snare: "sd:4", // Clap/Snare layered
@@ -113,7 +116,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "D4", "E4", "G4", "A4"],
     geoCoordinates: { lat: 41.8781, lng: -87.6298 },
     color: "#00ffaa", // Neon Green/Cyan (Acid/House vibe)
-    image: "https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=85&w=1600&auto=format&fit=crop",
     samples: {
       kick: "bd:0", // 909 Kick
       snare: "sd:1", // 909 Snare/Clap
@@ -142,7 +145,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
     geoCoordinates: { lat: 42.3314, lng: -83.0458 },
     color: "#ff6600",
-    image: "https://unsplash.com/photos/1SmpGvlKq2U/download?force=true&w=800",
+    image: "https://unsplash.com/photos/1SmpGvlKq2U/download?force=true&w=1600",
     samples: {
       kick: "bd:1", // 909 Distorted
       snare: "cp:0", // 909 Clap
@@ -171,7 +174,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "E4", "F4", "G4", "B4"], // Lydian (Dreamy)
     geoCoordinates: { lat: 38.9067, lng: 1.4206 },
     color: "#ffaa00",
-    image: "https://unsplash.com/photos/sqgDlmZM8sc/download?force=true&w=800",
+    image: "https://unsplash.com/photos/sqgDlmZM8sc/download?force=true&w=1600",
     samples: {
       kick: "bd:4", // Softer kick
       snare: "sd:3",
@@ -200,7 +203,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "Eb4", "F4", "Gb4", "Bb4"], // Blues/Acid scale
     geoCoordinates: { lat: 53.4808, lng: -2.2426 },
     color: "#ffff00",
-    image: "https://unsplash.com/photos/pRc34iEHRmo/download?force=true&w=800",
+    image: "https://unsplash.com/photos/pRc34iEHRmo/download?force=true&w=1600",
     samples: {
       kick: "bd:2", // Rave Kick
       snare: "sd:2", // Breakbeat Snare
@@ -224,7 +227,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     description: "British club culture turned record collecting into a living collage: jazz, funk and hip-hop breaks meet as DJs reshape the dance floor with every mix.",
     bpm: 123, scale: ["G4", "A4", "Bb4", "C4", "D4", "E4", "F4"],
     geoCoordinates: { lat: 53.4808, lng: -2.2426 }, color: "#ffb65c",
-    image: "https://unsplash.com/photos/pRc34iEHRmo/download?force=true&w=800",
+    image: "https://images.unsplash.com/photo-1495366819608-9e926b56f8ad?q=85&w=1600&auto=format&fit=crop",
     samples: { kick: "bd:2", snare: "sd:2", hihat: "hh:2", bass: "bass:2", pad: "pad:2", lead: "synth:1" },
     introPhrases: ["A record remembers another room.", "Brass slips through the break.", "A low pulse keeps its secret.", "Every loop leaves room for an answer.", "Let the night turn."],
   },
@@ -240,7 +243,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "Db4", "E4", "F4", "G4", "Ab4", "B4"], // Phrygian Dominant (Dark/Tension)
     geoCoordinates: { lat: 52.5200, lng: 13.4050 },
     color: "#00ccff", // Cold Blue
-    image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?q=85&w=1600&auto=format&fit=crop",
     samples: {
       kick: "bd:3", // Rumble Kick
       snare: "rim:0", // Industrial Rim
@@ -269,7 +272,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
     geoCoordinates: { lat: 35.6762, lng: 139.6503 },
     color: "#ff00ff", // Neon Pink/Cyberpunk
-    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=85&w=1600&auto=format&fit=crop",
     samples: {
       kick: "bd:6", // Clicky Kick
       snare: "sd:5", // Glitch Snare
@@ -298,7 +301,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
     geoCoordinates: { lat: 51.5074, lng: -0.1278 },
     color: "#33ff00", // Jungle Green
-    image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=85&w=1600&auto=format&fit=crop",
     samples: {
       kick: "bd:7", // Jungle Kick
       snare: "sd:6", // Amen Snare
@@ -327,7 +330,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "Db4", "F4", "G4", "Ab4"],
     geoCoordinates: { lat: -23.5505, lng: -46.6333 },
     color: "#ccff00",
-    image: "https://unsplash.com/photos/X1PncKPKDQI/download?force=true&w=800",
+    image: "https://unsplash.com/photos/X1PncKPKDQI/download?force=true&w=1600",
     samples: {
       kick: "bd:3",
       snare: "sd:2",
@@ -356,7 +359,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["F#4", "A4", "B4", "C#4", "E4"],
     geoCoordinates: { lat: -26.2041, lng: 28.0473 },
     color: "#ff7a45",
-    image: "https://images.unsplash.com/photo-1577948000111-9c970dfe3743?auto=format&fit=crop&fm=jpg&q=80&w=800",
+    image: "https://images.unsplash.com/photo-1577948000111-9c970dfe3743?auto=format&fit=crop&fm=jpg&q=85&w=1600",
     samples: {
       kick: "bd:4",
       snare: "sd:3",
@@ -385,7 +388,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "D4", "E4", "F#4", "G4", "A4"],
     geoCoordinates: { lat: 48.8566, lng: 2.3522 },
     color: "#3366ff", // French Blue
-    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=85&w=1600&auto=format&fit=crop",
     samples: {
       kick: "bd:0",
       snare: "cp:0",
@@ -414,7 +417,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     scale: ["C4", "D4", "E4", "F4", "G4", "A4", "B4"], // C Major (Classical)
     geoCoordinates: { lat: 48.2082, lng: 16.3738 },
     color: "#d4af37", // Gold
-    image: "https://images.unsplash.com/photo-1516550893923-42d28e5677af?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1516550893923-42d28e5677af?q=85&w=1600&auto=format&fit=crop",
     samples: {
       kick: "bd:0", // Timpani (mapped in engine)
       snare: "sd:0",
@@ -436,7 +439,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     genre: 'Vals criollo', description: 'In the Río de la Plata, vals criollo carried tango’s immigrant mix into neighborhood dance halls, where longing and elegance could share the floor.',
     bpm: 132, meter: '3/4', scale: ['A3','B3','C4','D4','E4','F4','G4'],
     geoCoordinates: { lat: -34.6037, lng: -58.3816 }, color: '#ef8979',
-    image: 'https://images.unsplash.com/photo-1589909202802-8f4aadce1849?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1589909202802-8f4aadce1849?q=85&w=1600&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
     introPhrases: ['An embrace turns in the dark.', 'A reed carries a sigh.', 'Each step returns changed.', 'Old longing keeps the room awake.', 'Follow the turning phrase.']
   },
@@ -445,7 +448,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     genre: 'Folk ballad / double jig', description: 'Irish traditional music keeps its dance tunes alive through open sessions, where musicians pass jigs between generations and newcomers learn by listening in.',
     bpm: 96, meter: '6/8', scale: ['D4','E4','F#4','G4','A4','B4','C#5'],
     geoCoordinates: { lat: 53.3498, lng: -6.2603 }, color: '#85d0a2',
-    image: 'https://images.unsplash.com/photo-1549918864-48ac978761a4?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1549918864-48ac978761a4?q=85&w=1600&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
     introPhrases: ['A tune passes hand to hand.', 'The fiddle runs ahead of the foot.', 'Bright turns lift the room.', 'Old steps gather new voices.', 'Answer the dancing bow.']
   },
@@ -454,22 +457,22 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
     genre: 'Slow blues ballad', description: 'Black New Orleans musicians wove blues, gospel and brass-band traditions into communal rhythm and blues, where a rolling piano turns private ache into a call for the whole room.',
     bpm: 76, meter: '12/8', scale: ['C4','Eb4','F4','Gb4','G4','Bb4'],
     geoCoordinates: { lat: 29.9511, lng: -90.0715 }, color: '#e8b779',
-    image: 'https://images.unsplash.com/photo-1533587851505-d119e13fa0d7?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1635284225771-b6b35e18f7ad?q=85&w=1600&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
     introPhrases: ['Blue notes bend the lamplight.', 'The piano rolls like a river.', 'A trumpet answers the room.', 'Sorrow finds its dancing feet.', 'Let the backbeat speak.']
   },
   // Harmonic songbook: one original, editable kit for each new progression.
   ...([
-    ['san-diego-1999', 'San Diego', 'USA', 1999, 'Pop punk', 'Pop punk grew from independent punk and skate culture: compact, melodic songs turn frustration into hooks built for a loud communal singalong.', 148, 'C', 32.7157, -117.1611, '#ff8b65', 'https://images.unsplash.com/photo-1756828791052-5cd529e650b5?q=80&w=800&auto=format&fit=crop'],
-    ['london-1970', 'London', 'UK', 1970, 'Piano pop', 'Piano-led pop gives the singer-songwriter’s intimate confession a wide, memorable chorus that audiences can claim as their own.', 72, 'C', 51.5074, -0.1278, '#e5c69d', 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=800&auto=format&fit=crop'],
-    ['berkeley-2004', 'Berkeley', 'USA', 2004, 'Alternative rock', 'Independent guitar scenes made distortion a way to question polish and convention; quiet tension grows into a release shared by the room.', 84, 'E', 37.8715, -122.2730, '#8da1c7', 'https://images.unsplash.com/photo-1694391579944-b9162db8162e?q=80&w=800&auto=format&fit=crop'],
-    ['new-york-1961', 'New York City', 'USA', 1961, 'Soul / doo-wop', 'Doo-wop grew from Black vocal groups harmonizing on neighborhood street corners; call and response turned private devotion into shared urban expression.', 116, 'A', 40.7128, -74.0060, '#d99fc5', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
-    ['san-francisco-1993', 'San Francisco', 'USA', 1993, 'Folk rock', 'Folk rock carries oral storytelling into amplified song, joining individual witness with a countercultural call for change and community.', 132, 'C', 37.7749, -122.4194, '#c9a46b', 'https://images.unsplash.com/photo-1568685002001-9bce359d5c25?q=80&w=800&auto=format&fit=crop'],
-    ['paris-1945', 'Paris', 'France', 1945, 'Jazz / chanson', 'Chanson places an intimate writer’s voice at the heart of popular song, while jazz improvisation brings risk and freedom into the late-night club conversation.', 112, 'C', 48.8566, 2.3522, '#a0b8aa', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=800&auto=format&fit=crop'],
-    ['columbus-2013', 'Columbus', 'USA', 2013, 'Indie pop', 'Independent pop prizes handmade recordings, intimate lyrics and local venues; its fragile melodies invite listeners into a community without spectacle.', 124, 'C', 39.9612, -82.9988, '#f0cc77', 'https://images.unsplash.com/photo-1494303110424-f25a258d2e4b?q=80&w=800&auto=format&fit=crop'],
-    ['new-york-1930', 'New York City', 'USA', 1930, 'Swing jazz', 'Harlem swing grew through Black bandleaders, arrangers and dancers; interlocking riffs turn improvisation into a shared urban dance.', 144, 'C', 40.7128, -74.0060, '#b4abdb', 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop'],
-    ['jacksonville-1974', 'Jacksonville', 'USA', 1974, 'Southern rock', 'Southern rock braids blues, country and rock into a regional voice; rough guitars and open-road songs turn local identity into collective pride.', 98, 'C', 30.3322, -81.6557, '#d2a571', 'https://images.unsplash.com/photo-1553567559-dc9e78245b21?q=80&w=800&auto=format&fit=crop'],
-    ['chicago-1958', 'Chicago', 'USA', 1958, 'Electric blues', 'Chicago electric blues carried Delta traditions north with Black migration, amplifying guitar and harmonica for urban clubs and making displacement audible as force.', 164, 'C', 41.8781, -87.6298, '#83b8d5', 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop'],
+    ['san-diego-1999', 'San Diego', 'USA', 1999, 'Pop punk', 'Pop punk grew from independent punk and skate culture: compact, melodic songs turn frustration into hooks built for a loud communal singalong.', 148, 'C', 32.7157, -117.1611, '#ff8b65', 'https://images.unsplash.com/photo-1756828791052-5cd529e650b5?q=85&w=1600&auto=format&fit=crop'],
+    ['london-1970', 'London', 'UK', 1970, 'Piano pop', 'Piano-led pop gives the singer-songwriter’s intimate confession a wide, memorable chorus that audiences can claim as their own.', 72, 'C', 51.5074, -0.1278, '#e5c69d', 'https://images.unsplash.com/photo-1519608487953-e999c86e7455?q=85&w=1600&auto=format&fit=crop'],
+    ['berkeley-2004', 'Berkeley', 'USA', 2004, 'Alternative rock', 'Independent guitar scenes made distortion a way to question polish and convention; quiet tension grows into a release shared by the room.', 84, 'E', 37.8715, -122.2730, '#8da1c7', 'https://images.unsplash.com/photo-1694391579944-b9162db8162e?q=85&w=1600&auto=format&fit=crop'],
+    ['new-york-1961', 'New York City', 'USA', 1961, 'Soul / doo-wop', 'Doo-wop grew from Black vocal groups harmonizing on neighborhood street corners; call and response turned private devotion into shared urban expression.', 116, 'A', 40.7128, -74.0060, '#d99fc5', 'https://commons.wikimedia.org/wiki/Special:FilePath/Apollo_Theater_Harlem,_NYC.jpg?width=1600'],
+    ['san-francisco-1993', 'San Francisco', 'USA', 1993, 'Folk rock', 'Folk rock carries oral storytelling into amplified song, joining individual witness with a countercultural call for change and community.', 132, 'C', 37.7749, -122.4194, '#c9a46b', 'https://images.unsplash.com/photo-1568685002001-9bce359d5c25?q=85&w=1600&auto=format&fit=crop'],
+    ['paris-1945', 'Paris', 'France', 1945, 'Jazz / chanson', 'Chanson places an intimate writer’s voice at the heart of popular song, while jazz improvisation brings risk and freedom into the late-night club conversation.', 112, 'C', 48.8566, 2.3522, '#a0b8aa', 'https://commons.wikimedia.org/wiki/Special:FilePath/Cafe_de_Flore_Paris_France.jpg?width=1600'],
+    ['columbus-2013', 'Columbus', 'USA', 2013, 'Indie pop', 'Independent pop prizes handmade recordings, intimate lyrics and local venues; its fragile melodies invite listeners into a community without spectacle.', 124, 'C', 39.9612, -82.9988, '#f0cc77', 'https://images.unsplash.com/photo-1494303110424-f25a258d2e4b?q=85&w=1600&auto=format&fit=crop'],
+    ['new-york-1930', 'New York City', 'USA', 1930, 'Swing jazz', 'Harlem swing grew through Black bandleaders, arrangers and dancers; interlocking riffs turn improvisation into a shared urban dance.', 144, 'C', 40.7128, -74.0060, '#b4abdb', 'https://commons.wikimedia.org/wiki/Special:FilePath/New_York_City_Skyline,_New_York,_photographed_by_Irving_Underhill,_1930_(25164176879).jpg?width=1600'],
+    ['jacksonville-1974', 'Jacksonville', 'USA', 1974, 'Southern rock', 'Southern rock braids blues, country and rock into a regional voice; rough guitars and open-road songs turn local identity into collective pride.', 98, 'C', 30.3322, -81.6557, '#d2a571', 'https://images.unsplash.com/photo-1553567559-dc9e78245b21?q=85&w=1600&auto=format&fit=crop'],
+    ['chicago-1958', 'Chicago', 'USA', 1958, 'Electric blues', 'Chicago electric blues carried Delta traditions north with Black migration, amplifying guitar and harmonica for urban clubs and making displacement audible as force.', 164, 'C', 41.8781, -87.6298, '#83b8d5', 'https://images.unsplash.com/photo-1495366819608-9e926b56f8ad?q=85&w=1600&auto=format&fit=crop'],
   ] as const).map(([id, name, country, year, genre, description, bpm, root, lat, lng, color, image]) => ({
     id, name, country, year, genre, description, bpm,
     scale: (root === 'E' ? ['E4','F#4','G#4','A4','B4','C#5','D#5'] : root === 'A' ? ['A3','B3','C#4','D4','E4','F#4','G#4'] : ['C4','D4','E4','F4','G4','A4','B4']),
@@ -494,10 +497,43 @@ const campaignMembership: Record<string, CampaignId[]> = {
   'jacksonville-1974': ['harmonic-songbook'], 'chicago-1958': ['harmonic-songbook'],
 }
 
-export const cities: CityData[] = rawCities.map(city => ({
+// Resolve every rhythm kit by ID so related eras can have distinct imagery.
+// Each kit resolves to its own large photo from the period or musical setting.
+const rhythmCityPhotos: Record<string, string> = {
+  'rio-1910': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_de_Janeiro_ca1910s_photo_from_USA_Library_of_Congress_19301u.jpg?width=1600',
+  'rio-1930': 'https://commons.wikimedia.org/wiki/Special:FilePath/Revolu%C3%A7%C3%A3o_de_1930%3B_populares_e_revolucion%C3%A1rios_na_avenida_Rio_Branco_%28002080RJ3602%29.jpg?width=1600',
+  'rio-1960': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_ipanema.jpg?width=1600',
+  'recife-1935': 'https://commons.wikimedia.org/wiki/Special:FilePath/Frevo_no_Carnaval_do_Recife.jpg?width=1600',
+  'recife-1950': 'https://commons.wikimedia.org/wiki/Special:FilePath/Statue_of_Luiz_Gonzaga_in_Recife_-_Brazil.jpg?width=1600',
+  'piracicaba-1940': 'https://www.miranteppp.com.br/wp-content/uploads/2024/04/Rio-Piracicaba-e-um-atrativo-turistico-cartao-postal-e-motivo-de-orgulho-para-a-cidade-scaled.jpg',
+  'memphis-1967': 'https://images.unsplash.com/photo-1543372742-e7d0b9947a2b?auto=format&fit=crop&w=1600&q=85',
+  'kingston-1973': 'https://commons.wikimedia.org/wiki/Special:FilePath/Kingston,_Jamaica.JPG?width=1600',
+  'leipzig-1723': 'https://images.unsplash.com/photo-1554207529-d031f1588081?auto=format&fit=crop&w=1600&q=85',
+  'oakland-1959': 'https://images.unsplash.com/photo-1761697222046-29a9d3d5d864?auto=format&fit=crop&w=1600&q=85',
+  'canterbury-1972': 'https://images.unsplash.com/photo-1503623190251-09e94b303ef2?auto=format&fit=crop&w=1600&q=85',
+  'cambridge-1973': 'https://a.cdn-hotels.com/gdcs/production122/d1368/1ecd1184-2b25-4fa6-877c-320dc8a0f1e5.jpg?h=1200&impolicy=fcrop&q=high&w=1600',
+  'istanbul-1970': 'https://images.unsplash.com/photo-1719938321625-fb8bcbfa2153?auto=format&fit=crop&w=1600&q=85',
+  'kalamata-1930': 'https://images.unsplash.com/photo-1679431850495-ad0e03988976?auto=format&fit=crop&w=1600&q=85',
+  'new-york-1962': 'https://commons.wikimedia.org/wiki/Special:FilePath/Village_Vanguard_at_night_1976.jpg?width=1600',
+  'london-1977': 'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?q=85&w=1600&auto=format&fit=crop',
+  'vienna-1825': 'https://www.beethoven.de/file/download/cGhzOGNrSm5IYzdHUi9zb3VyY2UvMDAwMDQ0NTJfMDAwMV9nYWwuanBnADAA?sig=3b49c61408997ef1b0bb9462a9cf65a9bf52ffb03d1b18d7e396b5f722e4f893cef0c4de890e08f2a93043c4523b52a2',
+  'santiago-del-estero-1960': 'https://www.tripin.travel/wp-content/uploads/2016/07/a0583abdeb.jpg',
+}
+const rhythmCities: Omit<CityData, 'coordinates' | 'campaigns'>[] = RHYTHM_STAGES.map(stage => ({
+  id: stage.id, name: stage.name, country: stage.country, year: stage.year, genre: stage.genre,
+  description: stage.description, bpm: stage.bpm, meter: stage.meter, color: stage.color,
+  geoCoordinates: { lat: stage.lat, lng: stage.lng }, scale: scaleForCreativeSession(stage),
+  image: rhythmCityPhotos[stage.id]
+    ?? rawCities.find(city => city.name === stage.name && city.country === stage.country)?.image
+    ?? `/cities/rhythm/${stage.id}.svg`,
+  samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
+  introPhrases: ['A new pulse draws a circle.', 'Listen for the returning accent.', 'A melody leaves room for an answer.', 'Every piece joins the conversation.', 'Find your place in the rhythm.'],
+}))
+
+export const cities: CityData[] = [...rawCities, ...rhythmCities].map(city => ({
   ...city,
-  campaigns: campaignMembership[city.id] ?? [],
-  coordinates: cityCoordinates[city.id] || { x: 50, y: 50 } // Fallback
+  campaigns: campaignMembership[city.id] ?? RHYTHM_STAGES.filter(stage => stage.id === city.id).map(stage => stage.campaign),
+  coordinates: cityCoordinates[city.id] || { x: (city.geoCoordinates.lng + 180) / 3.6, y: (90 - city.geoCoordinates.lat) / 1.8 } // Fallback
 }))
 
 export const FUTURE_CITIES = [

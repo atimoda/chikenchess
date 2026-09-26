@@ -186,8 +186,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 27)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 21)
+  assert.equal(cities.length, 45)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 33)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -217,8 +217,8 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[13,4,1,10])
-  assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['electronic-history','world-ballads'])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[12,6,3,14,6,4])
+  assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
 

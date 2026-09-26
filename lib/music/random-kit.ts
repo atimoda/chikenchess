@@ -31,6 +31,7 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
   }
   const kit = createCreativeSession()
   kit.cityId = city.id
+  kit.meter = city.meter ?? '4/4'
   kit.name = `${city.name} · Experimento ${variation}`.slice(0, 80)
   kit.bpm = Math.max(60, Math.min(175, city.bpm + pick([-20, -12, -6, 0, 6, 12, 20])))
   kit.volume = between(.65, .8)

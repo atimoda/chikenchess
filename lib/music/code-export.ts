@@ -1,7 +1,7 @@
 // Text export of the same voice specifications consumed by the pattern compiler.
 import { optimizeRoll, rollLaneNotation } from './roll-optimizer'
 import { performancePattern } from './performance'
-import { beatsPerBar } from './meter'
+import { beatsPerBar, beatUnit } from './meter'
 import { sampleRegistration } from './sample-banks'
 import { voiceSpecs } from './voice-spec'
 import type { Automation } from './automation'
@@ -15,7 +15,7 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
     '// Degrees follow the shared scale; each piece keeps its instrument.',
     ...(state.teamMixes ? [`// Post-mix Web Audio buses (gain; bass/mids/highs dB; LPF/HPF dial -1..1): ${JSON.stringify(state.teamMixes)}`] : []),
     ...(preview?.mode === 'manual' ? [`// ${preview.id}: manual note at ${preview.square}; its loop is suspended during the gesture.`] : []),
-    `// Meter ${state.meter ?? '4/4'}; BPM counts ${state.meter === '6/8' || state.meter === '12/8' ? 'dotted-quarter' : 'quarter'} pulses.`,
+    `// Meter ${state.meter ?? '4/4'}; BPM counts ${beatUnit(state.meter)} pulses.`,
     `setcps(${state.bpm} / 60 / ${beatsPerBar(state.meter)})`,
     ...samples.map(sample => `samples(${JSON.stringify(sample.map)})`),
   ].join('\n')

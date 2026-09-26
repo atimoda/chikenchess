@@ -11,6 +11,7 @@
 | `runtime.cases.cjs` | 16 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba, preparação de samples sem grafo antecipado e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |
+| `meter.cases.cjs` | 6 | Onze compassos, unidade do BPM, agrupamentos, persistência de quintos/sétimos, 18 kits novos, reset de fórmula e equivalência Strudel |
 | `editor.cases.cjs` | 10 | Duração, forma, progressões harmônicas, tétrades de jazz, edição/espelho de variações, loop por peça e slides por nota |
 | `globe.cases.cjs` | 4 | Voo, geometria, direção do gesto e compensação do popup |
 | `evaluation.cases.cjs` | 11 | UCI, orçamento, sinais/mate, ranking completo, cancelamento, cache com histórico, mudanças de dificuldade durante a busca e integração com Stockfish Lite real |

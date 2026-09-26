@@ -5,6 +5,8 @@ export const CAMPAIGNS = [
   { id: 'world-ballads', name: 'World ballads' },
   { id: 'classical', name: 'Classical music' },
   { id: 'harmonic-songbook', name: 'Harmonic songbook' },
+  { id: 'brazilian', name: 'Brazilian' },
+  { id: 'world-rhythms', name: 'World rhythms' },
 ] as const
 
 export type CampaignId = typeof CAMPAIGNS[number]['id']

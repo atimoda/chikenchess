@@ -1,41 +1,97 @@
-export const RELEASE_LABEL = 'v0.4.90'
+export const RELEASE_LABEL = 'v0.5.14'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
-  { version: '0.4.90', date: '26/09/2026', title: 'Rótulo LPF/HPF compacto no Mixer', groups: [
+  { version: '0.5.14', date: '26/09/2026', title: 'Menus da partida com cores da cidade', groups: [
+    { title: 'Board Params e Piece Params', items: [
+      'O tom selecionado nos controles da partida agora usa a cor da cidade, e a lista de subdivisão da grade ganhou opções escuras com destaque verde para a escolha atual.',
+      'O pin da variação fixada ficou 2 px maior e usa o verde da borda iluminada.',
+    ] },
+  ] },
+  { version: '0.5.13', date: '26/09/2026', title: 'Avisos do changelog corrigidos', groups: [
+    { title: 'Mapa, partida e Criativo', items: [
+      'O histórico de versões abre sem avisos causados por identificadores repetidos.',
+    ] },
+  ] },
+  { version: '0.5.12', date: '26/09/2026', title: 'Fotos próprias para cada época', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'As cidades com mais de um kit agora mostram imagens diferentes, escolhidas para cada época ou contexto musical; as fotos foram ampliadas para exibição mais nítida.',
+    ] },
+  ] },
+  { version: '0.5.11', date: '26/09/2026', title: 'Prévia percentual do BPM atualizada', groups: [
+    { title: 'Board Params', items: [
+      'O percentual de BPM no hover agora é recalculado imediatamente quando o valor do slider muda, sem precisar tirar o ponteiro.',
+    ] },
+  ] },
+  { version: '0.5.1', date: '26/09/2026', title: 'Fotografias nas novas cidades', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'As cidades adicionadas às campanhas rítmicas agora mostram fotografias de seus locais; épocas diferentes da mesma cidade compartilham a imagem correspondente.',
+    ] },
+  ] },
+  { version: '0.5.0', date: '26/09/2026', title: 'Brazilian, World rhythms e novos compassos', groups: [
+    { title: 'Campanhas e kits', items: [
+      'Brazilian estreia com samba, choro, frevo, baião, sertanejo de raiz e bossa nova. World rhythms reúne reggae, chacarera e estudos de danças grega e turca.',
+      '18 novas fases ampliam a coleção para 45 kits, incluindo jazz em três e cinco, rock em seis e sete, soul em doze, pastoral em nove e orquestra alla breve.',
+    ] },
+    { title: 'Compasso e edição', items: [
+      'O Criativo aceita 2/4, 9/8, 2/2, 5/4, 5/8, 7/4 e 7/8, além dos quatro compassos anteriores; o relógio informa a unidade do BPM e os agrupamentos ímpares.',
+      'Editor, duração das seções, kits salvos e exportação acompanham os novos compassos. Trocar a fórmula reinicia o relógio mesmo quando a quantidade de pulsos permanece igual.',
+    ] },
+  ] },
+  { version: '0.4.103', date: '26/09/2026', title: 'Knobs nos parâmetros do Criativo', groups: [
+    { title: 'Modo Criativo', items: [
+      'Os ajustes de afinação, envelope, filtros, efeitos e movimento agora usam knobs em uma grade mais compacta, com valores e ajuda ao lado de cada controle.',
+    ] },
+  ] },
+  { version: '0.4.1031', date: '26/09/2026', title: 'Slide global junto à afinação', groups: [
+    { title: 'Modo Criativo', items: [
+      'Slide de afinação e Tempo do slide agora ficam em Afinação e envelope, junto aos demais parâmetros principais da peça.',
+    ] },
+  ] },
+  { version: '0.4.1032', date: '26/09/2026', title: 'Foto correta de New Orleans', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'New Orleans agora usa uma fotografia noturna do French Quarter, em vez da foto do Rio de Janeiro.',
+    ] },
+  ] },
+  { version: '0.4.1033', date: '26/09/2026', title: 'Introdução da fase mais longa', groups: [
+    { title: 'Entrada na partida', items: [
+      'O cartão de cidade e estilo/ano permanece na tela por mais 1 segundo, e o desbotamento da imagem de fundo leva mais 2 segundos.',
+    ] },
+  ] },
+  { version: '0.4.1034', date: '26/09/2026', title: 'Rótulo LPF/HPF compacto no Mixer', groups: [
     { title: 'Partida', items: [
       'O knob de filtro por equipe agora aparece como “LPF/HPF”, sem espaços.',
     ] },
   ] },
-  { version: '0.4.89', date: '26/09/2026', title: 'Legenda do Mixer sem símbolos laterais', groups: [
+  { version: '0.4.1035', date: '26/09/2026', title: 'Legenda do Mixer sem símbolos laterais', groups: [
     { title: 'Partida', items: [
       'A legenda central das equipes mostra apenas “BRANCAS · PRETAS”.',
     ] },
   ] },
-  { version: '0.4.88', date: '26/09/2026', title: 'Legenda central das equipes no Mixer', groups: [
+  { version: '0.4.1036', date: '26/09/2026', title: 'Legenda central das equipes no Mixer', groups: [
     { title: 'Partida', items: [
       'Brancas e Pretas agora compartilham uma legenda central entre as duas linhas de knobs do Mixer.',
     ] },
   ] },
-  { version: '0.4.87', date: '26/09/2026', title: 'Ajustes visuais do Mixer e Board Params', groups: [
+  { version: '0.4.1037', date: '26/09/2026', title: 'Ajustes visuais do Mixer e Board Params', groups: [
     { title: 'Partida', items: [
       'Os seletores de Tom e Escala agora mostram borda apenas no hover ou foco, como o de Progressão.',
       'No Mixer, o nome da equipe de cima fica abaixo dos knobs e o da equipe de baixo fica acima.',
     ] },
   ] },
-  { version: '0.4.86', date: '26/09/2026', title: 'Filtro por equipe no Mixer', groups: [
+  { version: '0.4.104', date: '26/09/2026', title: 'Filtro por equipe no Mixer', groups: [
     { title: 'Partida', items: [
       'Cada equipe ganhou um knob LPF/HPF no Mixer, com o mesmo controle de passa-baixas e passa-altas do Piece Params.',
       'O novo filtro atua na mixagem da equipe depois dos efeitos e da equalização.',
     ] },
   ] },
-  { version: '0.4.85', date: '26/09/2026', title: 'Mixer alinhado ao tabuleiro', groups: [
+  { version: '0.4.1041', date: '26/09/2026', title: 'Mixer alinhado ao tabuleiro', groups: [
     { title: 'Partida', items: [
       'As equipes do Mixer seguem a ordem vertical do tabuleiro, com os nomes centralizados abaixo dos controles.',
       'Os controles de equalização aparecem na ordem Hi, Mid e Low.',
     ] },
   ] },
-  { version: '0.4.84', date: '26/09/2026', title: 'Prévia do BPM e ajustes visuais', groups: [
+  { version: '0.4.105', date: '26/09/2026', title: 'Prévia do BPM e ajustes visuais', groups: [
     { title: 'Partida', items: [
       'O slider de BPM mostra a variação percentual prevista acima do ponteiro.',
       'O texto do código no fundo ficou com 75% de opacidade, e a lista de progressões só mostra borda no hover.',
@@ -449,7 +505,7 @@ export const CHANGELOG = [
       'O duplo clique apaga notas do piano roll, e Alt ao arrastar duplica a nota com duração e parâmetros de articulação preservados.',
     ] },
   ] },
-  { version: '0.4.12', date: '22/09/2026', title: 'Painéis mais estáveis e legíveis', groups: [
+  { version: '0.4.102', date: '22/09/2026', title: 'Painéis mais estáveis e legíveis', groups: [
     { title: 'Tabuleiro e parâmetros', items: [
       'As peças pretas recebem contorno branco para preservar detalhes internos e silhuetas sobre todas as casas.',
       'O editor compacto perde a borda externa e ganha espaço entre o piano roll e os sliders de articulação.',
@@ -461,14 +517,14 @@ export const CHANGELOG = [
       'Os seletores harmônicos da partida e do Criativo mostram primeiro a progressão e depois seu nome, como I–IV–V–I - Cadência.',
     ] },
   ] },
-  { version: '0.4.11', date: '22/09/2026', title: 'Leitura visual das variações', groups: [
+  { version: '0.4.101', date: '22/09/2026', title: 'Leitura visual das variações', groups: [
     { title: 'Editor e tabuleiro', items: [
       'O comprimento horizontal da rampa agora acompanha o tempo do slide, sem repetir os valores numa legenda sob o gráfico.',
       'A variação fixada recebe um pin acima da aba, e o painel ampliado mostra editor e parâmetros da execução sem rolagem vertical interna.',
       'Desligar o loop remove também a borda e o sombreado de peça ativa no tabuleiro, mantendo a ativação musical guardada e a audição manual disponível.',
     ] },
   ] },
-  { version: '0.4.10', date: '22/09/2026', title: 'Editor de variações compacto', groups: [
+  { version: '0.4.100', date: '22/09/2026', title: 'Editor de variações compacto', groups: [
     { title: 'Espelho musical', items: [
       'Inverter passa a espelhar as notas no tempo dentro da duração inteira da variação, mantendo alturas e durações e trocando a direção de cada slide.',
       'Padrões em mini-notação também espelham sequências, pausas e grupos temporais sem desmontar acordes simultâneos.',

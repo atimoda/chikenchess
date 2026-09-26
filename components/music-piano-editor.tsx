@@ -1,6 +1,6 @@
 'use client'
 import {performancePosition} from '@/lib/music/performance'
-import { beatsPerBar } from '@/lib/music/meter'
+import { beatsPerBar, subdivisionsPerBeat, beatUnit } from '@/lib/music/meter'
 import type { Meter } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from 'react'
@@ -19,16 +19,23 @@ export const MUSIC_GRID_DIVISIONS = [
 ] as const
 
 export function gridDivisionLabel(value:number,meter:Meter='4/4') {
- if(meter==='6/8'||meter==='12/8'){
+ if(subdivisionsPerBeat(meter)===3){
   if(value===3)return '3 partes · colcheias'
   if(value===6)return '6 partes · semicolcheias'
   if(value===2)return '2 partes · divisão binária'
+  return value===1?'1 parte · pulso':`${value} partes · divisão do pulso`
  }
+ if(beatUnit(meter)==='half' && value===2)return '2 partes · semínimas'
+ if(beatUnit(meter)==='half' && value===4)return '4 partes · colcheias'
+ if(beatUnit(meter)==='half' && value===8)return '8 partes · semicolcheias'
+ if(beatUnit(meter)==='eighth' && value===8)return '8 partes · semifusas'
+ if(beatUnit(meter)==='eighth' && value===2)return '2 partes · semicolcheias'
+ if(beatUnit(meter)==='eighth' && value===4)return '4 partes · fusas'
  return MUSIC_GRID_DIVISIONS.find(option=>option.value===value)?.label??String(value)
 }
 
 export function defaultGridDivision(meter:Meter='4/4') {
- return meter==='3/4'?2:meter==='6/8'||meter==='12/8'?3:4
+ return subdivisionsPerBeat(meter)===3?3:meter==='3/4'||beatUnit(meter)==='eighth'?2:4
 }
 
 function slideGraphEnd(seconds:number, semitones:number) {
@@ -65,7 +72,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
  const point=(e:React.PointerEvent<SVGSVGElement>,bars:number,low:number,high:number)=>{const box=e.currentTarget.getBoundingClientRect();return {start:Math.max(0,Math.min(bars-1/(pulses*division),Math.floor((e.clientX-box.left)/box.width*bars*pulses*division)/(pulses*division))),degree:Math.max(low,Math.min(high,high-Math.floor((e.clientY-box.top)/box.height*(high-low+1))))}}
  const cancel=()=>{drag.current=null;setDraft(null)}
  return <section aria-label="Editor de variações" data-compact={compact||undefined}>
-  {!compact&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}><label><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>Subdivisão do tempo<InfoTip label="Como editar as notas">A subdivisão define os pontos rítmicos dentro de cada pulso: 3 partes mostram as colcheias em 6/8 e 12/8. Clique numa área vazia e arraste para desenhar. Arraste uma nota para movê-la; segure Alt ao arrastar para duplicá-la com seus parâmetros. Arraste sua borda direita para alongar ou encurtar. Duplo clique numa nota para apagar. Também é possível selecionar e usar Excluir nota, Delete ou Backspace.</InfoTip></span><select value={division} onChange={e=>setDivision(Number(e.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,snapshot.meter)}</option>)}</select></label></div>}
+  {!compact&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}><label><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>Subdivisão do tempo<InfoTip label="Como editar as notas">A subdivisão define os pontos rítmicos dentro de cada pulso: 3 partes mostram as colcheias em 6/8, 9/8 e 12/8. Clique numa área vazia e arraste para desenhar. Arraste uma nota para movê-la; segure Alt ao arrastar para duplicá-la com seus parâmetros. Arraste sua borda direita para alongar ou encurtar. Duplo clique numa nota para apagar. Também é possível selecionar e usar Excluir nota, Delete ou Backspace.</InfoTip></span><select value={division} onChange={e=>setDivision(Number(e.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,snapshot.meter)}</option>)}</select></label></div>}
   
   {snapshot.sectionOverrides?.[id]!==undefined&&<p>Regra do jogo força a variação {String.fromCharCode(65+snapshot.sectionOverrides[id])}; ela tem prioridade sobre o título selecionado.</p>}
   {error&&<p role="alert">{error}</p>}

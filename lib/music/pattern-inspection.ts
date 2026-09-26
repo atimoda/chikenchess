@@ -79,5 +79,5 @@ export async function preparePianoRoll(state:MusicSnapshot,id:string,index:numbe
   const raw={...voice,performance:undefined,phrases,notes:phrases[0],pianoRolls:undefined,unpitched:false,mask:undefined,sectionPattern:String(index)}
   const haps=compileVoice(api,raw).queryArc(0,bars)
   if(haps.length>128)throw new Error('Mais de 128 notas nesta janela. Reduza a duração antes de converter.')
-  return {bars,notes:haps.map((h:any)=>({start:Math.max(0,Number(h.whole.begin)),duration:Math.min(bars,Number(h.whole.end))-Math.max(0,Number(h.whole.begin)),degree:Number(h.value.note),velocity:Math.max(0,Math.min(1,Number(h.value.velocity??1)))})).filter((n:{duration:number})=>n.duration>=1/48)}
+  return {bars,notes:haps.map((h:any)=>({start:Math.max(0,Number(h.whole.begin)),duration:Math.min(bars,Number(h.whole.end))-Math.max(0,Number(h.whole.begin)),degree:Number(h.value.note),velocity:Math.max(0,Math.min(1,Number(h.value.velocity??1)))})).filter((n:{duration:number})=>n.duration>=1/64)}
 }

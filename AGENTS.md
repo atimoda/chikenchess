@@ -7,7 +7,7 @@
 
 # Versão e changelog
 
-- Toda alteração de funcionalidade, correção funcional ou nova funcionalidade deve, na mesma entrega, ganhar uma entrada clara no topo de `lib/changelog.ts` e incrementar ao menos a versão patch atual (por exemplo, `0.3.1` → `0.3.2`). Não reutilize uma versão já publicada para comportamento novo.
+- Toda alteração de funcionalidade, correção funcional ou ajuste visual deve ganhar, na mesma entrega, uma entrada clara no topo de `lib/changelog.ts` e uma versão inédita. Escolha o nível pelo alcance: ajuste simples, correção pequena ou refinamento visual incrementa o sub-subnível (por exemplo, `v0.5.2` → `v0.5.22`); funcionalidade nova simples incrementa o subnível e zera o sub-subnível (por exemplo, `v0.5.1` → `v0.5.2`); funcionalidade grande incrementa o nível principal e zera os seguintes (por exemplo, `v0.5` → `v0.6`). Em geral, prefira o sub-subnível, que será o caso mais frequente. Reclassifique novas mudanças conforme seu alcance; não eleve ajustes simples a funcionalidade nem reutilize número publicado.
 - Sincronize a versão em `package.json`, `package-lock.json` (raiz e pacote principal), `RELEASE_LABEL`, primeira entrada de `CHANGELOG` e referências de “versão atual” na documentação. O número exibido no mapa, na partida e no Criativo vem de `RELEASE_LABEL`.
 - O changelog deve descrever o efeito perceptível para quem testa, sem detalhes internos desnecessários. Refatorações, testes ou documentação sem mudança funcional não exigem versão nova por si só.
 - Antes de concluir, rode o teste de consistência da versão junto da suíte pertinente e confirme que o número novo aparece na interface.
