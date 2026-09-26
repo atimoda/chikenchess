@@ -1,23 +1,40 @@
-export interface TeamMix { gain: number; bass: number; mids: number; highs: number }
+export interface TeamMix { gain: number; bass: number; mids: number; highs: number; filter: number }
 export type TeamMixes = Record<'w' | 'b', TeamMix>
-export const createTeamMixes = (): TeamMixes => ({ w: { gain: 1, bass: 0, mids: 0, highs: 0 }, b: { gain: 1, bass: 0, mids: 0, highs: 0 } })
+export const createTeamMixes = (): TeamMixes => ({ w: { gain: 1, bass: 0, mids: 0, highs: 0, filter: 0 }, b: { gain: 1, bass: 0, mids: 0, highs: 0, filter: 0 } })
+
+const FILTER_RANGE = Math.log(1000)
+export const filterDialValue = (lpf = 20000, hpf = 0) => {
+  const low = lpf < 20000 ? -Math.log(20000 / Math.max(20, lpf)) / FILTER_RANGE : 0
+  const high = hpf > 0 ? .01 + .99 * Math.log(Math.max(20, hpf) / 20) / FILTER_RANGE : 0
+  return Math.abs(low) >= high ? low : high
+}
+export const filterDialHertz = (value: number) => value < 0
+  ? Math.round(20000 / Math.pow(1000, -value))
+  : Math.round(20 * Math.pow(1000, Math.max(0, value - .01) / .99))
+export const filterDialLabel = (value: number) => {
+  if (value === 0) return 'OFF'
+  const hz = filterDialHertz(value)
+  return `${value < 0 ? 'LPF' : 'HPF'} ${hz >= 1000 ? `${(hz / 1000).toFixed(1)}k` : `${hz}Hz`}`
+}
+
 export function resolveDeckClock(baseBpm: number, originalBpm: number, finePitch: number, locked: boolean) {
   const tuning = locked ? 1 : 1 + Math.max(-8, Math.min(8, finePitch)) / 100
   return { tuning, bpm: locked ? originalBpm : baseBpm * tuning }
 }
 
-/** Two post-effects buses: EQ the actual ensemble, including its effect tails. */
+/** Two post-effects buses: team gain, EQ and filter include the ensemble's effect tails. */
 export class TeamMixer {
-  readonly sides: Record<'w' | 'b', { bass: BiquadFilterNode; mids: BiquadFilterNode; highs: BiquadFilterNode; output: GainNode }>
+  readonly sides: Record<'w' | 'b', { bass: BiquadFilterNode; mids: BiquadFilterNode; highs: BiquadFilterNode; filter: BiquadFilterNode; output: GainNode }>
   constructor(private context: AudioContext, analyser?: AnalyserNode) {
     const side = () => {
-      const bass = context.createBiquadFilter(), mids = context.createBiquadFilter(), highs = context.createBiquadFilter(), output = context.createGain()
+      const bass = context.createBiquadFilter(), mids = context.createBiquadFilter(), highs = context.createBiquadFilter(), filter = context.createBiquadFilter(), output = context.createGain()
       bass.type = 'lowshelf'; bass.frequency.value = 200
       mids.type = 'peaking'; mids.frequency.value = 1000; mids.Q.value = .7
       highs.type = 'highshelf'; highs.frequency.value = 4000
-      bass.connect(mids); mids.connect(highs); highs.connect(output); output.connect(context.destination)
+      filter.type = 'allpass'
+      bass.connect(mids); mids.connect(highs); highs.connect(filter); filter.connect(output); output.connect(context.destination)
       if (analyser) output.connect(analyser)
-      return { bass, mids, highs, output }
+      return { bass, mids, highs, filter, output }
     }
     this.sides = { w: side(), b: side() }
   }
@@ -30,6 +47,9 @@ export class TeamMixer {
       const nodes = this.sides[color], values = mixes[color]
       nodes.output.gain.setTargetAtTime(Math.max(0, Math.min(1.5, values.gain)), this.context.currentTime, .02)
       for (const band of ['bass', 'mids', 'highs'] as const) nodes[band].gain.setTargetAtTime(Math.max(-12, Math.min(12, values[band])), this.context.currentTime, .02)
+      const dial = Math.max(-1, Math.min(1, values.filter ?? 0))
+      nodes.filter.type = Math.abs(dial) < .01 ? 'allpass' : dial < 0 ? 'lowpass' : 'highpass'
+      if (Math.abs(dial) >= .01) nodes.filter.frequency.setTargetAtTime(filterDialHertz(dial), this.context.currentTime, .02)
     }
   }
   dispose() { for (const side of Object.values(this.sides)) for (const node of Object.values(side)) node.disconnect() }

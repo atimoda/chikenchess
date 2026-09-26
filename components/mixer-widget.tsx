@@ -1,15 +1,17 @@
 "use client"
 
 import type React from "react"
-import { forwardRef, useRef } from "react"
+import { Fragment, forwardRef, useRef } from "react"
 import { Power } from "lucide-react"
 import { Draggable } from "./ui/draggable"
 import { Knob } from "./knob"
 import { cn } from "@/lib/utils"
 import type { TeamMix, TeamMixes } from "@/lib/music/team-mixer"
+import { filterDialLabel } from "@/lib/music/team-mixer"
 
 interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   teamMixes: TeamMixes
+  topColor: 'w' | 'b'
   onTeamMixChange: (color: 'w' | 'b', patch: Partial<TeamMix>) => void
   cityColor: string
   position?: { x: number; y: number }
@@ -21,7 +23,7 @@ interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "o
 }
 
 export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
-  teamMixes, onTeamMixChange, cityColor, position, onPositionChange,
+  teamMixes, topColor, onTeamMixChange, cityColor, position, onPositionChange,
   handleRef, toggleRef, isOn, onToggle, ...props
 }, ref) => {
   const localHandleRef = useRef<HTMLDivElement>(null)
@@ -52,13 +54,18 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
       style={{ "--city-neon": cityColor } as React.CSSProperties}>
       <div className="h-4 text-center text-xs font-mono font-bold tracking-wider text-white">MIXER</div>
       <fieldset disabled={!isOn} aria-label="Mixer por equipe" className="mt-3 grid gap-3">
-        {(['w', 'b'] as const).map(color => <div key={color} className="grid gap-1">
-          <div className="text-[10px] font-mono text-white/70">{color === 'w' ? 'BRANCAS' : 'PRETAS'}</div>
-          <div className="grid grid-cols-4 gap-1">
-            <Knob label="Gain" value={teamMixes[color].gain} min={0} max={1.5} onChange={gain => onTeamMixChange(color, { gain })} neon={isOn} />
-            {(['bass', 'mids', 'highs'] as const).map((band, i) => <Knob key={band} label={['Low', 'Mid', 'Hi'][i]} value={teamMixes[color][band]} min={-12} max={12} onChange={value => onTeamMixChange(color, { [band]: value })} neon={isOn} />)}
+        {([topColor, topColor === 'w' ? 'b' : 'w'] as const).map((color, index) => <Fragment key={color}>
+          {index === 1 && <div className="flex items-center justify-center gap-2 py-0.5 text-[10px] font-mono font-bold tracking-wide text-white/70">
+            <span>BRANCAS</span><span>·</span><span>PRETAS</span>
+          </div>}
+          <div className="grid gap-1">
+            <div className="grid grid-cols-5 gap-1">
+              <Knob label="Gain" value={teamMixes[color].gain} min={0} max={1.5} onChange={gain => onTeamMixChange(color, { gain })} neon={isOn} />
+              {(['highs', 'mids', 'bass'] as const).map((band, i) => <Knob key={band} label={['Hi', 'Mid', 'Low'][i]} value={teamMixes[color][band]} min={-12} max={12} onChange={value => onTeamMixChange(color, { [band]: value })} neon={isOn} />)}
+              <Knob label="LPF/HPF" value={teamMixes[color].filter} min={-1} max={1} step={.01} formatValue={filterDialLabel} onChange={filter => onTeamMixChange(color, { filter })} neon={isOn} />
+            </div>
           </div>
-        </div>)}
+        </Fragment>)}
       </fieldset>
     </div>
     {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}

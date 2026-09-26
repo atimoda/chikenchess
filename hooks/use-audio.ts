@@ -97,8 +97,8 @@ export function useAudio(
     engineRef.current?.playIllegalMoveGlitch(pieceType, square)
   }, [])
 
-  const playDrum = useCallback((sample: string, gain?: number) => {
-    engineRef.current?.playDrum(sample, gain)
+  const playDrum = useCallback((sample: string, gain?: number, pitch?: number) => {
+    engineRef.current?.playDrum(sample, gain, pitch)
   }, [])
 
   return { engineRef, togglePlayback, isInitialized, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum }

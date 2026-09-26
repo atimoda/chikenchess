@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { ArrowLeft, Music2, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
+import { ArrowLeft, Code2, Music2, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, unlockNextCity } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
@@ -54,6 +54,8 @@ function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis
 }
 
 export function ChessGame({ city, onBack }: ChessGameProps) {
+  // The board starts with White at the bottom; keep mixer rows tied to that orientation.
+  const boardOrientation: "white" | "black" = "white"
   const [game, setGame] = useState(new Chess())
   const [currentPattern, setCurrentPattern] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
@@ -128,10 +130,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [showIntroButton, setShowIntroButton] = useState(false)
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
   const introStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const introSeatbeltTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introStartRequestedRef = useRef(false)
+  const introContinueRequestedRef = useRef(false)
 
   useEffect(() => () => {
     if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
+    if (introSeatbeltTimerRef.current) clearTimeout(introSeatbeltTimerRef.current)
   }, [])
 
   const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([])
@@ -278,8 +283,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }
   }, [introPhase, city.introPhrases])
 
-  // Seatbelt Sound removed from here (moved below useAudio)
-  
   const skipIntro = () => {
       if (introPhase === 0) {
           setCurrentIntroLine(city.introPhrases?.length || 5)
@@ -288,13 +291,18 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }
 
   const handleContinue = () => {
-      // Click sound
-      // const clickAudio = new Audio('/sounds/click.mp3') // Placeholder
-      playSquareSample('e4') // Reusing for now as requested for click
+      if (introContinueRequestedRef.current) return
+      introContinueRequestedRef.current = true
+      playSquareSample('a1')
+      void engineRef.current?.resume()
 
       // Show the city title for four seconds, with an optional click to advance.
       setIntroPhase(1)
       setShowIntroBoxes(true)
+      introSeatbeltTimerRef.current = setTimeout(() => {
+          introSeatbeltTimerRef.current = null
+          engineRef.current?.playSeatbelt()
+      }, 1000)
       introStartRequestedRef.current = false
       if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
       introStartTimerRef.current = setTimeout(() => handleStartGame(), 4000)
@@ -305,6 +313,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       introStartRequestedRef.current = true
       if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
       introStartTimerRef.current = null
+      if (introSeatbeltTimerRef.current) clearTimeout(introSeatbeltTimerRef.current)
+      introSeatbeltTimerRef.current = null
       // Fade out the city title, then darken the background.
       setShowIntroBoxes(false)
       setIsBackgroundDark(true)
@@ -365,10 +375,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }, [])
 
     const [knobsOn, setKnobsOn] = useState(false)
+    const knobsManuallyClosedRef = useRef(false)
   const [globalPanelOn, setGlobalPanelOn] = useState(false)
   const [mixerOn, setMixerOn] = useState(false)
   const [spectrogramOn, setSpectrogramOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
+  const [codeBackdropOn, setCodeBackdropOn] = useState(false)
   
   const spectrogramHandleRef = useRef<HTMLDivElement | null>(null)
   const spectrogramToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -399,7 +411,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     targetSide?: 'left' | 'right' | 'top' | 'bottom'
   }[]>([])
 
-  const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, liveCodeOn && (!isMobile || mobileControlsOpen), musicEngineOn)
+  const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || (liveCodeOn && (!isMobile || mobileControlsOpen)), musicEngineOn)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
   const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying && tabVisible, activeSquares, squareEffects, !music.enabled)
@@ -412,13 +424,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     if (kitBpm == null) return
     setGlobalEffects(current => current.bpm === kitBpm && current.volume === kitVolume ? current : { ...current, bpm: kitBpm, volume: kitVolume ?? current.volume })
   }, [city.id, music.kitBpm, music.kitVolume])
-
-  // Seatbelt Sound
-  useEffect(() => {
-      if (showIntroButton && engineRef.current) {
-          engineRef.current.playSeatbelt()
-      }
-  }, [showIntroButton, engineRef])
 
   // Global Effects Handlers
   const handleGlobalEffectChange = useCallback((effect: keyof GlobalEffects, value: number) => {
@@ -535,6 +540,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
     if (!moveAnalysis?.complete || moveAnalysis.fen !== gameRef.current.fen()) return
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
+    void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
     setAnalysisArrows(moveAnalysis[kind].map(move => ({
       from: move.uci.slice(0, 2) as Square,
       to: move.uci.slice(2, 4) as Square,
@@ -546,6 +552,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       analysisArrowTimeoutRef.current = null
     }, 3000)
   }, [moveAnalysis])
+
+  const playControlHoverKick = () => playDrum('bd', 0.52 + Math.random() * 0.16, 0.92 + Math.random() * 0.16)
+  const playClosedAnalysisHat = () => playDrum('ch', 0.648 + Math.random() * 0.048, 0.96 + Math.random() * 0.08)
 
   useEffect(() => {
     if (introPhase === 3) requestEvaluation(gameRef.current)
@@ -733,6 +742,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setSynthSelectedSquare(null)
     setSquareEffects({})
     music.reset()
+    knobsManuallyClosedRef.current = false
     setLastEvalScore(null)
     setLastEvalMate(null)
     setIsEvaluating(false)
@@ -1248,7 +1258,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onPositionChange={setKnobsPosition}
                 handleRef={knobsHandleRef}
                 isOn={knobsOn}
-                onToggle={() => setKnobsOn(!knobsOn)}
+                onToggle={() => {
+                  if (knobsOn) knobsManuallyClosedRef.current = true
+                  setKnobsOn(!knobsOn)
+                }}
                 onClick={(e) => { e.stopPropagation(); handleWidgetHeaderClick('knobs') }}
                 onMouseDown={(e) => e.stopPropagation()}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('knobs') + 10 }}
@@ -1276,6 +1289,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
             <MixerWidget
                 teamMixes={music.teamMixes}
+                topColor={boardOrientation === "white" ? "b" : "w"}
                 onTeamMixChange={music.updateTeamMix}
                 ref={mixerRef}
                 handleRef={mixerHandleRef}
@@ -1382,6 +1396,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         }}
       />
 
+      {codeBackdropOn && introPhase === 3 && (
+        <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-75" aria-hidden="true">
+          <pre className="h-full w-full overflow-hidden whitespace-pre-wrap break-all px-6 pb-6 pt-14 font-mono text-[10px] leading-4 text-[#78ff93] [text-shadow:0_0_6px_rgba(57,255,20,0.55)]">
+            {music.enabled ? music.code : currentPattern}
+          </pre>
+        </div>
+      )}
+
       {/* Intro Overlay */}
       {introPhase < 3 && (
           <div className={cn(
@@ -1430,12 +1452,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                                       e.stopPropagation()
                                       handleContinue()
                                   }}
-                              onMouseEnter={() => {
-                                  // Hover sound
-                                  // const audio = new Audio('/sounds/kick.mp3') // Assuming kick is bass/bumbo
-                                  // Or reuse playSquareSample('a1') for bassy sound if available
-                                  playSquareSample('a1') 
-                              }}
+                              onMouseEnter={() => playSquareSample('e4')}
                               style={{
                                   "--city-neon": city.color,
                                   color: city.color
@@ -1548,6 +1565,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           {/* Audio toggle */}
           <div className="flex gap-3">
             {isMobile && <Button variant="outline" size="icon" aria-label="Parâmetros musicais" onClick={() => { setKnobsOn(true); setGlobalPanelOn(true); setLiveCodeOn(true); setMobileControlsOpen(true) }}><Settings2 className="w-4 h-4" /></Button>}
+            <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCodeBackdropOn(current => !current)}
+                aria-label={codeBackdropOn ? "Ocultar código Strudel no fundo" : "Exibir código Strudel no fundo"}
+                aria-pressed={codeBackdropOn}
+                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                style={{ "--city-neon": city.color } as React.CSSProperties}
+            >
+                <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
+            </Button>
             <Button 
                 variant="outline" 
                 size="icon" 
@@ -1572,7 +1600,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
       </header>
 
-      <div className="relative w-full h-full flex flex-col lg:block justify-start pt-4 lg:pt-0 pointer-events-none">
+      <div className="relative z-10 w-full h-full flex flex-col lg:block justify-start pt-4 lg:pt-0 pointer-events-none">
         
         {/* Footer - Fixed Bottom */}
         <div className={cn(
@@ -1684,6 +1712,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               >
                   <ChessgroundBoard 
                   game={game} 
+                  orientation={boardOrientation}
                   onMove={handlePlayerMove} 
                   cityColor={city.color} 
                   isThinking={isThinking} 
@@ -1701,6 +1730,32 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                       playSquareSample(square, piece.type, piece.color)
                     } else {
                       playSquareSample(square)
+                    }
+                  }}
+                  onPieceDoubleTap={(square) => {
+                    if (introPhase !== 3 || game.isGameOver()) return
+                    const piece = game.get(square)
+                    if (piece?.color !== 'w') return
+                    let turnedOn = false
+                    if (music.enabled) {
+                      turnedOn = music.togglePiece(square)
+                    } else {
+                      turnedOn = !activeSquares.has(square)
+                      setActiveSquares(current => {
+                        const next = new Set(current)
+                        if (turnedOn) next.add(square)
+                        else next.delete(square)
+                        return next
+                      })
+                    }
+                    if (turnedOn && !isPlaying && (!music.enabled || music.engineActive)) {
+                      setIsPlaying(true)
+                      void togglePlayback()
+                    }
+                    if (!knobsOn && !knobsManuallyClosedRef.current) {
+                      setKnobsOn(true)
+                      setActiveWidgetOrder(current => [...current.filter(id => id !== 'knobs'), 'knobs'])
+                      if (isMobile) setMobileControlsOpen(true)
                     }
                   }}
                   onDragOverSquare={(from, to) => {
@@ -1722,17 +1777,37 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 />
               </div>
 
+              <div className={cn(
+                  "mb-1 text-center text-xs font-mono transition-opacity duration-1000 pointer-events-none",
+                  introPhase < 3 ? "opacity-0" : "opacity-100",
+                  (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse"
+                )}
+                style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
+              >{gameStatus}</div>
+
               {/* Time Control Buttons - Moved Below Board */}
               <div className={cn(
-                  "flex w-full items-center mb-2 sm:mb-4 gap-2 justify-center relative z-50 transition-opacity duration-1000 pointer-events-none",
+                  "grid w-[90vw] max-w-[512px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center mb-2 sm:mb-4 gap-1 relative z-50 transition-opacity duration-1000 pointer-events-none",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
+                <Button
+                  variant="ghost"
+                  size="default"
+                  disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
+                  onClick={() => showAnalysisArrows("best")}
+                  onMouseEnter={playClosedAnalysisHat}
+                  onPointerLeave={playClosedAnalysisHat}
+                  className="w-full max-w-28 h-12 sm:h-16 justify-self-start rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+                  style={{ "--city-neon": city.color, backgroundColor: "var(--city-neon)20" } as React.CSSProperties}
+                >
+                  Best moves
+                </Button>
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Button
                     variant="ghost"
                     size="default"
                     onClick={undoMove}
-                    onMouseEnter={() => playDrum("bd")}
+                    onMouseEnter={playControlHoverKick}
                     onMouseDown={() => playDrum("oh", 1.5)}
                     disabled={moveHistory.length === 0}
                     className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
@@ -1747,7 +1822,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     variant="ghost"
                     size="default"
                     onClick={handleTogglePlay}
-                    onMouseEnter={() => playDrum("bd")}
+                    onMouseEnter={playControlHoverKick}
                     onMouseDown={() => playDrum("sd")}
                     onMouseUp={() => playDrum("hh")}
                     className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
@@ -1762,7 +1837,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     variant="ghost"
                     size="default"
                     onClick={redoMove}
-                    onMouseEnter={() => playDrum("bd")}
+                    onMouseEnter={playControlHoverKick}
                     onMouseDown={() => playDrum("hh", 1.5)}
                     disabled={redoStack.length === 0}
                     className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
@@ -1774,15 +1849,19 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     <Redo2 className="w-7 h-7 sm:w-10 sm:h-10" />
                   </Button>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="default"
+                  disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
+                  onClick={() => showAnalysisArrows("worst")}
+                  onMouseEnter={() => playDrum('oh', 0.696)}
+                  onPointerLeave={playClosedAnalysisHat}
+                  className="w-full max-w-28 h-12 sm:h-16 justify-self-end rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+                  style={{ "--city-neon": city.color, backgroundColor: "var(--city-neon)20" } as React.CSSProperties}
+                >
+                  Worst moves
+                </Button>
               </div>
-
-              <div className={cn(
-                  "mb-2 text-center text-xs font-mono transition-opacity duration-1000 pointer-events-none",
-                  introPhase < 3 ? "opacity-0" : "opacity-100",
-                  (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse"
-                )}
-                style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
-              >{gameStatus}</div>
 
               {/* Moves Ticker - Moved ABOVE Eval */}
               <div 
@@ -1821,25 +1900,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                       <Loader2 className="w-2 h-2 text-white animate-spin" />
                     </div>
                   )}
-                </div>
-                <div className="mt-1.5 flex items-center justify-center gap-1 text-xs font-mono text-white/55">
-                  <button
-                    type="button"
-                    disabled={!moveAnalysis?.complete || !!evaluationError}
-                    onClick={() => showAnalysisArrows("best")}
-                    className="pointer-events-auto text-white/55 underline underline-offset-2 transition-colors hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    melhores jogadas
-                  </button>
-                  <span>/</span>
-                  <button
-                    type="button"
-                    disabled={!moveAnalysis?.complete || !!evaluationError}
-                    onClick={() => showAnalysisArrows("worst")}
-                    className="pointer-events-auto text-white/55 underline underline-offset-2 transition-colors hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    piores jogadas
-                  </button>
                 </div>
               </div>
             </div>

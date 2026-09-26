@@ -1,7 +1,169 @@
-export const RELEASE_LABEL = 'v0.4.63'
+export const RELEASE_LABEL = 'v0.4.90'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  { version: '0.4.90', date: '26/09/2026', title: 'Rótulo LPF/HPF compacto no Mixer', groups: [
+    { title: 'Partida', items: [
+      'O knob de filtro por equipe agora aparece como “LPF/HPF”, sem espaços.',
+    ] },
+  ] },
+  { version: '0.4.89', date: '26/09/2026', title: 'Legenda do Mixer sem símbolos laterais', groups: [
+    { title: 'Partida', items: [
+      'A legenda central das equipes mostra apenas “BRANCAS · PRETAS”.',
+    ] },
+  ] },
+  { version: '0.4.88', date: '26/09/2026', title: 'Legenda central das equipes no Mixer', groups: [
+    { title: 'Partida', items: [
+      'Brancas e Pretas agora compartilham uma legenda central entre as duas linhas de knobs do Mixer.',
+    ] },
+  ] },
+  { version: '0.4.87', date: '26/09/2026', title: 'Ajustes visuais do Mixer e Board Params', groups: [
+    { title: 'Partida', items: [
+      'Os seletores de Tom e Escala agora mostram borda apenas no hover ou foco, como o de Progressão.',
+      'No Mixer, o nome da equipe de cima fica abaixo dos knobs e o da equipe de baixo fica acima.',
+    ] },
+  ] },
+  { version: '0.4.86', date: '26/09/2026', title: 'Filtro por equipe no Mixer', groups: [
+    { title: 'Partida', items: [
+      'Cada equipe ganhou um knob LPF/HPF no Mixer, com o mesmo controle de passa-baixas e passa-altas do Piece Params.',
+      'O novo filtro atua na mixagem da equipe depois dos efeitos e da equalização.',
+    ] },
+  ] },
+  { version: '0.4.85', date: '26/09/2026', title: 'Mixer alinhado ao tabuleiro', groups: [
+    { title: 'Partida', items: [
+      'As equipes do Mixer seguem a ordem vertical do tabuleiro, com os nomes centralizados abaixo dos controles.',
+      'Os controles de equalização aparecem na ordem Hi, Mid e Low.',
+    ] },
+  ] },
+  { version: '0.4.84', date: '26/09/2026', title: 'Prévia do BPM e ajustes visuais', groups: [
+    { title: 'Partida', items: [
+      'O slider de BPM mostra a variação percentual prevista acima do ponteiro.',
+      'O texto do código no fundo ficou com 75% de opacidade, e a lista de progressões só mostra borda no hover.',
+      'Os rótulos e áreas livres dos knobs em Piece Params podem ser usados para arrastar o painel.',
+    ] },
+  ] },
+  { version: '0.4.83', date: '26/09/2026', title: 'Volume dos chimbais e parâmetros da peça', groups: [
+    { title: 'Partida', items: [
+      'Os hovers e saídas de Best moves e Worst moves ficaram cerca de 20% mais altos.',
+      'Os knobs de parâmetros agora aparecem acima do painel de variações em Piece Params.',
+    ] },
+  ] },
+  { version: '0.4.82', date: '26/09/2026', title: 'Dica de cópia e retorno dos botões', groups: [
+    { title: 'Partida', items: [
+      'A legenda de cópia fica mais próxima do ícone e muda para “copied!” após copiar o código.',
+      'Sair de Best moves ou Worst moves com mouse ou toque repete o chimbal fechado com leve variação aleatória.',
+    ] },
+  ] },
+  { version: '0.4.81', date: '26/09/2026', title: 'Resposta sonora ao sair de Worst moves', groups: [
+    { title: 'Partida', items: [
+      'Ao sair de Worst moves com mouse ou toque, o botão toca o mesmo chimbal fechado usado no hover de Best moves.',
+    ] },
+  ] },
+  { version: '0.4.80', date: '26/09/2026', title: 'Chimbais dos botões de análise', groups: [
+    { title: 'Partida', items: [
+      'Best moves agora usa chimbal fechado no hover e Worst moves usa chimbal aberto; os dois sons ficaram um pouco mais altos.',
+    ] },
+  ] },
+  { version: '0.4.79', date: '26/09/2026', title: 'Ajustes nos knobs e no status da partida', groups: [
+    { title: 'Partida', items: [
+      'O status Your move / AI analysing agora fica logo abaixo do tabuleiro, acima dos controles de Undo, Play e Redo.',
+      'Os valores dos knobs acompanham a cor do ponteiro, que se aproxima da borda; o texto ficou menor e um pouco mais baixo.',
+      'O código deixou de aparecer dentro do Debug; a visualização sobre o fundo continua no botão Code, e a cópia tem uma dica no hover.',
+      'As labels OITAVA e DURAÇÃO foram traduzidas para Octave e Length.',
+    ] },
+  ] },
+  { version: '0.4.78', date: '25/09/2026', title: 'Código no fundo e valores dos knobs', groups: [
+    { title: 'Partida', items: [
+      'Os valores dos knobs agora aparecem dentro do círculo, logo abaixo do centro.',
+      'O novo botão Code mostra o código Strudel atualizado sobre a fotografia de fundo, sem bloquear a partida.',
+      'O bumbo de hover de Undo, Play e Redo ganhou um pouco mais de variação de volume e altura.',
+    ] },
+  ] },
+  { version: '0.4.77', date: '25/09/2026', title: 'Arraste firme e sons dos controles', groups: [
+    { title: 'Partida', items: [
+      'A peça fica na casa ao pressionar e só acompanha o ponteiro depois de iniciar um arraste, evitando o salto durante o duplo clique ou toque.',
+      'Undo, Play e Redo ganharam pequena variação no bumbo de hover; Best e Worst moves usam chimbais diferentes no hover e assobios ascendentes ou descendentes no clique.',
+      'O botão de Best ou Worst moves acionado fica indisponível enquanto suas setas estão visíveis.',
+    ] },
+  ] },
+  { version: '0.4.76', date: '25/09/2026', title: 'Duplo toque nas peças e atalhos da análise', groups: [
+    { title: 'Partida', items: [
+      'Duplo clique ou toque numa peça sua liga ou desliga seu loop e pode abrir Piece Params automaticamente; desligar o painel manualmente impede novas aberturas automáticas.',
+      'Best moves e Worst moves agora ficam nas pontas da linha de Undo, Play e Redo, como botões sem ícones.',
+    ] },
+  ] },
+  { version: '0.4.75', date: '25/09/2026', title: 'Sons da introdução da fase', groups: [
+    { title: 'Entrada na partida', items: [
+      'O botão final das frases troca os sons de hover e clique entre si.',
+      'O toque de entrada passa a soar na apresentação da cidade, 1 segundo após clicar no botão.',
+    ] },
+  ] },
+  { version: '0.4.74', date: '25/09/2026', title: 'Fotos e navegação da lista', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'O estilo musical continua ao lado da cidade enquanto seu cartão está aberto.',
+      'San Diego, Berkeley, San Francisco, Columbus e Jacksonville receberam fotografias próprias, no lugar da foto repetida de Chicago.',
+      'A roda do mouse sobre a área vazia da lista agora percorre também as campanhas, mantendo a interação com o globo ao fundo.',
+    ] },
+  ] },
+  { version: '0.4.73', date: '25/09/2026', title: 'Pins e sequência de fechamento', groups: [
+    { title: 'Mapa', items: [
+      'Clicar num pin aproxima-o 30% do caminho até o centro pelo giro do globo; a rotação continua no mesmo eixo à velocidade de espera.',
+      'Fechar tudo permanece acima dos cartões e os fecha numa sequência um pouco mais espaçada, alternando chimbal aberto e fechado.',
+    ] },
+  ] },
+  { version: '0.4.72', date: '25/09/2026', title: 'Popups e giro contínuo no mapa', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'Trocar a época de uma cidade abre o novo cartão na posição do anterior, 10 px mais abaixo.',
+      'A centralização do pin termina na velocidade do giro de espera; cada novo cartão alterna o zoom entre 69% e 150%.',
+      'Com vários cartões abertos, Fechar tudo os encerra em sequência aleatória. A lista destaca cada cidade na sua própria cor e mantém o destaque enquanto o cartão está aberto.',
+      'O hover direto no pin ganhou um bumbo eletrônico mais grave e forte; o hover da lista conserva seu som anterior.',
+    ] },
+  ] },
+  { version: '0.4.71', date: '25/09/2026', title: 'Cartões de cidade mais leves', groups: [
+    { title: 'Mapa', items: [
+      'O fundo dos cartões deixa o globo mais visível, e a troca de épocas aparece abaixo da descrição, alinhada à direita antes de Enter board.',
+    ] },
+  ] },
+  { version: '0.4.70', date: '25/09/2026', title: 'Giro de destaque mais fluido', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'O hover na lista aproxima o pin do centro com um giro inicial mais rápido e segue na velocidade de espera sem parar no centro.',
+      'As bandeiras fecham o balanço do tecido sem salto; no giro de espera, a haste inclina mais e o tecido balança com mais suavidade.',
+    ] },
+  ] },
+  { version: '0.4.69', date: '25/09/2026', title: 'Bandeiras de cada cidade e lista conectada ao globo', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'Manchester 1999 aparece somente em World ballads.',
+      'As bandeiras do globo ficaram mais claras, misturam verde com a cor da cidade, trazem símbolos ligados ao estilo musical e dobram mais durante o balanço.',
+      'O ícone da lista assume a cor da cidade no hover; passar pelo pin rola a lista suavemente para mostrar a cidade.',
+    ] },
+  ] },
+  { version: '0.4.68', date: '25/09/2026', title: 'Bandeira do globo mais natural', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'A bandeira do globo balança pela base em um oito suave, com uma leve ondulação no tecido; o ícone da lista fica parado à direita da cidade.',
+      'Passar por uma fase na lista mostra seu estilo musical ao lado do ano.',
+    ] },
+  ] },
+  { version: '0.4.67', date: '25/09/2026', title: 'Bandeiras conquistadas e hover mais encorpado', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'Cidades conquistadas agora exibem bandeiras animadas na lista e no globo, com balanço lento e sombra sutil.',
+      'O som de hover ficou mais grave e suave, com uma cauda curta de eco.',
+    ] },
+  ] },
+  { version: '0.4.66', date: '25/09/2026', title: 'Rotação leva o pin ao centro', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'Ao passar por uma cidade na lista, o eixo do giro de espera conduz seu pin ao centro da tela pelo caminho mais curto, sem mover a câmera ou mudar a velocidade.',
+    ] },
+  ] },
+  { version: '0.4.65', date: '25/09/2026', title: 'Hover da lista e dos pins corrigido', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'O hover da lista destaca o pin e toca seu som; o hover do pin destaca o nome na lista. O eixo do giro de espera aponta para a cidade sem mover a câmera, e o som ficou mais suave e variado.',
+    ] },
+  ] },
+  { version: '0.4.64', date: '25/09/2026', title: 'Hover da lista ligado aos pins', groups: [
+    { title: 'Mapa e campanhas', items: [
+      'Ao passar por uma cidade na lista, o pin correspondente também destaca e o eixo do giro de espera se orienta para ela, mantendo a velocidade do globo.',
+    ] },
+  ] },
   { version: '0.4.63', date: '25/09/2026', title: 'Mais contexto para as novas cidades', groups: [
     { title: 'Mapa e campanhas', items: [
       'Títulos mostram só o estilo; descrições e aberturas apresentam a cultura musical de cada fase sem repetir cidade ou ano.',

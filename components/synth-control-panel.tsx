@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import type { Instrument, InstrumentPerformanceEdit } from '@/lib/music/model'
+import { filterDialHertz, filterDialLabel, filterDialValue } from '@/lib/music/team-mixer'
 
 interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   selectedSquare: string | null
@@ -26,21 +27,6 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   onInstrumentChange?: (patch: InstrumentPerformanceEdit) => void
   pieceSvg?: string | null
   selectedStatus?: React.ReactNode
-}
-
-const FILTER_RANGE = Math.log(1000)
-const filterDialValue = (lpf = 20000, hpf = 0) => {
-  const low = lpf < 20000 ? -Math.log(20000 / Math.max(20, lpf)) / FILTER_RANGE : 0
-  const high = hpf > 0 ? .01 + .99 * Math.log(Math.max(20, hpf) / 20) / FILTER_RANGE : 0
-  return Math.abs(low) >= high ? low : high
-}
-const filterDialHertz = (value: number) => value < 0
-  ? Math.round(20000 / Math.pow(1000, -value))
-  : Math.round(20 * Math.pow(1000, Math.max(0, value - .01) / .99))
-const filterDialLabel = (value: number) => {
-  if (value === 0) return 'OFF'
-  const hz = filterDialHertz(value)
-  return `${value < 0 ? 'LPF' : 'HPF'} ${hz >= 1000 ? `${(hz / 1000).toFixed(1)}k` : `${hz}Hz`}`
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -162,8 +148,6 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               {selectedSquare && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
-          <div className="min-h-[390px]">{playback}</div>
-          
           <div
             className={cn(
               "grid grid-cols-4 gap-x-2 gap-y-4 py-2",
@@ -188,7 +172,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={(v) => onEffectChange("gain", v)}
               neon={isOn}
             />
-            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <Knob label="OITAVA" value={instrument.octave} min={1} max={6} step={1} formatValue={v => String(v)} onChange={octave => onInstrumentChange?.({ octave })} neon={isOn && !!selectedSquare} /> : <Knob
+            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <Knob label="Octave" value={instrument.octave} min={1} max={6} step={1} formatValue={v => String(v)} onChange={octave => onInstrumentChange?.({ octave })} neon={isOn && !!selectedSquare} /> : <Knob
               label="PITCH"
               value={effects.pitch}
               min={0.5}
@@ -254,9 +238,10 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               <Knob label="ATAQUE" value={instrument.attack} min={.001} max={2} step={.001} logarithmic formatValue={v => `${v.toFixed(3)} s`} onChange={attack => onInstrumentChange?.({ attack })} neon={isOn && !!selectedSquare} />
               <Knob label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
               <Knob label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
-              <Knob label="DURAÇÃO" value={instrument.clip ?? .7} min={.05} max={1} formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
+              <Knob label="Length" value={instrument.clip ?? .7} min={.05} max={1} formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
             </>}
           </div>
+          <div className="min-h-[390px]">{playback}</div>
         </div>
       </div>
       {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}

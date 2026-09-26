@@ -6,7 +6,7 @@ const creative = loadTs('lib/music/creative.ts')
 
 test('team mixer routes each side independently and quartz lock overrides prepared fine pitch', () => {
   const { TeamMixer, createTeamMixes, resolveDeckClock } = loadTs('lib/music/team-mixer.ts')
-  const node = () => ({ connections: [], frequency: {}, Q: {}, gain: { value: 0, setTargetAtTime(value) { this.value = value } }, connect(to) { this.connections.push(to) }, disconnect() { this.connections = [] } })
+  const node = () => ({ connections: [], type: '', frequency: { value: 0, setTargetAtTime(value) { this.value = value } }, Q: {}, gain: { value: 0, setTargetAtTime(value) { this.value = value } }, connect(to) { this.connections.push(to) }, disconnect() { this.connections = [] } })
   const destination = node(), analyser = node()
   const mixer = new TeamMixer({ currentTime: 5, destination, createBiquadFilter: node, createGain: node }, analyser)
   const whiteOrbit = node(), blackOrbit = node()
@@ -14,11 +14,18 @@ test('team mixer routes each side independently and quartz lock overrides prepar
   mixer.connect(whiteOrbit, 'w'); mixer.connect(blackOrbit, 'b')
   assert.deepEqual(whiteOrbit.connections, [mixer.sides.w.bass])
   assert.deepEqual(blackOrbit.connections, [mixer.sides.b.bass])
-  const values = createTeamMixes(); values.w.bass = -9; values.w.gain = .4
+  const values = createTeamMixes(); values.w.bass = -9; values.w.gain = .4; values.w.filter = -.5; values.b.filter = .505
   mixer.update(values)
   assert.equal(mixer.sides.w.bass.gain.value, -9)
   assert.equal(mixer.sides.b.bass.gain.value, 0)
   assert.equal(mixer.sides.w.output.gain.value, .4)
+  assert.equal(mixer.sides.w.filter.type, 'lowpass')
+  assert.equal(mixer.sides.w.filter.frequency.value, 632)
+  assert.equal(mixer.sides.b.filter.type, 'highpass')
+  assert.equal(mixer.sides.b.filter.frequency.value, 632)
+  values.w.filter = 0
+  mixer.update(values)
+  assert.equal(mixer.sides.w.filter.type, 'allpass')
   assert.deepEqual(mixer.sides.w.output.connections, [destination, analyser])
   assert.deepEqual(resolveDeckClock(120, 118, 5, false), { bpm: 126, tuning: 1.05 })
   assert.deepEqual(resolveDeckClock(120, 118, 5, true), { bpm: 118, tuning: 1 })
