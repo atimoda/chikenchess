@@ -55,6 +55,7 @@ interface GlobeProps {
   setEnteringCityId: (id: string | null) => void
   zoomRef?: React.MutableRefObject<{ zoomIn: () => void, zoomOut: () => void, resetZoom: () => void, zoomToPercent: (percent: number) => void, centerCity: (city: CityData) => void } | null>
   onZoomChange?: (zoom: number) => void
+  onIntroZoomScaleChange?: (scale: number) => void
   focusedCityId?: string | null
   setFocusedCityId?: (cityId: string | null) => void
   onPinHover?: (cityId: string | null) => void
@@ -506,6 +507,7 @@ const GlobeContent = ({
   setEnteringCityId,
   zoomRef,
   onZoomChange,
+  onIntroZoomScaleChange,
   focusedCityId,
   setFocusedCityId,
   onPinHover,
@@ -682,6 +684,7 @@ const GlobeContent = ({
        const endZ = 5 / 0.75 // Target 75% zoom (Distance ~6.66)
        
        camera.position.z = MathUtils.lerp(startZ, endZ, ease)
+       onIntroZoomScaleChange?.(startZ / camera.position.length())
        
        if (progress >= 1 && !introZoomComplete) {
            setIntroZoomComplete(true)
@@ -690,6 +693,7 @@ const GlobeContent = ({
     } else if (time >= 6.5 && !introZoomComplete) {
         // Ensure we finish
         camera.position.z = 5 / 0.75
+        onIntroZoomScaleChange?.(2.5 / camera.position.length())
         setIntroZoomComplete(true)
         lastInteractionTime.current = Date.now() - 4000 // Start standby immediately
     } else if (time <= 3.0) {

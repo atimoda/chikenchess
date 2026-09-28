@@ -55,14 +55,14 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
       <div className="h-4 text-center text-xs font-mono font-bold tracking-wider text-white">MIXER</div>
       <fieldset disabled={!isOn} aria-label="Mixer por equipe" className="mt-3 grid gap-3">
         {([topColor, topColor === 'w' ? 'b' : 'w'] as const).map((color, index) => <Fragment key={color}>
-          {index === 1 && <div className="py-0.5 text-center text-[10px] font-mono font-bold tracking-wide text-white/70">
+          {index === 1 && <div className="py-0.5 text-center text-[10px] font-mono font-bold tracking-wide text-muted-foreground">
             {topColor === 'b' ? 'BLACKS / WHITES' : 'WHITES / BLACKS'}
           </div>}
           <div className="grid gap-1">
             <div className="grid grid-cols-5 gap-1">
-              <Knob label="Gain" value={teamMixes[color].gain} min={0} max={1.5} onChange={gain => onTeamMixChange(color, { gain })} neon={isOn} />
-              {(['highs', 'mids', 'bass'] as const).map((band, i) => <Knob key={band} label={['Hi', 'Mid', 'Low'][i]} value={teamMixes[color][band]} min={-12} max={12} onChange={value => onTeamMixChange(color, { [band]: value })} neon={isOn} />)}
-              <Knob label="LPF/HPF" value={teamMixes[color].filter} min={-1} max={1} step={.01} formatValue={filterDialLabel} onChange={filter => onTeamMixChange(color, { filter })} neon={isOn} />
+              <Knob label="Gain" value={teamMixes[color].gain} min={0} max={1.5} onChange={gain => onTeamMixChange(color, { gain })} neon={isOn} labelPosition={index === 1 ? "bottom" : "top"} />
+              {(['highs', 'mids', 'bass'] as const).map((band, i) => <Knob key={band} label={['Hi', 'Mid', 'Low'][i]} value={teamMixes[color][band]} min={-12} max={12} onChange={value => onTeamMixChange(color, { [band]: value })} neon={isOn} labelPosition={index === 1 ? "bottom" : "top"} />)}
+              <Knob label="LPF/HPF" value={teamMixes[color].filter} min={-1} max={1} step={.01} formatValue={filterDialLabel} onChange={filter => onTeamMixChange(color, { filter })} neon={isOn} labelPosition={index === 1 ? "bottom" : "top"} />
             </div>
           </div>
         </Fragment>)}

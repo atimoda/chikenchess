@@ -39,7 +39,6 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [showTitle, setShowTitle] = useState(false)
   const [logoPhase, setLogoPhase] = useState<'intro' | 'fading' | 'header'>('intro')
   const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
-  const [sloganScale, setSloganScale] = useState(1)
 
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string } | null>(null)
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
@@ -50,6 +49,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
   const [focusedCityId, setFocusedCityId] = useState<string | null>(null)
   const [pinHoveredCityId, setPinHoveredCityId] = useState<string | null>(null)
   const popupLayerRef = useRef<HTMLDivElement>(null)
+  const introLogoRef = useRef<HTMLDivElement>(null)
 
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -694,16 +694,9 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
     // Logo Sequence:
     // 0-3.0s: Hold
-    // 3.0s-6.5s: Zoom Out (Planet) + Slogan Shrink
+    // 3.0s-6.5s: Zoom Out (Planet) + Logo/Slogan Shrink
     // 3.5s-4.5s: Fade Out Big Logo + Fade Out Slogan
     // 4.5s+: Slide In Header Logo
-
-    // Slogan Scaling (Sync with Planet Zoom: 3.0s to 6.5s)
-    const tScaleStart = setTimeout(() => {
-        // We want to animate scale from 1 to 0.5 over 3.5s
-        // CSS transition will handle the smoothing
-        setSloganScale(0.5)
-    }, 3000)
 
     const tFade = setTimeout(() => {
       setLogoPhase('fading')
@@ -719,7 +712,6 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     // const tHeadline = setTimeout(() => setIntroHeadlineVisible(false), 6000)
 
     return () => {
-      clearTimeout(tScaleStart)
       clearTimeout(tFade)
       clearTimeout(tHeader)
       clearTimeout(tShowTitle)
@@ -857,6 +849,9 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             zoomRef={zoomRef}
             popupLayerRef={popupLayerRef}
             onZoomChange={setCurrentZoom}
+            onIntroZoomScaleChange={scale => {
+              introLogoRef.current?.style.setProperty("transform", `translate(-50%, -50%) scale(${1.15 * scale})`)
+            }}
             focusedCityId={focusedCityId}
             setFocusedCityId={setFocusedCityId}
             onPinHover={setPinHoveredCityId}
@@ -876,14 +871,15 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         {/* Intro Logo (Big) */}
         <div
           className="flex flex-col items-center gap-4 pointer-events-none z-50"
+          ref={introLogoRef}
           style={{
             position: "absolute",
             top: "45%",
             left: "50%",
-            transform: `translate(-50%, -50%) scale(${logoPhase === 'intro' ? 1.15 * sloganScale : 0.5})`, // Sync scale with slogan
+            transform: "translate(-50%, -50%) scale(1.15)",
             opacity: logoPhase === 'intro' ? 1 : 0,
             pointerEvents: 'none',
-            transition: 'opacity 0.5s ease-out, transform 3.5s ease-out' // Fast opacity, Slow transform
+            transition: 'opacity 0.5s ease-out'
           }}
         >
              <img
@@ -962,7 +958,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             className="h-9 cursor-pointer gap-[7px] border-white/10 bg-black/50 px-3 font-mono text-xs text-amber-300 backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
             <span>{(playerProfile?.goldenEggs ?? 0).toLocaleString()} golden eggs</span>
-            <span aria-hidden="true" className="text-xl">🐔</span>
+            <svg aria-hidden="true" viewBox="0 0 16 20" className="h-5 w-4">
+              <path d="M8 1.5c-3.2 0-6 6.3-6 11.3a6 6 0 0 0 12 0c0-5-2.8-11.3-6-11.3Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.2" />
+              <path d="M5 6.5c-.9 1.7-1.5 3.8-1.5 5.5" fill="none" stroke="#fef08a" strokeLinecap="round" strokeWidth="1.2" />
+            </svg>
           </Button>
         </div>
 

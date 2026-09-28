@@ -92,7 +92,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
       return
     }
     if (bpmDragActiveRef.current) {
-      setBpmHoverPreview(current => current ? { ...current, x: event.clientX - wrapper.getBoundingClientRect().left, y: event.clientY - wrapper.getBoundingClientRect().top - 6 } : current)
+      setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
       return
     }
     setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
