@@ -7,18 +7,18 @@
 | `model.cases.cjs` | 11 | Identidade, movimentos, captura, ativação, graus e pausa |
 | `creative.cases.cjs` | 6 | Sessão, edição, validação e migração básica |
 | `patterns.cases.cjs` | 10 | Compilação, groove, automação e prévias |
-| `kits.cases.cjs` | 20 | Cidades, descrições culturais, sete bancos de samples, curadoria de timbre, catálogo e persistência |
+| `kits.cases.cjs` | 21 | Cidades, descrições culturais, nove bancos de samples, instrumentação de Salvador, curadoria de timbre, catálogo e persistência |
 | `runtime.cases.cjs` | 16 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba, preparação de samples sem grafo antecipado e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
 | `transport.cases.cjs` | 6 | Mixer, fine pitch, BPM e agendamento |
-| `meter.cases.cjs` | 6 | Onze compassos, unidade do BPM, agrupamentos, persistência de quintos/sétimos, 18 kits novos, reset de fórmula e equivalência Strudel |
+| `meter.cases.cjs` | 6 | Onze compassos, unidade do BPM, agrupamentos, persistência de quintos/sétimos, 19 kits rítmicos, reset de fórmula e equivalência Strudel |
 | `editor.cases.cjs` | 10 | Duração, forma, progressões harmônicas, tétrades de jazz, edição/espelho de variações, loop por peça e slides por nota |
-| `globe.cases.cjs` | 4 | Voo, geometria, direção do gesto e compensação do popup |
-| `evaluation.cases.cjs` | 11 | UCI, orçamento, sinais/mate, ranking completo, cancelamento, cache com histórico, mudanças de dificuldade durante a busca e integração com Stockfish Lite real |
-| `progression.cases.cjs` | 3 | Migração, recompensa, saldo de ovos e pontos históricos |
+| `globe.cases.cjs` | 7 | Voo, linhas e colunas do grid com menos pontos nas regiões polares, pins sem colisão, direção do gesto e compensação do popup |
+| `evaluation.cases.cjs` | 12 | UCI, orçamento, sinais/mate, ranking completo, elegibilidade de lances premiados, cancelamento, cache com histórico, mudanças de dificuldade durante a busca e integração com Stockfish Lite real |
+| `progression.cases.cjs` | 5 | Migração, recompensas por vitória e lance ranqueado, avisos únicos, gasto e reset do saldo/dica |
 | `optimization.cases.cjs` | 2 | Equivalência de lanes/acordes e isolamento do cache de reverb |
 | `studies.cases.cjs` | 4 | Estudo Mouth Breather e equivalência da exportação |
-| `release.cases.cjs` | 1 | Sincronia entre package, lockfile e versão/changelog exibidos |
+| `release.cases.cjs` | 2 | Sincronia entre package, lockfile e versão exibida; no máximo uma entrada por data |
 
 Para uma área: `node --test tests/music/editor.cases.cjs`.
 Para um relatório completo explícito: `node --test --test-reporter=tap tests/music.test.cjs`.

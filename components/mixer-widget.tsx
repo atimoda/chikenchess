@@ -55,8 +55,8 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
       <div className="h-4 text-center text-xs font-mono font-bold tracking-wider text-white">MIXER</div>
       <fieldset disabled={!isOn} aria-label="Mixer por equipe" className="mt-3 grid gap-3">
         {([topColor, topColor === 'w' ? 'b' : 'w'] as const).map((color, index) => <Fragment key={color}>
-          {index === 1 && <div className="flex items-center justify-center gap-2 py-0.5 text-[10px] font-mono font-bold tracking-wide text-white/70">
-            <span>BRANCAS</span><span>·</span><span>PRETAS</span>
+          {index === 1 && <div className="py-0.5 text-center text-[10px] font-mono font-bold tracking-wide text-white/70">
+            {topColor === 'b' ? 'BLACKS / WHITES' : 'WHITES / BLACKS'}
           </div>}
           <div className="grid gap-1">
             <div className="grid grid-cols-5 gap-1">

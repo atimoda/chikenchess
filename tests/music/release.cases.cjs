@@ -14,3 +14,10 @@ test('package, lockfile and visible changelog publish the same current version',
   assert.match(CHANGELOG[0].date, /^\d{2}\/\d{2}\/\d{4}$/)
   assert.ok(CHANGELOG[0].groups.some(group => group.items.length > 0))
 })
+
+test('release history contains at most one version entry per date', () => {
+  const dates = CHANGELOG.map(entry => entry.date || 'undated')
+  assert.equal(new Set(dates).size, dates.length)
+  const versions = CHANGELOG.map(entry => entry.version)
+  assert.equal(new Set(versions).size, versions.length)
+})

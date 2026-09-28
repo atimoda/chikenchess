@@ -3,6 +3,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
+select[data-city-dropdown] option {
+  color: #a3a3a3;
+}
+
+select[data-city-dropdown] option:checked {
+  color: #fff;
+}
+
+select[data-city-dropdown] option:hover,
+select[data-city-dropdown] option:focus {
+  background-color: color-mix(in srgb, var(--city-option-color) 20%, black);
+  color: #fff;
+}
+
 :root {
   --background: oklch(0.08 0.02 270);
   --foreground: oklch(0.95 0.02 90);

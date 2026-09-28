@@ -55,13 +55,13 @@ test('each new stage has its notated subdivision, complete sections and local ar
  const {STYLE_PROFILES}=loadTs('lib/music/kit-profiles/catalog.ts')
  const {performancePosition}=loadTs('lib/music/performance.ts')
  const {cities}=loadTs('lib/cities-data.ts')
- assert.equal(RHYTHM_STAGES.length,18)
+ assert.equal(RHYTHM_STAGES.length,19)
  for(const stage of RHYTHM_STAGES) {
   const city=cities.find(c=>c.id===stage.id),kit=defaultCityKit(stage.id),profile=STYLE_PROFILES[stage.id]
   assert.deepEqual(city.campaigns,[stage.campaign])
   assert.equal(kit.meter,stage.meter)
   assert.equal(kit.bpm,stage.bpm)
-  assert.ok(fs.existsSync(`public${city.image}`))
+  assert.ok(city.image.startsWith('https://') || fs.existsSync(`public${city.image}`))
   assert.equal(profile.parts.length,16)
   for(const part of profile.parts) {
    assert.equal(part.patterns.length,4)

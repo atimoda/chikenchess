@@ -75,7 +75,7 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
     window.setTimeout(() => { suppressClick.current = false }, 0)
   }
 
-  return <aside className="absolute left-3 md:left-6 top-24 bottom-20 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col pointer-events-none pl-2" aria-label="Campanhas e cidades">
+  return <aside className="absolute left-3 md:left-6 top-16 md:top-24 bottom-20 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col pointer-events-none pl-2" aria-label="Campanhas e cidades">
     <button type="button" className="pointer-events-auto md:hidden mb-2 rounded-md border border-white/20 bg-[#10131c]/90 px-3 py-2 text-left text-[13px] text-white" onClick={() => setExpanded(value => !value)} aria-expanded={expanded}>Campanhas {expanded ? '−' : '+'}</button>
     <div ref={viewport} className={`${expanded ? 'block' : 'hidden md:block'} ${styles.viewport} pointer-events-none min-h-0 flex-1 overflow-y-auto overscroll-contain text-[13px] select-none`}
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onPointerLeave={() => onFocus(null)}

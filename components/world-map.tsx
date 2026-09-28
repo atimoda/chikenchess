@@ -29,6 +29,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
     isClosing?: boolean
     isFalling?: boolean
     timestamp: number
+    centerOffsetY: number
     enterX: number
     enterRot: number
   }
@@ -357,7 +358,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           transientGain.gain.setValueAtTime(.001, t)
           transientGain.gain.linearRampToValueAtTime(.045, t + .003)
           transientGain.gain.exponentialRampToValueAtTime(.001, t + .03)
-          output.gain.value = .82
+          output.gain.value = .82 * .85
           body.connect(bodyGain)
           transient.connect(transientGain)
           bodyGain.connect(output)
@@ -568,7 +569,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           filter.Q.value = 5
           const gain = ctx.createGain()
           gain.gain.setValueAtTime(0, t)
-          gain.gain.linearRampToValueAtTime(0.235, t + dur - 0.1) // 0.196 * 1.2 = 0.235
+          gain.gain.linearRampToValueAtTime(0.235 * 0.75, t + dur - 0.1)
           gain.gain.linearRampToValueAtTime(0, t + dur)
           noise.connect(filter)
           filter.connect(gain)
@@ -654,82 +655,12 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
     playMapSound("gm_reverse_cymbal", true)
 
-    // In 3D mode, popups are tethered to the city pin. 
-    // We want to open it at 2/3 of the screen distance, random direction.
-    // However, the popup is inside the 3D scene (Html), so coordinates are relative to the pin if we put it inside the group,
-    // OR we need to position it such that when projected it lands on 2/3 of the screen.
-    // The current implementation has the popup absolute positioned in 3D space relative to the pin?
-    // No, <Html> by default centers on the parent 3D position. The `div` inside has `position: absolute`.
-    // The `popup.x` and `popup.y` are pixel offsets from the anchor (pin).
-    
-    // We want to place it at 2/3 of screen size.
-    // Let's assume 2/3 means "a significant distance away".
-    // Screen dimensions are roughly window.innerWidth/Height.
-    const w = window.innerWidth
-    const h = window.innerHeight
-    
-    // Ensure popup stays within viewport
-    // Popup size is roughly 288px (w) x 450px (h)
-    // We want to keep it at least 20px from edges.
-    
-    // Position slightly more to the left or right to avoid overlapping the pin
-    // Use an angle that is primarily horizontal (e.g., -45 to 45 degrees or 135 to 225 degrees)
-    const isRight = Math.random() > 0.5
-    // Random angle between -30 and 30 degrees (Right) OR 150 and 210 degrees (Left)
-    const angleSpread = (Math.PI / 6) // 30 degrees
-    const baseAngle = isRight ? 0 : Math.PI
-    const angle = baseAngle + (Math.random() - 0.5) * 2 * angleSpread
-
-    // Distance: 2/3 of half-screen size (radius)? Or 2/3 of screen width?
-    // Let's take min(w, h) * 0.3 (which is roughly 2/3 of half width)
-    const dist = Math.min(w, h) * 0.35 // Increased slightly to ensure gap
-    
-    let x = Math.cos(angle) * dist
-    let y = Math.sin(angle) * dist
-    
-    // Clamp to viewport bounds (relative to center 0,0)
-    // Viewport relative to center: -w/2 to w/2, -h/2 to h/2
-    // Popup center relative to its x,y? x,y is top-left of popup in Draggable/Html context?
-    // In Html center mode, 0,0 is the projected point of the pin.
-    // But we are setting `popup.x/y` which are offsets from that projected point.
-    // Wait, the globe component uses `Html` which centers on the 3D position.
-    // The `Draggable` uses `position: absolute` with `left: popup.x, top: popup.y`.
-    // If popup.x/y are 0, the top-left of draggable is at the center of the pin projection.
-    // So actual screen pos = pinProjection + popup.x/y.
-    // This is tricky because pinProjection changes.
-    // HOWEVER, the user asked to open it at "2/3 of screen size" relative to the PIN? 
-    // "abra o popup sempre na posição de 'dois terços', ou 2/3 do tamanho da tela... do lado direito/esquerdo...".
-    // If the pin is centered (which it is, because we center camera on click), then pin projection is at screen center (w/2, h/2).
-    // So popup.x/y are relative to screen center.
-    
-    // Popup dimensions
-    const pw = 288
-    const ph = 450
-    const padding = 20
-    
-    // Max offsets from center to keep popup fully inside
-    // Screen center is 0,0 in this local coordinate system if pin is centered.
-    // Left edge of screen is -w/2, Right is w/2. Top -h/2, Bottom h/2.
-    // Popup occupies [x, x+pw] horizontally and [y, y+ph] vertically.
-    // We need:
-    // x >= -w/2 + padding
-    // x + pw <= w/2 - padding
-    // y >= -h/2 + padding
-    // y + ph <= h/2 - padding
-    
-    const minX = -w/2 + padding
-    const maxX = w/2 - padding - pw
-    const minY = -h/2 + padding
-    const maxY = h/2 - padding - ph
-    
-    // Clamp
-    x = Math.max(minX, Math.min(maxX, x))
-    y = Math.max(minY, Math.min(maxY, y))
-
-    if (position) {
-      x = position.x
-      y = position.y
-    }
+    // Keep the side choice relative to the pin. The projected popup measures
+    // its real height and centers itself in the viewport when it mounts.
+    const viewport = window.visualViewport
+    const distance = Math.min(viewport?.width ?? window.innerWidth, viewport?.height ?? window.innerHeight) * .35
+    const x = position?.x ?? (Math.random() > .5 ? distance : -distance)
+    const y = position?.y ?? 0
 
     setOpenPopups(prev => {
         if (prev[city.id] && !prev[city.id].isClosing) return prev
@@ -740,6 +671,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
             y, 
             zIndex: nextZIndex,
             timestamp: Date.now(),
+            centerOffsetY: (Math.random() - 0.5) * 40,
             enterX: (Math.random() - 0.5) * 50, 
             enterRot: (Math.random() - 0.5) * 10 
           }
@@ -1066,10 +998,6 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
           <div className="space-y-4 font-mono">
             <div className="space-y-3 font-mono">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Rank</span>
-                <span className="text-xs font-bold text-amber-300">🎖️ {playerProfile?.rank || "Novice Beatmaker"}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Golden eggs</span>
                 <span className="inline-flex items-center gap-1.5 text-sm font-bold tracking-wide text-amber-300">
                   <svg aria-hidden="true" viewBox="0 0 16 20" className="h-4 w-3.5">
@@ -1082,6 +1010,10 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Historical score</span>
                 <span className="tracking-wide text-muted-foreground">{(playerProfile?.points || 0).toLocaleString()} points</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Rank</span>
+                <span className="text-xs text-muted-foreground">🎖️ {playerProfile?.rank || "Novice Beatmaker"}</span>
               </div>
             </div>
             <div className="space-y-2 pt-3">

@@ -1,6 +1,6 @@
-# Atlas rítmico — v0.5.14
+# Atlas rítmico — v0.5.2
 
-18 composições originais, adicionadas às 27 fases anteriores. Datas são ambientação; nenhum kit reproduz uma melodia das canções citadas como referência pelo usuário. Cada kit tem 16 papéis por equipe, quatro variações, baixo e motivos escritos para sua subdivisão e seções com densidades distintas.
+19 composições originais, adicionadas às 27 fases anteriores. Datas são ambientação; nenhum kit reproduz uma melodia das canções citadas como referência pelo usuário. Cada kit tem 16 papéis por equipe, quatro variações, uma base grave e motivos escritos para sua subdivisão e seções com densidades distintas.
 
 | Cidade / época | Estilo | Relógio | BPM | Campanha |
 | --- | --- | --- | ---: | --- |
@@ -10,6 +10,7 @@
 | Recife · 1950 | Baião / pé de serra | 2/4 · BPM = semínima | 108 | Brazilian |
 | Piracicaba · 1940 | Sertanejo de raiz / cateretê | 2/4 · BPM = semínima | 100 | Brazilian |
 | Rio de Janeiro · 1960 | Bossa nova | 4/4 · BPM = semínima | 116 | Brazilian |
+| Salvador · 1992 | Samba-reggae | 4/4 · BPM = semínima | 104 | Brazilian |
 | New York City · 1962 | Jazz waltz | 3/4 · BPM = semínima | 138 | Harmonic songbook |
 | London · 1977 | Rock ballad in six | 6/8 · BPM = semínima pontuada | 72 | World ballads |
 | Memphis · 1967 | Soul ballad | 12/8 · BPM = semínima pontuada | 68 | World ballads |
@@ -29,6 +30,8 @@ Baião foi escrito em 2/4. O 2/2 conta duas mínimas; não dobra automaticamente
 
 A nova campanha World rhythms evita classificar danças tradicionais e reggae como baladas ou música eletrônica. Brazilian contém os novos estudos brasileiros; a fase eletrônica anterior de São Paulo conserva sua campanha. As fases de jazz e rock progressivo usam planos harmônicos e entram em Harmonic songbook.
 
+Salvador 1992 acrescenta 16 papéis por equipe: os cavalos tocam trompetes e as torres, trombones. Surdos fundo e meio alternam a base; a viradeira, repenique, caixa, tarol e timbau ocupam respostas e fechos distintos. Agogôs, chocalho e pandeiro guiam ou preenchem as subdivisões. A seção A estabelece os graves e a guia; B abre as respostas e os metais; C retira parte da massa; D traz viradas mais densas. A composição toma a energia coletiva de “Nossa Gente (Avisa Lá)” como direção, com notas e células novas.
+
 ## Referências e limites
 
 - [Open Music Theory — compassos compostos](https://viva.pressbooks.pub/openmusictheory/chapter/compound-meters-and-time-signatures/): divisão ternária e unidade pontuada.
@@ -39,4 +42,4 @@ A nova campanha World rhythms evita classificar danças tradicionais e reggae co
 - [UNESCO — Reggae](https://ich.unesco.org/en/RL/reggae-music-of-jamaica-01398): contexto jamaicano e Kingston.
 - [Library of Congress — Take Five](https://blogs.loc.gov/nls-music-notes/2020/05/song-stories-time-out-for-take-five/): referência de jazz em 5/4; o estudo de Oakland tem motivo próprio.
 
-Os sons usam os bancos locais sintetizados já disponíveis. Cavaquinho, viola, surdo e instrumentos de dança são aproximações de timbre e função, não gravações documentais. Os cartões são ilustrações vetoriais abstratas, geradas por scripts/generate-rhythm-city-art.cjs. Os testes conferem métrica, persistência, limites e equivalência do compilador; não aprovam por si só qualidade musical, autenticidade estilística ou desempenho em aparelho físico.
+Os sons usam os bancos locais sintetizados já disponíveis; Salvador usa seu banco original `chicken-samba-reggae-v1`. Cavaquinho, viola, surdo e instrumentos de dança são aproximações de timbre e função, não gravações documentais. Os cartões são ilustrações vetoriais abstratas, geradas por scripts/generate-rhythm-city-art.cjs. Os testes conferem métrica, persistência, limites e equivalência do compilador; não aprovam por si só qualidade musical, autenticidade estilística ou desempenho em aparelho físico.

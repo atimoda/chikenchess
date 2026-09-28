@@ -4,6 +4,7 @@ export interface SampleAsset {
   name: string
   variants: { name: string; file: string }[]
   rootNote?: string
+  keymap?: Record<string, string>
 }
 export interface SampleBank {
   id: string
@@ -14,8 +15,8 @@ export interface SampleBank {
 }
 
 const variants = (id: string, names = ['Normal', 'Suave']) => names.map((name, i) => ({ name, file: `/samples/chicken-electro-v1/${id}-${i}.wav` }))
-const generatedBank = (id: string, name: string, assets: readonly (readonly [string, string, string?])[]): SampleBank => ({
-  id, name, credit: 'ChickenChess · síntese original; scripts/generate-timbre-samples.py', license: 'CC0-1.0',
+const generatedBank = (id: string, name: string, assets: readonly (readonly [string, string, string?])[], generator = 'generate-timbre-samples.py'): SampleBank => ({
+  id, name, credit: `ChickenChess · síntese original; scripts/${generator}`, license: 'CC0-1.0',
   assets: assets.map(([assetId, assetName, rootNote]) => ({ id: assetId, name: assetName, rootNote,
     variants: [{ name: 'Original', file: `/samples/${id}/${assetId}-0.wav` }],
   })),
@@ -74,7 +75,34 @@ export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken 
   ['brush', 'Vassourinha'], ['room-clap', 'Palmas de sala'],
   ['wood-rim', 'Rim de madeira'], ['tambourine', 'Pandeiro acústico'],
   ['ride', 'Ride acústico'],
-])]
+]), generatedBank('chicken-samba-reggae-v1', 'Chicken Salvador · esboço anterior', [
+  ['surdo-fundo', 'Surdo fundo'], ['surdo-meio', 'Surdo meio'], ['surdo-viradeira', 'Surdo viradeira'],
+  ['caixa', 'Caixa'], ['tarol', 'Tarol'], ['repinique', 'Repenique'], ['timbau', 'Timbau'],
+  ['agogo-grave', 'Agogô grave'], ['agogo-agudo', 'Agogô agudo'],
+  ['chocalho', 'Chocalho'], ['pandeiro', 'Pandeiro'],
+  ['trompete', 'Trompete', 'c4'], ['trombone', 'Trombone', 'c3'],
+], 'generate-samba-reggae-samples.py'), {
+  id: 'chicken-samba-reggae-v2', name: 'Chicken Salvador · samba-reggae',
+  credit: 'Gravações CC0: VSCO 2 CE e VCSL · Versilian Studios; Samba Percussion · plotzki/Freesound; preparo em scripts/prepare-samba-reggae-recordings.py',
+  license: 'CC0-1.0',
+  assets: [
+    ...[
+      ['surdo-fundo', 'Surdo fundo gravado'], ['surdo-meio', 'Surdo meio gravado'],
+      ['surdo-viradeira', 'Surdo viradeira gravado'], ['caixa', 'Caixa acústica'],
+      ['tarol', 'Tarol de corda'], ['repinique', 'Repinique gravado'],
+      ['timbau', 'Resposta de mão (quinto acústico)'], ['agogo-grave', 'Agogô grave'],
+      ['agogo-agudo', 'Agogô agudo'], ['chocalho', 'Chocalho'], ['pandeiro', 'Pandeiro gravado'],
+    ].map(([id, name]) => ({ id, name, variants: [{ name: 'Gravação', file: `/samples/chicken-samba-reggae-v2/${id}-0.wav` }] })),
+    { id: 'trompete', name: 'Trompete acústico', rootNote: 'f4',
+      variants: [{ name: 'Staccato', file: '/samples/chicken-samba-reggae-v2/trompete-f4-0.wav' }],
+      keymap: Object.fromEntries(['g3', 'f4', 'c5'].map(note => [note, `/samples/chicken-samba-reggae-v2/trompete-${note}-0.wav`])),
+    },
+    { id: 'trombone', name: 'Trombone tenor acústico', rootNote: 'd3',
+      variants: [{ name: 'Staccato', file: '/samples/chicken-samba-reggae-v2/trombone-d3-0.wav' }],
+      keymap: Object.fromEntries([['a#2', 'as2'], ['d3', 'd3'], ['f3', 'f3']].map(([note, file]) => [note, `/samples/chicken-samba-reggae-v2/trombone-${file}-0.wav`])),
+    },
+  ],
+}]
 
 export interface SampleSource { kind: 'sample'; bank: string; asset: string; variant: number; pitched: boolean }
 export function sampleAsset(source: SampleSource) {
@@ -87,5 +115,7 @@ export function sampleRegistration(source: SampleSource) {
   const asset = sampleAsset(source)
   const file = asset?.variants[source.variant]?.file
   if (!file) throw new Error(`Sample inexistente: ${source.bank}/${source.asset}/${source.variant}`)
-  return { sound: sampleSound(source), file, map: { [sampleSound(source)]: source.pitched ? { [asset.rootNote ?? 'c4']: file } : file } }
+  const keymap = source.pitched ? (asset.keymap ?? { [asset.rootNote ?? 'c4']: file }) : undefined
+  return { sound: sampleSound(source), file, files: keymap ? Object.values(keymap) : [file],
+    map: { [sampleSound(source)]: keymap ?? file } }
 }

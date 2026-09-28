@@ -81,6 +81,10 @@ export function useAudio(
     engineRef.current?.playCheckmate()
   }, [])
 
+  const playVictoryFanfare = useCallback(() => {
+    engineRef.current?.playVictoryFanfare()
+  }, [])
+
   const playDrawKalimba = useCallback(() => {
     engineRef.current?.playDrawKalimba()
   }, [])
@@ -101,5 +105,5 @@ export function useAudio(
     engineRef.current?.playDrum(sample, gain, pitch)
   }, [])
 
-  return { engineRef, togglePlayback, isInitialized, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum }
+  return { engineRef, togglePlayback, isInitialized, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum }
 }
