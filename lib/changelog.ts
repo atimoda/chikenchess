@@ -10,7 +10,9 @@ export const CHANGELOG = [
       {
         "title": "Mapa e cidades",
         "items": [
-          "O grid do globo ficou mais denso no equador, mais espaçado perto dos polos e escurece seus pontos no lado sem sol; bandeiras conquistadas se movem três vezes mais devagar."
+          "O grid do globo ficou mais denso no equador, mais espaçado perto dos polos e escurece seus pontos no lado sem sol; bandeiras conquistadas se movem três vezes mais devagar.",
+          "Durante a entrada, o logo e o slogan diminuem acompanhando a escala aparente do globo.",
+          "O botão do perfil agora mostra um ovo dourado no lugar do ícone de galinha."
         ]
       },
       {
@@ -23,20 +25,22 @@ export const CHANGELOG = [
           "Uma dica aparece uma única vez; Best moves, Undo e Redo passam a custar 1 ovo dourado cada.",
           "O Rank fica abaixo do Historical score e a barra de rolagem do popup não aparece durante a entrada na partida.",
           "Uma das três melhores jogadas rende 1 ovo dourado; uma das três piores rende 3, quando o ranking da posição estiver completo.",
-          "A casa mostra um check verde ou X vermelho, os ovos voam até o contador e a primeira ocorrência de cada tipo recebe um aviso.",
+          "A casa mostra um check verde ou X vermelho; ovos bônus saem do botão Best moves ou Worst moves correspondente e voam até o contador. A primeira ocorrência de cada tipo recebe um aviso.",
+          "Pausar ou terminar a partida desliga Board Params e Mixer; retomar religa os dois painéis.",
           "O preço fica sobreposto no topo do botão sem alterar sua altura; o nome e os ícones de Undo/Redo permanecem centralizados verticalmente; após uma ação válida, o preço cresce 30% e desaparece com fade."
         ]
       },
       {
         "title": "Entrada e apresentação",
         "items": [
-          "O som da apresentação da cidade começa junto ao fade-out do título, ou imediatamente ao clicar para avançar."
+          "Clique ou temporizador inicia juntos o som, o fade do brilho (2 s) e a transição do fundo para preto e branco (3 s); 3 s depois do som, os textos somem em 1,5 s sem se mover."
         ]
       },
       {
         "title": "Interface e controles",
         "items": [
-          "Volume e BPM mostram rótulo preto a 69% e valor branco a 50%, sem fundo; o rótulo tem 6 px à esquerda e o valor, 5 px à direita. O thumb fica centrado; o BPM atualiza o transporte na soltura, e seu balão mantém o último percentual durante o arraste, recalculando na soltura quando o valor muda. Nos menus, a opção selecionada fica branca e o hover usa a cor da cidade escurecida.",
+          "Volume e BPM mostram rótulo preto a 69% e valor branco a 50%, sem fundo; o rótulo tem 6 px à esquerda e o valor, 5 px à direita. O thumb fica centrado; o BPM atualiza o transporte na soltura, enquanto o balão de variação recalcula a cada movimento em relação ao valor configurado no início do arraste. Nos menus, a opção selecionada fica branca e o hover usa a cor da cidade escurecida.",
+          "Na linha inferior do Mixer, os rótulos dos knobs ficam abaixo dos controles; a legenda central usa o mesmo cinza dos rótulos.",
           "Piece Params organiza os knobs em cinco colunas; no hover e no toque/pressionamento, metade do indicador fica fora da circunferência.",
           "A legenda do Mixer fica em inglês, usa “/” e acompanha a ordem dos lados no tabuleiro.",
           "Quando o saldo zera, o texto e a borda do contador de ovos ficam vermelhos.",

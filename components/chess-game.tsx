@@ -48,7 +48,7 @@ interface EggFlight {
   id: number
   amount: number
   direction: 'earn' | 'spend'
-  square?: Square
+  sourceAction?: 'best' | 'worst'
   from?: { left: number; top: number; width: number; height: number }
   to?: { left: number; top: number; width: number; height: number }
 }
@@ -150,13 +150,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [currentIntroLine, setCurrentIntroLine] = useState(0)
   const [showIntroButton, setShowIntroButton] = useState(false)
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
+  const [showIntroGlow, setShowIntroGlow] = useState(true)
+  const [introExitStarted, setIntroExitStarted] = useState(false)
   const introStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const introTitleFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introVolumeFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introStartRequestedRef = useRef(false)
   const introContinueRequestedRef = useRef(false)
 
   useEffect(() => () => {
     if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
+    if (introTitleFadeTimerRef.current) clearTimeout(introTitleFadeTimerRef.current)
     if (introVolumeFadeTimerRef.current) clearTimeout(introVolumeFadeTimerRef.current)
   }, [])
 
@@ -325,15 +329,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       introStartTimerRef.current = setTimeout(() => handleStartGame(), 5000)
   }
 
-  const handleStartGame = () => {
-      if (introStartRequestedRef.current) return
-      introStartRequestedRef.current = true
-      if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
-      introStartTimerRef.current = null
-      // Fade out the city title, then darken the background.
-      setShowIntroBoxes(false)
+  const beginGameTransition = () => {
+      // The title sound starts the glow and background fades. Keep the text in
+      // place for 3 seconds, then fade it without translating it vertically.
       engineRef.current?.playSeatbelt()
+      setIntroExitStarted(true)
+      setShowIntroGlow(false)
       setIsBackgroundDark(true)
+      introTitleFadeTimerRef.current = setTimeout(() => {
+          introTitleFadeTimerRef.current = null
+          setShowIntroBoxes(false)
+      }, 3000)
       
       // Let the title chime ring through before starting the gameplay volume fade.
       introVolumeFadeTimerRef.current = setTimeout(() => {
@@ -362,8 +368,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           setIntroPhase(2) // Board Descend
           setTimeout(() => {
               setIntroPhase(3) // Game Active (Controls appear)
-          }, 2000) // Wait for descend animation (matched to 2s duration)
+          }, 3500) // Finish descent and leave time for the 1.5 s title fade
       }, 1000)
+  }
+
+  const handleStartGame = () => {
+      if (introStartRequestedRef.current) return
+      introStartRequestedRef.current = true
+      if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
+      introStartTimerRef.current = null
+      beginGameTransition()
   }
 
   const [isMobile, setIsMobile] = useState(false)
@@ -398,6 +412,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [spectrogramOn, setSpectrogramOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
   const [codeBackdropOn, setCodeBackdropOn] = useState(false)
+
+  const deactivatePlaybackWidgets = useCallback(() => {
+    setGlobalPanelOn(false)
+    setMixerOn(false)
+    setActiveWidgetOrder(current => current.filter(id => id !== 'globalPanel' && id !== 'mixer'))
+  }, [])
   
   const spectrogramHandleRef = useRef<HTMLDivElement | null>(null)
   const spectrogramToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -488,7 +508,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   useEffect(() => {
     if (!eggFlight) return
     const source = eggFlight.direction === 'earn'
-      ? boardAreaRef.current?.querySelector<HTMLElement>(`[data-square="${eggFlight.square}"]`)
+      ? document.querySelector<HTMLButtonElement>(`[data-ranked-move-action="${eggFlight.sourceAction}"]`)
       : eggCounterRef.current
     const target = eggFlight.direction === 'earn' ? eggCounterRef.current : null
     const rectPoint = (rect: { left: number; top: number; width: number; height: number }) => ({
@@ -700,6 +720,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       const winner = game.turn() === "w" ? "Black" : "White"
       setGameStatus(`CHECKMATE - ${winner} wins!`)
       setIsPlaying(false)
+      deactivatePlaybackWidgets()
       // If White (Player) won
       if (winner === "White") {
         if (rewardedCheckmateFenRef.current !== game.fen()) {
@@ -726,6 +747,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     } else if (game.isDraw() || game.isStalemate()) {
       setGameStatus("DRAW!")
       setIsPlaying(false)
+      deactivatePlaybackWidgets()
       playDrawKalimba()
       toast("DRAW", {
         description: "The game ended in a draw.",
@@ -735,7 +757,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "AI analyzing...")
     }
-  }, [game, city, activeSquares, squareEffects, globalEffects])
+  }, [game, city, activeSquares, squareEffects, globalEffects, deactivatePlaybackWidgets])
 
   // Track captured pieces
   const updateCapturedPieces = useCallback((move: Move) => {
@@ -838,7 +860,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         pendingEggsRef.current += reward.earnedEggs
         const id = ++rewardSerialRef.current
         setRankedMoveMark({ square: move.to, kind: rewardKind, id })
-        setEggFlight({ square: move.to, amount: reward.earnedEggs, direction: 'earn', id })
+        setEggFlight({ sourceAction: rewardKind, amount: reward.earnedEggs, direction: 'earn', id })
         if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
         rewardMarkTimerRef.current = window.setTimeout(() => {
           setRankedMoveMark(null)
@@ -1036,15 +1058,22 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }, [])
 
   const handleTogglePlay = useCallback(async () => {
+    if (gameRef.current.isGameOver() || gameStatus === "DRAW!" || gameStatus.startsWith("CHECKMATE")) {
+        deactivatePlaybackWidgets()
+        setIsPlaying(false)
+        return
+    }
     if (!isPlaying) {
         // Auto-activate Board Params (Global Control Panel) when play starts
         setGlobalPanelOn(true)
         setMixerOn(true)
         setActiveWidgetOrder(prev => [...prev.filter(id => id !== 'globalPanel' && id !== 'mixer'), 'globalPanel', 'mixer'])
+    } else {
+        deactivatePlaybackWidgets()
     }
     await togglePlayback()
     setIsPlaying((prev) => !prev)
-  }, [togglePlayback, isPlaying])
+  }, [togglePlayback, isPlaying, gameStatus, deactivatePlaybackWidgets])
 
   const handleToggleMusicEngine = useCallback(() => setMusicEngineOn(current => !current), [])
 
@@ -1644,19 +1673,29 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   <div className="flex flex-col items-center gap-3 md:gap-4 w-full px-4 text-center">
                       <h2
                           className={cn(
-                              "text-5xl md:text-7xl lg:text-8xl font-black transition-all duration-700",
-                              showIntroBoxes ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                              "text-5xl md:text-7xl lg:text-8xl font-black transition-[opacity,text-shadow]",
+                              showIntroBoxes ? "opacity-100" : "opacity-0"
                           )}
-                          style={{ color: 'black', textShadow: `0 0 15px ${city.color}, 0 0 30px ${city.color}` }}
+                          style={{
+                            color: 'black',
+                            textShadow: showIntroGlow ? `0 0 15px ${city.color}, 0 0 30px ${city.color}` : '0 0 0 transparent, 0 0 0 transparent',
+                            transitionProperty: 'opacity, text-shadow',
+                            transitionDuration: introExitStarted ? '1500ms, 2000ms' : '700ms, 0ms',
+                          }}
                       >
                           {city.name.toUpperCase()}
                       </h2>
                       <p
                           className={cn(
-                              "text-3xl md:text-4xl font-normal transition-all duration-700",
-                              showIntroBoxes ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                              "text-3xl md:text-4xl font-normal transition-[opacity,text-shadow]",
+                              showIntroBoxes ? "opacity-100" : "opacity-0"
                           )}
-                          style={{ color: 'black', textShadow: `0 0 15px ${city.color}, 0 0 30px ${city.color}` }}
+                          style={{
+                            color: 'black',
+                            textShadow: showIntroGlow ? `0 0 15px ${city.color}, 0 0 30px ${city.color}` : '0 0 0 transparent, 0 0 0 transparent',
+                            transitionProperty: 'opacity, text-shadow',
+                            transitionDuration: introExitStarted ? '1500ms, 2000ms' : '700ms, 0ms',
+                          }}
                       >
                           {city.genre} ({city.year})
                       </p>
@@ -1815,6 +1854,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onClick={() => {
                         setGameStatus("CHECKMATE - White wins!")
                         setIsPlaying(false)
+                        deactivatePlaybackWidgets()
                         const result = conquerCity(city.id)
                         setVisibleEggs(result.profile.goldenEggs - pendingEggsRef.current)
                         if (engineRef.current) {
@@ -1982,6 +2022,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
                 <Button
+                  data-ranked-move-action="best"
                   variant="ghost"
                   size="default"
                   disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
@@ -2054,6 +2095,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   </Button>
                 </div>
                 <Button
+                  data-ranked-move-action="worst"
                   variant="ghost"
                   size="default"
                   disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
