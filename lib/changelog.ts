@@ -1,11 +1,11 @@
-export const RELEASE_LABEL = 'v0.5.2'
+export const RELEASE_LABEL = 'v0.6.0'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    "version": "0.5.2",
+    "version": "0.6.0",
     "date": "28/09/2026",
-    "title": "Mapa e controles da partida",
+    "title": "Partida, controles e recompensas",
     "groups": [
       {
         "title": "Mapa e cidades",
@@ -18,16 +18,40 @@ export const CHANGELOG = [
       {
         "title": "Partida e progresso",
         "items": [
-          "No primeiro lance, Board Params, Mixer e Piece Params se abrem automaticamente; no celular, o painel de parâmetros também aparece.",
-          "O preço dos botões aparece dentro do topo; peças só brilham enquanto o loop está ativo ou durante o toque, e ovos gastos giram sempre no sentido anti-horário.",
-          "Ovos gastos agora voam com ease-in e giro aleatório; Worst moves custa 2 ovos e cada botão de custo mostra seu preço ao passar o cursor.",
+          "No primeiro lance, Mixer e Piece Params se abrem automaticamente; Board Params aparece no motor antigo. No celular, o painel de parâmetros também aparece.",
+          "O preço dos botões aparece no canto inferior direito; peças só brilham enquanto o loop está ativo ou durante o toque, e ovos gastos giram sempre no sentido anti-horário.",
+          "Best moves custa 1 ovo; preços usam 'egg' no singular e aparecem após 0,3 s de hover/foco. O som de hover de Undo e Redo ficou 33% mais baixo.",
+          "Redo agora é gratuito e os preços da fileira exibem espaço entre '$' e o valor.",
+          "Undo após checkmate retoma automaticamente o som e os painéis da partida.",
+          "Botões liga/desliga mostram drop-shadow azul no hover somente quando o widget está desligado.",
+          "O Debug recorta apenas o conteúdo interno e mostra uma barra de rolagem fina, translúcida e mais clara no hover.",
+          "Os knobs de Piece Params mostram a cor da cidade na borda durante o hover, como no Mixer.",
+          "O botão de voltar ao mapa fica disponível durante as telas de introdução da partida.",
+          "As pontas das setas de Best/Worst moves ficaram 33% menores e os traços usam 70% de opacidade; a primeira frase some instantaneamente após 1,9 s e inicia o fade-out do bônus.",
+          "O clique Play/Pause ganhou uma caixa mais natural, 20% mais baixa em média e com variação por toque.",
+          "Ovos gastos agora voam com ease-in e giro aleatório; Worst moves custa 1 ovo e os preços dos botões usam '$' em vez de sinal de menos.",
           "Reset Save retorna o saldo inicial e libera novamente a dica única da partida.",
           "Uma dica aparece uma única vez; Best moves, Undo e Redo passam a custar 1 ovo dourado cada.",
           "O Rank fica abaixo do Historical score e a barra de rolagem do popup não aparece durante a entrada na partida.",
           "Uma das três melhores jogadas rende 1 ovo dourado; uma das três piores rende 3, quando o ranking da posição estiver completo.",
           "A casa mostra um check verde ou X vermelho; ovos bônus saem do botão Best moves ou Worst moves correspondente e voam até o contador. A primeira ocorrência de cada tipo recebe um aviso.",
           "Pausar ou terminar a partida desliga Board Params e Mixer; retomar religa os dois painéis.",
-          "O preço fica sobreposto no topo do botão sem alterar sua altura; o nome e os ícones de Undo/Redo permanecem centralizados verticalmente; após uma ação válida, o preço cresce 30% e desaparece com fade."
+          "O preenchimento branco do termômetro de avaliação fica com 25% de opacidade quando a reprodução iniciada está pausada ou a partida terminou, sem transição de opacidade.",
+          "O preço fica sobreposto no canto inferior direito sem alterar a altura do botão; o nome e os ícones de Undo/Redo permanecem centralizados verticalmente; após uma ação válida, o preço cresce 30% e desaparece com fade.",
+          "A faixa preenchida dos sliders de Volume e BPM fica 50% mais transparente quando o Mixer está desligado.",
+          "O container da fileira de peças capturadas recebe escala proporcional para caber na largura disponível quando necessário.",
+          "Tom e Escala ficam lado a lado à esquerda no Mixer, com fonte igual a “Your move”; Progressão fica à direita e os itens usam hover com cor da cidade escurecida em 50%.",
+          "A Progressão mostra uma sequência curta quando fechada e a sequência em algarismos romanos com o gênero ao abrir o menu.",
+          "Um Best move que perde mais de 1 peão frente à melhor linha da mesma busca passa a contar como Worst quando jogado; sua seta permanece verde, mas número e borda ficam vermelhos. Impactos negativos menores ficam laranja.",
+          "Best/Worst agora mostram o score correto do próprio lance, inclusive mate contra o jogador; jogadas obrigatórias mostram Ok/Yep e não rendem ovos.",
+          "A análise do Stockfish busca mais nós, amplia posições táticas, descarta rankings incompletos do cache e tenta recuperar o motor após falhas. Undo/Redo rápido acompanha o histórico atual; a barra de chance volta ao centro ao mudar de posição e distingue melhor avaliações muito altas ou baixas.",
+          "Best/Worst agora acompanham novas profundidades da busca enquanto suas setas estão abertas; só o ranking final pode render ovos. O botão Debug stockfish abre uma janela arrastável ao lado do tabuleiro com leitura ao vivo das linhas, scores, profundidade, variantes e mensagens UCI."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "Leipzig 1723 e Vienna 1825 ganham gravações CC0 de violino, cordas, madeiras, cravo, trompa e tímpanos, com novas articulações, frases e mixagem própria."
         ]
       },
       {

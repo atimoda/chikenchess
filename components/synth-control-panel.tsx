@@ -97,6 +97,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          !isOn && "hover:drop-shadow-[0_0_8px_#60a5fa]",
           isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
@@ -136,7 +137,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       />
 
       {/* Main Content - z-50 */}
-      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px] max-w-full", !isOn && "opacity-50 grayscale")}>
+      <div className={cn("relative z-50 px-2.5 py-2.5 w-[340px] max-w-full", !isOn && "opacity-50 grayscale")} style={panelStyle}>
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
             {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={{ __html: pieceSvg }} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}

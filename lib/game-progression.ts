@@ -226,9 +226,9 @@ export function conquerCity(cityId: string): ConquestResult {
     return result
 }
 
-export function applyRankedMoveReward(source: PlayerProfile, kind: RankedMoveReward, now = Date.now()) {
+export function applyRankedMoveReward(source: PlayerProfile, kind: RankedMoveReward, now = Date.now(), multiplier: 1 | 2 = 1) {
     const current = normalizePlayerProfile(source, now)
-    const earnedEggs = kind === 'best' ? GOLDEN_EGGS_PER_BEST_MOVE : GOLDEN_EGGS_PER_WORST_MOVE
+    const earnedEggs = (kind === 'best' ? GOLDEN_EGGS_PER_BEST_MOVE : GOLDEN_EGGS_PER_WORST_MOVE) * multiplier
     const firstNotice = !current.moveRewardNotices[kind]
     const points = current.points + earnedEggs
     const profile: PlayerProfile = {
@@ -242,8 +242,8 @@ export function applyRankedMoveReward(source: PlayerProfile, kind: RankedMoveRew
     return { profile, earnedEggs, firstNotice }
 }
 
-export function awardRankedMove(kind: RankedMoveReward) {
-    const result = applyRankedMoveReward(getPlayerProfile(), kind)
+export function awardRankedMove(kind: RankedMoveReward, multiplier: 1 | 2 = 1) {
+    const result = applyRankedMoveReward(getPlayerProfile(), kind, Date.now(), multiplier)
     savePlayerProfile(result.profile)
     return result
 }

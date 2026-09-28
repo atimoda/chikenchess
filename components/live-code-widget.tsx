@@ -22,6 +22,8 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   onToggle: () => void
   isPlaying: boolean
   playback?: React.ReactNode
+  stockfishDebugOn: boolean
+  onToggleStockfishDebug: () => void
 }
 
 export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
@@ -36,6 +38,8 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   onToggle,
   isPlaying: _isPlaying,
   playback,
+  stockfishDebugOn,
+  onToggleStockfishDebug,
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
@@ -125,6 +129,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          !isOn && "hover:drop-shadow-[0_0_8px_#60a5fa]",
           isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
@@ -175,8 +180,8 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
       />
 
       {/* Main Content - z-50 */}
-      <div className={cn("relative z-50 px-2.5 py-2.5 w-full h-full flex flex-col", !isOn && "opacity-50 grayscale")}>
-        <div className="flex flex-col gap-3 flex-1 h-full">
+      <div className={cn("relative z-50 px-2.5 py-2.5 w-full h-full min-h-0 flex flex-col overflow-hidden", !isOn && "opacity-50 grayscale")}>
+        <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
           <div className="flex items-center justify-center mb-2 px-1 h-4 relative w-full shrink-0">
              <span className={cn(
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300 text-center",
@@ -185,10 +190,24 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
                 DEBUG
              </span>
           </div>
-          {playback && <div className="shrink-0 space-y-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
+          <button
+            type="button"
+            aria-pressed={stockfishDebugOn}
+            onClick={event => { event.stopPropagation(); onToggleStockfishDebug() }}
+            className={cn("shrink-0 self-start rounded border px-2 py-1 font-mono text-[10px] transition-colors", stockfishDebugOn ? "border-emerald-400/70 bg-emerald-400/20 text-emerald-300" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
+          >Debug stockfish {stockfishDebugOn ? 'ON' : 'OFF'}</button>
+          {playback && <div className="debug-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden space-y-1 pr-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
 
         </div>
       </div>
+      <style jsx global>{`
+        .debug-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.38) transparent; }
+        .debug-scroll:hover { scrollbar-color: rgba(255,255,255,.72) transparent; }
+        .debug-scroll::-webkit-scrollbar { width: 6px; }
+        .debug-scroll::-webkit-scrollbar-track { background: transparent; }
+        .debug-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.38); border-radius: 999px; }
+        .debug-scroll:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.72); }
+      `}</style>
       {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}
       </Resizable>
     </Draggable>

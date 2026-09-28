@@ -5,7 +5,7 @@ import type { Behavior, MovementMapping } from '../model'
 
 export type PartRole = 'rhythm' | 'bass' | 'harmony' | 'melody' | 'response' | 'texture'
 export type SynthSound = 'sbd' | 'sine' | 'triangle' | 'square' | 'sawtooth' | 'supersaw' | 'white' | 'pink' | 'brown'
-export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae'
+export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae' | 'classical'
 
 export type ProfileSource =
   | { kind: 'synth'; sound: SynthSound }
@@ -67,6 +67,7 @@ export const strings = (asset: string, variant = 0, pitched = true): ProfileSour
 export const keys = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'keys', asset, variant, pitched })
 export const synths = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'synths', asset, variant, pitched })
 export const drums = (asset: string, variant = 0, pitched = false): ProfileSource => ({ kind: 'sample', bank: 'drums', asset, variant, pitched })
+export const classical = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'classical', asset, variant, pitched })
 export const synth = (sound: SynthSound): ProfileSource => ({ kind: 'synth', sound })
 
 type PartOptions = Omit<Partial<PartProfile>, 'role' | 'name' | 'behavior' | 'source' | 'patterns'>

@@ -7,6 +7,7 @@ import type { CityData } from "@/lib/cities-data"
 import { ChessgroundBoard, PiecesSVG, type AnalysisArrow } from "./chessground-board"
 import { LiveCodeOverlay } from "./live-code-overlay"
 import { LiveCodeWidget } from "./live-code-widget"
+import { StockfishDebugOverlay } from "./stockfish-debug-overlay"
 import { AudioVisualizer } from "./audio-visualizer"
 import { GameControls } from "./game-controls"
 import { GameInfo } from "./game-info"
@@ -28,7 +29,7 @@ import { GlobalControlPanel } from "./global-control-panel"
 import { MixerWidget } from "./mixer-widget"
 import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
-import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveReward, type ChessMoveAnalysis } from "@/lib/chess-evaluation"
+import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveImpact, rankedMoveReward, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 
 import {
   DropdownMenu,
@@ -53,11 +54,75 @@ interface EggFlight {
   to?: { left: number; top: number; width: number; height: number }
 }
 
+const BEST_MOVE_MESSAGES = [
+  "Brilliant!", "Eggcellent!", "Masterful!", "Sharp!", "Clever!", "Inspired!", "Cluck yeah!", "Genius!", "Flawless!", "Checkmate-worthy!",
+]
+const WORST_MOVE_MESSAGES = [
+  "Oops!", "Eggward!", "Scrambled!", "Yikes!", "Risky!", "Uh-oh, chicken!", "Wobbly!", "Questionable!", "Fowl play!", "Oh cluck!", "Terrible!", 'Your "lucky" day',
+]
+const BEST_STREAK_MESSAGES = [
+  "Unstoppable!", "On fire!", "Unbeakable!", "Winning streak!", "Cluckin’ brilliant!",
+]
+const WORST_STREAK_MESSAGES = [
+  "Eggspiraling!", "Cluckstorm!", "Scramble mode!", "Coop’s concerned!", "Henough already!",
+]
+const BEST_STREAK_6_PLUS_MESSAGES = [
+  "You’re on a roll!", "Unbeakable streak!", "The coop is cooking!", "Cluck, you’re good!", "Can’t stop this chicken!", "Chickens make mistakes, but you?", "Cooking!",
+]
+const WORST_STREAK_6_PLUS_MESSAGES = [
+  "The eggs are scrambling.", "A streak of… choices.", "The coop is concerned.", "Maybe trust the chicken?", "This is getting eggward.", "We’ll pretend that worked.", "Uh-oh, chicken.", "That’s a bold cluck.", "The plot thickens…", "Oopsie-daisy!", "A little scrambled.", "The board noticed.", "Risky business!", "That’s one way to play.",
+]
+const SINGLE_LEGAL_MOVE_MESSAGES = ["Ok", "Yep"]
+
+function randomMessage(messages: string[]) {
+  return messages[Math.floor(Math.random() * messages.length)]
+}
+
+function rankedStreakFromHistory(history: string[], classifications: Map<string, RankedMoveReward | null>) {
+  const replay = new Chess()
+  let kind: RankedMoveReward | null = null
+  let count = 0
+  for (const san of history) {
+    const before = replay.fen()
+    const move = replay.move(san)
+    if (move?.color !== 'w') continue
+    const key = `${before}|${move.from}${move.to}${move.promotion ?? ''}`
+    const next = classifications.get(key) ?? null
+    if (next) {
+      count = next === kind ? count + 1 : 1
+      kind = next
+    } else {
+      count = 0
+      kind = null
+    }
+  }
+  return { kind, count }
+}
+
+function rebuildChessSnapshot(history: string[]) {
+  const restored = new Chess()
+  const captured: { white: string[]; black: string[] } = { white: [], black: [] }
+  const active = new Set<string>()
+  for (const san of history) {
+    const move = restored.move(san)
+    if (move.captured) captured[move.color === 'w' ? 'white' : 'black'].push(move.captured)
+    active.delete(move.from)
+    active.add(move.to)
+    if (move.san === 'O-O' || move.san === 'O-O-O') {
+      if (move.to === 'g1') { active.delete('h1'); active.add('f1') }
+      if (move.to === 'c1') { active.delete('a1'); active.add('d1') }
+      if (move.to === 'g8') { active.delete('h8'); active.add('f8') }
+      if (move.to === 'c8') { active.delete('a8'); active.add('d8') }
+    }
+  }
+  return { restored, captured, active }
+}
+
 function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis | null; status?: string }) {
   if (status) return <div className="text-white/40">{status}</div>
   if (!analysis) return <div className="text-white/40">Analisando movimentos…</div>
   return <div aria-label="Desempenho da análise" className="border-t border-white/15 pt-2">
-    <div className="text-white/40">Estimativa · {analysis.side === 'w' ? 'brancas' : 'pretas'} a jogar · avaliação {analysis.quickMs} ms / prof. {analysis.quickDepth} · ranking {analysis.engineMs} ms / prof. {analysis.depth} · {(analysis.quickNodes + analysis.nodes).toLocaleString()} nós</div>
+    <div className="text-white/40">{analysis.final ? 'Estimativa final' : 'Prévia em atualização'} · {analysis.side === 'w' ? 'brancas' : 'pretas'} a jogar · avaliação {analysis.quickMs} ms / prof. {analysis.quickDepth} · ranking {analysis.engineMs} ms / prof. {analysis.depth} · {(analysis.quickNodes + analysis.nodes).toLocaleString()} nós</div>
     {!analysis.complete&&<div className="text-white/40">Orçamento esgotado antes de comparar todas as jogadas.</div>}
   </div>
 }
@@ -68,11 +133,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [game, setGame] = useState(new Chess())
   const [currentPattern, setCurrentPattern] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
+  const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false)
   const [tabVisible, setTabVisible] = useState(true)
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [moveHistory, setMoveHistory] = useState<string[]>([])
   const [redoStack, setRedoStack] = useState<string[]>([]) // Stack of SAN moves to redo
+  const redoStackRef = useRef<string[]>([])
   const [gameStatus, setGameStatus] = useState<string>("Your move")
   const [aiDepth, setAiDepth] = useState(5)
   const aiDifficultyLabel = aiDepth === 5 ? "Easy" : aiDepth === 10 ? "Medium" : aiDepth === 15 ? "Hard" : "Expert"
@@ -80,6 +147,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     white: [],
     black: [],
   })
+  const capturedPiecesViewportRef = useRef<HTMLDivElement | null>(null)
+  const capturedPiecesContentRef = useRef<HTMLDivElement | null>(null)
+  const [capturedPiecesScale, setCapturedPiecesScale] = useState(1)
   
   // Every city starts on Easy; the menu can override it for this match.
   useEffect(() => {
@@ -100,21 +170,37 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
   const [lastEvalMate, setLastEvalMate] = useState<number | null>(null)
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
+  const [stockfishDebugOn, setStockfishDebugOn] = useState(false)
+  const [stockfishDebugPosition, setStockfishDebugPosition] = useState<{ x: number; y: number } | null>(null)
+  const stockfishDebugOnRef = useRef(false)
+  const [stockfishTrace, setStockfishTrace] = useState<StockfishTrace | null>(null)
+  const stockfishTraceRef = useRef<StockfishTrace | null>(null)
+  const stockfishTraceTimerRef = useRef<number | null>(null)
+  const [workerEpoch, setWorkerEpoch] = useState(0)
+  const workerRetriesRef = useRef(0)
+  const workerRetryTimerRef = useRef<number | null>(null)
   const aiMoveCallbackRef = useRef<(uci: string) => void>(() => {})
   const aiMoveTimerRef = useRef<number | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [moveAnalysis, setMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
+  const [liveMoveAnalysis, setLiveMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
+  const analysisArrowKindRef = useRef<'best' | 'worst' | null>(null)
   const [visibleEggs, setVisibleEggs] = useState(STARTING_GOLDEN_EGGS)
   const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
+  const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
   const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | null>(null)
+  const costHintTimerRef = useRef<number | null>(null)
   const [fadingCostAction, setFadingCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | null>(null)
   const eggCounterRef = useRef<HTMLButtonElement | null>(null)
   const pendingEggsRef = useRef(0)
   const rewardedMovesRef = useRef(new Set<string>())
+  const rankedMoveKindsRef = useRef(new Map<string, RankedMoveReward | null>())
+  const rankedMoveStreakRef = useRef<{ kind: RankedMoveReward | null; count: number }>({ kind: null, count: 0 })
   const rewardSerialRef = useRef(0)
   const rewardMarkTimerRef = useRef<number | null>(null)
+  const rewardAnnouncementTimerRef = useRef<number | null>(null)
   const flightCleanupsRef = useRef(new Set<() => void>())
   const [analysisArrows, setAnalysisArrows] = useState<AnalysisArrow[]>([])
   const analysisArrowTimeoutRef = useRef<number | null>(null)
@@ -412,6 +498,39 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [spectrogramOn, setSpectrogramOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
   const [codeBackdropOn, setCodeBackdropOn] = useState(false)
+  const toggleStockfishDebug = () => {
+    const next = !stockfishDebugOnRef.current
+    stockfishDebugOnRef.current = next
+    setStockfishDebugOn(next)
+    if (next) setStockfishTrace(stockfishTraceRef.current)
+  }
+  const restartStockfish = useCallback(() => {
+    if (workerRetryTimerRef.current !== null) window.clearTimeout(workerRetryTimerRef.current)
+    workerRetryTimerRef.current = null
+    workerRetriesRef.current = 0
+    setWorkerEpoch(epoch => epoch + 1)
+  }, [])
+
+  useEffect(() => {
+    const viewport = capturedPiecesViewportRef.current
+    const content = capturedPiecesContentRef.current
+    if (!viewport || !content) return
+
+    const updateScale = () => {
+      const availableWidth = viewport.clientWidth
+      const contentWidth = content.scrollWidth
+      const nextScale = availableWidth > 0 && contentWidth > availableWidth
+        ? availableWidth / contentWidth
+        : 1
+      setCapturedPiecesScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
+    }
+
+    updateScale()
+    const observer = new ResizeObserver(updateScale)
+    observer.observe(viewport)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [capturedPieces.black.length, capturedPieces.white.length])
 
   const deactivatePlaybackWidgets = useCallback(() => {
     setGlobalPanelOn(false)
@@ -575,8 +694,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     const worker = new Worker(STOCKFISH_WORKER_URL)
     const queue = new ChessEvaluationQueue(worker, {
       onBusy: setIsEvaluating,
-      onScore: (score, mate) => { setLastEvalScore(score); setLastEvalMate(mate) },
+      onScore: (score, mate) => { setLastEvalScore(score); setLastEvalMate(mate); setEvaluationError(null) },
       onAnalysis: setMoveAnalysis,
+      onProgress: setLiveMoveAnalysis,
+      onTrace: trace => {
+        stockfishTraceRef.current = trace
+        if (!stockfishDebugOnRef.current || stockfishTraceTimerRef.current !== null) return
+        stockfishTraceTimerRef.current = window.setTimeout(() => {
+          stockfishTraceTimerRef.current = null
+          setStockfishTrace(stockfishTraceRef.current)
+        }, 80)
+      },
       onMove: (uci, fen) => {
         if (gameRef.current.fen() !== fen) return
         if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
@@ -591,6 +719,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
         aiMoveTimerRef.current = null
         worker.terminate(); setEvaluationError(message); setLastEvalScore(null); setIsThinking(false)
+        if (workerRetriesRef.current < 2) {
+          workerRetriesRef.current += 1
+          workerRetryTimerRef.current = window.setTimeout(() => {
+            workerRetryTimerRef.current = null
+            setWorkerEpoch(epoch => epoch + 1)
+          }, 300)
+        }
       },
     }, isConstrainedDevice())
     evaluationQueueRef.current = queue
@@ -599,11 +734,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     worker.onmessageerror = () => queue.fail()
     queue.initialize()
     return () => {
+      if (stockfishTraceTimerRef.current !== null) window.clearTimeout(stockfishTraceTimerRef.current)
+      stockfishTraceTimerRef.current = null
+      if (workerRetryTimerRef.current !== null) window.clearTimeout(workerRetryTimerRef.current)
+      workerRetryTimerRef.current = null
       if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
       aiMoveTimerRef.current = null
       queue.reset(); worker.terminate(); evaluationQueueRef.current = null
     }
-  }, [])
+  }, [workerEpoch])
 
   const requestEvaluation = useCallback((gameInstance: Chess, opponentSkill?: number) => {
     if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
@@ -611,6 +750,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     analysisArrowTimeoutRef.current = null
     setAnalysisArrows([])
+    analysisArrowKindRef.current = null
     gameRef.current = gameInstance
     if (gameInstance.isGameOver()) {
       evaluationQueueRef.current?.reset()
@@ -648,21 +788,36 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
   }, [])
 
+  const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
   const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
-    if (!moveAnalysis?.complete || moveAnalysis.fen !== gameRef.current.fen()) return
+    if (!displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
-    setAnalysisArrows(moveAnalysis[kind].map(move => ({
+    analysisArrowKindRef.current = kind
+    setAnalysisArrows(displayedAnalysis[kind].map(move => ({
       from: move.uci.slice(0, 2) as Square,
       to: move.uci.slice(2, 4) as Square,
-      label: formatEvaluation(move.change, move.changeMate),
+      label: formatEvaluation(move.score, move.mate),
       tone: kind,
+      labelTone: kind === 'best' ? rankedMoveImpact(move.change, move.mate) : 'worst',
     })))
     analysisArrowTimeoutRef.current = window.setTimeout(() => {
       setAnalysisArrows([])
+      analysisArrowKindRef.current = null
       analysisArrowTimeoutRef.current = null
     }, 3000)
-  }, [moveAnalysis])
+  }, [displayedAnalysis])
+
+  useEffect(() => {
+    const kind = analysisArrowKindRef.current
+    if (!kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
+    setAnalysisArrows(displayedAnalysis[kind].map(move => ({
+      from: move.uci.slice(0, 2) as Square,
+      to: move.uci.slice(2, 4) as Square,
+      label: formatEvaluation(move.score, move.mate), tone: kind,
+      labelTone: kind === 'best' ? rankedMoveImpact(move.change, move.mate) : 'worst',
+    })))
+  }, [displayedAnalysis])
 
   const spendEggForAction = (button: HTMLButtonElement, costAction: 'best' | 'undo' | 'redo' | 'worst', amount: number, action: () => void) => {
     const result = spendGoldenEggs(amount)
@@ -686,25 +841,42 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     action()
   }
 
+  const showCostHint = (action: 'best' | 'undo' | 'redo' | 'worst') => {
+    if (costHintTimerRef.current !== null) window.clearTimeout(costHintTimerRef.current)
+    setHoveredCostAction(null)
+    costHintTimerRef.current = window.setTimeout(() => {
+      setHoveredCostAction(action)
+      costHintTimerRef.current = null
+    }, 300)
+  }
+  const hideCostHint = () => {
+    if (costHintTimerRef.current !== null) window.clearTimeout(costHintTimerRef.current)
+    costHintTimerRef.current = null
+    setHoveredCostAction(null)
+  }
   const costHint = (action: 'best' | 'undo' | 'redo' | 'worst', amount: number) => (
     <span
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute top-[5px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[10px] leading-none font-bold text-amber-200 opacity-0 scale-100 transition-[opacity,transform] duration-200",
+        "pointer-events-none absolute bottom-[5px] right-[5px] z-10 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[10px] leading-none font-bold text-amber-200 opacity-0 scale-100 transition-[opacity,transform] duration-200",
         hoveredCostAction === action && fadingCostAction !== action && "opacity-100",
         fadingCostAction === action && "opacity-0 scale-[1.3]",
       )}
     >
-      -{amount} eggs
+      $ {amount} {amount === 1 ? 'egg' : 'eggs'}
     </span>
   )
 
-  const playControlHoverKick = () => playDrum('bd', 0.52 + Math.random() * 0.16, 0.92 + Math.random() * 0.16)
+  const playControlHoverKick = (volume = 1) => playDrum('bd', (0.52 + Math.random() * 0.16) * volume, 0.92 + Math.random() * 0.16)
   const playClosedAnalysisHat = () => playDrum('ch', 0.648 + Math.random() * 0.048, 0.96 + Math.random() * 0.08)
 
   useEffect(() => {
-    if (introPhase === 3) requestEvaluation(gameRef.current)
-  }, [introPhase, requestEvaluation])
+    if (introPhase === 3) {
+      const skill = gameRef.current.turn() === 'b' ? (aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20) : undefined
+      if (skill !== undefined) setIsThinking(true)
+      requestEvaluation(gameRef.current, skill)
+    }
+  }, [introPhase, requestEvaluation, workerEpoch])
 
   useEffect(() => {
     if (introPhase === 3 && markGameplayTipSeen()) setGameplayTipOpen(true)
@@ -854,27 +1026,58 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       const uci = `${move.from}${move.to}${move.promotion ?? ''}`
       const rewardKind = rankedMoveReward(moveAnalysis, move.before, uci)
       const rewardKey = `${move.before}|${uci}`
+      const seenMove = rankedMoveKindsRef.current.has(rewardKey)
+      const streakKind = rewardKind ?? (seenMove ? rankedMoveKindsRef.current.get(rewardKey) ?? null : null)
+      rankedMoveKindsRef.current.set(rewardKey, streakKind)
+      const previousStreak = rankedMoveStreakRef.current
+      const streakCount = streakKind ? (previousStreak.kind === streakKind ? previousStreak.count + 1 : 1) : 0
+      rankedMoveStreakRef.current = { kind: streakKind, count: streakCount }
       if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
         rewardedMovesRef.current.add(rewardKey)
-        const reward = awardRankedMove(rewardKind)
+        const streak = streakKind === rewardKind && streakCount >= 3
+        const reward = awardRankedMove(rewardKind, streak ? 2 : 1)
         pendingEggsRef.current += reward.earnedEggs
         const id = ++rewardSerialRef.current
         setRankedMoveMark({ square: move.to, kind: rewardKind, id })
+        const legalMoveCount = new Chess(move.before).moves().length
+        const headline = legalMoveCount === 1
+          ? randomMessage(SINGLE_LEGAL_MOVE_MESSAGES)
+          : streak
+            ? randomMessage(streakCount >= 6
+              ? rewardKind === 'best' ? BEST_STREAK_6_PLUS_MESSAGES : WORST_STREAK_6_PLUS_MESSAGES
+              : rewardKind === 'best' ? BEST_STREAK_MESSAGES : WORST_STREAK_MESSAGES)
+            : randomMessage(rewardKind === 'best' ? BEST_MOVE_MESSAGES : WORST_MOVE_MESSAGES)
+        setRankedMoveAnnouncement({ square: move.to, kind: rewardKind, id, headline, earnedEggs: reward.earnedEggs, streak })
         setEggFlight({ sourceAction: rewardKind, amount: reward.earnedEggs, direction: 'earn', id })
         if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
         rewardMarkTimerRef.current = window.setTimeout(() => {
           setRankedMoveMark(null)
           rewardMarkTimerRef.current = null
         }, 700)
+        if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
+        rewardAnnouncementTimerRef.current = window.setTimeout(() => {
+          setRankedMoveAnnouncement(null)
+          rewardAnnouncementTimerRef.current = null
+        }, 5500)
         void engineRef.current?.playRankedMoveWhistle(rewardKind)
         if (reward.firstNotice) {
           toast.success(rewardKind === 'worst'
-            ? 'You made one of the 3 worst available moves! Here are 3 golden eggs as a reward :)'
-            : 'Oops, you made one of the 3 best available moves! Here’s a little golden egg as a reward.',
+            ? `You made one of the 3 worst available moves! Here are ${reward.earnedEggs} golden eggs as a reward :)`
+            : `You made one of the 3 best available moves! Here ${reward.earnedEggs === 1 ? 'is' : 'are'} ${reward.earnedEggs} golden ${reward.earnedEggs === 1 ? 'egg' : 'eggs'} as a reward.`,
             { duration: 6000 })
         }
       }
+      if (!rewardKind && moveAnalysis?.complete && moveAnalysis.fen === move.before && moveAnalysis.legalMoves === 1) {
+        const id = ++rewardSerialRef.current
+        setRankedMoveAnnouncement({ square: move.to, kind: 'neutral', id, headline: randomMessage(SINGLE_LEGAL_MOVE_MESSAGES), earnedEggs: 0, streak: false })
+        if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
+        rewardAnnouncementTimerRef.current = window.setTimeout(() => {
+          setRankedMoveAnnouncement(null)
+          rewardAnnouncementTimerRef.current = null
+        }, 2400)
+      }
       setMoveHistory((prev) => [...prev, move.san])
+      redoStackRef.current = []
       setRedoStack([]) // Clear redo stack on new move
       
       updateCapturedPieces(move)
@@ -894,6 +1097,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
       // Auto-start music on first move
       if (!isPlaying) {
+        setHasPlaybackStarted(true)
         setIsPlaying(true)
         togglePlayback()
       }
@@ -924,12 +1128,20 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const resetGame = useCallback(() => {
     firstMovePanelsActivatedRef.current = false
     rewardedMovesRef.current.clear()
+    rankedMoveKindsRef.current.clear()
+    rankedMoveStreakRef.current = { kind: null, count: 0 }
     setRankedMoveMark(null)
+    setRankedMoveAnnouncement(null)
+    if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
+    if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
     evaluationQueueRef.current?.reset()
     const freshGame = new Chess()
     gameRef.current = freshGame
     setGame(freshGame)
+    setIsPlaying(false)
+    setHasPlaybackStarted(false)
     setMoveHistory([])
+    redoStackRef.current = []
     setRedoStack([])
     setIsThinking(false)
     setCapturedPieces({ white: [], black: [] })
@@ -941,105 +1153,89 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setLastEvalScore(null)
     setLastEvalMate(null)
     setIsEvaluating(false)
+    if (evaluationError) restartStockfish()
+    else requestEvaluation(freshGame)
     setIsBackgroundDark(false)
     rewardedCheckmateFenRef.current = null
-    requestEvaluation(freshGame)
-  }, [requestEvaluation])
+  }, [evaluationError, requestEvaluation, restartStockfish])
 
   const undoMove = useCallback(() => {
-    if (moveHistory.length === 0) return
+    const currentHistory = gameRef.current.history()
+    if (currentHistory.length === 0) return
+    const undoingCheckmate = gameRef.current.isCheckmate()
 
     // Determine how many steps to undo
     // If AI is thinking (odd moves), undo 1 (player's move) to cancel.
     // If player's turn (even moves), undo 2 (AI + Player) to go back to previous turn.
-    const isAiThinking = moveHistory.length % 2 !== 0
+    const isAiThinking = currentHistory.length % 2 !== 0
     const stepsToUndo = isAiThinking ? 1 : 2
     
-    if (moveHistory.length < stepsToUndo) return
+    if (currentHistory.length < stepsToUndo) return
 
-    const newHistory = moveHistory.slice(0, -stepsToUndo)
+    const newHistory = currentHistory.slice(0, -stepsToUndo)
+    rankedMoveStreakRef.current = rankedStreakFromHistory(newHistory, rankedMoveKindsRef.current)
+    setRankedMoveAnnouncement(null)
+    if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
     
-    // Rebuild state from scratch for safety
-    const newGame = new Chess()
-    const newCapturedPieces: { white: string[], black: string[] } = { white: [], black: [] }
-    const newActiveSquares = new Set<string>()
-
-    newHistory.forEach(san => {
-      const move = newGame.move(san)
-      if (move) {
-        if (move.captured) {
-          if (move.color === "w") newCapturedPieces.white.push(move.captured)
-          else newCapturedPieces.black.push(move.captured)
-        }
-        newActiveSquares.delete(move.from)
-        newActiveSquares.add(move.to)
-        if (move.san === "O-O" || move.san === "O-O-O") {
-          if (move.color === 'w') {
-            if (move.to === "g1") { newActiveSquares.delete("h1"); newActiveSquares.add("f1"); }
-            if (move.to === "c1") { newActiveSquares.delete("a1"); newActiveSquares.add("d1"); }
-          } else {
-            if (move.to === "g8") { newActiveSquares.delete("h8"); newActiveSquares.add("f8"); }
-            if (move.to === "c8") { newActiveSquares.delete("a8"); newActiveSquares.add("d8"); }
-          }
-        }
-      }
-    })
+    // Reconstruct from the current board history, which updates synchronously even on rapid clicks.
+    const { restored: newGame, captured: newCapturedPieces, active: newActiveSquares } = rebuildChessSnapshot(newHistory)
 
     // requestEvaluation cancels any pending opponent result before switching position.
     setIsThinking(false)
 
     // Save undone moves to stack in reverse order (LIFO for redo)
-    const movesToUndo = moveHistory.slice(-stepsToUndo).reverse()
-    setRedoStack(prev => [...prev, ...movesToUndo])
+    const movesToUndo = currentHistory.slice(-stepsToUndo).reverse()
+    redoStackRef.current = [...redoStackRef.current, ...movesToUndo]
+    setRedoStack(redoStackRef.current)
 
     setGame(newGame)
     setMoveHistory(newHistory)
     setCapturedPieces(newCapturedPieces as { white: string[], black: string[] })
     setActiveSquares(newActiveSquares)
+    if (undoingCheckmate && !newGame.isGameOver()) {
+      setHasPlaybackStarted(true)
+      setIsPlaying(true)
+      setGlobalPanelOn(true)
+      setMixerOn(true)
+      setActiveWidgetOrder(current => [...current.filter(id => id !== 'globalPanel' && id !== 'mixer'), 'globalPanel', 'mixer'])
+      void togglePlayback()
+    }
 
     // Re-evaluate the reconstructed position with its repetition history.
     console.log("Undo to FEN:", newGame.fen())
     requestEvaluation(newGame)
-  }, [moveHistory, requestEvaluation])
+  }, [requestEvaluation, togglePlayback])
 
   const redoMove = useCallback(() => {
-    if (redoStack.length === 0) return
+    const pendingRedo = redoStackRef.current
+    if (pendingRedo.length === 0) return
 
     // Pop one move from the stack
-    const moveSan = redoStack[redoStack.length - 1]
-    const newRedoStack = redoStack.slice(0, -1)
+    const moveSan = pendingRedo[pendingRedo.length - 1]
+    const newRedoStack = pendingRedo.slice(0, -1)
 
     const gameCopy = new Chess()
-      gameCopy.loadPgn(game.pgn())
-    const nextCaptured = { white: [...capturedPieces.white], black: [...capturedPieces.black] }
-    const nextActiveSquares = new Set(activeSquares)
+    gameCopy.loadPgn(gameRef.current.pgn())
 
     const move = gameCopy.move(moveSan)
     if (move) {
-        if (move.captured) {
-          if (move.color === "w") nextCaptured.white.push(move.captured)
-          else nextCaptured.black.push(move.captured)
-        }
-        nextActiveSquares.delete(move.from)
-        nextActiveSquares.add(move.to)
-        if (move.san === "O-O" || move.san === "O-O-O") {
-          if (move.color === 'w') {
-            if (move.to === "g1") { nextActiveSquares.delete("h1"); nextActiveSquares.add("f1"); }
-            if (move.to === "c1") { nextActiveSquares.delete("a1"); nextActiveSquares.add("d1"); }
-          } else {
-            if (move.to === "g8") { nextActiveSquares.delete("h8"); nextActiveSquares.add("f8"); }
-            if (move.to === "c8") { nextActiveSquares.delete("a8"); nextActiveSquares.add("d8"); }
-          }
-        }
-        
+        const nextHistory = gameCopy.history()
+        const { captured: nextCaptured, active: nextActiveSquares } = rebuildChessSnapshot(nextHistory)
+        redoStackRef.current = newRedoStack
         setGame(gameCopy)
-        setMoveHistory(prev => [...prev, moveSan])
+        setMoveHistory(nextHistory)
+        rankedMoveStreakRef.current = rankedStreakFromHistory(nextHistory, rankedMoveKindsRef.current)
+        setRankedMoveAnnouncement(null)
+        if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
         setRedoStack(newRedoStack)
         setCapturedPieces(nextCaptured)
         setActiveSquares(nextActiveSquares)
-        requestEvaluation(gameCopy)
+        const skill = newRedoStack.length === 0 && gameCopy.turn() === 'b'
+          ? (aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20) : undefined
+        if (skill !== undefined) setIsThinking(true)
+        requestEvaluation(gameCopy, skill)
     }
-  }, [redoStack, game, activeSquares, capturedPieces, requestEvaluation])
+  }, [aiDepth, requestEvaluation])
 
   const toggleWidget = useCallback((id: string, setIsOn: React.Dispatch<React.SetStateAction<boolean>>) => {
     setIsOn(prev => {
@@ -1065,6 +1261,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     }
     if (!isPlaying) {
         // Auto-activate Board Params (Global Control Panel) when play starts
+        setHasPlaybackStarted(true)
         setGlobalPanelOn(true)
         setMixerOn(true)
         setActiveWidgetOrder(prev => [...prev.filter(id => id !== 'globalPanel' && id !== 'mixer'), 'globalPanel', 'mixer'])
@@ -1095,8 +1292,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       return () => observer.disconnect()
   }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, introPhase])
 
-  // Visual balance only, not a probability model. +5 pawns fills the bar.
-  const whitePercent = lastEvalScore === null ? 50 : 50 + Math.max(-50, Math.min(50, lastEvalScore / 10))
+  // Visual balance only, not a probability model. Keep large non-mate scores distinguishable.
+  const whitePercent = lastEvalScore === null ? 50 : lastEvalMate !== null
+    ? (lastEvalScore < 0 ? 0 : 100)
+    : 50 + 50 * lastEvalScore / (Math.abs(lastEvalScore) + 300)
+  const thermometerDimmed = (hasPlaybackStarted && !isPlaying)
+    || game.isGameOver()
+    || gameStatus === "DRAW!"
+    || gameStatus.startsWith("CHECKMATE")
 
   useEffect(() => {
     if (!rootRef.current || !boardAreaRef.current) {
@@ -1469,11 +1672,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('knobs') + 10 }}
             />
 
-            <GlobalControlPanel
-                tonality={music.tonality}
-                onTonalityChange={music.setTonality}
-                harmony={music.harmony}
-                onHarmonyChange={music.setHarmony}
+            {!music.enabled && <GlobalControlPanel
                 showAmbience={!music.enabled}
                 ref={globalPanelRef}
                 toggleRef={globalPanelToggleRef}
@@ -1487,12 +1686,18 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onToggle={() => toggleWidget('globalPanel', setGlobalPanelOn)}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('globalPanel') + 10 }}
                 onClickCapture={() => handleWidgetHeaderClick('globalPanel')}
-            />
+            />}
 
             <MixerWidget
                 teamMixes={music.teamMixes}
+                effects={globalEffects}
+                onEffectChange={handleGlobalEffectChange}
                 topColor={boardOrientation === "white" ? "b" : "w"}
                 onTeamMixChange={music.updateTeamMix}
+                tonality={music.tonality}
+                onTonalityChange={music.setTonality}
+                harmony={music.harmony}
+                onHarmonyChange={music.setHarmony}
                 ref={mixerRef}
                 handleRef={mixerHandleRef}
                 toggleRef={mixerToggleRef}
@@ -1506,13 +1711,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />
 
             <LiveCodeWidget
+                stockfishDebugOn={stockfishDebugOn}
+                onToggleStockfishDebug={toggleStockfishDebug}
                 playback={liveCodeOn && music.enabled && music.engineActive ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
                   {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
                   {music.reactionDescriptions.map((description, i) => <div key={i}>{description}</div>)}
                   <MusicTransportReadout monitor={music.monitor} />
                   <MusicHarmonyReadout monitor={music.monitor} />
-                  <MoveAnalysisReadout analysis={moveAnalysis} status={evaluationError ?? (game.isGameOver() ? "Partida encerrada." : undefined)} />
+                  <MoveAnalysisReadout analysis={displayedAnalysis} status={evaluationError ?? (game.isGameOver() ? "Partida encerrada." : undefined)} />
                 </> : undefined}
                 ref={liveCodeRef}
                 toggleRef={liveCodeToggleRef}
@@ -1708,12 +1915,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       {/* Header */}
       <header 
         className={cn(
-          "absolute top-0 left-0 w-full z-20 flex items-center justify-between px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000 pointer-events-none",
-          introPhase === 0 ? "opacity-100" : (introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")
+          "absolute top-0 left-0 w-full flex items-center justify-between px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000 pointer-events-none",
+          introPhase < 3 ? "z-[110] opacity-100" : "z-20 opacity-100"
         )}
         style={{ "--city-neon": city.color } as React.CSSProperties}
       >
-        <div className="flex min-w-0 items-center gap-3 pointer-events-auto">
+        <div className={cn("flex min-w-0 items-center gap-3 pointer-events-auto", introPhase < 3 && "relative z-[111]")}>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -1726,7 +1933,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className={cn("transition-opacity duration-500", introPhase === 0 ? "opacity-0" : "opacity-100")}>
+          <div className={cn("transition-opacity duration-500", introPhase < 3 ? "opacity-0" : "opacity-100")}>
             <h1 className="font-mono font-bold text-base md:text-lg flex min-w-0 items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
               <span className="hidden truncate sm:inline" style={{ color: city.color }}>{city.name.toUpperCase()}</span>
@@ -1734,7 +1941,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           </div>
         </div>
 
-        <div className={cn("flex shrink-0 items-center gap-2 md:gap-3 transition-opacity duration-500 pointer-events-auto", introPhase === 0 ? "opacity-0" : "opacity-100")}>
+        <div className={cn("flex shrink-0 items-center gap-2 md:gap-3 transition-opacity duration-500 pointer-events-auto", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
           <button
             ref={eggCounterRef}
             type="button"
@@ -1854,6 +2061,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     onClick={() => {
                         setGameStatus("CHECKMATE - White wins!")
                         setIsPlaying(false)
+                        setHasPlaybackStarted(true)
                         deactivatePlaybackWidgets()
                         const result = conquerCity(city.id)
                         setVisibleEggs(result.profile.goldenEggs - pendingEggsRef.current)
@@ -1896,36 +2104,41 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             ref={centerContainerRef}
           >
 
-
-
-
-            <div className="flex justify-between gap-0.5 min-h-[2rem] h-8 w-full px-4 lg:px-0 pointer-events-none">
-              <div className="flex justify-start gap-0.5">
-                {capturedPieces.black.map((p, i) => (
-                  <div
-                    key={i}
-                    className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
-                    dangerouslySetInnerHTML={{
-                      __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="flex justify-end gap-0.5">
-                {capturedPieces.white.map((p, i) => (
-                  <div
-                    key={i}
-                    className="w-5 h-5 sm:w-6 sm:h-6 opacity-90 p-0.5"
-                    style={{
-                      "--city-neon": city.color,
-                      filter:
-                        "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))",
-                    } as React.CSSProperties}
-                    dangerouslySetInnerHTML={{
-                      __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                    }}
-                  />
-                ))}
+            <div className="min-h-[2rem] h-8 w-full px-4 lg:px-0 pointer-events-none">
+              <div ref={capturedPiecesViewportRef} className="h-full w-full overflow-hidden">
+                <div
+                  ref={capturedPiecesContentRef}
+                  className="flex h-full w-max min-w-full items-center justify-between gap-0.5"
+                  style={{ transform: `scale(${capturedPiecesScale})`, transformOrigin: "left center" }}
+                >
+                  <div className="flex shrink-0 justify-start gap-0.5">
+                    {capturedPieces.black.map((p, i) => (
+                      <div
+                        key={i}
+                        className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 opacity-90 p-0.5"
+                        dangerouslySetInnerHTML={{
+                          __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex shrink-0 justify-end gap-0.5">
+                    {capturedPieces.white.map((p, i) => (
+                      <div
+                        key={i}
+                        className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 opacity-90 p-0.5"
+                        style={{
+                          "--city-neon": city.color,
+                          filter:
+                            "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))",
+                        } as React.CSSProperties}
+                        dangerouslySetInnerHTML={{
+                          __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG],
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1953,6 +2166,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   musicPulseMonitor={music.enabled && music.engineActive ? music.pulseMonitor : undefined}
                   analysisArrows={analysisArrows}
                   rankedMoveMark={rankedMoveMark}
+                  rankedMoveAnnouncement={rankedMoveAnnouncement}
                   onBoardClick={(square) => {
                     if (music.enabled) { music.select(square); return }
                     setSynthSelectedSquare(square)
@@ -1980,6 +2194,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                       })
                     }
                     if (turnedOn && !isPlaying && (!music.enabled || music.engineActive)) {
+                      setHasPlaybackStarted(true)
                       setIsPlaying(true)
                       void togglePlayback()
                     }
@@ -2006,6 +2221,15 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     }
                   }}
                 />
+                {stockfishDebugOn && introPhase === 3 && <StockfishDebugOverlay
+                  trace={stockfishTrace}
+                  analysis={displayedAnalysis}
+                  onClose={toggleStockfishDebug}
+                  onRetry={restartStockfish}
+                  boardRef={boardAreaRef}
+                  position={stockfishDebugPosition}
+                  onPositionChange={setStockfishDebugPosition}
+                />}
               </div>
 
               <div className={cn(
@@ -2025,12 +2249,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   data-ranked-move-action="best"
                   variant="ghost"
                   size="default"
-                  disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
+                  disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
                   onClick={event => spendEggForAction(event.currentTarget, 'best', 1, () => showAnalysisArrows("best"))}
-                  onMouseEnter={() => { setHoveredCostAction('best'); playClosedAnalysisHat() }}
-                  onPointerLeave={() => { setHoveredCostAction(null); playClosedAnalysisHat() }}
-                  onFocus={() => setHoveredCostAction('best')}
-                  onBlur={() => setHoveredCostAction(null)}
+                  onMouseEnter={() => { showCostHint('best'); playClosedAnalysisHat() }}
+                  onPointerLeave={() => { hideCostHint(); playClosedAnalysisHat() }}
+                  onFocus={() => showCostHint('best')}
+                  onBlur={hideCostHint}
                   className="relative w-full max-w-28 h-12 sm:h-16 justify-self-start overflow-visible rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
                   style={{ "--city-neon": city.color, backgroundColor: "var(--city-neon)20" } as React.CSSProperties}
                 >
@@ -2043,10 +2267,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     size="default"
                     onClick={event => spendEggForAction(event.currentTarget, 'undo', 1, undoMove)}
                     aria-label="Undo · costs 1 golden egg"
-                    onMouseEnter={() => { setHoveredCostAction('undo'); playControlHoverKick() }}
-                    onPointerLeave={() => setHoveredCostAction(null)}
-                    onFocus={() => setHoveredCostAction('undo')}
-                    onBlur={() => setHoveredCostAction(null)}
+                    onMouseEnter={() => { showCostHint('undo'); playControlHoverKick(0.67) }}
+                    onPointerLeave={hideCostHint}
+                    onFocus={() => showCostHint('undo')}
+                    onBlur={hideCostHint}
                     onMouseDown={() => playDrum("oh", 1.5)}
                     disabled={moveHistory.length === 0}
                     className="relative w-12 h-12 sm:w-16 sm:h-16 overflow-visible rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
@@ -2062,8 +2286,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     variant="ghost"
                     size="default"
                     onClick={handleTogglePlay}
-                    onMouseEnter={playControlHoverKick}
-                    onMouseDown={() => playDrum("sd")}
+                    onMouseEnter={() => playControlHoverKick()}
+                    onMouseDown={() => playDrum("sd", 0.36 + Math.random() * 0.24, 0.94 + Math.random() * 0.12)}
                     onMouseUp={() => playDrum("hh")}
                     className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
@@ -2076,12 +2300,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   <Button
                     variant="ghost"
                     size="default"
-                    onClick={event => spendEggForAction(event.currentTarget, 'redo', 1, redoMove)}
-                    aria-label="Redo · costs 1 golden egg"
-                    onMouseEnter={() => { setHoveredCostAction('redo'); playControlHoverKick() }}
-                    onPointerLeave={() => setHoveredCostAction(null)}
-                    onFocus={() => setHoveredCostAction('redo')}
-                    onBlur={() => setHoveredCostAction(null)}
+                    onClick={redoMove}
+                    aria-label="Redo"
+                    onMouseEnter={() => playControlHoverKick(0.67)}
                     onMouseDown={() => playDrum("hh", 1.5)}
                     disabled={redoStack.length === 0}
                     className="relative w-12 h-12 sm:w-16 sm:h-16 overflow-visible rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
@@ -2090,7 +2311,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                         backgroundColor: "var(--city-neon)20"
                     } as React.CSSProperties}
                   >
-                    {costHint('redo', 1)}
                     <Redo2 className="pointer-events-none absolute inset-0 m-auto h-7 w-7 sm:h-10 sm:w-10" />
                   </Button>
                 </div>
@@ -2098,16 +2318,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   data-ranked-move-action="worst"
                   variant="ghost"
                   size="default"
-                  disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
-                  onClick={event => spendEggForAction(event.currentTarget, 'worst', 2, () => showAnalysisArrows("worst"))}
-                  onMouseEnter={() => { setHoveredCostAction('worst'); playDrum('oh', 0.696) }}
-                  onPointerLeave={() => { setHoveredCostAction(null); playClosedAnalysisHat() }}
-                  onFocus={() => setHoveredCostAction('worst')}
-                  onBlur={() => setHoveredCostAction(null)}
+                  disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
+                  onClick={event => spendEggForAction(event.currentTarget, 'worst', 1, () => showAnalysisArrows("worst"))}
+                  onMouseEnter={() => { showCostHint('worst'); playDrum('oh', 0.696) }}
+                  onPointerLeave={() => { hideCostHint(); playClosedAnalysisHat() }}
+                  onFocus={() => showCostHint('worst')}
+                  onBlur={hideCostHint}
                   className="relative w-full max-w-28 h-12 sm:h-16 justify-self-end overflow-visible rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
                   style={{ "--city-neon": city.color, backgroundColor: "var(--city-neon)20" } as React.CSSProperties}
                 >
-                  {costHint('worst', 2)}
+                  {costHint('worst', 1)}
                   <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center">Worst moves</span>
                 </Button>
               </div>
@@ -2141,7 +2361,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               )}>
                 <div className="h-2 bg-black/40 rounded-[12px] overflow-hidden relative border border-white/10 pointer-events-auto select-none" role="img" aria-label={`Avaliação da posição: ${evaluationError ? 'indisponível' : lastEvalScore === null ? 'em análise' : formatEvaluation(lastEvalScore, lastEvalMate)}`}>
                   <div
-                    className="absolute inset-y-0 left-0 bg-white transition-all duration-1000 ease-in-out"
+                    className={cn("absolute inset-y-0 left-0 bg-white ease-in-out", lastEvalScore === null ? "transition-none" : "transition-[width] duration-1000", thermometerDimmed ? "opacity-25" : "opacity-100")}
                     style={{ width: `${whitePercent}%` }}
                   />
                   {isEvaluating && (
