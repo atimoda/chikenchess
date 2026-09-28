@@ -19,20 +19,55 @@ test('city flight ends above the selected world pin, even from the opposite side
   assert.ok(Math.abs(end.position.length() - 2.25) < 1e-8)
 })
 
-test('vector coastlines and globe grid remain above the sphere without joining separate paths', () => {
-  const { coastlineSegments, globeGridSegments, pinIsBehindGlobe } = loadTs('lib/globe-geography.ts')
+test('vector coastlines and grid dots remain above the sphere', () => {
+  const { coastlineSegments, globeGridPoints, pinIsBehindGlobe } = loadTs('lib/globe-geography.ts')
+  const { pinGridCells } = loadTs('lib/globe-pin-grid.ts')
   const { Vector3 } = require('three')
   assert.equal(coastlineSegments('<path d="M0,512 M1024,512"/>').length, 0)
   const coastline = coastlineSegments(fs.readFileSync(path.resolve('public/world_map_contours.svg'), 'utf8'))
-  const grid = globeGridSegments()
+  const dots = globeGridPoints()
   assert.ok(coastline.length > 1000 && coastline.length < 150000)
-  for (const positions of [coastline, grid]) for (let i = 0; i < positions.length; i += 6) {
-    const a = new Vector3(...positions.slice(i, i + 3)), b = new Vector3(...positions.slice(i + 3, i + 6))
+  assert.equal(dots.length, pinGridCells().length * 3)
+  for (let i = 0; i < coastline.length; i += 6) {
+    const a = new Vector3(...coastline.slice(i, i + 3)), b = new Vector3(...coastline.slice(i + 3, i + 6))
     assert.ok(a.add(b).multiplyScalar(.5).length() > 2)
   }
+  for (let i = 0; i < dots.length; i += 3) assert.ok(Math.abs(new Vector3(...dots.slice(i, i + 3)).length() - 2.008) < 1e-5)
   assert.equal(pinIsBehindGlobe(new Vector3(0, 0, 2), new Vector3(0, 0, 5)), false)
   assert.equal(pinIsBehindGlobe(new Vector3(0, 0, -2), new Vector3(0, 0, 5)), true)
   assert.equal(pinIsBehindGlobe(new Vector3(2, 0, 0), new Vector3(0, 0, 5)), true)
+})
+
+test('pin grid has 33% more rows and equatorial columns with fewer columns near the poles', () => {
+  const { pinGridCells, pinGridColumnCount, PIN_GRID_LATITUDE_ROWS, PIN_GRID_EQUATOR_COLUMNS } = loadTs('lib/globe-pin-grid.ts')
+  const cells = pinGridCells()
+  const latitudes = new Set(cells.map(cell => cell.lat))
+  assert.equal(PIN_GRID_LATITUDE_ROWS, 48)
+  assert.equal(PIN_GRID_EQUATOR_COLUMNS, 96)
+  assert.equal(latitudes.size, PIN_GRID_LATITUDE_ROWS)
+  assert.equal(pinGridColumnCount(0), PIN_GRID_EQUATOR_COLUMNS)
+  assert.ok(pinGridColumnCount(86.25) < pinGridColumnCount(51.5))
+  assert.equal(new Set(cells.map(cell => `${cell.lat}:${cell.lng}`)).size, cells.length)
+})
+
+test('nearby locations take separate grid dots while eras keep one pin', () => {
+  const { placePinsOnGrid, pinGridCells } = loadTs('lib/globe-pin-grid.ts')
+  const exact = { lat: 51.5, lng: -0.1 }
+  const assigned = placePinsOnGrid([
+    { id: 'first', geoCoordinates: exact },
+    { id: 'era', geoCoordinates: exact },
+    { id: 'neighbor', geoCoordinates: { lat: 51.6, lng: -0.2 } },
+  ])
+  const cellKeys = new Set(pinGridCells().map(cell => `${cell.lat}:${cell.lng}`))
+  assert.deepEqual(assigned.first, assigned.era)
+  assert.notDeepEqual(assigned.first, assigned.neighbor)
+  for (const point of Object.values(assigned)) assert.ok(cellKeys.has(`${point.lat}:${point.lng}`))
+
+  const { cities } = loadTs('lib/cities-data.ts')
+  const locations = new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`))
+  const pins = new Set(cities.map(city => `${city.pinCoordinates.lat}:${city.pinCoordinates.lng}`))
+  assert.equal(locations.size, 34)
+  assert.equal(pins.size, locations.size)
 })
 
 test('two-finger screen rotation projects globe landmarks in the same direction', () => {

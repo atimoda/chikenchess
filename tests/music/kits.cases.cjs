@@ -15,24 +15,48 @@ test('sample registry points to small valid local WAV files with explicit tuning
   for (const bank of SAMPLE_BANKS) {
     let bankBytes = 0
     for (const asset of bank.assets) for (const [variant, data] of asset.variants.entries()) {
-    const file = fs.readFileSync(path.resolve(fixtureDirectory, '../public', data.file.slice(1)))
-    total += file.length
-    bankBytes += file.length
-    assert.equal(file.toString('ascii', 0, 4), 'RIFF')
-    assert.equal(file.toString('ascii', 8, 12), 'WAVE')
-    assert.equal(file.readUInt16LE(22), 1)
-    assert.ok(sampleRegistration({ kind: 'sample', bank: bank.id, asset: asset.id, variant, pitched: true }).map)
+    const registration = sampleRegistration({ kind: 'sample', bank: bank.id, asset: asset.id, variant, pitched: true })
+    for (const sampleFile of registration.files) {
+      const file = fs.readFileSync(path.resolve(fixtureDirectory, '../public', sampleFile.slice(1)))
+      total += file.length
+      bankBytes += file.length
+      assert.equal(file.toString('ascii', 0, 4), 'RIFF')
+      assert.equal(file.toString('ascii', 8, 12), 'WAVE')
+      assert.equal(file.readUInt16LE(22), 1)
+    }
+    assert.ok(registration.map)
     }
     assert.ok(bankBytes < 700_000, `${bank.id}: each bank stays below 700 KB`)
   }
-  assert.equal(SAMPLE_BANKS.length, 7)
-  assert.ok(total < 3_000_000, 'seven sample banks stay below 3 MB; assets load on demand')
+  assert.equal(SAMPLE_BANKS.length, 9)
+  assert.ok(total < 4_200_000, 'acoustic brass layers keep the lazy-loaded catalog below 4.2 MB')
+})
+
+test('Salvador 1992 assigns brass to knights and rooks over complementary surdos', () => {
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const { cities } = loadTs('lib/cities-data.ts')
+  const kit = defaultCityKit('salvador-1992')
+  const city = cities.find(item => item.id === 'salvador-1992')
+  assert.equal(kit.meter, '4/4')
+  assert.deepEqual(city.campaigns, ['brazilian'])
+  assert.match(city.image, /^https:\/\//)
+  for (const id of ['w:b1', 'w:g1']) assert.equal(kit.instruments[id].source.asset, 'trompete')
+  for (const id of ['w:a1', 'w:h1']) assert.equal(kit.instruments[id].source.asset, 'trombone')
+  for (const instrument of Object.values(kit.instruments)) assert.equal(instrument.source.bank, 'chicken-samba-reggae-v2')
+  const { sampleRegistration } = loadTs('lib/music/sample-banks.ts')
+  assert.equal(sampleRegistration(kit.instruments['w:b1'].source).files.length, 3, 'trumpet uses three recorded notes')
+  assert.equal(sampleRegistration(kit.instruments['w:a1'].source).files.length, 3, 'trombone uses three recorded notes')
+  const onsets = id => kit.instruments[id].pianoRolls[0].notes.map(note => note.start)
+  assert.deepEqual(onsets('w:a2'), [0, .5], 'fundo anchors the first and third beats')
+  assert.deepEqual(onsets('w:b2'), [.25, .75], 'meio fills the second and fourth beats')
+  assert.equal(kit.instruments['w:b1'].performance.steps[0].active, false)
+  assert.equal(kit.instruments['w:b1'].performance.steps[1].active, true)
 })
 
 test('new timbre banks reach the intended city styles', () => {
   const { cities } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  const recent = new Set(['chicken-strings-v1', 'chicken-keys-v1', 'chicken-synths-v1', 'chicken-drums-v1'])
+  const recent = new Set(['chicken-strings-v1', 'chicken-keys-v1', 'chicken-synths-v1', 'chicken-drums-v1', 'chicken-samba-reggae-v2'])
   for (const city of cities) {
     const sources = Object.values(defaultCityKit(city.id).instruments).map(instrument => instrument.source)
     assert.ok(sources.some(source => source?.kind === 'sample' && recent.has(source.bank)), `${city.id}: new timbre`)
@@ -186,8 +210,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 45)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 33)
+  assert.equal(cities.length, 46)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 34)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -217,7 +241,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[12,6,3,14,6,4])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[12,6,3,14,7,4])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })

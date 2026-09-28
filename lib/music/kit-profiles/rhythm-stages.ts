@@ -93,4 +93,4 @@ function profileFor(stage: RhythmStage): StyleProfile {
     ],
   }
 }
-export const RHYTHM_STAGE_PROFILES: Record<string, StyleProfile> = Object.fromEntries(RHYTHM_STAGES.map(stage => [stage.id,profileFor(stage)]))
+export const RHYTHM_STAGE_PROFILES: Record<string, StyleProfile> = Object.fromEntries(RHYTHM_STAGES.filter(stage => stage.id in studies).map(stage => [stage.id,profileFor(stage)]))

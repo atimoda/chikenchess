@@ -257,6 +257,38 @@ export class AudioEngine {
     oscillator.stop(time + 0.36)
   }
 
+  async playRankedMoveWhistle(kind: 'best' | 'worst') {
+    if (!this.audioContext || !this.masterGain) await this.init()
+    await this.resume()
+    if (!this.audioContext || !this.masterGain) return
+
+    const time = this.audioContext.currentTime
+    const duration = kind === 'best' ? 0.22 : 0.48
+    // The best cue starts at the end of the Best moves click and rises a third.
+    // The worst cue reverses the Worst moves click and climbs two further thirds.
+    const start = kind === 'best' ? 1250 : 520
+    const end = kind === 'best' ? 1250 * Math.pow(2, 4 / 12) : 1250 * Math.pow(2, 8 / 12)
+    const oscillator = this.audioContext.createOscillator()
+    const vibrato = this.audioContext.createOscillator()
+    const vibratoDepth = this.audioContext.createGain()
+    const envelope = this.audioContext.createGain()
+    oscillator.type = 'sine'
+    vibrato.type = 'sine'
+    vibrato.frequency.value = 5.5
+    vibratoDepth.gain.value = 8
+    oscillator.frequency.setValueAtTime(start, time)
+    oscillator.frequency.exponentialRampToValueAtTime(end, time + duration - 0.04)
+    envelope.gain.setValueAtTime(0.001, time)
+    envelope.gain.exponentialRampToValueAtTime(0.16, time + 0.02)
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + duration)
+    vibrato.connect(vibratoDepth).connect(oscillator.frequency)
+    oscillator.connect(envelope).connect(this.masterGain)
+    vibrato.start(time)
+    oscillator.start(time)
+    vibrato.stop(time + duration)
+    oscillator.stop(time + duration)
+  }
+
   async playPieceSample(square: string, pieceType: string, pieceColor: "w" | "b", _isPreview: boolean = true) {
     if (!this.audioContext || !this.masterGain) await this.init()
     if (!this.audioContext) return
@@ -765,8 +797,8 @@ export class AudioEngine {
     osc.frequency.exponentialRampToValueAtTime(300, time + 0.4)
 
     const gain = this.audioContext.createGain()
-    gain.gain.setValueAtTime(0.8, time)
-    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.4)
+    gain.gain.setValueAtTime(0.8 * 0.75, time)
+    gain.gain.exponentialRampToValueAtTime(0.01 * 0.75, time + 0.4)
 
     // Pea (trill) effect
     const lfo = this.audioContext.createOscillator()
@@ -783,6 +815,52 @@ export class AudioEngine {
     osc.connect(gain).connect(this.masterGain)
     osc.start(time)
     osc.stop(time + 0.4)
+  }
+
+  playVictoryFanfare() {
+    if (!this.audioContext || !this.masterGain) return
+    const time = this.audioContext.currentTime
+    const notes = [392, 493.88, 587.33, 783.99]
+    const noteLength = 0.23
+    const noteGap = 0.035
+    const output = this.audioContext.createGain()
+    output.gain.value = 0.65
+    output.connect(this.masterGain)
+
+    notes.forEach((frequency, index) => {
+      const start = time + index * (noteLength + noteGap)
+      const end = start + noteLength
+      const envelope = this.audioContext!.createGain()
+      const filter = this.audioContext!.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.setValueAtTime(1900, start)
+      filter.Q.value = 0.7
+      envelope.gain.setValueAtTime(0.0001, start)
+      envelope.gain.exponentialRampToValueAtTime(0.55, start + 0.025)
+      envelope.gain.setValueAtTime(0.43, start + 0.11)
+      envelope.gain.exponentialRampToValueAtTime(0.0001, end)
+
+      const brass = this.audioContext!.createOscillator()
+      brass.type = 'sawtooth'
+      brass.frequency.setValueAtTime(frequency, start)
+      const body = this.audioContext!.createOscillator()
+      body.type = 'triangle'
+      body.frequency.setValueAtTime(frequency / 2, start)
+      brass.connect(filter)
+      body.connect(filter)
+      filter.connect(envelope).connect(output)
+      brass.start(start)
+      body.start(start)
+      brass.stop(end)
+      body.stop(end)
+    })
+
+    const end = time + notes.length * (noteLength + noteGap)
+    output.gain.setValueAtTime(0.65, time)
+    output.gain.setTargetAtTime(0.0001, end, 0.08)
+    window.setTimeout(() => {
+      output.disconnect()
+    }, 1500)
   }
 
   playDrawKalimba() {

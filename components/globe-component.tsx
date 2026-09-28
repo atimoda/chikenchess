@@ -9,23 +9,26 @@ import { CityPopup } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
-import { clampPopupToGlobe, coastlineSegments, globeGridSegments, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
+import { clampPopupToGlobe, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
 function GlobeGeography() {
   const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
   const coast = useMemo(() => coastlineSegments(svg), [svg])
-  const grid = useMemo(() => globeGridSegments(), [])
+  const grid = useMemo(() => globeGridPoints(), [])
   const uniforms = useMemo(() => ({ color: { value: new Color('#39ff14') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
+  const gridUniforms = useMemo(() => ({ color: { value: new Color('#789386') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
   return <>
-    <lineSegments raycast={() => {}}>
+    <points raycast={() => {}}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[grid, 3]} /></bufferGeometry>
-      <lineBasicMaterial color="#587466" transparent opacity={.18} depthWrite={false} />
-    </lineSegments>
+      <shaderMaterial transparent depthWrite={false} uniforms={gridUniforms}
+        vertexShader="uniform vec3 sun; varying float lightAmount; void main() { vec4 worldPosition = modelMatrix * vec4(position, 1.0); vec3 worldPoint = worldPosition.xyz; lightAmount = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_Position = projectionMatrix * viewMatrix * worldPosition; gl_PointSize = 2.4; }"
+        fragmentShader="uniform vec3 color; varying float lightAmount; void main() { vec2 point = gl_PointCoord - vec2(0.5); if (dot(point, point) > 0.25) discard; float brightness = 0.5 + 0.5 * lightAmount; gl_FragColor = vec4(color * brightness, 0.55); }" />
+    </points>
     <lineSegments raycast={() => {}}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[coast, 3]} /></bufferGeometry>
       <shaderMaterial transparent depthWrite={false} uniforms={uniforms}
         vertexShader="varying vec3 worldPoint; void main() { vec4 p = modelMatrix * vec4(position, 1.0); worldPoint = p.xyz; gl_Position = projectionMatrix * viewMatrix * p; }"
-        fragmentShader="uniform vec3 color; uniform vec3 sun; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .7 * (.4 + .6 * light)); }" />
+        fragmentShader="uniform vec3 color; uniform vec3 sun; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .7 * (.532 + .468 * light)); }" />
     </lineSegments>
   </>
 }
@@ -135,12 +138,12 @@ const ConqueredFlag = ({ city, idleRotationRef }: { city: CityData; idleRotation
   const clothRef = useRef<Group>(null)
   const clothMeshRef = useRef<Mesh>(null)
   const originalX = useRef<Float32Array | null>(null)
-  const cycle = useRef({ elapsed: 0, duration: 4.2 + Math.random() * 1.2, ease: 1.5 + Math.random() * .6 })
+  const cycle = useRef({ elapsed: 0, duration: 12.6 + Math.random() * 3.6, ease: 1.5 + Math.random() * .6 })
   const motionScale = useRef({ pole: 1, cloth: 1 })
   const reduceMotion = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
   const texture = useMemo(() => typeof document === 'undefined' ? null : createCityFlagTexture(city), [city])
   useEffect(() => () => texture?.dispose(), [texture])
-  const normal = cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, 1).normalize()
+  const normal = cityDirection(city.pinCoordinates.lat, city.pinCoordinates.lng, 1).normalize()
   const orientation = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), normal)
   useFrame((_, delta) => {
     if (!flagRef.current || !clothRef.current || reduceMotion) return
@@ -148,7 +151,7 @@ const ConqueredFlag = ({ city, idleRotationRef }: { city: CityData; idleRotation
     motion.elapsed += delta
     if (motion.elapsed >= motion.duration) {
       motion.elapsed %= motion.duration
-      motion.duration = 4.2 + Math.random() * 1.2
+      motion.duration = 12.6 + Math.random() * 3.6
       motion.ease = 1.5 + Math.random() * .6
     }
     const progress = motion.elapsed / motion.duration
@@ -242,6 +245,8 @@ const PopupContainer = ({
     const globeCircle = useRef({ x: 0, y: 0, radius: 0 })
     const lineStartOffset = useRef({ x: 0, y: 0 })
     const slowOffset = useRef({ x: 0, y: 0 })
+    const hasDragged = useRef(false)
+    useEffect(() => { hasDragged.current = false }, [popup.timestamp])
     const topCurveJitter = useRef((Math.random() - 0.5) * 20)
 
     // Track drag start position for anchor
@@ -300,9 +305,24 @@ const PopupContainer = ({
             x: screen.x + localPosRef.current.x + slowOffset.current.x,
             y: screen.y + localPosRef.current.y + slowOffset.current.y,
           }
-          const constrained = clampPopupToGlobe(current, { width: rect.width, height: rect.height }, globeCircle.current)
-          slowOffset.current.x += constrained.x - current.x
-          slowOffset.current.y += constrained.y - current.y
+          const viewport = window.visualViewport
+          const viewportLeft = viewport?.offsetLeft ?? 0
+          const viewportTop = viewport?.offsetTop ?? 0
+          const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth)
+          const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight)
+          const opening = !hasDragged.current && Date.now() - popup.timestamp < 1600
+          const requested = opening ? {
+            x: current.x,
+            y: current.y + (viewportTop + (viewportBottom - viewportTop - rect.height) / 2 + popup.centerOffsetY - rect.top),
+          } : current
+          const constrained = clampPopupToGlobe(requested, { width: rect.width, height: rect.height }, globeCircle.current)
+          const edgePadding = 12
+          const visible = {
+            x: Math.max(viewportLeft + edgePadding, Math.min(viewportRight - rect.width - edgePadding, constrained.x)),
+            y: Math.max(viewportTop + edgePadding, Math.min(viewportBottom - rect.height - edgePadding, constrained.y)),
+          }
+          slowOffset.current.x += visible.x - current.x
+          slowOffset.current.y += visible.y - current.y
         }
       }
       if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
@@ -419,6 +439,7 @@ const PopupContainer = ({
                         scale={1}
                         transformOrigin={isDraggingLocal ? `${dragAnchor.current.x}px ${dragAnchor.current.y}px` : undefined}
                         onDragStart={(e) => {
+                            hasDragged.current = true
                             setIsDraggingPopup(true)
                             setIsDraggingLocal(true)
                             draggingRef.current = true
@@ -576,7 +597,7 @@ const GlobeContent = ({
   useEffect(() => {
     const city = cities.find(candidate => candidate.id === enteringCityId)
     if (!city || !globeRef.current) { entryFlight.current = null; return }
-    const pin = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS))
+    const pin = globeRef.current.localToWorld(cityDirection(city.pinCoordinates.lat, city.pinCoordinates.lng, GLOBE_RADIUS))
     entryFlight.current = { city, from: camera.position.clone(), up: camera.up.clone(), pin, elapsed: 0, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? .15 : 1.4, done: false }
     setTargetCameraPos(null)
     centeringCamera.current = false
@@ -713,7 +734,7 @@ const GlobeContent = ({
         if (hoveredListCity && !pinClickBoost.current && hoveredListCity.id !== lastListHoverCityId.current && globeRef.current) {
             // Choose the shortest arc once. Keeping this axis after the approach
             // lets the pin pass screen center at the normal standby speed.
-            const pinDirection = globeRef.current.localToWorld(cityDirection(hoveredListCity.geoCoordinates.lat, hoveredListCity.geoCoordinates.lng, 1)).normalize()
+            const pinDirection = globeRef.current.localToWorld(cityDirection(hoveredListCity.pinCoordinates.lat, hoveredListCity.pinCoordinates.lng, 1)).normalize()
             const screenCenterDirection = camera.position.clone().normalize()
             const axis = new Vector3().crossVectors(pinDirection, screenCenterDirection)
             if (axis.lengthSq() < 1e-8 && pinDirection.dot(screenCenterDirection) < 0) {
@@ -787,7 +808,7 @@ const GlobeContent = ({
       if (enteringCityId || !globeRef.current) return
       pinClickBoost.current = null
       suppressedPinHoverId.current = null
-      const direction = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, 1)).normalize()
+      const direction = globeRef.current.localToWorld(cityDirection(city.pinCoordinates.lat, city.pinCoordinates.lng, 1)).normalize()
       const angle = camera.position.angleTo(direction)
       if (angle < 1e-5) return
       if (!isStandby.current) standbyRotationSpeed.current = (0.05 + Math.random() * 0.05) * 0.7
@@ -800,7 +821,7 @@ const GlobeContent = ({
 
   const steerGlobeTowardCity = (city: CityData) => {
       if (!globeRef.current || enteringCityId) return
-      const pinDirection = globeRef.current.localToWorld(cityDirection(city.geoCoordinates.lat, city.geoCoordinates.lng, 1)).normalize()
+      const pinDirection = globeRef.current.localToWorld(cityDirection(city.pinCoordinates.lat, city.pinCoordinates.lng, 1)).normalize()
       const screenCenter = camera.position.clone().normalize()
       const angle = pinDirection.angleTo(screenCenter)
       const axis = new Vector3().crossVectors(pinDirection, screenCenter)
@@ -956,7 +977,7 @@ const GlobeContent = ({
           <GlobeGeography />
 
           {cities.map((city) => {
-            const position = getSphericalCoordinates(city.geoCoordinates.lat, city.geoCoordinates.lng, GLOBE_RADIUS)
+            const position = getSphericalCoordinates(city.pinCoordinates.lat, city.pinCoordinates.lng, GLOBE_RADIUS)
             const isOpen = !!openPopups[city.id]
             const isConquered = (conqueredCities || []).includes(city.id)
             const isUnlocked = true // All cities playable in v3.0!

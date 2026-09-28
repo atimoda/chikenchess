@@ -153,11 +153,17 @@ export const CityPopup = ({
         ref={containerRef}
         data-drag-handle="true" // Make the entire popup draggable
         data-popup-surface="true"
-        className="relative overflow-hidden p-5 rounded-lg border bg-card/[0.82] shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
+        className="popup-scrollbar-hidden relative overflow-hidden p-5 rounded-lg border bg-card/[0.82] shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
         onClick={(e) => {
             e.stopPropagation()
         }}
         style={{
+          maxWidth: 'calc(100vw - 24px)',
+          maxHeight: 'calc(100dvh - 24px)',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
           boxShadow: isConquered
             ? `0 0 35px ${city.color}40, 0 0 15px rgba(234, 179, 8, 0.35)`
             : `0 0 30px ${city.color}25`,
@@ -183,6 +189,9 @@ export const CityPopup = ({
             bringToFront(city.id)
         }}
       >
+        <style jsx>{`
+          .popup-scrollbar-hidden::-webkit-scrollbar { display: none; }
+        `}</style>
         {/* Decorative Header Line */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" style={{ backgroundColor: city.color }} />
 

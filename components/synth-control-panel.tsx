@@ -150,7 +150,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
           </div>
           <div
             className={cn(
-              "grid grid-cols-4 gap-x-2 gap-y-4 py-2",
+              "grid grid-cols-5 gap-x-2 gap-y-4 py-2",
               (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale",
               !isOn && "pointer-events-none"
             )}

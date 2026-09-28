@@ -22,6 +22,11 @@ function Slider({
           : [min, max],
     [value, defaultValue, min, max],
   )
+  const thumbCenterOffsets = _values.map(value => {
+    const ratio = max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)))
+    // Radix keeps the thumb inside the track at both endpoints; offset by its half-width to align its center with the fill edge.
+    return (ratio - 0.5) * 16
+  })
 
   return (
     <SliderPrimitive.Root
@@ -54,6 +59,7 @@ function Slider({
           data-slot="slider-thumb"
           key={index}
           className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 cursor-grab active:cursor-grabbing focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+          style={{ transform: `translateX(${thumbCenterOffsets[index]}px)` }}
         />
       ))}
     </SliderPrimitive.Root>

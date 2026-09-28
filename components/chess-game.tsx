@@ -23,12 +23,12 @@ import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
 import { ArrowLeft, Code2, Music2, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
 import { toast } from "sonner"
-import { conquerCity, unlockNextCity } from "@/lib/game-progression"
+import { awardRankedMove, conquerCity, getPlayerProfile, markGameplayTipSeen, spendGoldenEggs, STARTING_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
 import { MixerWidget } from "./mixer-widget"
 import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
-import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, type ChessMoveAnalysis } from "@/lib/chess-evaluation"
+import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveReward, type ChessMoveAnalysis } from "@/lib/chess-evaluation"
 
 import {
   DropdownMenu,
@@ -42,6 +42,15 @@ import {
 interface ChessGameProps {
   city: CityData
   onBack: () => void
+}
+
+interface EggFlight {
+  id: number
+  amount: number
+  direction: 'earn' | 'spend'
+  square?: Square
+  from?: { left: number; top: number; width: number; height: number }
+  to?: { left: number; top: number; width: number; height: number }
 }
 
 function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis | null; status?: string }) {
@@ -95,6 +104,18 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const aiMoveTimerRef = useRef<number | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [moveAnalysis, setMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
+  const [visibleEggs, setVisibleEggs] = useState(STARTING_GOLDEN_EGGS)
+  const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
+  const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
+  const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
+  const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | null>(null)
+  const [fadingCostAction, setFadingCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | null>(null)
+  const eggCounterRef = useRef<HTMLButtonElement | null>(null)
+  const pendingEggsRef = useRef(0)
+  const rewardedMovesRef = useRef(new Set<string>())
+  const rewardSerialRef = useRef(0)
+  const rewardMarkTimerRef = useRef<number | null>(null)
+  const flightCleanupsRef = useRef(new Set<() => void>())
   const [analysisArrows, setAnalysisArrows] = useState<AnalysisArrow[]>([])
   const analysisArrowTimeoutRef = useRef<number | null>(null)
  
@@ -130,13 +151,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [showIntroButton, setShowIntroButton] = useState(false)
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
   const introStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const introSeatbeltTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const introVolumeFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introStartRequestedRef = useRef(false)
   const introContinueRequestedRef = useRef(false)
 
   useEffect(() => () => {
     if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
-    if (introSeatbeltTimerRef.current) clearTimeout(introSeatbeltTimerRef.current)
+    if (introVolumeFadeTimerRef.current) clearTimeout(introVolumeFadeTimerRef.current)
   }, [])
 
   const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([])
@@ -293,16 +314,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const handleContinue = () => {
       if (introContinueRequestedRef.current) return
       introContinueRequestedRef.current = true
-      playSquareSample('a1')
       void engineRef.current?.resume()
+      playDrum('bd', 0.7, 0.6)
 
       // Show the city title for five seconds, with an optional click to advance.
       setIntroPhase(1)
       setShowIntroBoxes(true)
-      introSeatbeltTimerRef.current = setTimeout(() => {
-          introSeatbeltTimerRef.current = null
-          engineRef.current?.playSeatbelt()
-      }, 1000)
       introStartRequestedRef.current = false
       if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
       introStartTimerRef.current = setTimeout(() => handleStartGame(), 5000)
@@ -313,33 +330,32 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       introStartRequestedRef.current = true
       if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
       introStartTimerRef.current = null
-      if (introSeatbeltTimerRef.current) clearTimeout(introSeatbeltTimerRef.current)
-      introSeatbeltTimerRef.current = null
       // Fade out the city title, then darken the background.
       setShowIntroBoxes(false)
+      engineRef.current?.playSeatbelt()
       setIsBackgroundDark(true)
       
-      // Start Volume Fade In - Unmute immediately
-      if (engineRef.current) {
-          engineRef.current.setGlobalVolume(0)
-          // Ensure audio context is running (browsers require user interaction)
-          // Safety check: check if context exists before accessing state
-          if (engineRef.current.context && engineRef.current.context.state === 'suspended') {
-              engineRef.current.context.resume()
+      // Let the title chime ring through before starting the gameplay volume fade.
+      introVolumeFadeTimerRef.current = setTimeout(() => {
+          introVolumeFadeTimerRef.current = null
+          if (engineRef.current) {
+              engineRef.current.setGlobalVolume(0)
+              if (engineRef.current.context && engineRef.current.context.state === 'suspended') {
+                  engineRef.current.context.resume()
+              }
           }
-      }
-      handleGlobalEffectChange("volume", 0)
-      
-      // Animate volume to 0.8 over 3 seconds
-      let vol = 0
-      const fadeInterval = setInterval(() => {
-          vol += 0.05
-          if (vol >= 0.8) {
-              vol = 0.8
-              clearInterval(fadeInterval)
-          }
-          handleGlobalEffectChange("volume", vol)
-      }, 3000 / (0.8 / 0.05))
+          handleGlobalEffectChange("volume", 0)
+
+          let vol = 0
+          const fadeInterval = setInterval(() => {
+              vol += 0.05
+              if (vol >= 0.8) {
+                  vol = 0.8
+                  clearInterval(fadeInterval)
+              }
+              handleGlobalEffectChange("volume", vol)
+          }, 3000 / (0.8 / 0.05))
+      }, 1500)
 
       // Wait for background darken (1s) before board descend
       setTimeout(() => {
@@ -374,8 +390,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     }
   }, [])
 
-    const [knobsOn, setKnobsOn] = useState(false)
+  const [knobsOn, setKnobsOn] = useState(false)
     const knobsManuallyClosedRef = useRef(false)
+  const firstMovePanelsActivatedRef = useRef(false)
   const [globalPanelOn, setGlobalPanelOn] = useState(false)
   const [mixerOn, setMixerOn] = useState(false)
   const [spectrogramOn, setSpectrogramOn] = useState(false)
@@ -414,7 +431,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || (liveCodeOn && (!isMobile || mobileControlsOpen)), musicEngineOn)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
-  const { togglePlayback, playCheckmate, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying && tabVisible, activeSquares, squareEffects, !music.enabled)
+  const { togglePlayback, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying && tabVisible, activeSquares, squareEffects, !music.enabled)
 
   // A city kit owns its initial tempo. The global control can still change it
   // freely after the kit has been loaded for this match.
@@ -458,6 +475,80 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   useEffect(() => {
     gameRef.current = game
   }, [game])
+
+  useEffect(() => {
+    setVisibleEggs(getPlayerProfile().goldenEggs)
+    return () => {
+      if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
+      flightCleanupsRef.current.forEach(cleanup => cleanup())
+      flightCleanupsRef.current.clear()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!eggFlight) return
+    const source = eggFlight.direction === 'earn'
+      ? boardAreaRef.current?.querySelector<HTMLElement>(`[data-square="${eggFlight.square}"]`)
+      : eggCounterRef.current
+    const target = eggFlight.direction === 'earn' ? eggCounterRef.current : null
+    const rectPoint = (rect: { left: number; top: number; width: number; height: number }) => ({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    })
+    const fromRect = eggFlight.direction === 'spend' ? eggFlight.from : source?.getBoundingClientRect()
+    const toRect = eggFlight.direction === 'spend' ? eggFlight.to : target?.getBoundingClientRect()
+    const finishEgg = () => {
+      pendingEggsRef.current += eggFlight.direction === 'earn' ? -1 : 1
+      setVisibleEggs(count => Math.max(0, count + (eggFlight.direction === 'earn' ? 1 : -1)))
+      eggCounterRef.current?.animate([
+        { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
+        { transform: `scale(${eggFlight.direction === 'earn' ? 1.24 : .88})`, boxShadow: `0 0 22px rgba(${eggFlight.direction === 'earn' ? '251,191,36' : '248,113,113'},.8)` },
+        { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
+      ], { duration: 370, easing: 'ease-out' })
+    }
+    if ((!source && eggFlight.direction === 'earn') || !fromRect || !toRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      for (let i = 0; i < eggFlight.amount; i++) finishEgg()
+      return
+    }
+    const { x: x0, y: y0 } = rectPoint(fromRect)
+    const { x: x1, y: y1 } = rectPoint(toRect)
+    const arc = Math.max(70, Math.abs(x1 - x0) * .18)
+
+    for (let index = 0; index < eggFlight.amount; index++) {
+      const egg = document.createElement('span')
+      egg.setAttribute('aria-hidden', 'true')
+      egg.style.cssText = 'position:fixed;left:0;top:0;width:22px;height:28px;border-radius:50% 50% 45% 45% / 60% 60% 40% 40%;background:radial-gradient(circle at 32% 25%,#fff8c4 0%,#facc15 43%,#b45309 100%);box-shadow:0 0 14px #fbbf24;pointer-events:none;z-index:100;will-change:transform;'
+      document.body.appendChild(egg)
+      let frame = 0
+      let timer = 0
+      let startTime = 0
+      let done = false
+      const rotation = Math.random() * 720
+      const cleanup = () => {
+        if (done) return
+        done = true
+        window.clearTimeout(timer)
+        window.cancelAnimationFrame(frame)
+        egg.remove()
+        flightCleanupsRef.current.delete(cleanup)
+      }
+      flightCleanupsRef.current.add(cleanup)
+      const tick = (time: number) => {
+        if (!startTime) startTime = time
+        const progress = Math.min(1, (time - startTime) / 780)
+        const eased = eggFlight.direction === 'spend'
+          ? Math.pow(progress, 3)
+          : 1 - Math.pow(1 - progress, 3)
+        const x = x0 + (x1 - x0) * eased
+        const y = y0 + (y1 - y0) * eased - arc * 4 * eased * (1 - eased)
+        egg.style.transform = `translate3d(${x - 11}px,${y - 14}px,0) scale(${1 - .3 * eased}) rotate(-${rotation * eased}deg)`
+        if (progress < 1) frame = window.requestAnimationFrame(tick)
+        else { cleanup(); finishEgg() }
+      }
+      egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
+      timer = window.setTimeout(() => { frame = window.requestAnimationFrame(tick) }, index * 110)
+    }
+  }, [eggFlight])
 
   // One single-thread engine, shared by evaluation and opponent play.
   useEffect(() => {
@@ -553,12 +644,51 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     }, 3000)
   }, [moveAnalysis])
 
+  const spendEggForAction = (button: HTMLButtonElement, costAction: 'best' | 'undo' | 'redo' | 'worst', amount: number, action: () => void) => {
+    const result = spendGoldenEggs(amount)
+    if (!result) {
+      setHoveredCostAction(null)
+      toast.error(`You need ${amount} more golden egg${amount === 1 ? '' : 's'} to use this`)
+      return
+    }
+    setHoveredCostAction(null)
+    setFadingCostAction(costAction)
+    window.setTimeout(() => setFadingCostAction(current => current === costAction ? null : current), 240)
+    const bounds = (rect: DOMRect) => ({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
+    pendingEggsRef.current -= amount
+    setEggFlight({
+      id: ++rewardSerialRef.current,
+      amount,
+      direction: 'spend',
+      from: eggCounterRef.current ? bounds(eggCounterRef.current.getBoundingClientRect()) : undefined,
+      to: bounds(button.getBoundingClientRect()),
+    })
+    action()
+  }
+
+  const costHint = (action: 'best' | 'undo' | 'redo' | 'worst', amount: number) => (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute top-[5px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[10px] leading-none font-bold text-amber-200 opacity-0 scale-100 transition-[opacity,transform] duration-200",
+        hoveredCostAction === action && fadingCostAction !== action && "opacity-100",
+        fadingCostAction === action && "opacity-0 scale-[1.3]",
+      )}
+    >
+      -{amount} eggs
+    </span>
+  )
+
   const playControlHoverKick = () => playDrum('bd', 0.52 + Math.random() * 0.16, 0.92 + Math.random() * 0.16)
   const playClosedAnalysisHat = () => playDrum('ch', 0.648 + Math.random() * 0.048, 0.96 + Math.random() * 0.08)
 
   useEffect(() => {
     if (introPhase === 3) requestEvaluation(gameRef.current)
   }, [introPhase, requestEvaluation])
+
+  useEffect(() => {
+    if (introPhase === 3 && markGameplayTipSeen()) setGameplayTipOpen(true)
+  }, [introPhase])
 
   // Update pattern when board changes
   useEffect(() => {
@@ -570,22 +700,25 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       const winner = game.turn() === "w" ? "Black" : "White"
       setGameStatus(`CHECKMATE - ${winner} wins!`)
       setIsPlaying(false)
-      playCheckmate() // Play checkmate sound
-
       // If White (Player) won
-      if (winner === "White" && rewardedCheckmateFenRef.current !== game.fen()) {
-        rewardedCheckmateFenRef.current = game.fen()
-        const result = conquerCity(city.id)
-        const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
-        toast.success(`CITY CONQUERED! +${result.earnedEggs} GOLDEN EGGS 🥚`, {
-          description: `${result.isFirstTime ? "City added to your conquests!" : "Victory reward claimed again!"}${rankMsg} (Basket: ${result.profile.goldenEggs.toLocaleString()} eggs · Historical: ${result.profile.points.toLocaleString()} PTS)`,
-          duration: Infinity,
-          action: {
-            label: "RETURN TO MAP",
-            onClick: onBack
-          }
-        })
+      if (winner === "White") {
+        if (rewardedCheckmateFenRef.current !== game.fen()) {
+          playVictoryFanfare()
+          rewardedCheckmateFenRef.current = game.fen()
+          const result = conquerCity(city.id)
+          setVisibleEggs(result.profile.goldenEggs - pendingEggsRef.current)
+          const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
+          toast.success(`CITY CONQUERED! +${result.earnedEggs} GOLDEN EGGS 🥚`, {
+            description: `${result.isFirstTime ? "City added to your conquests!" : "Victory reward claimed again!"}${rankMsg} (Basket: ${result.profile.goldenEggs.toLocaleString()} eggs · Historical: ${result.profile.points.toLocaleString()} PTS)`,
+            duration: Infinity,
+            action: {
+              label: "RETURN TO MAP",
+              onClick: onBack
+            }
+          })
+        }
       } else {
+        playCheckmate()
         toast.error("DEFEAT!", {
           description: "Try again to conquer this city and earn 10 golden eggs."
         })
@@ -682,6 +815,43 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const handlePlayerMove = useCallback(
     (move: Move) => {
+      if (!firstMovePanelsActivatedRef.current) {
+        firstMovePanelsActivatedRef.current = true
+        knobsManuallyClosedRef.current = false
+        setKnobsOn(true)
+        setGlobalPanelOn(true)
+        setMixerOn(true)
+        if (isMobile) setMobileControlsOpen(true)
+        setActiveWidgetOrder(current => [
+          ...current.filter(id => id !== 'globalPanel' && id !== 'mixer' && id !== 'knobs'),
+          'globalPanel',
+          'mixer',
+          'knobs',
+        ])
+      }
+      const uci = `${move.from}${move.to}${move.promotion ?? ''}`
+      const rewardKind = rankedMoveReward(moveAnalysis, move.before, uci)
+      const rewardKey = `${move.before}|${uci}`
+      if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
+        rewardedMovesRef.current.add(rewardKey)
+        const reward = awardRankedMove(rewardKind)
+        pendingEggsRef.current += reward.earnedEggs
+        const id = ++rewardSerialRef.current
+        setRankedMoveMark({ square: move.to, kind: rewardKind, id })
+        setEggFlight({ square: move.to, amount: reward.earnedEggs, direction: 'earn', id })
+        if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
+        rewardMarkTimerRef.current = window.setTimeout(() => {
+          setRankedMoveMark(null)
+          rewardMarkTimerRef.current = null
+        }, 700)
+        void engineRef.current?.playRankedMoveWhistle(rewardKind)
+        if (reward.firstNotice) {
+          toast.success(rewardKind === 'worst'
+            ? 'You made one of the 3 worst available moves! Here are 3 golden eggs as a reward :)'
+            : 'Oops, you made one of the 3 best available moves! Here’s a little golden egg as a reward.',
+            { duration: 6000 })
+        }
+      }
       setMoveHistory((prev) => [...prev, move.san])
       setRedoStack([]) // Clear redo stack on new move
       
@@ -726,10 +896,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       })
       requestEvaluation(gameCopy, aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20)
     },
-    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation],
+    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, moveAnalysis, engineRef, isMobile],
   )
 
   const resetGame = useCallback(() => {
+    firstMovePanelsActivatedRef.current = false
+    rewardedMovesRef.current.clear()
+    setRankedMoveMark(null)
     evaluationQueueRef.current?.reset()
     const freshGame = new Chess()
     gameRef.current = freshGame
@@ -1501,7 +1674,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         )}
         style={{ "--city-neon": city.color } as React.CSSProperties}
       >
-        <div className="flex items-center gap-3 pointer-events-auto">
+        <div className="flex min-w-0 items-center gap-3 pointer-events-auto">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -1515,14 +1688,30 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className={cn("transition-opacity duration-500", introPhase === 0 ? "opacity-0" : "opacity-100")}>
-            <h1 className="font-mono font-bold text-base md:text-lg flex items-center gap-2">
+            <h1 className="font-mono font-bold text-base md:text-lg flex min-w-0 items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
-              <span style={{ color: city.color }}>{city.name.toUpperCase()}</span>
+              <span className="hidden truncate sm:inline" style={{ color: city.color }}>{city.name.toUpperCase()}</span>
             </h1>
           </div>
         </div>
 
-        <div className={cn("flex items-center gap-3 transition-opacity duration-500 pointer-events-auto", introPhase === 0 ? "opacity-0" : "opacity-100")}>
+        <div className={cn("flex shrink-0 items-center gap-2 md:gap-3 transition-opacity duration-500 pointer-events-auto", introPhase === 0 ? "opacity-0" : "opacity-100")}>
+          <button
+            ref={eggCounterRef}
+            type="button"
+            aria-label={`${visibleEggs} golden eggs`}
+            title={`${visibleEggs} golden eggs`}
+            onClick={() => toast(`${visibleEggs.toLocaleString()} golden eggs`)}
+            className={cn(
+              "flex h-9 min-w-14 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold hover:bg-amber-400/15",
+              visibleEggs === 0
+                ? "border-red-500/80 text-red-400 hover:border-red-400 hover:bg-red-500/15"
+                : "border-amber-400/50 text-amber-200 hover:border-amber-300",
+            )}
+          >
+            <span>{visibleEggs.toLocaleString()}</span>
+            <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]" />
+          </button>
           {/* Settings */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1627,6 +1816,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                         setGameStatus("CHECKMATE - White wins!")
                         setIsPlaying(false)
                         const result = conquerCity(city.id)
+                        setVisibleEggs(result.profile.goldenEggs - pendingEggsRef.current)
                         if (engineRef.current) {
                             engineRef.current.playSeatbelt()
                         }
@@ -1722,6 +1912,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   onPieceRelease={music.enabled && music.engineActive ? music.endAudition : undefined}
                   musicPulseMonitor={music.enabled && music.engineActive ? music.pulseMonitor : undefined}
                   analysisArrows={analysisArrows}
+                  rankedMoveMark={rankedMoveMark}
                   onBoardClick={(square) => {
                     if (music.enabled) { music.select(square); return }
                     setSynthSelectedSquare(square)
@@ -1794,29 +1985,37 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   variant="ghost"
                   size="default"
                   disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
-                  onClick={() => showAnalysisArrows("best")}
-                  onMouseEnter={playClosedAnalysisHat}
-                  onPointerLeave={playClosedAnalysisHat}
-                  className="w-full max-w-28 h-12 sm:h-16 justify-self-start rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+                  onClick={event => spendEggForAction(event.currentTarget, 'best', 1, () => showAnalysisArrows("best"))}
+                  onMouseEnter={() => { setHoveredCostAction('best'); playClosedAnalysisHat() }}
+                  onPointerLeave={() => { setHoveredCostAction(null); playClosedAnalysisHat() }}
+                  onFocus={() => setHoveredCostAction('best')}
+                  onBlur={() => setHoveredCostAction(null)}
+                  className="relative w-full max-w-28 h-12 sm:h-16 justify-self-start overflow-visible rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
                   style={{ "--city-neon": city.color, backgroundColor: "var(--city-neon)20" } as React.CSSProperties}
                 >
-                  Best moves
+                  {costHint('best', 1)}
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center">Best moves</span>
                 </Button>
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Button
                     variant="ghost"
                     size="default"
-                    onClick={undoMove}
-                    onMouseEnter={playControlHoverKick}
+                    onClick={event => spendEggForAction(event.currentTarget, 'undo', 1, undoMove)}
+                    aria-label="Undo · costs 1 golden egg"
+                    onMouseEnter={() => { setHoveredCostAction('undo'); playControlHoverKick() }}
+                    onPointerLeave={() => setHoveredCostAction(null)}
+                    onFocus={() => setHoveredCostAction('undo')}
+                    onBlur={() => setHoveredCostAction(null)}
                     onMouseDown={() => playDrum("oh", 1.5)}
                     disabled={moveHistory.length === 0}
-                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
+                    className="relative w-12 h-12 sm:w-16 sm:h-16 overflow-visible rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20" // Default low opacity background
                     } as React.CSSProperties}
                   >
-                    <Undo2 className="w-7 h-7 sm:w-10 sm:h-10" />
+                    {costHint('undo', 1)}
+                    <Undo2 className="pointer-events-none absolute bottom-[3px] left-1/2 w-7 h-7 -translate-x-1/2 sm:w-10 sm:h-10" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -1836,30 +2035,38 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   <Button
                     variant="ghost"
                     size="default"
-                    onClick={redoMove}
-                    onMouseEnter={playControlHoverKick}
+                    onClick={event => spendEggForAction(event.currentTarget, 'redo', 1, redoMove)}
+                    aria-label="Redo · costs 1 golden egg"
+                    onMouseEnter={() => { setHoveredCostAction('redo'); playControlHoverKick() }}
+                    onPointerLeave={() => setHoveredCostAction(null)}
+                    onFocus={() => setHoveredCostAction('redo')}
+                    onBlur={() => setHoveredCostAction(null)}
                     onMouseDown={() => playDrum("hh", 1.5)}
                     disabled={redoStack.length === 0}
-                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
+                    className="relative w-12 h-12 sm:w-16 sm:h-16 overflow-visible rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{ 
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20"
                     } as React.CSSProperties}
                   >
-                    <Redo2 className="w-7 h-7 sm:w-10 sm:h-10" />
+                    {costHint('redo', 1)}
+                    <Redo2 className="pointer-events-none absolute bottom-[3px] left-1/2 w-7 h-7 -translate-x-1/2 sm:w-10 sm:h-10" />
                   </Button>
                 </div>
                 <Button
                   variant="ghost"
                   size="default"
                   disabled={!moveAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
-                  onClick={() => showAnalysisArrows("worst")}
-                  onMouseEnter={() => playDrum('oh', 0.696)}
-                  onPointerLeave={playClosedAnalysisHat}
-                  className="w-full max-w-28 h-12 sm:h-16 justify-self-end rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+                  onClick={event => spendEggForAction(event.currentTarget, 'worst', 2, () => showAnalysisArrows("worst"))}
+                  onMouseEnter={() => { setHoveredCostAction('worst'); playDrum('oh', 0.696) }}
+                  onPointerLeave={() => { setHoveredCostAction(null); playClosedAnalysisHat() }}
+                  onFocus={() => setHoveredCostAction('worst')}
+                  onBlur={() => setHoveredCostAction(null)}
+                  className="relative w-full max-w-28 h-12 sm:h-16 justify-self-end overflow-visible rounded-md border border-transparent px-1 text-xs font-mono leading-tight text-white/55 whitespace-normal no-underline transition-all hover:bg-[var(--city-neon)] hover:text-white/80 hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
                   style={{ "--city-neon": city.color, backgroundColor: "var(--city-neon)20" } as React.CSSProperties}
                 >
-                  Worst moves
+                  {costHint('worst', 2)}
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center">Worst moves</span>
                 </Button>
               </div>
 
@@ -2010,6 +2217,18 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       <div className={cn("transition-opacity duration-1000", introPhase < 2 ? "opacity-0 pointer-events-none" : "opacity-100")}>
       {!isMobile && widgetsContent(false)}
       </div>
+
+      <Dialog open={gameplayTipOpen} onOpenChange={setGameplayTipOpen}>
+        <DialogContent className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-amber-200">Tip</DialogTitle>
+            <DialogDescription className="whitespace-pre-line pt-2 text-base leading-relaxed text-white/80">
+              Chickens likes to do shit.{"\n"}Make one of the worst plays for any moment, and earn 3 golden eggs to play with.
+            </DialogDescription>
+          </DialogHeader>
+          <Button autoFocus onClick={() => setGameplayTipOpen(false)} className="mt-2 w-full bg-amber-400 text-black hover:bg-amber-300">Ok!</Button>
+        </DialogContent>
+      </Dialog>
 
       {isMobile && <Dialog open={mobileControlsOpen} onOpenChange={setMobileControlsOpen}>
         <DialogContent className="z-[130] max-h-[88dvh] overflow-y-auto bg-black border-white/20 p-5 text-white">

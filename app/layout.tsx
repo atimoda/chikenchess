@@ -56,7 +56,7 @@ export default function RootLayout({
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         <Analytics />
-        <Toaster />
+        <Toaster duration={3000} />
       </body>
     </html>
   )

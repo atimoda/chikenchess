@@ -21,6 +21,19 @@ export interface ChessMoveAnalysis {
   quickNodes: number
   quickDepth: number
 }
+
+/** A move can earn a reward only from a finished ranking of its starting position. */
+export function rankedMoveReward(
+  analysis: ChessMoveAnalysis | null,
+  startingFen: string,
+  uci: string,
+): 'best' | 'worst' | null {
+  if (!analysis?.complete || analysis.fen !== startingFen || analysis.side !== 'w') return null
+  // Small legal-move sets can put the same move in both lists. Award it once.
+  if (analysis.best.some(candidate => candidate.uci === uci)) return 'best'
+  if (analysis.worst.some(candidate => candidate.uci === uci)) return 'worst'
+  return null
+}
 interface EvaluationCallbacks {
   onBusy(busy: boolean): void
   onScore(score: number, mate: number | null): void

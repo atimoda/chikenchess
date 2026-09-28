@@ -1,5 +1,6 @@
 import { Camera, Vector3 } from 'three'
 import { cityDirection } from './globe-navigation'
+import { pinGridCells } from './globe-pin-grid'
 
 function segment(out: number[], from: Vector3, to: Vector3, radius: number) {
   const steps = Math.max(1, Math.ceil(from.angleTo(to) / .04))
@@ -26,14 +27,9 @@ export function coastlineSegments(svg: string, radius = 2.013) {
   return new Float32Array(out)
 }
 
-export function globeGridSegments(radius = 2.008) {
+export function globeGridPoints(radius = 2.008) {
   const out: number[] = []
-  for (let lat = -75; lat <= 75; lat += 15) for (let lng = -180; lng < 180; lng += 3) {
-    segment(out, cityDirection(lat, lng, radius), cityDirection(lat, lng + 3, radius), radius)
-  }
-  for (let lng = -180; lng < 180; lng += 15) for (let lat = -90; lat < 90; lat += 3) {
-    segment(out, cityDirection(lat, lng, radius), cityDirection(lat + 3, lng, radius), radius)
-  }
+  for (const cell of pinGridCells()) out.push(...cityDirection(cell.lat, cell.lng, radius).toArray())
   return new Float32Array(out)
 }
 

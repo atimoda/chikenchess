@@ -17,6 +17,7 @@ import { profile as buenosAires1940 } from './buenos-aires-1940'
 import { profile as dublin1990 } from './dublin-1990'
 import { profile as newOrleans1953 } from './new-orleans-1953'
 import { RHYTHM_STAGE_PROFILES } from './rhythm-stages'
+import { profile as salvador1992 } from './salvador-1992'
 import { HARMONIC_STAGE_PROFILES } from './harmonic-stages'
 import { curateTimbres } from './timbre-curation'
 
@@ -39,6 +40,7 @@ const authoredProfiles: Record<string, StyleProfile> = {
   'new-orleans-1953': newOrleans1953,
   ...HARMONIC_STAGE_PROFILES,
   ...RHYTHM_STAGE_PROFILES,
+  'salvador-1992': salvador1992,
 }
 
 export const STYLE_PROFILES: Record<string, StyleProfile> = Object.fromEntries(

@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('../helpers/music.cjs')
-const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation } = loadTs('lib/chess-evaluation.ts')
+const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation, rankedMoveReward } = loadTs('lib/chess-evaluation.ts')
 const candidates = ['a2a3','b2b3','c2c3','d2d3','e2e3','f2f3'].map(uci => ({ uci, san: uci.slice(2) }))
 function setup() {
   const commands=[], scores=[], analyses=[], played=[], errors=[]
@@ -17,6 +17,17 @@ function quick(queue, value=30) { queue.handleMessage(`info depth 7 score cp ${v
 function iteration(queue, depth=3) {
   candidates.forEach((move,i)=>queue.handleMessage(`info depth ${depth} multipv ${i+1} score cp ${60-i*30} nodes 5000 time 25 pv ${move.uci}`))
 }
+
+test('move rewards require the complete ranking of the exact player position', () => {
+  const analysis = { fen: 'before', side: 'w', complete: true, best: [{ uci: 'e2e4' }], worst: [{ uci: 'f2f3' }] }
+  assert.equal(rankedMoveReward(analysis, 'before', 'e2e4'), 'best')
+  assert.equal(rankedMoveReward(analysis, 'before', 'f2f3'), 'worst')
+  assert.equal(rankedMoveReward(analysis, 'before', 'd2d4'), null)
+  assert.equal(rankedMoveReward(analysis, 'after', 'e2e4'), null)
+  assert.equal(rankedMoveReward({ ...analysis, complete: false }, 'before', 'e2e4'), null)
+  assert.equal(rankedMoveReward({ ...analysis, side: 'b' }, 'before', 'e2e4'), null)
+  assert.equal(rankedMoveReward({ ...analysis, worst: [{ uci: 'e2e4' }] }, 'before', 'e2e4'), 'best')
+})
 
 test('handshake gates requests; bounded UCI searches replace custom analysis protocol', () => {
   const {queue,commands}=setup()

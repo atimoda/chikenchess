@@ -19,7 +19,7 @@ export function ensureSample(api: Strudel, source: SampleSource) {
   if (!pending) {
     pending = (async () => {
       await api.samples(sample.map)
-      await api.loadBuffer(sample.file, api.getAudioContext(), sample.sound)
+      await Promise.all(sample.files.map(file => api.loadBuffer(file, api.getAudioContext(), sample.sound)))
       loadedSamples.add(sample.sound)
     })()
     sampleLoads.set(sample.sound, pending)

@@ -1,6 +1,6 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 26/09/2026 — v0.5.14. Status: engine nas 45 fases / 33 cidades, com seis campanhas e onze compassos; Brazilian e World rhythms implementadas com 18 estudos novos. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
+Atualizado em 28/09/2026 — v0.5.2. Status: engine nas 46 fases / 34 cidades, com seis campanhas e onze compassos; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
 
 ## Rodada de timbres — entregue e validação pendente
 

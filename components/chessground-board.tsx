@@ -24,6 +24,7 @@ interface ChessgroundBoardProps {
   synthSelectedSquare?: Square | null
   activeSquares?: Set<string>
   analysisArrows?: AnalysisArrow[]
+  rankedMoveMark?: { square: Square; kind: 'best' | 'worst'; id: number } | null
   freeMode?: {
     mode: "move" | "play"
     auditionPiece: { color: "w" | "b"; type: string }
@@ -77,10 +78,12 @@ export function ChessgroundBoard({
   onPieceCancel,
   musicPulseMonitor,
   analysisArrows = [],
+  rankedMoveMark,
   freeMode,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
+  const [pressedPieceSquare, setPressedPieceSquare] = useState<Square | null>(null)
   const [legalMoves, setLegalMoves] = useState<Square[]>([])
   const [lastMoveWhite, setLastMoveWhite] = useState<{ from: Square; to: Square } | null>(null)
   const [lastMoveBlack, setLastMoveBlack] = useState<{ from: Square; to: Square } | null>(null)
@@ -106,12 +109,14 @@ export function ChessgroundBoard({
   useEffect(() => {
     const release = () => {
       heldSquareRef.current = null
+      setPressedPieceSquare(null)
       onPieceRelease?.()
     }
     const cancel = () => {
       tapStartRef.current = null
       lastTapRef.current = null
       heldSquareRef.current = null
+      setPressedPieceSquare(null)
       if (onPieceCancel) onPieceCancel()
       else onPieceRelease?.()
       dragPieceRef.current = null
@@ -641,6 +646,11 @@ export function ChessgroundBoard({
           :global(.black-piece-outline svg *) {
             stroke: rgba(255, 255, 255, .3) !important;
           }
+          @keyframes ranked-move-flash {
+            0%, 100% { opacity: 0; transform: scale(.72); }
+            28%, 62% { opacity: .9; transform: scale(1); }
+          }
+          .ranked-move-mark { animation: ranked-move-flash .65s ease-out both; }
         `}</style>
         {ROWS.map((row, rowIndex) =>
           COLUMNS.map((col, colIndex) => {
@@ -658,6 +668,7 @@ export function ChessgroundBoard({
             const isAnimatingTo = animatingPiece?.to === square
             const isSynthSelected = synthSelectedSquare === square
             const isActive = activeSquares?.has(square)
+            const isPressedPiece = pressedPieceSquare === square
 
             // Calculate complementary color for last move
             // We'll use a CSS filter hue-rotate(180deg) to get complementary color
@@ -695,8 +706,10 @@ export function ChessgroundBoard({
                   if (!e.isPrimary || e.button !== 0) {
                     tapStartRef.current = null
                     lastTapRef.current = null
+                    setPressedPieceSquare(null)
                     return
                   }
+                  setPressedPieceSquare(piece ? square : null)
                   if (lastTapRef.current?.square !== square || lastTapRef.current.pointerType !== e.pointerType) lastTapRef.current = null
                   if (!freeMode && piece?.color === 'w') {
                     tapStartRef.current = { square, x: e.clientX, y: e.clientY, pointerType: e.pointerType }
@@ -733,7 +746,7 @@ export function ChessgroundBoard({
                     lastTapRef.current = { square, time: now, pointerType: e.pointerType }
                   }
                 }}
-                onPointerCancel={() => { tapStartRef.current = null; lastTapRef.current = null }}
+                onPointerCancel={() => { tapStartRef.current = null; lastTapRef.current = null; setPressedPieceSquare(null) }}
                 onDoubleClick={() => {
                   if (freeMode?.mode === 'move' && piece) freeMode.onTogglePiece(square)
                 }}
@@ -776,13 +789,29 @@ export function ChessgroundBoard({
                 )}
 
                 {/* Piece */}
+                {rankedMoveMark?.square === square && (
+                  <svg
+                    key={rankedMoveMark.id}
+                    aria-hidden="true"
+                    viewBox="0 0 100 100"
+                    className="ranked-move-mark absolute inset-[10%] z-[1] h-[80%] w-[80%] pointer-events-none"
+                    fill="none"
+                    stroke={rankedMoveMark.kind === 'best' ? '#41ed8c' : '#ff424b'}
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ filter: `drop-shadow(0 0 8px ${rankedMoveMark.kind === 'best' ? '#41ed8c' : '#ff424b'})` }}
+                  >
+                    {rankedMoveMark.kind === 'best'
+                      ? <path d="M14 52 40 76 86 22" />
+                      : <path d="M22 22 78 78 M78 22 22 78" />}
+                  </svg>
+                )}
                 {piece && (!isDragging || freeMode?.mode === 'play') && !isAnimatingTo && (
                   <div
-                    className={cn("w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
+                    className={cn("relative z-10 w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
                     style={{
-                      filter: isSelected 
-                        ? `drop-shadow(0 0 8px ${cityColor})` 
-                        : (piece.color === 'b' ? `drop-shadow(0 0 1px ${cityColor})` : undefined),
+                      filter: isActive || isPressedPiece ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
                     }}
                     dangerouslySetInnerHTML={{
                       __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "",

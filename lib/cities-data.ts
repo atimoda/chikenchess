@@ -1,6 +1,7 @@
 import { RHYTHM_STAGES } from './rhythm-stages'
 import { scaleForCreativeSession } from './music/creative'
 import { cityCoordinates } from "./city-coordinates"
+import { placePinsOnGrid } from './globe-pin-grid'
 import type { Meter } from './music/meter'
 import type { CampaignId } from './campaigns'
 
@@ -17,6 +18,7 @@ export interface CityData {
   scale: string[]
   coordinates: { x: number; y: number }
   geoCoordinates: { lat: number; lng: number }
+  pinCoordinates: { lat: number; lng: number }
   color: string
   image: string
   samples: {
@@ -44,7 +46,7 @@ const harmonicStageIntros: Record<string, string[]> = {
   'chicago-1958': ['An amplified string cuts through the room.', 'A southern memory meets city lights.', 'The band answers every bent note.', 'Hard times turn into a walking groove.', 'Let the guitar talk.'],
 }
 
-const rawCities: Omit<CityData, "coordinates" | "campaigns">[] = [
+const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[] = [
   // 1. Düsseldorf (1970)
   {
     id: "dusseldorf",
@@ -503,6 +505,7 @@ const rhythmCityPhotos: Record<string, string> = {
   'rio-1910': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_de_Janeiro_ca1910s_photo_from_USA_Library_of_Congress_19301u.jpg?width=1600',
   'rio-1930': 'https://commons.wikimedia.org/wiki/Special:FilePath/Revolu%C3%A7%C3%A3o_de_1930%3B_populares_e_revolucion%C3%A1rios_na_avenida_Rio_Branco_%28002080RJ3602%29.jpg?width=1600',
   'rio-1960': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_ipanema.jpg?width=1600',
+  'salvador-1992': 'https://commons.wikimedia.org/wiki/Special:FilePath/Largo_do_Pelourinho_Salvador_2018-0919.jpg?width=1600',
   'recife-1935': 'https://commons.wikimedia.org/wiki/Special:FilePath/Frevo_no_Carnaval_do_Recife.jpg?width=1600',
   'recife-1950': 'https://commons.wikimedia.org/wiki/Special:FilePath/Statue_of_Luiz_Gonzaga_in_Recife_-_Brazil.jpg?width=1600',
   'piracicaba-1940': 'https://www.miranteppp.com.br/wp-content/uploads/2024/04/Rio-Piracicaba-e-um-atrativo-turistico-cartao-postal-e-motivo-de-orgulho-para-a-cidade-scaled.jpg',
@@ -519,7 +522,7 @@ const rhythmCityPhotos: Record<string, string> = {
   'vienna-1825': 'https://www.beethoven.de/file/download/cGhzOGNrSm5IYzdHUi9zb3VyY2UvMDAwMDQ0NTJfMDAwMV9nYWwuanBnADAA?sig=3b49c61408997ef1b0bb9462a9cf65a9bf52ffb03d1b18d7e396b5f722e4f893cef0c4de890e08f2a93043c4523b52a2',
   'santiago-del-estero-1960': 'https://www.tripin.travel/wp-content/uploads/2016/07/a0583abdeb.jpg',
 }
-const rhythmCities: Omit<CityData, 'coordinates' | 'campaigns'>[] = RHYTHM_STAGES.map(stage => ({
+const rhythmCities: Omit<CityData, 'coordinates' | 'campaigns' | 'pinCoordinates'>[] = RHYTHM_STAGES.map(stage => ({
   id: stage.id, name: stage.name, country: stage.country, year: stage.year, genre: stage.genre,
   description: stage.description, bpm: stage.bpm, meter: stage.meter, color: stage.color,
   geoCoordinates: { lat: stage.lat, lng: stage.lng }, scale: scaleForCreativeSession(stage),
@@ -530,8 +533,12 @@ const rhythmCities: Omit<CityData, 'coordinates' | 'campaigns'>[] = RHYTHM_STAGE
   introPhrases: ['A new pulse draws a circle.', 'Listen for the returning accent.', 'A melody leaves room for an answer.', 'Every piece joins the conversation.', 'Find your place in the rhythm.'],
 }))
 
-export const cities: CityData[] = [...rawCities, ...rhythmCities].map(city => ({
+const citySources = [...rawCities, ...rhythmCities]
+const pinCoordinates = placePinsOnGrid(citySources)
+
+export const cities: CityData[] = citySources.map(city => ({
   ...city,
+  pinCoordinates: pinCoordinates[city.id],
   campaigns: campaignMembership[city.id] ?? RHYTHM_STAGES.filter(stage => stage.id === city.id).map(stage => stage.campaign),
   coordinates: cityCoordinates[city.id] || { x: (city.geoCoordinates.lng + 180) / 3.6, y: (90 - city.geoCoordinates.lat) / 1.8 } // Fallback
 }))

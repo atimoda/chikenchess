@@ -1,744 +1,692 @@
-export const RELEASE_LABEL = 'v0.5.14'
+export const RELEASE_LABEL = 'v0.5.2'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
-  { version: '0.5.14', date: '26/09/2026', title: 'Menus da partida com cores da cidade', groups: [
-    { title: 'Board Params e Piece Params', items: [
-      'O tom selecionado nos controles da partida agora usa a cor da cidade, e a lista de subdivisão da grade ganhou opções escuras com destaque verde para a escolha atual.',
-      'O pin da variação fixada ficou 2 px maior e usa o verde da borda iluminada.',
-    ] },
-  ] },
-  { version: '0.5.13', date: '26/09/2026', title: 'Avisos do changelog corrigidos', groups: [
-    { title: 'Mapa, partida e Criativo', items: [
-      'O histórico de versões abre sem avisos causados por identificadores repetidos.',
-    ] },
-  ] },
-  { version: '0.5.12', date: '26/09/2026', title: 'Fotos próprias para cada época', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'As cidades com mais de um kit agora mostram imagens diferentes, escolhidas para cada época ou contexto musical; as fotos foram ampliadas para exibição mais nítida.',
-    ] },
-  ] },
-  { version: '0.5.11', date: '26/09/2026', title: 'Prévia percentual do BPM atualizada', groups: [
-    { title: 'Board Params', items: [
-      'O percentual de BPM no hover agora é recalculado imediatamente quando o valor do slider muda, sem precisar tirar o ponteiro.',
-    ] },
-  ] },
-  { version: '0.5.1', date: '26/09/2026', title: 'Fotografias nas novas cidades', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'As cidades adicionadas às campanhas rítmicas agora mostram fotografias de seus locais; épocas diferentes da mesma cidade compartilham a imagem correspondente.',
-    ] },
-  ] },
-  { version: '0.5.0', date: '26/09/2026', title: 'Brazilian, World rhythms e novos compassos', groups: [
-    { title: 'Campanhas e kits', items: [
-      'Brazilian estreia com samba, choro, frevo, baião, sertanejo de raiz e bossa nova. World rhythms reúne reggae, chacarera e estudos de danças grega e turca.',
-      '18 novas fases ampliam a coleção para 45 kits, incluindo jazz em três e cinco, rock em seis e sete, soul em doze, pastoral em nove e orquestra alla breve.',
-    ] },
-    { title: 'Compasso e edição', items: [
-      'O Criativo aceita 2/4, 9/8, 2/2, 5/4, 5/8, 7/4 e 7/8, além dos quatro compassos anteriores; o relógio informa a unidade do BPM e os agrupamentos ímpares.',
-      'Editor, duração das seções, kits salvos e exportação acompanham os novos compassos. Trocar a fórmula reinicia o relógio mesmo quando a quantidade de pulsos permanece igual.',
-    ] },
-  ] },
-  { version: '0.4.103', date: '26/09/2026', title: 'Knobs nos parâmetros do Criativo', groups: [
-    { title: 'Modo Criativo', items: [
-      'Os ajustes de afinação, envelope, filtros, efeitos e movimento agora usam knobs em uma grade mais compacta, com valores e ajuda ao lado de cada controle.',
-    ] },
-  ] },
-  { version: '0.4.1031', date: '26/09/2026', title: 'Slide global junto à afinação', groups: [
-    { title: 'Modo Criativo', items: [
-      'Slide de afinação e Tempo do slide agora ficam em Afinação e envelope, junto aos demais parâmetros principais da peça.',
-    ] },
-  ] },
-  { version: '0.4.1032', date: '26/09/2026', title: 'Foto correta de New Orleans', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'New Orleans agora usa uma fotografia noturna do French Quarter, em vez da foto do Rio de Janeiro.',
-    ] },
-  ] },
-  { version: '0.4.1033', date: '26/09/2026', title: 'Introdução da fase mais longa', groups: [
-    { title: 'Entrada na partida', items: [
-      'O cartão de cidade e estilo/ano permanece na tela por mais 1 segundo, e o desbotamento da imagem de fundo leva mais 2 segundos.',
-    ] },
-  ] },
-  { version: '0.4.1034', date: '26/09/2026', title: 'Rótulo LPF/HPF compacto no Mixer', groups: [
-    { title: 'Partida', items: [
-      'O knob de filtro por equipe agora aparece como “LPF/HPF”, sem espaços.',
-    ] },
-  ] },
-  { version: '0.4.1035', date: '26/09/2026', title: 'Legenda do Mixer sem símbolos laterais', groups: [
-    { title: 'Partida', items: [
-      'A legenda central das equipes mostra apenas “BRANCAS · PRETAS”.',
-    ] },
-  ] },
-  { version: '0.4.1036', date: '26/09/2026', title: 'Legenda central das equipes no Mixer', groups: [
-    { title: 'Partida', items: [
-      'Brancas e Pretas agora compartilham uma legenda central entre as duas linhas de knobs do Mixer.',
-    ] },
-  ] },
-  { version: '0.4.1037', date: '26/09/2026', title: 'Ajustes visuais do Mixer e Board Params', groups: [
-    { title: 'Partida', items: [
-      'Os seletores de Tom e Escala agora mostram borda apenas no hover ou foco, como o de Progressão.',
-      'No Mixer, o nome da equipe de cima fica abaixo dos knobs e o da equipe de baixo fica acima.',
-    ] },
-  ] },
-  { version: '0.4.104', date: '26/09/2026', title: 'Filtro por equipe no Mixer', groups: [
-    { title: 'Partida', items: [
-      'Cada equipe ganhou um knob LPF/HPF no Mixer, com o mesmo controle de passa-baixas e passa-altas do Piece Params.',
-      'O novo filtro atua na mixagem da equipe depois dos efeitos e da equalização.',
-    ] },
-  ] },
-  { version: '0.4.1041', date: '26/09/2026', title: 'Mixer alinhado ao tabuleiro', groups: [
-    { title: 'Partida', items: [
-      'As equipes do Mixer seguem a ordem vertical do tabuleiro, com os nomes centralizados abaixo dos controles.',
-      'Os controles de equalização aparecem na ordem Hi, Mid e Low.',
-    ] },
-  ] },
-  { version: '0.4.105', date: '26/09/2026', title: 'Prévia do BPM e ajustes visuais', groups: [
-    { title: 'Partida', items: [
-      'O slider de BPM mostra a variação percentual prevista acima do ponteiro.',
-      'O texto do código no fundo ficou com 75% de opacidade, e a lista de progressões só mostra borda no hover.',
-      'Os rótulos e áreas livres dos knobs em Piece Params podem ser usados para arrastar o painel.',
-    ] },
-  ] },
-  { version: '0.4.83', date: '26/09/2026', title: 'Volume dos chimbais e parâmetros da peça', groups: [
-    { title: 'Partida', items: [
-      'Os hovers e saídas de Best moves e Worst moves ficaram cerca de 20% mais altos.',
-      'Os knobs de parâmetros agora aparecem acima do painel de variações em Piece Params.',
-    ] },
-  ] },
-  { version: '0.4.82', date: '26/09/2026', title: 'Dica de cópia e retorno dos botões', groups: [
-    { title: 'Partida', items: [
-      'A legenda de cópia fica mais próxima do ícone e muda para “copied!” após copiar o código.',
-      'Sair de Best moves ou Worst moves com mouse ou toque repete o chimbal fechado com leve variação aleatória.',
-    ] },
-  ] },
-  { version: '0.4.81', date: '26/09/2026', title: 'Resposta sonora ao sair de Worst moves', groups: [
-    { title: 'Partida', items: [
-      'Ao sair de Worst moves com mouse ou toque, o botão toca o mesmo chimbal fechado usado no hover de Best moves.',
-    ] },
-  ] },
-  { version: '0.4.80', date: '26/09/2026', title: 'Chimbais dos botões de análise', groups: [
-    { title: 'Partida', items: [
-      'Best moves agora usa chimbal fechado no hover e Worst moves usa chimbal aberto; os dois sons ficaram um pouco mais altos.',
-    ] },
-  ] },
-  { version: '0.4.79', date: '26/09/2026', title: 'Ajustes nos knobs e no status da partida', groups: [
-    { title: 'Partida', items: [
-      'O status Your move / AI analysing agora fica logo abaixo do tabuleiro, acima dos controles de Undo, Play e Redo.',
-      'Os valores dos knobs acompanham a cor do ponteiro, que se aproxima da borda; o texto ficou menor e um pouco mais baixo.',
-      'O código deixou de aparecer dentro do Debug; a visualização sobre o fundo continua no botão Code, e a cópia tem uma dica no hover.',
-      'As labels OITAVA e DURAÇÃO foram traduzidas para Octave e Length.',
-    ] },
-  ] },
-  { version: '0.4.78', date: '25/09/2026', title: 'Código no fundo e valores dos knobs', groups: [
-    { title: 'Partida', items: [
-      'Os valores dos knobs agora aparecem dentro do círculo, logo abaixo do centro.',
-      'O novo botão Code mostra o código Strudel atualizado sobre a fotografia de fundo, sem bloquear a partida.',
-      'O bumbo de hover de Undo, Play e Redo ganhou um pouco mais de variação de volume e altura.',
-    ] },
-  ] },
-  { version: '0.4.77', date: '25/09/2026', title: 'Arraste firme e sons dos controles', groups: [
-    { title: 'Partida', items: [
-      'A peça fica na casa ao pressionar e só acompanha o ponteiro depois de iniciar um arraste, evitando o salto durante o duplo clique ou toque.',
-      'Undo, Play e Redo ganharam pequena variação no bumbo de hover; Best e Worst moves usam chimbais diferentes no hover e assobios ascendentes ou descendentes no clique.',
-      'O botão de Best ou Worst moves acionado fica indisponível enquanto suas setas estão visíveis.',
-    ] },
-  ] },
-  { version: '0.4.76', date: '25/09/2026', title: 'Duplo toque nas peças e atalhos da análise', groups: [
-    { title: 'Partida', items: [
-      'Duplo clique ou toque numa peça sua liga ou desliga seu loop e pode abrir Piece Params automaticamente; desligar o painel manualmente impede novas aberturas automáticas.',
-      'Best moves e Worst moves agora ficam nas pontas da linha de Undo, Play e Redo, como botões sem ícones.',
-    ] },
-  ] },
-  { version: '0.4.75', date: '25/09/2026', title: 'Sons da introdução da fase', groups: [
-    { title: 'Entrada na partida', items: [
-      'O botão final das frases troca os sons de hover e clique entre si.',
-      'O toque de entrada passa a soar na apresentação da cidade, 1 segundo após clicar no botão.',
-    ] },
-  ] },
-  { version: '0.4.74', date: '25/09/2026', title: 'Fotos e navegação da lista', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'O estilo musical continua ao lado da cidade enquanto seu cartão está aberto.',
-      'San Diego, Berkeley, San Francisco, Columbus e Jacksonville receberam fotografias próprias, no lugar da foto repetida de Chicago.',
-      'A roda do mouse sobre a área vazia da lista agora percorre também as campanhas, mantendo a interação com o globo ao fundo.',
-    ] },
-  ] },
-  { version: '0.4.73', date: '25/09/2026', title: 'Pins e sequência de fechamento', groups: [
-    { title: 'Mapa', items: [
-      'Clicar num pin aproxima-o 30% do caminho até o centro pelo giro do globo; a rotação continua no mesmo eixo à velocidade de espera.',
-      'Fechar tudo permanece acima dos cartões e os fecha numa sequência um pouco mais espaçada, alternando chimbal aberto e fechado.',
-    ] },
-  ] },
-  { version: '0.4.72', date: '25/09/2026', title: 'Popups e giro contínuo no mapa', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'Trocar a época de uma cidade abre o novo cartão na posição do anterior, 10 px mais abaixo.',
-      'A centralização do pin termina na velocidade do giro de espera; cada novo cartão alterna o zoom entre 69% e 150%.',
-      'Com vários cartões abertos, Fechar tudo os encerra em sequência aleatória. A lista destaca cada cidade na sua própria cor e mantém o destaque enquanto o cartão está aberto.',
-      'O hover direto no pin ganhou um bumbo eletrônico mais grave e forte; o hover da lista conserva seu som anterior.',
-    ] },
-  ] },
-  { version: '0.4.71', date: '25/09/2026', title: 'Cartões de cidade mais leves', groups: [
-    { title: 'Mapa', items: [
-      'O fundo dos cartões deixa o globo mais visível, e a troca de épocas aparece abaixo da descrição, alinhada à direita antes de Enter board.',
-    ] },
-  ] },
-  { version: '0.4.70', date: '25/09/2026', title: 'Giro de destaque mais fluido', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'O hover na lista aproxima o pin do centro com um giro inicial mais rápido e segue na velocidade de espera sem parar no centro.',
-      'As bandeiras fecham o balanço do tecido sem salto; no giro de espera, a haste inclina mais e o tecido balança com mais suavidade.',
-    ] },
-  ] },
-  { version: '0.4.69', date: '25/09/2026', title: 'Bandeiras de cada cidade e lista conectada ao globo', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'Manchester 1999 aparece somente em World ballads.',
-      'As bandeiras do globo ficaram mais claras, misturam verde com a cor da cidade, trazem símbolos ligados ao estilo musical e dobram mais durante o balanço.',
-      'O ícone da lista assume a cor da cidade no hover; passar pelo pin rola a lista suavemente para mostrar a cidade.',
-    ] },
-  ] },
-  { version: '0.4.68', date: '25/09/2026', title: 'Bandeira do globo mais natural', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'A bandeira do globo balança pela base em um oito suave, com uma leve ondulação no tecido; o ícone da lista fica parado à direita da cidade.',
-      'Passar por uma fase na lista mostra seu estilo musical ao lado do ano.',
-    ] },
-  ] },
-  { version: '0.4.67', date: '25/09/2026', title: 'Bandeiras conquistadas e hover mais encorpado', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'Cidades conquistadas agora exibem bandeiras animadas na lista e no globo, com balanço lento e sombra sutil.',
-      'O som de hover ficou mais grave e suave, com uma cauda curta de eco.',
-    ] },
-  ] },
-  { version: '0.4.66', date: '25/09/2026', title: 'Rotação leva o pin ao centro', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'Ao passar por uma cidade na lista, o eixo do giro de espera conduz seu pin ao centro da tela pelo caminho mais curto, sem mover a câmera ou mudar a velocidade.',
-    ] },
-  ] },
-  { version: '0.4.65', date: '25/09/2026', title: 'Hover da lista e dos pins corrigido', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'O hover da lista destaca o pin e toca seu som; o hover do pin destaca o nome na lista. O eixo do giro de espera aponta para a cidade sem mover a câmera, e o som ficou mais suave e variado.',
-    ] },
-  ] },
-  { version: '0.4.64', date: '25/09/2026', title: 'Hover da lista ligado aos pins', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'Ao passar por uma cidade na lista, o pin correspondente também destaca e o eixo do giro de espera se orienta para ela, mantendo a velocidade do globo.',
-    ] },
-  ] },
-  { version: '0.4.63', date: '25/09/2026', title: 'Mais contexto para as novas cidades', groups: [
-    { title: 'Mapa e campanhas', items: [
-      'Títulos mostram só o estilo; descrições e aberturas apresentam a cultura musical de cada fase sem repetir cidade ou ano.',
-      'As etiquetas para trocar a época deixam mais claro que são clicáveis.',
-    ] },
-  ] },
-  { version: '0.4.62', date: '25/09/2026', title: 'Lista de cidades sem barra aparente', groups: [
-    { title: 'Mapa', items: [
-      'A listagem das campanhas continua rolando com roda, trackpad, toque e arraste, mas não mostra mais a barra de rolagem.',
-    ] },
-  ] },
-  { version: '0.4.61', date: '25/09/2026', title: 'Mais identidade para cada kit', groups: [
-    { title: 'Música', items: [
-      'Quatro bancos novos de cordas, teclas, sintetizadores e bateria trazem guitarras elétricas e acústicas, baixos, pianos, órgão, FM, pads e percussão com ataques e texturas diferentes.',
-      'As dez fases do Harmonic songbook ganham instrumentos e levadas próprios por estilo; os kits anteriores também recebem timbres mais adequados a cada cidade.',
-      'Ao carregar um preset atualizado, a versão salva anteriormente fica em Meus kits para comparação.',
-    ] },
-  ] },
-  { version: '0.4.60', date: '24/09/2026', title: 'Dez novas fases harmônicas', groups: [
-    { title: 'Música e mapa', items: [
-      'A campanha Harmonic songbook reúne dez fases novas, cada uma com uma sequência de acordes, cidade, época e kit editável próprios.',
-      'O jazz ganha acordes de sétima em ii–V–I e iii–VI–ii–V; baixos, melodias e respostas acompanham o centro de cada seção.',
-      'Os botões de época nos popups mostram o estilo correto de cada fase e se distribuem em mais de uma linha quando necessário.',
-    ] },
-  ] },
-  { version: '0.4.59', date: '24/09/2026', title: 'Meus kits sempre à vista no Criativo', groups: [
-    { title: 'Criativo', items: [
-      'Meus kits aparece no seletor mesmo sem kits salvos e agora reúne os estudos Mouth Breather e Düsseldorf original.',
-      'Um problema no rascunho atual não impede a biblioteca de kits de carregar.',
-    ] },
-  ] },
-  { version: '0.4.58', date: '24/09/2026', title: 'Mais espaço nas músicas e kits antigos na biblioteca', groups: [
-    { title: 'Música', items: [
-      'Em Düsseldorf, a flauta ganha espaço quando entra em destaque; em New Orleans, guitarra e palheta deixam o final para o trompete.',
-    ] },
-    { title: 'Criativo', items: [
-      'Ao atualizar o kit de uma cidade, a versão anterior aparece em Meus kits com nome próprio e sem vínculo com a fase. O botão Kit anterior sai da bancada.',
-    ] },
-  ] },
-  { version: '0.4.57', date: '24/09/2026', title: 'Baixo mais presente em Manchester 1999', groups: [
-    { title: 'Música', items: [
-      'O baixo principal acompanha as quatro seções de Manchester 1999; a segunda linha responde apenas nas partes mais cheias.',
-      'Ao carregar essa cidade, o kit anterior fica disponível para comparação no Criativo.',
-    ] },
-  ] },
-  { version: '0.4.56', date: '24/09/2026', title: 'Lista de cidades mais legível', groups: [
-    { title: 'Mapa', items: [
-      'A lista ganha texto maior, subtítulos em maiúsculas e hover verde; os marcadores saem e cliques passam pelas áreas vazias.',
-    ] },
-  ] },
-  { version: '0.4.55', date: '24/09/2026', title: 'Popups acima da lista de cidades', groups: [
-    { title: 'Mapa', items: [
-      'Os popups das cidades ficam numa camada acima da lista de campanhas quando se sobrepõem a ela.',
-    ] },
-  ] },
-  { version: '0.4.54', date: '24/09/2026', title: 'Lista de cidades mais limpa', groups: [
-    { title: 'Mapa', items: [
-      'O globo só centraliza uma cidade da lista ao clicar; hover realça apenas o texto e os itens têm mais espaço entre si.',
-    ] },
-  ] },
-  { version: '0.4.53', date: '24/09/2026', title: 'Som ao trocar de peça no Criativo', groups: [
-    { title: 'Tabuleiro', items: [
-      'Clicar em outra peça toca seu sample no primeiro clique; carregar os painéis do novo instrumento não interrompe o ataque.',
-    ] },
-  ] },
-  { version: '0.4.52', date: '24/09/2026', title: 'Clique e arraste com som no Criativo', groups: [
-    { title: 'Tabuleiro', items: [
-      'O áudio do Criativo é iniciado no gesto, corrigindo o silêncio no primeiro clique e ao arrastar peças.',
-      'Atravessar casas toca uma nota por casa sem atualizar toda a bancada a cada ataque.',
-    ] },
-  ] },
-  { version: '0.4.51', date: '23/09/2026', title: 'Áudio no gesto do Criativo', groups: [
-    { title: 'Tabuleiro', items: [
-      'O tabuleiro livre permite que o primeiro clique do mouse desbloqueie o áudio antes de tocar e arrastar a peça.',
-    ] },
-  ] },
-  { version: '0.4.50', date: '23/09/2026', title: 'Notas no primeiro toque do Criativo', groups: [
-    { title: 'Tabuleiro', items: [
-      'Ao soltar rapidamente uma peça no Criativo, a prévia permanece por até 500 ms.',
-      'As peças ocupam mais espaço nas casas, que voltam a ter cantos retos.',
-    ] },
-  ] },
-  { version: '0.4.49', date: '23/09/2026', title: 'Tabuleiro compartilhado e audição no Criativo', groups: [
-    { title: 'Tabuleiro', items: [
-      'O Criativo usa o mesmo tabuleiro visual e o mesmo arraste da partida, com movimentos livres e sem adversária.',
-      'Segurar e atravessar casas dispara as notas mesmo enquanto os efeitos de áudio ainda estão carregando.',
-    ] },
-  ] },
-  { version: '0.4.46', date: '23/09/2026', title: 'Presença das variações', groups: [
-    { title: 'Partida', items: [
-      'A aba da variação fica mais discreta durante seções em que a peça não está presente; o pin sobe para ficar acima do botão.',
-    ] },
-  ] },
-  { version: '0.4.45', date: '23/09/2026', title: 'Abas de variação', groups: [
-    { title: 'Partida', items: [
-      'Os botões de edição da variação destacam o hover; o pin da variação fixada aparece acima da aba sem aumentar a fileira.',
-    ] },
-  ] },
-  { version: '0.4.44', date: '23/09/2026', title: 'Compasso da partida', groups: [
-    { title: 'Música', items: [
-      'A partida agora usa o compasso do kit também no editor de variações e no relógio musical.',
-    ] },
-  ] },
-  { version: '0.4.43', date: '23/09/2026', title: 'Audição no Criativo', groups: [
-    { title: 'Tabuleiro', items: [
-      'Arrastar uma peça volta a tocar uma nota por casa mesmo quando o áudio ainda estava suspenso.',
-      'Duplo clique numa peça alterna sua ativação no modo Mover, sem mudar sua posição.',
-    ] },
-    { title: 'Editor', items: [
-      'A grade abre com duas partes em 3/4 e três partes em 6/8 ou 12/8; a escolha ainda pode ser ajustada livremente.',
-    ] },
-  ] },
-  { version: '0.4.42', date: '23/09/2026', title: 'Campanhas e novas levadas', groups: [
-    { title: 'Mapa', items: [
-      'As fases agora aparecem em três campanhas numa lista à esquerda do globo; hover centraliza a cidade e clique abre seu popup.',
-      'Buenos Aires, Dublin e New Orleans chegam à campanha World ballads, junto com Manchester 1999; Vienna aparece em Classical music.',
-    ] },
-    { title: 'Música', items: [
-      'Três composições originais exploram 3/4, 6/8 e 12/8, com duração real dos compassos, acentos e relógio próprios.',
-      'O Criativo permite escolher o compasso; kits antigos continuam em 4/4.',
-    ] },
-  ] },
-  { version: '0.4.41', date: '23/09/2026', title: 'Ícones com fundo transparente', groups: [
-    { title: 'Identidade visual', items: [
-      'Favicons e ícones do app exibem a silhueta do logotipo sem um quadrado de fundo.',
-    ] },
-  ] },
-  { version: '0.4.40', date: '23/09/2026', title: 'Logotipo maior no Sobre', groups: [
-    { title: 'Mapa', items: [
-      'O logotipo fica maior ao lado do nome no painel Sobre.',
-    ] },
-  ] },
-  { version: '0.4.39', date: '23/09/2026', title: 'Identidade visual completa', groups: [
-    { title: 'Mapa', items: [
-      'O logotipo aparece nos ícones do navegador e nas prévias ao compartilhar; controles do cabeçalho e informações de contato foram atualizados.',
-    ] },
-  ] },
-  { version: '0.4.38', date: '23/09/2026', title: 'Cores da cidade nos controles da partida', groups: [
-    { title: 'Partida', items: [
-      'Os sliders de Board Params e os botões de energia dos widgets acompanham as cores da cidade, com branco desligado e azul no hover.',
-    ] },
-  ] },
-  { version: '0.4.37', date: '23/09/2026', title: 'Espectrograma mais amplo e legível', groups: [
-    { title: 'Partida', items: [
-      'O espectrograma usa o fundo do widget, ocupa melhor sua área e capta picos entre as frequências exibidas.',
-    ] },
-  ] },
-  { version: '0.4.36', date: '23/09/2026', title: 'Destaque das casas ativas mais limpo', groups: [
-    { title: 'Partida', items: [
-      'As casas ativas deixam de ter sombra no botão e contorno de 1 px; a borda branca da seleção permanece.',
-    ] },
-  ] },
-  { version: '0.4.35', date: '23/09/2026', title: 'Controles da partida mais claros', groups: [
-    { title: 'Partida', items: [
-      'O cabeçalho mostra a dificuldade selecionada com espaçamento uniforme entre os controles; os links de melhores e piores jogadas usam cinza.',
-    ] },
-  ] },
-  { version: '0.4.34', date: '23/09/2026', title: 'Pontuação do perfil mais discreta', groups: [
-    { title: 'Mapa', items: [
-      'A pontuação histórica aparece em cinza e usa “points” como unidade.',
-    ] },
-  ] },
-  { version: '0.4.33', date: '23/09/2026', title: 'Popups acompanham o limite do globo', groups: [
-    { title: 'Mapa', items: [
-      'Durante o arraste e o giro, popups fora da esfera ficam no máximo 50 px além da circunferência visível.',
-    ] },
-  ] },
-  { version: '0.4.32', date: '23/09/2026', title: 'Perfil do jogador mais claro', groups: [
-    { title: 'Mapa', items: [
-      'Rank, ovos e pontuação aparecem juntos sem cartão separado; o avatar ganha destaque e os ícones de ovo e conquista ficam nos indicadores correspondentes.',
-    ] },
-  ] },
-  { version: '0.4.31', date: '23/09/2026', title: 'Acabamento dos controles do globo', groups: [
-    { title: 'Mapa', items: [
-      'Popups de cidade recortam o fundo nos cantos arredondados; versão e Modo Criativo ficam clicáveis em toda a área, com hover escuro consistente.',
-    ] },
-  ] },
-  { version: '0.4.30', date: '23/09/2026', title: 'Perfil e controles refinados', groups: [
-    { title: 'Mapa', items: [
-      'Os botões do globo usam hover escuro; o perfil mostra os ovos ao lado do avatar e exibe as cidades conquistadas com título atualizado.',
-    ] },
-  ] },
-  { version: '0.4.29', date: '23/09/2026', title: 'Ações do mapa mais consistentes', groups: [
-    { title: 'Mapa', items: [
-      'Modo Criativo fica ao lado da versão; o botão de tela cheia destaca e amplia o ícone no hover, e o perfil mostra “golden eggs” sem moldura.',
-    ] },
-  ] },
-  { version: '0.4.28', date: '23/09/2026', title: 'Perfil do jogador em popup', groups: [
-    { title: 'Mapa', items: [
-      'O perfil e a redefinição do progresso ficam no popup do avatar com a contagem de ovos; Modo Criativo fica no canto inferior esquerdo.',
-    ] },
-  ] },
-  { version: '0.4.27', date: '23/09/2026', title: 'Widgets podem ser arrastados atrás da área central', groups: [
-    { title: 'Partida', items: [
-      'A área vazia ao redor do tabuleiro e dos controles de jogo deixa passar os gestos para os widgets posicionados atrás.',
-    ] },
-  ] },
-  { version: '0.4.26', date: '23/09/2026', title: 'Dificuldade da IA atualiza a próxima jogada', groups: [
-    { title: 'Partida', items: [
-      'Alterar a dificuldade durante a análise ou a espera reinicia a busca com o nível escolhido; o menu identifica o nível real do Stockfish.',
-      'Os atalhos de melhores/piores jogadas têm mais espaço acima e usam barra como separador.',
-    ] },
-  ] },
-  { version: '0.4.25', date: '23/09/2026', title: 'Subtítulo da introdução mais leve', groups: [
-    { title: 'Partida', items: [
-      'O gênero e o ano aparecem sem negrito e sem cursor de ponteiro na tela de introdução.',
-    ] },
-  ] },
-  { version: '0.4.24', date: '23/09/2026', title: 'Pins alternam a abertura do popup', groups: [
-    { title: 'Mapa', items: [
-      'Clicar no pin de uma cidade com popup aberto agora fecha esse popup.',
-    ] },
-  ] },
-  { version: '0.4.23', date: '23/09/2026', title: 'Scroll do globo também funciona sobre popups', groups: [
-    { title: 'Mapa', items: [
-      'A roda do mouse continua controlando o zoom do globo mesmo quando o cursor está sobre um popup.',
-    ] },
-  ] },
-  { version: '0.4.22', date: '23/09/2026', title: 'Popups ficam acima das linhas', groups: [
-    { title: 'Mapa', items: [
-      'Os cartões das cidades permanecem à frente das linhas e vêm para a frente dos outros popups ao serem clicados ou arrastados.',
-    ] },
-  ] },
-  { version: '0.4.21', date: '23/09/2026', title: 'Conexão usa o lado próximo da borda', groups: [
-    { title: 'Mapa', items: [
-      'A linha dos pins ocultos agora procura o ponto mais próximo da circunferência visível, no mesmo lado da cidade.',
-    ] },
-  ] },
-  { version: '0.4.20', date: '23/09/2026', title: 'Linhas de conexão acompanham o globo', groups: [
-    { title: 'Mapa', items: [
-      'Quando um pin fica atrás do globo, sua linha se conecta à borda visível mais próxima e volta ao pin quando ele reaparece.',
-    ] },
-  ] },
-  { version: '0.4.19', date: '23/09/2026', title: 'Popups mais limpos e foto de Johannesburg corrigida', groups: [
-    { title: 'Mapa', items: [
-      'Os popups deixam de mostrar BPM e recompensa; o selo CONQUERED permanece visível no rodapé das cidades conquistadas.',
-      'A foto de Johannesburg volta a carregar no popup.',
-    ] },
-  ] },
-  { version: '0.4.18', date: '23/09/2026', title: 'Conquista visível no rodapé da cidade', groups: [
-    { title: 'Mapa', items: [
-      'Cidades conquistadas agora exibem o selo CONQUERED junto da recompensa, deixando o título livre para o nome da cidade.',
-    ] },
-  ] },
-  { version: '0.4.17', date: '22/09/2026', title: 'Criativo mais claro e silencioso fora da aba', groups: [
-    { title: 'Modo Criativo', items: [
-      'O áudio pausa ao sair da aba e volta apenas se a sessão estava tocando.',
-      'Distorção e seu nível ficam em Filtros e efeitos; as dicas esclarecem o arranjo compartilhado e o slide da peça.',
-      'Escolher Timbre sintetizado funciona mesmo após usar samples e muda a fonte para Síntese.',
-    ] },
-  ] },
-  { version: '0.4.16', date: '22/09/2026', title: 'Widgets e leitura da partida', groups: [
-    { title: 'Partida', items: [
-      'Widgets desligados podem ser arrastados também sobre seus controles, sem que knobs ou sliders bloqueiem o gesto.',
-      'O estado Your move/AI Analysing aparece entre os botões de controle e o histórico de jogadas.',
-    ] },
-  ] },
-  { version: '0.4.15', date: '22/09/2026', title: 'Entrada na fase mais direta', groups: [
-    { title: 'Apresentação da cidade', items: [
-      'O nome da cidade aparece maior, com gênero e ano logo abaixo, sem o antigo quadro de informações.',
-      'A partida começa automaticamente após quatro segundos; clicar em qualquer ponto da apresentação antecipa a entrada.',
-    ] },
-  ] },
-  { version: '0.4.14', date: '22/09/2026', title: 'Controles de partida padronizados', groups: [
-    { title: 'Som e variações', items: [
-      'O slide de nota começa em 0,5 s; sliders nos valores padrão aparecem cinza e ficam azuis quando ajustados.',
-      'Piece Params combina LPF e HPF num controle centralizado e ganha Drive para a distorção da peça.',
-      'O som pausa ao sair da aba e volta apenas se a partida já estava tocando.',
-    ] },
-    { title: 'Partida e widgets', items: [
-      'Todas as fases começam com a IA no Easy; após calcular, ela espera de 0,5 a 3 segundos antes de jogar.',
-      'Os widgets usam borda fina, título branco, botões de energia consistentes e podem ser arrastados pelo corpo; Strudel passa a se chamar Debug.',
-      'Os knobs mostram rótulos em maiúsculas e valores brancos; os atalhos de jogadas não exibem mais “Bisbilhotar”.',
-    ] },
-  ] },
-  { version: '0.4.13', date: '22/09/2026', title: 'Mixer separado e edição de notas mais direta', groups: [
-    { title: 'Partida', items: [
-      'O mixer ganhou um widget próprio com controles simultâneos para Brancas e Pretas; Low, Mid e Hi substituem os nomes longos do EQ.',
-      'Os nomes dos knobs aparecem acima dos controles, e os valores ficam abaixo. O contorno das peças pretas ficou mais suave.',
-      'A barra de chance fica sem número; o estado da partida aparece centralizado abaixo dela, antes dos atalhos de melhores e piores jogadas.',
-    ] },
-    { title: 'Variações', items: [
-      'O duplo clique apaga notas do piano roll, e Alt ao arrastar duplica a nota com duração e parâmetros de articulação preservados.',
-    ] },
-  ] },
-  { version: '0.4.102', date: '22/09/2026', title: 'Painéis mais estáveis e legíveis', groups: [
-    { title: 'Tabuleiro e parâmetros', items: [
-      'As peças pretas recebem contorno branco para preservar detalhes internos e silhuetas sobre todas as casas.',
-      'O editor compacto perde a borda externa e ganha espaço entre o piano roll e os sliders de articulação.',
-      'Gain, LPF, pan, room e delay permanecem visíveis entre ataques; com Piece Params desligado, o cabeçalho deixa de atualizar o estado da voz.',
-    ] },
-    { title: 'Strudel', items: [
-      'As listas de três melhores e três piores jogadas saem do widget, mantendo as setas disponíveis sob a barra de avaliação.',
-      'Harmonia agora passa a reunir o rótulo e o acorde numa única linha, sem repetir a seção corrente.',
-      'Os seletores harmônicos da partida e do Criativo mostram primeiro a progressão e depois seu nome, como I–IV–V–I - Cadência.',
-    ] },
-  ] },
-  { version: '0.4.101', date: '22/09/2026', title: 'Leitura visual das variações', groups: [
-    { title: 'Editor e tabuleiro', items: [
-      'O comprimento horizontal da rampa agora acompanha o tempo do slide, sem repetir os valores numa legenda sob o gráfico.',
-      'A variação fixada recebe um pin acima da aba, e o painel ampliado mostra editor e parâmetros da execução sem rolagem vertical interna.',
-      'Desligar o loop remove também a borda e o sombreado de peça ativa no tabuleiro, mantendo a ativação musical guardada e a audição manual disponível.',
-    ] },
-  ] },
-  { version: '0.4.100', date: '22/09/2026', title: 'Editor de variações compacto', groups: [
-    { title: 'Espelho musical', items: [
-      'Inverter passa a espelhar as notas no tempo dentro da duração inteira da variação, mantendo alturas e durações e trocando a direção de cada slide.',
-      'Padrões em mini-notação também espelham sequências, pausas e grupos temporais sem desmontar acordes simultâneos.',
-    ] },
-    { title: 'Controles reorganizados', items: [
-      'Subdivisão, inversão, randomização e duração ficam juntos na barra de ações; o liga/desliga do loop vai para o canto superior direito do widget.',
-      'O estado da voz acompanha o código da casa no subtítulo, e o editor remove títulos e campos redundantes.',
-      'Slide, tempo, acento e pan usam sliders compactos em duas colunas; pan começa centralizado e a exclusão usa um botão de lixeira junto ao gráfico.',
-      'Ao desligar o loop, todo o bloco de variações fica esmaecido enquanto a audição manual da peça continua disponível.',
-    ] },
-  ] },
-  { version: '0.4.9', date: '22/09/2026', title: 'Afinação do slide', groups: [
-    { title: 'Editor de notas', items: [
-      'A distância do slide de cada nota passa a usar um slider de −24 a +24 semitons, com o valor corrente sempre visível.',
-    ] },
-  ] },
-  { version: '0.4.8', date: '22/09/2026', title: 'Ajuste de articulação', groups: [
-    { title: 'Editor de notas', items: [
-      'O tempo do slide de cada nota passa a usar um slider e mantém o valor em segundos visível durante o ajuste.',
-    ] },
-  ] },
-  { version: '0.4.7', date: '22/09/2026', title: 'Variações durante a partida', groups: [
-    { title: 'Edição da peça selecionada', items: [
-      'Piece Params permite editar as notas da variação corrente com o mesmo piano roll do Criativo.',
-      'As ações por ícone invertem ou randomizam somente as alturas da variação escolhida, preservando seu ritmo e sua duração.',
-      'O botão de energia desliga os loops automáticos da peça sem impedir as notas avulsas tocadas ao arrastá-la pelo tabuleiro.',
-    ] },
-  ] },
-  { version: '0.4.6', date: '22/09/2026', title: 'Stockfish com orçamento de análise', groups: [
-    { title: 'Leitura confiável da posição', items: [
-      'Stockfish Lite real substitui a engine simplificada na análise e nas jogadas da adversária.',
-      'A barra mostra avaliação a favor das brancas, sem a antiga porcentagem invertida de Chance; o número acompanha a divisão visual e mates têm indicação própria.',
-      'Os links sob a barra desenham por três segundos as três melhores ou piores jogadas, com setas verdes/vermelhas e a variação esperada na ponta.',
-      'O Strudel também mostra as três melhores e três piores opções estimadas, com origem, destino e promoção explícitos.',
-    ] },
-    { title: 'Teste de desempenho', items: [
-      'Um único worker compartilha o trabalho da análise e da adversária, com limites de tempo e nós e reutilização das posições já analisadas.',
-      'A avaliação aparece antes do ranking; o painel informa tempo de busca, nós e profundidade para acompanhar o custo.',
-      'Comparações incompletas são sinalizadas, e undo/reset descartam respostas e jogadas antigas.',
-    ] },
-  ] },
-  { version: '0.4.5', date: '22/09/2026', title: 'Análise de movimentos', groups: [
-    { title: 'Melhores e piores opções', items: [
-      'O debug do Strudel lista os cinco melhores e os cinco piores movimentos legais assim que a análise da posição fica pronta.',
-      'O ranking reaproveita a mesma busca do termômetro e exibe notação SAN com avaliação relativa ao lado que joga.',
-      'A análise deixa de esperar o atraso artificial da adversária; os 200–700 ms continuam somente para dar ritmo à resposta da IA.',
-    ] },
-  ] },
-  { version: '0.4.4', date: '22/09/2026', title: 'Leitura da partida', groups: [
-    { title: 'Debug musical', items: [
-      'O widget Strudel mostra a harmonia corrente, com seção, grau, acorde, notas e plano harmônico, usando a mesma tipografia das demais linhas de debug.',
-      'A instrução de arrastar uma peça sai do monitor; a contagem de vozes ativas permanece.',
-    ] },
-    { title: 'Chance e histórico', items: [
-      'A análise passa por uma fila serial ligada ao FEN: respostas atrasadas não podem mais sobrescrever o termômetro depois de undo/redo.',
-      'Cliques rápidos conservam somente a posição mais recente na fila, enquanto retornos a um FEN completo já analisado usam o cache correspondente.',
-      'A Chance também volta a ser calculada em celulares e aparelhos restritos, usando profundidade menor para limitar o uso de CPU.',
-    ] },
-  ] },
-  { version: '0.4.3', date: '21/09/2026', title: 'Widgets da partida', groups: [
-    { title: 'Controles musicais', items: [
-      'Spectrogram e Strudel deixam de abrir automaticamente no primeiro lance.',
-      'Board Params reúne Tom, Escala e Progressão na mesma linha e remove fine pitch, quartz lock e as legendas auxiliares de tom e mixer.',
-      'A Progressão altera o plano harmônico base da partida, mantendo a prioridade temporária das influências de Estado e Evento.',
-    ] },
-    { title: 'Instrumento selecionado', items: [
-      'Piece Params passa a usar a imagem da peça e o nome do instrumento como cabeçalho.',
-      'O monitor mostra somente a variação corrente; abas A–H permitem fixar uma variação e um segundo clique devolve o controle à sequência musical.',
-      'Com o widget desligado, o monitor de variações permanece desmontado para não consumir processamento.',
-    ] },
-    { title: 'Camadas da interface', items: [
-      'A área vazia do cabeçalho deixa os cliques passarem para widgets posicionados atrás dela; os controles visíveis continuam interativos.',
-    ] },
-  ] },
-  { version: '0.4.2', date: '21/09/2026', title: 'Gestos contínuos', groups: [
-    { title: 'Globo e cidades', items: [
-      'O globo conserva sua velocidade de espera quando um popup está aberto; somente o cartão percorre a tela três vezes mais devagar.',
-      'Marcadores que estão atrás da esfera deixam de responder a hover, clique e toque.',
-    ] },
-    { title: 'Tabuleiro como instrumento', items: [
-      'Arrastar uma peça volta a tocar uma nota avulsa na casa inicial e em cada nova casa atravessada.',
-      'O gesto reutiliza o mesmo canal de áudio manual até a soltura, evitando recriar efeitos por casa e reduzindo a pequena trava do arraste.',
-      'A posição do destaque e a prévia transitória são atualizadas sem renderizar novamente a partida inteira a cada nota.',
-    ] },
-  ] },
-  { version: '0.4.1', date: '21/09/2026', title: 'Ovos dourados', groups: [
-    { title: 'Inventário e progresso', items: [
-      'Cada perfil começa com 10 ovos dourados; toda vitória de cidade, inclusive repetida, concede mais 10 ovos.',
-      'Cada ovo recebido também vale um ponto histórico. Gastar ovos no futuro preservará a pontuação, as vitórias e as cidades conquistadas.',
-      'Perfis antigos são migrados pela quantidade real de vitórias, sem transformar os antigos prêmios de 1.000/200 pontos em milhares de ovos.',
-    ] },
-    { title: 'Globo e interface', items: [
-      'Arrastar o popup de uma cidade não interrompe o giro automático do globo.',
-      'Com um popup aberto, o giro de espera e o quadro ancorado ao pin passam a um terço da velocidade.',
-      'O botão do changelog deixa de depender do ID variável do gatilho Radix, eliminando a divergência de hidratação em aria-controls.',
-    ] },
-  ] },
-  { version: '0.4.0', date: '21/09/2026', title: 'Atlas sonoro', groups: [
-    { title: 'Uma banda própria para cada cidade', items: [
-      'Os kits das cidades foram recompostos com levadas, timbres, registros, envelopes, efeitos e planos harmônicos próprios; baixo, bateria, harmonia, melodia e textura deixam de seguir o mesmo molde entre fases.',
-      'Cada uma das 16 peças recebe uma função autoral e uma forma por seção: bases permanecem, respostas entram depois, solos ocupam trechos reservados e camadas saem para abrir espaço.',
-      'As formas valem no Criativo e nas partidas. Capturas, movimentos, cheque, Solo e edição continuam acompanhando a identidade de cada peça.',
-    ] },
-    { title: 'Johannesburg · 1994', items: [
-      'Nova cidade dedicada ao Kwaito: house desacelerado a 108 BPM, piano township, baixo elástico, conga, shaker, pandeiro, guitarra mbaqanga e chamadas vocais.',
-      'O mapa passa a ter 13 cidades e 14 fases; Manchester continua com as épocas de 1988 e 1999.',
-      'Kits salvos da coleção anterior recebem backup local recuperável quando a nova versão da cidade é carregada pela primeira vez.',
-    ] },
-  ] },
-  { version: '0.3.4', date: '21/09/2026', title: 'Fôlego no celular', groups: [
-    { title: 'Áudio e interface', items: [
-      'Celulares e outros aparelhos restritos passam a compartilhar um bus de efeitos por equipe, reduzindo os reverbs simultâneos de quatro para dois sem retirar vozes, notas ou controles das peças.',
-      'Os pulsos musicais atualizam somente o pequeno marcador do tabuleiro; a partida e a bancada Criativo deixam de renderizar a tela inteira a cada ataque.',
-      'Desktop mantém dois buses por equipe, enquanto audições manuais continuam isoladas e podem ser canceladas imediatamente.',
-    ] },
-  ] },
-  { version: '0.3.3', date: '21/09/2026', title: 'Engine leve e harmônica', groups: [
-    { title: 'Desempenho para bandas completas', items: [
-      'As 32 vozes agora compartilham quatro buses de efeitos, dois por equipe, reduzindo de 32 para quatro os reverbs simultâneos sem retirar os controles individuais das peças.',
-      'Arranjos contínuos consultam somente a variação em execução; reinícios de frase continuam respeitando a entrada de cada seção.',
-      'Capturar ou desativar uma peça não interrompe outras vozes do mesmo bus. Audições pelo tabuleiro continuam isoladas e podem ser canceladas imediatamente.',
-      'Arraste, monitor e código Strudel evitam recomputações desnecessárias; a exportação de 32 vozes passa a declarar apenas quatro orbits.',
-    ] },
-    { title: 'Harmonia e Estados/Eventos', items: [
-      'Planos harmônicos por seção movem baixo e melodias em conjunto; vozes sustentadas podem formar tríades com inversões de menor deslocamento.',
-      'O relógio mostra centro, acorde e notas da harmonia atual, e regras podem trocar o plano temporariamente sem reescrever o kit.',
-      'Todos os Estados e Eventos recebem defaults musicais proporcionais à frequência e importância do gatilho, inclusive nos kits existentes.',
-      'Estados e Eventos foram separados em listas, aceitam liga/desliga pelo editor e indicam claramente qual regra está sendo editada.',
-    ] },
-    { title: 'Biblioteca e bancada Criativo', items: [
-      'Kits salvos e padrões aparecem juntos no seletor principal, com a cidade vinculada ao lado do nome quando existir.',
-      'Cada cidade mantém no máximo um kit vinculado; ao substituir o vínculo, o kit anterior permanece salvo sem cidade.',
-      'Controles do transporte, variações, Solo, lista de vozes e edição numérica foram reorganizados para leitura e operação mais diretas.',
-    ] },
-  ] },
-  { version: '0.3.2', date: '16/09/2026', title: 'The Creative', groups: [
-    { title: 'Arranjos e timbres', items: [
-      'Seções por peça com durações diferentes, entradas/pausas, transposição e reinício opcional da frase.',
-      'Slide global ou por nota, acentos e pan individuais, intensidade e nível da distorção.',
-      'Estudo Mouth Breather: 17 etapas, guitarra em camadas, baixo quebrado e bateria distribuída.',
-      'Kits compostos para as 13 fases, oito samples sintéticos novos e backup recuperável dos kits anteriores.',
-      'Ajuda em círculos ? com hover, foco e toque; piano roll corrigido para editar todas as linhas visíveis.',
-    ] },
-    { title: 'Composição visual e transporte', items: [
-      'Transições preparadas no relógio de áudio e rampas de BPM por regra, com curva, ponteiro e destino no Criativo.',
-      'Até oito variações selecionáveis, conversão para piano roll, desenho/movimento/duração de notas com mouse e restauração do padrão original.',
-      'Duração independente por variação, grade de tercinas e loops de comprimentos diferentes sobre o mesmo BPM.',
-      'Correção do sentido do giro do globo com dois dedos.',
-    ] },
-    { title: 'Estados e Eventos', items: [
-      'Opção por regra de aguardar a virada do compasso, com indicação de pendências e persistência no kit.',
-      'Catálogo compartilhado de 19 escalas/aliases, incluindo blues, tons inteiros, diminutas, modos e cromática.',
-      'Simulador de estados e eventos abaixo do tabuleiro, com regras salvas em cada kit e aplicadas também na partida.',
-      'Transposição, BPM, escala paralela/relativa, rotação modal, inversão melódica, variação, ganho, filtro e ativação por equipe.',
-      'Roques, capturas, perda de famílias de peças, formação mínima, promoções, en passant e saída de cheque com duração configurável.',
-    ] },
-    { title: 'Bancada compacta', items: [
-      'Scrollbars dos painéis escondidas, mantendo rolagem por mouse, trackpad e toque.',
-      'Seletor de kit acima do transporte, colunas sem gap, variações expandidas e nomes de instrumento sem sufixo de casa.',
-      'Correção do alinhamento da peça arrastada; botão Segure para ouvir removido. Solo continua disponível para ouvir a frase completa.',
-      'Versões renomeadas para a série v0.3; versão atual v0.3.2 — The Creative.',
-    ] },
-  ] },
   {
-    version: '0.3.1', date: '13/09/2026', title: 'Peças que fazem música',
-    groups: [
-      { title: 'Manchester · 1999', items: [
-        'Nova época Northern Jazz Breaks, inspirada em Get a Move On! de Mr. Scruff: 123 BPM, quatro seções e motivos de sopro com respostas.',
-        'Banco Chicken Jazz com 11 samples sintéticos originais de palhetas, metais, baixo, teclas, vogal e bateria, disponíveis para qualquer peça no Criativo.',
-        'Manchester mantém 1988 e ganha seletor de época no popup; kits e progresso separados. Links diretos do Criativo carregam a cidade escolhida.',
-      ] },
-      { title: 'Mobile, globo e mixer · 13/09', items: [
-        'Correções de touch em Enter board, arraste das peças com audição das casas e isolamento do cursor do globo.',
-        'Giro do globo com dois dedos, retomada estável do giro automático e quadro de apresentação arrastável.',
-        'Litorais vetoriais mais discretos, grade geográfica e linha do popup 50% mais escura quando o pin está atrás do planeta.',
-        'Board Params com ganho e equalização por equipe; fine pitch comum e quartz lock no BPM original do kit.',
-        'Menos atualizações de padrões, gráficos ocultos e renderizações durante o arraste; menor resolução do globo em dispositivos restritos.',
-      ] },
-      { title: 'Engine musical', items: [
-        'Strudel integrado ao jogo e ao Criativo, com um relógio comum e 32 instrumentos independentes.',
-        'Todas as 12 cidades usam a nova mecânica. Kits experimentais aleatórios e reproduzíveis variam fontes, frases, grooves, timbres, efeitos e movimentos.',
-        'Fonte sonora, comportamento e tipo de peça são independentes: qualquer peça pode ser percussão, sequência ou voz sustentada.',
-        'Banco local de samples, variações de articulação, samples afinados, biblioteca de receitas, frases A/B/C/D e grooves compartilhados.',
-        'Automações de ganho, filtro, pan, reverb e delay, além de tom, escala, BPM e volume comuns à banda.',
-        'Correções na duração das seções, nas entradas das vozes, na audição da rainha e nos ganhos dos presets.',
-        'Padrões compilados em cache, samples compartilhados, atualizações visuais agrupadas e atenuação para formações grandes.',
-      ] },
-      { title: 'Tabuleiro como instrumento', items: [
-        'Uma peça começa seu loop após o primeiro movimento; capturas removem a voz. Roque, en passant, promoção e undo/redo preservam as identidades musicais.',
-        'Arrastar interrompe o loop da peça e toca as casas percorridas, inclusive para peças inativas. Cancelar restaura o estado anterior.',
-        'Dar cheque ativa temporariamente toda a banda atacante sobrevivente. Sair do cheque devolve a ativação ao histórico de movimentos.',
-        'Notas, pausas, estados e pulsos visuais acompanham o áudio. Todas as variações salvas aparecem em quadros MIDI, com ponteiro na variação em execução.',
-      ] },
-      { title: 'Criativo e parâmetros', items: [
-        'Modo Criativo sem introdução ou adversário, com tabuleiro livre, audição, solo, ativação individual e edição de instrumentos.',
-        'Carregar, editar e salvar kits de qualquer cidade para a próxima partida; gerar novas variações e comparar com o Düsseldorf original.',
-        'Rascunho e kits locais, exportação/importação JSON validada. Carregar uma cidade no Criativo ativa as 16 brancas para escuta.',
-        'Tabuleiro fixo à esquerda em telas largas, duas colunas de edição com rolagem independente e disposição vertical no celular em retrato.',
-        'Peça acompanha mouse/toque no arraste; casas uniformes e audição sem seleção acidental de texto.',
-        'Piece Params inclui notas e envelope; Board Params edita tom e escala; Strudel reúne código, seção, compasso e estado do áudio.',
-        'Widgets arrastáveis pelo fundo, textos com espaço reservado, controles móveis e knobs com mouse, toque, teclado e roda do mouse.',
-      ] },
-      { title: 'Mundo e navegação', items: [
-        'Ajustes no arraste do globo e dos popups, incluindo a liberação do mouse sem deixar o mundo preso ao ponteiro.',
-        'Pressionar um popup o reduz em torno do ponto clicado; sons acompanham pressão, arraste e soltura. Botão de fechar sem recorte.',
-        'Giro de espera com popups abertos; hover pausa o giro e amplia o pin em 15%. Cidades conquistadas recebem uma bandeira verde.',
-        'Voo com zoom até a cidade ao entrar na fase, com respeito à preferência de movimento reduzido.',
-        'Litorais geográficos reais sem fronteiras regionais, fundo de galáxias suave, sol com halo e iluminação compartilhada pelo globo e pela lua.',
-        'Reward aparece no rodapé dos popups com o valor da próxima vitória. Clique dos pins 70% mais baixo e hover 30% mais baixo.',
-        'Histórico de versões acessível pelo número da versão, com rolagem interna.',
-      ] },
-    ],
+    "version": "0.5.2",
+    "date": "28/09/2026",
+    "title": "Mapa e controles da partida",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "O grid do globo ficou mais denso no equador, mais espaçado perto dos polos e escurece seus pontos no lado sem sol; bandeiras conquistadas se movem três vezes mais devagar."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "No primeiro lance, Board Params, Mixer e Piece Params se abrem automaticamente; no celular, o painel de parâmetros também aparece.",
+          "O preço dos botões aparece dentro do topo; peças só brilham enquanto o loop está ativo ou durante o toque, e ovos gastos giram sempre no sentido anti-horário.",
+          "Ovos gastos agora voam com ease-in e giro aleatório; Worst moves custa 2 ovos e cada botão de custo mostra seu preço ao passar o cursor.",
+          "Reset Save retorna o saldo inicial e libera novamente a dica única da partida.",
+          "Uma dica aparece uma única vez; Best moves, Undo e Redo passam a custar 1 ovo dourado cada.",
+          "O Rank fica abaixo do Historical score e a barra de rolagem do popup não aparece durante a entrada na partida.",
+          "Uma das três melhores jogadas rende 1 ovo dourado; uma das três piores rende 3, quando o ranking da posição estiver completo.",
+          "A casa mostra um check verde ou X vermelho, os ovos voam até o contador e a primeira ocorrência de cada tipo recebe um aviso.",
+          "O preço fica sobreposto no topo do botão sem alterar sua altura; o nome permanece centralizado verticalmente e, após uma ação válida, o preço cresce 30% e desaparece com fade."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "O som da apresentação da cidade começa junto ao fade-out do título, ou imediatamente ao clicar para avançar."
+        ]
+      },
+      {
+        "title": "Interface e controles",
+        "items": [
+          "Volume e BPM mostram rótulo preto a 69% e valor branco a 50%, sem fundo; o rótulo tem 6 px à esquerda e o valor, 5 px à direita. O thumb fica centrado e o BPM só atualiza o transporte ao soltar. Nos menus, a opção selecionada fica branca e o hover usa a cor da cidade escurecida.",
+          "Piece Params organiza os knobs em cinco colunas; no hover e no toque/pressionamento, o indicador sai totalmente da circunferência.",
+          "A legenda do Mixer fica em inglês, usa “/” e acompanha a ordem dos lados no tabuleiro.",
+          "Quando o saldo zera, o texto e a borda do contador de ovos ficam vermelhos.",
+          "Alertas somem após 3 segundos; avisos com botão de ação permanecem até interação. A mensagem de saldo informa quantos ovos faltam."
+        ]
+      }
+    ]
   },
-  { version: '0.3.0', date: '', title: 'The Distribution', groups: [
-    { title: 'Base da versão', items: ['Mapa de cidades e fases de xadrez contra IA, progressão local e interface de jogo que serviram de base à evolução musical da versão 3.1.'] },
-  ] },
-] as const
+  {
+    "version": "0.5.1",
+    "date": "27/09/2026",
+    "title": "Campanhas, popups e sons da cidade",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "A grade do globo agora aparece como pontos; cada local ocupa um ponto livre próximo da sua posição real, evitando pins no mesmo lugar.",
+          "O botão Campanhas no celular agora fica mais perto do logo.",
+          "Os cartões das cidades agora se ajustam à área visível; em telas baixas, seu conteúdo pode rolar dentro do cartão.",
+          "Os contornos dos continentes ficam 33% mais claros no lado sombreado do globo.",
+          "Hover direto dos pins 15% mais baixo; o clique para entrar agora responde com um bumbo grave.",
+          "Nova foto do Largo do Pelourinho em Salvador 1992."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "Novos cartões de cidade abrem perto do centro vertical da tela, com uma pequena variação de altura."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "A vitória agora toca uma corneta alegre em notas ascendentes; mais suave e mais longa que o som de derrota.",
+          "13 samples e uma foto do Pelourinho dão o clima da Salvador de 1992.",
+          "Metais de verdade! Trompete, trombone e percussões agora usam gravações acústicas.",
+          "Salvador na área! Novo samba-reggae inspirado no Olodum de 1992: surdos intercalados, percussões em resposta e metais nos cavalos e nas torres."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "Sons de derrota e de entrada em “Enter board” agora estão 25% mais baixos.",
+          "O toque da tela de cidade chega 1 segundo depois."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.5.0",
+    "date": "26/09/2026",
+    "title": "Novas campanhas e controles musicais",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "Novas cidades chegam com fotos dos seus lugares; cada época mostra a imagem correspondente.",
+          "New Orleans agora usa uma fotografia noturna do French Quarter, em vez da foto do Rio de Janeiro.",
+          "Brazilian chega com samba, choro, frevo, baião, sertanejo de raiz e bossa nova. World Rhythms põe reggae, chacarera e danças gregas e turcas no mapa."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "Tom da partida na cor da cidade; subdivisão da grade com opção selecionada em verde.",
+          "O cartão de cidade e estilo/ano permanece na tela por mais 1 segundo, e o desbotamento da imagem de fundo leva mais 2 segundos.",
+          "O knob de filtro por equipe agora aparece como “LPF/HPF”, sem espaços.",
+          "A legenda central das equipes mostra apenas “BRANCAS · PRETAS”.",
+          "Brancas e Pretas agora compartilham uma legenda central entre as duas linhas de knobs do Mixer.",
+          "Os seletores de Tom e Escala agora mostram borda apenas no hover ou foco, como o de Progressão.",
+          "No Mixer, o nome da equipe de cima fica abaixo dos knobs e o da equipe de baixo fica acima.",
+          "Cada equipe ganhou um knob LPF/HPF no Mixer, com o mesmo controle de passa-baixas e passa-altas do Piece Params.",
+          "O novo filtro atua na mixagem da equipe depois dos efeitos e da equalização.",
+          "As equipes do Mixer seguem a ordem vertical do tabuleiro, com os nomes centralizados abaixo dos controles.",
+          "Os controles de equalização aparecem na ordem Hi, Mid e Low.",
+          "O texto do código no fundo ficou com 75% de opacidade, e a lista de progressões só mostra borda no hover.",
+          "Os rótulos e áreas livres dos knobs em Piece Params podem ser usados para arrastar o painel.",
+          "Os hovers e saídas de Best moves e Worst moves ficaram cerca de 20% mais altos.",
+          "Os knobs de parâmetros agora aparecem acima do painel de variações em Piece Params.",
+          "A legenda de cópia fica mais próxima do ícone e muda para “copied!” após copiar o código.",
+          "Sair de Best moves ou Worst moves com mouse ou toque repete o chimbal fechado com leve variação aleatória.",
+          "Ao sair de Worst moves com mouse ou toque, o botão toca o mesmo chimbal fechado usado no hover de Best moves.",
+          "Best moves agora usa chimbal fechado no hover e Worst moves usa chimbal aberto; os dois sons ficaram um pouco mais altos.",
+          "O status Your move / AI analysing agora fica logo abaixo do tabuleiro, acima dos controles de Undo, Play e Redo.",
+          "Os valores dos knobs acompanham a cor do ponteiro, que se aproxima da borda; o texto ficou menor e um pouco mais baixo.",
+          "O código deixou de aparecer dentro do Debug; a visualização sobre o fundo continua no botão Code, e a cópia tem uma dica no hover.",
+          "As labels OITAVA e DURAÇÃO foram traduzidas para Octave e Length."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "Cada kit ganhou sua foto de época, agora em alta resolução.",
+          "O percentual do BPM acompanha o slider na hora. Sem tirar o ponteiro!",
+          "18 fases novas: jazz, rock, soul, pastoral e orquestra em compassos variados.",
+          "Afinação, envelope, filtros e efeitos agora cabem em knobs compactos, com valor e ajuda à mão.",
+          "Slide de afinação e seu tempo agora moram em Afinação e envelope.",
+          "O slider de BPM mostra a variação percentual prevista acima do ponteiro."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "Criativo agora aceita 2/4, 9/8, 2/2, 5/4, 5/8, 7/4 e 7/8; o relógio também explica BPM e agrupamentos.",
+          "Editor, kits, seções e exportação acompanham os novos compassos."
+        ]
+      },
+      {
+        "title": "Interface e controles",
+        "items": [
+          "Pin da variação: 2 px maior e verdinho da borda iluminada.",
+          "Changelog sem avisos duplicados. Pode abrir sem susto!"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.4.4",
+    "date": "25/09/2026",
+    "title": "Mapa, popups e gestos",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "San Diego, Berkeley, San Francisco, Columbus e Jacksonville receberam fotografias próprias, no lugar da foto repetida de Chicago.",
+          "A roda do mouse sobre a área vazia da lista agora percorre também as campanhas, mantendo a interação com o globo ao fundo.",
+          "Trocar a época de uma cidade abre o novo cartão na posição do anterior, 10 px mais abaixo.",
+          "A centralização do pin termina na velocidade do giro de espera; cada novo cartão alterna o zoom entre 69% e 150%.",
+          "Fechar tudo encerra os cartões em sequência aleatória; cada cidade mantém sua cor de destaque.",
+          "O hover na lista aproxima o pin do centro com um giro inicial mais rápido e segue na velocidade de espera sem parar no centro.",
+          "As bandeiras fecham o balanço do tecido sem salto; no giro de espera, a haste inclina mais e o tecido balança com mais suavidade.",
+          "Manchester 1999 aparece somente em World ballads.",
+          "As bandeiras do globo ficaram mais claras, misturam verde com a cor da cidade, trazem símbolos ligados ao estilo musical e dobram mais durante o balanço.",
+          "O ícone da lista assume a cor da cidade no hover; passar pelo pin rola a lista suavemente para mostrar a cidade.",
+          "A bandeira do globo balança pela base em um oito suave, com uma leve ondulação no tecido; o ícone da lista fica parado à direita da cidade.",
+          "Cidades conquistadas agora exibem bandeiras animadas na lista e no globo, com balanço lento e sombra sutil.",
+          "Ao passar por uma cidade na lista, o eixo do giro de espera conduz seu pin ao centro da tela pelo caminho mais curto, sem mover a câmera ou mudar a velocidade.",
+          "Lista e globo agora se destacam juntos, com som mais suave e variado.",
+          "Ao passar por uma cidade na lista, o pin correspondente também destaca e o eixo do giro de espera se orienta para ela, mantendo a velocidade do globo.",
+          "As etiquetas para trocar a época deixam mais claro que são clicáveis.",
+          "Clicar num pin aproxima-o 30% do caminho até o centro pelo giro do globo; a rotação continua no mesmo eixo à velocidade de espera.",
+          "Fechar tudo permanece acima dos cartões e os fecha numa sequência um pouco mais espaçada, alternando chimbal aberto e fechado.",
+          "O fundo dos cartões deixa o globo mais visível, e a troca de épocas aparece abaixo da descrição, alinhada à direita antes de Enter board.",
+          "A listagem das campanhas continua rolando com roda, trackpad, toque e arraste, mas não mostra mais a barra de rolagem."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "Os valores dos knobs agora aparecem dentro do círculo, logo abaixo do centro.",
+          "O bumbo de hover de Undo, Play e Redo ganhou um pouco mais de variação de volume e altura.",
+          "A peça fica na casa ao pressionar e só acompanha o ponteiro depois de iniciar um arraste, evitando o salto durante o duplo clique ou toque.",
+          "Undo, Play e Redo ganharam pequena variação no bumbo de hover; Best e Worst moves usam chimbais diferentes no hover e assobios ascendentes ou descendentes no clique.",
+          "O botão de Best ou Worst moves acionado fica indisponível enquanto suas setas estão visíveis.",
+          "Duplo clique ou toque numa peça sua liga ou desliga seu loop e pode abrir Piece Params automaticamente; desligar o painel manualmente impede novas aberturas automáticas.",
+          "Best moves e Worst moves agora ficam nas pontas da linha de Undo, Play e Redo, como botões sem ícones."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "O novo botão Code mostra o código Strudel atualizado sobre a fotografia de fundo, sem bloquear a partida.",
+          "O estilo musical continua ao lado da cidade enquanto seu cartão está aberto.",
+          "O hover direto no pin ganhou um bumbo eletrônico mais grave e forte; o hover da lista conserva seu som anterior.",
+          "Passar por uma fase na lista mostra seu estilo musical ao lado do ano.",
+          "O som de hover ficou mais grave e suave, com uma cauda curta de eco.",
+          "Títulos mostram só o estilo; descrições e aberturas apresentam a cultura musical de cada fase sem repetir cidade ou ano.",
+          "Quatro bancos novos trazem guitarras, baixos, pianos, órgão, FM, pads e percussões com timbres variados.",
+          "As dez fases do Harmonic songbook ganham instrumentos e levadas próprios por estilo; os kits anteriores também recebem timbres mais adequados a cada cidade.",
+          "Ao carregar um preset atualizado, a versão salva anteriormente fica em Meus kits para comparação."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "O botão final das frases troca os sons de hover e clique entre si.",
+          "O toque de entrada passa a soar na apresentação da cidade, 1 segundo após clicar no botão."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.4.3",
+    "date": "24/09/2026",
+    "title": "Harmonic songbook e biblioteca de kits",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "A campanha Harmonic songbook reúne dez fases novas, cada uma com uma sequência de acordes, cidade, época e kit editável próprios.",
+          "Os botões de época nos popups mostram o estilo correto de cada fase e se distribuem em mais de uma linha quando necessário.",
+          "A lista ganha texto maior, subtítulos em maiúsculas e hover verde; os marcadores saem e cliques passam pelas áreas vazias.",
+          "Os popups das cidades ficam numa camada acima da lista de campanhas quando se sobrepõem a ela.",
+          "O globo só centraliza uma cidade da lista ao clicar; hover realça apenas o texto e os itens têm mais espaço entre si."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "O jazz ganha acordes de sétima em ii–V–I e iii–VI–ii–V; baixos, melodias e respostas acompanham o centro de cada seção.",
+          "Meus kits aparece no seletor mesmo sem kits salvos e agora reúne os estudos Mouth Breather e Düsseldorf original.",
+          "Um problema no rascunho atual não impede a biblioteca de kits de carregar.",
+          "Em Düsseldorf, a flauta ganha espaço quando entra em destaque; em New Orleans, guitarra e palheta deixam o final para o trompete.",
+          "O baixo principal acompanha as quatro seções de Manchester 1999; a segunda linha responde apenas nas partes mais cheias.",
+          "Clicar em outra peça toca seu sample no primeiro clique; carregar os painéis do novo instrumento não interrompe o ataque."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "Ao atualizar o kit de uma cidade, a versão anterior aparece em Meus kits com nome próprio e sem vínculo com a fase. O botão Kit anterior sai da bancada.",
+          "Ao carregar essa cidade, o kit anterior fica disponível para comparação no Criativo.",
+          "O áudio do Criativo é iniciado no gesto, corrigindo o silêncio no primeiro clique e ao arrastar peças.",
+          "Atravessar casas toca uma nota por casa sem atualizar toda a bancada a cada ataque."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.4.2",
+    "date": "23/09/2026",
+    "title": "Criativo, campanhas e mapa",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "As fases agora aparecem em três campanhas numa lista à esquerda do globo; hover centraliza a cidade e clique abre seu popup.",
+          "Buenos Aires, Dublin e New Orleans chegam à campanha World ballads, junto com Manchester 1999; Vienna aparece em Classical music.",
+          "O logotipo fica maior ao lado do nome no painel Sobre.",
+          "O logotipo aparece nos ícones do navegador e nas prévias ao compartilhar; controles do cabeçalho e informações de contato foram atualizados.",
+          "A pontuação histórica aparece em cinza e usa “points” como unidade.",
+          "Durante o arraste e o giro, popups fora da esfera ficam no máximo 50 px além da circunferência visível.",
+          "Popups de cidade recortam o fundo nos cantos arredondados; versão e Modo Criativo ficam clicáveis em toda a área, com hover escuro consistente.",
+          "Os botões do globo usam hover escuro; o perfil mostra os ovos ao lado do avatar e exibe as cidades conquistadas com título atualizado.",
+          "O perfil e a redefinição do progresso ficam no popup do avatar com a contagem de ovos; Modo Criativo fica no canto inferior esquerdo.",
+          "Clicar no pin de uma cidade com popup aberto agora fecha esse popup.",
+          "A roda do mouse continua controlando o zoom do globo mesmo quando o cursor está sobre um popup.",
+          "Os cartões das cidades permanecem à frente das linhas e vêm para a frente dos outros popups ao serem clicados ou arrastados.",
+          "A linha dos pins ocultos agora procura o ponto mais próximo da circunferência visível, no mesmo lado da cidade.",
+          "Quando um pin fica atrás do globo, sua linha se conecta à borda visível mais próxima e volta ao pin quando ele reaparece.",
+          "Os popups deixam de mostrar BPM e recompensa; o selo CONQUERED permanece visível no rodapé das cidades conquistadas.",
+          "A foto de Johannesburg volta a carregar no popup."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "As peças ocupam mais espaço nas casas, que voltam a ter cantos retos.",
+          "Duplo clique numa peça alterna sua ativação no modo Mover, sem mudar sua posição.",
+          "A aba da variação fica mais discreta durante seções em que a peça não está presente; o pin sobe para ficar acima do botão.",
+          "Os botões de edição da variação destacam o hover; o pin da variação fixada aparece acima da aba sem aumentar a fileira.",
+          "Os sliders de Board Params e os botões de energia dos widgets acompanham as cores da cidade, com branco desligado e azul no hover.",
+          "O espectrograma usa o fundo do widget, ocupa melhor sua área e capta picos entre as frequências exibidas.",
+          "O cabeçalho mostra a dificuldade selecionada com espaçamento uniforme entre os controles; os links de melhores e piores jogadas usam cinza.",
+          "A área vazia ao redor do tabuleiro e dos controles de jogo deixa passar os gestos para os widgets posicionados atrás.",
+          "Alterar a dificuldade durante a análise ou a espera reinicia a busca com o nível escolhido; o menu identifica o nível real do Stockfish.",
+          "Os atalhos de melhores/piores jogadas têm mais espaço acima e usam barra como separador.",
+          "Rank, ovos e pontuação aparecem juntos sem cartão separado; o avatar ganha destaque e os ícones de ovo e conquista ficam nos indicadores correspondentes.",
+          "Cidades conquistadas agora exibem o selo CONQUERED junto da recompensa, deixando o título livre para o nome da cidade.",
+          "Favicons e ícones do app exibem a silhueta do logotipo sem um quadrado de fundo."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "O tabuleiro livre permite que o primeiro clique do mouse desbloqueie o áudio antes de tocar e arrastar a peça.",
+          "Segurar e atravessar casas dispara as notas mesmo enquanto os efeitos de áudio ainda estão carregando.",
+          "Arrastar uma peça volta a tocar uma nota por casa mesmo quando o áudio ainda estava suspenso.",
+          "As casas ativas deixam de ter sombra no botão e contorno de 1 px; a borda branca da seleção permanece.",
+          "Três composições originais exploram 3/4, 6/8 e 12/8, com duração real dos compassos, acentos e relógio próprios."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "Ao soltar rapidamente uma peça no Criativo, a prévia permanece por até 500 ms.",
+          "O Criativo usa o mesmo tabuleiro visual e o mesmo arraste da partida, com movimentos livres e sem adversária.",
+          "A partida agora usa o compasso do kit também no editor de variações e no relógio musical.",
+          "O Criativo permite escolher o compasso; kits antigos continuam em 4/4.",
+          "A grade abre com duas partes em 3/4 e três partes em 6/8 ou 12/8; a escolha ainda pode ser ajustada livremente.",
+          "Modo Criativo fica ao lado da versão; o botão de tela cheia destaca e amplia o ícone no hover, e o perfil mostra “golden eggs” sem moldura."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "O gênero e o ano aparecem sem negrito e sem cursor de ponteiro na tela de introdução."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.4.1",
+    "date": "22/09/2026",
+    "title": "Widgets, análise e edição musical",
+    "groups": [
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "Widgets desligados podem ser arrastados também sobre seus controles, sem que knobs ou sliders bloqueiem o gesto.",
+          "O estado Your move/AI Analysing aparece entre os botões de controle e o histórico de jogadas.",
+          "O mixer ganhou um widget próprio com controles simultâneos para Brancas e Pretas; Low, Mid e Hi substituem os nomes longos do EQ.",
+          "Os nomes dos knobs aparecem acima dos controles, e os valores ficam abaixo. O contorno das peças pretas ficou mais suave.",
+          "A barra de chance fica sem número; o estado da partida aparece centralizado abaixo dela, antes dos atalhos de melhores e piores jogadas.",
+          "Piece Params combina LPF e HPF num controle centralizado e ganha Drive para a distorção da peça.",
+          "Todas as fases começam com a IA no Easy; após calcular, ela espera de 0,5 a 3 segundos antes de jogar.",
+          "Os knobs mostram rótulos em maiúsculas e valores brancos; os atalhos de jogadas não exibem mais “Bisbilhotar”.",
+          "As peças pretas recebem contorno branco para preservar detalhes internos e silhuetas sobre todas as casas.",
+          "Gain, LPF, pan, room e delay permanecem visíveis entre ataques; com Piece Params desligado, o cabeçalho deixa de atualizar o estado da voz.",
+          "As listas de três melhores e três piores jogadas saem do widget, mantendo as setas disponíveis sob a barra de avaliação.",
+          "Subdivisão, inversão, randomização e duração ficam juntos na barra de ações; o liga/desliga do loop vai para o canto superior direito do widget.",
+          "Slide, tempo, acento e pan usam sliders compactos em duas colunas; pan começa centralizado e a exclusão usa um botão de lixeira junto ao gráfico.",
+          "Ao desligar o loop, todo o bloco de variações fica esmaecido enquanto a audição manual da peça continua disponível.",
+          "O tempo do slide de cada nota passa a usar um slider e mantém o valor em segundos visível durante o ajuste.",
+          "O botão de energia desliga os loops automáticos da peça sem impedir as notas avulsas tocadas ao arrastá-la pelo tabuleiro.",
+          "A barra mostra avaliação a favor das brancas, sem a antiga porcentagem invertida de Chance; o número acompanha a divisão visual e mates têm indicação própria.",
+          "Os links sob a barra desenham por três segundos as três melhores ou piores jogadas, com setas verdes/vermelhas e a variação esperada na ponta.",
+          "Um único worker compartilha o trabalho da análise e da adversária, com limites de tempo e nós e reutilização das posições já analisadas.",
+          "A avaliação aparece antes do ranking; o painel informa tempo de busca, nós e profundidade para acompanhar o custo.",
+          "Comparações incompletas são sinalizadas, e undo/reset descartam respostas e jogadas antigas.",
+          "O ranking reaproveita a mesma busca do termômetro e exibe notação SAN com avaliação relativa ao lado que joga.",
+          "A instrução de arrastar uma peça sai do monitor; a contagem de vozes ativas permanece.",
+          "A análise passa por uma fila serial ligada ao FEN: respostas atrasadas não podem mais sobrescrever o termômetro depois de undo/redo."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "O áudio pausa ao sair da aba e volta apenas se a sessão estava tocando.",
+          "Distorção e seu nível ficam em Filtros e efeitos; as dicas esclarecem o arranjo compartilhado e o slide da peça.",
+          "Escolher Timbre sintetizado funciona mesmo após usar samples e muda a fonte para Síntese.",
+          "O slide de nota começa em 0,5 s; sliders nos valores padrão aparecem cinza e ficam azuis quando ajustados.",
+          "O som pausa ao sair da aba e volta apenas se a partida já estava tocando.",
+          "Os widgets usam borda fina, título branco, botões de energia consistentes e podem ser arrastados pelo corpo; Strudel passa a se chamar Debug.",
+          "Harmonia agora passa a reunir o rótulo e o acorde numa única linha, sem repetir a seção corrente.",
+          "Desligar o loop remove também a borda e o sombreado de peça ativa no tabuleiro, mantendo a ativação musical guardada e a audição manual disponível.",
+          "Inverter passa a espelhar as notas no tempo dentro da duração inteira da variação, mantendo alturas e durações e trocando a direção de cada slide.",
+          "Padrões em mini-notação também espelham sequências, pausas e grupos temporais sem desmontar acordes simultâneos.",
+          "As ações por ícone invertem ou randomizam somente as alturas da variação escolhida, preservando seu ritmo e sua duração.",
+          "Stockfish Lite real substitui a engine simplificada na análise e nas jogadas da adversária.",
+          "O Strudel também mostra as três melhores e três piores opções estimadas, com origem, destino e promoção explícitos.",
+          "O debug do Strudel lista os cinco melhores e os cinco piores movimentos legais assim que a análise da posição fica pronta.",
+          "A análise deixa de esperar o atraso artificial da adversária; os 200–700 ms continuam somente para dar ritmo à resposta da IA.",
+          "O widget Strudel mostra a harmonia corrente, com seção, grau, acorde, notas e plano harmônico, usando a mesma tipografia das demais linhas de debug.",
+          "Cliques rápidos conservam somente a posição mais recente na fila, enquanto retornos a um FEN completo já analisado usam o cache correspondente."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "O duplo clique apaga notas do piano roll, e Alt ao arrastar duplica a nota com duração e parâmetros de articulação preservados.",
+          "O editor compacto perde a borda externa e ganha espaço entre o piano roll e os sliders de articulação.",
+          "Os seletores harmônicos da partida e do Criativo mostram primeiro a progressão e depois seu nome, como I–IV–V–I - Cadência.",
+          "O comprimento horizontal da rampa agora acompanha o tempo do slide, sem repetir os valores numa legenda sob o gráfico.",
+          "A variação fixada recebe um pin acima da aba, e o painel ampliado mostra editor e parâmetros da execução sem rolagem vertical interna.",
+          "O estado da voz acompanha o código da casa no subtítulo, e o editor remove títulos e campos redundantes.",
+          "A distância do slide de cada nota passa a usar um slider de −24 a +24 semitons, com o valor corrente sempre visível.",
+          "Piece Params permite editar as notas da variação corrente com o mesmo piano roll do Criativo."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "O nome da cidade aparece maior, com gênero e ano logo abaixo, sem o antigo quadro de informações.",
+          "A partida começa automaticamente após quatro segundos; clicar em qualquer ponto da apresentação antecipa a entrada."
+        ]
+      },
+      {
+        "title": "Desempenho e manutenção",
+        "items": [
+          "A Chance também volta a ser calculada em celulares e aparelhos restritos, usando profundidade menor para limitar o uso de CPU."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.4.0",
+    "date": "21/09/2026",
+    "title": "Widgets da partida e motor musical",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "O globo conserva sua velocidade de espera quando um popup está aberto; somente o cartão percorre a tela três vezes mais devagar.",
+          "Marcadores que estão atrás da esfera deixam de responder a hover, clique e toque.",
+          "Arrastar o popup de uma cidade não interrompe o giro automático do globo.",
+          "Com um popup aberto, o giro de espera e o quadro ancorado ao pin passam a um terço da velocidade.",
+          "O botão do changelog deixa de depender do ID variável do gatilho Radix, eliminando a divergência de hidratação em aria-controls.",
+          "O mapa passa a ter 13 cidades e 14 fases; Manchester continua com as épocas de 1988 e 1999."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "A Progressão altera o plano harmônico base da partida, mantendo a prioridade temporária das influências de Estado e Evento.",
+          "A área vazia do cabeçalho deixa os cliques passarem para widgets posicionados atrás dela; os controles visíveis continuam interativos.",
+          "Arrastar uma peça volta a tocar uma nota avulsa na casa inicial e em cada nova casa atravessada.",
+          "A posição do destaque e a prévia transitória são atualizadas sem renderizar novamente a partida inteira a cada nota.",
+          "Cada perfil começa com 10 ovos dourados; toda vitória de cidade, inclusive repetida, concede mais 10 ovos.",
+          "Cada ovo recebido também vale um ponto histórico. Gastar ovos no futuro preservará a pontuação, as vitórias e as cidades conquistadas.",
+          "Perfis antigos são migrados pela quantidade real de vitórias, sem transformar os antigos prêmios de 1.000/200 pontos em milhares de ovos.",
+          "As 32 vozes compartilham quatro reverbs, mantendo os controles de cada peça.",
+          "Capturar ou desativar uma peça não interrompe outras vozes do mesmo bus. Audições pelo tabuleiro continuam isoladas e podem ser canceladas imediatamente."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "Spectrogram e Strudel deixam de abrir automaticamente no primeiro lance.",
+          "Board Params reúne Tom, Escala e Progressão na mesma linha e remove fine pitch, quartz lock e as legendas auxiliares de tom e mixer.",
+          "Piece Params passa a usar a imagem da peça e o nome do instrumento como cabeçalho.",
+          "O monitor mostra somente a variação corrente; abas A–H permitem fixar uma variação e um segundo clique devolve o controle à sequência musical.",
+          "Com o widget desligado, o monitor de variações permanece desmontado para não consumir processamento.",
+          "O gesto reutiliza o mesmo canal de áudio manual até a soltura, evitando recriar efeitos por casa e reduzindo a pequena trava do arraste.",
+          "Cada cidade ganhou levadas, timbres e harmonia próprios. Cada peça também ganhou seu papel na banda.",
+          "Bases, respostas e solos se alternam ao longo das seções para abrir espaço na música.",
+          "Nova cidade dedicada ao Kwaito: house desacelerado a 108 BPM, piano township, baixo elástico, conga, shaker, pandeiro, guitarra mbaqanga e chamadas vocais.",
+          "Kits salvos da coleção anterior recebem backup local recuperável quando a nova versão da cidade é carregada pela primeira vez.",
+          "Desktop mantém dois buses por equipe, enquanto audições manuais continuam isoladas e podem ser canceladas imediatamente.",
+          "Arraste, monitor e código Strudel evitam recomputações desnecessárias; a exportação de 32 vozes passa a declarar apenas quatro orbits.",
+          "Planos harmônicos por seção movem baixo e melodias em conjunto; vozes sustentadas podem formar tríades com inversões de menor deslocamento.",
+          "O relógio mostra centro, acorde e notas da harmonia atual, e regras podem trocar o plano temporariamente sem reescrever o kit.",
+          "Todos os Estados e Eventos recebem defaults musicais proporcionais à frequência e importância do gatilho, inclusive nos kits existentes.",
+          "Kits salvos e padrões aparecem juntos no seletor principal, com a cidade vinculada ao lado do nome quando existir.",
+          "Cada cidade mantém no máximo um kit vinculado; ao substituir o vínculo, o kit anterior permanece salvo sem cidade."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "As formas valem no Criativo e nas partidas. Capturas, movimentos, cheque, Solo e edição continuam acompanhando a identidade de cada peça.",
+          "Os pulsos musicais atualizam somente o pequeno marcador do tabuleiro; a partida e a bancada Criativo deixam de renderizar a tela inteira a cada ataque.",
+          "Estados e Eventos foram separados em listas, aceitam liga/desliga pelo editor e indicam claramente qual regra está sendo editada.",
+          "Controles do transporte, variações, Solo, lista de vozes e edição numérica foram reorganizados para leitura e operação mais diretas."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "Arranjos contínuos consultam somente a variação em execução; reinícios de frase continuam respeitando a entrada de cada seção."
+        ]
+      },
+      {
+        "title": "Desempenho e manutenção",
+        "items": [
+          "Celulares usam menos reverbs ao mesmo tempo, sem perder vozes ou controles."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.3.2",
+    "date": "16/09/2026",
+    "title": "The Creative",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "Correção do sentido do giro do globo com dois dedos."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "Roques, capturas, perda de famílias de peças, formação mínima, promoções, en passant e saída de cheque com duração configurável.",
+          "Correção do alinhamento da peça arrastada; botão Segure para ouvir removido. Solo continua disponível para ouvir a frase completa."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "Slide global ou por nota, acentos e pan individuais, intensidade e nível da distorção.",
+          "Estudo Mouth Breather: 17 etapas, guitarra em camadas, baixo quebrado e bateria distribuída.",
+          "Kits compostos para as 13 fases, oito samples sintéticos novos e backup recuperável dos kits anteriores.",
+          "Duração independente por variação, grade de tercinas e loops de comprimentos diferentes sobre o mesmo BPM.",
+          "Opção por regra de aguardar a virada do compasso, com indicação de pendências e persistência no kit.",
+          "Simulador de estados e eventos abaixo do tabuleiro, com regras salvas em cada kit e aplicadas também na partida.",
+          "Transposição, BPM, escala paralela/relativa, rotação modal, inversão melódica, variação, ganho, filtro e ativação por equipe.",
+          "Seletor de kit acima do transporte, colunas sem gap, variações expandidas e nomes de instrumento sem sufixo de casa."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "Ajuda em círculos ? com hover, foco e toque; piano roll corrigido para editar todas as linhas visíveis.",
+          "Transições preparadas no relógio de áudio e rampas de BPM por regra, com curva, ponteiro e destino no Criativo.",
+          "Até oito variações selecionáveis, conversão para piano roll, desenho/movimento/duração de notas com mouse e restauração do padrão original.",
+          "Scrollbars dos painéis escondidas, mantendo rolagem por mouse, trackpad e toque.",
+          "Versões renomeadas para a série v0.3; versão atual v0.3.2 — The Creative."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "Seções por peça com durações diferentes, entradas/pausas, transposição e reinício opcional da frase."
+        ]
+      },
+      {
+        "title": "Interface e controles",
+        "items": [
+          "Catálogo compartilhado de 19 escalas/aliases, incluindo blues, tons inteiros, diminutas, modos e cromática."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.3.1",
+    "date": "13/09/2026",
+    "title": "Peças que fazem música",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "Manchester mantém 1988 e ganha seletor de época no popup; kits e progresso separados. Links diretos do Criativo carregam a cidade escolhida.",
+          "Correções de touch em Enter board, arraste das peças com audição das casas e isolamento do cursor do globo.",
+          "Giro do globo com dois dedos, retomada estável do giro automático e quadro de apresentação arrastável.",
+          "Litorais vetoriais mais discretos, grade geográfica e linha do popup 50% mais escura quando o pin está atrás do planeta.",
+          "Menos atualizações de padrões, gráficos ocultos e renderizações durante o arraste; menor resolução do globo em dispositivos restritos.",
+          "Ajustes no arraste do globo e dos popups, incluindo a liberação do mouse sem deixar o mundo preso ao ponteiro.",
+          "Pressionar um popup o reduz em torno do ponto clicado; sons acompanham pressão, arraste e soltura. Botão de fechar sem recorte.",
+          "Giro de espera com popups abertos; hover pausa o giro e amplia o pin em 15%. Cidades conquistadas recebem uma bandeira verde.",
+          "Voo com zoom até a cidade ao entrar na fase, com respeito à preferência de movimento reduzido.",
+          "Litorais geográficos reais sem fronteiras regionais, fundo de galáxias suave, sol com halo e iluminação compartilhada pelo globo e pela lua.",
+          "Reward aparece no rodapé dos popups com o valor da próxima vitória. Clique dos pins 70% mais baixo e hover 30% mais baixo."
+        ]
+      },
+      {
+        "title": "Partida e progresso",
+        "items": [
+          "Fonte sonora, comportamento e tipo de peça são independentes: qualquer peça pode ser percussão, sequência ou voz sustentada.",
+          "Arrastar interrompe o loop da peça e toca as casas percorridas, inclusive para peças inativas. Cancelar restaura o estado anterior.",
+          "Dar cheque ativa temporariamente toda a banda atacante sobrevivente. Sair do cheque devolve a ativação ao histórico de movimentos.",
+          "Peça acompanha mouse/toque no arraste; casas uniformes e audição sem seleção acidental de texto.",
+          "Widgets arrastáveis pelo fundo, textos com espaço reservado, controles móveis e knobs com mouse, toque, teclado e roda do mouse.",
+          "Histórico de versões acessível pelo número da versão, com rolagem interna."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "Nova época Northern Jazz Breaks, inspirada em Get a Move On! de Mr. Scruff: 123 BPM, quatro seções e motivos de sopro com respostas.",
+          "Board Params com ganho e equalização por equipe; fine pitch comum e quartz lock no BPM original do kit.",
+          "Todas as 12 cidades usam a nova mecânica. Kits experimentais aleatórios e reproduzíveis variam fontes, frases, grooves, timbres, efeitos e movimentos.",
+          "Banco local de samples, variações de articulação, samples afinados, biblioteca de receitas, frases A/B/C/D e grooves compartilhados.",
+          "Automações de ganho, filtro, pan, reverb e delay, além de tom, escala, BPM e volume comuns à banda.",
+          "Padrões compilados em cache, samples compartilhados, atualizações visuais agrupadas e atenuação para formações grandes.",
+          "Uma peça começa seu loop após o primeiro movimento; capturas removem a voz. Roque, en passant, promoção e undo/redo preservam as identidades musicais.",
+          "Notas, pausas, estados e pulsos visuais acompanham o áudio. Todas as variações salvas aparecem em quadros MIDI, com ponteiro na variação em execução.",
+          "Carregar, editar e salvar kits de qualquer cidade para a próxima partida; gerar novas variações e comparar com o Düsseldorf original.",
+          "Piece Params inclui notas e envelope; Board Params edita tom e escala; Strudel reúne código, seção, compasso e estado do áudio."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "Banco Chicken Jazz com 11 samples sintéticos originais de palhetas, metais, baixo, teclas, vogal e bateria, disponíveis para qualquer peça no Criativo.",
+          "Strudel integrado ao jogo e ao Criativo, com um relógio comum e 32 instrumentos independentes.",
+          "Rascunho e kits locais, exportação/importação JSON validada. Carregar uma cidade no Criativo ativa as 16 brancas para escuta."
+        ]
+      },
+      {
+        "title": "Entrada e apresentação",
+        "items": [
+          "Correções na duração das seções, nas entradas das vozes, na audição da rainha e nos ganhos dos presets.",
+          "Modo Criativo sem introdução ou adversário, com tabuleiro livre, audição, solo, ativação individual e edição de instrumentos."
+        ]
+      },
+      {
+        "title": "Desempenho e manutenção",
+        "items": [
+          "Tabuleiro fixo à esquerda em telas largas, duas colunas de edição com rolagem independente e disposição vertical no celular em retrato."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.3.0",
+    "date": "",
+    "title": "The Distribution",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "Mapa de cidades e fases de xadrez contra IA, progressão local e interface de jogo que serviram de base à evolução musical da versão 3.1."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.2",
+    "date": "08/02/2026",
+    "title": "Peças em movimento",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "O globo ficou 3d, como um planeta flutuando no espaço."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.1",
+    "date": "02/02/2026",
+    "title": "Primeiro editor musical",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "O globo ficou mais interativo."
+        ]
+      },
+      {
+        "title": "Criativo e edição",
+        "items": [
+          "Editor musical básico para experimentar sons e ideias no tabuleiro."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "16/01/2026",
+    "title": "O tabuleiro começa a tocar",
+    "groups": [
+      {
+        "title": "Mapa e cidades",
+        "items": [
+          "Espectrograma e mapa-múndi pra escolher uma cidade."
+        ]
+      },
+      {
+        "title": "Música e kits",
+        "items": [
+          "Kits músicais diferentes, vinculados a cidades pra representar estilos musicais."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "05/01/2026",
+    "title": "Primeiros sons no tabuleiro",
+    "groups": [
+      {
+        "title": "Música e kits",
+        "items": [
+          "Tabuleiro de xadrez integrado com strudel para orchestração musical. Cada peça ativa uma linha de código-música no strudel."
+        ]
+      }
+    ]
+  }
+]

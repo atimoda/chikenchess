@@ -77,6 +77,10 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
   const bpmHoverBaseRef = useRef(effects.bpm)
   const bpmHoverWrapperRef = useRef<HTMLDivElement | null>(null)
   const bpmHoverPointerRef = useRef<{ x: number; y: number; onSlider: boolean } | null>(null)
+  const bpmDragActiveRef = useRef(false)
+  const bpmReleasePreviewRef = useRef(false)
+  const pendingBpmRef = useRef(effects.bpm)
+  const [bpmDraft, setBpmDraft] = useState<number | null>(null)
   const [bpmHoverPreview, setBpmHoverPreview] = useState<BpmHoverPreview | null>(null)
   const updateBpmHoverPreview = (event: React.PointerEvent<HTMLDivElement>) => {
     const wrapper = event.currentTarget
@@ -84,17 +88,59 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
     const onSlider = event.target instanceof Element && !!event.target.closest('[data-slot="slider"]')
     bpmHoverPointerRef.current = { x: event.clientX, y: event.clientY, onSlider }
     if (!onSlider) {
-      setBpmHoverPreview(null)
+      if (!bpmDragActiveRef.current) setBpmHoverPreview(null)
+      return
+    }
+    if (bpmDragActiveRef.current) {
+      setBpmHoverPreview(current => current ? { ...current, x: event.clientX - wrapper.getBoundingClientRect().left, y: event.clientY - wrapper.getBoundingClientRect().top - 6 } : current)
       return
     }
     setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
   }
 
+  const beginBpmDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof Element) || !event.target.closest('[data-slot="slider"]')) return
+    bpmDragActiveRef.current = true
+    bpmReleasePreviewRef.current = false
+    pendingBpmRef.current = effects.bpm
+    bpmHoverBaseRef.current = effects.bpm
+    setBpmDraft(effects.bpm)
+  }
+
+  const finishBpmDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!bpmDragActiveRef.current) return
+    bpmDragActiveRef.current = false
+    const nextBpm = pendingBpmRef.current
+    const changed = nextBpm !== effects.bpm
+    const wrapper = event.currentTarget
+    bpmHoverWrapperRef.current = wrapper
+    bpmHoverPointerRef.current = { x: event.clientX, y: event.clientY, onSlider: true }
+    setBpmDraft(null)
+    setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
+    if (changed) {
+      bpmReleasePreviewRef.current = true
+      onEffectChange('bpm', nextBpm)
+    }
+  }
+
+  const cancelBpmDrag = () => {
+    if (!bpmDragActiveRef.current) return
+    bpmDragActiveRef.current = false
+    pendingBpmRef.current = effects.bpm
+    setBpmDraft(null)
+    setBpmHoverPreview(null)
+  }
+
   useEffect(() => {
     bpmHoverBaseRef.current = effects.bpm
+    pendingBpmRef.current = effects.bpm
+    if (bpmReleasePreviewRef.current) {
+      bpmReleasePreviewRef.current = false
+      return
+    }
     const wrapper = bpmHoverWrapperRef.current
     const pointer = bpmHoverPointerRef.current
-    if (wrapper && pointer?.onSlider) {
+    if (!bpmDragActiveRef.current && wrapper && pointer?.onSlider) {
       setBpmHoverPreview(calculateBpmHoverPreview(wrapper, pointer.x, pointer.y, effects.bpm))
     }
   }, [effects.bpm])
@@ -174,43 +220,52 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
           
           <div className="grid grid-cols-1 gap-2 py-2">
             {/* Master Volume Slider */}
-            <div className={cn("px-2 py-1 mb-2", !isOn && "pointer-events-none")}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono text-muted-foreground">VOLUME</span>
-                <span className="text-[10px] font-mono text-[var(--city-neon)]">{(effects.volume * 100).toFixed(0)}%</span>
-              </div>
+            <div className={cn("relative mb-1", !isOn && "pointer-events-none")}>
               <Slider
                 value={[effects.volume]}
                 min={0}
                 max={1}
                 step={0.01}
                 onValueChange={([v]) => onEffectChange("volume", v)}
-                className="w-full [&_[data-slot=slider-range]]:bg-[var(--city-neon)] [&_[data-slot=slider-thumb]]:border-[var(--city-neon)]"
+                className="w-full py-[2px] [&_[data-slot=slider-track]]:h-[18px] [&_[data-slot=slider-range]]:bg-[var(--city-neon)] [&_[data-slot=slider-thumb]]:border-[var(--city-neon)]"
                 style={panelStyle}
               />
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-[3px]">
+                <span className="pl-[6px] text-[10px] font-mono leading-none text-black/[0.69]">VOLUME</span>
+                <span className="pr-[5px] text-[10px] font-mono leading-none text-white/50">{(effects.volume * 100).toFixed(0)}%</span>
+              </div>
             </div>
 
             {/* BPM Slider */}
             <div
-              className={cn("relative px-2 py-1 mb-2", !isOn && "pointer-events-none")}
+              className={cn("relative mb-1", !isOn && "pointer-events-none")}
               onPointerEnter={event => { bpmHoverBaseRef.current = effects.bpm; updateBpmHoverPreview(event) }}
               onPointerMove={updateBpmHoverPreview}
-              onPointerLeave={() => { bpmHoverWrapperRef.current = null; bpmHoverPointerRef.current = null; setBpmHoverPreview(null) }}
-              onPointerDown={event => { bpmHoverBaseRef.current = effects.bpm; updateBpmHoverPreview(event) }}
+              onPointerLeave={() => { if (bpmDragActiveRef.current) return; bpmHoverWrapperRef.current = null; bpmHoverPointerRef.current = null; setBpmHoverPreview(null) }}
+              onPointerDownCapture={beginBpmDrag}
+              onPointerUp={finishBpmDrag}
+              onPointerCancel={cancelBpmDrag}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono text-muted-foreground">BPM</span>
-                <span className="text-[10px] font-mono text-[var(--city-neon)]">{effects.bpm.toFixed(0)}</span>
-              </div>
               <Slider
-                value={[effects.bpm]}
+                value={[bpmDraft ?? effects.bpm]}
                 min={60}
                 max={244}
                 step={1}
-                onValueChange={([v]) => onEffectChange("bpm", v)}
-                className="w-full [&_[data-slot=slider-range]]:bg-[var(--city-neon)] [&_[data-slot=slider-thumb]]:border-[var(--city-neon)]"
+                onValueChange={([v]) => {
+                  if (bpmDragActiveRef.current) {
+                    pendingBpmRef.current = v
+                    setBpmDraft(v)
+                  } else {
+                    onEffectChange("bpm", v)
+                  }
+                }}
+                className="w-full py-[2px] [&_[data-slot=slider-track]]:h-[18px] [&_[data-slot=slider-range]]:bg-[var(--city-neon)] [&_[data-slot=slider-thumb]]:border-[var(--city-neon)]"
                 style={panelStyle}
               />
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-[3px]">
+                <span className="pl-[6px] text-[10px] font-mono leading-none text-black/[0.69]">BPM</span>
+                <span className="pr-[5px] text-[10px] font-mono leading-none text-white/50">{(bpmDraft ?? effects.bpm).toFixed(0)}</span>
+              </div>
               {bpmHoverPreview && isOn && <span
                 aria-hidden="true"
                 className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded border border-white/20 bg-black/90 px-1.5 py-0.5 font-mono text-[9px] text-white shadow"
@@ -220,13 +275,13 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
 
             {tonality && harmony && <fieldset disabled={!isOn} className="grid grid-cols-[.45fr_.9fr_1.35fr] gap-2 px-2">
               <label className="text-[10px] font-mono text-muted-foreground">TOM
-                <select aria-label="Tom da partida" className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark' }} value={tonality.root} onChange={e => onTonalityChange?.(e.target.value as CreativeSession['root'], tonality.scale)}>{ROOTS.map(root => <option key={root} style={{ color: root === tonality.root ? cityColor : undefined }}>{root}</option>)}</select>
+                <select aria-label="Tom da partida" data-city-dropdown className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark', '--city-option-color': cityColor } as React.CSSProperties} value={tonality.root} onChange={e => onTonalityChange?.(e.target.value as CreativeSession['root'], tonality.scale)}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select>
               </label>
               <label className="text-[10px] font-mono text-muted-foreground">ESCALA
-                <select aria-label="Escala da partida" className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark' }} value={tonality.scale} onChange={e => onTonalityChange?.(tonality.root, e.target.value as CreativeSession['scale'])}>{Object.keys(SCALES).map(scale => <option key={scale} style={{ color: scale === tonality.scale ? cityColor : undefined }}>{scale}</option>)}</select>
+                <select aria-label="Escala da partida" data-city-dropdown className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark', '--city-option-color': cityColor } as React.CSSProperties} value={tonality.scale} onChange={e => onTonalityChange?.(tonality.root, e.target.value as CreativeSession['scale'])}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select>
               </label>
               <label className="text-[10px] font-mono text-muted-foreground">PROGRESSÃO
-                <select aria-label="Progressão da partida" className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark' }} value={harmony} onChange={e => onHarmonyChange?.(e.target.value as HarmonyPlanId)}>{Object.entries(HARMONY_PLANS).map(([id, plan]) => <option key={id} value={id} style={{ color: id === harmony ? cityColor : undefined }}>{plan.label}</option>)}</select>
+                <select aria-label="Progressão da partida" data-city-dropdown className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark', '--city-option-color': cityColor } as React.CSSProperties} value={harmony} onChange={e => onHarmonyChange?.(e.target.value as HarmonyPlanId)}>{Object.entries(HARMONY_PLANS).map(([id, plan]) => <option key={id} value={id}>{plan.label}</option>)}</select>
               </label>
             </fieldset>}
 
