@@ -116,8 +116,8 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
     bpmHoverWrapperRef.current = wrapper
     bpmHoverPointerRef.current = { x: event.clientX, y: event.clientY, onSlider: true }
     setBpmDraft(null)
-    setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
     if (changed) {
+      setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
       bpmReleasePreviewRef.current = true
       onEffectChange('bpm', nextBpm)
     }
