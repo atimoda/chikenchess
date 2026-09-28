@@ -1,15 +1,12 @@
 "use client"
 
 import type React from "react"
-import { useRef, useState, useEffect, forwardRef } from "react"
+import { useRef, forwardRef } from "react"
 import { Knob } from "./knob"
-import { Slider } from "@/components/ui/slider"
 import type { GlobalEffects } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
-import { ROOTS, SCALES, type CreativeSession } from '@/lib/music/creative'
-import { HARMONY_PLANS, type HarmonyPlanId } from '@/lib/music/harmony'
 
 interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   showAmbience?: boolean
@@ -22,28 +19,6 @@ interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivEleme
   toggleRef?: React.RefObject<HTMLButtonElement | null>
   isOn: boolean
   onToggle: () => void
-  tonality?: Pick<CreativeSession, 'root' | 'scale'>
-  onTonalityChange?: (root: CreativeSession['root'], scale: CreativeSession['scale']) => void
-  harmony?: HarmonyPlanId
-  onHarmonyChange?: (harmony: HarmonyPlanId) => void
-}
-
-type BpmHoverPreview = { x: number; y: number; percent: number }
-
-function calculateBpmHoverPreview(wrapper: HTMLDivElement, x: number, y: number, baseBpm: number): BpmHoverPreview | null {
-  const track = wrapper.querySelector<HTMLElement>('[data-slot="slider-track"]')
-  if (!track) return null
-  const trackBounds = track.getBoundingClientRect()
-  if (!trackBounds.width) return null
-  const ratio = Math.max(0, Math.min(1, (x - trackBounds.left) / trackBounds.width))
-  const targetBpm = Math.round(60 + ratio * (244 - 60))
-  const percent = ((targetBpm - baseBpm) / baseBpm) * 100
-  const wrapperBounds = wrapper.getBoundingClientRect()
-  return {
-    x: x - wrapperBounds.left,
-    y: y - wrapperBounds.top - 6,
-    percent,
-  }
 }
 
 export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelProps>(({
@@ -57,10 +32,6 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
   toggleRef,
   isOn,
   onToggle,
-  tonality,
-  onTonalityChange,
-  harmony,
-  onHarmonyChange,
   ...props
 }, ref) => {
   const panelStyle = {
@@ -73,77 +44,6 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
   const widgetBorderColor = !isOn 
     ? "rgba(255,255,255,0.1)" 
     : "rgba(255,255,255,0.3)"
-
-  const bpmHoverBaseRef = useRef(effects.bpm)
-  const bpmHoverWrapperRef = useRef<HTMLDivElement | null>(null)
-  const bpmHoverPointerRef = useRef<{ x: number; y: number; onSlider: boolean } | null>(null)
-  const bpmDragActiveRef = useRef(false)
-  const bpmReleasePreviewRef = useRef(false)
-  const pendingBpmRef = useRef(effects.bpm)
-  const [bpmDraft, setBpmDraft] = useState<number | null>(null)
-  const [bpmHoverPreview, setBpmHoverPreview] = useState<BpmHoverPreview | null>(null)
-  const updateBpmHoverPreview = (event: React.PointerEvent<HTMLDivElement>) => {
-    const wrapper = event.currentTarget
-    bpmHoverWrapperRef.current = wrapper
-    const onSlider = event.target instanceof Element && !!event.target.closest('[data-slot="slider"]')
-    bpmHoverPointerRef.current = { x: event.clientX, y: event.clientY, onSlider }
-    if (!onSlider) {
-      if (!bpmDragActiveRef.current) setBpmHoverPreview(null)
-      return
-    }
-    if (bpmDragActiveRef.current) {
-      setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
-      return
-    }
-    setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
-  }
-
-  const beginBpmDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!(event.target instanceof Element) || !event.target.closest('[data-slot="slider"]')) return
-    bpmDragActiveRef.current = true
-    bpmReleasePreviewRef.current = false
-    pendingBpmRef.current = effects.bpm
-    bpmHoverBaseRef.current = effects.bpm
-    setBpmDraft(effects.bpm)
-  }
-
-  const finishBpmDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!bpmDragActiveRef.current) return
-    bpmDragActiveRef.current = false
-    const nextBpm = pendingBpmRef.current
-    const changed = nextBpm !== effects.bpm
-    const wrapper = event.currentTarget
-    bpmHoverWrapperRef.current = wrapper
-    bpmHoverPointerRef.current = { x: event.clientX, y: event.clientY, onSlider: true }
-    setBpmDraft(null)
-    if (changed) {
-      setBpmHoverPreview(calculateBpmHoverPreview(wrapper, event.clientX, event.clientY, bpmHoverBaseRef.current))
-      bpmReleasePreviewRef.current = true
-      onEffectChange('bpm', nextBpm)
-    }
-  }
-
-  const cancelBpmDrag = () => {
-    if (!bpmDragActiveRef.current) return
-    bpmDragActiveRef.current = false
-    pendingBpmRef.current = effects.bpm
-    setBpmDraft(null)
-    setBpmHoverPreview(null)
-  }
-
-  useEffect(() => {
-    bpmHoverBaseRef.current = effects.bpm
-    pendingBpmRef.current = effects.bpm
-    if (bpmReleasePreviewRef.current) {
-      bpmReleasePreviewRef.current = false
-      return
-    }
-    const wrapper = bpmHoverWrapperRef.current
-    const pointer = bpmHoverPointerRef.current
-    if (!bpmDragActiveRef.current && wrapper && pointer?.onSlider) {
-      setBpmHoverPreview(calculateBpmHoverPreview(wrapper, pointer.x, pointer.y, effects.bpm))
-    }
-  }, [effects.bpm])
 
   return (
     <Draggable
@@ -183,6 +83,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          !isOn && "hover:drop-shadow-[0_0_8px_#60a5fa]",
           isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
@@ -219,72 +120,6 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
           </div>
           
           <div className="grid grid-cols-1 gap-2 py-2">
-            {/* Master Volume Slider */}
-            <div className={cn("relative mb-1", !isOn && "pointer-events-none")}>
-              <Slider
-                value={[effects.volume]}
-                min={0}
-                max={1}
-                step={0.01}
-                onValueChange={([v]) => onEffectChange("volume", v)}
-                className="w-full py-[2px] [&_[data-slot=slider-track]]:h-[18px] [&_[data-slot=slider-range]]:bg-[var(--city-neon)] [&_[data-slot=slider-thumb]]:border-[var(--city-neon)]"
-                style={panelStyle}
-              />
-              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-[3px]">
-                <span className="pl-[6px] text-[10px] font-mono leading-none text-black/[0.69]">VOLUME</span>
-                <span className="pr-[5px] text-[10px] font-mono leading-none text-white/50">{(effects.volume * 100).toFixed(0)}%</span>
-              </div>
-            </div>
-
-            {/* BPM Slider */}
-            <div
-              className={cn("relative mb-1", !isOn && "pointer-events-none")}
-              onPointerEnter={event => { bpmHoverBaseRef.current = effects.bpm; updateBpmHoverPreview(event) }}
-              onPointerMove={updateBpmHoverPreview}
-              onPointerLeave={() => { if (bpmDragActiveRef.current) return; bpmHoverWrapperRef.current = null; bpmHoverPointerRef.current = null; setBpmHoverPreview(null) }}
-              onPointerDownCapture={beginBpmDrag}
-              onPointerUp={finishBpmDrag}
-              onPointerCancel={cancelBpmDrag}
-            >
-              <Slider
-                value={[bpmDraft ?? effects.bpm]}
-                min={60}
-                max={244}
-                step={1}
-                onValueChange={([v]) => {
-                  if (bpmDragActiveRef.current) {
-                    pendingBpmRef.current = v
-                    setBpmDraft(v)
-                  } else {
-                    onEffectChange("bpm", v)
-                  }
-                }}
-                className="w-full py-[2px] [&_[data-slot=slider-track]]:h-[18px] [&_[data-slot=slider-range]]:bg-[var(--city-neon)] [&_[data-slot=slider-thumb]]:border-[var(--city-neon)]"
-                style={panelStyle}
-              />
-              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-[3px]">
-                <span className="pl-[6px] text-[10px] font-mono leading-none text-black/[0.69]">BPM</span>
-                <span className="pr-[5px] text-[10px] font-mono leading-none text-white/50">{(bpmDraft ?? effects.bpm).toFixed(0)}</span>
-              </div>
-              {bpmHoverPreview && isOn && <span
-                aria-hidden="true"
-                className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded border border-white/20 bg-black/90 px-1.5 py-0.5 font-mono text-[9px] text-white shadow"
-                style={{ left: bpmHoverPreview.x, top: bpmHoverPreview.y }}
-              >{bpmHoverPreview.percent > 0 ? "+" : bpmHoverPreview.percent < 0 ? "−" : ""}{Math.abs(bpmHoverPreview.percent).toFixed(0)}%</span>}
-            </div>
-
-            {tonality && harmony && <fieldset disabled={!isOn} className="grid grid-cols-[.45fr_.9fr_1.35fr] gap-2 px-2">
-              <label className="text-[10px] font-mono text-muted-foreground">TOM
-                <select aria-label="Tom da partida" data-city-dropdown className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark', '--city-option-color': cityColor } as React.CSSProperties} value={tonality.root} onChange={e => onTonalityChange?.(e.target.value as CreativeSession['root'], tonality.scale)}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select>
-              </label>
-              <label className="text-[10px] font-mono text-muted-foreground">ESCALA
-                <select aria-label="Escala da partida" data-city-dropdown className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark', '--city-option-color': cityColor } as React.CSSProperties} value={tonality.scale} onChange={e => onTonalityChange?.(tonality.root, e.target.value as CreativeSession['scale'])}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select>
-              </label>
-              <label className="text-[10px] font-mono text-muted-foreground">PROGRESSÃO
-                <select aria-label="Progressão da partida" data-city-dropdown className="mt-1 w-full rounded border border-transparent bg-neutral-950 p-2 text-xs hover:border-white/20 focus-visible:border-white/20" style={{ color: cityColor, colorScheme: 'dark', '--city-option-color': cityColor } as React.CSSProperties} value={harmony} onChange={e => onHarmonyChange?.(e.target.value as HarmonyPlanId)}>{Object.entries(HARMONY_PLANS).map(([id, plan]) => <option key={id} value={id}>{plan.label}</option>)}</select>
-              </label>
-            </fieldset>}
-
             {showAmbience && <div className="grid grid-cols-3 gap-2 mt-2">
               <Knob
                 label="AMB PITCH"

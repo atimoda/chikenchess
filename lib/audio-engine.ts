@@ -1597,7 +1597,7 @@ export class AudioEngine {
     if (!this.audioContext || !this.masterGain) return
 
     // Noise component
-    const bufferSize = this.audioContext.sampleRate * 0.2
+    const bufferSize = this.audioContext.sampleRate * 0.16
     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
     const data = buffer.getChannelData(0)
     for (let i = 0; i < bufferSize; i++) {
@@ -1608,22 +1608,33 @@ export class AudioEngine {
     noise.buffer = buffer
 
     const noiseFilter = this.audioContext.createBiquadFilter()
-    noiseFilter.type = "highpass"
-    noiseFilter.frequency.value = 1000 * pitch
+    noiseFilter.type = "bandpass"
+    noiseFilter.frequency.value = 2400 * pitch
+    noiseFilter.Q.value = 0.65
 
     const noiseGain = this.audioContext.createGain()
-    noiseGain.gain.setValueAtTime(gain * 0.5, time)
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15)
+    noiseGain.gain.setValueAtTime(0.0001, time)
+    noiseGain.gain.exponentialRampToValueAtTime(gain * 0.58, time + 0.002)
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.14)
 
     // Tone component
     const osc = this.audioContext.createOscillator()
     osc.type = "triangle"
-    osc.frequency.setValueAtTime(180 * pitch, time)
-    osc.frequency.exponentialRampToValueAtTime(80 * pitch, time + 0.05)
+    osc.frequency.setValueAtTime(190 * pitch, time)
+    osc.frequency.exponentialRampToValueAtTime(125 * pitch, time + 0.045)
 
     const oscGain = this.audioContext.createGain()
-    oscGain.gain.setValueAtTime(gain * 0.4, time)
-    oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.08)
+    oscGain.gain.setValueAtTime(gain * 0.22, time)
+    oscGain.gain.exponentialRampToValueAtTime(0.001, time + 0.075)
+
+    // A quiet upper shell mode gives the hit a little wooden body without the synthetic tom-like thud.
+    const shellMode = this.audioContext.createOscillator()
+    shellMode.type = "sine"
+    shellMode.frequency.setValueAtTime(355 * pitch, time)
+    shellMode.frequency.exponentialRampToValueAtTime(245 * pitch, time + 0.04)
+    const shellGain = this.audioContext.createGain()
+    shellGain.gain.setValueAtTime(gain * 0.075, time)
+    shellGain.gain.exponentialRampToValueAtTime(0.001, time + 0.055)
 
     const panner = this.audioContext.createStereoPanner()
     panner.pan.value = pan
@@ -1634,15 +1645,19 @@ export class AudioEngine {
 
     osc.connect(oscGain)
     oscGain.connect(panner)
+    shellMode.connect(shellGain)
+    shellGain.connect(panner)
 
     this.applyEffects(panner, delay, reverb, lpf, hpf)
 
     noise.start(time)
     osc.start(time)
+    shellMode.start(time)
     noise.stop(time + 0.2)
     osc.stop(time + 0.1)
+    shellMode.stop(time + 0.06)
 
-    this.scheduledNodes.push(noise, osc)
+    this.scheduledNodes.push(noise, osc, shellMode)
   }
 
   private playHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {

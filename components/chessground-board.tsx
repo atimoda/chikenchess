@@ -7,6 +7,7 @@ import type { Chess, Square, Move } from "chess.js"
 import type { MusicPulseMonitor } from "@/lib/music/monitor"
 import { MusicPulseOverlay } from "./music-pulse-overlay"
 import { cn } from "@/lib/utils"
+import rewardStyles from "./chessground-board.module.css"
 
 interface ChessgroundBoardProps {
   game: Chess
@@ -25,6 +26,7 @@ interface ChessgroundBoardProps {
   activeSquares?: Set<string>
   analysisArrows?: AnalysisArrow[]
   rankedMoveMark?: { square: Square; kind: 'best' | 'worst'; id: number } | null
+  rankedMoveAnnouncement?: { square: Square; kind: 'best' | 'worst' | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean } | null
   freeMode?: {
     mode: "move" | "play"
     auditionPiece: { color: "w" | "b"; type: string }
@@ -39,6 +41,7 @@ export interface AnalysisArrow {
   to: Square
   label: string
   tone: "best" | "worst"
+  labelTone: "best" | "warning" | "worst"
 }
 
 const COLUMNS = ["a", "b", "c", "d", "e", "f", "g", "h"]
@@ -79,6 +82,7 @@ export function ChessgroundBoard({
   musicPulseMonitor,
   analysisArrows = [],
   rankedMoveMark,
+  rankedMoveAnnouncement,
   freeMode,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
@@ -851,6 +855,28 @@ export function ChessgroundBoard({
         {musicPulseMonitor && <MusicPulseOverlay monitor={musicPulseMonitor} />}
       </div>
 
+      {rankedMoveAnnouncement && (() => {
+        const fileIndex = COLUMNS.indexOf(rankedMoveAnnouncement.square[0])
+        const rowIndex = 8 - Number(rankedMoveAnnouncement.square[1])
+        const good = rankedMoveAnnouncement.kind === 'best'
+        return <div
+          key={rankedMoveAnnouncement.id}
+          aria-live="polite"
+          className="pointer-events-none absolute z-[100] flex -translate-x-1/2 -translate-y-full flex-col items-center gap-0.5 whitespace-nowrap"
+          style={{ left: `${(fileIndex + .5) * 12.5}%`, top: `${rowIndex * 12.5}%` }}
+        >
+          <span
+            className={cn(rewardStyles.rankedRewardHeadline, "font-mono font-bold text-[11px] drop-shadow-[0_1px_5px_rgba(0,0,0,.95)]", rankedMoveAnnouncement.streak && [rewardStyles.rankedRewardHeadlineStreak, "text-[13px]"])}
+            style={{ color: rankedMoveAnnouncement.kind === 'neutral' ? '#ffffff' : good ? '#41ed8c' : '#ff5d64', textShadow: `0 0 8px ${rankedMoveAnnouncement.kind === 'neutral' ? '#ffffff' : good ? '#41ed8c' : '#ff5d64'}80` }}
+          >{rankedMoveAnnouncement.headline}</span>
+          {rankedMoveAnnouncement.earnedEggs > 0 && <span className={cn(rewardStyles.rankedRewardAmount, "font-mono text-[10px] font-bold text-amber-300 drop-shadow-[0_1px_4px_rgba(0,0,0,.95)]")}>
+            {good
+              ? `+${rankedMoveAnnouncement.earnedEggs} ${rankedMoveAnnouncement.earnedEggs === 1 ? 'egg' : 'eggs'}`
+              : `Take ${rankedMoveAnnouncement.earnedEggs} eggs!`}
+          </span>}
+        </div>
+      })()}
+
       {analysisArrows.length > 0 && (
         <svg
           aria-label="Sugestões de jogadas"
@@ -860,10 +886,10 @@ export function ChessgroundBoard({
         >
           <defs>
             <marker id="analysis-arrow-best" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L8,4 L0,8 Z" fill="#34d399" />
+              <path d="M2.64,1.32 L8,4 L2.64,6.68 Z" fill="#34d399" />
             </marker>
             <marker id="analysis-arrow-worst" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L8,4 L0,8 Z" fill="#fb7185" />
+              <path d="M2.64,1.32 L8,4 L2.64,6.68 Z" fill="#fb7185" />
             </marker>
           </defs>
           {analysisArrows.map((arrow, index) => {
@@ -879,6 +905,7 @@ export function ChessgroundBoard({
             const endX = x2 - (dx / length) * 30
             const endY = y2 - (dy / length) * 30
             const color = arrow.tone === "best" ? "#34d399" : "#fb7185"
+            const labelColor = arrow.labelTone === "warning" ? "#fb923c" : arrow.labelTone === "worst" ? "#fb7185" : color
             return (
               <g key={`${arrow.from}-${arrow.to}-${index}`}>
                 <line
@@ -887,6 +914,7 @@ export function ChessgroundBoard({
                   x2={endX}
                   y2={endY}
                   stroke="rgba(0, 0, 0, 0.75)"
+                  strokeOpacity="0.7"
                   strokeWidth="18"
                   strokeLinecap="round"
                 />
@@ -896,6 +924,7 @@ export function ChessgroundBoard({
                   x2={endX}
                   y2={endY}
                   stroke={color}
+                  strokeOpacity="0.7"
                   strokeWidth="10"
                   strokeLinecap="round"
                   markerEnd={`url(#analysis-arrow-${arrow.tone})`}
@@ -908,13 +937,13 @@ export function ChessgroundBoard({
                     height="32"
                     rx="10"
                     fill="rgba(0, 0, 0, 0.88)"
-                    stroke={color}
+                    stroke={labelColor}
                     strokeWidth="3"
                   />
                   <text
                     x="0"
                     y="1"
-                    fill={color}
+                    fill={labelColor}
                     fontSize="18"
                     fontWeight="700"
                     fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"

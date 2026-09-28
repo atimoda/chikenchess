@@ -26,10 +26,31 @@ test('sample registry points to small valid local WAV files with explicit tuning
     }
     assert.ok(registration.map)
     }
-    assert.ok(bankBytes < 700_000, `${bank.id}: each bank stays below 700 KB`)
+    const bankLimit = bank.id === 'chicken-classical-v1' ? 6_000_000 : 700_000
+    assert.ok(bankBytes < bankLimit, `${bank.id}: bank stays within its audio budget`)
   }
-  assert.equal(SAMPLE_BANKS.length, 9)
-  assert.ok(total < 4_200_000, 'acoustic brass layers keep the lazy-loaded catalog below 4.2 MB')
+  assert.equal(SAMPLE_BANKS.length, 10)
+  assert.ok(total < 10_500_000, 'curated acoustic banks keep the lazy-loaded catalog below 10.5 MB')
+})
+
+test('Classical campaigns use recorded multisamples, articulations and dedicated mix profiles', () => {
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const { sampleRegistration } = loadTs('lib/music/sample-banks.ts')
+  for (const [city, revision] of [['leipzig-1723', 'leipzig-2026-09-28-v2'], ['vienna-1825', 'vienna-2026-09-28-v2']]) {
+    const kit = defaultCityKit(city)
+    assert.equal(kit.catalogRevision, revision)
+    const instruments = Object.values(kit.instruments)
+    assert.ok(instruments.length >= 16)
+    assert.ok(instruments.every(instrument => instrument.source?.bank === 'chicken-classical-v1'))
+    assert.ok(new Set(instruments.map(instrument => instrument.source.asset)).size >= 7)
+    assert.deepEqual(instruments[0].performance.steps.map(step => step.variation), [0, 1, 2, 3])
+  }
+  const piano = sampleRegistration({ kind: 'sample', bank: 'chicken-classical-v1', asset: 'violin-sustain', variant: 0, pitched: true })
+  const forte = sampleRegistration({ kind: 'sample', bank: 'chicken-classical-v1', asset: 'violin-sustain', variant: 1, pitched: true })
+  assert.equal(piano.files.length, 5)
+  assert.equal(forte.files.length, 5)
+  assert.notDeepEqual(piano.files, forte.files, 'dynamic variants load distinct recorded layers')
+  assert.equal(sampleRegistration({ kind: 'sample', bank: 'chicken-classical-v1', asset: 'violin-pizzicato', variant: 3, pitched: true }).files.length, 4)
 })
 
 test('Salvador 1992 assigns brass to knights and rooks over complementary surdos', () => {
@@ -56,7 +77,7 @@ test('Salvador 1992 assigns brass to knights and rooks over complementary surdos
 test('new timbre banks reach the intended city styles', () => {
   const { cities } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  const recent = new Set(['chicken-strings-v1', 'chicken-keys-v1', 'chicken-synths-v1', 'chicken-drums-v1', 'chicken-samba-reggae-v2'])
+  const recent = new Set(['chicken-strings-v1', 'chicken-keys-v1', 'chicken-synths-v1', 'chicken-drums-v1', 'chicken-samba-reggae-v2', 'chicken-classical-v1'])
   for (const city of cities) {
     const sources = Object.values(defaultCityKit(city.id).instruments).map(instrument => instrument.source)
     assert.ok(sources.some(source => source?.kind === 'sample' && recent.has(source.bank)), `${city.id}: new timbre`)

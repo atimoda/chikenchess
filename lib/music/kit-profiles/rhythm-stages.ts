@@ -1,6 +1,6 @@
 import { RHYTHM_STAGES, type RhythmStage } from '../../rhythm-stages'
 import { beatsPerBar } from '../meter'
-import { drums, electro, jazz, keys, strings, world, rhythm, voice, type ProfileSource, type StyleProfile } from './types'
+import { classical, drums, electro, jazz, keys, strings, world, rhythm, voice, type ProfileSource, type StyleProfile } from './types'
 
 type Palette = { lead: ProfileSource; comp: ProfileSource; bass: ProfileSource; pad: ProfileSource; reply: ProfileSource; low: ProfileSource; back: ProfileSource; top: ProfileSource }
 const acoustic: Palette = { lead: world('flute'), comp: strings('nylon'), bass: strings('bass-round'), pad: strings('violin'), reply: strings('steel'), low: world('timpani',0,false), back: drums('wood-rim'), top: drums('tambourine') }
@@ -15,8 +15,8 @@ const palettes = {
   rock: { ...acoustic, lead: strings('crunch-electric'), comp: strings('muted-electric'), bass: strings('bass-pick'), pad: keys('organ'), reply: keys('grand'), low: drums('rock-kick'), back: drums('rock-snare'), top: drums('ride') },
   soul: { ...acoustic, lead: jazz('brass'), comp: keys('grand'), pad: keys('organ'), reply: jazz('formant'), low: drums('rock-kick'), back: drums('rock-snare'), top: drums('ride') },
   reggae: { ...acoustic, lead: strings('muted-electric'), comp: strings('muted-electric'), pad: keys('organ'), reply: keys('clav'), low: drums('rock-kick'), back: drums('wood-rim'), top: electro('hat') },
-  baroque: { ...acoustic, lead: strings('violin'), comp: strings('pizzicato'), bass: strings('cello'), pad: strings('violin'), reply: world('flute'), back: strings('pizzicato'), top: keys('celesta') },
-  orchestra: { ...acoustic, lead: strings('violin'), comp: strings('pizzicato'), bass: strings('cello'), pad: jazz('brass'), reply: world('flute'), back: world('timpani',0,false), top: world('crash',0,false) },
+  baroque: { ...acoustic, lead: classical('violin-sustain'), comp: classical('harpsichord'), bass: classical('cello-sustain'), pad: classical('viola-sustain'), reply: classical('alto-recorder-sustain'), low: classical('cello-pizzicato'), back: classical('violin-pizzicato'), top: classical('alto-recorder-staccato') },
+  orchestra: { ...acoustic, lead: classical('violin-sustain',1), comp: classical('violin-pizzicato',2), bass: classical('cello-sustain',1), pad: classical('horn-sustain',1), reply: classical('flute-sustain',1), low: classical('timpani-low',0,false), back: classical('cello-spiccato',1), top: classical('violin-spiccato') },
   turkish: { ...acoustic, lead: strings('steel'), reply: jazz('reed'), back: world('conga',0,false) },
   greek: { ...acoustic, lead: strings('steel'), reply: strings('violin'), comp: strings('nylon') },
   chacarera: { ...acoustic, lead: strings('violin'), comp: strings('nylon'), back: drums('wood-rim') },
@@ -52,6 +52,11 @@ const answer = { active: [false,true,false,true] }
 const lift = { active: [false,false,true,true] }
 const repeat = (pattern: string) => [pattern,pattern,pattern,pattern]
 const chordHits = (pattern: string) => pattern.split(' ').map(cell => cell === '.' ? '.' : '0,2,4').join(' ')
+const rotate = (pattern: string, amount: number) => {
+  const cells = pattern.split(' ')
+  const offset = amount % cells.length
+  return [...cells.slice(offset), ...cells.slice(0, offset)].join(' ')
+}
 const sparse = (pattern: string) => {
   let attack = 0
   return pattern.split(' ').map(cell => cell === '.' ? cell : attack++ % 2 ? '.' : cell).join(' ')
@@ -66,30 +71,97 @@ function profileFor(stage: RhythmStage): StyleProfile {
   const comp = ['soul','baroque','orchestra'].includes(study.palette) || stage.id === 'canterbury-1972' ? study.comp : chordHits(study.comp)
   const lead = study.melodies
   const reply = lead.map(pattern => pattern.split(' ').map((cell,index) => index < Math.floor(n/2) ? '.' : cell).join(' '))
-  const baroque = study.palette === 'baroque' || study.palette === 'orchestra'
+  const baroque = study.palette === 'baroque'
+  const orchestra = study.palette === 'orchestra'
+  const classicalKit = baroque || orchestra
+  const compSections = classicalKit ? [comp, rotate(comp, 2), sparse(rotate(comp, 1)), rotate(comp, 1)] : [comp, comp, sparse(comp), comp]
+  const bassSections = classicalKit ? [study.bass, rotate(study.bass, 2), sparse(rotate(study.bass, 1)), rotate(study.bass, 3)] : [study.bass, study.bass, sparse(study.bass), study.bass]
+  const backSections = classicalKit ? [study.back, rotate(study.back, 1), sparse(study.back), rotate(study.back, 3)] : repeat(study.back)
+  const topSections = classicalKit ? [study.top, rotate(study.top, 2), sparse(study.top), rotate(study.top, 1)] : [study.top, study.top, sparse(study.top), study.top]
+  const baroqueCoda = classical('harpsichord', 1)
+  const orchestraCoda = classical('violin-pizzicato', 1)
   return {
     name: `${stage.name} · ${stage.genre}`, meter: stage.meter, bpm: stage.bpm, root: stage.root, scale: stage.scale,
     harmony: study.harmony ?? 'cadence', swing: 0,
     sections: (study.sectionBars ?? [4,4,2,4]).map(bars => bars * beatsPerBar(stage.meter)),
-    reference: `Estudo original de ${stage.genre}; ${stage.year} é ambientação. Timbres sintéticos locais, sem transcrição de gravações.`,
+    reference: classicalKit
+      ? `Estudo original de ${stage.genre}; ${stage.year} é ambientação. Timbres preparados de gravações CC0 da VCSL e VSCO 2 CE.`
+      : `Estudo original de ${stage.genre}; ${stage.year} é ambientação. Timbres sintéticos locais, sem transcrição de gravações.`,
     url: 'https://viva.pressbooks.pub/openmusictheory/part/rhythm-and-meter/',
     parts: [
-      voice('melody',study.leadName,stage.id==='canterbury-1972'?keys('organ'):sound.lead,lead,{bars:1,gain:.15,octave:4,arrangement:all,gate:.8}),
-      rhythm('Fundação grave',sound.low,repeat(study.low),{gain:baroque ? .05 : .20,arrangement:all}),
-      voice('bass','Baixo principal',sound.bass,[study.bass,study.bass,sparse(study.bass),study.bass],{bars:1,gain:.22,octave:2,arrangement:all,gate:.8,lpf:2400}),
-      rhythm('Resposta da percussão',sound.back,repeat(study.back),{gain:baroque ? .035 : .11,arrangement:all}),
-      voice('response','Acordes rítmicos',sound.comp,[comp,comp,sparse(comp),comp],{bars:1,gain:.10,octave:3,gate:.42,arrangement:all,effects:{pan:-.18}}),
-      rhythm('Subdivisão leve',sound.top,[study.top,study.top,sparse(study.top),study.top],{gain:baroque ? .02 : .04,arrangement:all,hpf:3200}),
-      voice('response','Contracanto',sound.reply,reply,{bars:1,gain:.075,octave:4,arrangement:answer,effects:{pan:.2}}),
-      rhythm('Fecho da frase',drums('wood-rim'),repeat(ending),{gain:.045,arrangement:answer}),
-      voice('harmony','Sustentação harmônica',sound.pad,repeat(held),{bars:2,gain:.055,octave:3,arrangement:lift,attack:.18,release:.35}),
-      rhythm('Acento seco',electro('shaker'),repeat(study.back),{gain:.025,arrangement:answer}),
-      voice('melody','Variação do motivo',sound.reply,[lead[2],lead[3],lead[0],lead[1]],{bars:2,gain:.06,octave:4,arrangement:lift}),
-      rhythm('Virada discreta',baroque?sound.low:drums('brush'),repeat(ending),{gain:.04,arrangement:lift}),
-      voice('harmony','Acordes abertos',sound.pad,repeat(comp),{bars:2,gain:.045,octave:4,arrangement:answer,attack:.12,effects:{reverb:.16}}),
-      voice('response','Bordão de resposta',sound.bass,repeat(sparse(study.bass)),{bars:2,gain:.06,octave:3,arrangement:lift}),
-      voice('texture','Pedal de fecho',baroque?strings('cello'):keys('organ'),repeat(held),{bars:4,gain:.03,octave:3,arrangement:lift,attack:.35,release:.5}),
-      voice('response','Coda dedilhada',sound.comp,[reply[3],reply[2],reply[1],reply[0]],{bars:1,gain:.045,octave:4,arrangement:answer}),
+      voice('melody', study.leadName, stage.id === 'canterbury-1972' ? keys('organ') : sound.lead, lead, {
+        bars: 1, gain: classicalKit ? .115 : .15, octave: 4, arrangement: all, gate: .8,
+        lpf: baroque ? 8200 : orchestra ? 7600 : 7000, hpf: classicalKit ? 180 : 100,
+        effects: classicalKit ? { pan: -.08, reverb: .16 } : undefined,
+      }),
+      rhythm('Fundação grave', sound.low, classicalKit ? [study.low, rotate(study.low, 1), sparse(study.low), rotate(study.low, 2)] : repeat(study.low), {
+        gain: baroque ? .035 : orchestra ? .055 : .20, arrangement: all,
+        lpf: baroque ? 9000 : orchestra ? 1500 : 12000,
+      }),
+      voice('bass', 'Baixo principal', sound.bass, bassSections, {
+        bars: 1, gain: classicalKit ? .15 : .22, octave: 2, arrangement: all, gate: .8,
+        lpf: classicalKit ? 1900 : 2400, hpf: classicalKit ? 40 : 25,
+        effects: classicalKit ? { pan: -.16, reverb: .1 } : undefined,
+      }),
+      rhythm('Resposta da percussão', sound.back, backSections, {
+        gain: baroque ? .04 : orchestra ? .045 : .11, arrangement: all,
+        lpf: baroque ? 6200 : orchestra ? 5000 : 12000,
+      }),
+      voice('response', 'Acordes rítmicos', sound.comp, compSections, {
+        bars: 1, gain: classicalKit ? .075 : .10, octave: 3, gate: .42, arrangement: all,
+        lpf: baroque ? 5800 : orchestra ? 7000 : 7000, hpf: classicalKit ? 180 : 100,
+        effects: classicalKit ? { pan: -.22, reverb: .12 } : { pan: -.18 },
+      }),
+      rhythm('Subdivisão leve', sound.top, topSections, {
+        gain: baroque ? .018 : orchestra ? .025 : .04, arrangement: all,
+        hpf: classicalKit ? 500 : 3200, lpf: classicalKit ? 7800 : 12000,
+      }),
+      voice('response', 'Contracanto', sound.reply, reply, {
+        bars: 1, gain: classicalKit ? .06 : .075, octave: 4, arrangement: answer,
+        effects: { pan: classicalKit ? .22 : .2, ...(classicalKit ? { reverb: .18 } : {}) },
+        lpf: baroque ? 7800 : orchestra ? 8500 : 7000, hpf: classicalKit ? 280 : 100,
+      }),
+      rhythm('Fecho da frase', classicalKit ? classical('timpani-high', 1, false) : drums('wood-rim'), repeat(ending), {
+        gain: baroque ? .018 : orchestra ? .03 : .045, arrangement: answer, lpf: classicalKit ? 1800 : 12000,
+      }),
+      voice('harmony', 'Sustentação harmônica', sound.pad, repeat(held), {
+        bars: 2, gain: classicalKit ? .032 : .055, octave: 3, arrangement: lift,
+        attack: classicalKit ? .22 : .18, release: classicalKit ? .48 : .35,
+        lpf: baroque ? 5200 : orchestra ? 3600 : 4200, hpf: classicalKit ? 180 : 100,
+        effects: classicalKit ? { pan: .12, reverb: .2 } : undefined,
+      }),
+      rhythm('Acento seco', classicalKit ? classical('violin-pizzicato', 3) : electro('shaker'), repeat(study.back), {
+        gain: classicalKit ? .022 : .025, arrangement: answer, hpf: classicalKit ? 250 : 20, lpf: classicalKit ? 7800 : 12000,
+      }),
+      voice('melody', 'Variação do motivo', sound.reply, [lead[2], lead[3], lead[0], lead[1]], {
+        bars: 2, gain: classicalKit ? .045 : .06, octave: 4, arrangement: lift,
+        lpf: classicalKit ? 7800 : 7000, effects: classicalKit ? { pan: .16, reverb: .17 } : undefined,
+      }),
+      rhythm('Virada discreta', baroque ? sound.low : orchestra ? classical('timpani-low', 1, false) : drums('brush'),
+        classicalKit ? [ending, rotate(ending, 1), sparse(ending), rotate(ending, 2)] : repeat(ending), {
+          gain: baroque ? .025 : orchestra ? .035 : .04, arrangement: lift, lpf: classicalKit ? 1700 : 12000,
+        }),
+      voice('harmony', 'Acordes abertos', sound.pad, repeat(comp), {
+        bars: 2, gain: classicalKit ? .028 : .045, octave: 4, arrangement: answer,
+        attack: classicalKit ? .16 : .12, release: classicalKit ? .3 : .35,
+        effects: { reverb: classicalKit ? .2 : .16 },
+        lpf: baroque ? 6200 : orchestra ? 4000 : 4200, hpf: classicalKit ? 220 : 100,
+      }),
+      voice('response', 'Bordão de resposta', sound.bass, repeat(sparse(study.bass)), {
+        bars: 2, gain: classicalKit ? .045 : .06, octave: 3, arrangement: lift, lpf: classicalKit ? 2800 : 7000,
+      }),
+      voice('texture', 'Pedal de fecho', baroque ? classical('cello-sustain', 1) : orchestra ? sound.pad : strings('cello'), repeat(held), {
+        bars: 4, gain: classicalKit ? .022 : .03, octave: 3, arrangement: lift,
+        attack: classicalKit ? .42 : .35, release: classicalKit ? .65 : .5,
+        lpf: baroque ? 1900 : orchestra ? 3400 : 4200, hpf: classicalKit ? 45 : 100,
+        effects: classicalKit ? { pan: .18, reverb: .22 } : undefined,
+      }),
+      voice('response', 'Coda dedilhada', baroque ? baroqueCoda : orchestra ? orchestraCoda : sound.comp,
+        [reply[3], rotate(reply[2], 1), reply[1], rotate(reply[0], 2)], {
+          bars: 1, gain: classicalKit ? .035 : .045, octave: 4, arrangement: answer,
+          lpf: classicalKit ? 6900 : 7000, hpf: classicalKit ? 200 : 100,
+          effects: classicalKit ? { pan: .12, reverb: .14 } : undefined,
+        }),
     ],
   }
 }

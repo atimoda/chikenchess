@@ -1,16 +1,16 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('../helpers/music.cjs')
-const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation, rankedMoveReward } = loadTs('lib/chess-evaluation.ts')
+const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation, rankedMoveReward, rankedMoveImpact } = loadTs('lib/chess-evaluation.ts')
 const candidates = ['a2a3','b2b3','c2c3','d2d3','e2e3','f2f3'].map(uci => ({ uci, san: uci.slice(2) }))
 function setup() {
-  const commands=[], scores=[], analyses=[], played=[], errors=[]
+  const commands=[], scores=[], analyses=[], progress=[], played=[], errors=[], traces=[]
   const queue = new ChessEvaluationQueue({ postMessage: m => commands.push(m) }, {
-    onBusy() {}, onScore: (...score) => scores.push(score), onAnalysis: a => analyses.push(a),
-    onMove: (...move) => played.push(move), onError: error => errors.push(error),
+    onBusy() {}, onScore: (...score) => scores.push(score), onAnalysis: a => analyses.push(a), onProgress: a => progress.push(a),
+    onMove: (...move) => played.push(move), onError: error => errors.push(error), onTrace: trace => traces.push(trace),
   })
   queue.initialize()
-  return {queue,commands,scores,analyses,played,errors}
+  return {queue,commands,scores,analyses,progress,played,errors,traces}
 }
 function ready(queue) { queue.handleMessage('uciok'); queue.handleMessage('readyok') }
 function quick(queue, value=30) { queue.handleMessage(`info depth 7 score cp ${value} nodes 3000 time 12 pv a2a3`); queue.handleMessage('bestmove a2a3') }
@@ -19,12 +19,13 @@ function iteration(queue, depth=3) {
 }
 
 test('move rewards require the complete ranking of the exact player position', () => {
-  const analysis = { fen: 'before', side: 'w', complete: true, best: [{ uci: 'e2e4' }], worst: [{ uci: 'f2f3' }] }
+  const analysis = { fen: 'before', side: 'w', complete: true, final: true, best: [{ uci: 'e2e4' }], worst: [{ uci: 'f2f3' }] }
   assert.equal(rankedMoveReward(analysis, 'before', 'e2e4'), 'best')
   assert.equal(rankedMoveReward(analysis, 'before', 'f2f3'), 'worst')
   assert.equal(rankedMoveReward(analysis, 'before', 'd2d4'), null)
   assert.equal(rankedMoveReward(analysis, 'after', 'e2e4'), null)
   assert.equal(rankedMoveReward({ ...analysis, complete: false }, 'before', 'e2e4'), null)
+  assert.equal(rankedMoveReward({ ...analysis, final: false }, 'before', 'e2e4'), null)
   assert.equal(rankedMoveReward({ ...analysis, side: 'b' }, 'before', 'e2e4'), null)
   assert.equal(rankedMoveReward({ ...analysis, worst: [{ uci: 'e2e4' }] }, 'before', 'e2e4'), 'best')
 })
@@ -35,10 +36,10 @@ test('handshake gates requests; bounded UCI searches replace custom analysis pro
   assert.deepEqual(commands,['uci'])
   ready(queue)
   assert.ok(commands.includes('setoption name Hash value 8'))
-  assert.equal(commands.at(-1),'go nodes 4000 movetime 80')
+  assert.equal(commands.at(-1),'go nodes 6000 movetime 120')
   quick(queue)
   assert.ok(commands.includes('setoption name MultiPV value 6'))
-  assert.equal(commands.at(-1),'go nodes 12000 movetime 180')
+  assert.equal(commands.at(-1),'go nodes 100000 movetime 600')
 })
 test('white evaluation uses UCI root color; rankings stay relative to player', () => {
   const {queue,scores,analyses}=setup();ready(queue)
@@ -46,9 +47,9 @@ test('white evaluation uses UCI root color; rankings stay relative to player', (
   queue.handleMessage('bestmove a2a3')
   assert.deepEqual(scores,[[30,null]])
   assert.deepEqual(analyses.at(-1).best.map(m=>m.score),[60,30,0])
-  assert.deepEqual(analyses.at(-1).best.map(m=>m.change),[90,60,30])
+  assert.deepEqual(analyses.at(-1).best.map(m=>m.change),[0,-30,-60])
   assert.deepEqual(analyses.at(-1).worst.map(m=>m.score),[-90,-60,-30])
-  assert.deepEqual(analyses.at(-1).worst.map(m=>m.change),[-60,-30,0])
+  assert.deepEqual(analyses.at(-1).worst.map(m=>m.change),[-150,-120,-90])
   assert.equal(analyses.at(-1).complete,true)
 })
 test('superseded searches cannot publish or play; only latest position starts after bestmove', () => {
@@ -86,7 +87,69 @@ test('cache includes repetition history; cached analysis never supplies opponent
   queue.handleMessage('bestmove b2b3')
   assert.deepEqual(played,[['b2b3','same-fen']])
   queue.request('same-fen','w',candidates,{position:'position startpos moves history-b'})
-  assert.equal(commands.at(-1),'go nodes 4000 movetime 80')
+  assert.equal(commands.at(-1),'go nodes 6000 movetime 120')
+})
+test('live Stockfish trace publishes every arriving score and retains exact UCI lines', () => {
+  const {queue,traces}=setup();ready(queue);queue.request('live','w',candidates);quick(queue)
+  queue.handleMessage('info depth 3 seldepth 5 multipv 1 score cp 40 nodes 4100 nps 82000 time 50 pv a2a3 b7b6')
+  queue.handleMessage('info depth 3 multipv 2 score cp -12 nodes 4200 time 51 pv b2b3 g7g6')
+  const trace=traces.at(-1)
+  assert.equal(trace.phase,'rank')
+  assert.equal(trace.depth,3)
+  assert.equal(trace.completeDepth,0)
+  assert.equal(trace.lines.length,2)
+  assert.equal(trace.lines[0].score,40)
+  assert.deepEqual(trace.lines[0].pv,['a2a3','b7b6'])
+  assert.equal(trace.nps,82000)
+  assert.ok(trace.raw.at(-1).includes('multipv 2'))
+})
+test('complete depth iterations update move previews but cannot grant rewards before bestmove', () => {
+  const {queue,progress,analyses}=setup();ready(queue);queue.request('preview','w',candidates);quick(queue)
+  iteration(queue,3)
+  const preview=progress.at(-1)
+  assert.equal(preview.depth,3)
+  assert.equal(preview.complete,true)
+  assert.equal(preview.final,false)
+  assert.equal(rankedMoveReward(preview,'preview','a2a3'),null)
+  queue.handleMessage('bestmove a2a3')
+  assert.equal(analyses.at(-1).final,true)
+  assert.equal(rankedMoveReward(analyses.at(-1),'preview','a2a3'),'best')
+})
+test('lopsided positions receive the longer tactical ranking budget', () => {
+  const {queue,commands}=setup();ready(queue);queue.request('tactical','w',candidates);quick(queue,-1400)
+  assert.equal(commands.at(-1),'go nodes 300000 movetime 1500')
+})
+test('a forced losing mate is not a best move or a positive mate label', () => {
+  const {queue,analyses}=setup();ready(queue)
+  const forced=[{uci:'d3d2',san:'Kd2'}]
+  queue.request('forced','w',forced);queue.handleMessage('info depth 4 score mate -1 pv d3d2');queue.handleMessage('bestmove d3d2')
+  queue.handleMessage('info depth 5 multipv 1 score mate -1 pv d3d2 e4e2');queue.handleMessage('bestmove d3d2')
+  const analysis=analyses.at(-1)
+  assert.equal(analysis.best[0].mate,-1)
+  assert.equal(formatEvaluation(analysis.best[0].score,analysis.best[0].mate),'−M1')
+  assert.equal(rankedMoveImpact(analysis.best[0].change,analysis.best[0].mate),'worst')
+  assert.equal(rankedMoveReward(analysis,'forced','d3d2'),null)
+})
+test('incomplete rankings are searched again after revisiting the same position', () => {
+  const {queue,commands,analyses}=setup();ready(queue)
+  queue.request('incomplete','w',candidates);quick(queue)
+  queue.handleMessage('info depth 1 multipv 1 score cp 10 pv a2a3');queue.handleMessage('bestmove a2a3')
+  assert.equal(analyses.at(-1).complete,false)
+  const before=commands.length
+  queue.request('incomplete','w',candidates)
+  assert.ok(commands.length>before)
+  assert.equal(commands.at(-1),'go nodes 6000 movetime 120')
+})
+test('rapid undo and redo only publish the latest position and its trace', () => {
+  const {queue,scores,analyses,traces}=setup();ready(queue)
+  queue.request('mate','w',candidates);queue.reset()
+  queue.request('earlier','b',candidates);queue.request('latest','w',candidates)
+  queue.handleMessage('info depth 7 score mate -1 pv a2a3');queue.handleMessage('bestmove a2a3')
+  assert.deepEqual(scores,[])
+  assert.equal(traces.at(-1).fen,'latest')
+  quick(queue,25);iteration(queue);queue.handleMessage('bestmove a2a3')
+  assert.deepEqual(scores,[[25,null]])
+  assert.equal(analyses.at(-1).fen,'latest')
 })
 test('difficulty changes during analysis apply to the upcoming opponent search', () => {
   const {queue,commands}=setup();ready(queue);queue.request('a','w',candidates,{skill:0});quick(queue);queue.setSkill(12);iteration(queue);queue.handleMessage('bestmove a2a3')

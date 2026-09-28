@@ -6,10 +6,10 @@ A partida usa Stockfish.js 19 Lite, single-thread, em WebAssembly. O arquivo WAS
 
 | Perfil | Hash | Avaliação | Ranking completo | Lance da adversária |
 | --- | ---: | ---: | ---: | ---: |
-| Desktop | 8 MiB | 4.000 nós / 80 ms | 12.000 nós / 180 ms | 6.000 nós / 100 ms |
-| Restrito | 4 MiB | 1.500 nós / 60 ms | 8.000 nós / 120 ms | 2.500 nós / 80 ms |
+| Desktop | 8 MiB | 6.000 nós / 120 ms | 100.000 nós / 600 ms | 6.000 nós / 100 ms |
+| Restrito | 4 MiB | 2.500 nós / 80 ms | 40.000 nós / 350 ms | 2.500 nós / 80 ms |
 
-Cada busca termina no primeiro limite atingido. O ranking usa MultiPV igual à quantidade de lances legais porque encontrar os três piores exige comparar a raiz inteira. Mostrar três itens em vez de cinco reduz desenho e leitura, mas quase não reduz essa parte da busca. A interface só aceita uma iteração na qual todos os lances chegaram à mesma profundidade; se isso não acontece, não inventa a lista dos piores.
+Cada busca termina no primeiro limite atingido. Se a avaliação rápida encontra mate ou uma vantagem absoluta de pelo menos dez peões, o ranking recebe até 300.000 nós / 1.500 ms no desktop ou 120.000 nós / 700 ms no restrito. O ranking usa MultiPV igual à quantidade de lances legais porque encontrar os três piores exige comparar a raiz inteira. Mostrar três itens em vez de cinco reduz desenho e leitura, mas quase não reduz essa parte da busca. A interface só aceita uma iteração na qual todos os lances chegaram à mesma profundidade; se isso não acontece, não inventa a lista dos piores nem guarda o ranking no cache. As diferenças entre lances usam a melhor linha dessa mesma iteração. O botão Debug stockfish exibe as linhas recebidas durante a busca, inclusive variantes. Best/Worst mostram prévias a cada iteração completa; as setas abertas acompanham novas profundidades. Recompensas aguardam o fim da busca.
 
 ## Medição inicial
 
@@ -22,7 +22,7 @@ O comando `node scripts/benchmark-chess.cjs` executa o worker real em cinco posi
 
 A primeira posição inclui aquecimento do WASM; as seguintes ficaram muito abaixo do teto. A posição inicial marcou +0,26 e a posição após e4, +0,31 no perfil desktop; no perfil restrito, +0,15 e +0,19. Isso confirma apenas que o erro grosseiro anterior desapareceu. Busca tão curta continua sujeita a oscilações e não é análise de torneio.
 
-O benchmark mede latência, nós e profundidade. Ele não mede porcentagem de CPU, impacto no áudio, consumo total de memória nem aquecimento de um celular. Esses quatro itens precisam de perfil em aparelhos reais, com a música e os widgets desejados ligados. O painel Strudel expõe os números de cada posição para facilitar esse teste.
+O benchmark mede latência, nós e profundidade. Os números da tabela acima são da configuração antiga, preservados como linha de base, não representam os orçamentos atuais. Ele não mede porcentagem de CPU, impacto no áudio, consumo total de memória nem aquecimento de um celular. Esses quatro itens precisam de perfil em aparelhos reais, com a música e os widgets desejados ligados. O Debug stockfish expõe os números de cada posição para facilitar esse teste.
 
 ## Alternativas se o custo incomodar
 

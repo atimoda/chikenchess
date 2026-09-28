@@ -2,7 +2,7 @@
 export interface SampleAsset {
   id: string
   name: string
-  variants: { name: string; file: string }[]
+  variants: { name: string; file: string; keymap?: Record<string, string> }[]
   rootNote?: string
   keymap?: Record<string, string>
 }
@@ -21,6 +21,75 @@ const generatedBank = (id: string, name: string, assets: readonly (readonly [str
     variants: [{ name: 'Original', file: `/samples/${id}/${assetId}-0.wav` }],
   })),
 })
+const classicalVariant = (asset: string, name: string, revision: string, notes: string[]) => {
+  const keymap = Object.fromEntries(notes.map(note => [note, `/samples/chicken-classical-v1/${asset}-${revision}-${note}.wav`]))
+  return { name, file: Object.values(keymap)[0], keymap }
+}
+const classicalHitVariant = (asset: string, name: string, revision: string) => ({
+  name, file: `/samples/chicken-classical-v1/${asset}-${revision}.wav`,
+})
+const classicalBank: SampleBank = {
+  id: 'chicken-classical-v1', name: 'Chicken Classical · instrumentos acústicos',
+  credit: 'Gravações CC0: VCSL e VSCO 2 CE · preparação em scripts/prepare-classical-recordings.py', license: 'CC0-1.0',
+  assets: [
+    { id: 'violin-sustain', name: 'Violino arqueado', variants: [
+      classicalVariant('violin-sustain', 'Piano', 'piano', ['g3', 'c4', 'e4', 'g4', 'c5']),
+      classicalVariant('violin-sustain', 'Forte', 'forte', ['g3', 'c4', 'e4', 'g4', 'c5']),
+    ] },
+    { id: 'violin-spiccato', name: 'Violino spiccato', variants: [
+      classicalVariant('violin-spiccato', 'Round robin 1', 'rr1', ['c3', 'c4', 'c5']),
+      classicalVariant('violin-spiccato', 'Round robin 2', 'rr2', ['c3', 'c4', 'c5']),
+    ] },
+    { id: 'violin-pizzicato', name: 'Violino pizzicato', variants: [
+      classicalVariant('violin-pizzicato', 'Piano · round robin 1', 'piano-rr1', ['a3', 'c4', 'e4', 'c5']),
+      classicalVariant('violin-pizzicato', 'Piano · round robin 2', 'piano-rr2', ['a3', 'c4', 'e4', 'c5']),
+      classicalVariant('violin-pizzicato', 'Forte · round robin 1', 'forte-rr1', ['a3', 'c4', 'e4', 'c5']),
+      classicalVariant('violin-pizzicato', 'Forte · round robin 2', 'forte-rr2', ['a3', 'c4', 'e4', 'c5']),
+    ] },
+    { id: 'cello-sustain', name: 'Violoncelo arqueado', variants: [
+      classicalVariant('cello-sustain', 'Timbre 1', 'warm', ['a2', 'c3', 'g3', 'd4']),
+      classicalVariant('cello-sustain', 'Timbre 3', 'rich', ['a2', 'c3', 'g3', 'd4']),
+    ] },
+    { id: 'cello-spiccato', name: 'Violoncelo spiccato', variants: [
+      classicalVariant('cello-spiccato', 'Round robin 1', 'rr1', ['a2', 'c3', 'g3']),
+      classicalVariant('cello-spiccato', 'Round robin 2', 'rr2', ['a2', 'c3', 'g3']),
+    ] },
+    { id: 'cello-pizzicato', name: 'Violoncelo pizzicato', variants: [
+      classicalVariant('cello-pizzicato', 'Round robin 1', 'rr1', ['a2', 'c3', 'g3']),
+      classicalVariant('cello-pizzicato', 'Round robin 2', 'rr2', ['a2', 'c3', 'g3']),
+    ] },
+    { id: 'viola-sustain', name: 'Violas arqueadas', variants: [
+      classicalVariant('viola-sustain', 'Timbre 1', 'v1', ['c2', 'c4', 'e4', 'g4']),
+      classicalVariant('viola-sustain', 'Timbre 2', 'v2', ['c2', 'c4', 'e4', 'g4']),
+    ] },
+    { id: 'flute-sustain', name: 'Flauta transversal', variants: [
+      classicalVariant('flute-sustain', 'Timbre 1', 'v1', ['c3', 'c4', 'e4', 'a4']),
+      classicalVariant('flute-sustain', 'Timbre 3', 'v3', ['c3', 'c4', 'e4', 'a4']),
+    ] },
+    { id: 'alto-recorder-sustain', name: 'Flauta doce contralto', variants: [
+      classicalVariant('alto-recorder-sustain', 'Sustain vibrato', 'sus', ['c4', 'e4', 'f#4', 'a#4', 'c5']),
+    ] },
+    { id: 'alto-recorder-staccato', name: 'Flauta doce contralto staccato', variants: [
+      classicalVariant('alto-recorder-staccato', 'Staccato', 'stac', ['c4', 'e4', 'f#4', 'a#4', 'c5']),
+    ] },
+    { id: 'harpsichord', name: 'Cravo flamengo', variants: [
+      classicalVariant('harpsichord', 'Registro baixo', 'low', ['c3', 'd3', 'e3', 'f#3', 'a#3', 'c4', 'd4', 'e4', 'f#4', 'a#4', 'c5']),
+      classicalVariant('harpsichord', 'Registro alto', 'high', ['a3', 'c#4', 'd4', 'e4', 'f#4', 'a#4', 'c5', 'd5']),
+    ] },
+    { id: 'horn-sustain', name: 'Trompa em Fá', variants: [
+      classicalVariant('horn-sustain', 'Timbre 1', 'v1', ['a2', 'c3', 'd2', 'f2']),
+      classicalVariant('horn-sustain', 'Timbre 3', 'v3', ['a2', 'c3', 'd2', 'f2']),
+    ] },
+    { id: 'timpani-low', name: 'Tímpano grave', variants: [
+      classicalHitVariant('timpani-low', 'Round robin 1', 'rr1'),
+      classicalHitVariant('timpani-low', 'Round robin 2', 'rr2'),
+    ] },
+    { id: 'timpani-high', name: 'Tímpano agudo', variants: [
+      classicalHitVariant('timpani-high', 'Round robin 1', 'rr1'),
+      classicalHitVariant('timpani-high', 'Round robin 2', 'rr2'),
+    ] },
+  ],
+}
 export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken World · instrumentos',credit:'ChickenChess · síntese original; scripts/generate-world-samples.py',license:'CC0-1.0',assets:[
  ...[['guitar','Guitarra dedilhada sintética','c3'],['strings','Cordas sintéticas','c4'],['flute','Flauta sintética','c5'],['marimba','Marimba sintética','c4'],['conga','Conga sintética','c3'],['timpani','Tímpano sintético','c2'],['tambourine','Pandeiro sintético',undefined],['crash','Prato sintético',undefined]].map(([id,name,rootNote])=>({id:id!,name:name!,rootNote,variants:[{name:'Original',file:`/samples/chicken-world-v1/${id}-0.wav`}]})),
 ]},{
@@ -102,7 +171,7 @@ export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken 
       keymap: Object.fromEntries([['a#2', 'as2'], ['d3', 'd3'], ['f3', 'f3']].map(([note, file]) => [note, `/samples/chicken-samba-reggae-v2/trombone-${file}-0.wav`])),
     },
   ],
-}]
+}, classicalBank]
 
 export interface SampleSource { kind: 'sample'; bank: string; asset: string; variant: number; pitched: boolean }
 export function sampleAsset(source: SampleSource) {
@@ -113,9 +182,10 @@ export function sampleSound(source: SampleSource) {
 }
 export function sampleRegistration(source: SampleSource) {
   const asset = sampleAsset(source)
-  const file = asset?.variants[source.variant]?.file
-  if (!file) throw new Error(`Sample inexistente: ${source.bank}/${source.asset}/${source.variant}`)
-  const keymap = source.pitched ? (asset.keymap ?? { [asset.rootNote ?? 'c4']: file }) : undefined
+  const variant = asset?.variants[source.variant]
+  if (!asset || !variant?.file) throw new Error(`Sample inexistente: ${source.bank}/${source.asset}/${source.variant}`)
+  const file = variant.file
+  const keymap = source.pitched ? (variant.keymap ?? asset.keymap ?? { [asset.rootNote ?? 'c4']: file }) : undefined
   return { sound: sampleSound(source), file, files: keymap ? Object.values(keymap) : [file],
     map: { [sampleSound(source)]: keymap ?? file } }
 }

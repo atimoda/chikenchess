@@ -1,4 +1,4 @@
-# Atlas rítmico — v0.5.2
+# Atlas rítmico — v0.6.0
 
 19 composições originais, adicionadas às 27 fases anteriores. Datas são ambientação; nenhum kit reproduz uma melodia das canções citadas como referência pelo usuário. Cada kit tem 16 papéis por equipe, quatro variações, uma base grave e motivos escritos para sua subdivisão e seções com densidades distintas.
 

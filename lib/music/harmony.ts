@@ -4,24 +4,24 @@ export const HARMONY_PLAN_IDS = ['static', 'cadence', 'circle', 'descent', 'asce
 export type HarmonyPlanId = typeof HARMONY_PLAN_IDS[number]
 
 type Seventh = 'm7' | '7' | 'maj7'
-type HarmonyPlan = { label: string; degrees: readonly number[]; sevenths?: readonly Seventh[] }
+type HarmonyPlan = { label: string; compactLabel: string; degrees: readonly number[]; sevenths?: readonly Seventh[] }
 
 export const HARMONY_PLANS: Record<HarmonyPlanId, HarmonyPlan> = {
-  static: { label: 'I - Estática', degrees: [0] },
-  cadence: { label: 'I–IV–V–I - Cadência', degrees: [0, 3, 4, 0] },
-  circle: { label: 'I–V–ii–vi - Circular', degrees: [0, 4, 1, 5] },
-  descent: { label: 'i–VII–VI–V - Descendente', degrees: [0, -1, -2, -3] },
-  ascent: { label: 'I–ii–IV–V - Ascendente', degrees: [0, 1, 3, 4] },
-  'pop-punk-154': { label: 'I–V–IV · Pop punk', degrees: [0, 4, 3] },
-  'pop-1564': { label: 'I–V–vi–IV · Pop', degrees: [0, 4, 5, 3] },
-  'rock-6415': { label: 'vi–IV–I–V · Rock', degrees: [5, 3, 0, 4] },
-  'doo-wop-1645': { label: 'I–vi–IV–V · Doo-wop', degrees: [0, 5, 3, 4] },
-  'folk-rock-6425': { label: 'vi–IV–ii–V · Folk rock', degrees: [5, 3, 1, 4] },
-  'jazz-251': { label: 'ii7–V7–Imaj7 · Jazz', degrees: [1, 4, 0], sevenths: ['m7', '7', 'maj7'] },
-  'indie-pop-1465': { label: 'I–IV–vi–V · Indie pop', degrees: [0, 3, 5, 4] },
-  'jazz-3625': { label: 'iii7–VI7–ii7–V7 · Jazz', degrees: [2, 5, 1, 4], sevenths: ['m7', '7', 'm7', '7'] },
-  'southern-rock-415': { label: 'IV–I–V · Southern rock', degrees: [3, 0, 4] },
-  'blues-145': { label: 'I–IV–V · Blues', degrees: [0, 3, 4] },
+  static: { label: 'I - Estática', compactLabel: 'I', degrees: [0] },
+  cadence: { label: 'I–IV–V–I - Cadência', compactLabel: 'I–IV–V–I', degrees: [0, 3, 4, 0] },
+  circle: { label: 'I–V–ii–vi - Circular', compactLabel: 'I–V–ii–vi', degrees: [0, 4, 1, 5] },
+  descent: { label: 'i–VII–VI–V - Descendente', compactLabel: 'i–VII–VI–V', degrees: [0, -1, -2, -3] },
+  ascent: { label: 'I–ii–IV–V - Ascendente', compactLabel: 'I–ii–IV–V', degrees: [0, 1, 3, 4] },
+  'pop-punk-154': { label: 'I–V–IV · Pop punk', compactLabel: 'I–V–IV', degrees: [0, 4, 3] },
+  'pop-1564': { label: 'I–V–vi–IV · Pop', compactLabel: 'I–V–vi–IV', degrees: [0, 4, 5, 3] },
+  'rock-6415': { label: 'vi–IV–I–V · Rock', compactLabel: 'vi–IV–I–V', degrees: [5, 3, 0, 4] },
+  'doo-wop-1645': { label: 'I–vi–IV–V · Doo-wop', compactLabel: 'I–vi–IV–V', degrees: [0, 5, 3, 4] },
+  'folk-rock-6425': { label: 'vi–IV–ii–V · Folk rock', compactLabel: 'vi–IV–ii–V', degrees: [5, 3, 1, 4] },
+  'jazz-251': { label: 'ii7–V7–Imaj7 · Jazz', compactLabel: 'ii7–V7–Imaj7', degrees: [1, 4, 0], sevenths: ['m7', '7', 'maj7'] },
+  'indie-pop-1465': { label: 'I–IV–vi–V · Indie pop', compactLabel: 'I–IV–vi–V', degrees: [0, 3, 5, 4] },
+  'jazz-3625': { label: 'iii7–VI7–ii7–V7 · Jazz', compactLabel: 'iii7–VI7–ii7–V7', degrees: [2, 5, 1, 4], sevenths: ['m7', '7', 'm7', '7'] },
+  'southern-rock-415': { label: 'IV–I–V · Southern rock', compactLabel: 'IV–I–V', degrees: [3, 0, 4] },
+  'blues-145': { label: 'I–IV–V · Blues', compactLabel: 'I–IV–V', degrees: [0, 3, 4] },
 }
 
 const ROMAN_DEGREES = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'] as const
