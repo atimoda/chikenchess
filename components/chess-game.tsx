@@ -2015,7 +2015,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     } as React.CSSProperties}
                   >
                     {costHint('undo', 1)}
-                    <Undo2 className="pointer-events-none absolute bottom-[3px] left-1/2 w-7 h-7 -translate-x-1/2 sm:w-10 sm:h-10" />
+                    <Undo2 className="pointer-events-none absolute inset-0 m-auto h-7 w-7 sm:h-10 sm:w-10" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -2050,7 +2050,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     } as React.CSSProperties}
                   >
                     {costHint('redo', 1)}
-                    <Redo2 className="pointer-events-none absolute bottom-[3px] left-1/2 w-7 h-7 -translate-x-1/2 sm:w-10 sm:h-10" />
+                    <Redo2 className="pointer-events-none absolute inset-0 m-auto h-7 w-7 sm:h-10 sm:w-10" />
                   </Button>
                 </div>
                 <Button

@@ -24,7 +24,7 @@ export const CHANGELOG = [
           "O Rank fica abaixo do Historical score e a barra de rolagem do popup não aparece durante a entrada na partida.",
           "Uma das três melhores jogadas rende 1 ovo dourado; uma das três piores rende 3, quando o ranking da posição estiver completo.",
           "A casa mostra um check verde ou X vermelho, os ovos voam até o contador e a primeira ocorrência de cada tipo recebe um aviso.",
-          "O preço fica sobreposto no topo do botão sem alterar sua altura; o nome permanece centralizado verticalmente e, após uma ação válida, o preço cresce 30% e desaparece com fade."
+          "O preço fica sobreposto no topo do botão sem alterar sua altura; o nome e os ícones de Undo/Redo permanecem centralizados verticalmente; após uma ação válida, o preço cresce 30% e desaparece com fade."
         ]
       },
       {
@@ -36,8 +36,8 @@ export const CHANGELOG = [
       {
         "title": "Interface e controles",
         "items": [
-          "Volume e BPM mostram rótulo preto a 69% e valor branco a 50%, sem fundo; o rótulo tem 6 px à esquerda e o valor, 5 px à direita. O thumb fica centrado e o BPM só atualiza o transporte ao soltar. Nos menus, a opção selecionada fica branca e o hover usa a cor da cidade escurecida.",
-          "Piece Params organiza os knobs em cinco colunas; no hover e no toque/pressionamento, o indicador sai totalmente da circunferência.",
+          "Volume e BPM mostram rótulo preto a 69% e valor branco a 50%, sem fundo; o rótulo tem 6 px à esquerda e o valor, 5 px à direita. O thumb fica centrado; o BPM atualiza o transporte na soltura, e seu balão mantém o último percentual durante o arraste, recalculando na soltura quando o valor muda. Nos menus, a opção selecionada fica branca e o hover usa a cor da cidade escurecida.",
+          "Piece Params organiza os knobs em cinco colunas; no hover e no toque/pressionamento, metade do indicador fica fora da circunferência.",
           "A legenda do Mixer fica em inglês, usa “/” e acompanha a ordem dos lados no tabuleiro.",
           "Quando o saldo zera, o texto e a borda do contador de ovos ficam vermelhos.",
           "Alertas somem após 3 segundos; avisos com botão de ação permanecem até interação. A mensagem de saldo informa quantos ovos faltam."

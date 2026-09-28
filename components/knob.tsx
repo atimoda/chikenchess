@@ -26,7 +26,8 @@ export function Knob({ value, min, max, step = .01, label, onChange, formatValue
   const commit = (v: number) => onChange(Math.max(min, Math.min(max, Math.round(v / step) * step)))
   const amount = Math.max(0, Math.min(1, toAmount(value)))
   const setIndicatorOutside = (outside: boolean) => {
-    if (indicatorRef.current) indicatorRef.current.style.transform = `translateX(-50%) translateY(${outside ? -10 : 0}px)`
+    // The 8px dash shifts 4px so it straddles the knob's outer edge.
+    if (indicatorRef.current) indicatorRef.current.style.transform = `translateX(-50%) translateY(${outside ? -4 : 0}px)`
   }
   const finish = (pointerIsInside = pointerInsideRef.current) => {
     drag.current = null
