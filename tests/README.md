@@ -6,7 +6,7 @@
 | --- | ---: | --- |
 | `model.cases.cjs` | 11 | Identidade, movimentos, captura, ativação, graus e pausa |
 | `creative.cases.cjs` | 6 | Sessão, edição, validação e migração básica |
-| `patterns.cases.cjs` | 10 | Compilação, groove, automação e prévias |
+| `patterns.cases.cjs` | 14 | Compilação, groove, automação e prévias |
 | `kits.cases.cjs` | 21 | Cidades, descrições culturais, nove bancos de samples, instrumentação de Salvador, curadoria de timbre, catálogo e persistência |
 | `runtime.cases.cjs` | 16 | Monitor, pulsos isolados, buses por capacidade, transporte ativo, visibilidade da aba, preparação de samples sem grafo antecipado e gestos temporários |
 | `reactions.cases.cjs` | 9 | Cheque, eventos, regras e transformações de escala |
@@ -14,7 +14,7 @@
 | `meter.cases.cjs` | 6 | Onze compassos, unidade do BPM, agrupamentos, persistência de quintos/sétimos, 19 kits rítmicos, reset de fórmula e equivalência Strudel |
 | `editor.cases.cjs` | 10 | Duração, forma, progressões harmônicas, tétrades de jazz, edição/espelho de variações, loop por peça e slides por nota |
 | `globe.cases.cjs` | 7 | Voo, linhas e colunas do grid com menos pontos nas regiões polares, pins sem colisão, direção do gesto e compensação do popup |
-| `evaluation.cases.cjs` | 18 | UCI e telemetria ao vivo, prévias progressivas sem prêmio antecipado, orçamento normal/tático, sinais/mate, ranking na mesma profundidade, lances forçados, cancelamento e undo/redo rápido, cache completo com histórico, mudanças de dificuldade durante a busca e integração com Stockfish Lite real |
+| `evaluation.cases.cjs` | 21 | UCI e telemetria ao vivo, prévias completas que podem premiar, busca curta da adversária antes do ranking longo, orçamento normal/tático, sinais/mate, ranking na mesma profundidade, lances forçados, cancelamento e undo/redo rápido, cache completo com histórico, mudanças de dificuldade durante a busca e integração com Stockfish Lite real |
 | `progression.cases.cjs` | 5 | Migração, recompensas por vitória e lance ranqueado, avisos únicos, gasto e reset do saldo/dica |
 | `optimization.cases.cjs` | 2 | Equivalência de lanes/acordes e isolamento do cache de reverb |
 | `studies.cases.cjs` | 4 | Estudo Mouth Breather e equivalência da exportação |

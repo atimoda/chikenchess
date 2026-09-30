@@ -9,7 +9,7 @@ import { reverseVariation, randomizeVariation } from '@/lib/music/variation-edit
 import { resizeRoll } from '@/lib/music/piano-roll'
 import { beatsPerBar } from '@/lib/music/meter'
 import { performancePosition } from '@/lib/music/performance'
-import { ArrowLeftRight, Dices, Minus, Pin, Plus } from 'lucide-react'
+import { ArrowLeftRight, Dices, Minus, Pin, Plus, Power } from 'lucide-react'
 import styles from './music-playback.module.css'
 
 const VOICE_VALUE_KEYS = ['gain', 'lpf', 'pan', 'room', 'delay'] as const
@@ -85,8 +85,20 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     {showStatus&&<div className={styles.line}><MusicVoiceBadge monitor={monitor} id={id} /><span>{track?.notes.map(noteLabel).join(' + ')}</span></div>}
     {pianoEditor ? <MusicPianoEditor snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange}/> : <div className={styles.variationViewer} data-loop-enabled={instrument?.loopEnabled!==false}>
       {variationTabs && instrument && onInstrumentChange && <>
-      <div className={styles.variationTabs} role="tablist" aria-label="Variações do instrumento">
-        <div className={styles.variationTabList}>{Array.from({ length: sourceVariationCount }, (_, index) => {
+      <div className={styles.variationTabs}>
+        <button
+          type="button"
+          className={styles.variationToggle}
+          aria-label={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
+          title={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
+          aria-pressed={instrument.loopEnabled === false}
+          data-loop-enabled={instrument.loopEnabled !== false}
+          onClick={event => {
+            event.stopPropagation()
+            onInstrumentChange({ loopEnabled: instrument.loopEnabled === false })
+          }}
+        ><Power size={14}/></button>
+        <div className={styles.variationTabList} role="tablist" aria-label="Variações do instrumento">{Array.from({ length: sourceVariationCount }, (_, index) => {
           const fixed = instrument.selectedVariation === index
           return <button key={index} type="button" role="tab" aria-selected={activeTab === index} aria-pressed={fixed} data-active={activeTab === index} data-fixed={fixed} data-absent={absentVariation===index||undefined} onClick={() => onInstrumentChange({ selectedVariation: fixed ? undefined : index })}>{fixed&&<Pin className={styles.pinnedVariation} aria-hidden="true"/>}{String.fromCharCode(65 + index)}</button>
         })}</div>

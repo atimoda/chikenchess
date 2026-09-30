@@ -54,6 +54,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
+  const pitchSlideEnabled = isOn && !!selectedSquare && !!instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched)
 
   const widgetBorderColor = !isOn 
     ? "rgba(255,255,255,0.1)" 
@@ -114,21 +115,6 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       >
         <Power className={cn("w-4 h-4", isOn ? "drop-shadow-[0_0_8px_currentColor]" : "")} />
       </button>
-
-      {isOn && selectedSquare && instrument && onInstrumentChange && <button
-        type="button"
-        aria-label={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
-        title={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
-        aria-pressed={instrument.loopEnabled === false}
-        className={cn(
-          "absolute right-2 top-2 z-70 flex h-7 w-7 items-center justify-center rounded border bg-background p-0 transition-all",
-          instrument.loopEnabled === false ? "border-red-400/70 text-red-300 opacity-100" : "border-white/25 text-white/60"
-        )}
-        onClick={(event) => {
-          event.stopPropagation()
-          onInstrumentChange({ loopEnabled: instrument.loopEnabled === false })
-        }}
-      ><Power className="h-3.5 w-3.5" /></button>}
 
       {/* Invisible Drag Handle Header - z-60 */}
       <div 
@@ -240,6 +226,9 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               <Knob label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
               <Knob label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
               <Knob label="Length" value={instrument.clip ?? .7} min={.05} max={1} formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
+              <Knob label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} neon={pitchSlideEnabled} />
+              <Knob label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} neon={pitchSlideEnabled} />
+              <Knob label="SWING" value={instrument.extraSwing ?? 0} min={0} max={.5} step={.01} formatValue={v => `${Math.round(v * 100)}%`} onChange={extraSwing => onInstrumentChange?.({ extraSwing })} neon={isOn && !!selectedSquare} />
             </>}
           </div>
           <div className="min-h-[390px]">{playback}</div>

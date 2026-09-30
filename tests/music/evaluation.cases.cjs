@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('../helpers/music.cjs')
-const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation, rankedMoveReward, rankedMoveImpact } = loadTs('lib/chess-evaluation.ts')
+const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation, rankedMoveReward, rankedMoveLabelTone } = loadTs('lib/chess-evaluation.ts')
 const candidates = ['a2a3','b2b3','c2c3','d2d3','e2e3','f2f3'].map(uci => ({ uci, san: uci.slice(2) }))
 function setup() {
   const commands=[], scores=[], analyses=[], progress=[], played=[], errors=[], traces=[]
@@ -19,15 +19,33 @@ function iteration(queue, depth=3) {
 }
 
 test('move rewards require the complete ranking of the exact player position', () => {
-  const analysis = { fen: 'before', side: 'w', complete: true, final: true, best: [{ uci: 'e2e4' }], worst: [{ uci: 'f2f3' }] }
+  const analysis = { fen: 'before', side: 'w', complete: true, final: true, best: [{ uci: 'e2e4', score: 25, mate: null }], worst: [{ uci: 'f2f3', score: -200, mate: null }] }
   assert.equal(rankedMoveReward(analysis, 'before', 'e2e4'), 'best')
   assert.equal(rankedMoveReward(analysis, 'before', 'f2f3'), 'worst')
   assert.equal(rankedMoveReward(analysis, 'before', 'd2d4'), null)
   assert.equal(rankedMoveReward(analysis, 'after', 'e2e4'), null)
   assert.equal(rankedMoveReward({ ...analysis, complete: false }, 'before', 'e2e4'), null)
-  assert.equal(rankedMoveReward({ ...analysis, final: false }, 'before', 'e2e4'), null)
+  assert.equal(rankedMoveReward({ ...analysis, final: false }, 'before', 'e2e4'), 'best')
   assert.equal(rankedMoveReward({ ...analysis, side: 'b' }, 'before', 'e2e4'), null)
   assert.equal(rankedMoveReward({ ...analysis, worst: [{ uci: 'e2e4' }] }, 'before', 'e2e4'), 'best')
+})
+
+test('arrow label tone follows the displayed score, including the one-pawn boundary', () => {
+  assert.equal(rankedMoveLabelTone(4),'best')
+  assert.equal(rankedMoveLabelTone(0),'best')
+  assert.equal(rankedMoveLabelTone(-1),'warning')
+  assert.equal(rankedMoveLabelTone(-100),'warning')
+  assert.equal(rankedMoveLabelTone(-101),'worst')
+  assert.equal(rankedMoveLabelTone(0,-2),'worst')
+})
+
+test('best-list egg reward follows the move score, not its loss against the top line', () => {
+  const analysis = { fen: 'before', side: 'w', legalMoves: 6, complete: true, final: true, best: [{ uci: 'e2e4', score: -100, mate: null, change: -300 }], worst: [{ uci: 'f2f3', score: -500, mate: null }] }
+  assert.equal(rankedMoveReward(analysis,'before','e2e4'),'best')
+  assert.equal(rankedMoveReward({ ...analysis, best: [{ uci: 'e2e4', score: -101, mate: null, change: 0 }] },'before','e2e4'),'worst')
+  assert.equal(rankedMoveReward({ ...analysis, best: [{ uci: 'e2e4', score: 50, mate: -2, change: 0 }] },'before','e2e4'),'worst')
+  assert.equal(rankedMoveReward({ ...analysis, best: [{ uci: 'e2e4', score: -101, mate: null, change: 0 }], worst: [{ uci: 'e2e4', score: -101, mate: null }] },'before','e2e4'),'worst')
+  assert.equal(rankedMoveReward(analysis,'before','f2f3'),'worst')
 })
 
 test('handshake gates requests; bounded UCI searches replace custom analysis protocol', () => {
@@ -39,7 +57,7 @@ test('handshake gates requests; bounded UCI searches replace custom analysis pro
   assert.equal(commands.at(-1),'go nodes 6000 movetime 120')
   quick(queue)
   assert.ok(commands.includes('setoption name MultiPV value 6'))
-  assert.equal(commands.at(-1),'go nodes 100000 movetime 600')
+  assert.equal(commands.at(-1),'go nodes 25000000 movetime 30000 depth 15')
 })
 test('white evaluation uses UCI root color; rankings stay relative to player', () => {
   const {queue,scores,analyses}=setup();ready(queue)
@@ -103,21 +121,36 @@ test('live Stockfish trace publishes every arriving score and retains exact UCI 
   assert.equal(trace.nps,82000)
   assert.ok(trace.raw.at(-1).includes('multipv 2'))
 })
-test('complete depth iterations update move previews but cannot grant rewards before bestmove', () => {
+test('complete depth iterations update move previews and can reward the move they showed', () => {
   const {queue,progress,analyses}=setup();ready(queue);queue.request('preview','w',candidates);quick(queue)
   iteration(queue,3)
   const preview=progress.at(-1)
   assert.equal(preview.depth,3)
   assert.equal(preview.complete,true)
   assert.equal(preview.final,false)
-  assert.equal(rankedMoveReward(preview,'preview','a2a3'),null)
+  assert.equal(rankedMoveReward(preview,'preview','a2a3'),'best')
   queue.handleMessage('bestmove a2a3')
   assert.equal(analyses.at(-1).final,true)
   assert.equal(rankedMoveReward(analyses.at(-1),'preview','a2a3'),'best')
 })
-test('lopsided positions receive the longer tactical ranking budget', () => {
+test('opponent search runs before the long ranking and exposes a legal choice during both phases', () => {
+  const {queue,commands,played}=setup();ready(queue);queue.request('black','b',candidates,{skill:5})
+  queue.handleMessage('info depth 3 score cp 12 pv a2a3')
+  assert.equal(queue.bestAvailableMove('black'),'a2a3')
+  queue.handleMessage('bestmove a2a3')
+  assert.equal(commands.at(-1),'go nodes 6000 movetime 100')
+  queue.handleMessage('info depth 4 score cp 15 pv b2b3')
+  assert.equal(queue.bestAvailableMove('black'),'b2b3')
+  queue.handleMessage('bestmove b2b3')
+  assert.deepEqual(played,[['b2b3','black']])
+  assert.equal(commands.at(-1),'go nodes 25000000 movetime 30000 depth 15')
+  queue.handleMessage('info depth 2 multipv 1 score cp 25 pv c2c3')
+  assert.equal(queue.bestAvailableMove('black'),'c2c3')
+  assert.equal(queue.bestAvailableMove('other'),null)
+})
+test('lopsided desktop positions keep the depth-15 ranking target', () => {
   const {queue,commands}=setup();ready(queue);queue.request('tactical','w',candidates);quick(queue,-1400)
-  assert.equal(commands.at(-1),'go nodes 300000 movetime 1500')
+  assert.equal(commands.at(-1),'go nodes 25000000 movetime 30000 depth 15')
 })
 test('a forced losing mate is not a best move or a positive mate label', () => {
   const {queue,analyses}=setup();ready(queue)
@@ -127,7 +160,7 @@ test('a forced losing mate is not a best move or a positive mate label', () => {
   const analysis=analyses.at(-1)
   assert.equal(analysis.best[0].mate,-1)
   assert.equal(formatEvaluation(analysis.best[0].score,analysis.best[0].mate),'−M1')
-  assert.equal(rankedMoveImpact(analysis.best[0].change,analysis.best[0].mate),'worst')
+  assert.equal(rankedMoveLabelTone(analysis.best[0].score,analysis.best[0].mate),'worst')
   assert.equal(rankedMoveReward(analysis,'forced','d3d2'),null)
 })
 test('incomplete rankings are searched again after revisiting the same position', () => {
@@ -152,23 +185,26 @@ test('rapid undo and redo only publish the latest position and its trace', () =>
   assert.equal(analyses.at(-1).fen,'latest')
 })
 test('difficulty changes during analysis apply to the upcoming opponent search', () => {
-  const {queue,commands}=setup();ready(queue);queue.request('a','w',candidates,{skill:0});quick(queue);queue.setSkill(12);iteration(queue);queue.handleMessage('bestmove a2a3')
+  const {queue,commands}=setup();ready(queue);queue.request('a','w',candidates,{skill:0});queue.setSkill(12);quick(queue)
   assert.ok(commands.includes('setoption name Skill Level value 12'))
   assert.equal(commands.at(-1),'go nodes 6000 movetime 100')
 })
 test('difficulty changes during an opponent search stop and replace it immediately', () => {
-  const {queue,commands,played}=setup();ready(queue);queue.request('a','w',candidates,{skill:0});quick(queue);iteration(queue);queue.handleMessage('bestmove a2a3')
+  const {queue,commands,played}=setup();ready(queue);queue.request('a','w',candidates,{skill:0});quick(queue)
   assert.equal(commands.at(-1),'go nodes 6000 movetime 100')
   queue.setSkill(12)
   assert.equal(commands.at(-1),'stop')
   queue.handleMessage('bestmove a2a3')
+  assert.equal(commands.at(-1),'go nodes 6000 movetime 120')
+  quick(queue)
   assert.ok(commands.slice(-4).includes('setoption name Skill Level value 12'))
   assert.equal(commands.at(-1),'go nodes 6000 movetime 100')
   queue.handleMessage('bestmove b2b3')
   assert.deepEqual(played,[['b2b3','a']])
+  assert.equal(commands.at(-1),'go nodes 25000000 movetime 30000 depth 15')
 })
 test('reset drains opponent search and discards its result', () => {
-  const {queue,played}=setup();ready(queue);queue.request('a','w',candidates,{skill:0});quick(queue);iteration(queue);queue.handleMessage('bestmove a2a3')
+  const {queue,played}=setup();ready(queue);queue.request('a','w',candidates,{skill:0});quick(queue)
   queue.reset();queue.handleMessage('bestmove a2a3')
   assert.deepEqual(played,[])
 })
@@ -185,21 +221,23 @@ test('worker failure makes analysis unavailable instead of silently keeping a st
   assert.equal(errors.length,1);assert.deepEqual(commands,['uci'])
 })
 
-test('real Stockfish Lite WASM handles e4, legal root moves, and mate under both budgets', { timeout: 30000 }, async () => {
-  const {run}=require('../../scripts/benchmark-chess.cjs')
+test('real Stockfish Lite WASM handles legal root moves on desktop and e4 and mate on constrained devices', { timeout: 60000 }, async () => {
+  const {run,positions}=require('../../scripts/benchmark-chess.cjs')
   const {Chess}=require('chess.js')
   for(const constrained of [false,true]) {
-    const {results}=await run(constrained)
+    const {results}=await run(constrained,constrained ? positions : positions.slice(0,1))
     const initial=results.find(r=>r.position==='start'),e4=results.find(r=>r.position==='e4')
     assert.ok(Math.abs(initial.whiteScore)<150)
-    assert.ok(Math.abs(e4.whiteScore)<150,'e4 remains near balanced, not a decisive disadvantage')
-    assert.ok(Math.abs(e4.whiteScore-initial.whiteScore)<100)
+    if(e4) {
+      assert.ok(Math.abs(e4.whiteScore)<150,'e4 remains near balanced, not a decisive disadvantage')
+      assert.ok(Math.abs(e4.whiteScore-initial.whiteScore)<100)
+    }
     for(const result of results) {
       const legal=new Set(new Chess(result.fen).moves({verbose:true}).map(m=>m.from+m.to+(m.promotion??'')))
       for(const move of [...result.best,...result.worst])assert.ok(legal.has(move.uci))
       assert.ok(result.best.length<=3 && result.worst.length<=3)
       if(!result.complete)assert.equal(result.worst.length,0)
     }
-    assert.equal(results.find(r=>r.position==='mate').mate,1)
+    if(constrained) assert.equal(results.find(r=>r.position==='mate').mate,1)
   }
 })

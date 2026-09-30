@@ -1,7 +1,26 @@
-export const RELEASE_LABEL = 'v0.6.0'
+export const RELEASE_LABEL = 'v0.7.0'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    "version": "0.7.0",
+    "date": "29/09/2026",
+    "title": "Análise e controles da partida",
+    "groups": [
+      {
+        "title": "Partida",
+        "items": [
+          "O Debug stockfish mostra acima das linhas ao vivo os mesmos valores da última profundidade completa usados nas setas de Best/Worst moves, deixando clara a diferença entre as duas leituras.",
+          "No desktop, a análise das melhores e piores jogadas busca até a profundidade 15, com limite de 30 segundos. Enquanto as setas estão abertas, número e cor da etiqueta acompanham cada novo ranking completo; scores negativos até −1,00 ficam laranja e abaixo disso ficam vermelhos.",
+          "Os ovos de um lance Best com score inferior a −1,00 ou mate contra o jogador seguem a classificação Worst indicada pela etiqueta vermelha, usando a avaliação do próprio lance.",
+          "A adversária joga entre 1 e 5 segundos após o lance do jogador, mesmo enquanto o ranking longo continua; sua busca curta tem prioridade.",
+          "As casas da última jogada ficam 50% mais escuras. Lances Best/Worst podem render ovos já com um ranking completo provisório, que voam da casa jogada até o saldo. O preço dos botões fica no canto superior direito, e a frase do lance some quando o total de ovos começa a desaparecer.",
+          "Piece Params ganhou Swing adicional ao ritmo do kit, Slide de afinação e Tempo do slide. Os dois controles de slide aparecem desabilitados em samples não afinados.",
+          "Em desktop, os painéis de áudio ficam alinhados em torno do tabuleiro; o status da jogada sobe para antes das peças capturadas, e a energia do loop passa para a linha das abas de variação."
+        ]
+      }
+    ]
+  },
   {
     "version": "0.6.0",
     "date": "28/09/2026",

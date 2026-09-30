@@ -29,7 +29,7 @@ import { GlobalControlPanel } from "./global-control-panel"
 import { MixerWidget } from "./mixer-widget"
 import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
-import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveImpact, rankedMoveReward, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
+import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveLabelTone, rankedMoveReward, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 
 import {
   DropdownMenu,
@@ -49,7 +49,7 @@ interface EggFlight {
   id: number
   amount: number
   direction: 'earn' | 'spend'
-  sourceAction?: 'best' | 'worst'
+  sourceSquare?: Square
   from?: { left: number; top: number; width: number; height: number }
   to?: { left: number; top: number; width: number; height: number }
 }
@@ -127,6 +127,16 @@ function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis
   </div>
 }
 
+function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: 'best' | 'worst'): AnalysisArrow[] {
+  return analysis[kind].map(move => ({
+    from: move.uci.slice(0, 2) as Square,
+    to: move.uci.slice(2, 4) as Square,
+    label: formatEvaluation(move.score, move.mate),
+    tone: kind,
+    labelTone: rankedMoveLabelTone(move.score, move.mate),
+  }))
+}
+
 export function ChessGame({ city, onBack }: ChessGameProps) {
   // The board starts with White at the bottom; keep mixer rows tied to that orientation.
   const boardOrientation: "white" | "black" = "white"
@@ -181,9 +191,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const workerRetryTimerRef = useRef<number | null>(null)
   const aiMoveCallbackRef = useRef<(uci: string) => void>(() => {})
   const aiMoveTimerRef = useRef<number | null>(null)
+  const aiMoveDeadlineRef = useRef<{ fen: string; due: number } | null>(null)
+  const aiMoveCandidateRef = useRef<{ fen: string; uci: string } | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [moveAnalysis, setMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
   const [liveMoveAnalysis, setLiveMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
+  const currentCompleteAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
   const analysisArrowKindRef = useRef<'best' | 'worst' | null>(null)
   const [visibleEggs, setVisibleEggs] = useState(STARTING_GOLDEN_EGGS)
   const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
@@ -311,49 +324,44 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             setSpectrogramOn(false)
             setLiveCodeOn(false)
         } else {
-            // Desktop Layout: Random Quadrants
-            // Widget dimensions (approx)
+            // Desktop Layout: panels flank the centered board at a stable gap.
             const widgetW = 340
             const padding = 20
             const headerH = 80
-            const footerH = 80
-            
-            // Board dimensions (approx 512px width + some margin)
-            const boardHalfWidth = 256
+            const boardSize = Math.min(width * 0.9, Math.max(0, height - 270), 512)
+            const boardHalfWidth = boardSize / 2
             const centerX = width / 2
             const centerY = height / 2
-            
-            // Random padding from board (30 to 70px)
-            const getBoardPadding = () => 30 + Math.random() * (70 - 30)
-            // Random distance from center line (20 to 40px)
-            const getCenterPadding = () => 20 + Math.random() * (40 - 20)
+            const boardGap = 48
+            const centerPadding = 32
+            const leftPanelX = Math.max(padding, centerX - boardHalfWidth - boardGap - widgetW)
+            const rightPanelX = Math.min(width - widgetW - padding, centerX + boardHalfWidth + boardGap)
 
-            // Keep Board Params, mixer, and Strudel stacked on the left.
+            // Keep left-side panels aligned with each other around the board.
             setGlobalPanelPosition({ 
-                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
+                x: leftPanelX,
                 y: headerH
             })
             setMixerPosition({
-                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
+                x: leftPanelX,
                 y: headerH + 260
             })
 
-            // Compact spectrum below the taller piece inspector.
+            // Keep the right-side panels aligned with each other.
             setSpectrogramPosition({
-                x: Math.min(width - widgetW - padding, centerX + boardHalfWidth + getBoardPadding()),
-                y: Math.max(headerH + 560, centerY + getCenterPadding())
+                x: rightPanelX,
+                y: Math.max(headerH + 560, centerY + centerPadding)
             })
 
-            // Top Right (Piece Params / Knobs - stays Top Right)
-            // Closer to bottom of quadrant -> centerY - widgetHeight - centerPadding
+            // Keep Piece Params in the upper-right column.
             setKnobsPosition({ 
-                x: Math.min(width - widgetW - padding, centerX + boardHalfWidth + getBoardPadding()), 
-                y: Math.max(headerH, centerY - 550 - getCenterPadding())
+                x: rightPanelX,
+                y: Math.max(headerH, centerY - 550 - centerPadding)
             })
 
-            // Transport and code below Board Params, clear of Piece Params.
+            // Keep transport and code in the lower-left column.
             setLiveCodePosition({
-                x: Math.max(padding, centerX - boardHalfWidth - getBoardPadding() - widgetW),
+                x: leftPanelX,
                 y: headerH + 530
             })
             
@@ -626,8 +634,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   useEffect(() => {
     if (!eggFlight) return
-    const source = eggFlight.direction === 'earn'
-      ? document.querySelector<HTMLButtonElement>(`[data-ranked-move-action="${eggFlight.sourceAction}"]`)
+    const source = eggFlight.direction === 'earn' && eggFlight.sourceSquare
+      ? boardAreaRef.current?.querySelector<HTMLButtonElement>(`[data-square="${eggFlight.sourceSquare}"]`)
       : eggCounterRef.current
     const target = eggFlight.direction === 'earn' ? eggCounterRef.current : null
     const rectPoint = (rect: { left: number; top: number; width: number; height: number }) => ({
@@ -695,8 +703,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     const queue = new ChessEvaluationQueue(worker, {
       onBusy: setIsEvaluating,
       onScore: (score, mate) => { setLastEvalScore(score); setLastEvalMate(mate); setEvaluationError(null) },
-      onAnalysis: setMoveAnalysis,
-      onProgress: setLiveMoveAnalysis,
+      onAnalysis: analysis => {
+        setMoveAnalysis(analysis)
+        if (!analysis || analysis.complete) currentCompleteAnalysisRef.current = analysis
+      },
+      onProgress: analysis => {
+        setLiveMoveAnalysis(analysis)
+        if (!analysis || analysis.complete) currentCompleteAnalysisRef.current = analysis
+      },
       onTrace: trace => {
         stockfishTraceRef.current = trace
         if (!stockfishDebugOnRef.current || stockfishTraceTimerRef.current !== null) return
@@ -706,19 +720,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         }, 80)
       },
       onMove: (uci, fen) => {
-        if (gameRef.current.fen() !== fen) return
-        if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
-        aiMoveTimerRef.current = window.setTimeout(() => {
-          aiMoveTimerRef.current = null
-          if (gameRef.current.fen() !== fen) return
-          aiMoveCallbackRef.current(uci)
-          setIsThinking(false)
-        }, 500 + Math.random() * 2500)
+        if (gameRef.current.fen() === fen && gameRef.current.turn() === 'b') aiMoveCandidateRef.current = { fen, uci }
       },
       onError: message => {
-        if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
-        aiMoveTimerRef.current = null
-        worker.terminate(); setEvaluationError(message); setLastEvalScore(null); setIsThinking(false)
+        worker.terminate(); setEvaluationError(message); setLastEvalScore(null)
         if (workerRetriesRef.current < 2) {
           workerRetriesRef.current += 1
           workerRetryTimerRef.current = window.setTimeout(() => {
@@ -738,21 +743,27 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       stockfishTraceTimerRef.current = null
       if (workerRetryTimerRef.current !== null) window.clearTimeout(workerRetryTimerRef.current)
       workerRetryTimerRef.current = null
-      if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
-      aiMoveTimerRef.current = null
       queue.reset(); worker.terminate(); evaluationQueueRef.current = null
     }
   }, [workerEpoch])
 
+  useEffect(() => () => {
+    if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
+    aiMoveTimerRef.current = null
+    aiMoveDeadlineRef.current = null
+  }, [])
+
   const requestEvaluation = useCallback((gameInstance: Chess, opponentSkill?: number) => {
     if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
     aiMoveTimerRef.current = null
+    aiMoveCandidateRef.current = null
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     analysisArrowTimeoutRef.current = null
     setAnalysisArrows([])
     analysisArrowKindRef.current = null
     gameRef.current = gameInstance
     if (gameInstance.isGameOver()) {
+      aiMoveDeadlineRef.current = null
       evaluationQueueRef.current?.reset()
       setLastEvalScore(gameInstance.isCheckmate() ? (gameInstance.turn() === 'w' ? -100000 : 100000) : 0)
       setLastEvalMate(gameInstance.isCheckmate() ? 0 : null)
@@ -769,14 +780,28 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       ? `position fen ${history[0].before} moves ${history.map(move => `${move.from}${move.to}${move.promotion ?? ''}`).join(' ')}`
       : `position fen ${gameInstance.fen()}`
     evaluationQueueRef.current?.request(gameInstance.fen(), gameInstance.turn(), candidates, { position, skill: opponentSkill })
+    if (gameInstance.turn() === 'b' && opponentSkill !== undefined) {
+      const fen = gameInstance.fen()
+      const due = aiMoveDeadlineRef.current?.fen === fen
+        ? aiMoveDeadlineRef.current.due
+        : globalThis.performance.now() + 1000 + Math.random() * 4000
+      aiMoveDeadlineRef.current = { fen, due }
+      aiMoveTimerRef.current = window.setTimeout(() => {
+        aiMoveTimerRef.current = null
+        aiMoveDeadlineRef.current = null
+        if (gameRef.current.fen() !== fen || gameRef.current.turn() !== 'b') return
+        const uci = aiMoveCandidateRef.current?.fen === fen ? aiMoveCandidateRef.current.uci
+          : evaluationQueueRef.current?.bestAvailableMove(fen) ?? candidates[0]?.uci
+        if (uci) aiMoveCallbackRef.current(uci)
+        setIsThinking(false)
+      }, Math.max(0, due - globalThis.performance.now()))
+    } else aiMoveDeadlineRef.current = null
   }, [])
 
   const handleAIDifficultyChange = useCallback((level: number) => {
     setAiDepth(level)
     const skill = level === 5 ? 0 : level === 10 ? 5 : level === 15 ? 12 : 20
     if (aiMoveTimerRef.current !== null && gameRef.current.turn() === 'b') {
-      window.clearTimeout(aiMoveTimerRef.current)
-      aiMoveTimerRef.current = null
       setIsThinking(true)
       requestEvaluation(gameRef.current, skill)
     } else {
@@ -794,13 +819,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
     analysisArrowKindRef.current = kind
-    setAnalysisArrows(displayedAnalysis[kind].map(move => ({
-      from: move.uci.slice(0, 2) as Square,
-      to: move.uci.slice(2, 4) as Square,
-      label: formatEvaluation(move.score, move.mate),
-      tone: kind,
-      labelTone: kind === 'best' ? rankedMoveImpact(move.change, move.mate) : 'worst',
-    })))
+    setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
     analysisArrowTimeoutRef.current = window.setTimeout(() => {
       setAnalysisArrows([])
       analysisArrowKindRef.current = null
@@ -811,12 +830,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   useEffect(() => {
     const kind = analysisArrowKindRef.current
     if (!kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
-    setAnalysisArrows(displayedAnalysis[kind].map(move => ({
-      from: move.uci.slice(0, 2) as Square,
-      to: move.uci.slice(2, 4) as Square,
-      label: formatEvaluation(move.score, move.mate), tone: kind,
-      labelTone: kind === 'best' ? rankedMoveImpact(move.change, move.mate) : 'worst',
-    })))
+    setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
   }, [displayedAnalysis])
 
   const spendEggForAction = (button: HTMLButtonElement, costAction: 'best' | 'undo' | 'redo' | 'worst', amount: number, action: () => void) => {
@@ -858,7 +872,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     <span
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute bottom-[5px] right-[5px] z-10 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[10px] leading-none font-bold text-amber-200 opacity-0 scale-100 transition-[opacity,transform] duration-200",
+        "pointer-events-none absolute top-[5px] right-[5px] z-10 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[10px] leading-none font-bold text-amber-200 opacity-0 scale-100 transition-[opacity,transform] duration-200",
         hoveredCostAction === action && fadingCostAction !== action && "opacity-100",
         fadingCostAction === action && "opacity-0 scale-[1.3]",
       )}
@@ -1024,7 +1038,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         ])
       }
       const uci = `${move.from}${move.to}${move.promotion ?? ''}`
-      const rewardKind = rankedMoveReward(moveAnalysis, move.before, uci)
+      const currentAnalysis = currentCompleteAnalysisRef.current
+      const rewardKind = rankedMoveReward(currentAnalysis, move.before, uci)
       const rewardKey = `${move.before}|${uci}`
       const seenMove = rankedMoveKindsRef.current.has(rewardKey)
       const streakKind = rewardKind ?? (seenMove ? rankedMoveKindsRef.current.get(rewardKey) ?? null : null)
@@ -1048,7 +1063,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               : rewardKind === 'best' ? BEST_STREAK_MESSAGES : WORST_STREAK_MESSAGES)
             : randomMessage(rewardKind === 'best' ? BEST_MOVE_MESSAGES : WORST_MOVE_MESSAGES)
         setRankedMoveAnnouncement({ square: move.to, kind: rewardKind, id, headline, earnedEggs: reward.earnedEggs, streak })
-        setEggFlight({ sourceAction: rewardKind, amount: reward.earnedEggs, direction: 'earn', id })
+        setEggFlight({ sourceSquare: move.to, amount: reward.earnedEggs, direction: 'earn', id })
         if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
         rewardMarkTimerRef.current = window.setTimeout(() => {
           setRankedMoveMark(null)
@@ -1067,7 +1082,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             { duration: 6000 })
         }
       }
-      if (!rewardKind && moveAnalysis?.complete && moveAnalysis.fen === move.before && moveAnalysis.legalMoves === 1) {
+      if (!rewardKind && currentAnalysis?.complete && currentAnalysis.fen === move.before && currentAnalysis.legalMoves === 1) {
         const id = ++rewardSerialRef.current
         setRankedMoveAnnouncement({ square: move.to, kind: 'neutral', id, headline: randomMessage(SINGLE_LEGAL_MOVE_MESSAGES), earnedEggs: 0, streak: false })
         if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
@@ -1122,7 +1137,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       })
       requestEvaluation(gameCopy, aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20)
     },
-    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, moveAnalysis, engineRef, isMobile],
+    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, engineRef, isMobile],
   )
 
   const resetGame = useCallback(() => {
@@ -2104,6 +2119,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             ref={centerContainerRef}
           >
 
+            <div className={cn(
+                "mb-1 w-full text-center text-xs font-mono transition-opacity duration-1000 pointer-events-none",
+                introPhase < 3 ? "opacity-0" : "opacity-100",
+                (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse"
+              )}
+              style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
+            >{gameStatus}</div>
+
             <div className="min-h-[2rem] h-8 w-full px-4 lg:px-0 pointer-events-none">
               <div ref={capturedPiecesViewportRef} className="h-full w-full overflow-hidden">
                 <div
@@ -2231,14 +2254,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   onPositionChange={setStockfishDebugPosition}
                 />}
               </div>
-
-              <div className={cn(
-                  "mb-1 text-center text-xs font-mono transition-opacity duration-1000 pointer-events-none",
-                  introPhase < 3 ? "opacity-0" : "opacity-100",
-                  (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse"
-                )}
-                style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
-              >{gameStatus}</div>
 
               {/* Time Control Buttons - Moved Below Board */}
               <div className={cn(

@@ -41,6 +41,7 @@ export interface Instrument {
   distortionMix?: number
   pitchEnvelope?: number
   pitchAttack?: number
+  extraSwing?: number
   mask?: string
   source?: { kind: 'synth' } | SampleSource
   automations?: Automations
@@ -54,7 +55,7 @@ export interface MovementMapping {
   previewFilter: boolean
 }
 
-export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'notes' | 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'automations' | 'phrases' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled'>>
+export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'notes' | 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'pitchEnvelope' | 'pitchAttack' | 'extraSwing' | 'automations' | 'phrases' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled'>>
 
 export const DEFAULT_MOVEMENT: MovementMapping = {
   fileDegrees: 1, rankDegrees: 0.5, panWidth: 0.5, previewFilter: true,

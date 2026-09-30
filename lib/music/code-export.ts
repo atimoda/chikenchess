@@ -56,6 +56,7 @@ function voiceCode(voice: VoiceSpec): string {
     : voice.phrases.length > 1 ? `pickRestart([${voice.phrases.map(p=>`${event}(${JSON.stringify(p)})`).join(', ')}], mini(${JSON.stringify(voice.sectionPattern)}))` : `${event}(${JSON.stringify(voice.notes)})`
   if (voice.groove && fixed === undefined && !voice.pianoRolls?.some(Boolean)) source += `.struct(${patternBankCode(voice.groove.rhythms,voice.sectionPattern)}).velocity(${patternBankCode(voice.groove.accents,voice.sectionPattern)})`
   if (voice.mask) source += `.mask(${JSON.stringify(voice.mask)})`
+  if (!voice.manual && voice.instrument.extraSwing) source += `.swingBy(${voice.instrument.extraSwing},${voice.beatsPerBar ?? 4})`
   source += Object.entries(voice.controls).map(([key,value])=>`.${key}(${JSON.stringify(value)})`).join('')
   source += Object.entries(voice.automations??{}).map(([key,value])=>`.${key}(${automationCode(value,voice.sectionPattern)}${key==='gain'?`.mul(${Number(voice.controls.gain)})`:key==='lpf'&&voice.preview?`.withValue(x => Math.min(x, ${voice.controls.lpf}))`:''})`).join('')
   return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}))`

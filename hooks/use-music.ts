@@ -135,7 +135,18 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const instrument = selected ? (kit?.instruments[selected.id] ?? instrumentFor(selected)) : null
   const updateInstrument = useCallback((patch: InstrumentPerformanceEdit) => {
     if (!selectedId) return
-    setKit(current => current && ({ ...current, instruments: { ...current.instruments, [selectedId]: { ...current.instruments[selectedId], ...patch } } }))
+    setKit(current => {
+      if (!current) return current
+      const previous = current.instruments[selectedId]
+      const next = { ...previous, ...patch }
+      if (previous.automations && ('pitchEnvelope' in patch || 'pitchAttack' in patch)) {
+        const automations = { ...previous.automations }
+        if ('pitchEnvelope' in patch) delete automations.penv
+        if ('pitchAttack' in patch) delete automations.patt
+        next.automations = automations
+      }
+      return { ...current, instruments: { ...current.instruments, [selectedId]: next } }
+    })
   }, [selectedId])
   const setPieceEffect = useCallback((key: keyof SquareEffects, value: number) => {
     if (!selected || !instrument) return
