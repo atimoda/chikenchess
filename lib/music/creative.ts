@@ -68,7 +68,7 @@ const instrumentSchema = z.object({
   pianoOnly: z.boolean().optional(),
   pianoRolls: z.array(pianoRollSchema.nullable()).max(8).optional(),
   performance: performanceSchema.optional(),
-  distortion: finite(0,10).optional(), distortionMix: finite(0,1).optional(), pitchEnvelope: finite(-24,24).optional(), pitchAttack: finite(.001,2).optional(),
+  distortion: finite(0,10).optional(), distortionMix: finite(0,1).optional(), pitchEnvelope: finite(-24,24).optional(), pitchAttack: finite(.001,2).optional(), extraSwing: finite(0,.5).optional(),
   selectedVariation: z.number().int().min(0).max(7).optional(),
   loopEnabled: z.boolean().optional(),
   mask: z.string().refine(hasMaskBudget, 'Máscara inválida.').optional(),

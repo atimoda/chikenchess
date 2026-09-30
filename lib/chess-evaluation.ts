@@ -24,27 +24,27 @@ export interface ChessMoveAnalysis {
   quickDepth: number
 }
 
-export type RankedMoveImpact = 'best' | 'warning' | 'worst'
+export type RankedMoveLabelTone = 'best' | 'warning' | 'worst'
 
-/** `change` is the candidate's centipawn loss against the best line at the same depth. */
-export function rankedMoveImpact(change: number, mate: number | null = null): RankedMoveImpact {
+/** The arrow label color follows the score printed on that label. */
+export function rankedMoveLabelTone(score: number, mate: number | null = null): RankedMoveLabelTone {
   if (mate !== null && mate < 0) return 'worst'
-  if (change < -100) return 'worst'
-  if (change < 0) return 'warning'
+  if (score < -100) return 'worst'
+  if (score < 0) return 'warning'
   return 'best'
 }
 
-/** A move can earn a reward only from a finished ranking of its starting position. */
+/** A move can earn a reward from the latest complete iteration of its starting position. */
 export function rankedMoveReward(
   analysis: ChessMoveAnalysis | null,
   startingFen: string,
   uci: string,
 ): 'best' | 'worst' | null {
-  if (!analysis?.complete || !analysis.final || analysis.fen !== startingFen || analysis.side !== 'w') return null
+  if (!analysis?.complete || analysis.fen !== startingFen || analysis.side !== 'w') return null
   // There is no choice to reward when the only legal move is forced.
   if (analysis.legalMoves === 1) return null
   const bestMove = analysis.best.find(candidate => candidate.uci === uci)
-  if (bestMove) return rankedMoveImpact(bestMove.change, bestMove.mate) === 'worst' ? 'worst' : 'best'
+  if (bestMove) return rankedMoveLabelTone(bestMove.score, bestMove.mate) === 'worst' ? 'worst' : 'best'
   if (analysis.worst.some(candidate => candidate.uci === uci)) return 'worst'
   return null
 }
@@ -82,7 +82,7 @@ export interface StockfishTrace {
 }
 export const STOCKFISH_WORKER_URL = '/engine/stockfish-19-lite-single.js'
 export const ANALYSIS_BUDGETS = {
-  desktop: { hash: 8, quickNodes: 6000, quickMs: 120, rankNodes: 100000, rankMs: 600, tacticalNodes: 300000, tacticalMs: 1500, moveNodes: 6000, moveMs: 100 },
+  desktop: { hash: 8, quickNodes: 6000, quickMs: 120, rankNodes: 25000000, rankMs: 30000, tacticalNodes: 25000000, tacticalMs: 30000, moveNodes: 6000, moveMs: 100 },
   constrained: { hash: 4, quickNodes: 2500, quickMs: 80, rankNodes: 40000, rankMs: 350, tacticalNodes: 120000, tacticalMs: 700, moveNodes: 2500, moveMs: 80 },
 } as const
 interface Request {
@@ -112,10 +112,15 @@ export class ChessEvaluationQueue {
   private cache = new Map<string, Cached>()
   private budget: typeof ANALYSIS_BUDGETS[keyof typeof ANALYSIS_BUDGETS]
   private lastTrace: StockfishTrace | null = null
-  constructor(private worker: EvaluationWorker, private callbacks: EvaluationCallbacks, constrained = false) {
+  constructor(private worker: EvaluationWorker, private callbacks: EvaluationCallbacks, private constrained = false) {
     this.budget = ANALYSIS_BUDGETS[constrained ? 'constrained' : 'desktop']
   }
   initialize() { this.worker.postMessage('uci') }
+  bestAvailableMove(fen: string): string | null {
+    const active = this.active
+    if (!active || active.cancelled || active.request.fen !== fen || active.request.key !== this.requestedKey) return null
+    return active.completeLines[0]?.uci ?? active.traceLines.get(1)?.uci ?? active.score?.uci ?? null
+  }
   fail(message = 'Stockfish indisponível. Reabra a partida para tentar novamente.') {
     this.failed = true
     this.active = null
@@ -226,7 +231,7 @@ export class ChessEvaluationQueue {
     if (active.phase === 'quick') {
       if (!active.score) { this.fail('A análise não retornou uma avaliação. Reabra a partida para tentar novamente.'); return }
       this.publishScore(active.score, request.side)
-      this.start(request, 'rank', active.score, active.engineMs, active.nodes)
+      this.start(request, request.skill !== undefined ? 'move' : 'rank', active.score, active.engineMs, active.nodes)
     } else if (active.phase === 'rank') {
       const analysis = this.buildAnalysis(active, true)
       if (active.score && analysis.complete) {
@@ -237,13 +242,15 @@ export class ChessEvaluationQueue {
       this.callbacks.onProgress?.(analysis)
       this.emitTrace({ ...this.buildTrace(active), phase: 'finished' })
       this.callbacks.onBusy(false)
-      if (request.skill !== undefined) this.start(request, 'move', null)
-      else this.startQueued()
+      this.startQueued()
     } else {
       const uci = message.split(/\s+/)[1]
       if (request.candidates.some(move => move.uci === uci)) this.callbacks.onMove?.(uci, request.fen)
       else this.fail('Stockfish não retornou um movimento legal.')
-      this.startQueued()
+      if (!this.failed) {
+        if (this.cache.has(request.key)) this.startQueued()
+        else this.start(request, 'rank', active.score, active.quickMs, active.quickNodes)
+      }
     }
   }
   private publishScore(line: Line, side: EvaluationSide) {
@@ -275,7 +282,8 @@ export class ChessEvaluationQueue {
     const tactical = phase === 'rank' && score !== null && (score.mate !== null || Math.abs(score.score) >= 1000)
     const nodes = phase === 'rank' ? (tactical ? this.budget.tacticalNodes : this.budget.rankNodes) : phase === 'move' ? this.budget.moveNodes : this.budget.quickNodes
     const ms = phase === 'rank' ? (tactical ? this.budget.tacticalMs : this.budget.rankMs) : phase === 'move' ? this.budget.moveMs : this.budget.quickMs
-    this.worker.postMessage(`go nodes ${nodes} movetime ${ms}`)
+    const depth = phase === 'rank' && !this.constrained ? ' depth 15' : ''
+    this.worker.postMessage(`go nodes ${nodes} movetime ${ms}${depth}`)
   }
   private emptyTrace(fen: string, side: EvaluationSide, phase: StockfishTrace['phase'], legalMoves: number): StockfishTrace {
     return { fen, side, phase, legalMoves, depth: 0, completeDepth: 0, nodes: 0, engineMs: 0, nps: 0, lines: [], raw: [] }

@@ -89,8 +89,6 @@ export function ChessgroundBoard({
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [pressedPieceSquare, setPressedPieceSquare] = useState<Square | null>(null)
   const [legalMoves, setLegalMoves] = useState<Square[]>([])
-  const [lastMoveWhite, setLastMoveWhite] = useState<{ from: Square; to: Square } | null>(null)
-  const [lastMoveBlack, setLastMoveBlack] = useState<{ from: Square; to: Square } | null>(null)
   const [premove, setPremove] = useState<{ from: Square; to: Square } | null>(null)
   const [dragPiece, setDragPiece] = useState<{
     piece: string
@@ -146,6 +144,7 @@ export function ChessgroundBoard({
   const board = game.board()
   const inCheck = freeMode ? false : game.isCheck()
   const turn = game.turn()
+  const lastMove = freeMode ? null : game.history({ verbose: true }).at(-1) ?? null
 
   const [animatingPiece, setAnimatingPiece] = useState<{
     piece: string
@@ -165,57 +164,6 @@ export function ChessgroundBoard({
     const row = 8 - parseInt(sq[1])
     return { x: col * 12.5, y: row * 12.5 }
   }
-
-  // Handle last move updates from props
-  useEffect(() => {
-    if (!freeMode) {
-      const history = game.history({ verbose: true })
-      
-      const lastMove = history[history.length - 1]
-      
-      if (lastMove && !dragPiece && !animatingPiece) { // Trigger animation only if not dragging
-          // Calculate start and end positions relative to board
-          // This requires knowing the square size and board dimensions
-          // We can use the boardRef to get dimensions, but we need to trigger this effect AFTER render?
-          // Or we can just use relative percentage coordinates (0-7 range)
-          
-          // Only animate if it's a new move we haven't animated yet?
-          // For now, let's assume if history changes, we animate the last move IF it matches our expectations
-          // But wait, the game state updates instantly. The piece is ALREADY at 'to'.
-          // To animate 'slide', we need to:
-          // 1. Hide the piece at 'to' (visually)
-          // 2. Render a floating piece moving from 'from' to 'to'
-          // 3. On complete, show the piece at 'to'
-          
-          // Check if this move is recent enough to animate?
-          // We can just animate every update if the last move changed.
-          
-          // Let's store the last animated move index to avoid re-animating on re-renders
-      }
-
-      // Find last white move
-      // findLast is not available in all environments, so we iterate backwards
-      let lastW = null
-      for (let i = history.length - 1; i >= 0; i--) {
-        if (history[i].color === 'w') {
-          lastW = history[i]
-          break
-        }
-      }
-
-      // Find last black move
-      let lastB = null
-      for (let i = history.length - 1; i >= 0; i--) {
-        if (history[i].color === 'b') {
-          lastB = history[i]
-          break
-        }
-      }
-
-      setLastMoveWhite(lastW ? { from: lastW.from, to: lastW.to } : null)
-      setLastMoveBlack(lastB ? { from: lastB.from, to: lastB.to } : null)
-    }
-  }, [game, freeMode])
 
   // Animation Loop
   useEffect(() => {
@@ -327,11 +275,6 @@ export function ChessgroundBoard({
           })
 
           if (move) {
-            if (move.color === 'w') {
-              setLastMoveWhite({ from: selectedSquare, to: square })
-            } else {
-              setLastMoveBlack({ from: selectedSquare, to: square })
-            }
             onMove(move)
             setSelectedSquare(null)
             setLegalMoves([])
@@ -540,11 +483,6 @@ export function ChessgroundBoard({
                 justDraggedRef.current = false
             }, 100)
 
-            if (dragPiece.piece.startsWith('w')) {
-              setLastMoveWhite({ from: dragPiece.from, to: targetSquare })
-            } else {
-              setLastMoveBlack({ from: dragPiece.from, to: targetSquare })
-            }
             onMove(move)
           }
         } catch {
@@ -606,7 +544,6 @@ export function ChessgroundBoard({
           promotion: "q",
         })
         if (move) {
-          setLastMoveWhite(premove)
           onMove(move)
         }
       } catch {
@@ -664,21 +601,13 @@ export function ChessgroundBoard({
             const isSelected = selectedSquare === square
             const isLegalMove = legalMoves.includes(square)
             const isKingInCheck = kingSquare === square
-            const isLastMoveWhite = lastMoveWhite && (lastMoveWhite.from === square || lastMoveWhite.to === square)
-            const isLastMoveBlack = lastMoveBlack && (lastMoveBlack.from === square || lastMoveBlack.to === square)
-            const isLastMove = isLastMoveWhite || isLastMoveBlack
+            const isLastMove = lastMove?.from === square || lastMove?.to === square
             const isPremoveSquare = premove?.from === square || premove?.to === square
             const isDragging = dragPiece?.from === square
             const isAnimatingTo = animatingPiece?.to === square
             const isSynthSelected = synthSelectedSquare === square
             const isActive = activeSquares?.has(square)
             const isPressedPiece = pressedPieceSquare === square
-
-            // Calculate complementary color for last move
-            // We'll use a CSS filter hue-rotate(180deg) to get complementary color
-            // But we can't apply it to background directly without affecting children
-            // So we'll handle it via style injection or a separate div layer if needed.
-            // Actually, we can just use the hue-rotate on the background div layer.
 
             return (
               <button
@@ -687,7 +616,7 @@ export function ChessgroundBoard({
                 data-square={square}
                 className={cn(
                   "relative aspect-square flex items-center justify-center transition-colors duration-150 w-full",
-                  !isKingInCheck && !isSelected && !isPremoveSquare && !isLastMove && (isLight ? "board-square-light" : "board-square-dark"),
+                  !isKingInCheck && !isSelected && !isPremoveSquare && (isLight ? "board-square-light" : "board-square-dark"),
                   (isSynthSelected || (piece && isSynthSelected)) &&
                     "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]",
                 )}
@@ -698,13 +627,12 @@ export function ChessgroundBoard({
                       ? `${cityColor}40`
                       : isPremoveSquare
                         ? "rgba(59, 130, 246, 0.3)"
-                        : isLastMove
-                          ? (isLight 
-                              ? `color-mix(in srgb, ${cityColor} 20%, #505050bf 80%)` 
-                              : `color-mix(in srgb, ${cityColor} 20%, #1a1a1abf 80%)`)
-                          : isLight
-                            ? `color-mix(in srgb, ${cityColor} 20%, #6c6c6cbf 80%)`
-                            : `color-mix(in srgb, ${cityColor} 20%, #303030bf 80%)`,
+                    : isLight
+                      ? `color-mix(in srgb, ${cityColor} 20%, #6c6c6cbf 80%)`
+                      : `color-mix(in srgb, ${cityColor} 20%, #303030bf 80%)`,
+                  backgroundImage: isLastMove
+                    ? 'linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5))'
+                    : undefined,
                 }}
                 onPointerDown={(e) => {
                   if (!e.isPrimary || e.button !== 0) {

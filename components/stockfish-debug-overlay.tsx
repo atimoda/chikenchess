@@ -85,19 +85,21 @@ export function StockfishDebugOverlay({ trace, analysis, onClose, onRetry, board
           <div>depth {current.depth} · complete {current.completeDepth || '—'} · {current.nodes.toLocaleString()} nodes · {current.engineMs} ms · {current.nps.toLocaleString()} nps</div>
         </div>
         <div className="break-all border-y border-white/15 py-1 text-[9px] text-white/45">{current.fen}</div>
-        <p className="mt-2 text-emerald-300">UCI lines · score from side to move</p>
-        <p className="text-[9px] text-white/45">Latest line per move; depths and bounds may differ. Buttons use the last complete depth.</p>
+        {analysis?.fen === current.fen && analysis.complete && <div className="mt-2 border-b border-white/20 pb-2">
+          <p className="text-amber-300">Best/Worst arrows · complete depth {analysis.depth}{analysis.final ? ' · final' : ' · preview'}</p>
+          <p>Best: {analysis.best.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ')}</p>
+          <p>Worst: {analysis.worst.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ')}</p>
+        </div>}
+        <p className="mt-2 text-emerald-300">Latest UCI lines · score from side to move</p>
+        <p className="text-[9px] text-white/45">{analysis?.fen === current.fen && analysis.complete
+          ? 'These lines may be from a newer, incomplete depth. Compare arrows with the complete-depth ranking above.'
+          : 'These lines may be from different depths or include bounds. Arrows wait for a complete ranking.'}</p>
         <div className="space-y-1">
           {current.lines.length ? current.lines.map(line => <div key={line.multipv} className="border-b border-white/10 py-0.5">
             <div className="flex justify-between gap-1"><span>#{line.multipv} {line.san} ({line.uci})</span><strong className={line.mate !== null && line.mate < 0 ? 'text-red-300' : 'text-emerald-300'}>{formatEvaluation(line.score, line.mate)}{line.bound ? ` ${line.bound}` : ''}</strong></div>
             <div className="text-white/45">d{line.depth} · {line.pv.join(' ')}</div>
           </div>) : <p className="text-white/40">Aguardando linhas…</p>}
         </div>
-        {analysis?.fen === current.fen && <div className="mt-2 border-t border-white/20 pt-1">
-          <p className="text-amber-300">{analysis.final ? 'Publicado' : 'Prévia em atualização'} · profundidade {analysis.depth} · {analysis.complete ? 'todos os lances' : 'incompleto'}</p>
-          <p>Best: {analysis.best.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ') || '—'}</p>
-          <p>Worst: {analysis.worst.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ') || '—'}</p>
-        </div>}
         <p className="mt-2 border-t border-white/20 pt-1 text-white/50">UCI recebido · últimas {current.raw.length} linhas</p>
         <pre className="whitespace-pre-wrap break-all text-[9px] leading-3 text-white/45">{current.raw.join('\n')}</pre>
       </>}

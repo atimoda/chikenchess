@@ -54,6 +54,8 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       : events(voice.notes)
   if(voice.groove&&fixed===undefined&&!voice.pianoRolls?.some(Boolean))pattern=pattern.struct(patternBank(api,voice.groove.rhythms,voice.sectionPattern)).velocity(patternBank(api,voice.groove.accents,voice.sectionPattern))
   if (voice.mask) pattern = pattern.mask(voice.mask)
+  // This is an additional live swing; catalog rolls already contain their authored timing.
+  if (!voice.manual && voice.instrument.extraSwing) pattern = pattern.swingBy(voice.instrument.extraSwing, voice.beatsPerBar ?? 4)
   for (const [key, value] of Object.entries(voice.controls)) pattern = pattern[key](value)
   for (const [key, original] of Object.entries(voice.automations ?? {})) {
     const value=fixed!==undefined&&original.kind==='pattern'?{...original,patterns:[original.patterns[fixed%original.patterns.length]]}:original

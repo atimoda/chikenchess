@@ -29,8 +29,8 @@
 }
 
 @keyframes rankedRewardHeadlineHide {
-  from { visibility: visible; }
-  to { visibility: hidden; }
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes rankedRewardAmountEntry {
@@ -63,13 +63,13 @@
   display: inline-block;
   animation:
     rankedRewardHeadlineEntry 0.5s ease-out both,
-    rankedRewardHeadlineHide 1ms steps(1, end) 1.899s forwards;
+    rankedRewardHeadlineHide 1ms steps(1, start) 1.9s forwards;
 }
 
 .rankedRewardHeadlineStreak {
   animation:
     rankedRewardHeadlineStreakEntry 0.5s ease-out both,
-    rankedRewardHeadlineHide 1ms steps(1, end) 1.899s forwards;
+    rankedRewardHeadlineHide 1ms steps(1, start) 1.9s forwards;
 }
 
 .rankedRewardAmount {
@@ -84,7 +84,7 @@
   .rankedRewardHeadlineStreak {
     animation:
       rankedRewardReducedHeadlineEntry 0.5s ease-out both,
-      rankedRewardHeadlineHide 1ms steps(1, end) 1.899s forwards;
+      rankedRewardHeadlineHide 1ms steps(1, start) 1.9s forwards;
   }
 
   .rankedRewardAmount {

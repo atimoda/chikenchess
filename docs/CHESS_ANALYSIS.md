@@ -2,14 +2,14 @@
 
 ## Configuração atual
 
-A partida usa Stockfish.js 19 Lite, single-thread, em WebAssembly. O arquivo WASM servido tem cerca de 1,7 MiB. Um único worker alterna três trabalhos por posição: avaliação rápida, ranking de todos os lances legais e, quando é a vez da adversária, escolha do lance. Não existe busca ociosa ou ponderação enquanto o usuário pensa.
+A partida usa Stockfish.js 19 Lite, single-thread, em WebAssembly. O arquivo WASM servido tem cerca de 1,7 MiB. Um único worker alterna três trabalhos por posição: avaliação rápida, escolha curta do lance da adversária quando é a vez das pretas, e ranking de todos os lances legais. Não existe busca ociosa ou ponderação enquanto o usuário pensa.
 
 | Perfil | Hash | Avaliação | Ranking completo | Lance da adversária |
 | --- | ---: | ---: | ---: | ---: |
-| Desktop | 8 MiB | 6.000 nós / 120 ms | 100.000 nós / 600 ms | 6.000 nós / 100 ms |
+| Desktop | 8 MiB | 6.000 nós / 120 ms | profundidade 15, até 25.000.000 nós / 30 s | 6.000 nós / 100 ms |
 | Restrito | 4 MiB | 2.500 nós / 80 ms | 40.000 nós / 350 ms | 2.500 nós / 80 ms |
 
-Cada busca termina no primeiro limite atingido. Se a avaliação rápida encontra mate ou uma vantagem absoluta de pelo menos dez peões, o ranking recebe até 300.000 nós / 1.500 ms no desktop ou 120.000 nós / 700 ms no restrito. O ranking usa MultiPV igual à quantidade de lances legais porque encontrar os três piores exige comparar a raiz inteira. Mostrar três itens em vez de cinco reduz desenho e leitura, mas quase não reduz essa parte da busca. A interface só aceita uma iteração na qual todos os lances chegaram à mesma profundidade; se isso não acontece, não inventa a lista dos piores nem guarda o ranking no cache. As diferenças entre lances usam a melhor linha dessa mesma iteração. O botão Debug stockfish exibe as linhas recebidas durante a busca, inclusive variantes. Best/Worst mostram prévias a cada iteração completa; as setas abertas acompanham novas profundidades. Recompensas aguardam o fim da busca.
+Cada busca termina no primeiro limite atingido. No desktop, o ranking normal e o tático compartilham o alvo de profundidade 15 e os mesmos tetos; no perfil restrito, mate ou vantagem absoluta de pelo menos dez peões na avaliação rápida ampliam o ranking para 120.000 nós / 700 ms. O ranking usa MultiPV igual à quantidade de lances legais porque encontrar os três piores exige comparar a raiz inteira. Mostrar três itens em vez de cinco reduz desenho e leitura, mas quase não reduz essa parte da busca. A interface só aceita uma iteração na qual todos os lances chegaram à mesma profundidade; se isso não acontece, não inventa a lista dos piores nem guarda o ranking no cache. As diferenças entre lances usam a melhor linha dessa mesma iteração. O botão Debug stockfish exibe as linhas recebidas durante a busca, inclusive variantes. Best/Worst mostram prévias a cada iteração completa; as setas abertas acompanham novas profundidades, recalculando número e cor da etiqueta a partir do score exibido em cada ranking completo. Uma iteração completa da posição anterior já pode premiar o lance do jogador antes de `bestmove`. A resposta da adversária é sorteada para 1–5 s após o lance do jogador e usa a candidata legal disponível nesse instante; o ranking longo não bloqueia esse prazo.
 
 ## Medição inicial
 
@@ -21,6 +21,8 @@ O comando `node scripts/benchmark-chess.cjs` executa o worker real em cinco posi
 | Restrito | 232 ms | 7–252 ms | 10–22 ms | 22–276 ms |
 
 A primeira posição inclui aquecimento do WASM; as seguintes ficaram muito abaixo do teto. A posição inicial marcou +0,26 e a posição após e4, +0,31 no perfil desktop; no perfil restrito, +0,15 e +0,19. Isso confirma apenas que o erro grosseiro anterior desapareceu. Busca tão curta continua sujeita a oscilações e não é análise de torneio.
+
+Em 29/09/2026, no computador de desenvolvimento, medições isoladas anteriores à escolha do alvo atual mostraram: a posição do primeiro print do Debug (19 lances) completou profundidade 22 em 26,6 s / 17,1 milhões de nós; a do segundo print completou 21 em 14,5 s / 9,9 milhões de nós e iniciou 22 antes do teto de 20 s; um meio-jogo com 48 lances completou apenas 16 em 18,2 s / 12,1 milhões de nós. O alvo foi reduzido posteriormente para 15. Essas medições não incluem áudio nem representam desempenho de outros computadores.
 
 O benchmark mede latência, nós e profundidade. Os números da tabela acima são da configuração antiga, preservados como linha de base, não representam os orçamentos atuais. Ele não mede porcentagem de CPU, impacto no áudio, consumo total de memória nem aquecimento de um celular. Esses quatro itens precisam de perfil em aparelhos reais, com a música e os widgets desejados ligados. O Debug stockfish expõe os números de cada posição para facilitar esse teste.
 

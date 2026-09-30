@@ -9,6 +9,7 @@ interface KnobProps {
   max: number
   step?: number
   label: string
+  ariaLabel?: string
   onChange: (value: number) => void
   formatValue?: (value: number) => string
   neon?: boolean
@@ -17,7 +18,7 @@ interface KnobProps {
   labelPosition?: "top" | "bottom"
 }
 
-export function Knob({ value, min, max, step = .01, label, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top" }: KnobProps) {
+export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top" }: KnobProps) {
   const drag = useRef<{ x: number; y: number; amount: number } | null>(null)
   const indicatorRef = useRef<HTMLDivElement>(null)
   const pointerInsideRef = useRef(false)
@@ -38,7 +39,7 @@ export function Knob({ value, min, max, step = .01, label, onChange, formatValue
   }
   return <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")}>
     {!hideLabel && labelPosition === "top" && <span className="text-[10px] uppercase font-mono text-muted-foreground text-center">{label}</span>}
-    <div role="slider" aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={formatValue?.(value)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
+    <div role="slider" aria-label={ariaLabel ?? label} title={ariaLabel} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={formatValue?.(value)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
       className={cn("relative w-10 h-10 rounded-full bg-secondary border border-border group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]", neon ? "cursor-ew-resize hover:border-[var(--city-neon)]" : "cursor-default", dragging && "border-white")}
       onPointerEnter={() => {
         pointerInsideRef.current = true

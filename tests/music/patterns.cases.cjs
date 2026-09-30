@@ -152,6 +152,55 @@ test('automation scales gain and changes filters without adding note attacks', a
   assert.deepEqual(pattern.queryArc(1, 2).map(h => h.value.gain), [.25, .5, .25, .375])
 })
 
+test('extra swing delays the authored offbeats once and exported Strudel keeps the same onsets', async () => {
+  const api = await strudel()
+  const kit = creative.createCreativeSession()
+  kit.pieces.forEach(piece => { piece.active = piece.id === 'w:b1' })
+  Object.assign(kit.instruments['w:b1'], {
+    phrases: ['~'], performance: undefined, groove: undefined, automations: undefined, mask: undefined,
+    pianoRolls: [{ bars: 1, notes: Array.from({ length: 8 }, (_, index) => ({
+      start: (index + (index % 2 ? .12 : 0)) / 8, duration: .05, degree: index, velocity: 1,
+    })) }],
+  })
+  const snapshot = () => creative.creativeSnapshot(kit, true)
+  const onsets = pattern => pattern.queryArc(0, 1).filter(hap => hap.hasOnset()).map(hap => Number(hap.whole.begin)).sort((a, b) => a - b)
+  const straight = onsets(compileVoice(api, voiceSpecs(snapshot(), null)[0]))
+  assert.ok(Math.abs(straight[1] - .14) < 1e-8, 'the kit timing is already swung')
+  kit.instruments['w:b1'].extraSwing = .25
+  const voice = voiceSpecs(snapshot(), null)[0]
+  const shifted = onsets(compileVoice(api, voice))
+  assert.ok(Math.abs(shifted[1] - .17125) < 1e-8, 'the knob adds its delay to the authored offbeat')
+  assert.equal(shifted[0], straight[0])
+  assert.equal(shifted[2], straight[2])
+  const code = renderMusicCode(snapshot(), null)
+  assert.match(code, /\.swingBy\(0\.25,4\)/)
+  const expression = code.split('\n').filter(line => !line.startsWith('//') && !line.startsWith('setcps(') && !line.startsWith('samples(')).join('\n')
+  const exported = Function('api', `with(api){return (${expression})}`)(api)
+  assert.deepEqual(onsets(exported), shifted)
+  const manual = voiceSpecs(snapshot(), { id: 'w:b1', square: 'b1', mode: 'manual' }).find(candidate => candidate.manual)
+  assert.equal(onsets(compileVoice(api, manual))[0], 0, 'manual board audition stays immediate')
+  kit.instruments['w:b1'].performance = { restart: true, steps: [{ beats: 4, variation: 0, transpose: 0, active: true }] }
+  const arranged = voiceSpecs(snapshot(), null)[0]
+  const arrangedCode = renderMusicCode(snapshot(), null)
+  const arrangedExpression = arrangedCode.split('\n').filter(line => !line.startsWith('//') && !line.startsWith('setcps(') && !line.startsWith('samples(')).join('\n')
+  const arrangedExport = Function('api', `with(api){return (${arrangedExpression})}`)(api)
+  assert.deepEqual(onsets(arrangedExport), onsets(compileVoice(api, arranged)), 'the arrangement applies the added swing once')
+})
+
+test('unpitched samples ignore the instrument pitch slide while keeping their rhythm controls', async () => {
+  const api = await strudel()
+  const kit = cityKits.defaultCityKit('ibiza')
+  const piece = kit.pieces.find(candidate => kit.instruments[candidate.id].source?.kind === 'sample' && !kit.instruments[candidate.id].source.pitched)
+  assert.ok(piece)
+  kit.pieces.forEach(candidate => { candidate.active = candidate.id === piece.id })
+  Object.assign(kit.instruments[piece.id], { pitchEnvelope: 7, pitchAttack: .2, extraSwing: .25 })
+  const voice = voiceSpecs(creative.creativeSnapshot(kit, true), null)[0]
+  assert.equal(voice.unpitched, true)
+  assert.equal(voice.controls.penv, undefined)
+  assert.equal(voice.controls.patt, undefined)
+  assert.ok(compileVoice(api, voice).queryArc(0, 4).some(hap => hap.hasOnset()))
+})
+
 test('all Düsseldorf sections compile using the real Strudel bundle', async () => {
   const api = await strudel()
   const lab = creative.createDusseldorfSession()
