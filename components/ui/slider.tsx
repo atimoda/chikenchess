@@ -11,8 +11,9 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  thumbOffset = 8,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: React.ComponentProps<typeof SliderPrimitive.Root> & { thumbOffset?: number }) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -25,7 +26,7 @@ function Slider({
   const thumbCenterOffsets = _values.map(value => {
     const ratio = max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)))
     // Radix keeps the thumb inside the track at both endpoints; offset by its half-width to align its center with the fill edge.
-    return (ratio - 0.5) * 16
+    return (ratio - 0.5) * thumbOffset * 2
   })
 
   return (

@@ -4,6 +4,7 @@ const { loadTs } = require('../helpers/music.cjs')
 
 const {
   STARTING_GOLDEN_EGGS,
+  STARTING_MATCH_GOLDEN_EGGS,
   GOLDEN_EGGS_PER_CITY_WIN,
   normalizePlayerProfile,
   applyCityVictory,
@@ -50,23 +51,54 @@ test('ranked moves add spendable eggs and historical points, with one notice per
   assert.deepEqual(normalizePlayerProfile({ ...initial, moveRewardNotices: undefined }, 500).moveRewardNotices, { best: false, worst: false })
 })
 
-test('every city victory earns ten spendable eggs and ten permanent points', () => {
+test('city victories credit the match egg amount to spendable eggs and permanent points', () => {
   const initial = normalizePlayerProfile(null, 100)
-  const first = applyCityVictory(initial, 'detroit', 200)
+  const first = applyCityVictory(initial, 'detroit', 200, GOLDEN_EGGS_PER_CITY_WIN)
   assert.equal(first.earnedEggs, GOLDEN_EGGS_PER_CITY_WIN)
   assert.equal(first.profile.goldenEggs, 20)
   assert.equal(first.profile.points, 20)
   assert.equal(first.isFirstTime, true)
 
-  const replay = applyCityVictory(first.profile, 'detroit', 300)
+  const replay = applyCityVictory(first.profile, 'detroit', 300, GOLDEN_EGGS_PER_CITY_WIN)
   assert.equal(replay.profile.goldenEggs, 30)
   assert.equal(replay.profile.points, 30)
   assert.equal(replay.profile.winsCount, 2)
   assert.equal(replay.isFirstTime, false)
 })
 
+test('a city victory credits the final match egg balance as its reward', () => {
+  const initial = normalizePlayerProfile(null, 100)
+  assert.equal(STARTING_MATCH_GOLDEN_EGGS, 1)
+
+  const win = applyCityVictory(initial, 'recife', 200, 4)
+  assert.equal(win.earnedEggs, 4)
+  assert.equal(win.earnedPoints, 4)
+  assert.equal(win.profile.goldenEggs, STARTING_GOLDEN_EGGS + 4)
+  assert.equal(win.profile.points, STARTING_GOLDEN_EGGS + 4)
+
+  const emptyWin = applyCityVictory(win.profile, 'recife', 300, 0)
+  assert.equal(emptyWin.earnedEggs, 0)
+  assert.equal(emptyWin.profile.goldenEggs, win.profile.goldenEggs)
+  assert.equal(emptyWin.profile.winsCount, win.profile.winsCount + 1)
+})
+
+test('victory separates remaining basket eggs from additional collected historical points', () => {
+  const initial = normalizePlayerProfile(null, 100)
+  const win = applyCityVictory(initial, 'recife', 200, 4, 9)
+  assert.equal(win.earnedEggs, 4)
+  assert.equal(win.earnedPoints, 13)
+  assert.equal(win.profile.goldenEggs, initial.goldenEggs + 4)
+  assert.equal(win.profile.points, initial.points + 13)
+  const empty = applyCityVictory(initial, 'recife', 200, 0, 9)
+  assert.equal(empty.profile.goldenEggs, initial.goldenEggs)
+  assert.equal(empty.profile.points, initial.points + 9)
+  assert.equal(empty.isFirstTime, true)
+  const invalid = applyCityVictory(initial, 'recife', 200, -4, -9)
+  assert.equal(invalid.earnedPoints, 0)
+})
+
 test('spending eggs preserves historical points and refuses invalid balances', () => {
-  const earned = applyCityVictory(normalizePlayerProfile(null, 100), 'berlin', 200).profile
+  const earned = applyCityVictory(normalizePlayerProfile(null, 100), 'berlin', 200, GOLDEN_EGGS_PER_CITY_WIN).profile
   const spent = applyGoldenEggSpend(earned, 7, 300)
   assert.ok(spent)
   assert.equal(spent.goldenEggs, 13)

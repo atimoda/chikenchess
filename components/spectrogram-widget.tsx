@@ -15,6 +15,7 @@ interface SpectrogramWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   onPositionChange?: (pos: { x: number; y: number }) => void
   handleRef?: React.RefObject<HTMLDivElement | null>
   toggleRef?: React.RefObject<HTMLButtonElement | null>
+  togglePortalized?: boolean
   isOn: boolean
   onToggle: () => void
   isPlaying: boolean
@@ -27,6 +28,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   onPositionChange,
   handleRef,
   toggleRef,
+  togglePortalized = false,
   isOn,
   onToggle,
   isPlaying,
@@ -147,12 +149,13 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
     >
       <Resizable
         defaultSize={{
-          width: 340,
-          height: 140, // Approx height based on content
+          width: 180,
+          height: 100,
         }}
-        minWidth={200}
+        size={props.style?.position === 'static' ? { width: '100%', height: 100 } : undefined}
+        minWidth={156}
         minHeight={100}
-        enable={{ top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
+        enable={props.style?.position === 'static' ? false : { top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
         className="relative"
         onResizeStart={(event) => {
             event.stopPropagation()
@@ -184,15 +187,19 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
         aria-label={isOn ? 'Desligar Spectrogram' : 'Ligar Spectrogram'}
+        aria-hidden={togglePortalized || undefined}
+        tabIndex={togglePortalized ? -1 : 0}
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          togglePortalized && "invisible pointer-events-none",
           !isOn && "hover:drop-shadow-[0_0_8px_#60a5fa]",
           isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
           ...panelStyle,
           borderColor: widgetBorderColor,
+          backgroundColor: isOn ? undefined : "color-mix(in srgb, var(--background) 50%, transparent)",
           top: -5, 
           left: -8,
           boxShadow: isOn ? `0 0 10px ${cityColor}40` : "none"

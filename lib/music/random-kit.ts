@@ -1,6 +1,7 @@
 import type { CityData } from '../cities-data'
 import { createCreativeSession, creativeSchema, ROOTS, SCALES, type CreativeSession } from './creative'
-import { PATTERN_RECIPES, type PatternFamily } from './pattern-library'
+import { noteRoll } from './piano-roll'
+import { beatsPerBar } from './meter'
 import { SAMPLE_BANKS } from './sample-banks'
 
 // Versioned seed keeps a city's factory arrangement identical in the game and
@@ -40,31 +41,25 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
   kit.scale = pick(variation === '01'
     ? ['Pentatônica menor', 'Pentatônica maior', 'Maior', 'Menor natural', 'Dórica', 'Mixolídia'] as const
     : Object.keys(SCALES) as Array<keyof typeof SCALES>)
-  kit.sectionPattern = pick(['[0@4 1@4 2@4 1@4]/16', '[0@2 1@2 2@4]/8', '[0@4 2@4 1@4 2@4]/16'])
+  const sectionBars = pick([[4, 4, 4, 4], [2, 2, 4], [4, 4, 4, 4]])
+  kit.arrangement = { sections: sectionBars.map((bars, index) => ({
+    id: `section-${String.fromCharCode(97 + index)}`, label: String.fromCharCode(65 + index), beats: bars * beatsPerBar(kit.meter),
+  })) }
 
-  // Shared rhythmic lanes: choose an ensemble feel, then vary its sections.
-  // Keep at least one attack in each lane/section so every active piece speaks.
+  // Seed data becomes explicit notes immediately; no runtime groove interpreter.
   const rhythmSets = [
-    { kick: 'x x x x', snare: '~ x ~ x', hat: 'x*8' },
-    { kick: 'x ~ [~ x] ~', snare: '~ x ~ [x ~]', hat: '[x ~ x] [~ x ~] [x ~ x] [~ x ~]' },
-    { kick: 'x ~ ~ [x ~]', snare: '~ ~ x ~', hat: '[x ~] [~ x] [x ~] [~ x]' },
-    { kick: 'x [~ x] ~ x', snare: '~ [x ~] ~ [~ x]', hat: '[~ x]*4' },
+    { kick: [0, 0, 0, 0], snare: [null, 0, null, 0], hat: Array(8).fill(0) },
+    { kick: [0, null, null, 0, null, null, 0, null], snare: [null, null, 0, null, null, null, 0, 0], hat: [0, null, 0, null, 0, null, 0, 0] },
+    { kick: [0, null, null, 0], snare: [null, null, 0, null], hat: [0, null, null, 0, 0, null, null, 0] },
+    { kick: [0, 0, null, 0], snare: [null, 0, null, 0], hat: [null, 0, null, 0, null, 0, null, 0] },
   ]
   const feel = pick(rhythmSets)
-  const groove = kit.grooves.motorik
-  groove.name = `Groove experimental · ${city.name}`
-  for (const [laneId, lane] of Object.entries(groove.lanes)) {
-    const rhythm = feel[laneId as keyof typeof feel] ?? pick(['~ ~ ~ x', '~ [~ x] ~ ~', '~ ~ [x x] ~', '[~ x] ~ [~ x] ~'])
-    lane.rhythms = [rhythm, rhythm, pick([rhythm, '~ x [~ x] [x x]'])]
-    lane.accents = Array.from({ length: 3 }, () => `1 ${between(.4, .65)} ${between(.65, .95)} ${between(.4, .75)}`)
-  }
 
   const assets = ['kick', 'snare', 'hat', 'clap', 'tom', 'open-hat', 'rim', 'shaker']
-  const lanes = ['kick', 'snare', 'hat', 'clap', 'tom', 'open', 'rim', 'shaker']
-  const families: PatternFamily[] = ['bass', 'bass', 'harmony', 'harmony', 'sequence', 'sequence', 'lead', 'lead']
+  const families = ['bass', 'bass', 'harmony', 'harmony', 'sequence', 'sequence', 'lead', 'lead'] as const
   const roles = shuffle(Array.from({ length: 16 }, (_, i) => i))
   const origins = kit.pieces.filter(p => p.color === 'w').map(p => p.origin).sort()
-  const chords = pick(['[0,2,4]', '[0,3,4]', '[-2,0,2]'])
+  const chords = pick([[0, 2, 4], [0, 3, 4], [-2, 0, 2]])
 
   for (const piece of kit.pieces) {
     // Both sides keep corresponding band roles, with individual interpretations.
@@ -76,7 +71,6 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
     const bass = !percussion && families[role - 8] === 'bass'
     const harmony = !percussion && families[role - 8] === 'harmony'
     piece.active = piece.color === 'w'
-    instrument.mask = undefined
     effects.gain = between(.85, 1.1)
     effects.pitch = 1 // Tuned voices must remain in the shared scale.
     effects.pan = between(-.18, .18)
@@ -93,7 +87,11 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
       Object.assign(instrument, {
         name: `${asset.name} · ${piece.origin}`, behavior: 'pulse', sound: 'sine',
         source: { kind: 'sample', bank: bank.id, asset: asset.id, variant: Math.floor(random() * asset.variants.length), pitched: false },
-        notes: '0', phrases: undefined, groove: { groove: 'motorik', lane: lanes[role] },
+        pianoRolls: Array.from({ length: 3 }, (_, bankIndex) => {
+          const cells = role === 0 ? feel.kick : role === 1 ? feel.snare : role === 2 ? feel.hat : [null, 0, null, null, null, null, 0, null]
+          const roll = noteRoll(cells, 1, .25)
+          return { ...roll, notes: roll.notes.map(note => ({ ...note, velocity: between(.55, 1), ...(bankIndex === 2 ? { pan: between(.35, .65) } : {}) })) }
+        }),
         octave: 2, gain: between(role === 0 ? .45 : .2, role === 0 ? .62 : .35),
         attack: between(.001, .008), release: between(.03, .09), sustain: 1, clip: between(.8, 1),
         lpf: between(11000, 18000), hpf: role === 0 ? 0 : between(0, 100),
@@ -101,14 +99,14 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
       effects.pitch = between(.9, 1.1)
     } else {
       const family = families[role - 8]
-      const recipe = pick(PATTERN_RECIPES.filter(r => r.family === family))
-      const phrases = harmony ? [`${chords}/2`, `<${chords} [0,2,4]>/2`, `${chords}/4`]
-        : [recipe.notes, pick(['0 ~ [2 4] ~', '~ 0 [4 2] [~ 3]', '<[0 2 ~ 4] [4 ~ 2 0]>']), pick(['~ [4 3] 2 ~', '[0 ~] [2 0] ~ 4', '<[0 0 ~ 2] [4 ~ 3 2]>'])]
-      Object.assign(instrument, recipe.instrument, {
-        name: `${recipe.name} · ${piece.origin}`, behavior: harmony ? 'sustain' : 'phrase',
-        source: { kind: 'synth' }, groove: undefined,
+      const banks = harmony ? [[chords, null, chords, null], [chords, [0, 2, 4]], [chords]]
+        : [[0, null, 2, 4, null, 0, 3, null], [0, 2, null, 4, 4, null, 2, 0], [null, 4, 3, 2, 0, null, 2, 0]]
+      Object.assign(instrument, {
+        name: `${family === 'bass' ? 'Baixo' : family === 'harmony' ? 'Acordes' : family === 'lead' ? 'Melodia' : 'Sequência'} · ${piece.origin}`, behavior: harmony ? 'sustain' : 'phrase',
+        source: { kind: 'synth' },
         sound: pick(bass ? ['sine', 'triangle', 'sawtooth'] as const : ['sine', 'triangle', 'square', 'sawtooth'] as const),
-        notes: phrases[0], phrases, octave: bass ? 2 : harmony ? 3 : pick([4, 5]),
+        pianoRolls: banks.map(cells => { const roll = noteRoll(cells, harmony ? 2 : 1, harmony ? .95 : .7); return { ...roll, notes: roll.notes.map(note => ({ ...note, velocity: between(.55, 1) })) } }),
+        octave: bass ? 2 : harmony ? 3 : pick([4, 5]),
         gain: bass ? between(.3, .44) : harmony ? between(.12, .2) : between(.2, .3),
         attack: harmony ? between(.15, .55) : between(.005, .08),
         release: harmony ? between(.2, .65) : between(.04, .22),
@@ -122,12 +120,11 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
         instrument.name = `Sino sequenciado · ${piece.origin}`
       }
     }
-    instrument.automations = {
-      gain: { kind: 'pattern', patterns: [`1 ${between(.5, .85)} ${between(.7, 1)} ${between(.5, .85)}`] },
-      lpf: { kind: 'sine', min: Math.round(instrument.lpf * .65), max: instrument.lpf, cycles: pick([4, 8, 16]) },
-      room: { kind: 'sine', min: effects.reverb * .5, max: effects.reverb, cycles: pick([8, 16, 32]) },
-      delay: { kind: 'pattern', patterns: [`0 ${effects.delay} 0 ${effects.delay}`] },
-    }
+    instrument.lpfRange = { first: Math.round(instrument.lpf * .65), second: instrument.lpf, frequency: 'note' }
+    instrument.reverbRange = { first: effects.reverb * .5, second: effects.reverb, frequency: 'loop' }
+    instrument.arrangement = { restart: false, sections: Object.fromEntries(kit.arrangement.sections.map((section, index) => [section.id, {
+      variation: index % instrument.pianoRolls.length, transpose: 0, active: true,
+    }])) }
   }
   return creativeSchema.parse(kit)
 }

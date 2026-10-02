@@ -8,11 +8,17 @@ import type { MusicPulseMonitor } from "@/lib/music/monitor"
 import { MusicPulseOverlay } from "./music-pulse-overlay"
 import { cn } from "@/lib/utils"
 import rewardStyles from "./chessground-board.module.css"
+import type { MatchPower, MatchPowerKind } from "@/lib/chess-powers"
 
 interface ChessgroundBoardProps {
   game: Chess
+  undoAnimationKey?: number
   onMove: (move: Move) => void
   onBoardClick?: (square: Square) => void
+  armedPower?: MatchPowerKind | null
+  onPowerTarget?: (square: Square) => void
+  matchPowers?: MatchPower[]
+  isMoveAllowed?: (move: Move) => boolean
   onPieceDoubleTap?: (square: Square) => void
   onPieceHold?: (square: Square) => void
   onPieceRelease?: () => void
@@ -44,6 +50,19 @@ export interface AnalysisArrow {
   labelTone: "best" | "warning" | "worst"
 }
 
+interface PieceAnimation {
+  piece: string
+  from: Square
+  to: Square
+  startX: number
+  startY: number
+  targetX: number
+  targetY: number
+  progress: number
+}
+
+type PieceAnimationInput = Omit<PieceAnimation, "progress">
+
 const COLUMNS = ["a", "b", "c", "d", "e", "f", "g", "h"]
 const ROWS = ["8", "7", "6", "5", "4", "3", "2", "1"]
 
@@ -67,11 +86,16 @@ type PieceKey = keyof typeof PiecesSVG
 
 export function ChessgroundBoard({
   game,
+  undoAnimationKey = 0,
   onMove,
   cityColor,
   isThinking,
   orientation: _orientation = "white",
   onBoardClick,
+  armedPower,
+  onPowerTarget,
+  matchPowers = [],
+  isMoveAllowed,
   onPieceDoubleTap,
   synthSelectedSquare,
   activeSquares,
@@ -146,16 +170,8 @@ export function ChessgroundBoard({
   const turn = game.turn()
   const lastMove = freeMode ? null : game.history({ verbose: true }).at(-1) ?? null
 
-  const [animatingPiece, setAnimatingPiece] = useState<{
-    piece: string
-    from: Square
-    to: Square
-    startX: number
-    startY: number
-    targetX: number
-    targetY: number
-    progress: number // 0 to 1
-  } | null>(null)
+  const [animatingPieces, setAnimatingPieces] = useState<PieceAnimation[]>([])
+  const animationFrameRef = useRef<number | null>(null)
 
   const justDraggedRef = useRef(false)
 
@@ -165,45 +181,48 @@ export function ChessgroundBoard({
     return { x: col * 12.5, y: row * 12.5 }
   }
 
-  // Animation Loop
-  useEffect(() => {
-      if (animatingPiece) {
-          const startTime = globalThis.performance.now()
-          const duration = 200 // ms
-          
-          const animate = () => {
-              const now = globalThis.performance.now()
-              const elapsed = now - startTime
-              const progress = Math.min(elapsed / duration, 1)
-              
-              setAnimatingPiece(prev => prev ? { ...prev, progress } : null)
-              
-              if (progress < 1) {
-                  requestAnimationFrame(animate)
-              } else {
-                  setAnimatingPiece(null)
-              }
-          }
-          
-          requestAnimationFrame(animate)
+  const animatePieces = useCallback((pieces: PieceAnimationInput[], duration: number) => {
+    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current)
+    if (pieces.length === 0) {
+      setAnimatingPieces([])
+      return
+    }
+
+    const startTime = globalThis.performance.now()
+    const animate = () => {
+      const progress = Math.min((globalThis.performance.now() - startTime) / duration, 1)
+      setAnimatingPieces(pieces.map(piece => ({ ...piece, progress })))
+      if (progress < 1) animationFrameRef.current = requestAnimationFrame(animate)
+      else {
+        animationFrameRef.current = null
+        setAnimatingPieces([])
       }
-  }, [animatingPiece?.from, animatingPiece?.to]) // Dependency on move identity
+    }
+    setAnimatingPieces(pieces.map(piece => ({ ...piece, progress: 0 })))
+    animationFrameRef.current = requestAnimationFrame(animate)
+  }, [])
+
+  useEffect(() => () => {
+    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current)
+  }, [])
 
   // We need to intercept the game update to set up animation
   // Since 'game' prop changes instantly, we can use a ref to track previous FEN or history length
-  const prevHistoryLen = useRef(0)
+  const prevHistory = useRef(game.history({ verbose: true }))
+  const prevUndoAnimationKey = useRef(undoAnimationKey)
   
   useEffect(() => {
       if (freeMode) return
       const history = game.history({ verbose: true })
-      if (history.length > prevHistoryLen.current) {
+      const previousHistory = prevHistory.current
+      if (history.length > previousHistory.length) {
           const lastMove = history[history.length - 1]
           
           if (!justDraggedRef.current) {
              const from = getCoords(lastMove.from)
              const to = getCoords(lastMove.to)
              
-             setAnimatingPiece({
+             animatePieces([{
                  piece: `${lastMove.color}${lastMove.piece.toUpperCase()}`,
                  from: lastMove.from,
                  to: lastMove.to,
@@ -211,12 +230,28 @@ export function ChessgroundBoard({
                  startY: from.y,
                  targetX: to.x,
                  targetY: to.y,
-                 progress: 0
-             })
+             }], 200)
           }
+      } else if (history.length < previousHistory.length && undoAnimationKey !== prevUndoAnimationKey.current) {
+          const undoneMoves = previousHistory.slice(history.length).reverse()
+          const reverseAnimations = undoneMoves.map(move => {
+            const from = getCoords(move.to)
+            const to = getCoords(move.from)
+            return {
+              piece: `${move.color}${(move.promotion ?? move.piece).toUpperCase()}`,
+              from: move.to,
+              to: move.from,
+              startX: from.x,
+              startY: from.y,
+              targetX: to.x,
+              targetY: to.y,
+            }
+          })
+          animatePieces(reverseAnimations, 120)
       }
-      prevHistoryLen.current = history.length
-  }, [game, freeMode])
+      prevHistory.current = history
+      prevUndoAnimationKey.current = undoAnimationKey
+  }, [game, freeMode, undoAnimationKey, animatePieces])
 
   // Find king position for check highlight
   const findKingSquare = useCallback((): Square | null => {
@@ -268,6 +303,8 @@ export function ChessgroundBoard({
 
       if (selectedSquare) {
         try {
+          const candidate = game.moves({ square: selectedSquare, verbose: true }).find(move => move.to === square && (!move.promotion || move.promotion === 'q'))
+          if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
           const move = game.move({
             from: selectedSquare,
             to: square,
@@ -289,7 +326,7 @@ export function ChessgroundBoard({
         setSelectedSquare(square)
         if (piece.color === turn) {
           try {
-            const moves = game.moves({ square, verbose: true })
+            const moves = game.moves({ square, verbose: true }).filter(move => !isMoveAllowed || isMoveAllowed(move))
             setLegalMoves(moves.map((m) => m.to as Square))
           } catch {
             setLegalMoves([])
@@ -309,7 +346,7 @@ export function ChessgroundBoard({
         }
       }
     },
-    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares, freeMode, onBoardClick],
+    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares, freeMode, onBoardClick, isMoveAllowed],
   )
 
   // Handle drag and drop
@@ -344,11 +381,11 @@ export function ChessgroundBoard({
 
       if (!freeMode) {
         setSelectedSquare(square)
-        const moves = game.moves({ square, verbose: true })
+        const moves = game.moves({ square, verbose: true }).filter(move => !isMoveAllowed || isMoveAllowed(move))
         setLegalMoves(moves.map((m) => m.to as Square))
       }
     },
-    [game, turn, onPieceHold, freeMode],
+    [game, turn, onPieceHold, freeMode, isMoveAllowed],
   )
 
   const handleDragMove = useCallback(
@@ -469,6 +506,8 @@ export function ChessgroundBoard({
         const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
 
         try {
+          const candidate = game.moves({ square: dragPiece.from, verbose: true }).find(move => move.to === targetSquare && (!move.promotion || move.promotion === 'q'))
+          if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
           const move = game.move({
             from: dragPiece.from,
             to: targetSquare,
@@ -500,7 +539,7 @@ export function ChessgroundBoard({
         setLegalMoves([])
       }
     },
-    [game, onMove, freeMode],
+    [game, onMove, freeMode, isMoveAllowed],
   )
 
   useEffect(() => {
@@ -538,6 +577,8 @@ export function ChessgroundBoard({
     if (!freeMode && turn === "w" && premove) {
       // Try to execute premove
       try {
+        const candidate = game.moves({ square: premove.from, verbose: true }).find(move => move.to === premove.to && (!move.promotion || move.promotion === 'q'))
+        if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
         const move = game.move({
           from: premove.from,
           to: premove.to,
@@ -551,7 +592,7 @@ export function ChessgroundBoard({
       }
       setPremove(null)
     }
-  }, [turn, premove, game, onMove, freeMode])
+  }, [turn, premove, game, onMove, freeMode, isMoveAllowed])
 
   return (
     <div className="relative select-none w-full h-full">
@@ -604,10 +645,12 @@ export function ChessgroundBoard({
             const isLastMove = lastMove?.from === square || lastMove?.to === square
             const isPremoveSquare = premove?.from === square || premove?.to === square
             const isDragging = dragPiece?.from === square
-            const isAnimatingTo = animatingPiece?.to === square
+            const isAnimatingTo = animatingPieces.some(animation => animation.to === square)
             const isSynthSelected = synthSelectedSquare === square
             const isActive = activeSquares?.has(square)
             const isPressedPiece = pressedPieceSquare === square
+            const frozen = matchPowers.some(power => power.kind === 'freeze' && power.square === square)
+            const shielded = matchPowers.some(power => power.kind === 'shield' && power.square === square)
 
             return (
               <button
@@ -641,9 +684,19 @@ export function ChessgroundBoard({
                     setPressedPieceSquare(null)
                     return
                   }
+                  if (armedPower && !freeMode) {
+                    e.preventDefault()
+                    tapStartRef.current = null
+                    lastTapRef.current = null
+                    setPressedPieceSquare(null)
+                    setSelectedSquare(null)
+                    setLegalMoves([])
+                    onPowerTarget?.(square)
+                    return
+                  }
                   setPressedPieceSquare(piece ? square : null)
                   if (lastTapRef.current?.square !== square || lastTapRef.current.pointerType !== e.pointerType) lastTapRef.current = null
-                  if (!freeMode && piece?.color === 'w') {
+                  if (!freeMode && piece) {
                     tapStartRef.current = { square, x: e.clientX, y: e.clientY, pointerType: e.pointerType }
                   } else {
                     tapStartRef.current = null
@@ -651,7 +704,7 @@ export function ChessgroundBoard({
                   }
                   e.currentTarget.setPointerCapture(e.pointerId)
                   const hasPiece = !!piece
-                  const isSecondTap = !freeMode && piece?.color === 'w' && lastTapRef.current?.square === square && Date.now() - lastTapRef.current.time < 350
+                  const isSecondTap = !freeMode && !!piece && lastTapRef.current?.square === square && Date.now() - lastTapRef.current.time < 350
                   if (!freeMode && !hasPiece) {
                     setIsSelectingSquares(true)
                     selectionLastSquareRef.current = square
@@ -662,7 +715,7 @@ export function ChessgroundBoard({
                   if (hasPiece || freeMode?.mode === 'play') handleDragStart(e, square)
                 }}
                 onPointerUp={(e) => {
-                  if (freeMode) return
+                  if (freeMode || armedPower) return
                   const start = tapStartRef.current
                   tapStartRef.current = null
                   if (!start || dragStartedRef.current || start.square !== square || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 12) {
@@ -673,7 +726,7 @@ export function ChessgroundBoard({
                   const now = Date.now()
                   if (last?.square === square && last.pointerType === e.pointerType && now - last.time < 350) {
                     lastTapRef.current = null
-                    if (piece?.color === 'w') onPieceDoubleTap?.(square)
+                    if (piece) onPieceDoubleTap?.(square)
                   } else {
                     lastTapRef.current = { square, time: now, pointerType: e.pointerType }
                   }
@@ -739,17 +792,19 @@ export function ChessgroundBoard({
                       : <path d="M22 22 78 78 M78 22 22 78" />}
                   </svg>
                 )}
+                {frozen && <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-[2] bg-[repeating-linear-gradient(125deg,transparent_0px,transparent_10px,rgba(200,239,255,.22)_11px,transparent_14px),radial-gradient(circle_at_25%_20%,rgba(235,250,255,.55),transparent_60%)] shadow-[inset_0_0_15px_rgba(175,230,255,.75)]" />}
                 {piece && (!isDragging || freeMode?.mode === 'play') && !isAnimatingTo && (
                   <div
                     className={cn("relative z-10 w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
                     style={{
-                      filter: isActive || isPressedPiece ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
+                      filter: frozen ? 'grayscale(.7) brightness(1.35) drop-shadow(0 0 7px #bcecff)' : isActive || isPressedPiece ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
                     }}
                     dangerouslySetInnerHTML={{
                       __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "",
                     }}
                   />
                 )}
+                {shielded && <svg aria-hidden="true" viewBox="0 0 64 72" className="pointer-events-none absolute left-[11%] top-[2%] z-[12] h-[96%] w-[78%] opacity-50 drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/><path d="m19 35 9 9 18-21" fill="none" strokeWidth="5"/></svg>}
 
                 {/* Coordinate labels */}
                 {colIndex === 0 && (
@@ -888,26 +943,27 @@ export function ChessgroundBoard({
       )}
 
       {/* Animating piece */}
-      {animatingPiece && (
+      {animatingPieces.map((animation, index) => (
         <div
+          key={`${animation.piece}-${animation.from}-${animation.to}-${index}`}
           className="absolute pointer-events-none z-40 w-[12.5%] h-[12.5%] flex items-center justify-center"
           style={{
-            left: `${animatingPiece.startX + (animatingPiece.targetX - animatingPiece.startX) * animatingPiece.progress}%`,
-            top: `${animatingPiece.startY + (animatingPiece.targetY - animatingPiece.startY) * animatingPiece.progress}%`,
+            left: `${animation.startX + (animation.targetX - animation.startX) * animation.progress}%`,
+            top: `${animation.startY + (animation.targetY - animation.startY) * animation.progress}%`,
             transition: 'none',
           }}
         >
              <div
-                className={cn("w-[85%] h-[85%]", animatingPiece.piece.startsWith('b') && "black-piece-outline")}
+                className={cn("w-[85%] h-[85%]", animation.piece.startsWith('b') && "black-piece-outline")}
                 style={{
                   filter: `drop-shadow(0 0 12px ${cityColor})`,
                 }}
                 dangerouslySetInnerHTML={{
-                  __html: PiecesSVG[animatingPiece.piece as PieceKey] || "",
+                  __html: PiecesSVG[animation.piece as PieceKey] || "",
                 }}
               />
         </div>
-      )}
+      ))}
 
       {/* Dragged piece */}
       {dragPiece && freeMode?.mode !== 'play' && (

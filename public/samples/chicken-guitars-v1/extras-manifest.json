@@ -1,0 +1,68 @@
+{
+  "sources": [
+    [
+      "freepats/spanish-classical-guitar",
+      "6f4eb1b092acc88f5448cea1a0001bd07b971af8"
+    ],
+    [
+      "sfzinstruments/virtuosity_drums",
+      "9f04cf9a734527edfbb0a4eee1f674e45bbf71bc"
+    ]
+  ],
+  "recordings": [
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "nylon-0-e2.wav",
+      "source": "samples/E2.flac",
+      "url": "https://raw.githubusercontent.com/freepats/spanish-classical-guitar/6f4eb1b092acc88f5448cea1a0001bd07b971af8/samples/E2.flac",
+      "source_sha256": "18ce73f4243991132901b47efe3affa155c1b934d838cf02a29df5c62c8706a8",
+      "output_sha256": "a2c5046d144b3001bae71a975049c1a50c8bb44d46dfe4c9c1888c5ca60fe045",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "nylon-0-g2.wav",
+      "source": "samples/G2.flac",
+      "url": "https://raw.githubusercontent.com/freepats/spanish-classical-guitar/6f4eb1b092acc88f5448cea1a0001bd07b971af8/samples/G2.flac",
+      "source_sha256": "71e69e5eff738f668b4e3e2f53f72de7725fd3b7969339bb44aba8e7c1df78d2",
+      "output_sha256": "be88256bcea9f91d5af6f1d2ea7f38cbefd7147f060cab087354b5d5e376d3d3",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "nylon-0-c3.wav",
+      "source": "samples/C3.flac",
+      "url": "https://raw.githubusercontent.com/freepats/spanish-classical-guitar/6f4eb1b092acc88f5448cea1a0001bd07b971af8/samples/C3.flac",
+      "source_sha256": "eac0fe1fc03225d81f813667babee072662c101800bc5ad7fb12d9ef3324b986",
+      "output_sha256": "0032be6aaa5ac0f9240e66d99056f5ac17a9b409d9fdc4e027dce9e0906e3d68",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "nylon-0-e3.wav",
+      "source": "samples/E3.flac",
+      "url": "https://raw.githubusercontent.com/freepats/spanish-classical-guitar/6f4eb1b092acc88f5448cea1a0001bd07b971af8/samples/E3.flac",
+      "source_sha256": "f8cc3192a328f10cdb774ff3bf5efb06d1015e64c5ae141c1c31143bb329c915",
+      "output_sha256": "05f95b756e3a06c99bdab791a6b47230bab737ea6fbc45c16be1df4a84b94bf0",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "nylon-0-g3.wav",
+      "source": "samples/G3.flac",
+      "url": "https://raw.githubusercontent.com/freepats/spanish-classical-guitar/6f4eb1b092acc88f5448cea1a0001bd07b971af8/samples/G3.flac",
+      "source_sha256": "d4f3277f48067a3b7e1818b34d08eeec66d727101c744554632397aeb7dd844d",
+      "output_sha256": "513cbff934d31823d652ddeb01990670ad1899388b5ca5e867cac38f1fde1964",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "nylon-0-c4.wav",
+      "source": "samples/C4.flac",
+      "url": "https://raw.githubusercontent.com/freepats/spanish-classical-guitar/6f4eb1b092acc88f5448cea1a0001bd07b971af8/samples/C4.flac",
+      "source_sha256": "e8fcd63c262ebef3e84d1f24242918cc578f8b0db54049ad109815b01d1226f0",
+      "output_sha256": "86efe728c3d04217788a17de2b827c15d66fd576ffeb859c72ab68298953640b",
+      "license": "CC0-1.0"
+    }
+  ]
+}

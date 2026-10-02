@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 interface KnobProps {
@@ -15,21 +15,44 @@ interface KnobProps {
   neon?: boolean
   logarithmic?: boolean
   hideLabel?: boolean
-  labelPosition?: "top" | "bottom"
+  labelPosition?: "top" | "bottom" | "left" | "right"
+  monitorValue?: number
+  size?: number
+  accentColor?: string
 }
 
-export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top" }: KnobProps) {
+export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top", monitorValue, size = 40, accentColor }: KnobProps) {
   const drag = useRef<{ x: number; y: number; amount: number } | null>(null)
   const indicatorRef = useRef<HTMLDivElement>(null)
   const pointerInsideRef = useRef(false)
+  const lastMonitorValueRef = useRef<number | undefined>(undefined)
+  const flashSequenceRef = useRef(0)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [flashMarker, setFlashMarker] = useState<{ amount: number; sequence: number } | null>(null)
   const toAmount = (v: number) => logarithmic ? (Math.log1p(v) - Math.log1p(min)) / (Math.log1p(max) - Math.log1p(min)) : (v - min) / (max - min)
   const fromAmount = (amount: number) => logarithmic ? Math.expm1(Math.log1p(min) + amount * (Math.log1p(max) - Math.log1p(min))) : min + amount * (max - min)
   const commit = (v: number) => onChange(Math.max(min, Math.min(max, Math.round(v / step) * step)))
   const amount = Math.max(0, Math.min(1, toAmount(value)))
+  useEffect(() => {
+    if (monitorValue === undefined || !Number.isFinite(monitorValue)) {
+      lastMonitorValueRef.current = undefined
+      return
+    }
+    if (Object.is(lastMonitorValueRef.current, monitorValue)) return
+    lastMonitorValueRef.current = monitorValue
+    const amount = Math.max(0, Math.min(1, toAmount(monitorValue)))
+    const sequence = ++flashSequenceRef.current
+    setFlashMarker({ amount, sequence })
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => setFlashMarker(null), 650)
+  }, [monitorValue, min, max, logarithmic])
+  useEffect(() => () => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+  }, [])
   const setIndicatorOutside = (outside: boolean) => {
-    // The 8px dash shifts 4px so it straddles the knob's outer edge.
-    if (indicatorRef.current) indicatorRef.current.style.transform = `translateX(-50%) translateY(${outside ? -4 : 0}px)`
+    // Shift half the scaled dash height so it straddles the knob's outer edge.
+    if (indicatorRef.current) indicatorRef.current.style.transform = `translateX(-50%) translateY(${outside ? -size / 10 : 0}px)`
   }
   const finish = (pointerIsInside = pointerInsideRef.current) => {
     drag.current = null
@@ -37,9 +60,19 @@ export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, 
     pointerInsideRef.current = pointerIsInside
     setIndicatorOutside(pointerIsInside)
   }
-  return <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")}>
-    {!hideLabel && labelPosition === "top" && <span className="text-[10px] uppercase font-mono text-muted-foreground text-center">{label}</span>}
+  const horizontalLabel = labelPosition === "left" || labelPosition === "right"
+  const labelClasses = cn(
+    "text-[10px] uppercase font-mono text-muted-foreground",
+    horizontalLabel ? "w-[52px] shrink-0 text-[9px] leading-tight" : "text-center",
+    labelPosition === "left" && "text-right",
+    labelPosition === "right" && "text-left",
+  )
+
+  return <div className={cn("flex items-center gap-1 select-none", horizontalLabel ? "w-full flex-row" : "flex-col", labelPosition === "left" && "justify-end", labelPosition === "right" && "justify-start", !neon && "opacity-50")}>
+    {!hideLabel && labelPosition === "top" && <span className="text-[10px] uppercase font-mono text-muted-foreground text-center" style={size!==40?{fontSize:size/4}:undefined}>{label}</span>}
+    {!hideLabel && labelPosition === "left" && <span className={labelClasses}>{label}</span>}
     <div role="slider" aria-label={ariaLabel ?? label} title={ariaLabel} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={formatValue?.(value)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
+      style={{width:size,height:size,borderColor:dragging?'#fff':accentColor}}
       className={cn("relative w-10 h-10 rounded-full bg-secondary border border-border group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]", neon ? "cursor-ew-resize hover:border-[var(--city-neon)]" : "cursor-default", dragging && "border-white")}
       onPointerEnter={() => {
         pointerInsideRef.current = true
@@ -88,13 +121,19 @@ export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, 
         const direction = ['ArrowUp', 'ArrowRight'].includes(event.key) ? 1 : -1
         commit(event.key === 'Home' ? min : event.key === 'End' ? max : logarithmic ? fromAmount(Math.max(0, Math.min(1, amount + direction * .02))) : value + direction * step * (event.shiftKey ? 10 : 1))
       }}>
-      <div className="absolute w-full h-full rounded-full" style={{ transform: 'rotate(' + (-135 + amount * 270) + 'deg)' }}>
-        <div ref={indicatorRef} className={cn("absolute top-0 left-1/2 w-1 h-2 rounded-full transition-transform duration-150 ease-out", neon ? "bg-foreground/50 group-hover:bg-white" : "bg-foreground/20")} style={{ transform: "translateX(-50%)" }} />
+      {/* CSS normalizes excess precision before hydration; serialize a stable angle. */}
+      <div className="absolute w-full h-full rounded-full" style={{ transform: `rotate(${Number((-135 + amount * 270).toFixed(3))}deg)` }}>
+        <div ref={indicatorRef} className={cn("absolute top-0 left-1/2 w-1 h-2 rounded-full transition-transform duration-150 ease-out", neon ? (dragging ? "bg-white" : "bg-foreground/50 group-hover:bg-[var(--city-neon)]") : "bg-foreground/20")} style={{ transform: "translateX(-50%)",width:size/10,height:size/5,backgroundColor:dragging?'#fff':accentColor }} />
       </div>
-      <span className={cn("pointer-events-none absolute inset-x-0 top-[66%] -translate-y-1/2 whitespace-nowrap text-center font-mono text-[8px] font-bold leading-none transition-colors", neon ? "text-foreground/50 group-hover:text-white" : "text-foreground/20")}>
+      {flashMarker && <div key={flashMarker.sequence} className="pointer-events-none absolute w-full h-full rounded-full" style={{ transform: `rotate(${Number((-135 + flashMarker.amount * 270).toFixed(3))}deg)` }} aria-hidden="true">
+        <div className="absolute top-[1px] left-1/2 h-[6px] w-[2px] -translate-x-1/2 rounded-full bg-zinc-400" style={{ animation: 'knob-monitor-flash 260ms steps(2, end) 2' }} />
+      </div>}
+      <style jsx global>{`@keyframes knob-monitor-flash { 0%, 100% { opacity: .15; } 50% { opacity: .95; } }`}</style>
+      <span style={size!==40?{fontSize:Math.max(6,size/5)}:undefined} className={cn("pointer-events-none absolute inset-x-0 top-[66%] -translate-y-1/2 whitespace-nowrap text-center font-mono text-[8px] font-bold leading-none transition-colors", neon ? "text-foreground/50 group-hover:text-white" : "text-foreground/20")}>
         {formatValue ? formatValue(value) : value.toFixed(2)}
       </span>
     </div>
     {!hideLabel && labelPosition === "bottom" && <span className="text-[10px] uppercase font-mono text-muted-foreground text-center">{label}</span>}
+    {!hideLabel && labelPosition === "right" && <span className={labelClasses}>{label}</span>}
   </div>
 }

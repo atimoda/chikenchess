@@ -130,7 +130,7 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
       const root=pc(result.scale[0])
       if(action.type==='bpm') result.bpm=Math.max(30,Math.min(240,result.bpm*(1+action.value/100)))
       else if(action.type==='scale')result.scale=SCALE_INTERVALS[action.scale].map(n=>note(root+n))
-      else if(action.type==='harmony')result.harmony=action.harmony
+      else if(action.type==='harmony'){result.harmony=action.harmony}
       else if(action.type==='relative'){
         const intervals=result.scale.map(n=>(pc(n)-root+12)%12).join(',')
         if(intervals===SCALE_INTERVALS.Maior.join(','))result.scale=SCALE_INTERVALS['Menor natural'].map(n=>note(root+9+n))
@@ -152,8 +152,8 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         const fx=result.effects[id]
         if(action.type==='gain'&&fx)fx.gain=Math.max(0,Math.min(2,fx.gain*(1+action.value/100)))
         if(action.type==='transpose'&&fx&&!(inst.source?.kind==='sample'&&!inst.source.pitched))fx.pitch*=2**(action.value/12)
-        if(action.type==='lpf') {const automations={...inst.automations};delete automations.lpf;result.instruments[id]={...inst,lpf:action.value,automations};if(fx)fx.lpf=action.value}
-        if(action.type==='invert'&&inst.behavior!=='pulse'){const flip=(s:string)=>s.replace(/(^|[\s[<,])(-?\d+)/g,(_,p,n)=>p+(-Number(n)));result.instruments[id]={...inst,notes:flip(inst.notes),phrases:inst.phrases?.map(flip),pianoRolls:inst.pianoRolls?.map(roll=>roll?{...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}:null)}}
+        if(action.type==='lpf') {result.instruments[id]={...inst,lpf:action.value,lpfRange:undefined};if(fx)fx.lpf=action.value}
+        if(action.type==='invert'&&inst.behavior!=='pulse'){result.instruments[id]={...inst,pianoRolls:inst.pianoRolls.map(roll=>({...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}))}}
       }
       descriptions.push(`${TRIGGERS[rule.trigger]} → ${ACTIONS[action.type]} ${action.type==='scale'?action.scale:action.type==='harmony'?HARMONY_PLANS[action.harmony].label:action.value || ''}`)
     }

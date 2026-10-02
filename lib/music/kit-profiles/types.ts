@@ -1,11 +1,10 @@
-import type { Automations } from '../automation'
 import type { CreativeSession } from '../creative'
 import type { Meter } from '../meter'
-import type { Behavior, MovementMapping } from '../model'
+import type { Behavior, MovementMapping, ParameterRange } from '../model'
 
 export type PartRole = 'rhythm' | 'bass' | 'harmony' | 'melody' | 'response' | 'texture'
 export type SynthSound = 'sbd' | 'sine' | 'triangle' | 'square' | 'sawtooth' | 'supersaw' | 'white' | 'pink' | 'brown'
-export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae' | 'classical'
+export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae' | 'classical' | 'band' | 'percussion' | 'guitars'
 
 export type ProfileSource =
   | { kind: 'synth'; sound: SynthSound }
@@ -40,8 +39,11 @@ export type PartProfile = {
   distortionMix?: number
   pitchEnvelope?: number
   pitchAttack?: number
+  lpfRange?: ParameterRange
+  driveRange?: ParameterRange
+  reverbRange?: ParameterRange
+  swingRange?: ParameterRange
   arrangement?: SectionArrangement
-  automations?: Automations
   effects?: Partial<{ gain: number; pitch: number; pan: number; delay: number; reverb: number; decay: number }>
   mapping?: Partial<MovementMapping>
 }
@@ -53,6 +55,7 @@ export type StyleProfile = {
   root: CreativeSession['root']
   scale: CreativeSession['scale']
   harmony: CreativeSession['harmony']
+  harmonicSequences?: number[][]
   swing: number
   sections: number[]
   parts: PartProfile[]
@@ -68,6 +71,9 @@ export const keys = (asset: string, variant = 0, pitched = true): ProfileSource 
 export const synths = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'synths', asset, variant, pitched })
 export const drums = (asset: string, variant = 0, pitched = false): ProfileSource => ({ kind: 'sample', bank: 'drums', asset, variant, pitched })
 export const classical = (asset: string, variant = 0, pitched = true): ProfileSource => ({ kind: 'sample', bank: 'classical', asset, variant, pitched })
+export const band = (asset: string, variant = 0): ProfileSource => ({ kind: 'sample', bank: 'band', asset, variant, pitched: true })
+export const percussion = (asset: string, variant = 0): ProfileSource => ({ kind: 'sample', bank: 'percussion', asset, variant, pitched: false })
+export const guitars = (asset: string, variant = 0): ProfileSource => ({ kind: 'sample', bank: 'guitars', asset, variant, pitched: true })
 export const synth = (sound: SynthSound): ProfileSource => ({ kind: 'synth', sound })
 
 type PartOptions = Omit<Partial<PartProfile>, 'role' | 'name' | 'behavior' | 'source' | 'patterns'>

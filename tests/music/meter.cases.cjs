@@ -53,7 +53,7 @@ test('five- and seven-pulse roll resizing and the finest seven-beat grid remain 
 
 test('each new stage has its notated subdivision, complete sections and local artwork', () => {
  const {STYLE_PROFILES}=loadTs('lib/music/kit-profiles/catalog.ts')
- const {performancePosition}=loadTs('lib/music/performance.ts')
+ const {arrangementPosition}=loadTs('lib/music/arrangement.ts')
  const {cities}=loadTs('lib/cities-data.ts')
  assert.equal(RHYTHM_STAGES.length,19)
  for(const stage of RHYTHM_STAGES) {
@@ -64,12 +64,11 @@ test('each new stage has its notated subdivision, complete sections and local ar
   assert.ok(city.image.startsWith('https://') || fs.existsSync(`public${city.image}`))
   assert.equal(profile.parts.length,16)
   for(const part of profile.parts) {
-   assert.equal(part.patterns.length,4)
+   assert.equal(part.patterns.length,6)
    assert.ok(part.patterns.every(pattern=>pattern.split(/\s+/).some(cell=>cell!=='.')),`${stage.id}: audible ${part.name}`)
   }
-  const instrument=kit.instruments['w:a1'],plan=instrument.performance
-  const firstBars=plan.steps[0].beats/meter.beatsPerBar(stage.meter)
-  assert.equal(performancePosition(plan,firstBars,meter.beatsPerBar(stage.meter)).index,1)
+  const firstBars=kit.arrangement.sections[0].beats/meter.beatsPerBar(stage.meter)
+  assert.equal(arrangementPosition(kit.arrangement,firstBars,meter.beatsPerBar(stage.meter)).index,1)
   assert.deepEqual(creative.parseCreativeSession(JSON.stringify(kit)),JSON.parse(JSON.stringify(kit)))
  }
 })

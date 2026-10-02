@@ -1,8 +1,28 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 28/09/2026 — v0.5.2. Status: engine nas 46 fases / 34 cidades, com seis campanhas e onze compassos; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua em andamento. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
+Atualizado em 02/10/2026 — v0.11.0. Status: schema 7 MIDI-only com arranjo global, engine Strudel nas 46 fases / 34 cidades, com seis campanhas, onze compassos e seis cenas por preset; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua pendente. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
 
-## Rodada de timbres — entregue e validação pendente
+## Entrega de 02/10 — MIDI-only e arranjo global
+
+Instrumentos passam a ter 1–8 piano rolls explícitos obrigatórios. Foram retirados os painéis de receitas/código editável, forma/variações avançadas, Groove compartilhado e automações, além dos módulos `automation.ts`, `grooves.ts` e `pattern-library.ts`. Fonte sonora, comportamento Pulso/Frase/Sustentado, efeitos, mapeamentos e escolha fixa de variação permanecem; a participação por peça agora referencia a forma global. Os presets Düsseldorf original e Mouth Breather continuam disponíveis em MIDI. Strudel continua executando os loops e gerando o código equivalente para inspeção/exportação; simplificar a edição não troca a engine.
+
+LPF ganha range de 20–20000 Hz com L por repetição do loop, S por entrada de seção e N por ataque; novos controles usam N e limites iguais fixam o corte. A regra de filtro tem autoridade temporária sobre o range no snapshot e sua saída restaura a base. Prioridades e gestos completos estão em `GAME_MECHANICS.md`.
+
+O reset único autorizado da primeira etapa MIDI v5 usou `resetLegacyMusicStorage()` para descartar as chaves musicais `chickenchess:creative:v1`, `chickenchess:creative:v1:kits` e `chickenchess:city-kit:v1:*`, com marcador `chickenchess:music:midi-v5`. Perfil e progresso permaneceram intactos. A etapa v6 mantém as chaves `chickenchess:creative:v5` e `chickenchess:creative:v5:kits` e migra os kits pelo parser, sem novo reset ou exclusão. Imports antigos conservam rolls explícitos ou usam defaults; somente a antiga forma numérica ponderada é convertida quando necessário, sem restaurar frases nem o runtime textual. As menções anteriores à preservação automática de kits descrevem entregas históricas, não o reset MIDI v5.
+
+O budget de importação aumenta de 150.000 para 2.000.000 caracteres de JSON para acomodar presets MIDI formatados, sem ampliar os limites de oito rolls e 128 notas por roll. A primeira reprodução com Drive ou supersaw aguarda `initAudio`/AudioWorklets; essa prontidão cobre Düsseldorf original sem acrescentar espera às notas manuais secas que não exigem esses processadores.
+
+O arranjo global visual foi implementado: schema 7 salva 1–24 seções com ID estável, nome, duração compartilhada e percurso harmônico opcional; cada peça referencia esses IDs para banco MIDI, presença, transposição e reinício. O editor global cria/remove/reordena e renomeia seções, enquanto o painel da peça oferece somente suas atribuições. Pins e regras substituem somente o banco MIDI, preservando o restante do arranjo. A harmonia segue o compasso local da seção no ataque, independentemente da duração/fase do banco; compilador e exportação usam `harmonic-pattern.ts`. Migração v5 → v6 usa a primeira performance temporizada como forma comum e preserva as atribuições por índice, com fallback limitado à forma numérica antiga ou A de quatro pulsos. Comportamento, limites, retorno/cancelamento e prioridades estão em `GAME_MECHANICS.md`. Escuta crítica e medição em aparelho físico continuam separadas da validação de padrões.
+
+Refinamento de 02/10 já implementado: a timeline global marca a próxima seção por clique para entrar ao fim da atual, reordena por arraste e edita em popup por duplo clique. O progresso fica dentro da seção em execução. Kit Harmony usa os percursos salvos; outros planos suspendem sua execução e desabilitam sua edição sem apagar graus. A migração v6 → v7 diferencia essa escolha de um override persistido. Os gestos de cancelamento, limites, regras pendentes e rampas durante transições de seção estão em `GAME_MECHANICS.md`, não na agenda futura.
+
+## Entrega de 01/10 — seis cenas, gravações e ranges
+
+Implementados naquela entrega: seis cenas nos 46 presets, percursos harmônicos E/F nos 45 perfis de piano roll, três bancos gravados novos, afinação/URLs corrigidas e ranges de Drive/Reverb/Swing por loop. Comportamento atual e prioridades ficam em `GAME_MECHANICS.md`; evidência e reprodução em `docs/MUSIC_KIT_REVIEW.md`. Na revisão de 01/10, os kits antigos eram preservados pela migração local; o reset MIDI-only de 02/10 substitui essa política para o armazenamento antigo.
+
+Gate ainda pendente: escuta crítica das formas completas, confronto de identidade de estilo, balanço com formações pequenas/completas e aparelho físico. Renderizações e testes não fecham esse gate. Prioridades de fontes futuras: guitarra rock com amp/palm-mute, aço/acordeão mais expressivos, instrumentos regionais autênticos e articulação/legato para sopros/cordas. Não ampliar automaticamente todos os ranges: swing e drive excessivos podem descaracterizar o estilo.
+
+## Rodada anterior de timbres — entregue e validação pendente
 
 Quatro bancos originais acrescentam 31 one-shots de cordas/guitarras/baixos, teclas, síntese modulada e bateria acústica. As dez fases do Harmonic songbook deixam de partilhar a mesma guitarra, tecla e bateria; ganham paletas e levadas por estilo. As 17 fases anteriores recebem trocas pontuais de fontes sem mudar suas frases e formas. O kit anterior salvo localmente permanece disponível em Meus kits ao migrar para a nova revisão. Os WAVs, raízes, licenças e regeneração estão em `public/samples/README.md`.
 
@@ -67,28 +87,30 @@ A primeira regra tática coletiva ativa temporariamente a banda atacante durante
 
 ## Modo Criativo (primeira bancada implementada)
 
-O laboratório em `/creative` usa o mesmo `MusicRuntime` das partidas e abre sem introdução, adversário ou validação de movimentos. Ele permite ativar e solar qualquer uma das 32 vozes, mover ou trocar peças livremente, tocar casas temporariamente, editar o subconjunto seguro da mini-notation do Strudel e ajustar timbre, envelope, filtros, efeitos e os mapeamentos de posição para grau, pan e filtro.
+O laboratório em `/creative` usa o mesmo `MusicRuntime` das partidas e abre sem introdução, adversário ou validação de movimentos. Ele permite ativar e solar qualquer uma das 32 vozes, mover ou trocar peças livremente, tocar casas temporariamente, editar notas MIDI, a forma global e as atribuições por peça, escolher fonte/comportamento e ajustar timbre, envelope, filtros, efeitos e os mapeamentos de posição para grau, pan e filtro. Edição textual, receitas, Groove compartilhado e automações foram retirados em v0.11.0.
 
 O rascunho e kits nomeados são guardados no navegador. A exportação/importação JSON conserva todas as identidades e configurações e valida o schema e a compilação dos padrões antes de substituir a sessão atual. Persistência oficial, versionamento de kits, publicação e administração em banco ficam para a camada futura de conteúdo e contas.
 
-### Ciclo atual: curadoria musical de Düsseldorf
+### Histórico: primeira curadoria musical de Düsseldorf
+
+Registro da bancada anterior à simplificação MIDI-only. As receitas, máscaras, grooves, automações e schema v4 descritos neste ciclo não fazem parte do comportamento atual; seus módulos foram eliminados em v0.11.0. Fonte sonora, feedback, o estudo Düsseldorf e a curadoria por escuta continuam, agora sobre rolls explícitos. O registro abaixo preserva os objetivos e as decisões daquela entrega.
 
 Os trechos Strudel recebidos formam o corpus de referência. Cada trecho é descrito pelo papel que cumpre (groove, baixo, harmonia, melodia ou textura), separado em componentes reaproveitáveis e comparado no Modo Criativo. As construções que a engine ainda não representa geram requisitos concretos para o modelo, em vez de adicionarmos abstrações sem referência sonora.
 
 O resultado desse ciclo será um kit eletrônico de referência com algumas formações testáveis, métricas simples de densidade/headroom e uma lista pequena de capacidades faltantes — por exemplo progressões harmônicas ou variação determinística. Só então ligaremos estados táticos mais complexos à música, para que esses estados transformem um arranjo que já soa bem em repouso.
 
-As referências recebidas foram triadas em `STRUDEL_REFERENCE_CATALOG.md`. Nove adaptações iniciais de “Death By Elliptical Eye”, “Bennington” e “Bonespurs” estão em `lib/music/pattern-library.ts` e podem ser aplicadas a qualquer peça no inspetor.
+As referências recebidas foram triadas em `STRUDEL_REFERENCE_CATALOG.md`. Naquela bancada, nove adaptações iniciais de “Death By Elliptical Eye”, “Bennington” e “Bonespurs” estavam em `lib/music/pattern-library.ts` e podiam ser aplicadas a qualquer peça no inspetor. O módulo e esse fluxo de aplicação foram retirados em 02/10/2026, na v0.11.0.
 
-A formação atual `Düsseldorf · Electro 01` expande a primeira `Elliptical Lab` para todas as 16 peças brancas no Criativo, com os instrumentos correspondentes espelhados nas pretas. A timeline A/B/C/B tem quatro ciclos por seção; a notação foi corrigida para `[0@4 1@4 2@4 1@4]/16`, pois a anterior alongava a forma por um fator de 16. Máscaras continuam editáveis, mas o preset atual permite ouvir cada voz ativa sem esperar uma entrada longa, inclusive a rainha.
+A formação daquele ciclo, `Düsseldorf · Electro 01`, expandiu a primeira `Elliptical Lab` para todas as 16 peças brancas no Criativo, com os instrumentos correspondentes espelhados nas pretas. A timeline A/B/C/B tinha quatro ciclos por seção; a notação foi corrigida para `[0@4 1@4 2@4 1@4]/16`, pois a anterior alongava a forma por um fator de 16. Naquele editor, máscaras eram editáveis, mas o preset permitia ouvir cada voz ativa sem esperar uma entrada longa, inclusive a rainha. O preset permanece no catálogo MIDI; máscaras editáveis não existem na versão atual.
 
-Os quatro incrementos desta entrega:
+Os quatro incrementos daquela entrega (registro histórico, anterior a 02/10):
 
 1. **Fontes independentes das peças:** banco local `Chicken Electro · 01`, com 13 samples originais CC0, articulações e opção de seguir a escala. Rei com bumbo e peão com sino melódico foram verificados com o compilador Strudel real e no Criativo.
 2. **Automações:** ganho, filtro, pan, reverb e delay aceitam padrões por seção ou curvas seno/rampa. O editor valida limites antes de aplicar; valores são lidos a cada ataque. Modulação contínua de uma nota sustentada e transposição em padrão ficam para outra etapa.
 3. **Grooves compartilhados:** trilhas de ritmo e acentos coordenadas pela timeline, atribuíveis a qualquer peça. O editor cria grooves/trilhas e altera uma trilha para todas as vozes vinculadas. A execução usa `struct` e `pickRestart`, sem exigir `pickOut` nem atrelar a distribuição a peões.
 4. **Feedback musical:** seção, compasso, pulso, notas/pausas e valores executados; distingue peça inativa, pausa do transporte, solo, carregamento e máscara. Os dados vêm dos padrões compilados e do relógio de áudio.
 
-O JSON v4 conserva fontes, grooves e automações. **Salvar kit da fase** faz a próxima partida usar a configuração editada, guardada neste navegador. **Düsseldorf original · samples** permite comparar o preset novo sem sobrescrever automaticamente um kit salvo. Banco oficial, contas e sincronização entre dispositivos continuam futuros.
+O JSON v4 conservava fontes, grooves e automações. **Salvar kit da fase** fazia a próxima partida usar a configuração editada, guardada neste navegador. **Düsseldorf original · samples** permitia comparar o preset novo sem sobrescrever automaticamente um kit salvo. Na primeira etapa de 02/10, o schema 5 substituiu esse contrato e o reset único descartou o armazenamento musical antigo; fonte sonora, salvamento e o preset original continuam disponíveis sobre MIDI. Banco oficial, contas e sincronização entre dispositivos continuam futuros.
 
 **Próximo passo:** ouvir este preset no Criativo e na fase em formações pequenas e completas, ajustar balanço, densidade e respostas entre as vozes, e medir um celular físico. Depois de aprovar essa base sonora, experimentar progressão harmônica global e transformações de frase por movimento; estados táticos avançados vêm depois dessa comparação.
 
@@ -161,7 +183,7 @@ Pipeline:
 
 O transporte continua rodando enquanto o jogador pensa. Não depende da frequência de jogadas nem do render do React. O estado do tabuleiro não deve reconstruir o motor inteiro.
 
-Strudel é o backend recomendado para padrões e reprodução, isolado por um adaptador. Confirmar sua adoção após um protótipo de interação e alinhamento com a licença AGPL-3.0 descrita na documentação oficial. O código mostrado deve representar o padrão executado. Remover a duplicação atual entre texto ilustrativo e motor paralelo é parte da migração.
+Strudel é o backend adotado para padrões e reprodução, isolado por um adaptador, e permanece na entrega MIDI-only. A proposta inicial previa confirmar sua adoção após um protótipo de interação e alinhamento com a licença AGPL-3.0 descrita na documentação oficial. O código mostrado/exportado deve representar o padrão executado a partir dos rolls explícitos; manter essa equivalência continua requisito das próximas extensões.
 
 A engine de domínio (peças, kits, estados, regras, presets e interação) é própria do ChickenChess. Strudel fornece a infraestrutura musical; Web Audio continua sendo a base de áudio no navegador. Validar disparo imediato, alteração de notas já sustentadas, cancelamento de vozes e preservação de fase. Se algum gesto exigir uma extensão nativa, integrá-la ao mesmo transporte e à mesma definição de instrumento, sem manter duas composições independentes. Fazer tudo do zero implica assumir sequenciamento, linguagem de padrões, síntese, efeitos e manutenção; só reconsiderar isso diante de requisitos ou incompatibilidades concretas.
 
@@ -266,7 +288,7 @@ O texto colado contém escapes de formatação e ocorrências como `***2`; guard
 
 O editor visual deve representar estrutura temporal, não só uma grade fixa: alternância entre ciclos, agrupamentos/subdivisões, repetição, duração/peso, pausas, acordes e bancos de frases. Começar com o subconjunto útil a Düsseldorf e ampliar pelo uso.
 
-Não prometer conversão visual bidirecional de JavaScript Strudel arbitrário. Padrões estruturados têm edição visual e código gerado equivalentes; modo avançado guarda código autoral e expõe macros declaradas. Construções não suportadas visualmente permanecem em modo código sem perda ou simplificação silenciosa.
+Proposta histórica de modo código, fora do escopo atual: não prometer conversão visual bidirecional de JavaScript Strudel arbitrário. A ideia era guardar código autoral e expor macros declaradas, mantendo construções não suportadas visualmente em modo código. A entrega v0.11.0 usa somente notas explícitas para edição e mantém código Strudel gerado para inspeção/exportação; não há retorno de um editor autoral previsto; o arranjo global visual já foi entregue.
 
 ## 8. Interação sonora e modo tocar
 

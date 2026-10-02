@@ -1,10 +1,11 @@
 'use client'
 import { METER_IDS, meterLabel } from '@/lib/music/meter'
-import { Range } from './creative/parameter-range'
+import { Knob } from './knob'
 import { InstrumentParameters } from './creative/instrument-parameters'
 import { MusicPerformanceControls } from './music-performance-controls'
+import { MusicArrangementControls } from './music-arrangement-controls'
 import { InfoTip, HelpLabel } from './info-tip'
-import { MusicTransitionView } from './music-transition-view'
+import { MusicBpmRamp, MusicHarmonyReadout, MusicPendingTransitions } from './music-transition-view'
 
 import Link from 'next/link'
 import { MusicReactionEditor } from './music-reaction-editor'
@@ -14,15 +15,14 @@ import { Chess, type Square } from 'chess.js'
 import { ArrowLeft, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
 import { ChessgroundBoard, PiecesSVG } from './chessground-board'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
-import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, hasMaskBudget, hasPatternBudget, moveCreativePiece, parseCreativeSession, type CreativeSession } from '@/lib/music/creative'
-import { PATTERN_RECIPES, patternRecipe } from '@/lib/music/pattern-library'
+import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, moveCreativePiece, parseCreativeSession, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
-import { EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, updateKitLibrary } from '@/lib/music/city-kits'
+import { EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, resetLegacyMusicStorage, updateKitLibrary } from '@/lib/music/city-kits'
 import { getCityById } from '@/lib/cities-data'
 import { STYLE_REVISION } from '@/lib/music/styled-kits'
 import { HARMONY_PLANS, type HarmonyPlanId } from '@/lib/music/harmony'
 import { createRandomCityKit } from '@/lib/music/random-kit'
-import { SampleSourceControls, GrooveControls } from './music-lab-controls'
+import { SampleSourceControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
 import { VersionChangelog } from './version-changelog'
 import styles from './creative-studio.module.css'
@@ -54,13 +54,6 @@ export function CreativeStudio() {
   const [notice, setNotice] = useState('')
   const [kits, setKits] = useState<CreativeSession[]>([])
   const [selectedKit, setSelectedKit] = useState('')
-  const [pattern, setPattern] = useState('')
-  const [recipeId, setRecipeId] = useState('')
-  const [patternError, setPatternError] = useState('')
-  const [sectionPattern, setSectionPattern] = useState('0')
-  const [phrases, setPhrases] = useState<string[]>(['0'])
-  const [mask, setMask] = useState('')
-  const [formError, setFormError] = useState('')
   const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
   const [showCode, setShowCode] = useState(false)
   const [editingInstrumentName, setEditingInstrumentName] = useState(false)
@@ -78,9 +71,6 @@ export function CreativeStudio() {
   const effects = session.effects[selectedId]
   const mapping = session.mappings[selectedId]
   const activeCount = session.pieces.filter(p => p.active).length
-  const chosenRecipe = patternRecipe(recipeId)
-  const savedPhrases = instrument.phrases?.length ? instrument.phrases : [instrument.notes]
-  const formDirty = sectionPattern !== session.sectionPattern || mask !== (instrument.mask ?? '') || JSON.stringify(phrases) !== JSON.stringify(savedPhrases)
   const cityName = (cityId?: string) => EDITABLE_CITY_KITS.find(city => city.id === cityId)?.name
   const kitLabel = (kit: CreativeSession) => `${kit.name}${cityName(kit.cityId) ? ` (${cityName(kit.cityId)})` : ''}`
   const linkedUserCities = new Set(kits.flatMap(kit => kit.cityId ? [kit.cityId] : []))
@@ -90,6 +80,7 @@ export function CreativeStudio() {
   useEffect(() => {
     let cancelled = false
     async function restore() {
+      resetLegacyMusicStorage()
       let restored: CreativeSession | undefined
       try {
         const requestedCity = new window.URLSearchParams(window.location.search).get('city')
@@ -148,29 +139,13 @@ export function CreativeStudio() {
     return () => clearTimeout(timer)
   }, [session, ready])
 
-  useEffect(() => { setPattern(instrument.notes); setRecipeId(''); setPatternError('') }, [selectedId, instrument.notes])
   useEffect(() => setEditingInstrumentName(false), [selectedId])
-  useEffect(() => {
-    setPhrases(instrument.phrases?.length ? instrument.phrases : [instrument.notes])
-    setMask(instrument.mask ?? '')
-    setFormError('')
-  }, [selectedId, instrument.notes, instrument.phrases, instrument.mask])
-  useEffect(() => { setSectionPattern(session.sectionPattern); setFormError('') }, [session.sectionPattern])
 
   const updateInstrument = useCallback((update: Partial<Instrument>) => {
     setSession(s => ({ ...s, instruments: { ...s.instruments, [selectedId]: { ...s.instruments[selectedId], ...update } } }))
   }, [selectedId])
   function updateEffects(update: Partial<Effects>) {
     setSession(s => ({ ...s, effects: { ...s.effects, [selectedId]: { ...s.effects[selectedId], ...update } } }))
-  }
-  async function applyMusicalConfiguration(candidate: CreativeSession) {
-    setBusy(true)
-    try {
-      const clean = parseCreativeSession(JSON.stringify(candidate))
-      await validateMusicSnapshot(creativeSnapshot(clean, false))
-      setSession(clean)
-      setNotice('Configuração aplicada ao kit. Salve o kit para manter as alterações e, se desejar, vinculá-lo a uma fase.')
-    } finally { setBusy(false) }
   }
   function updateMapping(update: Partial<Mapping>) {
     setSession(s => ({ ...s, mappings: { ...s.mappings, [selectedId]: { ...s.mappings[selectedId], ...update } } }))
@@ -192,43 +167,6 @@ export function CreativeStudio() {
   }
   function stop() { setPlaying(false); music.endAudition(); setNotice('Arranjo pausado.') }
   function select(id: string) { music.endAudition(); setSelectedId(id) }
-
-  async function applyPattern() {
-    const id = selectedId
-    if (!hasPatternBudget(pattern)) {
-      setPatternError('Use graus inteiros (−48 a 48), ~, grupos [], <>, vírgulas e operadores *, /, !, @. Limite de 512 caracteres e multiplicadores combinados de até 32.')
-      return
-    }
-    setBusy(true)
-    try {
-      const recipe = patternRecipe(recipeId)
-      const nextInstrument = { ...instrument, ...(recipe?.instrument ?? {}), ...(recipe ? { behavior: recipe.behavior, source: { kind: 'synth' as const }, groove: undefined, automations: undefined } : {}), pianoOnly: undefined, pianoRolls: undefined, selectedVariation: undefined, notes: pattern, phrases: undefined, mask: undefined }
-      const candidate = { ...session, instruments: { ...session.instruments, [id]: nextInstrument } }
-      await validateMusicSnapshot(creativeSnapshot(candidate, false))
-      setSession(s => ({ ...s, instruments: { ...s.instruments, [id]: nextInstrument } }))
-      setPatternError('')
-      setNotice(recipe ? `Receita “${recipe.name}” aplicada. A próxima execução já usa timbre, envelope e frase novos.` : 'Padrão aplicado. A próxima execução já usa a nova frase.')
-    } catch (error) { setPatternError(`O padrão anterior foi mantido. ${messageOf(error)}`) }
-    finally { setBusy(false) }
-  }
-
-  async function applyForm() {
-    const cleanPhrases = phrases.map(phrase => phrase.trim()).filter(Boolean)
-    if (!hasPatternBudget(sectionPattern) || !cleanPhrases.length || cleanPhrases.length > 8 || cleanPhrases.some(phrase => !hasPatternBudget(phrase)) || (mask.trim() && !hasMaskBudget(mask))) {
-      setFormError('Revise a timeline, as variações e a máscara. São aceitas até oito frases; a máscara usa x e ~ com a mesma mini-notação.')
-      return
-    }
-    setBusy(true)
-    try {
-      const nextInstrument = { ...instrument, pianoOnly: undefined, pianoRolls: undefined, selectedVariation: undefined, notes: cleanPhrases[0], phrases: cleanPhrases.length > 1 ? cleanPhrases : undefined, mask: mask.trim() || undefined }
-      const candidate = { ...session, sectionPattern, instruments: { ...session.instruments, [selectedId]: nextInstrument } }
-      await validateMusicSnapshot(creativeSnapshot(candidate, false))
-      setSession(candidate)
-      setFormError('')
-      setNotice(`Forma aplicada a “${instrument.name}”. As variações seguem a timeline comum sem reiniciar o transporte.`)
-    } catch (error) { setFormError(`A forma anterior foi mantida. ${messageOf(error)}`) }
-    finally { setBusy(false) }
-  }
 
   async function loadSession(next: CreativeSession, autoplay = false) {
     setBusy(true)
@@ -354,15 +292,18 @@ export function CreativeStudio() {
           <button className={styles.primary} onClick={() => { if (playing) stop(); else setPlaying(true) }} aria-pressed={playing}>
             {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pause' : 'Play'}
           </button>
-          <label><HelpLabel label="BPM">Velocidade base do kit, em batidas por minuto. O relógio mostra o valor efetivo quando uma regra ou rampa está atuando.</HelpLabel><input aria-label="BPM" type="number" min={30} max={240} value={session.bpm} onChange={e => { const n = Number(e.target.value); if (n >= 30 && n <= 240) setSession(s => ({ ...s, bpm: n })) }} /></label>
+          <div className={styles.transportKnob}><span>Volume</span><Knob label="Volume" hideLabel value={session.volume} min={0} max={1} step={0.01} onChange={volume => setSession(s => ({ ...s, volume }))} /></div>
+          <div className={styles.transportKnob}><span>BPM</span><Knob label="BPM" hideLabel value={session.bpm} min={30} max={240} step={1} formatValue={value => String(value)} onChange={bpm => setSession(s => ({ ...s, bpm }))} /></div>
           <label><HelpLabel label="Compasso">{meterLabel(session.meter)}. Nos compostos, cada pulso se divide em três; nos ímpares de colcheia, o relógio conta colcheias iguais e os acentos formam grupos. Alterar o compasso reinicia o relógio da sessão.</HelpLabel><select aria-label="Compasso" value={session.meter} onChange={e => setSession(s => ({ ...s, meter: e.target.value as CreativeSession['meter'] }))}>{METER_IDS.map(meter=><option key={meter} value={meter}>{meter}</option>)}</select></label>
           <label><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel><select aria-label="Tônica" value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
-          <label><HelpLabel label={`Escala (${music.snapshot.scale.join(' · ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
-          <label><HelpLabel label="Harmonia">Plano comum por seção para baixo, acordes e melodias. Planos móveis geram tríades nas vozes sustentadas e usam condução curta entre seções.</HelpLabel><select aria-label="Harmonia" value={session.harmony} onChange={e => setSession(s => ({ ...s, harmony: e.target.value as HarmonyPlanId }))}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label>
-          <Range label="Volume geral" value={session.volume} min={0} max={1} help={false} onChange={volume => setSession(s => ({ ...s, volume }))} />
-          <MusicTransportReadout monitor={music.monitor} activeCount={activeCount} solo={!!soloId} />
+          <label><HelpLabel label={`Escala (${music.snapshot.scale.join(' ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
+          <div className={styles.harmonyControl}><label><span className={styles.helpCaption}><span>Harmonia <MusicHarmonyReadout monitor={music.monitor} compact /></span><InfoTip label="Harmonia">Kit Harmony usa os graus harmônicos salvos em cada seção do Arranjo global. Os outros planos usam sua própria progressão e deixam a edição desses graus desabilitada. Os graus do kit ficam guardados para quando você voltar a Kit Harmony. Baixos, acordes e melodias afinados compartilham esta harmonia.</InfoTip></span><select aria-label="Harmonia" value={session.harmony} onChange={e => {
+            const harmony = e.target.value as HarmonyPlanId
+            setSession(s => ({ ...s, harmony }))
+          }}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label></div>
+          <div className={styles.transportFooter}><MusicTransportReadout arrangement={session.arrangement} monitor={music.monitor} activeCount={activeCount} solo={!!soloId} showBeatUnit /><div className={styles.rampSlot}><MusicBpmRamp monitor={music.monitor}/></div><MusicPendingTransitions monitor={music.monitor}/></div>
+          <MusicArrangementControls arrangement={session.arrangement} harmony={session.harmony} monitor={music.monitor} onSeek={music.seekSection} onChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))} />
         </section>
-        <div className={styles.transitionSlot}><MusicTransitionView monitor={music.monitor} fallbackBpm={session.bpm} /></div>
       </div>
 
       <div className={styles.columns}>
@@ -461,53 +402,25 @@ export function CreativeStudio() {
               <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={selected.active ? 'Desativar loop' : 'Ativar loop'} title={selected.active ? 'Loop ativo' : music.preview?.id === selectedId ? 'Prévia temporária' : 'Loop inativo'} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
               <button aria-pressed={soloId === selectedId} onClick={() => toggleSolo(selectedId)}>Solo</button>
             </div>
-            <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
-            <MusicPerformanceControls override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
+            <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
+            <MusicPerformanceControls key={selectedId} arrangement={session.arrangement} override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
             <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
-            <div className={styles.pair}><label><span className={styles.helpCaption}>Comportamento<InfoTip label="Comportamento do instrumento">Comportamento, fonte e afinação independem do tipo de peça.</InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulso / percussão</option><option value="phrase">Frase / sequenciador</option><option value="sustain">Sustentado / acordes</option></select></label>
+            <div className={styles.pair}><label><span className={styles.helpCaption}>Comportamento<InfoTip label="Comportamento do instrumento">
+              <p><b>Pulso / percussão:</b> toca o ritmo e as notas escritas sem seguir a progressão harmônica nem a transposição por linha/coluna. Sem ajustes explícitos, usa notas curtas (fração 0,12) e sustentação zero.</p>
+              <p><b>Frase / sequenciador:</b> toca a melodia escrita; vozes afinadas acompanham a harmonia e o mapa de graus da posição. Sem duração explícita, usa fração 0,7.</p>
+              <p><b>Sustentado / acordes:</b> em vozes afinadas, uma harmonia não estática transforma cada ataque em acorde com condução de vozes. Na harmonia estática, preserva as notas/acordes escritos. Sem duração explícita, usa fração 0,95; não mantém som indefinidamente.</p>
+              <p>Todos permitem variações MIDI, arranjo por peça, ADSR e efeitos. Slides de afinação exigem voz afinada; samples não afinados não seguem graus/acordes. Trocar comportamento não troca a fonte/timbre nem redefine os parâmetros salvos. O gesto manual toca uma nota por casa, sem executar a sequência. O tipo de peça não restringe a escolha.</p>
+            </InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulso / percussão</option><option value="phrase">Frase / sequenciador</option><option value="sustain">Sustentado / acordes</option></select></label>
               <label><HelpLabel label="Timbre sintetizado">Forma de onda usada pela fonte Síntese. Se a fonte atual for um sample, escolher um timbre muda a fonte para Síntese. Para voltar aos samples, escolha Banco de samples em Fonte sonora.</HelpLabel><select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'], source: { kind: 'synth' } })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
 
 
-            <details><summary>Receitas e código Strudel<InfoTip label="Aplicar receitas">Aplicar um padrão ou receita substitui as notas desenhadas deste instrumento.</InfoTip></summary><div className={styles.editor}>
-
-              <label>Receitas de referência<select value={recipeId} onChange={e => {
-                const id = e.target.value
-                setRecipeId(id)
-                const recipe = patternRecipe(id)
-                if (recipe) { setPattern(recipe.notes); setPatternError('') }
-              }}><option value="">Escolha uma receita</option>{PATTERN_RECIPES.map(recipe => <option key={recipe.id} value={recipe.id}>{recipe.name} · {recipe.study}</option>)}</select></label>
-              {chosenRecipe && <InfoTip label="Receita selecionada">{chosenRecipe.description} Estudo: {chosenRecipe.study} · {chosenRecipe.credit}.</InfoTip>}
-              <label htmlFor="creative-pattern"><span className={styles.helpCaption}>Padrão · graus da escala<InfoTip label="Notação Strudel">0 = tônica · ~ = pausa · [0 2] = subdivisão · &lt;0 2&gt; = alternar ciclos · [0,2,4] = acorde · *2 = acelerar · /2 = desacelerar. Um ciclo = 4 tempos.</InfoTip></span></label><textarea id="creative-pattern" rows={3} spellCheck={false} value={pattern} maxLength={512} onChange={e => { setPattern(e.target.value); setRecipeId(''); setPatternError('') }} />
-              <div className={styles.actions}><button className={styles.primary} disabled={pattern === instrument.notes && !recipeId} onClick={() => void applyPattern()}>{recipeId ? 'Aplicar receita' : 'Aplicar padrão'}</button><button onClick={() => { setPattern(instrument.notes); setRecipeId(''); setPatternError('') }}>Restaurar edição</button></div>
-              {patternError && <p role="alert" className={styles.error}>{patternError}</p>}
-
-            </div>
-
-            </details>
-            <details><summary>Forma e variações · código avançado<InfoTip label="Aplicar forma">Aplicar forma volta às variações de texto e remove a edição visual deste instrumento.</InfoTip></summary><div className={styles.formEditor}>
-
-              <label><span className={styles.helpCaption}>Timeline compartilhada A–H<InfoTip label="Timeline compartilhada">Os números escolhem a variação de todas as peças. Exemplo: [0@4 1@4 2@4 1@4]/16 mantém A, B, C e B por quatro ciclos cada.</InfoTip></span><textarea rows={2} spellCheck={false} value={sectionPattern} maxLength={512} onChange={e => { setSectionPattern(e.target.value); setFormError('') }} /></label>
-
-              {phrases.map((phrase, index) => <label key={index}>Variação {String.fromCharCode(65 + index)}<textarea aria-label={`Variação ${String.fromCharCode(65 + index)}`} rows={2} spellCheck={false} value={phrase} maxLength={512} onChange={e => { setPhrases(current => current.map((value, i) => i === index ? e.target.value : value)); setFormError('') }} /></label>)}
-              <div className={styles.actions}><button disabled={phrases.length >= 8} onClick={() => setPhrases(current => [...current, current.at(-1) ?? '0'])}>Adicionar variação</button><button disabled={phrases.length <= 1} onClick={() => setPhrases(current => current.slice(0, -1))}>Remover última</button></div>
-              <label><span className={styles.helpCaption}>Máscara de entrada<InfoTip label="Máscara de entrada">x toca e ~ silencia. A máscara usa o mesmo relógio da timeline e não interrompe a frase durante edições.</InfoTip></span><textarea rows={2} spellCheck={false} placeholder="vazio = sempre presente" value={mask} maxLength={256} onChange={e => { setMask(e.target.value); setFormError('') }} /></label>
-
-              <button className={styles.primary} disabled={!formDirty} onClick={() => void applyForm()}>Aplicar forma</button>
-              {formError && <p role="alert" className={styles.error}>{formError}</p>}
-            </div></details>
-            <GrooveControls id={selectedId} grooves={session.grooves} binding={instrument.groove} onApply={async (grooves, groove) => {
-              await applyMusicalConfiguration({ ...session, grooves, instruments: { ...session.instruments, [selectedId]: { ...instrument, groove } } })
-            }} />
           </section>
         </aside>
         </div>
 
         <div className={styles.controlColumn}>
-        <InstrumentParameters selectedId={selectedId} instrument={instrument} effects={effects} mapping={mapping}
-          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
-          onApplyAutomations={async automations => {
-            await applyMusicalConfiguration({ ...session, instruments: { ...session.instruments, [selectedId]: { ...instrument, automations } } })
-          }} />
+        <InstrumentParameters instrument={instrument} effects={effects} mapping={mapping}
+          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping} />
         </div>
         </div>
       </div>

@@ -22,3 +22,29 @@ export const SCALE_INTERVALS = {
 } as const
 export type ScaleName = keyof typeof SCALE_INTERVALS
 export const SCALE_NAMES = Object.keys(SCALE_INTERVALS) as [ScaleName, ...ScaleName[]]
+
+const PITCH_CLASSES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
+const NATURAL_PITCH_CLASS: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+
+function pitchClass(note: string) {
+  const match = /^([A-G])([#b]?)/i.exec(note)
+  if (!match) return 0
+  return (NATURAL_PITCH_CLASS[match[1].toUpperCase()] + (match[2] === '#' ? 1 : match[2] === 'b' ? -1 : 0) + 12) % 12
+}
+
+/** Identify the current root and named pitch collection from the notes sent to the music runtime. */
+export function identifyPitchCollection(notes: readonly string[], preferredScale?: ScaleName) {
+  const rootIndex = notes.length ? pitchClass(notes[0]) : 0
+  const intervals = notes.map(note => (pitchClass(note) - rootIndex + 12) % 12)
+  const matches = SCALE_NAMES.filter(name => {
+    const candidate = SCALE_INTERVALS[name]
+    return candidate.length === intervals.length && candidate.every((interval, index) => interval === intervals[index])
+  })
+  const scale = (preferredScale && matches.includes(preferredScale) ? preferredScale : matches[0]) ?? null
+  return {
+    root: PITCH_CLASSES[rootIndex],
+    scale,
+    label: scale ?? `Escala modal · ${notes.length} notas`,
+    notes: notes.map(note => note.replace(/-?\d+$/, '')),
+  }
+}

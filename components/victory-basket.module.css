@@ -1,0 +1,17 @@
+.card { width: min(370px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; padding: 22px; color: #f8f1de; background: radial-gradient(ellipse at 50% 25%, #453217, #15120d 70%); border: 1px solid #ba8c42; border-radius: 16px; box-shadow: 0 16px 60px #0009; text-align: center; font: 13px/1.5 sans-serif; }
+.heading { font-size: 13px; letter-spacing: .15em; font-weight: 800; color: #ffe1a0; }
+.stage { position: relative; height: 155px; overflow: hidden; }
+.basket { position: absolute; width: 200px; height: 135px; left: 50%; bottom: 0; transform: translateX(-50%); }
+.fallingEgg { position: absolute; z-index: 1; top: -25px; width: 17px; height: 23px; border-radius: 52% 52% 45% 45%; background: radial-gradient(at 35% 25%, #fff5bc, #e4b22b 60%, #a36d0e); animation: deposit 700ms ease-in both; }
+.basketCount { position: absolute; bottom: 23px; left: 50%; transform: translateX(-50%); padding: 1px 9px; border-radius: 12px; background: #251708cc; color: #ffe8ac; font-weight: 700; }
+.card p { margin: 5px 0; }
+.takeHome { font-size: 17px; }
+.takeHome strong { color: #ffdc7c; }
+.card .history { color: #bcb097; font-size: 11px; margin: 13px 0; }
+.rank { border-top: 1px solid #8c713544; padding-top: 12px; color: #e4cca3; font-size: 12px; }
+.rank span { display: block; color: #a99c83; font-size: 11px; }
+.returnButton { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 10px 15px; margin-top: 16px; border: 1px solid #f5d98e; border-radius: 8px; background: #e8bf68; color: #20170a; font-size: 13px; font-weight: 700; cursor: pointer; }
+.returnButton:hover { background: #ffe0a0; }
+.returnButton:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+@keyframes deposit { 0% { transform: translateY(0) rotate(-20deg); opacity: 0; } 15% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(110px) rotate(30deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fallingEgg { display: none; } }

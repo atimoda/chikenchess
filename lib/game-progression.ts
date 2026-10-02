@@ -7,10 +7,15 @@ const LEGACY_STORAGE_KEY = "chikenchess_campaign"
 
 export const PLAYER_PROFILE_VERSION = 1
 export const STARTING_GOLDEN_EGGS = 10
+export const STARTING_MATCH_GOLDEN_EGGS = 1
 export const GOLDEN_EGGS_PER_CITY_WIN = 10
 export const GOLDEN_EGGS_PER_BEST_MOVE = 1
 export const GOLDEN_EGGS_PER_WORST_MOVE = 3
 export type RankedMoveReward = 'best' | 'worst'
+
+export function rankedMoveEggReward(kind: RankedMoveReward, multiplier: 1 | 2 = 1) {
+    return (kind === 'best' ? GOLDEN_EGGS_PER_BEST_MOVE : GOLDEN_EGGS_PER_WORST_MOVE) * multiplier
+}
 
 export interface PlayerProfile {
     profileVersion: number
@@ -194,15 +199,23 @@ export interface ConquestResult {
     rankedUp: boolean
 }
 
-export function applyCityVictory(source: PlayerProfile, cityId: string, now = Date.now()): ConquestResult {
+export function applyCityVictory(
+    source: PlayerProfile,
+    cityId: string,
+    now = Date.now(),
+    earnedEggs = 0,
+    collectedEggs = 0,
+): ConquestResult {
     const current = normalizePlayerProfile(source, now)
     const oldRank = current.rank
     const isFirstTime = !current.conqueredCityIds.includes(cityId)
-    const points = current.points + GOLDEN_EGGS_PER_CITY_WIN
+    const rewardEggs = integer(earnedEggs)
+    const rewardPoints = rewardEggs + integer(collectedEggs)
+    const points = current.points + rewardPoints
     const profile: PlayerProfile = {
         ...current,
         conqueredCityIds: isFirstTime ? [...current.conqueredCityIds, cityId] : current.conqueredCityIds,
-        goldenEggs: current.goldenEggs + GOLDEN_EGGS_PER_CITY_WIN,
+        goldenEggs: current.goldenEggs + rewardEggs,
         points,
         rank: calculateRank(points),
         winsCount: current.winsCount + 1,
@@ -211,8 +224,8 @@ export function applyCityVictory(source: PlayerProfile, cityId: string, now = Da
     }
     return {
         profile,
-        earnedEggs: GOLDEN_EGGS_PER_CITY_WIN,
-        earnedPoints: GOLDEN_EGGS_PER_CITY_WIN,
+        earnedEggs: rewardEggs,
+        earnedPoints: rewardPoints,
         isFirstTime,
         oldRank,
         newRank: profile.rank,
@@ -220,15 +233,15 @@ export function applyCityVictory(source: PlayerProfile, cityId: string, now = Da
     }
 }
 
-export function conquerCity(cityId: string): ConquestResult {
-    const result = applyCityVictory(getPlayerProfile(), cityId)
+export function conquerCity(cityId: string, earnedEggs = 0, collectedEggs = 0): ConquestResult {
+    const result = applyCityVictory(getPlayerProfile(), cityId, Date.now(), earnedEggs, collectedEggs)
     savePlayerProfile(result.profile)
     return result
 }
 
 export function applyRankedMoveReward(source: PlayerProfile, kind: RankedMoveReward, now = Date.now(), multiplier: 1 | 2 = 1) {
     const current = normalizePlayerProfile(source, now)
-    const earnedEggs = (kind === 'best' ? GOLDEN_EGGS_PER_BEST_MOVE : GOLDEN_EGGS_PER_WORST_MOVE) * multiplier
+    const earnedEggs = rankedMoveEggReward(kind, multiplier)
     const firstNotice = !current.moveRewardNotices[kind]
     const points = current.points + earnedEggs
     const profile: PlayerProfile = {
@@ -240,6 +253,17 @@ export function applyRankedMoveReward(source: PlayerProfile, kind: RankedMoveRew
         updatedAt: now,
     }
     return { profile, earnedEggs, firstNotice }
+}
+
+export function markRankedMoveNotice(kind: RankedMoveReward) {
+    const current = getPlayerProfile()
+    if (current.moveRewardNotices[kind]) return false
+    savePlayerProfile({
+        ...current,
+        moveRewardNotices: { ...current.moveRewardNotices, [kind]: true },
+        updatedAt: Date.now(),
+    })
+    return true
 }
 
 export function awardRankedMove(kind: RankedMoveReward, multiplier: 1 | 2 = 1) {

@@ -3,25 +3,25 @@ export { STYLE_PROFILES } from './kit-profiles/catalog'
 import { createCreativeSession, creativeSchema, type CreativeSession } from './creative'
 import type { PianoRoll } from './piano-roll'
 import { createManchesterJazzKit } from './manchester-kit'
+export { MANCHESTER_JAZZ_REVISION } from './manchester-kit'
 import type { CityData } from '../cities-data'
 import type { PartProfile, ProfileSource, StyleProfile } from './kit-profiles/types'
 import { beatsPerBar, groupStarts, type Meter } from './meter'
 
-export const STYLE_REVISION = 'styles-2026-09-25-v3'
-export const MANCHESTER_JAZZ_REVISION = 'manchester-2026-09-25-v4'
-export const LEGACY_STYLE_REVISIONS = ['styles-2026-09-21-v2', 'dusseldorf-2026-09-24-v3', 'new-orleans-2026-09-24-v3', 'manchester-2026-09-24-v3'] as const
+export const STYLE_REVISION = 'styles-2026-10-02-midi-v5'
 export const CITY_STYLE_REVISIONS: Record<string, string> = {
-  dusseldorf: 'dusseldorf-2026-09-25-v4',
-  'new-orleans-1953': 'new-orleans-2026-09-25-v4',
-  'salvador-1992': 'salvador-2026-09-27-v2',
-  'leipzig-1723': 'leipzig-2026-09-28-v2',
-  'vienna-1825': 'vienna-2026-09-28-v2',
+  dusseldorf: 'dusseldorf-2026-10-02-midi-v6',
+  'new-orleans-1953': 'new-orleans-2026-10-02-midi-v6',
+  'salvador-1992': 'salvador-2026-10-02-midi-v4',
+  'leipzig-1723': 'leipzig-2026-10-02-midi-v4',
+  'vienna-1825': 'vienna-2026-10-02-midi-v4',
 }
 
-const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1' } as const
+const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1' } as const
 const WHITE_SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2'] as const
 
 export function phraseRoll(text: string, bars: number, swing = 0, gate = .65, meter: Meter = '4/4'): PianoRoll {
+  // Numeric seed motifs are authoring data; only the resulting rolls enter kits.
   const tokens = text.trim().split(/\s+/)
   const unit = bars / tokens.length
   const pulseSlots = tokens.length / bars / beatsPerBar(meter)
@@ -49,11 +49,6 @@ function canonicalOrigin(origin: string, color: 'w' | 'b') {
   return color === 'w' ? origin : `${origin[0]}${9 - Number(origin[1])}`
 }
 
-function sectionPattern(sections: number[], pulses = 4) {
-  const total = sections.reduce((sum, beats) => sum + beats, 0)
-  return `[${sections.map((beats, index) => `${Math.min(index, 3)}@${beats}`).join(' ')}]/${total / pulses}`
-}
-
 function barsFor(part: PartProfile, variation: number) {
   return Array.isArray(part.bars) ? (part.bars[variation] ?? part.bars.at(-1) ?? 1) : (part.bars ?? 1)
 }
@@ -61,18 +56,23 @@ function barsFor(part: PartProfile, variation: number) {
 function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][number], part: PartProfile, profile: StyleProfile) {
   const instrument = kit.instruments[piece.id]
   const arrangement = part.arrangement ?? {}
-  const patterns = Array.from({ length: 4 }, (_, index) => part.patterns[index] ?? part.patterns.at(-1) ?? '0')
+  const patterns = part.patterns.slice(0, 8)
+  const pianoRolls = patterns.map((pattern, index) => {
+    const roll = phraseRoll(pattern, barsFor(part, index), part.swing ?? profile.swing, part.gate ?? (part.behavior === 'sustain' ? .88 : .62), profile.meter)
+    // Curated slide sources author pitch gestures directly into their MIDI notes.
+    if (part.pitchEnvelope) roll.notes = roll.notes.map(note => ({ ...note, slide: part.pitchEnvelope, slideSeconds: part.pitchAttack ?? .15 }))
+    return roll
+  })
   Object.assign(instrument, {
-    name: part.name, behavior: part.behavior, source: profileSource(part.source), sound: part.source.kind === 'synth' ? part.source.sound : 'sine', notes: '0',
-    pianoOnly: true, phrases: ['~', '~', '~', '~'],
-    pianoRolls: patterns.map((pattern, index) => phraseRoll(pattern, barsFor(part, index), part.swing ?? profile.swing, part.gate ?? (part.behavior === 'sustain' ? .88 : .62), profile.meter)),
+    name: part.name, behavior: part.behavior, source: profileSource(part.source), sound: part.source.kind === 'synth' ? part.source.sound : 'sine', pianoRolls,
     octave: part.octave ?? 3, gain: part.gain ?? .18, attack: part.attack ?? .008, decay: part.decay ?? .18, sustain: part.sustain ?? .6,
     release: part.release ?? .12, clip: part.clip ?? .9, lpf: part.lpf ?? 9000, hpf: part.hpf ?? 20,
-    distortion: part.distortion, distortionMix: part.distortionMix, pitchEnvelope: part.pitchEnvelope, pitchAttack: part.pitchAttack,
-    mask: undefined, groove: undefined, selectedVariation: undefined, automations: part.automations,
-    performance: { restart: arrangement.restart ?? !(part.role === 'texture' || part.role === 'response'), steps: profile.sections.map((beats, index) => ({
-      beats, variation: arrangement.variations?.[index] ?? Math.min(index, 3), transpose: arrangement.transpose?.[index] ?? 0, active: arrangement.active?.[index] ?? true,
-    })) },
+    distortion: part.distortion, distortionMix: part.distortionMix, pitchAttack: part.pitchAttack,
+    lpfRange: part.lpfRange, driveRange: part.driveRange, reverbRange: part.reverbRange, swingRange: part.swingRange,
+    selectedVariation: undefined,
+    arrangement: { restart: arrangement.restart ?? !(part.role === 'texture' || part.role === 'response'), sections: Object.fromEntries(kit.arrangement.sections.map((section, index) => [section.id, {
+      variation: arrangement.variations?.[index] ?? index % patterns.length, transpose: arrangement.transpose?.[index] ?? 0, active: arrangement.active?.[index] ?? true,
+    }])) },
   })
   kit.effects[piece.id] = {
     gain: piece.color === 'w' ? 1 : .78, pitch: 1, pan: piece.color === 'w' ? -.1 : .1,
@@ -83,35 +83,17 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
   }
 }
 
-function enrichManchesterJazzKit(kit: CreativeSession) {
-  kit.catalogRevision = MANCHESTER_JAZZ_REVISION
-  kit.harmony = 'cadence'
-  kit.sectionPattern = '[0@16 1@24 2@12 3@24]/19'
-  const sections = [16, 24, 12, 24]
-  for (const piece of kit.pieces) {
-    const instrument = kit.instruments[piece.id]
-    const file = piece.origin.charCodeAt(0) - 97
-    const isPulse = instrument.behavior === 'pulse'
-    const active = isPulse ? [true, file < 6, file < 3, true]
-      : file === 1 ? [true, true, true, true] // The main bass anchors sparse sections.
-      : file === 6 ? [false, true, false, true] // Its reply enters with the fuller band.
-      : piece.type === 'q' ? [false, true, false, true]
-      : piece.type === 'k' ? [true, true, true, true]
-      : [file % 2 === 0, true, file % 2 === 1, true]
-    instrument.performance = { restart: instrument.behavior !== 'sustain', steps: sections.map((beats, index) => ({ beats, variation: index, transpose: index === 2 && !isPulse ? 2 : 0, active: active[index] })) }
-    if (piece.origin[0] === 'd') instrument.automations = { ...instrument.automations, penv: { kind: 'pattern', patterns: ['0', '0', '0', '<0 0 0 -2>'] }, patt: { kind: 'pattern', patterns: ['.09'] } }
-  }
-  return creativeSchema.parse(kit)
-}
-
 export function createStyledCityKit(city: CityData): CreativeSession {
-  if (city.id === 'manchester-1999') return enrichManchesterJazzKit(createManchesterJazzKit())
+  if (city.id === 'manchester-1999') return createManchesterJazzKit()
   const profile = STYLE_PROFILES[city.id]
   if (!profile) throw new Error(`Perfil ausente: ${city.id}`)
   if (profile.parts.length !== WHITE_SLOTS.length) throw new Error(`Perfil incompleto: ${city.id} tem ${profile.parts.length}/16 vozes.`)
   const kit = createCreativeSession()
   Object.assign(kit, { catalogRevision: CITY_STYLE_REVISIONS[city.id] ?? STYLE_REVISION, cityId: city.id, name: profile.name, bpm: profile.bpm, meter: profile.meter ?? '4/4', root: profile.root, scale: profile.scale,
-    harmony: profile.harmony, volume: .68, grooves: {}, sectionPattern: sectionPattern(profile.sections, beatsPerBar(profile.meter)) })
+    harmony: profile.harmonicSequences?.some(sequence => sequence?.length) ? 'kit' : profile.harmony, volume: .68, arrangement: { sections: profile.sections.map((beats, index) => ({
+      id: `section-${String.fromCharCode(97 + index)}`, label: String.fromCharCode(65 + index), beats,
+      ...(profile.harmonicSequences?.[index] ? { harmony: [...profile.harmonicSequences[index]] } : {}),
+    })) } })
   for (const piece of kit.pieces) {
     piece.active = piece.color === 'w'
     const slot = WHITE_SLOTS.indexOf(canonicalOrigin(piece.origin, piece.color) as typeof WHITE_SLOTS[number])

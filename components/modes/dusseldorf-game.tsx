@@ -9,6 +9,5 @@ interface DusseldorfGameProps {
 }
 
 export function DusseldorfGame({ city, onBack }: DusseldorfGameProps) {
-  return <ChessGame city={city} onBack={onBack} />
+  return <ChessGame city={city} onBack={onBack} panelsFollowPlayerTurn={false} />
 }
-

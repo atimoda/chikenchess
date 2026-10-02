@@ -9,15 +9,19 @@ import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from 
 import { defaultCityKit, loadCityKit } from '@/lib/music/city-kits'
 import { scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
-import { createTeamMixes, type TeamMix } from '@/lib/music/team-mixer'
+import { createTeamMixes, TEAM_GAIN_MAX, type TeamMix } from '@/lib/music/team-mixer'
 import type { HarmonyPlanId } from '@/lib/music/harmony'
 import { applyReactions, reactionContext } from '@/lib/music/reactions'
+import { identifyPitchCollection } from '@/lib/music/scales'
+import type { SampleSource } from '@/lib/music/sample-banks'
 
 export function useMusic(history: string[], city: CityData, playing: boolean, bpm: number, volume: number, showCode = true, engineActive = true) {
   const builtInKit = useMemo(() => defaultCityKit(city.id), [city.id])
   const enabled = builtInKit !== null
   const [kit, setKit] = useState<CreativeSession | null>(builtInKit)
-  const [teamMixes, setTeamMixes] = useState(createTeamMixes)
+  const sampleFingerprint = JSON.stringify(Object.values(kit?.instruments ?? {}).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source] : []))
+  const sampleSources = useMemo(() => JSON.parse(sampleFingerprint) as SampleSource[], [sampleFingerprint])
+  const [teamMixes, setTeamMixes] = useState(() => createTeamMixes(TEAM_GAIN_MAX / 2))
   const updateTeamMix = useCallback((color: 'w' | 'b', patch: Partial<TeamMix>) => setTeamMixes(current => ({ ...current, [color]: { ...current[color], ...patch } })), [])
   const gameMusicState = useMemo(() => gameMusicStateFromHistory(history), [history])
   const pieces = gameMusicState.pieces
@@ -34,6 +38,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     pieces: pieces.map(p => ({ ...p, active: p.activation === 'move' || manuallyActiveIds.has(p.id), checkEnsemble: false })),
     scale: kit ? scaleForCreativeSession(kit) : city.scale,
     harmony: kit?.harmony,
+    arrangement: kit?.arrangement,
     meter: kit?.meter ?? '4/4',
     bpm,
     tuning: 1,
@@ -42,8 +47,6 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     effects,
     instruments: kit?.instruments,
     mappings: kit?.mappings,
-    sectionPattern: kit?.sectionPattern,
-    grooves: kit?.grooves,
     teamMixes,
     title: kit ? `${city.name} · ${kit.name}` : city.name,
   }), [pieces, manuallyActiveIds, kit, city.scale, city.name, bpm, volume, playing, effects, teamMixes])
@@ -51,13 +54,14 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const input = useMemo(() => ({...baseSnapshot,reactionInput:kit?{config:kit.reactions,context,scope:city.id}:undefined}),[baseSnapshot,kit,context,city.id])
   const resolved = useMemo(() => kit ? applyReactions(baseSnapshot,kit.reactions,context) : {snapshot:baseSnapshot,descriptions:[]},[baseSnapshot,kit,context])
   const snapshot: MusicSnapshot = audible ?? resolved.snapshot
+  const currentPitchCollection = useMemo(() => identifyPitchCollection(snapshot.scale, kit?.scale), [snapshot.scale, kit?.scale])
   const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active && snapshot.instruments?.[p.id]?.loopEnabled !== false).map(p => p.square)), [snapshot.pieces, snapshot.instruments])
   const code = useMemo(() => enabled && showCode ? renderMusicCode(snapshot, preview) : '', [enabled, showCode, snapshot, preview])
 
   useEffect(() => {
     const resolved = loadCityKit(city.id)
     setKit(resolved)
-    setTeamMixes(createTeamMixes())
+    setTeamMixes(createTeamMixes(TEAM_GAIN_MAX / 2))
     setEffects(resolved?.effects ?? {})
     setSelectedId(null)
     setManuallyActiveIds(new Set())
@@ -79,6 +83,12 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => { document.removeEventListener('visibilitychange', onVisibilityChange); engine.dispose(); pulseMonitor.clear(); runtime.current = null }
   }, [enabled, engineActive, monitor, pulseMonitor])
+  useEffect(() => {
+    if (!enabled || !engineActive) return
+    let current = true
+    void runtime.current?.prepareSamples(sampleSources).catch(error => { if (current) setError(error instanceof Error ? error.message : String(error)) })
+    return () => { current = false }
+  }, [enabled, engineActive, sampleSources])
   useEffect(() => {
     const mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
     if (!engineActive) return
@@ -109,12 +119,16 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     setPreview(null)
     runtime.current?.endAudition()
   }, [])
+  const releaseAudition = useCallback(() => {
+    setPreview(null)
+    runtime.current?.releaseAudition()
+  }, [])
   const select = useCallback((square: Square) => {
     const piece = pieces.find(p => p.square === square)
     if (piece) setSelectedId(piece.id)
   }, [pieces])
   const togglePiece = useCallback((square: Square) => {
-    const piece = pieces.find(p => p.square === square && p.color === 'w')
+    const piece = pieces.find(p => p.square === square)
     if (!piece || !kit) return false
     const active = resolved.snapshot.pieces.some(p => p.id === piece.id && p.active)
     const enabled = kit.instruments[piece.id]?.loopEnabled !== false
@@ -139,12 +153,6 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
       if (!current) return current
       const previous = current.instruments[selectedId]
       const next = { ...previous, ...patch }
-      if (previous.automations && ('pitchEnvelope' in patch || 'pitchAttack' in patch)) {
-        const automations = { ...previous.automations }
-        if ('pitchEnvelope' in patch) delete automations.penv
-        if ('pitchAttack' in patch) delete automations.patt
-        next.automations = automations
-      }
       return { ...current, instruments: { ...current.instruments, [selectedId]: next } }
     })
   }, [selectedId])
@@ -152,13 +160,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     if (!selected || !instrument) return
     const id = selected.id
     setEffects(current => ({ ...current, [id]: { ...(current[id] ?? { delay: 0, reverb: .12, gain: 1, pan: 0, pitch: 1, decay: instrument.decay ?? .15, lpf: instrument.lpf, hpf: instrument.hpf }), [key]: value } }))
-    // Taking a knob takes control from the corresponding absolute automation.
-    // Gain remains a multiplier, so its rhythmic accents are preserved.
-    const target = ({ lpf: 'lpf', pan: 'pan', reverb: 'room', delay: 'delay' } as const)[key as 'lpf' | 'pan' | 'reverb' | 'delay']
-    if (target && instrument.automations?.[target]) {
-      const automations = { ...instrument.automations }; delete automations[target]
-      updateInstrument({ automations })
-    }
+    if (key === 'lpf' && instrument.lpfRange) updateInstrument({ lpfRange: undefined })
   }, [selected, instrument, updateInstrument])
   const setTonality = useCallback((root: CreativeSession['root'], scale: CreativeSession['scale']) => {
     setKit(current => current && ({ ...current, root, scale }))
@@ -171,14 +173,16 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     else data.fill(0)
   }, [])
   return {
-    enabled, engineActive, audition, endAudition, select, togglePiece, reset, selected, effects, setEffects, snapshot, teamMixes, updateTeamMix,
+    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, reset, selected, effects: snapshot.effects, setEffects, snapshot, teamMixes, updateTeamMix,
     code, preview, pulseMonitor, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,
     kitVolume: kit?.volume ?? null,
-    instrument, updateInstrument, setPieceEffect, setTonality, setHarmony,
-    tonality: kit ? { root: kit.root, scale: kit.scale } : undefined,
-    harmony: kit?.harmony,
+    instrument: selected ? snapshot.instruments?.[selected.id] ?? instrument : null, updateInstrument, setPieceEffect, setTonality, setHarmony,
+    tonality: kit ? { root: currentPitchCollection.root as CreativeSession['root'], scale: currentPitchCollection.scale } : undefined,
+    baseTonality: kit ? { root: kit.root, scale: kit.scale } : undefined,
+    currentScaleLabel: currentPitchCollection.label,
+    harmony: snapshot.harmony ?? kit?.harmony,
     attackingColor: gameMusicState.attackingColor, activeSquares,
   }
 }

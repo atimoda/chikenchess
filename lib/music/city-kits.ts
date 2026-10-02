@@ -1,10 +1,9 @@
 import { CREATIVE_STORAGE, parseCreativeSession, type CreativeSession } from './creative'
 import { cities } from '../cities-data'
-import { createStyledCityKit, LEGACY_STYLE_REVISIONS, STYLE_REVISION } from './styled-kits'
+import { createStyledCityKit } from './styled-kits'
 
 export const CITY_KIT_STORAGE_PREFIX = 'chickenchess:city-kit:v1:'
 export const KIT_LIBRARY_STORAGE = `${CREATIVE_STORAGE}:kits`
-const MAX_LIBRARY_KITS = 30
 
 export const EDITABLE_CITY_KITS = cities.map(({ id, name, year }) => ({ id, name: `${name} · ${year}` }))
 
@@ -27,69 +26,30 @@ export function prepareCityKitForCreative(session: CreativeSession, cityId: stri
   }))
 }
 
-function looseKitContent(kit: CreativeSession) {
-  return JSON.stringify({ ...kit, name: '', cityId: undefined })
-}
-
-function preserveAsLooseKit(saved: string, cityId: string, defaultName: string) {
-  const old = parseCreativeSession(saved)
-  const rawLibrary = window.localStorage.getItem(KIT_LIBRARY_STORAGE)
-  const library: unknown = rawLibrary ? JSON.parse(rawLibrary) : []
-  if (!Array.isArray(library)) throw new Error('Biblioteca de kits inválida')
-  const kits = library.map(item => parseCreativeSession(JSON.stringify(item)))
-  const oldContent = looseKitContent(old)
-  const linkedIndex = kits.findIndex(kit => kit.cityId === cityId && looseKitContent(kit) === oldContent)
-  if (kits.some(kit => !kit.cityId && looseKitContent(kit) === oldContent)) {
-    if (linkedIndex >= 0) window.localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(kits.filter((_, index) => index !== linkedIndex)))
-    return
-  }
-  if (linkedIndex < 0 && kits.length >= MAX_LIBRARY_KITS) throw new Error('Biblioteca de kits cheia')
-
-  const city = cities.find(item => item.id === cityId)
-  const base = old.name === defaultName && city ? `${city.name} ${city.year}` : old.name
-  let version = 1
-  let name = ''
-  do {
-    const suffix = ` v${version++}`
-    name = `${base.slice(0, 80 - suffix.length).trimEnd()}${suffix}`
-  } while (kits.some((kit, index) => index !== linkedIndex && kit.name === name))
-  const detached = parseCreativeSession(JSON.stringify({ ...old, name, cityId: undefined }))
-  if (linkedIndex >= 0) kits[linkedIndex] = detached
-  else kits.push(detached)
-  window.localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(kits))
-}
-
-function importLegacyBackups(cityId: string, revision: string, defaultName: string) {
-  for (const backupRevision of new Set([...LEGACY_STYLE_REVISIONS, STYLE_REVISION, revision])) {
-    const key = `${CITY_KIT_STORAGE_PREFIX}backup:${backupRevision}:${cityId}`
-    const saved = window.localStorage.getItem(key)
-    if (!saved) continue
-    preserveAsLooseKit(saved, cityId, defaultName)
-    window.localStorage.removeItem(key)
-  }
+/** One-time authorized reset of text-era music edits; profile/progress is untouched. */
+export function resetLegacyMusicStorage() {
+  if (typeof window === 'undefined') return
+  try {
+    const storage = window.localStorage, marker = 'chickenchess:music:midi-v5'
+    if (storage.getItem(marker)) return
+    const targets = Array.from({length:storage.length},(_,index)=>storage.key(index)).filter((key): key is string => !!key && (key === 'chickenchess:creative:v1' || key === 'chickenchess:creative:v1:kits' || key.startsWith(CITY_KIT_STORAGE_PREFIX)))
+    for (const key of targets) storage.removeItem(key)
+    storage.setItem(marker,'1')
+  } catch { /* Storage can be unavailable; the editor still opens the bundled MIDI kit. */ }
 }
 
 export function loadCityKit(cityId: string): CreativeSession | null {
   const fallback = defaultCityKit(cityId)
-  const revision = fallback?.catalogRevision ?? STYLE_REVISION
   if (typeof window === 'undefined') return fallback
-  try { importLegacyBackups(cityId, revision, fallback?.name ?? cityId) } catch { /* Keep the backup for a later attempt. */ }
   try {
+    resetLegacyMusicStorage()
     const saved = window.localStorage.getItem(cityKitStorageKey(cityId))
     if (!saved) return fallback
     const parsed = parseCreativeSession(saved)
-    if (parsed.cityId !== cityId) return fallback
-    if (parsed.catalogRevision === revision || !fallback) return parsed
-    // Keep the previous kit in the Creative library before replacing its city slot.
-    // If preservation fails, leave the existing city kit in place.
-    try {
-      preserveAsLooseKit(saved, cityId, fallback.name)
-      window.localStorage.setItem(cityKitStorageKey(cityId), JSON.stringify(fallback))
-      return fallback
-    } catch { return parsed }
-  } catch {
-    return fallback
-  }
+    if (parsed.cityId === cityId && (!fallback || parsed.catalogRevision === fallback.catalogRevision)) return parsed
+    if (fallback) window.localStorage.setItem(cityKitStorageKey(cityId),JSON.stringify(fallback))
+  } catch { /* Unavailable or invalid storage uses the bundled MIDI kit. */ }
+  return fallback
 }
 
 /** Replace one named library kit and keep at most one user kit linked per city. */

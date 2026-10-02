@@ -4,7 +4,7 @@ export class TempoMap {
   private secondsPerBarAtOneBpm: number
   constructor(bpm=120, time=0, beatsPerBar=4) { this.secondsPerBarAtOneBpm=beatsPerBar*60; this.reset(bpm,time) }
   setBeatsPerBar(beatsPerBar:number,bpm:number,time:number) { this.secondsPerBarAtOneBpm=beatsPerBar*60; this.reset(bpm,time) }
-  reset(bpm:number,time:number) { this.segments=[{cycle:0,time,from:bpm,to:bpm,bars:0}] }
+  reset(bpm:number,time:number,cycle=0) { this.segments=[{cycle,time,from:bpm,to:bpm,bars:0}] }
   private segment(cycle:number) { return this.segments.findLast(s=>s.cycle<=cycle+1e-10) ?? this.segments[0] }
   bpmAt(cycle:number) { const s=this.segment(cycle); return s.bars ? s.from+(s.to-s.from)*Math.max(0,Math.min(1,(cycle-s.cycle)/s.bars)) : s.to }
   timeAt(cycle:number) {
@@ -32,43 +32,84 @@ export class MusicTransport {
   started=false
   lastEnd=0
   readonly latency:number
-  readonly tempo=new TempoMap()
+  private tempoMap=new TempoMap()
+  // Audio may already be scheduled after a jump, while the listener still hears
+  // the preceding section. Retain its clock until the exact landing deadline.
+  private preceding: {until:number;map:TempoMap}[]=[]
+  private queuedSeek?: {at:number;target:number;commit:()=>void}
+  private landing?: {time:number;target:number}
   private pattern:any
   private timer?:ReturnType<typeof setInterval>
   private target=120
   private beatsPerBar=4
   private boundary=-1
+  private stoppedCycle=0
   constructor(private options:{ getTime:()=>number;latency:number;onBoundary:(cycle:number)=>void;onTrigger:(hap:any,deadline:number,duration:number,cps:number,time:number)=>void;onError:(error:unknown)=>void }) {this.latency=options.latency}
-  get cycle() {return this.started?this.tempo.cycleAt(this.options.getTime()):0}
+  get tempo() {const now=this.options.getTime();return this.preceding.find(entry=>now<entry.until)?.map??this.tempoMap}
+  get cycle() {return this.started?this.tempo.cycleAt(this.options.getTime()):this.stoppedCycle}
+  get schedulingCycle() {return this.started?this.tempoMap.cycleAt(this.options.getTime()):this.stoppedCycle}
+  get pendingSeekTarget() {return this.queuedSeek?.target??(this.landing&&this.options.getTime()<this.landing.time?this.landing.target:undefined)}
+  get queuedSeekCycle() {return this.queuedSeek?.at}
   get cps() {return this.tempo.bpmAt(this.cycle)/(60*this.beatsPerBar)}
   get lastBegin() {return this.cycle}
   get lastTick() {return this.options.getTime()-this.latency}
-  setMeter(beatsPerBar:number) {if(this.beatsPerBar===beatsPerBar)return;this.stop();this.beatsPerBar=beatsPerBar;this.tempo.setBeatsPerBar(beatsPerBar,this.target,this.options.getTime())}
-  setCps(cps:number,bars=0) {const factor=60*this.beatsPerBar,bpm=Math.max(30,Math.min(240,cps*factor));if(bpm===this.target)return;this.target=bpm;if(this.started)this.tempo.change(this.lastEnd,bpm,bars);else this.tempo.reset(bpm,this.options.getTime())}
+  setMeter(beatsPerBar:number) {if(this.beatsPerBar===beatsPerBar)return;this.stop();this.beatsPerBar=beatsPerBar;this.tempoMap.setBeatsPerBar(beatsPerBar,this.target,this.options.getTime())}
+  setCps(cps:number,bars=0) {const factor=60*this.beatsPerBar,bpm=Math.max(30,Math.min(240,cps*factor));if(bpm===this.target)return;this.target=bpm;if(this.started)this.tempoMap.change(this.lastEnd,bpm,bars);else this.tempoMap.reset(bpm,this.options.getTime())}
   async setPattern(pattern:any) {this.pattern=pattern}
-  async start() {if(this.started)return;this.started=true;this.lastEnd=0;this.boundary=-1;this.tempo.reset(this.target,this.options.getTime()+.03);this.tick();this.timer=setInterval(()=>this.tick(),50)}
-  stop() {this.started=false;if(this.timer)clearInterval(this.timer);this.timer=undefined;this.lastEnd=0}
+  async start() {if(this.started)return;this.started=true;this.lastEnd=this.stoppedCycle;this.boundary=-1;this.tempoMap.reset(this.target,this.options.getTime()+.03,this.stoppedCycle);this.tick();this.timer=setInterval(()=>this.tick(),50)}
+  stop() {this.started=false;if(this.timer)clearInterval(this.timer);this.timer=undefined;this.lastEnd=0;this.stoppedCycle=0;this.queuedSeek=undefined;this.landing=undefined;this.preceding=[]}
+  /** Replace the next destination, without cutting or rescheduling current audio. */
+  queueSeek(at:number,target:number,commit:()=>void) {
+    if(!this.started||!Number.isFinite(at)||!Number.isFinite(target)||target<0||at<this.lastEnd-1e-9)return false
+    this.queuedSeek={at,target,commit}
+    return true
+  }
+  cancelQueuedSeek() {this.queuedSeek=undefined}
+  seek(cycle:number) {
+    if(!Number.isFinite(cycle)||cycle<0)return
+    const previous=this.cycle, bpm=this.started?this.tempo.bpmAt(previous):this.target
+    const ramp=this.tempo.transition(previous), remaining=this.started?Math.max(0,ramp.end-previous):0
+    this.queuedSeek=undefined;this.landing=undefined;this.preceding=[]
+    this.stoppedCycle=cycle;this.lastEnd=cycle;this.boundary=-1
+    this.tempoMap.reset(bpm,this.options.getTime()+.03,cycle)
+    if(remaining)this.tempoMap.change(cycle,this.target,remaining)
+    if(this.started)this.tick()
+  }
   /** Public for deterministic scheduler tests with a fake AudioContext clock. */
   tick() {
     if(!this.started)return
     try {
       const now=this.options.getTime(), horizon=now+this.latency
+      this.preceding=this.preceding.filter(entry=>now<entry.until)
       // On a suspended/throttled tab, skip stale attacks instead of bursting a backlog.
-      if(this.tempo.timeAt(this.lastEnd)<now-.1)this.lastEnd=Math.ceil(this.tempo.cycleAt(now))
-      for(let work=0;work<128&&this.tempo.timeAt(this.lastEnd)<horizon;work++){
+      if(this.tempoMap.timeAt(this.lastEnd)<now-.1)this.lastEnd=Math.min(Math.ceil(this.tempoMap.cycleAt(now)),this.queuedSeek?.at??Infinity)
+      for(let work=0;work<128&&this.tempoMap.timeAt(this.lastEnd)<horizon;work++){
+        if(this.queuedSeek&&this.lastEnd>=this.queuedSeek.at-1e-9){
+          const jump=this.queuedSeek,old=this.tempoMap,time=old.timeAt(jump.at),bpm=old.bpmAt(jump.at)
+          const remaining=Math.max(0,old.transition(jump.at).end-jump.at)
+          this.queuedSeek=undefined
+          this.preceding.push({until:time,map:old})
+          this.tempoMap=new TempoMap(bpm,time,this.beatsPerBar)
+          this.tempoMap.reset(bpm,time,jump.target)
+          if(remaining)this.tempoMap.change(jump.target,this.target,remaining)
+          this.landing={time,target:jump.target}
+          this.lastEnd=jump.target;this.boundary=-1
+          jump.commit()
+          if(this.tempoMap.timeAt(this.lastEnd)<now-.1)this.lastEnd=Math.ceil(this.tempoMap.cycleAt(now))
+        }
         if(Math.abs(this.lastEnd-Math.round(this.lastEnd))<1e-9)this.lastEnd=Math.round(this.lastEnd)
         const begin=this.lastEnd, integer=Math.floor(begin+1e-9)
         if(integer!==this.boundary){this.boundary=integer;this.options.onBoundary(begin)}
-        const end=Math.min(begin+1/16,integer+1,this.tempo.cycleAt(horizon))
+        const end=Math.min(begin+1/16,integer+1,this.tempoMap.cycleAt(horizon),this.queuedSeek?.at??Infinity)
         if(end<=begin+1e-10)break
-        const cps=this.tempo.bpmAt(begin)/(60*this.beatsPerBar)
+        const cps=this.tempoMap.bpmAt(begin)/(60*this.beatsPerBar)
         const haps=this.pattern?.queryArc(begin,end,{_cps:cps})??[]
         for(const hap of haps){
           if(!hap.hasOnset())continue
-          const onset=Number(hap.whole.begin),time=this.tempo.timeAt(onset)
+          const onset=Number(hap.whole.begin),time=this.tempoMap.timeAt(onset)
           if(time<now-.01)continue
-          const duration=this.tempo.timeAt(Number(hap.whole.end))-time
-          this.options.onTrigger(hap,time-now,duration,this.tempo.bpmAt(onset)/(60*this.beatsPerBar),time)
+          const duration=this.tempoMap.timeAt(Number(hap.whole.end))-time
+          this.options.onTrigger(hap,time-now,duration,this.tempoMap.bpmAt(onset)/(60*this.beatsPerBar),time)
         }
         this.lastEnd=end
       }

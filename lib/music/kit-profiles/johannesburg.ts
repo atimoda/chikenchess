@@ -7,7 +7,7 @@ const chant = { active: [false, false, true, true], transpose: [0, 0, 2, 0] }
 export const profile: StyleProfile = {
   name: 'Jozi · kwaito desacelerado', bpm: 108, root: 'F#', scale: 'Pentatônica menor', harmony: 'cadence', swing: .1, sections: [16, 24, 8, 24],
   parts: [
-    voice('bass', 'Baixo elástico de Jozi', synth('square'), ['0 . . 0 . 3 . 0','0 . 0 . 4 3 . 0','0 . . . 3 . . .','0 . 3 4 . 3 0 .'], { bars: 2, gain: .32, lpf: 720, distortion: .65, distortionMix: .1, arrangement: groove, automations: { lpf: { kind: 'pattern', patterns: ['560 780','650 1050','420 620','580 900'] } } }),
+    voice('bass', 'Baixo elástico de Jozi', synth('square'), ['0 . . 0 . 3 . 0','0 . 0 . 4 3 . 0','0 . . . 3 . . .','0 . 3 4 . 3 0 .'], { bars: 2, gain: .32, lpf: 720, distortion: .65, distortionMix: .1, arrangement: groove, lpfRange: { first: 420, second: 1050, frequency: 'note' } }),
     rhythm('Bumbo kwaito', electro('kick', 1), ['0 . . . 0 . . . 0 . . . 0 . . .','0 . . . 0 . . . 0 . . . 0 . 0 .','0 . . . 0 . . . . . . . 0 . . .','0 . . . 0 . . . 0 . . . 0 . 0 .'], { gain: .49, arrangement: groove }),
     voice('harmony', 'Piano township', jazz('keys'), ['0,2,4 . . . 3,5,7 . . .','0,2,4 . 3,5,7 . 4,6,8 . 3,5,7 .','4,6,8 . . . . . . .','0,2,4 . 4,6,8 . 3,5,7 . 0,2,4 .'], { bars: 2, octave: 3, gain: .13, attack: .006, release: .2, arrangement: groove }),
     rhythm('Caixa township', electro('snare'), ['. . . . 0 . . . . . . . 0 . . .','. . . . 0 . . . . . 0 . 0 . . .','. . . . . . . . . . . . 0 . . .','. . . . 0 . . . . . . . 0 . 0 .'], { gain: .25, arrangement: groove }),

@@ -42,8 +42,16 @@ test('fine pitch changes synth tuning and sample speed consistently across both 
   for (let i = 0; i < normal.length; i++) {
     if (normal[i].unpitched) assert.ok(Math.abs(shifted[i].controls.speed / normal[i].controls.speed - 1.05) < 1e-8)
     else {
-      const firstNote = s => Number(s.match(/\d+(\.\d+)?/)[0])
-      assert.ok(Math.abs(firstNote(shifted[i].notes) - firstNote(normal[i].notes) - 12 * Math.log2(1.05)) < 1e-8)
+      assert.equal(shifted[i].pianoRolls.length, normal[i].pianoRolls.length)
+      for (let bank = 0; bank < normal[i].pianoRolls.length; bank++) {
+        const before = normal[i].pianoRolls[bank], after = shifted[i].pianoRolls[bank]
+        assert.equal(after.bars, before.bars)
+        assert.equal(after.notes.length, before.notes.length)
+        for (let note = 0; note < before.notes.length; note++) {
+          assert.ok(Math.abs(after.notes[note].degree - before.notes[note].degree - 12 * Math.log2(1.05)) < 1e-8)
+          assert.deepEqual({ ...after.notes[note], degree: before.notes[note].degree }, before.notes[note])
+        }
+      }
     }
   }
 })
@@ -74,6 +82,100 @@ test('audio tempo map integrates ramps exactly and preserves phase when interrup
  assert.equal(t.timeAt(2.5),before)
  assert.equal(t.bpmAt(4.5),90)
  assert.ok(Math.abs(t.cycleAt(t.timeAt(7))-7)<1e-8)
+})
+
+test('seeking preserves Pause, repeats downbeats and carries the remaining BPM ramp', async () => {
+ const {MusicTransport}=loadTs('lib/music/transport.ts'),api=await strudel();let now=0
+ const attacks=[]
+ const transport=new MusicTransport({getTime:()=>now,latency:.1,onBoundary:()=>{},onError:error=>{throw error},onTrigger:(hap,_deadline,_duration,cps)=>attacks.push([Number(hap.whole.begin),cps])})
+ try {
+  await transport.setPattern(api.note('60*4'))
+  transport.seek(2.25)
+  assert.equal(transport.started,false);assert.equal(transport.cycle,2.25);assert.deepEqual(attacks,[])
+  await transport.start()
+  assert.equal(attacks[0][0],2.25)
+  now=.6;transport.setCps(180/240,4)
+  now=1;transport.tick()
+  const before=transport.tempo.transition(transport.cycle),bpm=transport.tempo.bpmAt(transport.cycle),remaining=before.end-transport.cycle
+  assert.ok(remaining>0)
+  transport.seek(.75)
+  assert.ok(Math.abs(transport.tempo.bpmAt(.75)-bpm)<1e-8)
+  assert.ok(Math.abs(transport.tempo.transition(.75).end-(.75+remaining))<1e-8)
+  const first=attacks.length
+  transport.seek(.75)
+  assert.equal(attacks.length,first+1)
+  assert.equal(attacks.at(-1)[0],.75)
+  transport.stop();assert.equal(transport.cycle,0)
+ }finally{transport.stop()}
+})
+
+test('section seeks rebase queued harmonic changes onto the next bar without firing them early', () => {
+ const {ReactionQueue}=loadTs('lib/music/reaction-queue.ts'),{reactionsSchema}=loadTs('lib/music/reactions.ts')
+ const queue=new ReactionQueue(),config=reactionsSchema.parse({rules:[{id:'plan',trigger:'check',enabled:true,quantize:true,target:'both',duration:1,actions:[{type:'harmony',harmony:'cadence'}]}]})
+ queue.update(config,{ply:0,states:[],events:[]},false,0,'kit')
+ queue.update(config,{ply:1,states:[{trigger:'check',color:'w',ply:1}],events:[]},true,20.4,'kit')
+ queue.rebase(3.25)
+ assert.equal(queue.pending.get('plan').cycle,4)
+ assert.equal(queue.advance(3.25).changed,false)
+ assert.equal(queue.advance(4).changed,true)
+})
+
+test('queued sections pre-schedule exact downbeats while the audible clock remains in the old section', async () => {
+ const {MusicTransport}=loadTs('lib/music/transport.ts'),api=await strudel()
+ for(const pulses of [2,3,4,5,7])for(const target of [0,2.25]){
+  let now=0,commits=0;const attacks=[]
+  const transport=new MusicTransport({getTime:()=>now,latency:.1,onBoundary:()=>{},onError:error=>{throw error},onTrigger:(hap,_d,_duration,_cps,time)=>attacks.push({cycle:Number(hap.whole.begin),time})})
+  try{
+   transport.setMeter(pulses);transport.setCps(120/(60*pulses));transport.seek(.5)
+   await transport.setPattern(api.note('60*8'));await transport.start()
+   const deadline=transport.tempo.timeAt(.875)
+   assert.equal(transport.queueSeek(.875,target,()=>commits++),true)
+   assert.equal(transport.cycle,.5);assert.equal(commits,0)
+   now=deadline-.05;transport.tick()
+   assert.equal(commits,1)
+   assert.ok(transport.cycle<.875&&transport.cycle>.5,'monitor must not jump with lookahead')
+   assert.equal(transport.pendingSeekTarget,target)
+   const landing=attacks.find(a=>a.cycle===target&&Math.abs(a.time-deadline)<1e-9)
+   assert.ok(landing,'destination attack lands exactly at the old section boundary')
+   now=deadline;assert.ok(Math.abs(transport.cycle-target)<1e-9)
+   assert.equal(transport.pendingSeekTarget,undefined)
+   now=deadline+.05;transport.tick();assert.ok(transport.cycle>target)
+  }finally{transport.stop()}
+ }
+})
+
+test('queued section replacement and cancellation never schedule an obsolete destination', async () => {
+ const {MusicTransport}=loadTs('lib/music/transport.ts'),api=await strudel();let now=0
+ const attacks=[],commits=[]
+ const transport=new MusicTransport({getTime:()=>now,latency:.1,onBoundary:()=>{},onError:error=>{throw error},onTrigger:(hap,_d,_duration,_cps,time)=>attacks.push([Number(hap.whole.begin),time])})
+ try{
+  await transport.setPattern(api.note('60*4'));await transport.start()
+  const deadline=transport.tempo.timeAt(.75)
+  transport.queueSeek(.75,2,()=>commits.push(2))
+  transport.queueSeek(.75,1.25,()=>commits.push(1.25))
+  now=deadline-.05;transport.tick()
+  assert.deepEqual(commits,[1.25]);assert.ok(attacks.some(([c,t])=>c===1.25&&Math.abs(t-deadline)<1e-9))
+  assert.ok(!attacks.some(([c])=>c===2))
+  now=deadline+.3;transport.tick()
+  transport.queueSeek(2,3,()=>commits.push(3));transport.cancelQueuedSeek()
+  now=transport.tempo.timeAt(2)-.05;transport.tick()
+  assert.deepEqual(commits,[1.25]);assert.equal(transport.pendingSeekTarget,undefined)
+  transport.queueSeek(3,4,()=>{});transport.stop()
+  assert.equal(transport.pendingSeekTarget,undefined)
+ }finally{transport.stop()}
+})
+
+test('queued section transitions keep the instantaneous BPM and remaining ramp at their deadline', async () => {
+ const {MusicTransport}=loadTs('lib/music/transport.ts'),api=await strudel();let now=0
+ const transport=new MusicTransport({getTime:()=>now,latency:.1,onBoundary:()=>{},onError:error=>{throw error},onTrigger:()=>{}})
+ try{
+  await transport.setPattern(api.note('60*4'));await transport.start();transport.setCps(180/240,4)
+  const old=transport.tempo,deadline=old.timeAt(1),bpm=old.bpmAt(1),remaining=old.transition(1).end-1
+  transport.queueSeek(1,.25,()=>{})
+  now=deadline-.04;transport.tick();assert.equal(transport.tempo,old)
+  now=deadline;assert.ok(Math.abs(transport.tempo.bpmAt(.25)-bpm)<1e-9)
+  assert.ok(Math.abs(transport.tempo.transition(.25).end-(.25+remaining))<1e-9)
+ }finally{transport.stop()}
 })
 
 test('simple and compound meters give each bar its real pulse duration', () => {

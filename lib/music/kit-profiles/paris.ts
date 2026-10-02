@@ -7,9 +7,9 @@ const breakSection = { active: [false, false, true, true], transpose: [0, 0, 2, 
 export const profile: StyleProfile = {
   name: 'Da Seine · funk filtrado', bpm: 111, root: 'C', scale: 'Blues menor', harmony: 'cadence', swing: .08, sections: [16, 24, 8, 24],
   parts: [
-    voice('bass', 'Baixo French touch', jazz('pluck'), ['0 . 0 3 . 4 3 .','0 0 . 3 5 . 4 3','0 . . 3 . . 0 .','0 3 4 . 5 4 3 0'], { gain: .32, lpf: 1700, arrangement: loop, automations: { lpf: { kind: 'pattern', patterns: ['1200 1800','1500 3200','650 900','1100 2800'] } } }),
+    voice('bass', 'Baixo French touch', jazz('pluck'), ['0 . 0 3 . 4 3 .','0 0 . 3 5 . 4 3','0 . . 3 . . 0 .','0 3 4 . 5 4 3 0'], { gain: .32, lpf: 1700, arrangement: loop, lpfRange: { first: 650, second: 3200, frequency: 'note' } }),
     rhythm('Bumbo comprimido', electro('kick', 1), ['0 . . . 0 . . . 0 . . . 0 . . .','0 . . . 0 . . . 0 . . . 0 . . .','0 . . . 0 . . . . . . . 0 . . .','0 . . . 0 . . . 0 . . . 0 . 0 .'], { gain: .48, clip: .75, arrangement: loop }),
-    voice('harmony', 'Guitarra filtrada', world('guitar'), ['0 . 3 . . 4 . .','3 . 4 . . 5 . .','4 . . . 1 . . .','0 . 3 . 5 . 4 .'], { bars: 2, octave: 4, gain: .105, gate: .35, arrangement: loop, automations: { lpf: { kind: 'pattern', patterns: ['1400 2600','1800 5200','800 1200','1600 4800'] } }, effects: { pan: -.25 } }),
+    voice('harmony', 'Guitarra filtrada', world('guitar'), ['0 . 3 . . 4 . .','3 . 4 . . 5 . .','4 . . . 1 . . .','0 . 3 . 5 . 4 .'], { bars: 2, octave: 4, gain: .105, gate: .35, arrangement: loop, lpfRange: { first: 800, second: 5200, frequency: 'note' }, effects: { pan: -.25 } }),
     rhythm('Caixa seca francesa', electro('snare'), ['. . . . 0 . . . . . . . 0 . . .','. . . . 0 . . . . . 0 . 0 . . .','. . . . . . . . . . . . 0 . . .','. . . . 0 . . . . . . . 0 . 0 .'], { gain: .25, arrangement: loop }),
     voice('harmony', 'Cordas sampleadas', world('strings'), ['0 . . . 3 . . .','4 . . . 5 . . .','1 . . . 4 . . .','0 . 3 . 5 . 4 .'], { bars: 4, octave: 4, gain: .07, attack: .3, release: .65, lpf: 3000, arrangement: { active: [true, true, true, true] }, effects: { reverb: .24 } }),
     rhythm('Chimbal filtrado', electro('hat', 1), ['. 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0','. 0 . 0 0 0 . 0 . 0 . 0 0 0 . 0','. . . . . . . . . 0 . 0 . 0 . 0','. 0 0 0 . 0 . 0 . 0 0 0 . 0 . 0'], { gain: .09, arrangement: loop }),

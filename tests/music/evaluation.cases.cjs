@@ -59,6 +59,17 @@ test('handshake gates requests; bounded UCI searches replace custom analysis pro
   assert.ok(commands.includes('setoption name MultiPV value 6'))
   assert.equal(commands.at(-1),'go nodes 25000000 movetime 30000 depth 15')
 })
+test('powered positions restrict every search and reject a forbidden engine reply', () => {
+  const {queue,commands,played}=setup();ready(queue)
+  queue.request('powered','b',candidates,{skill:0,searchMoves:['b2b3','c2c3']})
+  assert.equal(commands.at(-1),'go nodes 6000 movetime 120 searchmoves b2b3 c2c3')
+  quick(queue)
+  assert.equal(commands.at(-1),'go nodes 6000 movetime 100 searchmoves b2b3 c2c3')
+  queue.handleMessage('bestmove a2a3')
+  assert.deepEqual(played,[])
+  queue.handleMessage('bestmove a2a3')
+  assert.equal(queue.bestAvailableMove('powered'),null)
+})
 test('white evaluation uses UCI root color; rankings stay relative to player', () => {
   const {queue,scores,analyses}=setup();ready(queue)
   queue.request('black','b',candidates);quick(queue,-30);iteration(queue)

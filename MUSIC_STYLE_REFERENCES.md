@@ -48,6 +48,8 @@ As dez fases harmônicas usam agora fontes e conduções específicas: rock/punk
 
 ## Estudo “Mouth Breather”
 
+A revisão de 01/10 nos presets de cidades aplica `arrangement-curation.ts` depois da curadoria acima: seis cenas A–F, pontes/respostas e percursos harmônicos por compasso nos 45 perfis de piano roll. Piano, sax tenor, marimba, guitarra limpa/staccato, baixo dedilhado, nylon e percussão compatível agora usam gravações CC0; eletrônicos conservam sínteses quando elas definem a paleta. Isso substitui apenas as fontes/padrões dos presets revisados, não os samples de kits salvos nem a conversão deste estudo. Licenças e limites atuais estão em `public/samples/README.md`; a revisão técnica e as pendências de escuta estão em `docs/MUSIC_KIT_REVIEW.md`. A composição é original: trocar gravações isoladas não a transforma numa reprodução de Chic, Olodum, Professor Longhair ou outra referência.
+
 Preset independente do mapa: **Estudo Mouth Breather**, no seletor superior do Criativo. Arquivos: `public/presets/mouth-breather.json` e `.strudel`; regeneração por `node scripts/export-mouth-breather.cjs`. Composição atribuída a The Jesus Lizard e script fornecido pelo usuário atribuído a eefano. A [documentação da Touch and Go](https://touchandgorecords.com/mediaroom/jl/Down_Press_Kit.pdf) situa Goat em 1991; o estudo não substitui o kit de Chicago house de 1984.
 
 | Recurso do trecho fornecido | Implementação |
@@ -64,7 +66,7 @@ São seis peças ativas neste estudo para corresponder às seis vozes distribuí
 
 **Limite de timbre:** GM electric guitar, GM bass pick e Linn 9000 foram substituídos por samples sintéticos locais. O ganho/reverb foram ajustados para a bancada. Não é uma reprodução sonora fiel da gravação. Os testes comparam eventos, alturas, durações e exportação, não aprovam a qualidade musical subjetiva.
 
-O banco `chicken-world-v1` contém oito sínteses originais CC0: guitarra, cordas, flauta, marimba, conga, tímpano, pandeiro e prato. Os sete bancos locais são mono e carregados sob demanda; juntos ficam abaixo de 3 MB em PCM 16-bit. Um sample de flauta sintética não substitui um instrumento acústico multisample com articulações naturais.
+O banco `chicken-world-v1` contém oito sínteses originais CC0: guitarra, cordas, flauta, marimba, conga, tímpano, pandeiro e prato. O catálogo atual tem 13 bancos mono carregados sob demanda, incluindo gravações; seus limites e fontes estão em `public/samples/README.md`. Um sample de flauta sintética não substitui um instrumento acústico multisample com articulações naturais.
 
 Referência técnica: [efeitos do Strudel](https://strudel.cc/learn/effects/). O envelope de afinação varia dentro da nota; os demais padrões de automação são amostrados a cada ataque. Portamento contínuo entre gestos e scratch de áudio continuam fora desta implementação.
 
