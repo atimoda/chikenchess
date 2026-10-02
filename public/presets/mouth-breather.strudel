@@ -1,7 +1,8 @@
 // Mouth Breather — The Jesus Lizard; arrangement study from user-supplied script by eefano.
-// Timing/notes adapted from that script; original synthetic local samples replace GM/Linn.
+// Exported from the schema-7 MIDI preset and global arrangement. Serve /samples from this project when running this score.
 // Mouth Breather · estudo eefano · Strudel
 // Degrees follow the shared scale; each piece keeps its instrument.
+// Meter 4/4; BPM counts quarter pulses.
 setcps(215 / 60 / 4)
 samples({"cc_chicken_electro_v1_kick_0_hit":"/samples/chicken-electro-v1/kick-0.wav"})
 samples({"cc_chicken_electro_v1_snare_0_hit":"/samples/chicken-electro-v1/snare-0.wav"})
@@ -14,34 +15,72 @@ stack(
   (() => {
     const part0 = n("0@0.125 ~@0.125 0@0.125 ~@0.25 0@0.125 0@0.125 ~@0.25 0@0.125 ~@0.25 0@0.125 ~@0.25 0@0.125 ~@0.125 0@0.125 ~@0.125 0@0.125 ~@0.25 0@0.125 ~@0.125").velocity(1).slow(3).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_electro_v1_kick_0_hit").speed(1).gain(0.48).attack(0.003).decay(0.15).sustain(0.65).release(0.09).clip(0.95).lpf(1800).hpf(30).pan(0.5).room(0.3).delay(0).delaytime(0.20930232558139533).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
     return pickRestart([silence, part0, part0, part0, part0, part0, part0, part0, part0, part0, part0, silence, part0, part0, part0, part0, silence], mini("[0@24 1@48 2@48 3@24 4@24 5@24 6@24 7@24 8@24 9@48 10@24 11@8 12@48 13@24 14@24 15@24 16@24]/122"));
-  })().postgain(0.65).orbit(16),
+  })().postgain(0.65).orbit(0),
   // w:b2 · Bateria · sd
   (() => {
     const part0 = n("~@0.375 0@0.125 ~@0.75 0@0.125 ~@0.625 0@0.125 ~@0.375 0@0.125 ~@0.375").velocity(1).slow(3).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_electro_v1_snare_0_hit").speed(0.88).gain(0.3).attack(0.003).decay(0.15).sustain(0.65).release(0.09).clip(0.95).lpf(9000).hpf(30).pan(0.5).room(0.3).delay(0).delaytime(0.20930232558139533).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
     return pickRestart([silence, part0, part0, part0, part0, part0, part0, part0, part0, part0, part0, silence, part0, part0, part0, part0, silence], mini("[0@24 1@48 2@48 3@24 4@24 5@24 6@24 7@24 8@24 9@48 10@24 11@8 12@48 13@24 14@24 15@24 16@24]/122"));
-  })().postgain(0.65).orbit(17),
+  })().postgain(0.65).orbit(1),
   // w:c2 · Bateria · oh
   (() => {
     const part0 = n("0@0.25 0@0.25 0@0.25 0@0.25 0@0.25 0@0.25 0@0.25 0@0.25 0@0.25 0@0.25 0@0.25 0@0.25").velocity(1).slow(3).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_electro_v1_open_hat_0_hit").speed(0.9).gain(0.12).attack(0.003).decay(0.15).sustain(0.65).release(0.09).clip(0.95).lpf(9000).hpf(30).pan(0.45).room(0.3).delay(0).delaytime(0.20930232558139533).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
     return pickRestart([silence, part0, part0, part0, part0, part0, part0, part0, part0, part0, part0, silence, part0, part0, part0, part0, silence], mini("[0@24 1@48 2@48 3@24 4@24 5@24 6@24 7@24 8@24 9@48 10@24 11@8 12@48 13@24 14@24 15@24 16@24]/122"));
-  })().postgain(0.65).orbit(18),
+  })().postgain(0.65).orbit(0),
   // w:d2 · Bateria · cr
   (() => {
     const part0 = n("0@1.5 0@1.5").velocity(1).slow(3).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_world_v1_crash_0_hit").speed(0.95).gain(0.14).attack(0.003).decay(0.15).sustain(0.65).release(0.09).clip(0.95).lpf(9000).hpf(30).pan(0.55).room(0.3).delay(0).delaytime(0.20930232558139533).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
     return pickRestart([silence, part0, part0, part0, part0, part0, part0, part0, part0, part0, part0, silence, part0, part0, part0, part0, silence], mini("[0@24 1@48 2@48 3@24 4@24 5@24 6@24 7@24 8@24 9@48 10@24 11@8 12@48 13@24 14@24 15@24 16@24]/122"));
-  })().postgain(0.65).orbit(19),
+  })().postgain(0.65).orbit(1),
   // w:b1 · Baixo · frase quebrada
-  (() => {
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
     const part0 = note("36@0.125 36@0.125 36@0.125 36@0.25 ~@0.125 36@0.125 36@0.125 36@0.125 37@0.125 41@0.125 37@0.125 36@0.125 36@0.125 36@0.125 36@0.25 ~@0.125 36@0.125 36@0.125 36@0.125 36@0.125 41@0.125 43@0.125").velocity(1).slow(3).withValue(v => ({...v, ccOverrides: {}})).distort("5:0.31").s("cc_chicken_jazz_v1_pluck_0_pitched").gain(0.33).attack(0.003).decay(0.15).sustain(0.65).release(0.06).clip(0.95).lpf(9000).hpf(30).pan(0.5).room(0.2).delay(0).delaytime(0.20930232558139533).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
     return pickRestart([silence, silence, part0, silence, part0, silence, part0, part0.transpose(-5), part0.transpose(-7), part0, part0, silence, part0, part0.transpose(-5), part0.transpose(-7), silence, silence], mini("[0@24 1@48 2@48 3@24 4@24 5@24 6@24 7@24 8@24 9@48 10@24 11@8 12@48 13@24 14@24 15@24 16@24]/122"));
-  })().postgain(0.65).orbit(25),
+  })(),{"pulses":4,"sections":[{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":48,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":48,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":-5,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":-7,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":48,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":8,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":48,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":-5,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":-7,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]},{"beats":24,"transpose":0,"notes":[{"36000000":[36],"37000000":[37],"41000000":[41],"43000000":[43]}]}]}).postgain(0.65).orbit(1),
   // w:d1 · Guitarra · riff e queda
-  (() => {
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
     const part0 = stack(
 note("48@0.125 48@0.125 48@0.125 48@0.125 ~@0.25 48@0.125 48@0.125 48@0.125 49@0.125 48@0.125 48@0.125 48@0.125 48@0.125 48@0.125 48@0.375 48@0.125 48@0.125 48@0.125 49@0.125 48@0.125 48@0.125").velocity(1).slow(3).withValue(v => ({...v, ccOverrides: {"pan":0.51}})),
 note("[55,60]@0.125 [53,58]@0.125 [53,58]@0.125 [55,60]@0.125 ~@0.25 [55,60]@0.125 [53,58]@0.125 [55,60]@0.125 [56,61]@0.125 [55,60]@0.125 [53,58]@0.125 [55,60]@0.125 [53,58]@0.125 [53,58]@0.125 [55,60]@0.375 [55,60]@0.125 [53,58]@0.125 [55,60]@0.125 [56,61]@0.125 [55,60]@0.125 [53,58]@0.125").velocity(1).slow(3).withValue(v => ({...v, ccOverrides: {"pan":0.49}}))
 ).distort("10:0.17").s("cc_chicken_world_v1_guitar_0_pitched").gain(0.34).attack(0.003).decay(0.15).sustain(0.65).release(0.09).clip(0.95).lpf(3000).hpf(80).pan(0.5).room(0.1).delay(0).delaytime(0.20930232558139533).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
     const part1 = note("[40,47,52]@0.375 ~@5.625").velocity(1).slow(6).withValue(v => ({...v, ccOverrides: {"penv":-3,"pattack":0.6}})).distort("10:0.17").s("cc_chicken_world_v1_guitar_0_pitched").gain(0.34).attack(0.003).decay(0.15).sustain(0.65).release(0.09).clip(0.95).lpf(3000).hpf(80).pan(0.5).room(0.1).delay(0).delaytime(0.20930232558139533).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
     return pickRestart([part0, part0, part0, part1, part0, part1, part0, part0.transpose(-5), part0.transpose(-7), silence, part0, silence, part0, part0.transpose(-5), part0.transpose(-7), silence, silence], mini("[0@24 1@48 2@48 3@24 4@24 5@24 6@24 7@24 8@24 9@48 10@24 11@8 12@48 13@24 14@24 15@24 16@24]/122"));
-  })().postgain(0.65).orbit(27)
+  })(),{"pulses":4,"sections":[{"beats":24,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":48,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":48,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":0,"notes":[{"40000000":[40],"47000000":[47],"52000000":[52]}]},{"beats":24,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":0,"notes":[{"40000000":[40],"47000000":[47],"52000000":[52]}]},{"beats":24,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":-5,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":-7,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":48,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":8,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":48,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":-5,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":-7,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]},{"beats":24,"transpose":0,"notes":[{"48000000":[48],"49000000":[49],"53000000":[53],"55000000":[55],"56000000":[56],"58000000":[58],"60000000":[60],"61000000":[61]}]}]}).postgain(0.65).orbit(1)
 )

@@ -1,5 +1,5 @@
 // Shared bundle/sample caches. Keep lazy loading here so importing data stays inert.
-import { sampleRegistration, type SampleSource } from './sample-banks'
+import { sampleRegistration, sampleUrl, type SampleSource } from './sample-banks'
 import type { Strudel } from './runtime-types'
 
 let library: Promise<Strudel> | undefined
@@ -19,7 +19,7 @@ export function ensureSample(api: Strudel, source: SampleSource) {
   if (!pending) {
     pending = (async () => {
       await api.samples(sample.map)
-      await Promise.all(sample.files.map(file => api.loadBuffer(file, api.getAudioContext(), sample.sound)))
+      await Promise.all(sample.files.map(file => api.loadBuffer(sampleUrl(file), api.getAudioContext(), sample.sound)))
       loadedSamples.add(sample.sound)
     })()
     sampleLoads.set(sample.sound, pending)

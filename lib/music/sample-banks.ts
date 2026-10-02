@@ -1,3 +1,4 @@
+import { RECORDED_BANKS } from './recorded-banks'
 /** Asset metadata has no knowledge of chess roles or instrument behaviours. */
 export interface SampleAsset {
   id: string
@@ -171,7 +172,7 @@ export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken 
       keymap: Object.fromEntries([['a#2', 'as2'], ['d3', 'd3'], ['f3', 'f3']].map(([note, file]) => [note, `/samples/chicken-samba-reggae-v2/trombone-${file}-0.wav`])),
     },
   ],
-}, classicalBank]
+}, classicalBank, ...RECORDED_BANKS]
 
 export interface SampleSource { kind: 'sample'; bank: string; asset: string; variant: number; pitched: boolean }
 export function sampleAsset(source: SampleSource) {
@@ -180,6 +181,7 @@ export function sampleAsset(source: SampleSource) {
 export function sampleSound(source: SampleSource) {
   return `cc_${source.bank.replace(/-/g, '_')}_${source.asset.replace(/-/g, '_')}_${source.variant}_${source.pitched ? 'pitched' : 'hit'}`
 }
+export const sampleUrl = (file: string) => encodeURI(file).replace(/#/g, '%23').replace(/\?/g, '%3F')
 export function sampleRegistration(source: SampleSource) {
   const asset = sampleAsset(source)
   const variant = asset?.variants[source.variant]
@@ -187,5 +189,5 @@ export function sampleRegistration(source: SampleSource) {
   const file = variant.file
   const keymap = source.pitched ? (variant.keymap ?? asset.keymap ?? { [asset.rootNote ?? 'c4']: file }) : undefined
   return { sound: sampleSound(source), file, files: keymap ? Object.values(keymap) : [file],
-    map: { [sampleSound(source)]: keymap ?? file } }
+    map: { [sampleSound(source)]: keymap ? Object.fromEntries(Object.entries(keymap).map(([note, path]) => [note, sampleUrl(path)])) : sampleUrl(file) } }
 }

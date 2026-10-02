@@ -18,12 +18,14 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   onPositionChange?: (pos: { x: number; y: number }) => void
   handleRef?: React.RefObject<HTMLDivElement | null>
   toggleRef?: React.RefObject<HTMLButtonElement | null>
+  togglePortalized?: boolean
   isOn: boolean
   onToggle: () => void
   isPlaying: boolean
   playback?: React.ReactNode
   stockfishDebugOn: boolean
   onToggleStockfishDebug: () => void
+  onForceWin?: () => void
 }
 
 export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
@@ -34,12 +36,14 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   onPositionChange,
   handleRef,
   toggleRef,
+  togglePortalized = false,
   isOn,
   onToggle,
   isPlaying: _isPlaying,
   playback,
   stockfishDebugOn,
   onToggleStockfishDebug,
+  onForceWin,
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
@@ -89,12 +93,13 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
     >
       <Resizable
         defaultSize={{
-          width: 340,
-          height: 280,
+          width: 180,
+          height: 200,
         }}
-        minWidth={300}
+        size={props.style?.position === 'static' ? { width: '100%', height: 200 } : undefined}
+        minWidth={150}
         minHeight={200}
-        enable={{ top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
+        enable={props.style?.position === 'static' ? false : { top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
         className="relative"
         onResizeStart={(event) => {
             event.stopPropagation()
@@ -126,15 +131,19 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
         aria-label={isOn ? 'Desligar Debug' : 'Ligar Debug'}
+        aria-hidden={togglePortalized || undefined}
+        tabIndex={togglePortalized ? -1 : 0}
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          togglePortalized && "invisible pointer-events-none",
           !isOn && "hover:drop-shadow-[0_0_8px_#60a5fa]",
           isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
           ...panelStyle,
           borderColor: widgetBorderColor,
+          backgroundColor: isOn ? undefined : "color-mix(in srgb, var(--background) 50%, transparent)",
           top: -5, 
           left: -8,
           boxShadow: isOn ? `0 0 10px ${cityColor}40` : "none"
@@ -190,12 +199,19 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
                 DEBUG
              </span>
           </div>
-          <button
-            type="button"
-            aria-pressed={stockfishDebugOn}
-            onClick={event => { event.stopPropagation(); onToggleStockfishDebug() }}
-            className={cn("shrink-0 self-start rounded border px-2 py-1 font-mono text-[10px] transition-colors", stockfishDebugOn ? "border-emerald-400/70 bg-emerald-400/20 text-emerald-300" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-          >Debug stockfish {stockfishDebugOn ? 'ON' : 'OFF'}</button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              aria-pressed={stockfishDebugOn}
+              onClick={event => { event.stopPropagation(); onToggleStockfishDebug() }}
+              className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", stockfishDebugOn ? "border-emerald-400/70 bg-emerald-400/20 text-emerald-300" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
+            >Debug SF</button>
+            {onForceWin && <button
+              type="button"
+              onClick={event => { event.stopPropagation(); onForceWin() }}
+              className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white"
+            >Force win</button>}
+          </div>
           {playback && <div className="debug-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden space-y-1 pr-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
 
         </div>

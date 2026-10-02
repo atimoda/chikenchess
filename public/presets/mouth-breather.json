@@ -13,19 +13,649 @@
           {
             "type": "activate",
             "value": 0,
-            "scale": "Maior"
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 6,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "phase-opening",
+        "trigger": "opening",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": -8,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "phase-middle",
+        "trigger": "middle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "phase-endgame",
+        "trigger": "endgame",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -6,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 8,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "cadence"
+          }
+        ]
+      },
+      {
+        "id": "state-mate",
+        "trigger": "mate",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "activate",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 20,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "transpose",
+            "value": 12,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-stalemate",
+        "trigger": "stalemate",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "scale",
+            "value": 0,
+            "scale": "Whole tone",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -18,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-repetition",
+        "trigger": "repetition",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "invert",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "rampBars": 2,
+            "value": -6,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-insufficient",
+        "trigger": "insufficient",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 1800,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -20,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-fifty-move",
+        "trigger": "draw",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "relative",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -8,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "state-advantage",
+        "trigger": "advantage",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 8,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-first-castle",
+        "trigger": "firstCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-second-castle",
+        "trigger": "secondCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-first-capture",
+        "trigger": "firstCapture",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-capture",
+        "trigger": "capture",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-queen-capture",
+        "trigger": "queenCapture",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 12,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-no-queens",
+        "trigger": "noQueens",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 0,
+        "actions": [
+          {
+            "type": "mode",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -3,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "descent"
+          }
+        ]
+      },
+      {
+        "id": "event-no-knights",
+        "trigger": "noKnights",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "transpose",
+            "value": -2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-no-rooks",
+        "trigger": "noRooks",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "gain",
+            "value": -12,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-no-bishops",
+        "trigger": "noBishops",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 3200,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-promotion",
+        "trigger": "promotion",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "transpose",
+            "value": 12,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 15,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "ascent"
+          }
+        ]
+      },
+      {
+        "id": "event-underpromotion",
+        "trigger": "underpromotion",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "invert",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-en-passant",
+        "trigger": "enPassant",
+        "enabled": true,
+        "quantize": false,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "mode",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-minimum-one",
+        "trigger": "minimumOne",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 0,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 15,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-minimum-both",
+        "trigger": "minimumBoth",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 0,
+        "actions": [
+          {
+            "type": "bpm",
+            "rampBars": 4,
+            "value": -8,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "harmony",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "circle"
+          }
+        ]
+      },
+      {
+        "id": "event-quiet",
+        "trigger": "quiet",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 2400,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -10,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "event-check-escape",
+        "trigger": "checkEscape",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
           }
         ]
       }
     ]
   },
-  "version": 4,
+  "reactionPresetRevision": "reactions-2026-09-20-v3",
+  "harmony": "static",
+  "version": 7,
   "name": "Mouth Breather · estudo eefano",
   "bpm": 215,
+  "meter": "4/4",
   "volume": 0.65,
   "root": "C",
   "scale": "Chromatic",
-  "sectionPattern": "0",
+  "arrangement": {
+    "sections": [
+      {
+        "id": "section-a",
+        "label": "A",
+        "beats": 24
+      },
+      {
+        "id": "section-b",
+        "label": "B",
+        "beats": 48
+      },
+      {
+        "id": "section-c",
+        "label": "C",
+        "beats": 48
+      },
+      {
+        "id": "section-d",
+        "label": "D",
+        "beats": 24
+      },
+      {
+        "id": "section-e",
+        "label": "E",
+        "beats": 24
+      },
+      {
+        "id": "section-f",
+        "label": "F",
+        "beats": 24
+      },
+      {
+        "id": "section-g",
+        "label": "G",
+        "beats": 24
+      },
+      {
+        "id": "section-h",
+        "label": "H",
+        "beats": 24
+      },
+      {
+        "id": "section-i",
+        "label": "I",
+        "beats": 24
+      },
+      {
+        "id": "section-j",
+        "label": "J",
+        "beats": 48
+      },
+      {
+        "id": "section-k",
+        "label": "K",
+        "beats": 24
+      },
+      {
+        "id": "section-l",
+        "label": "L",
+        "beats": 8
+      },
+      {
+        "id": "section-m",
+        "label": "M",
+        "beats": 48
+      },
+      {
+        "id": "section-n",
+        "label": "N",
+        "beats": 24
+      },
+      {
+        "id": "section-o",
+        "label": "O",
+        "beats": 24
+      },
+      {
+        "id": "section-p",
+        "label": "P",
+        "beats": 24
+      },
+      {
+        "id": "section-q",
+        "label": "Q",
+        "beats": 24
+      }
+    ]
+  },
   "pieces": [
     {
       "id": "b:a8",
@@ -321,199 +951,2790 @@
       "name": "Sopro eletrônico",
       "behavior": "phrase",
       "sound": "square",
-      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
       "octave": 4,
       "gain": 0.24,
       "attack": 0.06,
       "release": 0.12,
       "lpf": 1600,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:b8": {
       "name": "Baixo analógico",
       "behavior": "phrase",
       "sound": "sawtooth",
-      "notes": "<[0 ~ 0 2] [0 4 ~ 2]>",
       "octave": 2,
       "gain": 0.42,
       "attack": 0.008,
       "release": 0.08,
       "lpf": 900,
-      "hpf": 30
+      "hpf": 30,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:c8": {
       "name": "Teclas sequenciadas",
       "behavior": "phrase",
       "sound": "triangle",
-      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
       "octave": 4,
       "gain": 0.32,
       "attack": 0.01,
       "release": 0.16,
       "lpf": 7000,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:d8": {
       "name": "Melodia principal",
       "behavior": "phrase",
       "sound": "triangle",
-      "notes": "<[~ [4 3] 2 ~] [[2 4] ~ 3 [2 ~]]>",
       "octave": 5,
       "gain": 0.32,
       "attack": 0.02,
       "release": 0.15,
       "lpf": 6000,
-      "hpf": 300
+      "hpf": 300,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1.125,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.125,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:e8": {
       "name": "Cordas sintetizadas",
       "behavior": "sustain",
       "sound": "supersaw",
-      "notes": "<[0,2,4] [0,3,4]>/2",
       "octave": 3,
       "gain": 0.18,
       "attack": 0.3,
       "release": 0.3,
       "lpf": 1600,
-      "hpf": 120
+      "hpf": 120,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 2,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 2,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 2,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 2,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 2,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 2,
+              "degree": 4,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:f8": {
       "name": "Teclas sequenciadas",
       "behavior": "phrase",
       "sound": "triangle",
-      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
       "octave": 4,
       "gain": 0.32,
       "attack": 0.01,
       "release": 0.16,
       "lpf": 7000,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:g8": {
       "name": "Baixo analógico",
       "behavior": "phrase",
       "sound": "sawtooth",
-      "notes": "<[0 ~ 0 2] [0 4 ~ 2]>",
       "octave": 2,
       "gain": 0.42,
       "attack": 0.008,
       "release": 0.08,
       "lpf": 900,
-      "hpf": 30
+      "hpf": 30,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:h8": {
       "name": "Sopro eletrônico",
       "behavior": "phrase",
       "sound": "square",
-      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
       "octave": 4,
       "gain": 0.24,
       "attack": 0.06,
       "release": 0.12,
       "lpf": 1600,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:a7": {
       "name": "Bumbo",
       "behavior": "pulse",
       "sound": "sbd",
-      "notes": "0 0 0 0",
       "octave": 2,
       "gain": 0.62,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 900,
-      "hpf": 0
+      "hpf": 0,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:b7": {
       "name": "Caixa",
       "behavior": "pulse",
       "sound": "white",
-      "notes": "~ 0 ~ 0",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 6500,
-      "hpf": 1200
+      "hpf": 1200,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:c7": {
       "name": "Chimbal",
       "behavior": "pulse",
       "sound": "white",
-      "notes": "0*8",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 14000,
-      "hpf": 7000
+      "hpf": 7000,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.125,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.625,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.875,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.125,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.375,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.875,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.125,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.625,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.875,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.125,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.375,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.625,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.875,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:d7": {
       "name": "Clap eletrônico",
       "behavior": "pulse",
       "sound": "pink",
-      "notes": "~ 0 ~ [0 ~]",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 6000,
-      "hpf": 1800
+      "hpf": 1800,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.125,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:e7": {
       "name": "Tom",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "<[~ ~ 0 ~] [~ 0 ~ 2]>",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 1500,
-      "hpf": 0
+      "hpf": 0,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:f7": {
       "name": "Chimbal aberto",
       "behavior": "pulse",
       "sound": "white",
-      "notes": "~ 0 ~ 0",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.16,
       "lpf": 12000,
-      "hpf": 6000
+      "hpf": 6000,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:g7": {
       "name": "Rim eletrônico",
       "behavior": "pulse",
       "sound": "triangle",
-      "notes": "<[~ 0 ~ ~] [~ ~ 0 ~]>",
       "octave": 5,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 6500,
-      "hpf": 900
+      "hpf": 900,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "b:h7": {
       "name": "Percussão",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "<[~ ~ ~ 0] [~ 2 ~ 0]>",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 2200,
-      "hpf": 100
+      "hpf": 100,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:a2": {
       "name": "Bateria · bd",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "~",
       "octave": 2,
       "gain": 0.48,
       "attack": 0.003,
@@ -523,10 +3744,6 @@
       "decay": 0.15,
       "sustain": 0.65,
       "clip": 0.95,
-      "phrases": [
-        "~"
-      ],
-      "pianoOnly": true,
       "pianoRolls": [
         {
           "bars": 3,
@@ -594,112 +3811,95 @@
           ]
         }
       ],
-      "performance": {
+      "arrangement": {
         "restart": true,
-        "steps": [
-          {
-            "beats": 24,
+        "sections": {
+          "section-a": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-b": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-c": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-d": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-e": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-f": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-g": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-h": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-i": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-j": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-k": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 8,
+          "section-l": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-m": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-n": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-o": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-p": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-q": {
             "variation": 0,
             "transpose": 0,
             "active": false
           }
-        ]
+        }
       },
       "source": {
         "kind": "sample",
@@ -713,7 +3913,6 @@
       "name": "Bateria · sd",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "~",
       "octave": 2,
       "gain": 0.3,
       "attack": 0.003,
@@ -723,10 +3922,6 @@
       "decay": 0.15,
       "sustain": 0.65,
       "clip": 0.95,
-      "phrases": [
-        "~"
-      ],
-      "pianoOnly": true,
       "pianoRolls": [
         {
           "bars": 3,
@@ -758,112 +3953,95 @@
           ]
         }
       ],
-      "performance": {
+      "arrangement": {
         "restart": true,
-        "steps": [
-          {
-            "beats": 24,
+        "sections": {
+          "section-a": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-b": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-c": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-d": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-e": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-f": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-g": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-h": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-i": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-j": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-k": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 8,
+          "section-l": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-m": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-n": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-o": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-p": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-q": {
             "variation": 0,
             "transpose": 0,
             "active": false
           }
-        ]
+        }
       },
       "source": {
         "kind": "sample",
@@ -877,7 +4055,6 @@
       "name": "Bateria · oh",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "~",
       "octave": 2,
       "gain": 0.12,
       "attack": 0.003,
@@ -887,10 +4064,6 @@
       "decay": 0.15,
       "sustain": 0.65,
       "clip": 0.95,
-      "phrases": [
-        "~"
-      ],
-      "pianoOnly": true,
       "pianoRolls": [
         {
           "bars": 3,
@@ -970,112 +4143,95 @@
           ]
         }
       ],
-      "performance": {
+      "arrangement": {
         "restart": true,
-        "steps": [
-          {
-            "beats": 24,
+        "sections": {
+          "section-a": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-b": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-c": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-d": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-e": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-f": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-g": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-h": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-i": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-j": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-k": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 8,
+          "section-l": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-m": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-n": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-o": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-p": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-q": {
             "variation": 0,
             "transpose": 0,
             "active": false
           }
-        ]
+        }
       },
       "source": {
         "kind": "sample",
@@ -1089,7 +4245,6 @@
       "name": "Bateria · cr",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "~",
       "octave": 2,
       "gain": 0.14,
       "attack": 0.003,
@@ -1099,10 +4254,6 @@
       "decay": 0.15,
       "sustain": 0.65,
       "clip": 0.95,
-      "phrases": [
-        "~"
-      ],
-      "pianoOnly": true,
       "pianoRolls": [
         {
           "bars": 3,
@@ -1122,112 +4273,95 @@
           ]
         }
       ],
-      "performance": {
+      "arrangement": {
         "restart": true,
-        "steps": [
-          {
-            "beats": 24,
+        "sections": {
+          "section-a": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-b": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-c": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-d": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-e": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-f": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-g": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-h": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-i": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-j": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-k": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 8,
+          "section-l": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-m": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-n": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-o": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-p": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-q": {
             "variation": 0,
             "transpose": 0,
             "active": false
           }
-        ]
+        }
       },
       "source": {
         "kind": "sample",
@@ -1241,67 +4375,738 @@
       "name": "Tom",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "<[~ ~ 0 ~] [~ 0 ~ 2]>",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 1500,
-      "hpf": 0
+      "hpf": 0,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:f2": {
       "name": "Chimbal aberto",
       "behavior": "pulse",
       "sound": "white",
-      "notes": "~ 0 ~ 0",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.16,
       "lpf": 12000,
-      "hpf": 6000
+      "hpf": 6000,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:g2": {
       "name": "Rim eletrônico",
       "behavior": "pulse",
       "sound": "triangle",
-      "notes": "<[~ 0 ~ ~] [~ ~ 0 ~]>",
       "octave": 5,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 6500,
-      "hpf": 900
+      "hpf": 900,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:h2": {
       "name": "Percussão",
       "behavior": "pulse",
       "sound": "sine",
-      "notes": "<[~ ~ ~ 0] [~ 2 ~ 0]>",
       "octave": 2,
       "gain": 0.25,
       "attack": 0.002,
       "release": 0.035,
       "lpf": 2200,
-      "hpf": 100
+      "hpf": 100,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:a1": {
       "name": "Sopro eletrônico",
       "behavior": "phrase",
       "sound": "square",
-      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
       "octave": 4,
       "gain": 0.24,
       "attack": 0.06,
       "release": 0.12,
       "lpf": 1600,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:b1": {
       "name": "Baixo · frase quebrada",
       "behavior": "phrase",
       "sound": "sine",
-      "notes": "~",
       "octave": 2,
       "gain": 0.33,
       "attack": 0.003,
@@ -1311,10 +5116,6 @@
       "decay": 0.15,
       "sustain": 0.65,
       "clip": 0.95,
-      "phrases": [
-        "~"
-      ],
-      "pianoOnly": true,
       "pianoRolls": [
         {
           "bars": 3,
@@ -1442,112 +5243,95 @@
           ]
         }
       ],
-      "performance": {
+      "arrangement": {
         "restart": true,
-        "steps": [
-          {
-            "beats": 24,
+        "sections": {
+          "section-a": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-b": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-c": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-d": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 24,
+          "section-e": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-f": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 24,
+          "section-g": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-h": {
             "variation": 0,
             "transpose": -5,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-i": {
             "variation": 0,
             "transpose": -7,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-j": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-k": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 8,
+          "section-l": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-m": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-n": {
             "variation": 0,
             "transpose": -5,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-o": {
             "variation": 0,
             "transpose": -7,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-p": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 24,
+          "section-q": {
             "variation": 0,
             "transpose": 0,
             "active": false
           }
-        ]
+        }
       },
       "distortion": 5,
       "distortionMix": 0.31,
@@ -1563,19 +5347,198 @@
       "name": "Teclas sequenciadas",
       "behavior": "phrase",
       "sound": "triangle",
-      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
       "octave": 4,
       "gain": 0.32,
       "attack": 0.01,
       "release": 0.16,
       "lpf": 7000,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:d1": {
       "name": "Guitarra · riff e queda",
       "behavior": "phrase",
       "sound": "sine",
-      "notes": "~",
       "octave": 3,
       "gain": 0.34,
       "attack": 0.003,
@@ -1585,11 +5548,6 @@
       "decay": 0.15,
       "sustain": 0.65,
       "clip": 0.95,
-      "phrases": [
-        "~",
-        "~"
-      ],
-      "pianoOnly": true,
       "pianoRolls": [
         {
           "bars": 3,
@@ -2046,112 +6004,95 @@
           ]
         }
       ],
-      "performance": {
+      "arrangement": {
         "restart": true,
-        "steps": [
-          {
-            "beats": 24,
+        "sections": {
+          "section-a": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-b": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-c": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-d": {
             "variation": 1,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-e": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-f": {
             "variation": 1,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-g": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-h": {
             "variation": 0,
             "transpose": -5,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-i": {
             "variation": 0,
             "transpose": -7,
             "active": true
           },
-          {
-            "beats": 48,
+          "section-j": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 24,
+          "section-k": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 8,
+          "section-l": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 48,
+          "section-m": {
             "variation": 0,
             "transpose": 0,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-n": {
             "variation": 0,
             "transpose": -5,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-o": {
             "variation": 0,
             "transpose": -7,
             "active": true
           },
-          {
-            "beats": 24,
+          "section-p": {
             "variation": 0,
             "transpose": 0,
             "active": false
           },
-          {
-            "beats": 24,
+          "section-q": {
             "variation": 0,
             "transpose": 0,
             "active": false
           }
-        ]
+        }
       },
       "distortion": 10,
       "distortionMix": 0.17,
@@ -2167,49 +6108,673 @@
       "name": "Cordas sintetizadas",
       "behavior": "sustain",
       "sound": "supersaw",
-      "notes": "<[0,2,4] [0,3,4]>/2",
       "octave": 3,
       "gain": 0.18,
       "attack": 0.3,
       "release": 0.3,
       "lpf": 1600,
-      "hpf": 120
+      "hpf": 120,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 2,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 2,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0,
+              "duration": 2,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 2,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 2,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 2,
+              "degree": 4,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:f1": {
       "name": "Teclas sequenciadas",
       "behavior": "phrase",
       "sound": "triangle",
-      "notes": "<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>",
       "octave": 4,
       "gain": 0.32,
       "attack": 0.01,
       "release": 0.16,
       "lpf": 7000,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.375,
+              "duration": 0.125,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.125,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.625,
+              "duration": 0.125,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:g1": {
       "name": "Baixo analógico",
       "behavior": "phrase",
       "sound": "sawtooth",
-      "notes": "<[0 ~ 0 2] [0 4 ~ 2]>",
       "octave": 2,
       "gain": 0.42,
       "attack": 0.008,
       "release": 0.08,
       "lpf": 900,
-      "hpf": 30
+      "hpf": 30,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.5,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 1,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 1.25,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3,
+              "duration": 0.25,
+              "degree": 0,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     },
     "w:h1": {
       "name": "Sopro eletrônico",
       "behavior": "phrase",
       "sound": "square",
-      "notes": "<[~ 2 ~ 4] [~ ~ 3 2]>",
       "octave": 4,
       "gain": 0.24,
       "attack": 0.06,
       "release": 0.12,
       "lpf": 1600,
-      "hpf": 180
+      "hpf": 180,
+      "pianoRolls": [
+        {
+          "bars": 4,
+          "notes": [
+            {
+              "start": 0.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 0.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 2.25,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.25,
+              "degree": 4,
+              "velocity": 1
+            },
+            {
+              "start": 1.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 1.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            },
+            {
+              "start": 3.5,
+              "duration": 0.25,
+              "degree": 3,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.25,
+              "degree": 2,
+              "velocity": 1
+            }
+          ]
+        }
+      ],
+      "arrangement": {
+        "restart": false,
+        "sections": {
+          "section-a": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-b": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-c": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-d": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-e": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-f": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-g": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-h": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-i": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-j": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-k": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-l": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-m": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-n": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-o": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-p": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          },
+          "section-q": {
+            "variation": 0,
+            "transpose": 0,
+            "active": true
+          }
+        }
+      }
     }
   },
   "effects": {
@@ -2663,6 +7228,5 @@
       "panWidth": 0.5,
       "previewFilter": true
     }
-  },
-  "grooves": {}
+  }
 }

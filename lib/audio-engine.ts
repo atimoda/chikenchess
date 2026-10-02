@@ -230,6 +230,25 @@ export class AudioEngine {
     this.playPawn(now, sample, gain, 0, "w", pitch)
   }
 
+  async playBlockedCue() {
+    if (!this.audioContext || !this.masterGain) await this.init()
+    await this.resume()
+    if (!this.audioContext || !this.masterGain) return
+
+    const time = this.audioContext.currentTime
+    const oscillator = this.audioContext.createOscillator()
+    const envelope = this.audioContext.createGain()
+    oscillator.type = 'square'
+    oscillator.frequency.setValueAtTime(180, time)
+    oscillator.frequency.exponentialRampToValueAtTime(95, time + 0.17)
+    envelope.gain.setValueAtTime(0.001, time)
+    envelope.gain.exponentialRampToValueAtTime(0.12, time + 0.012)
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.2)
+    oscillator.connect(envelope).connect(this.masterGain)
+    oscillator.start(time)
+    oscillator.stop(time + 0.2)
+  }
+
   async playAnalysisWhistle(direction: 'up' | 'down') {
     if (!this.audioContext || !this.masterGain) await this.init()
     await this.resume()
@@ -815,6 +834,20 @@ export class AudioEngine {
     osc.connect(gain).connect(this.masterGain)
     osc.start(time)
     osc.stop(time + 0.4)
+  }
+
+  playEggLanding() {
+    if (!this.audioContext || !this.masterGain || this.audioContext.state !== 'running') return
+    const ctx = this.audioContext, time = ctx.currentTime
+    const osc = ctx.createOscillator(), gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(1100 + Math.random() * 180, time)
+    osc.frequency.exponentialRampToValueAtTime(480, time + 0.09)
+    gain.gain.setValueAtTime(0.12, time)
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12)
+    osc.connect(gain).connect(this.masterGain)
+    osc.onended = () => { osc.disconnect(); gain.disconnect() }
+    osc.start(time); osc.stop(time + 0.13)
   }
 
   playVictoryFanfare() {

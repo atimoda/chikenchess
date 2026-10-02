@@ -66,7 +66,14 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
       : { id, square: square as Square, mode })
     runtime.current?.audition(id, square as Square, mode)
   }, [])
-  const unlock = useCallback(() => { void runtime.current?.unlock() }, [])
+  const unlock = useCallback(() => { void runtime.current?.unlock(false) }, [])
+  const seekSection = useCallback((sectionId: string) => {
+    setPreview(null)
+    // Queueing immediately after an edit must use the current order and durations,
+    // not the snapshot waiting in the coalesced parameter-update timer.
+    runtime.current?.update(input)
+    runtime.current?.queueSection(sectionId)
+  }, [input])
   const endAudition = useCallback(() => {
     setPreview(null)
     runtime.current?.endAudition()
@@ -82,5 +89,5 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     return () => { window.removeEventListener('blur', endAudition); window.removeEventListener('keydown', escape) }
   }, [endAudition])
 
-  return { audition, auditionReady, unlock, endAudition, releaseAudition, preview, pulseMonitor, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
+  return { audition, auditionReady, unlock, seekSection, endAudition, releaseAudition, preview, pulseMonitor, error, code, codeStats, monitor, snapshot, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions }
 }

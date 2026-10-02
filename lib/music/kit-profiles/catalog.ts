@@ -20,6 +20,7 @@ import { RHYTHM_STAGE_PROFILES } from './rhythm-stages'
 import { profile as salvador1992 } from './salvador-1992'
 import { HARMONIC_STAGE_PROFILES } from './harmonic-stages'
 import { curateTimbres } from './timbre-curation'
+import { curateArrangement } from './arrangement-curation'
 
 const authoredProfiles: Record<string, StyleProfile> = {
   dusseldorf,
@@ -44,5 +45,5 @@ const authoredProfiles: Record<string, StyleProfile> = {
 }
 
 export const STYLE_PROFILES: Record<string, StyleProfile> = Object.fromEntries(
-  Object.entries(authoredProfiles).map(([id, profile]) => [id, curateTimbres(id, profile)]),
+  Object.entries(authoredProfiles).map(([id, profile]) => [id, curateArrangement(id, curateTimbres(id, profile))]),
 )

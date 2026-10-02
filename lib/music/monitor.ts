@@ -1,14 +1,21 @@
 export type VoiceStatus = 'inactive' | 'paused' | 'solo-muted' | 'loading' | 'error' | 'masked' | 'rest' | 'note'
 export interface NoteEvent { start: number; end: number; note: number | null; gain: number }
 export interface TrackFrame {
+  manual?: boolean
   status: VoiceStatus
   notes: (number | null)[]
   events: NoteEvent[]
   values: Partial<Record<'gain' | 'lpf' | 'pan' | 'room' | 'delay', number>>
 }
-export interface TransportFrame { bpm:number; targetBpm:number; meter:import('./meter').Meter; scale:string[]; harmony:HarmonyPlanId; ramp?:{from:number;target:number;start:number;end:number;progress:number}; pending:{id:string;cycle:number;trigger:string}[] }
+export interface TransportFrame { bpm:number; targetBpm:number; meter:import('./meter').Meter; scale:string[]; harmony:HarmonyPlanId; harmonicRoot?:number; authoredHarmony?:boolean; sectionLabel?:string; nextSectionId?:string; ramp?:{from:number;target:number;start:number;end:number;progress:number}; pending:{id:string;cycle:number;trigger:string}[] }
 export interface MusicFrame { transport?:TransportFrame; running: boolean; cycle: number; beat: number; section: number; tracks: Record<string, TrackFrame> }
 export const EMPTY_MUSIC_FRAME: MusicFrame = { running: false, cycle: 0, beat: 1, section: 0, tracks: {} }
+
+/** A transport clock or a tactile note is not evidence that this piece is looping. */
+export function isLoopRunning(frame: MusicFrame, id: string, loopEnabled = true) {
+  const track = frame.tracks[id]
+  return loopEnabled && frame.running && !track?.manual && ['note', 'rest', 'masked'].includes(track?.status ?? '')
+}
 
 // Subscribers are tiny playback views. Clock ticks never rebuild the editor,
 // chess analysis or the audio patterns.

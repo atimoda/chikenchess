@@ -7,6 +7,8 @@ import { beatsPerBar } from './meter'
 import { ReactionQueue } from './reaction-queue'
 import { applyReactions } from './reactions'
 import { isConstrainedDevice } from '../performance'
+import { DEFAULT_ARRANGEMENT, arrangementPosition, sectionStartCycle, sectionEndCycle } from './arrangement'
+import { variationPosition } from './performance'
 import { TeamMixer, createTeamMixes } from './team-mixer'
 import { sampleRegistration, type SampleSource } from './sample-banks'
 import { createMusicMonitor, type TrackFrame, type NoteEvent, type MusicMonitor } from './monitor'
@@ -30,11 +32,14 @@ export class MusicRuntime {
   private unlockAudition: Preview | null = null
   private voices = new Map<string, VoiceSpec>()
   private ready?: Promise<void>
+  private workletsReady?: Promise<void>
   private disposed = false
   private pageVisible = true
   private generation = 0
   private visualTimers = new Set<ReturnType<typeof setTimeout>>()
   private starting = false
+  private pendingSeek?: number
+  private queuedSectionId?: string
   private analyser?: AnalyserNode
   private teamMixer?: TeamMixer
   private manualReverbs = new ManualReverbCache()
@@ -50,8 +55,6 @@ export class MusicRuntime {
   private sampleErrors = new Set<string>()
   private monitorTimer?: ReturnType<typeof setInterval>
   private displayCache = new Map<string, { pattern: StrudelPattern; cycle: number; events: NoteEvent[]; haps: any[] }>()
-  private sectionCache?: { source: string; pattern: StrudelPattern }
-  private maskCache = new Map<string, StrudelPattern>()
   private manualHit?: { voice: VoiceSpec; value: any; start: number; end: number }
   private releaseTimer?: ReturnType<typeof setTimeout>
   constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
@@ -68,7 +71,7 @@ export class MusicRuntime {
     // Prepare assets only. Build the live graph from unlock(), inside a gesture.
   }
 
-  async unlock() {
+  async unlock(refreshTransport = true) {
     if (this.disposed || !this.pageVisible) return
     // initAudio can be waiting for resume after a prior, non-gesture Play update.
     // Resume now, within this pointer/key event, before waiting for that init.
@@ -77,10 +80,14 @@ export class MusicRuntime {
     if (!this.ready) this.ready = this.initialize().catch(error => { this.ready = undefined; throw error })
     try {
       await Promise.all([this.ready, resume])
+      if (this.state && voiceSpecs(this.state, this.preview).some(voice => voice.controls.s === 'supersaw' || voice.instrument.distortion
+        || Math.max(voice.instrument.driveRange?.first ?? 0, voice.instrument.driveRange?.second ?? 0) > 0)) {
+        await this.workletsReady
+      }
       if (this.disposed || !this.pageVisible) return
       const liveContext = this.api!.getAudioContext()
       if (liveContext.state !== 'running') await liveContext.resume()
-      this.refresh()
+      if (refreshTransport) this.refresh()
     } catch (error) { this.error(error) }
   }
 
@@ -113,9 +120,11 @@ export class MusicRuntime {
     const constrained = isConstrainedDevice()
     this.visualInterval = 1 / (constrained ? 8 : 15)
     this.effectBuses = constrained ? 2 : 4
-    // Worklet registration can outlast a drag. The audio context and manual
-    // notes do not depend on that registration, so finish it in the background.
-    void s.initAudio({ maxPolyphony: constrained ? 32 : 64 }).catch(this.error)
+    // Dry manual notes can start immediately. Distortion and supersaw need worklets;
+    // unlock/output await it instead of creating an undefined processor.
+    const workletsReady: Promise<void> = s.initAudio({ maxPolyphony: constrained ? 32 : 64 })
+    this.workletsReady = workletsReady
+    void workletsReady.catch(this.error)
     if (this.disposed) return
     const context: AudioContext = s.getAudioContext()
     this.analyser = context.createAnalyser()
@@ -132,19 +141,46 @@ export class MusicRuntime {
       getTime: () => context.currentTime,
       onError: this.error,
       onTrigger: (hap: any, deadline: number, duration: number, cps: number, time: number) => {
-        const voice = this.voices.get(hap.value.ccVoice)
-        if (!voice || voice.manual) return
-        void s.webaudioOutput(hap, deadline, duration, cps, time).catch(this.error)
-        this.scheduleVisual(voice, time, duration)
+        this.triggerLoop(hap, deadline, duration, cps, time)
       },
     })
+    if (this.pendingSeek !== undefined) {
+      this.scheduler.setMeter(beatsPerBar(this.state?.meter))
+      this.scheduler.seek(this.pendingSeek)
+      this.pendingSeek = undefined
+    }
     this.monitorTimer = setInterval(() => { if (this.scheduler?.started && this.monitor.hasSubscribers()) this.publishFrame() }, constrained ? 150 : 100)
   }
 
+  private triggerLoop(hap: any, deadline: number, duration: number, cps: number, time: number) {
+    const voice = this.voices.get(hap.value.ccVoice)
+    if (!voice || voice.manual || (this.preview?.mode === 'manual' && !this.releaseTimer && this.preview.id === voice.piece.id)) return
+    void this.output(hap, deadline, duration, cps, time).catch(this.error)
+    this.scheduleVisual(voice, time, duration)
+  }
+
+  private async output(hap: any, deadline: number, duration: number, cps: number, time: number, valid = () => true) {
+    const generation = this.generation
+    if (hap.value.distort !== undefined || hap.value.s === 'supersaw') {
+      await this.workletsReady
+      if (generation !== this.generation || this.disposed || !this.pageVisible || !valid()) return
+      if (this.api!.getAudioContext().currentTime >= time + duration) return
+    }
+    if (!valid()) return
+    return this.api!.webaudioOutput(hap, deadline, duration, cps, time)
+  }
+
   update(state: MusicSnapshot) {
-    if (this.sourceState && (this.sourceState.meter ?? '4/4') !== (state.meter ?? '4/4')) {
+    const arrangementChanged = this.sourceState?.arrangement !== state.arrangement
+    if (this.sourceState && (this.sourceState.playing && !state.playing || this.sourceState.title !== state.title || this.sourceState.meter !== state.meter)) {
+      this.queuedSectionId = undefined
+      this.scheduler?.cancelQueuedSeek?.()
+    }
+    if (this.sourceState && (this.sourceState.playing && !state.playing || this.sourceState.title !== state.title)) this.pendingSeek = undefined
+    if (this.sourceState && (this.sourceState.title !== state.title || (this.sourceState.meter ?? '4/4') !== (state.meter ?? '4/4'))) {
       this.scheduler?.stop()
       this.clearVisuals()
+      this.pendingSeek = undefined
     }
     this.sourceState = state
     const input=state.reactionInput
@@ -152,6 +188,14 @@ export class MusicRuntime {
     this.rampBars=input ? this.reactionQueue.update(input.config,input.context,!!this.scheduler?.started&&state.playing,this.scheduler?.lastEnd??0,input.scope) : 0
     this.resolveState()
     this.refresh()
+    if (arrangementChanged && this.queuedSectionId) {
+      const id = this.queuedSectionId
+      if (!state.arrangement?.sections.some(section => section.id === id)) {
+        this.queuedSectionId = undefined
+        this.scheduler?.cancelQueuedSeek?.()
+        this.publishFrame()
+      } else if (this.scheduler?.queuedSeekCycle !== undefined || !state.playing) this.queueSection(id)
+    }
   }
   private resolveState() {
     if(!this.sourceState)return
@@ -161,16 +205,62 @@ export class MusicRuntime {
     if(input?.lockedBpm!==undefined){this.state={...this.state,bpm:input.lockedBpm};this.rampBars=0}
     this.onResolved?.(this.state)
   }
-  private transportFrame() {
-    const cycle=this.scheduler?.cycle??0
+  private transportFrame(cycle=this.scheduler?.cycle??this.pendingSeek??0) {
+    if (this.state?.playing && this.scheduler?.pendingSeekTarget === undefined) this.queuedSectionId = undefined
+    const position = arrangementPosition(this.state?.arrangement ?? DEFAULT_ARRANGEMENT,cycle,beatsPerBar(this.state?.meter))
+    const sequence = this.state?.harmony === 'kit' ? position.section.harmony : undefined
+    const localBar = Math.floor(position.progress * position.section.beats / beatsPerBar(this.state?.meter))
     return { bpm:this.scheduler?.started ? this.scheduler?.tempo?.bpmAt(cycle)??this.state?.bpm??120 : this.state?.bpm??120,
       targetBpm:this.targetBpm, meter:this.state?.meter??'4/4', scale:this.state?.scale??[], harmony:this.state?.harmony??'static',
+      harmonicRoot: sequence?.[localBar % sequence.length], authoredHarmony: !!sequence, sectionLabel:position.section.label, nextSectionId:this.queuedSectionId,
       ramp:this.scheduler?.started?this.scheduler?.tempo?.transition(cycle):undefined,
       pending:[...this.reactionQueue.pending].map(([id,p])=>({id,cycle:p.cycle,trigger:p.entry.rule.trigger})) }
   }
 
+  /** Jump the shared clock, cancel old attacks/tails and keep Play/Pause intact. */
+  seekSection(id: string) {
+    if (!this.state || this.disposed) return false
+    const cycle = sectionStartCycle(this.state.arrangement ?? DEFAULT_ARRANGEMENT,id,beatsPerBar(this.state.meter))
+    if (cycle === undefined) return false
+    this.queuedSectionId = undefined
+    this.endAudition()
+    this.clearVisuals()
+    this.displayCache.clear()
+    for (const orbit of new Set([...this.voices.values()].filter(voice => !voice.manual).map(voice => voice.orbit))) this.removeOrbit(orbit)
+    this.reactionQueue.rebase(cycle)
+    if (!this.scheduler) this.pendingSeek = cycle
+    // Reconnect the replacement buses before seek schedules its first attack.
+    this.refresh()
+    this.scheduler?.seek(cycle)
+    this.publishFrame()
+    return true
+  }
+
+  /** Queue one destination at the current section's unscheduled end. */
+  queueSection(id: string) {
+    if (!this.state || this.disposed || !this.pageVisible) return false
+    const plan = this.state.arrangement ?? DEFAULT_ARRANGEMENT, pulses = beatsPerBar(this.state.meter)
+    const target = sectionStartCycle(plan, id, pulses)
+    if (target === undefined) return false
+    if (!this.state.playing || !this.scheduler?.started) {
+      const selected = this.seekSection(id)
+      if (selected) { this.queuedSectionId = id; this.refresh() }
+      return selected
+    }
+    // Never rewrite attacks already handed to Web Audio. A click arriving after
+    // the scheduling cutoff targets the end of the next schedulable section.
+    const end = sectionEndCycle(plan, Math.max(this.scheduler.schedulingCycle, this.scheduler.lastEnd), pulses)
+    const queued = this.scheduler.queueSeek(end, target, () => {
+      this.reactionQueue.rebase(target)
+      this.displayCache.clear()
+    })
+    if (queued) { this.queuedSectionId = id; this.publishFrame() }
+    return queued
+  }
+
   audition(id: string, square: Square, mode: Preview['mode'] = 'manual') {
     if (this.releaseTimer) this.endAudition()
+    if (mode === 'manual' && this.preview && this.preview.mode !== 'manual') this.endAudition()
     if (this.preview?.id === id && this.preview.square === square && this.preview.mode === mode) return
     const crossing = mode === 'manual' && this.preview?.mode === 'manual' && this.preview.id === id && !!this.api && !!this.scheduler
     const requested = { id, square, mode }
@@ -178,13 +268,21 @@ export class MusicRuntime {
     // its reverb/output graph for every cell caused a hitch and could drop attacks.
     if (this.preview?.mode === 'manual' && !crossing) this.stopManualHit()
     this.preview = requested
-    // Only entry/exit changes the accompaniment. Crossing a square changes one voice.
-    if (!crossing) this.refresh()
+    // Manual notes never rebuild patterns or touch the musical clock. Suppress
+    // the held piece's future loop attacks at output, preserving everyone else's phase.
+    if (mode !== 'manual') this.refresh()
     // A short immediate note gives tactile feedback even before the next onset.
     // Keep only the latest square while unlocking/loading audio. Manual gestures
     // cancelled before readiness must never produce a delayed note.
       this.unlockAudition = requested
-      const ready = this.scheduler && this.api?.getAudioContext().state === 'running' ? Promise.resolve() : this.unlock()
+      const source = this.state?.instruments?.[id]?.source
+      const sampleLoaded = source?.kind !== 'sample' || loadedSamples.has(sampleRegistration(source).sound)
+      if (this.api?.getAudioContext().state === 'running' && sampleLoaded) {
+        this.unlockAudition = null
+        try { this.triggerPreview(requested) } catch (error) { this.error(error) }
+        return
+      }
+      const ready = this.api?.getAudioContext().state === 'running' ? Promise.resolve() : this.unlock(mode !== 'manual')
       void ready.then(async () => {
         const source = this.state?.instruments?.[id]?.source
         if (source?.kind === 'sample' && this.api && !loadedSamples.has(sampleRegistration(source).sound)) await ensureSample(this.api, source)
@@ -200,10 +298,12 @@ export class MusicRuntime {
   endAudition() {
     if (this.releaseTimer) clearTimeout(this.releaseTimer)
     this.releaseTimer = undefined
-    if (this.preview?.mode === 'manual') this.unlockAudition = null
+    const wasPattern = this.preview && this.preview.mode !== 'manual'
+    this.unlockAudition = null
     this.stopManualHit()
     this.preview = null
-    this.refresh()
+    if (wasPattern) this.refresh()
+    else this.publishFrame()
   }
 
   releaseAudition() {
@@ -212,6 +312,7 @@ export class MusicRuntime {
     // Keep only the last manual note alive briefly; a new gesture or an
     // explicit cancel ends it immediately.
     this.releaseTimer = setTimeout(() => this.endAudition(), 500)
+    this.publishFrame()
   }
 
   private stopManualHit() {
@@ -225,11 +326,8 @@ export class MusicRuntime {
     // time the browser grants audio access on the first interaction.
     const voice = voiceSpecs({ ...this.state, pieces: this.state.pieces.filter(p => p.id === requested.id) }, requested, this.effectBuses)[0]
     if (!voice) return
-    const pattern = this.patternFor(voice)
-    // A groove lane may be resting for an entire section. The tactile note
-    // still introduces its instrument, even when that lane has no onset yet.
-    const hap = pattern.queryArc(0, 4).find((h: any) => h.hasOnset())
-      ?? compileVoice(this.api, { ...voice, groove: undefined, mask: undefined }).queryArc(0, 4).find((h: any) => h.hasOnset())
+    const pattern = voice.manual ? compileVoice(this.api, voice) : this.patternFor(voice)
+    const hap = pattern.queryArc(0, voice.manual ? 1 : 4).find((h: any) => h.hasOnset())
     if (!hap) return
     const time = this.api.getAudioContext().currentTime + 0.03
     const duration = voice.manual ? Math.max(.16, voice.instrument.attack + .2) : .12
@@ -237,11 +335,11 @@ export class MusicRuntime {
       this.manualHit = { voice, value: hap.value, start: time, end: time + duration }
       // A previous manual note's orbit was detached when entering this square.
       // Reattach the new note to the current mix before submitting its attack.
-      this.voices.set(voice.key, voice)
       this.connectVoice(voice)
       this.publishFrame()
     }
-    void this.api.webaudioOutput(hap, 0, duration, this.state.bpm / (60 * beatsPerBar(this.state.meter)), time).catch(this.error)
+    void this.output(hap, 0, duration, this.state.bpm / (60 * beatsPerBar(this.state.meter)), time,
+      () => !voice.manual || this.manualHit?.voice === voice).catch(this.error)
     this.scheduleVisual(voice, time, duration)
   }
 
@@ -280,26 +378,26 @@ export class MusicRuntime {
     try {
       // Cyclist's lastBegin/lastTick describe the queued interval; subtract its
       // output latency so the display follows audible time, including BPM edits.
-      const cycle = this.scheduler.started ? Math.max(0, this.scheduler.lastBegin + (this.api.getAudioContext().currentTime - this.scheduler.lastTick - this.scheduler.latency) * this.scheduler.cps) : 0
+      const cycle = this.scheduler.started ? Math.max(0, this.scheduler.lastBegin + (this.api.getAudioContext().currentTime - this.scheduler.lastTick - this.scheduler.latency) * this.scheduler.cps) : this.scheduler.cycle
       const cycleIndex = Math.floor(cycle)
-      const sectionSource = this.state.sectionPattern ?? '0'
-      if (this.sectionCache?.source !== sectionSource) this.sectionCache = { source: sectionSource, pattern: this.api.mini(sectionSource) }
-      const section = Number(this.sectionCache.pattern.queryArc(cycle, cycle + .00001)[0]?.value ?? 0)
+      const section = arrangementPosition(this.state.arrangement ?? DEFAULT_ARRANGEMENT,cycle,beatsPerBar(this.state.meter)).index
       const tracks: Record<string, TrackFrame> = {}
       for (const piece of this.state.pieces) {
-        const voice = this.voices.get(`${piece.id}:preview`) ?? this.voices.get(`${piece.id}:loop`)
+        const manual = this.preview?.mode === 'manual' && !this.releaseTimer && this.preview.id === piece.id
+        const voice = manual ? this.manualHit?.voice : this.voices.get(`${piece.id}:preview`) ?? this.voices.get(`${piece.id}:loop`)
         const instrument = this.state.instruments?.[piece.id] ?? instrumentFor(piece)
         const source = instrument.source
         const sampleKey = source?.kind === 'sample' ? sampleRegistration(source).sound : ''
         const empty = { notes: [], events: [], values: {} }
-        if (this.preview?.id !== piece.id) {
+        if (!manual && !(this.preview?.id === piece.id && this.preview.mode !== 'manual')) {
           if (this.state.soloId && this.state.soloId !== piece.id) { tracks[piece.id] = { ...empty, status: 'solo-muted' }; continue }
-          if (!piece.active) { tracks[piece.id] = { ...empty, status: 'inactive' }; continue }
+          if (!piece.active || instrument.loopEnabled === false) { tracks[piece.id] = { ...empty, status: 'inactive' }; continue }
           if (!this.state.playing) { tracks[piece.id] = { ...empty, status: 'paused' }; continue }
+          if (!variationPosition(instrument,section,cycle,beatsPerBar(this.state.meter),this.state.sectionOverrides?.[piece.id],this.state.arrangement).present) { tracks[piece.id] = {...empty,status:'masked'};continue }
         }
         if (this.sampleErrors.has(sampleKey)) { tracks[piece.id] = { ...empty, status: 'error' }; continue }
         if (this.loading.has(sampleKey)) { tracks[piece.id] = { ...empty, status: 'loading' }; continue }
-        if (!voice) { tracks[piece.id] = { ...empty, status: 'rest' }; continue }
+        if (!voice) { tracks[piece.id] = { ...empty, manual, status: 'rest' }; continue }
         if (voice.manual) {
           const hit = this.manualHit
           const now = this.api.getAudioContext().currentTime
@@ -307,7 +405,7 @@ export class MusicRuntime {
           const note = voice.unpitched ? null : Number(hit?.value.note)
           const start = hit ? cycle + (hit.start - now) * this.scheduler.cps : 0
           const end = hit ? cycle + (hit.end - now) * this.scheduler.cps : 0
-          tracks[piece.id] = { ...empty, status: sounding ? 'note' : 'rest', notes: sounding ? [note] : [],
+          tracks[piece.id] = { ...empty, manual: true, status: sounding ? 'note' : 'rest', notes: sounding ? [note] : [],
             events: hit && end > cycleIndex && start < cycleIndex + 1 ? [{ start: Math.max(cycleIndex, start), end: Math.min(cycleIndex + 1, end), note, gain: Number(hit.value.gain) }] : [] }
           continue
         }
@@ -326,16 +424,14 @@ export class MusicRuntime {
         }
         if (!cached) continue
         const sounding = cached.haps.filter((hap: any) => Number(hap.whole?.begin ?? hap.part.begin) <= cycle && Number(hap.whole?.end ?? hap.part.end) > cycle && Number(hap.value.gain ?? 1) * Number(hap.value.velocity ?? 1) > 0)
-        if (voice.mask && !this.maskCache.has(voice.mask)) this.maskCache.set(voice.mask, this.api.mini(voice.mask))
-        const masked = voice.mask && !this.maskCache.get(voice.mask)!.queryArc(cycle, cycle + .00001).some((hap: any) => hap.value && hap.value !== '~')
         const last = sounding[0]?.value
         tracks[piece.id] = {
-          status: masked ? 'masked' : sounding.length ? 'note' : 'rest',
+          status: sounding.length ? 'note' : 'rest',
           notes: sounding.map((hap: any) => voice.unpitched ? null : Number(hap.value.note)), events: cached.events,
           values: last ? { gain: Number(last.gain) * Number(last.velocity ?? 1), lpf: Number(last.cutoff ?? last.lpf), pan: Number(last.pan), room: Number(last.room), delay: Number(last.delay) } : {},
         }
       }
-      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section, tracks, transport: this.transportFrame() })
+      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section, tracks, transport: this.transportFrame(cycle) })
     } catch (error) { this.error(error) }
   }
 
@@ -367,7 +463,7 @@ export class MusicRuntime {
     }
     const timer = setTimeout(() => {
       this.visualTimers.delete(timer)
-      const current = this.voices.get(voice.key)
+      const current = voice.manual ? this.manualHit?.voice : this.voices.get(voice.key)
       if (this.disposed || generation !== this.generation || !current || current.manual !== voice.manual || current.square !== voice.square) return
       this.pulse(event)
     }, Math.max(0, (time - this.api!.getAudioContext().currentTime) * 1000))
@@ -402,13 +498,16 @@ export class MusicRuntime {
   private refresh() {
     if (!this.state || this.disposed) return
     if (!this.api || !this.scheduler) {
-      this.monitor.publish({ running: false, cycle: 0, beat: 1, section: 0, transport: this.transportFrame(), tracks: Object.fromEntries(this.state.pieces.map(piece => [piece.id, {
-        status: this.state!.soloId && this.state!.soloId !== piece.id ? 'solo-muted' : piece.active ? 'paused' : 'inactive', notes: [], events: [], values: {},
+      const cycle = this.pendingSeek ?? 0
+      this.monitor.publish({ running: false, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section: arrangementPosition(this.state.arrangement ?? DEFAULT_ARRANGEMENT,cycle,beatsPerBar(this.state.meter)).index, transport: this.transportFrame(cycle), tracks: Object.fromEntries(this.state.pieces.map(piece => [piece.id, {
+        status: this.state!.soloId && this.state!.soloId !== piece.id ? 'solo-muted' : piece.active && this.state!.instruments?.[piece.id]?.loopEnabled !== false ? 'paused' : 'inactive', notes: [], events: [], values: {},
       }])) })
       return
     }
     try {
-      const specs = voiceSpecs(this.pageVisible ? this.state : { ...this.state, playing: false }, this.pageVisible ? this.preview : null, this.effectBuses).filter(voice => this.sampleReady(voice))
+      const loopPreview = this.preview?.mode === 'manual' ? null : this.preview
+      const specs = voiceSpecs(this.pageVisible ? this.state : { ...this.state, playing: false }, this.pageVisible ? loopPreview : null, this.effectBuses)
+        .filter(voice => (voice.preview || voice.instrument.loopEnabled !== false) && this.sampleReady(voice))
       // Compile first: invalid edits must not tear down the last valid voices.
       const loops = specs.filter(voice => !voice.manual)
       const compiledLoops = loops.map(v => this.patternFor(v))
@@ -418,7 +517,6 @@ export class MusicRuntime {
       const previousOrbits = new Set([...this.voices.values()].map(voice => voice.orbit))
       for (const orbit of previousOrbits) if (!nextOrbits.has(orbit)) this.removeOrbit(orbit)
       this.voices = next
-      for (const mask of this.maskCache.keys()) if (!specs.some(voice => voice.mask === mask)) this.maskCache.delete(mask)
       for (const key of this.compiled.keys()) if (!next.has(key)) { this.compiled.delete(key); this.displayCache.delete(key) }
       this.teamMixer?.update(this.state.teamMixes ?? createTeamMixes())
       const loopCount = specs.filter(v => !v.preview).length
@@ -475,7 +573,6 @@ export class MusicRuntime {
     this.manualReverbs.clear()
     this.compiled.clear()
     this.displayCache.clear()
-    this.maskCache.clear()
     this.analyser?.disconnect()
     this.teamMixer?.dispose()
   }

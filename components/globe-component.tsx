@@ -11,6 +11,37 @@ import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
 import { clampPopupToGlobe, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
+function clampPopupToViewport(
+  position: { x: number; y: number },
+  popup: { width: number; height: number },
+  viewport: { left: number; top: number; right: number; bottom: number },
+) {
+  const minX = viewport.left - popup.width * 0.8
+  const maxX = viewport.right - popup.width * 0.2
+  const minY = viewport.top - popup.height * 0.8
+  const maxY = viewport.bottom - popup.height * 0.2
+  return {
+    x: Math.max(minX, Math.min(maxX, position.x)),
+    y: Math.max(minY, Math.min(maxY, position.y)),
+  }
+}
+
+function constrainPopupPosition(
+  position: { x: number; y: number },
+  popup: { width: number; height: number },
+  globe: { x: number; y: number; radius: number },
+  viewport: { left: number; top: number; right: number; bottom: number },
+) {
+  const fitsViewport = position.x >= viewport.left + 12
+    && position.y >= viewport.top + 12
+    && position.x + popup.width <= viewport.right - 12
+    && position.y + popup.height <= viewport.bottom - 12
+  const withinGlobeBounds = fitsViewport
+    ? clampPopupToGlobe(position, popup, globe)
+    : position
+  return clampPopupToViewport(withinGlobeBounds, popup, viewport)
+}
+
 function GlobeGeography() {
   const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
   const coast = useMemo(() => coastlineSegments(svg), [svg])
@@ -316,11 +347,16 @@ const PopupContainer = ({
             x: current.x,
             y: current.y + (viewportTop + (viewportBottom - viewportTop - rect.height) / 2 + popup.centerOffsetY - rect.top),
           } : current
-          const constrained = clampPopupToGlobe(requested, { width: rect.width, height: rect.height }, globeCircle.current)
-          const edgePadding = 12
-          const visible = {
-            x: Math.max(viewportLeft + edgePadding, Math.min(viewportRight - rect.width - edgePadding, constrained.x)),
-            y: Math.max(viewportTop + edgePadding, Math.min(viewportBottom - rect.height - edgePadding, constrained.y)),
+          const visible = constrainPopupPosition(requested, { width: rect.width, height: rect.height }, globeCircle.current, {
+            left: viewportLeft,
+            top: viewportTop,
+            right: viewportRight,
+            bottom: viewportBottom,
+          })
+          if (opening) {
+            const minX = viewportLeft + 12
+            const maxX = Math.max(minX, viewportRight - rect.width - 12)
+            visible.x = Math.max(minX, Math.min(maxX, visible.x))
           }
           slowOffset.current.x += visible.x - current.x
           slowOffset.current.y += visible.y - current.y
@@ -410,11 +446,16 @@ const PopupContainer = ({
                             if (wrapper && panel && globeCircle.current.radius > 0) {
                                 const anchor = wrapper.getBoundingClientRect()
                                 const rect = panel.getBoundingClientRect()
-                                const constrained = clampPopupToGlobe(
-                                  { x: anchor.left + x, y: anchor.top + y },
-                                  { width: rect.width, height: rect.height },
-                                  globeCircle.current,
-                                )
+                                const position = { x: anchor.left + x, y: anchor.top + y }
+                                const viewport = window.visualViewport
+                                const viewportLeft = viewport?.offsetLeft ?? 0
+                                const viewportTop = viewport?.offsetTop ?? 0
+                                const constrained = constrainPopupPosition(position, { width: rect.width, height: rect.height }, globeCircle.current, {
+                                  left: viewportLeft,
+                                  top: viewportTop,
+                                  right: viewportLeft + (viewport?.width ?? window.innerWidth),
+                                  bottom: viewportTop + (viewport?.height ?? window.innerHeight),
+                                })
                                 next = { x: constrained.x - anchor.left, y: constrained.y - anchor.top }
                             }
                             localPosRef.current = next
@@ -517,6 +558,8 @@ const GlobeContent = ({
   const globeRef = useRef<Group>(null)
   const [isDraggingPopup, setIsDraggingPopup] = useState(false)
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null)
+  const hoveredPinIdRef = useRef<string | null>(null)
+  const resumeStandbyAfterPinHover = useRef(false)
   const suppressedPinHoverId = useRef<string | null>(null)
   const isStandby = useRef(false)
   const idleFlagMotion = useRef(false)
@@ -721,8 +764,9 @@ const GlobeContent = ({
     // A city card does not stop the idle globe. A list hover steers its standby
     // rotation toward the selected pin without commanding camera movement.
     const hoveredListCity = focusedCityId && !hoveredPinId ? cities.find(city => city.id === focusedCityId) : null
-    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && (!targetCameraPos || resumeStandbyAfterCenter.current) && (timeSinceInteraction > 800 || !!hoveredListCity || !!pinClickBoost.current)
+    const canRotate = introZoomComplete && !isInteracting.current && !hoveredPinId && (!targetCameraPos || resumeStandbyAfterCenter.current) && (timeSinceInteraction > 800 || resumeStandbyAfterPinHover.current || !!hoveredListCity || !!pinClickBoost.current)
     if (canRotate) {
+        resumeStandbyAfterPinHover.current = false
         if (!isStandby.current) {
             isStandby.current = true
             if (!pinClickBoost.current) {
@@ -802,6 +846,7 @@ const GlobeContent = ({
   const handleInteraction = () => {
       lastInteractionTime.current = Date.now()
       isStandby.current = false
+      resumeStandbyAfterPinHover.current = false
       pinClickBoost.current = null
       suppressedPinHoverId.current = null
       centeringCamera.current = false
@@ -1043,6 +1088,8 @@ const GlobeContent = ({
                         gl.domElement.style.cursor = 'pointer'
                         if (suppressedPinHoverId.current === city.id) return
                         if (e.pointerType === 'mouse') {
+                            hoveredPinIdRef.current = city.id
+                            resumeStandbyAfterPinHover.current = false
                             setHoveredPinId(city.id)
                             setFocusedCityId?.(city.id)
                             onPinHover?.(city.id)
@@ -1051,6 +1098,10 @@ const GlobeContent = ({
                         }
                     }}
                     onPointerOut={() => {
+                        if (hoveredPinIdRef.current === city.id) {
+                            hoveredPinIdRef.current = null
+                            if (!isInteracting.current) resumeStandbyAfterPinHover.current = true
+                        }
                         if (suppressedPinHoverId.current === city.id && !pinClickBoost.current) suppressedPinHoverId.current = null
                         gl.domElement.style.cursor = ''
                         setHoveredPinId(current => current === city.id ? null : current)

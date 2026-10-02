@@ -9,7 +9,7 @@ export const profile: StyleProfile = {
   parts: [
     rhythm('Pulso motorik', electro('kick'), ['0 . . . 0 . . . 0 . . . 0 . . .','0 . . . 0 . . . 0 . 0 . 0 . . .','0 . . . 0 . . . 0 . . . 0 . . .','0 . . . 0 . . . 0 . . . 0 . 0 .'], { gain: .48, arrangement: always }),
     rhythm('Relógio metálico', electro('rim'), ['. . 0 . . . 0 . . . 0 . . . 0 .','. 0 . . . 0 . . . 0 . . . 0 . .','. . . . 0 . . . . . . . 0 . . .','. . 0 . . . 0 . . 0 . . . 0 . .'], { octave: 5, gain: .12, arrangement: late }),
-    voice('bass', 'Baixo de laboratório', synth('sawtooth'), ['0 . 0 0 4 . 0 3','0 0 . 4 0 . 6 4','0 . . . 4 . . .','0 0 4 0 3 2 0 .'], { lpf: 1050, distortion: .8, distortionMix: .12, arrangement: always, automations: { lpf: { kind: 'pattern', patterns: ['900 1200','1100 1600','650 900','900 1400'] } } }),
+    voice('bass', 'Baixo de laboratório', synth('sawtooth'), ['0 . 0 0 4 . 0 3','0 0 . 4 0 . 6 4','0 . . . 4 . . .','0 0 4 0 3 2 0 .'], { lpf: 1050, distortion: .8, distortionMix: .12, arrangement: always, lpfRange: { first: 650, second: 1600, frequency: 'note' } }),
     rhythm('Caixa seca', electro('snare'), ['. . . . 0 . . . . . . . 0 . . .','. . . . 0 . . . . . 0 . 0 . . .','. . . . 0 . . . . . . . 0 . . .','. . . . 0 . . . . . . . 0 . 0 .'], { gain: .25, arrangement: always }),
     voice('harmony', 'Órgão de transistores', synth('triangle'), ['0 . . . 4 . . .','0 . 3 . 4 . 6 .','2 . . . 6 . . .','0 . 4 . 3 . 2 .'], { octave: 3, gain: .11, attack: .08, release: .22, lpf: 2700, arrangement: always }),
     rhythm('Chimbal mecânico', electro('hat'), ['0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .','0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 .','0 . . . 0 . . . 0 . . . 0 . . .','0 . 0 0 0 . 0 . 0 . 0 0 0 . 0 .'], { gain: .11, hpf: 7600, arrangement: always }),

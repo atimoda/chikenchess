@@ -1,0 +1,302 @@
+{
+  "sources": [
+    [
+      "sfzinstruments/karoryfer.black-and-green-guitars",
+      "b3b3249d37dc977a1a297bd2dc053e6d9b6b805c"
+    ],
+    [
+      "sfzinstruments/karoryfer.big-little-bass",
+      "4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc"
+    ]
+  ],
+  "recordings": [
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-0-e2.wav",
+      "source": "Samples/green/ord/twang_e3_mf_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e3_mf_rr1.wav",
+      "source_sha256": "a839c8a67e29ab9c3c5ac9da52af4ee62f0ce721262c28772720223b8e7eb249",
+      "output_sha256": "377095570d7b64915a415bc8d61f8743803588124424fd7176d7baeff52e32f6",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-0-e2.wav",
+      "source": "Samples/green/stac/staccato_e3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_e3_rr1.wav",
+      "source_sha256": "41fc0bb4e913021b8c418dfde0a76bdf2fab81e936b957cc90d3826219eaf2b7",
+      "output_sha256": "86c2312675747bba1edd4d1c7483e00ae4798bfb1ac3f249492b9e92be4c7111",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-0-g2.wav",
+      "source": "Samples/green/ord/twang_g3_mf_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g3_mf_rr1.wav",
+      "source_sha256": "07155e3d554cc0ddd4e8409f4ba31a601f169479ad5e5685738b1288d6c0d1a9",
+      "output_sha256": "731c6a8eea266997734806c3f395615ca5dcdc88bd2b585dc07c00e7f9acbcc0",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-0-g2.wav",
+      "source": "Samples/green/stac/staccato_g3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_g3_rr1.wav",
+      "source_sha256": "e6558d3c72a1e9f139467533a87559912476262e3315d5c87eb6d9d12588964f",
+      "output_sha256": "e3b22b6230860ee2c67aed2f6c7a4565d8e0116622a46f5364ea0918ac23d21c",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-0-c3.wav",
+      "source": "Samples/green/ord/twang_c4_mf_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c4_mf_rr1.wav",
+      "source_sha256": "4f425d4a926f4146504d848f0f6a01b79fae5784adf185bf5948a1724902998e",
+      "output_sha256": "a89a520071a0a381e650c2569524abf0ea3a94994be7141d17b4aeb31da18dd9",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-0-c3.wav",
+      "source": "Samples/green/stac/staccato_c4_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_c4_rr1.wav",
+      "source_sha256": "88d55fe3252c3cb768bb78768ec35af2af289649e373e3a4b7357a786e2b4913",
+      "output_sha256": "53eaab15530329d3a25a8b52352fddb6ae100cae87e7e7333cde7c36aad98e47",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-0-e3.wav",
+      "source": "Samples/green/ord/twang_e4_mf_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e4_mf_rr1.wav",
+      "source_sha256": "d8dd360dca1a306949b16e1ed0acc4dfdc7533e4d9ae5f56ad9867291638702f",
+      "output_sha256": "439c10bd7cb86cfd2054353b8911f0f98e9157e77b261d4a098996347a5634f8",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-0-e3.wav",
+      "source": "Samples/green/stac/staccato_e4_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_e4_rr1.wav",
+      "source_sha256": "0ed644bcdb94011d939787269167fd463e341e54edb47b94c5e1188e2cf03d06",
+      "output_sha256": "d25436f104ebbdcb02ff1c4b23f035e2729a45cab0fd976043a052373b76a29e",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-0-g3.wav",
+      "source": "Samples/green/ord/twang_g4_mf_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g4_mf_rr1.wav",
+      "source_sha256": "5281bb39ee797565282c4f71d670448c07ca0c430a76b7c6380c0ce524b44f11",
+      "output_sha256": "7d70087d33ee7b4dde9e4f339f1d9193a5825e173ac85640961f04cdb3b5567b",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-0-g3.wav",
+      "source": "Samples/green/stac/staccato_g4_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_g4_rr1.wav",
+      "source_sha256": "9bb4439a3a0204d46ccd73dad952249839d9749659e26c4057adc100bca349b2",
+      "output_sha256": "f8083adbf4163f4031d52c03068fe9425da213fa19507ba9e0a5a3ea93831af0",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-0-c4.wav",
+      "source": "Samples/green/ord/twang_c5_mf_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c5_mf_rr1.wav",
+      "source_sha256": "8bc3ab1361d13b1bf6e361dcfb7c493f6b96b9f065721e45275959a1e12f8658",
+      "output_sha256": "657334276f92b59a0ae7cd01982a82ec44785ce4de90574d2e1eb3da34bd94fe",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-0-c4.wav",
+      "source": "Samples/green/stac/staccato_c5_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_c5_rr1.wav",
+      "source_sha256": "5caf291739edeb79c959e574ab4210d68e99f84591baecc1d04042d678da684d",
+      "output_sha256": "e5eb6185162401fae917aec6e36ae596a44ea087ee919ed695ce017bc752b31d",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-0-c2.wav",
+      "source": "Samples/big_little_pluck_c2_f_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_c2_f_rr1.wav",
+      "source_sha256": "62d57842aa4406a2f3c99a64c6e515d50740bb3f268d240ff575fc98992510b6",
+      "output_sha256": "ea9141286efc45b2fccf4ecfc0b8d1908df720734c9df539fb8b33c5009f7cf5",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-0-e2.wav",
+      "source": "Samples/big_little_pluck_e2_f_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_e2_f_rr1.wav",
+      "source_sha256": "9374dbfc20c0257ce02347129ecf093db7a3a79915b4a3aee4f72a11f973c049",
+      "output_sha256": "5f9b22de7aee48f21ddc3cbd114918d864c6c41fcd794e7054fb0365bcb7e206",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-0-g2.wav",
+      "source": "Samples/big_little_pluck_g2_f_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_g2_f_rr1.wav",
+      "source_sha256": "8aab4280e1957ba2a97adc107cc30fcd1d4b5a8e43b53b05227f49ceb41c9d9b",
+      "output_sha256": "b1902dda70032ab8f6243ad3188975aa6556cc21d09c8c8eb64478f1d278b82d",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-0-c3.wav",
+      "source": "Samples/big_little_pluck_c3_f_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_c3_f_rr1.wav",
+      "source_sha256": "c56da8845c26d44fc810571cae8b65f1152e5e2bf66c74d18d449920d669c44a",
+      "output_sha256": "e3f2b14f2919afa09e8044c9d74a65193bbcaea7d3e2caa852bf8e2ad0376569",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-1-e2.wav",
+      "source": "Samples/green/ord/twang_e3_mf_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e3_mf_rr2.wav",
+      "source_sha256": "8038b324bf1a2b069fbf8117d1f47952fc746d8bcb65e6d6cc1a4094b3d10d84",
+      "output_sha256": "4fe11ff9b00cf24b1c7ed0dc709500850f74b3f3bda87881313fa9237d33749f",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-1-e2.wav",
+      "source": "Samples/green/stac/staccato_e3_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_e3_rr2.wav",
+      "source_sha256": "d8f6eefabc21fab0e6eac363e39a4df85b16d98b2eab00fe2a2c60fa4f548f17",
+      "output_sha256": "589b024ebd6f8a3bd49f9155ecf1d545ab382b39844f97b13e630abaf45050b4",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-1-g2.wav",
+      "source": "Samples/green/ord/twang_g3_mf_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g3_mf_rr2.wav",
+      "source_sha256": "e1c45396eb397828f081b08c2ce8ca5f9b9d203822fe7ad9b6cdf1027eecd129",
+      "output_sha256": "831a02a84786c5f04e451aa331cc8516fbb23f3c01c9040570f56a47f195aefe",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-1-g2.wav",
+      "source": "Samples/green/stac/staccato_g3_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_g3_rr2.wav",
+      "source_sha256": "a44bc59c5f993b22c1a0bfb8d64196964294ac7e8078858cb4bdba18bf874392",
+      "output_sha256": "cb085e342f4e89c00cab52d189f6dd823f074e6f186ba34fb4d9aec1ceabcc3e",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-1-c3.wav",
+      "source": "Samples/green/ord/twang_c4_mf_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c4_mf_rr2.wav",
+      "source_sha256": "481b5ab1e908ad49a2615e1c1391a65212c2b5fb4bb3fdec74a619757c3ab400",
+      "output_sha256": "e64eae738889481233a7fcb4e4c58af063da232a0a7dbe289d95e2f1fc30af5e",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-1-c3.wav",
+      "source": "Samples/green/stac/staccato_c4_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_c4_rr2.wav",
+      "source_sha256": "e089f710393137c3a0a6ee6b86699ae6956965ffc6ec0438fe33739cce349c10",
+      "output_sha256": "b460911073ece022baa1e8c68ca1b2ed45e27acce070a83499afeb2e583d74cd",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-1-e3.wav",
+      "source": "Samples/green/ord/twang_e4_mf_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e4_mf_rr2.wav",
+      "source_sha256": "b77859c199584d6e2d2dae36b12532f21af45a98469f1c5c5218c2dc81b74bc4",
+      "output_sha256": "479550a746bf87724a89c9d419ea233ed05ba0aee5a84e12eb77a0d559fd6d16",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-1-e3.wav",
+      "source": "Samples/green/stac/staccato_e4_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_e4_rr2.wav",
+      "source_sha256": "8ec11302be2a33753df191ec5a32c0fd13b4cbfce4f4547a528a12bc7f0f3806",
+      "output_sha256": "f002d1e991928bc0336dade5112274ed318651fc4417d2152d1d0fcc0001f854",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-1-g3.wav",
+      "source": "Samples/green/ord/twang_g4_mf_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g4_mf_rr2.wav",
+      "source_sha256": "fa4c7125a57c145932f280641dc2520aaa3602bc9a8012cc9707a9b060a2df80",
+      "output_sha256": "84d35f567b0878a7a05d4badd898695f90ecb75088a0a62dd1f8c52b6785ac4a",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-1-g3.wav",
+      "source": "Samples/green/stac/staccato_g4_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_g4_rr2.wav",
+      "source_sha256": "ecc9871f5f3a4edc0f5ad31eacc9ae058a2af2976035832f0cff356c7bb5bfb5",
+      "output_sha256": "66548c3fc5e9f264b0fda858b452f83f2b7435c043a080d8bb01787dad9eed16",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "clean-1-c4.wav",
+      "source": "Samples/green/ord/twang_c5_mf_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c5_mf_rr2.wav",
+      "source_sha256": "3f6bf877d2e73234509456ba9286c0b0e54257b59a893a04fbc78acecb834785",
+      "output_sha256": "9db27df2bbe5552240da0d2d2c0912816a145ce8635ee3e6d3f7c6e438462e46",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "muted-1-c4.wav",
+      "source": "Samples/green/stac/staccato_c5_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/stac/staccato_c5_rr2.wav",
+      "source_sha256": "108d2fcfda2d64c3001c230ad72f7da04e28cc18bc176177e04125e6fac51856",
+      "output_sha256": "f1661037f1c84dc263d6a16d9e1f4160eb91f2cc8b12c3b6c7c5414f8d2f3867",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-1-c2.wav",
+      "source": "Samples/big_little_pluck_c2_f_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_c2_f_rr2.wav",
+      "source_sha256": "ecec104f6ea611f0574ba2d6a16799279a725363546e0b489a886e726acbb997",
+      "output_sha256": "fef72f0b00358b70e0a33e4b8ea35f2efc06e34812b4b42da74108e218c609de",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-1-e2.wav",
+      "source": "Samples/big_little_pluck_e2_f_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_e2_f_rr2.wav",
+      "source_sha256": "7236ec224de91313412d2cf757afaa1aefcca864fc5948ae284176b92b50905a",
+      "output_sha256": "90e00795f4930acf848f2e2014bc555a41a7cabe30ec750683bf4e41eb8bc878",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-1-g2.wav",
+      "source": "Samples/big_little_pluck_g2_f_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_g2_f_rr2.wav",
+      "source_sha256": "07da18319b845d0b959bf20dee15e9b62b227231fc7cf0da2a4109149a106a2c",
+      "output_sha256": "b3593cbe04bb4bcd2defd5201d53aa8211fd5be542fd387b5c025effa57ce28d",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-guitars-v1",
+      "file": "bass-1-c3.wav",
+      "source": "Samples/big_little_pluck_c3_f_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_c3_f_rr2.wav",
+      "source_sha256": "7e7fafe40aefe4795368c5ef045c9197ed74c703fb782d83fae7e46e4363cc4b",
+      "output_sha256": "49cfcefc69dcc0e2f9de4dfa163367825f0f07fe388ec31d617570b9a7ebc910",
+      "license": "CC0-1.0"
+    }
+  ]
+}

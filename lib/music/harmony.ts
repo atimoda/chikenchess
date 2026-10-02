@@ -1,12 +1,13 @@
 import { degreeToMidi } from './model'
 
-export const HARMONY_PLAN_IDS = ['static', 'cadence', 'circle', 'descent', 'ascent', 'pop-punk-154', 'pop-1564', 'rock-6415', 'doo-wop-1645', 'folk-rock-6425', 'jazz-251', 'indie-pop-1465', 'jazz-3625', 'southern-rock-415', 'blues-145'] as const
+export const HARMONY_PLAN_IDS = ['kit', 'static', 'cadence', 'circle', 'descent', 'ascent', 'pop-punk-154', 'pop-1564', 'rock-6415', 'doo-wop-1645', 'folk-rock-6425', 'jazz-251', 'indie-pop-1465', 'jazz-3625', 'southern-rock-415', 'blues-145'] as const
 export type HarmonyPlanId = typeof HARMONY_PLAN_IDS[number]
 
 type Seventh = 'm7' | '7' | 'maj7'
 type HarmonyPlan = { label: string; compactLabel: string; degrees: readonly number[]; sevenths?: readonly Seventh[] }
 
 export const HARMONY_PLANS: Record<HarmonyPlanId, HarmonyPlan> = {
+  kit: { label: 'Kit Harmony', compactLabel: 'Kit', degrees: [0] },
   static: { label: 'I - Estática', compactLabel: 'I', degrees: [0] },
   cadence: { label: 'I–IV–V–I - Cadência', compactLabel: 'I–IV–V–I', degrees: [0, 3, 4, 0] },
   circle: { label: 'I–V–ii–vi - Circular', compactLabel: 'I–V–ii–vi', degrees: [0, 4, 1, 5] },
@@ -67,10 +68,11 @@ export interface HarmonyFrame {
 }
 
 /** Describe the harmonic center and diatonic triad heard in one song section. */
-export function harmonyFrame(plan: HarmonyPlanId, scale: readonly string[], section: number): HarmonyFrame {
+export function harmonyFrame(plan: HarmonyPlanId, scale: readonly string[], section: number, rootOverride?: number): HarmonyFrame {
   const definition = HARMONY_PLANS[plan]
-  const index = ((section % definition.degrees.length) + definition.degrees.length) % definition.degrees.length
-  const degree = definition.degrees[index]
+  const authoredIndex = rootOverride === undefined ? -1 : definition.degrees.indexOf(rootOverride)
+  const index = authoredIndex >= 0 ? authoredIndex : ((section % definition.degrees.length) + definition.degrees.length) % definition.degrees.length
+  const degree = rootOverride ?? definition.degrees[index]
   const seventh = definition.sevenths?.[index]
   if (seventh) {
     const intervals = seventh === 'm7' ? [0, 3, 7, 10] : seventh === '7' ? [0, 4, 7, 10] : [0, 4, 7, 11]

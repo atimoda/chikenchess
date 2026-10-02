@@ -20,4 +20,5 @@ export class ReactionQueue {
     return bars
   }
   advance(cycle:number){let bars=0,changed=false;for(const [id,item] of this.pending)if(item.cycle<=cycle+1e-9){bars=Math.max(bars,ramp(this.entries.get(id)),ramp(item.entry));this.entries.set(id,item.entry);this.pending.delete(id);changed=true}return {changed,bars}}
+  rebase(cycle:number) {for(const item of this.pending.values())item.cycle=Math.floor(cycle+1e-9)+1}
 }

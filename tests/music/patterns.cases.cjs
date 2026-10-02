@@ -2,10 +2,12 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs, strudel } = require('../helpers/music.cjs')
 const model = loadTs('lib/music/model.ts')
-const { voiceSpecs, renderMusicCode, compileVoice, compileVoiceVariations } = loadTs('lib/music/runtime.ts')
-const patterns = loadTs('lib/music/pattern-library.ts')
+const { voiceSpecs, renderMusicCode, compileVoice } = loadTs('lib/music/runtime.ts')
+const { noteRoll } = loadTs('lib/music/piano-roll.ts')
 const creative = loadTs('lib/music/creative.ts')
 const cityKits = loadTs('lib/music/city-kits.ts')
+const { arrangementPosition, pieceSection } = loadTs('lib/music/arrangement.ts')
+const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: String.fromCharCode(65+index), beats: value })) })
 
 test('loop voices use four shared effect buses while previews remain isolated', () => {
   const kit = cityKits.defaultCityKit('detroit')
@@ -23,7 +25,13 @@ test('loop voices use four shared effect buses while previews remain isolated', 
 test('continuous performances use pick with the same events as global-phase masks', async () => {
   const api = await strudel()
   const kit = cityKits.defaultCityKit('dusseldorf')
-  const voice = voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.performance && !v.performance.restart)
+  // Current presets restart sections; the editor still supports continuous plans.
+  const id = kit.pieces.find(piece => piece.active && kit.instruments[piece.id].arrangement).id
+  kit.instruments[id].arrangement.restart = false
+  delete kit.instruments[id].reverbRange
+  delete kit.instruments[id].driveRange
+  delete kit.instruments[id].swingRange
+  const voice = voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.piece.id === id)
   assert.ok(voice)
   const plan = voice.performance
   const selector = loadTs('lib/music/performance.ts').performancePattern(plan, true)
@@ -45,26 +53,26 @@ test('continuous performances use pick with the same events as global-phase mask
   assert.doesNotMatch(code, /\.mask\(mini\([^)]*\)\.withValue\(v => Number\(v\) ===/)
 })
 
-test('Düsseldorf formation coordinates phrase banks and entrances on one timeline', () => {
+test('Düsseldorf formation coordinates explicit MIDI banks and entrances on one timeline', () => {
   const lab = creative.createDusseldorfSession()
   const voices = voiceSpecs(creative.creativeSnapshot(lab, true), null)
-  assert.equal(lab.version, 4)
+  assert.equal(lab.version, 7)
   assert.equal(lab.cityId, 'dusseldorf')
   assert.equal(lab.bpm, 122)
   assert.equal(lab.root, 'C#')
-  assert.equal(lab.sectionPattern, '[0@4 1@4 2@4 1@4]/16')
+  assert.deepEqual(lab.arrangement.sections.map(section=>section.beats), [16,16,16,16])
+  assert.deepEqual(lab.arrangement.sections.map(section=>lab.instruments['w:b1'].arrangement.sections[section.id].variation),[0,1,2,1])
   assert.equal(voices.length, 16)
   assert.equal(lab.pieces.filter(piece => piece.active && piece.color === 'w').length, 16)
   assert.equal(lab.pieces.some(piece => piece.active && piece.color === 'b'), false)
-  assert.equal(voices.filter(voice => ['w:b1', 'w:c1', 'w:d1'].includes(voice.piece.id)).every(voice => voice.phrases.length === 3), true)
-  assert.equal(voices.filter(voice => voice.groove).length, 8)
-  assert.equal(voices.find(voice => voice.piece.id === 'w:a2').mask, undefined)
-  assert.equal(voices.find(voice => voice.piece.id === 'w:d1').mask, undefined)
+  assert.ok(voices.filter(voice => ['w:b1', 'w:c1', 'w:d1'].includes(voice.piece.id)).every(voice => voice.pianoRolls.length === 3))
+  assert.ok(voices.every(voice => voice.pianoRolls.length >= 1 && voice.pianoRolls.every(roll => roll && Array.isArray(roll.notes))))
+  for (const voice of voices) for (const field of ['notes', 'phrases', 'mask', 'groove', 'automations']) assert.equal(Object.hasOwn(voice, field), false, field)
   assert.equal(lab.instruments['w:b1'].name, 'Baixo supersaw')
   assert.deepEqual(lab.instruments['b:b8'], lab.instruments['w:b1'])
   assert.deepEqual(lab.instruments['b:d8'], lab.instruments['w:d1'])
   const code = renderMusicCode(creative.creativeSnapshot(lab, true), null)
-  assert.match(code, /pickRestart/)
+  assert.ok(code.includes('[0@16 1@16 2@16 3@16]/16'))
   assert.match(code, /Lead de resposta/)
 })
 
@@ -77,79 +85,90 @@ test('an activated Düsseldorf queen keeps the city lead loop during gameplay', 
   const queen = voiceSpecs(snapshot, null).find(voice => voice.piece.id === 'w:d1')
   assert.ok(queen)
   assert.equal(queen.instrument.name, 'Lead de resposta')
-  assert.equal(queen.mask, undefined)
+  assert.deepEqual(queen.instrument.pianoRolls, lab.instruments['w:d1'].pianoRolls)
   assert.match(renderMusicCode(snapshot, null), /w:d1 · Lead de resposta/)
 })
 
-test('solo makes a late-arriving Düsseldorf voice audible immediately', () => {
-  const lab = creative.createDusseldorfSession()
-  lab.instruments['w:d1'].mask = '<~@12 x@4>/16'
+test('solo isolates a Düsseldorf voice and preserves its authored section entrances', async () => {
+  const api = await strudel()
+  const lab = withSections(creative.createDusseldorfSession(),[48,16])
+  lab.instruments['w:d1'].arrangement = { restart: true, sections: {s0:{variation:0,transpose:0,active:false},s1:{variation:1,transpose:0,active:true}} }
   const snapshot = creative.creativeSnapshot(lab, true, 'w:d1')
   const voices = voiceSpecs(snapshot, null)
   assert.equal(voices.length, 1)
   assert.equal(voices[0].piece.id, 'w:d1')
-  assert.equal(voices[0].mask, undefined)
-  assert.doesNotMatch(renderMusicCode(snapshot, null), /\.mask\(/)
+  assert.deepEqual(voices[0].performance, {restart:true,steps:[{beats:48,variation:0,transpose:0,active:false},{beats:16,variation:1,transpose:0,active:true}]})
+  assert.ok(voices[0].pianoRolls[0].notes.length > 0)
+  const pattern = compileVoice(api, voices[0])
+  assert.equal(pattern.queryArc(0, 12).length, 0)
+  assert.ok(pattern.queryArc(12, 16).some(h => h.hasOnset()))
+  const manual = voiceSpecs(snapshot, { id: 'w:d1', square: 'd1', mode: 'manual' })[0]
+  assert.ok(compileVoice(api, manual).queryArc(0, 1).some(h => h.hasOnset()))
 })
 
 test('real Strudel switches the shared A/B/C/B timeline every four cycles', async () => {
   const api = await strudel()
   const lab = creative.createDusseldorfSession()
-  const timeline = api.mini(lab.sectionPattern)
-  assert.deepEqual([0, 4, 8, 12, 16].map(cycle => timeline.queryArc(cycle, cycle + .001)[0].value), [0, 1, 2, 1, 0])
-  const old = { ...lab, version: 3, sectionPattern: '<0@4 1@4 2@4 1@4>/16' }
-  assert.equal(creative.parseCreativeSession(JSON.stringify(old)).sectionPattern, lab.sectionPattern)
+  assert.deepEqual([0,4,8,12,16].map(cycle=>pieceSection(lab.instruments['w:b1'],lab.arrangement,arrangementPosition(lab.arrangement,cycle).index).variation),[0,1,2,1,0])
+  const old = structuredClone(lab);old.version=3;old.sectionPattern='<0@4 1@4 2@4 1@4>/16';delete old.arrangement
+  for(const instrument of Object.values(old.instruments))delete instrument.arrangement
+  const migrated=creative.parseCreativeSession(JSON.stringify(old))
+  assert.deepEqual(migrated.arrangement.sections.map(section=>section.beats),[16,16,16,16])
+  const voice=voiceSpecs(creative.creativeSnapshot(migrated,true),null).find(v=>v.piece.id==='w:b1')
+  assert.ok(compileVoice(api,voice).queryArc(12,13).length>0)
 })
 
 test('a king can play unpitched samples and a pawn can play a pitched melody', async () => {
   const api = await strudel()
-  const lab = creative.createDusseldorfSession()
-  lab.instruments['w:e1'] = { ...lab.instruments['w:a2'] }
-  lab.instruments['w:a2'] = { ...lab.instruments['w:d1'], source: { kind: 'sample', bank: 'chicken-electro-v1', asset: 'bell', variant: 1, pitched: true }, notes: '0 2 4 2', phrases: undefined, octave: 4 }
+  const lab = withSections(creative.createDusseldorfSession(),[16])
+  lab.instruments['w:e1'] = { ...lab.instruments['w:a2'], pianoRolls: [noteRoll([0, 0, 0, 0])] }
+  lab.instruments['w:a2'] = { ...lab.instruments['w:d1'], source: { kind: 'sample', bank: 'chicken-electro-v1', asset: 'bell', variant: 1, pitched: true }, pianoRolls: [noteRoll([0, 2, 4, 2])], octave: 4 }
   const snapshot = creative.creativeSnapshot(lab, true)
   const king = voiceSpecs(snapshot, null).find(v => v.piece.id === 'w:e1')
   const pawn = voiceSpecs(snapshot, null).find(v => v.piece.id === 'w:a2')
   const hits = compileVoice(api, king).queryArc(0, 1)
   assert.equal(hits.length, 4)
   assert.ok(hits.every(h => h.value.note === undefined && h.value.n === 0))
-  assert.deepEqual(compileVoice(api, pawn).queryArc(0, 1).map(h => h.value.note), [61, 64, 68, 64])
+  assert.deepEqual(compileVoice(api, pawn).queryArc(0, 1).sort((a,b)=>Number(a.whole.begin)-Number(b.whole.begin)).map(h => h.value.note), [61, 64, 68, 64])
   const changedScale = { ...snapshot, scale: ['D4','E4','F4','G4','A4','Bb4','C5'] }
   const newKing = voiceSpecs(changedScale, null).find(v => v.piece.id === 'w:e1')
   assert.deepEqual(compileVoice(api, newKing).queryArc(0, 1).map(h => h.value), hits.map(h => h.value))
   assert.deepEqual(creative.parseCreativeSession(JSON.stringify(lab)), JSON.parse(JSON.stringify(lab)))
 })
 
-test('groove lanes keep complementary timing and accents with any active subset', async () => {
+test('explicit drum rolls keep complementary timing and accents with any active subset', async () => {
   const api = await strudel()
   const lab = creative.createDusseldorfSession()
   const snapshot = creative.creativeSnapshot(lab, true)
   const specs = voiceSpecs(snapshot, null)
-  const onsets = voice => compileVoice(api, voice).queryArc(0, 1).filter(h => h.hasOnset()).map(h => Number(h.whole.begin))
+  const onsets = voice => compileVoice(api, voice).queryArc(0, 1).filter(h => h.hasOnset()).map(h => Number(h.whole.begin)).sort((a,b)=>a-b)
   assert.deepEqual(onsets(specs.find(v => v.piece.id === 'w:a2')), [0, .25, .5, .75])
   assert.deepEqual(onsets(specs.find(v => v.piece.id === 'w:b2')), [.25, .75])
-  const hats = compileVoice(api, specs.find(v => v.piece.id === 'w:c2')).queryArc(0, 1)
+  const hats = compileVoice(api, specs.find(v => v.piece.id === 'w:c2')).queryArc(0, 1).sort((a,b)=>Number(a.whole.begin)-Number(b.whole.begin))
   assert.equal(hats.length, 8)
   assert.deepEqual(hats.map(h => h.value.velocity), [1, .4, .7, .4, 1, .4, .7, .4])
   const solo = voiceSpecs(creative.creativeSnapshot(lab, true, 'w:c2'), null)[0]
   assert.deepEqual(onsets(solo), onsets(specs.find(v => v.piece.id === 'w:c2')))
 })
 
-test('automation scales gain and changes filters without adding note attacks', async () => {
+test('explicit MIDI accents scale velocity without adding attacks and static LPF stays fixed', async () => {
   const api = await strudel()
-  const lab = creative.createCreativeSession()
+  const lab = withSections(creative.createCreativeSession(),[4,4])
   lab.pieces.find(p => p.id === 'w:b1').active = true
-  lab.instruments['w:b1'] = { ...lab.instruments['w:b1'], notes: '0*4', gain: .5, automations: {
-    gain: { kind: 'pattern', patterns: ['1 .5 .75 .5', '.5 1 .5 .75'] },
-    lpf: { kind: 'ramp', min: 400, max: 2000, cycles: 1 },
-  } }
-  lab.sectionPattern = '<0 1>'
+  const banks = [[1, .5, .75, .5], [.5, 1, .5, .75]].map(velocities => {
+    const roll = noteRoll([0, 0, 0, 0])
+    roll.notes.forEach((note, index) => { note.velocity = velocities[index] })
+    return roll
+  })
+  lab.instruments['w:b1'] = { ...lab.instruments['w:b1'], pianoRolls: banks, gain: .5, lpf: 1200 }
+  lab.instruments['w:b1'].arrangement.sections.s1.variation=1
   const voice = voiceSpecs(creative.creativeSnapshot(lab, true), null)[0]
   const pattern = compileVoice(api, voice)
-  const events = pattern.queryArc(0, 1)
+  const events = pattern.queryArc(0, 1).sort((a, b) => Number(a.whole.begin) - Number(b.whole.begin))
   assert.equal(events.length, 4)
-  assert.deepEqual(events.map(h => h.value.gain), [.5, .25, .375, .25])
-  assert.deepEqual(events.map(h => h.value.cutoff), [400, 800, 1200, 1600])
-  assert.deepEqual(pattern.queryArc(1, 2).map(h => h.value.gain), [.25, .5, .25, .375])
+  assert.deepEqual(events.map(h => h.value.velocity), [1, .5, .75, .5])
+  assert.ok(events.every(h => h.value.gain === .5 && h.value.cutoff === 1200))
+  assert.deepEqual(pattern.queryArc(1, 2).sort((a, b) => Number(a.whole.begin) - Number(b.whole.begin)).map(h => h.value.velocity), [.5, 1, .5, .75])
 })
 
 test('extra swing delays the authored offbeats once and exported Strudel keeps the same onsets', async () => {
@@ -157,7 +176,6 @@ test('extra swing delays the authored offbeats once and exported Strudel keeps t
   const kit = creative.createCreativeSession()
   kit.pieces.forEach(piece => { piece.active = piece.id === 'w:b1' })
   Object.assign(kit.instruments['w:b1'], {
-    phrases: ['~'], performance: undefined, groove: undefined, automations: undefined, mask: undefined,
     pianoRolls: [{ bars: 1, notes: Array.from({ length: 8 }, (_, index) => ({
       start: (index + (index % 2 ? .12 : 0)) / 8, duration: .05, degree: index, velocity: 1,
     })) }],
@@ -179,7 +197,7 @@ test('extra swing delays the authored offbeats once and exported Strudel keeps t
   assert.deepEqual(onsets(exported), shifted)
   const manual = voiceSpecs(snapshot(), { id: 'w:b1', square: 'b1', mode: 'manual' }).find(candidate => candidate.manual)
   assert.equal(onsets(compileVoice(api, manual))[0], 0, 'manual board audition stays immediate')
-  kit.instruments['w:b1'].performance = { restart: true, steps: [{ beats: 4, variation: 0, transpose: 0, active: true }] }
+  kit.instruments['w:b1'].arrangement.restart = true
   const arranged = voiceSpecs(snapshot(), null)[0]
   const arrangedCode = renderMusicCode(snapshot(), null)
   const arrangedExpression = arrangedCode.split('\n').filter(line => !line.startsWith('//') && !line.startsWith('setcps(') && !line.startsWith('samples(')).join('\n')
@@ -213,40 +231,65 @@ test('all Düsseldorf sections compile using the real Strudel bundle', async () 
   }
 })
 
-test('variation previews show all banks, track section restarts and cache clock-only updates', async () => {
-  const api = await strudel()
-  const kit = creative.createDusseldorfSession()
-  const voice = voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.piece.id === 'w:d1')
-  const preview = compileVoiceVariations(api, { ...voice, phrases: ['60*4', '62*4', '64*4'], groove: undefined, automations: undefined })
-  const first = preview(.5)
-  assert.equal(first.length, 3)
-  assert.equal(first.filter(v => v.active).length, 1)
-  assert.equal(first[0].cursor, .5)
-  assert.ok(first[0].events.every(e => e.note === 60))
-  assert.ok(first[1].events.every(e => e.note === 62))
-  assert.ok(first[2].events.every(e => e.note === 64))
-  assert.equal(preview(.75)[0].events, first[0].events)
-  const second = preview(4.25)
-  assert.equal(second.find(v => v.active).index, 1)
-  assert.equal(second[1].cursor, .25)
-  assert.equal(preview(8.75).find(v => v.active).index, 2)
-  assert.equal(preview(12.5).find(v => v.active).index, 1)
-  const percussion = voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.piece.id === 'w:a2')
-  assert.equal(compileVoiceVariations(api, percussion)(0).length, 3)
-  const mixed = compileVoiceVariations(api, { ...voice, phrases: ['60*4', '62*4'], sectionPattern: '[0 1 2 3]/4',
-    groove: { rhythms: ['x', 'x*2', 'x*3'], accents: ['1'] }, automations: undefined })(3.25)
-  assert.equal(mixed.length, 6) // Two phrases and three rhythms have six combinations.
-  assert.equal(mixed.find(v => v.active).index, 3)
-  assert.ok(mixed[3].events.every(e => e.note === 62))
-})
-
-test('variation preview keeps continuous notes aligned when only a groove or automation restarts', async () => {
+test('explicit banks select the authored variation at each section restart', async () => {
   const api = await strudel()
   const kit = creative.createDusseldorfSession()
   const voice = { ...voiceSpecs(creative.creativeSnapshot(kit, true), null).find(v => v.piece.id === 'w:d1'),
-    notes: '<60 64>', phrases: ['<60 64>'], sectionPattern: '[0 1]/2', groove: undefined, mask: undefined,
-    automations: { gain: { kind: 'pattern', patterns: ['1', '.5'] } } }
-  const preview = compileVoiceVariations(api, voice)
-  assert.equal(preview(1.25).find(v => v.active).events[0].note, 64)
-  assert.equal(preview(2.25).find(v => v.active).events[0].note, 60)
+    pianoRolls: [60, 62, 64].map(pitch => noteRoll([pitch, pitch, pitch, pitch])), performance: undefined, harmonic:undefined, sectionPattern:'[0@4 1@4 2@4 1@4]/16' }
+  const pattern = compileVoice(api, voice)
+  for (const [cycle, pitch] of [[.5,60],[4.25,62],[8.75,64],[12.5,62],[16,60]]) {
+    const events = pattern.queryArc(cycle, cycle + .01)
+    assert.ok(events.length > 0)
+    assert.ok(events.every(h => h.value.note === pitch))
+  }
+  const pinned = compileVoice(api, { ...voice, sectionPattern: '2' })
+  assert.ok(pinned.queryArc(0,16).every(h => h.value.note === 64))
+})
+
+test('empty MIDI banks stay silent and manual audition still has an explicit note', async () => {
+  const api = await strudel()
+  const kit = creative.createDusseldorfSession()
+  kit.pieces.forEach(piece => { piece.active = piece.id === 'w:d1' })
+  Object.assign(kit.instruments['w:d1'], { pianoRolls: [noteRoll([])] })
+  for(const section of Object.values(kit.instruments['w:d1'].arrangement.sections))section.variation=0
+  const snapshot = creative.creativeSnapshot(kit, true)
+  assert.deepEqual(compileVoice(api, voiceSpecs(snapshot, null)[0]).queryArc(0, 8), [])
+  const manual = voiceSpecs(snapshot, { id: 'w:d1', square: 'd1', mode: 'manual' })[0]
+  assert.equal(manual.pianoRolls[0].notes.length, 1)
+  assert.ok(compileVoice(api, manual).queryArc(0, 1).some(h => h.hasOnset()))
+  const facade = loadTs('lib/music/runtime.ts')
+  for (const name of ['preparePianoRoll', 'prepareVoiceVariations', 'compileVoiceVariations']) assert.equal(Object.hasOwn(facade, name), false, name)
+})
+
+test('octave range chooses one seeded register per bar and exported Strudel matches', async () => {
+  const api = await strudel()
+  const kit = creative.createCreativeSession()
+  kit.pieces.forEach(piece => { piece.active = piece.id === 'w:b1' })
+  Object.assign(kit.instruments['w:b1'], { pianoRolls: [noteRoll([0, 1, 2, 3])], octave: 2, octaveRange: { first: 4, second: 1 } })
+  const snapshot = creative.creativeSnapshot(kit, true)
+  const voice = voiceSpecs(snapshot, null)[0]
+  const baseVoice = { ...voice, instrument: { ...voice.instrument, octaveRange: undefined } }
+  const actual = compileVoice(api, voice)
+  const base = compileVoice(api, baseVoice)
+  const registerByBar = new Set()
+  for (let bar = 0; bar < 12; bar++) {
+    const events = actual.queryArc(bar, bar + 1).filter(event => event.hasOnset())
+    const baseEvents = base.queryArc(bar, bar + 1).filter(event => event.hasOnset())
+    assert.equal(events.length, 4)
+    assert.equal(baseEvents.length, 4)
+    const offsets = events.map((event, index) => event.value.note - baseEvents[index].value.note)
+    assert.equal(new Set(offsets).size, 1, `bar ${bar} uses one octave for every note`)
+    assert.equal(Math.abs(offsets[0] % 12), 0)
+    assert.ok(offsets[0] >= -12 && offsets[0] <= 24)
+    registerByBar.add(offsets[0])
+  }
+  assert.ok(registerByBar.size > 1, 'different bars can select different octaves')
+
+  const code = renderMusicCode(snapshot, null)
+  assert.match(code, /irand\(4\)\.segment\(1\)\.seed\(\d+\)/)
+  const expression = code.split('\n').filter(line => !line.startsWith('//') && !line.startsWith('setcps(') && !line.startsWith('samples(')).join('\n')
+  const exported = Function('api', `with(api){return (${expression})}`)(api)
+  const pitches = pattern => pattern.queryArc(0, 12).filter(event => event.hasOnset())
+    .map(event => [Number(event.whole.begin), event.value.note]).sort((a, b) => a[0] - b[0])
+  assert.deepEqual(pitches(exported), pitches(actual))
 })

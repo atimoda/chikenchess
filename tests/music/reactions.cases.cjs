@@ -31,14 +31,24 @@ test('black check does not resurrect captured voices and mate still obeys transp
   assert.equal(voiceSpecs({ ...state(), pieces: mate.pieces, playing: false }, null).length, 0)
 })
 
-test('check bypasses entry masks for all attackers without altering the saved kit', () => {
+test('check activates attackers while preserving authored section silence and the saved kit', async () => {
+  const api = await strudel()
   const kit = creative.createDusseldorfSession()
-  kit.instruments['w:e2'].mask = '~'
-  kit.instruments['w:e1'].mask = '~'
+  for (const id of ['w:e2', 'w:e1']) for(const step of Object.values(kit.instruments[id].arrangement.sections))step.active=false
+  const before = JSON.stringify(kit)
   const during = model.gameMusicStateFromHistory(['e4', 'd5', 'Bb5+'])
   const snapshot = { ...creative.creativeSnapshot(kit, true), pieces: during.pieces }
-  for (const id of ['w:e2', 'w:e1']) assert.equal(voiceSpecs(snapshot, null).find(v => v.piece.id === id).mask, undefined)
-  assert.equal(kit.instruments['w:e2'].mask, '~')
+  for (const id of ['w:e2', 'w:e1']) {
+    const voice = voiceSpecs(snapshot, null).find(v => v.piece.id === id)
+    assert.ok(voice)
+    assert.deepEqual(voice.performance.steps.map(step=>[step.beats,step.active]),kit.arrangement.sections.map(section=>[section.beats,false]))
+    assert.equal(compileVoice(api, voice).queryArc(0, 4).length, 0)
+    const manual = voiceSpecs(snapshot, { id, square: voice.piece.square, mode: 'manual' }).find(v => v.manual)
+    assert.ok(compileVoice(api, manual).queryArc(0, 1).some(h => h.hasOnset()))
+  }
+  assert.equal(JSON.stringify(kit), before)
+  const escaped = { ...snapshot, pieces: model.gameMusicStateFromHistory(['e4', 'd5', 'Bb5+', 'c6']).pieces }
+  assert.equal(voiceSpecs(escaped, null).some(v => v.piece.id === 'w:e1'), false)
 })
 
 test('reaction ledger detects castling, captures, depleted families, thresholds, promotions and undo', () => {
@@ -80,13 +90,44 @@ test('factory reaction preset covers every trigger and every implemented influen
 test('harmony reactions replace and restore the shared plan without rewriting the kit', () => {
   const { applyReactions, reactionsSchema }=loadTs('lib/music/reactions.ts')
   const kit=creative.createCreativeSession(),base=creative.creativeSnapshot(kit,true)
+  base.arrangement=structuredClone(base.arrangement)
+  base.arrangement.sections[0].harmony = [0, 3, 4, 0]
   const config=reactionsSchema.parse({rules:[{id:'harmony',trigger:'endgame',enabled:true,quantize:false,target:'both',duration:1,actions:[{type:'harmony',harmony:'descent'}]}]})
   const active=applyReactions(base,config,{ply:30,states:[{trigger:'endgame',color:'w',ply:30}],events:[]})
   assert.equal(active.snapshot.harmony,'descent')
+  assert.deepEqual(active.snapshot.arrangement.sections[0].harmony, [0, 3, 4, 0])
+  assert.deepEqual(active.snapshot.arrangement.sections.map(({harmony,...section})=>section),base.arrangement.sections.map(({harmony,...section})=>section))
+  assert.deepEqual(base.arrangement.sections[0].harmony, [0, 3, 4, 0])
   assert.ok(active.descriptions[0].includes('Descendente'))
-  assert.equal(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.harmony,'static')
-  assert.equal(kit.harmony,'static')
+  assert.equal(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.harmony,'kit')
+  assert.deepEqual(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.arrangement, base.arrangement)
+  assert.equal(kit.harmony,'kit')
   assert.throws(()=>reactionsSchema.parse({rules:[{...config.rules[0],actions:[{type:'harmony',harmony:'unknown'}]}]}))
+})
+
+test('resolved global and team values can drive the game controls while reactions are active', () => {
+  const { applyReactions, reactionsSchema }=loadTs('lib/music/reactions.ts')
+  const { identifyPitchCollection }=loadTs('lib/music/scales.ts')
+  const kit=creative.createCreativeSession()
+  kit.root='C'; kit.scale='Maior'
+  const base=creative.creativeSnapshot(kit,true)
+  const config=reactionsSchema.parse({rules:[{id:'controls',trigger:'opening',enabled:true,target:'both',duration:1,actions:[
+    {type:'bpm',value:10},{type:'mode',value:1},{type:'harmony',harmony:'circle'},{type:'gain',value:30},{type:'lpf',value:9000},
+  ]}]})
+  const activeContext={ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}
+  const active=applyReactions(base,config,activeContext).snapshot
+  assert.equal(active.bpm,base.bpm*1.1)
+  assert.deepEqual(identifyPitchCollection(active.scale),{root:'D',scale:'Dórica',label:'Dórica',notes:['D','E','F','G','A','B','C']})
+  assert.equal(active.harmony,'circle')
+  assert.equal(active.effects['w:e2'].gain,base.effects['w:e2'].gain*1.3)
+  assert.equal(active.effects['w:e2'].lpf,9000)
+  const expired=applyReactions(base,config,{...activeContext,states:[]}).snapshot
+  assert.equal(expired.bpm,base.bpm)
+  assert.deepEqual(identifyPitchCollection(expired.scale),{root:'C',scale:'Maior',label:'Maior',notes:['C','D','E','F','G','A','B']})
+  assert.equal(expired.harmony,base.harmony)
+  assert.equal(expired.effects['w:e2'].gain,base.effects['w:e2'].gain)
+  const aeolianKit={...kit,root:'G',scale:'Aeolian'}
+  assert.equal(identifyPitchCollection(creative.creativeSnapshot(aeolianKit,true).scale,aeolianKit.scale).scale,'Aeolian')
 })
 
 test('draw triggers distinguish stalemate from the fifty-move rule', () => {
@@ -158,7 +199,7 @@ test('transposition across C retains direction and octave and does not retune dr
   const kit=creative.createDusseldorfSession(),base=creative.creativeSnapshot(kit,true)
   base.scale=['C4','D4','E4','F4','G4','A4','B4']
   const context={ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}
-  const first=s=>Number(voiceSpecs(s,null).find(v=>v.piece.id==='w:b1').notes.match(/-?\d+(?:\.\d+)?/)[0])
+  const first=s=>voiceSpecs(s,null).find(v=>v.piece.id==='w:b1').pianoRolls[0].notes[0].degree
   for(const shift of [-12,-1,2,12]){
     const config=reactionsSchema.parse({rules:[{id:'transpose',trigger:'opening',target:'both',enabled:true,duration:1,actions:[{type:'transpose',value:shift}]}]})
     const result=applyReactions(base,config,context).snapshot

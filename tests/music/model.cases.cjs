@@ -2,7 +2,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs, strudel } = require('../helpers/music.cjs')
 const model = loadTs('lib/music/model.ts')
-const { voiceSpecs, renderMusicCode } = loadTs('lib/music/runtime.ts')
+const { voiceSpecs, renderMusicCode, compileVoice } = loadTs('lib/music/runtime.ts')
 const state = (history = []) => ({ pieces: model.piecesFromHistory(history), scale: ['C4','Eb4','F4','G4','Bb4'], bpm: 118, volume: 0.8, playing: true, effects: {} })
 
 test('all 32 instruments start inactive, no hidden accompaniment', () => {
@@ -75,13 +75,18 @@ test('degrees wrap through the shared scale, including negative degrees and root
   assert.equal(model.degreeToMidi(3, ['G4','A4','B4','C5','D5'], 4), 72)
 })
 
-test('rhythmic multipliers survive note conversion; identity effects survive moves', () => {
+test('explicit pulse timing survives MIDI conversion; identity effects survive moves', async () => {
   const s = state(['c4'])
   s.effects['w:c2'] = { gain: 0.5, pitch: 1, pan: 0, delay: 0, reverb: 0, decay: 0.1 }
   const voice = voiceSpecs(s, null)[0]
-  assert.equal(voice.notes, '36*8')
+  assert.deepEqual(voice.pianoRolls[0].notes.map(note => note.start), [0,.125,.25,.375,.5,.625,.75,.875])
+  assert.ok(voice.pianoRolls[0].notes.every(note => note.degree === 36))
   assert.equal(voice.controls.gain, 0.125)
-  assert.match(renderMusicCode(s, null), /note\("36\*8"\)/)
+  const api = await strudel()
+  const events = compileVoice(api, voice).queryArc(0, 1).filter(h => h.hasOnset())
+  assert.equal(events.length, 8)
+  assert.ok(events.every(h => h.value.note === 36 && h.value.gain === .125))
+  assert.match(renderMusicCode(s, null), /\.velocity\(/)
 })
 
 test('pause silences accompaniment but still allows temporary audition', () => {

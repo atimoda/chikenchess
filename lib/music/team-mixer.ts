@@ -1,6 +1,16 @@
 export interface TeamMix { gain: number; bass: number; mids: number; highs: number; filter: number }
 export type TeamMixes = Record<'w' | 'b', TeamMix>
-export const createTeamMixes = (): TeamMixes => ({ w: { gain: 1, bass: 0, mids: 0, highs: 0, filter: 0 }, b: { gain: 1, bass: 0, mids: 0, highs: 0, filter: 0 } })
+export const TEAM_GAIN_MAX = 1.5
+export const createTeamMixes = (gain = 1): TeamMixes => ({ w: { gain, bass: 0, mids: 0, highs: 0, filter: 0 }, b: { gain, bass: 0, mids: 0, highs: 0, filter: 0 } })
+
+/** Crossfader position -1..1 maps to the team's left/right gain knobs. */
+export function teamGainsForCrossfader(position: number) {
+  const crossfader = Math.max(-1, Math.min(1, position))
+  return {
+    left: TEAM_GAIN_MAX * (1 - crossfader) / 2,
+    right: TEAM_GAIN_MAX * (1 + crossfader) / 2,
+  }
+}
 
 const FILTER_RANGE = Math.log(1000)
 export const filterDialValue = (lpf = 20000, hpf = 0) => {
@@ -45,7 +55,7 @@ export class TeamMixer {
   update(mixes: TeamMixes) {
     for (const color of ['w', 'b'] as const) {
       const nodes = this.sides[color], values = mixes[color]
-      nodes.output.gain.setTargetAtTime(Math.max(0, Math.min(1.5, values.gain)), this.context.currentTime, .02)
+      nodes.output.gain.setTargetAtTime(Math.max(0, Math.min(TEAM_GAIN_MAX, values.gain)), this.context.currentTime, .02)
       for (const band of ['bass', 'mids', 'highs'] as const) nodes[band].gain.setTargetAtTime(Math.max(-12, Math.min(12, values[band])), this.context.currentTime, .02)
       const dial = Math.max(-1, Math.min(1, values.filter ?? 0))
       nodes.filter.type = Math.abs(dial) < .01 ? 'allpass' : dial < 0 ? 'lowpass' : 'highpass'

@@ -1,0 +1,240 @@
+{
+  "repository": "sgossner/VCSL",
+  "revision": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+  "recordings": [
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-0-c2.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C2_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C2_vl2_rr1.wav",
+      "source_sha256": "8efd86d8a58e6334dea0c34c53872e67baa27e3982b5708b844c937bfb5fd5be",
+      "output_sha256": "17d3e27be9e3df9fb787e7aab3ab43eba0511753213e0841c741a61aea1d2cd7",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-0-c3.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C3_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C3_vl2_rr1.wav",
+      "source_sha256": "53c2cf94051119d240c8ccd4b9a91f07aa07333d845515c1ea1276daa775549e",
+      "output_sha256": "f3121cfab49240a1bccc9e5d78539b2bc57d6845b7689fbb0876790c775e3703",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-0-c4.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C4_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C4_vl2_rr1.wav",
+      "source_sha256": "9c2020587943a86dec7a8b7178cdac1c254c4f3dfc016bb27acdef1af292827f",
+      "output_sha256": "7128ba1cd7d408c3975e29d2c40e1b32a04ff36f03c34b804caaf5b4129835aa",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-0-c5.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C5_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C5_vl2_rr1.wav",
+      "source_sha256": "167d625aeb78f0d64491d6cb8b0436302f63bd0dd4c2e21180460ef568e4faea",
+      "output_sha256": "ec3fe5363d1d518a50a91cd5b2021374918294ea1749191985b1e462cdf23701",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-1-c2.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C2_vl4_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C2_vl4_rr1.wav",
+      "source_sha256": "7966746eea4af4c232c43235bbf4557824530e4f68d1b76589f9d7f9e689f177",
+      "output_sha256": "8262e84017665bb13a6c654765eccf3fbe9f74ec2408be86bf7a76273df7a07c",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-1-c3.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C3_vl4_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C3_vl4_rr1.wav",
+      "source_sha256": "96d3944a64f1c1277a621b657d3c1e6d15930ffe83491459a2a37d409217151b",
+      "output_sha256": "473bf292a09e4d18941f65a4dd7cf9bd39ee734db7f636a9893d3eafa732022c",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-1-c4.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C4_vl4_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C4_vl4_rr1.wav",
+      "source_sha256": "04e84b9132bd44c4b4ec36536ed67211d5be138e9280e54123c32381650ebc3f",
+      "output_sha256": "ee7c2216a7584f10c55b38da65fd3f8a4d349970f122352d094624f8150761b2",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "piano-1-c5.wav",
+      "source": "Chordophones/Zithers/Grand Piano, Steinway B/NoSus/JHPiano_NoSus_Close_C5_vl4_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C5_vl4_rr1.wav",
+      "source_sha256": "885e5a31eaca370dd6f94613da0ebc10a0bce761ba1f09a49e0662493cc09b56",
+      "output_sha256": "8ef454f465048ec4532516598daa589d44ef6c5a7cd98de90b1125b011293b0a",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-0-c3.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C3_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C3_vl2_rr1.wav",
+      "source_sha256": "4afeef41e7f3a5df8c47a3f31389b5948837fe8b21c9e3e9e135829e44050677",
+      "output_sha256": "c5176c366dcc5be26cbd6024a72235a888e0ea72a82db7001b066179bf205810",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-0-e3.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_E3_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_E3_vl2_rr1.wav",
+      "source_sha256": "3c6553a90fe366f6668488ee228a706d765de1e309e1e8f7d2fc1fa536368745",
+      "output_sha256": "52982d51a52aabb704115d14a3091910fc8b95464736c71f4255ecb2fc894f80",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-0-f#3.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_F#3_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_F%233_vl2_rr1.wav",
+      "source_sha256": "ccd189ac565b1eba4dfa86c3768796ee5396ae42eece9148bd9e1a91ffd8b79e",
+      "output_sha256": "e171589501b16b364885bcfcb9279f827cb8cc25943aa77e42c5bfe9a345396e",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-0-c4.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl2_rr1.wav",
+      "source_sha256": "f2eebd4fc0faecae312bd886c9830b268b134842e927f5a5c79ccc2ed24ed597",
+      "output_sha256": "f9182147fafdfd3120261180f600aaa2c81716cfe34dcfcecfa71882141865e0",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-0-e4.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_E4_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_E4_vl2_rr1.wav",
+      "source_sha256": "603dac939646252362e52323fa8c7899f0a73d7b4b39fce379d7b9bd7e188856",
+      "output_sha256": "1d5d518dd02e900d0f89487f670294ed15e11dc307e512de0d00a8c8dea65e08",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-0-f#4.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_F#4_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_F%234_vl2_rr1.wav",
+      "source_sha256": "699922b8bb7eb109e51c8fbf6a333eb29c09a7a8e836416030130ac0de47d5d4",
+      "output_sha256": "22b2a4a8dd7f5030fa76033c89eed751ae6875c7d90ab7f5e26d9ba44b7a7bcf",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-1-c3.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C3_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C3_vl3_rr1.wav",
+      "source_sha256": "17f42eaba3aba3e2e6d66b62e4ba5e8120d1760fd1a7e835829fe84f74385106",
+      "output_sha256": "0959d7f58fb8fbfeb122c7a033df291b8bfe9421db893e6351fa1ef6fa60fa2b",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-1-e3.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_E3_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_E3_vl3_rr1.wav",
+      "source_sha256": "5113fc46b7cb89aa7b6d94dc1f5262b82b128e803e2959cdd922b421b27dba73",
+      "output_sha256": "9b74b171cd4651b391e0c602b4f91016006c2015bf156cd3de02c0d452e4df6b",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-1-f#3.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_F#3_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_F%233_vl3_rr1.wav",
+      "source_sha256": "f98cd9a5df4d69a1da5710b27d4ceb437074ab67ad747f4238fb4e799f606731",
+      "output_sha256": "0e922017bef90bc63f548d903118c68d2db36e12805281bdde3f684d944e3997",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-1-c4.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl3_rr1.wav",
+      "source_sha256": "039dff9fa11e807ff5c3ceba33aae3416fa89c7ed2af64dbff4e657f67b28217",
+      "output_sha256": "1733ed59cd22b958d494c376c4c6276056ca5995164762a9ea737f0cbdc9cbfc",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-1-e4.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_E4_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_E4_vl3_rr1.wav",
+      "source_sha256": "bdf15124f79e7d251c740d97f55b7fcf96005a5fe56d626a8a3b8e91f734d62d",
+      "output_sha256": "6843c8ef606f0ca51496ad5d57506ca03a2b60aa490b343e5fd3b8688861cc2d",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "tenor-sax-1-f#4.wav",
+      "source": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_F#4_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_F%234_vl3_rr1.wav",
+      "source_sha256": "21ccaf8dc8894bec724289182a1a77f5dc54a53fbcdd3d45938028795d7e6cff",
+      "output_sha256": "6e040192f0a9c3e46c990af947a035d2f9294f75db9559305f7c8b2205aa0e72",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "marimba-0-c2.wav",
+      "source": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C2_soft_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Marimba/Marimba_hit_Outrigger_C2_soft_01.wav",
+      "source_sha256": "5fd3c75ab7eafebc24a693793e2c4404922dfad37d8dd9bf80e8ca483500ed80",
+      "output_sha256": "d251b0a9bf9398db73450586528819beab774702b356ea6f0dab15d10aed6b32",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "marimba-0-c4.wav",
+      "source": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C4_soft_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Marimba/Marimba_hit_Outrigger_C4_soft_01.wav",
+      "source_sha256": "4d03d005166e8b366e6a983b7a4a89e0847e1d58a6d34dda35ddf74289cace94",
+      "output_sha256": "363c11c3a304606fefc91c5bdce2fe5bf5b3c8065612da0aafb5b516faa7961e",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "marimba-0-c6.wav",
+      "source": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C6_soft_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Marimba/Marimba_hit_Outrigger_C6_soft_01.wav",
+      "source_sha256": "55d5793308bb10feaf3c1e341c0e4e4dbf8ce7fbea805e118b55177389ec3a09",
+      "output_sha256": "79c517e5325778f896f05bed0b625ca8db564da1c7e46fd8e2024b5cc65e31ac",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "marimba-1-c2.wav",
+      "source": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C2_loud_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Marimba/Marimba_hit_Outrigger_C2_loud_01.wav",
+      "source_sha256": "bfad3b0e57d04c31e6079aba11fb0a6c5c84627fd4bc46e4e0923663586c460c",
+      "output_sha256": "5ed7518a2e3ebaa85b2f8f81c07f78bf2e2927c720785db28289e5b197e7337a",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "marimba-1-c4.wav",
+      "source": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C4_loud_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Marimba/Marimba_hit_Outrigger_C4_loud_01.wav",
+      "source_sha256": "4af539d47a452d7fad26e171b1c8adcca272cee97191f040d192680462c880b8",
+      "output_sha256": "d375d1232605b033747a5af42b439bc8c71dbf17dcca2f7b933ebf9a0f5ba1b2",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-band-v1",
+      "file": "marimba-1-c6.wav",
+      "source": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C6_loud_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Marimba/Marimba_hit_Outrigger_C6_loud_01.wav",
+      "source_sha256": "2e42b1b6f6923f32e3daadc12b063e94d15af20fa410ddcb267eb906fd6e0e89",
+      "output_sha256": "c3b23e30480e31f4eb89c89788637a6ed36b55f0926d4e34dc1fac40b16f0ad5",
+      "license": "CC0-1.0"
+    }
+  ]
+}

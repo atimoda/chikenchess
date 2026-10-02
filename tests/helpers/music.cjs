@@ -14,7 +14,7 @@ function loadTs(relative) {
   mod.paths = module.paths
   const original = mod.require.bind(mod)
   mod.require = name => name === '../performance' ? { isConstrainedDevice: () => false } : name.startsWith('.') && fs.existsSync(path.resolve(path.dirname(file), name + '.ts')) ? loadTs(path.relative(path.resolve(__dirname, '..', '..'), path.resolve(path.dirname(file), name + '.ts'))) : original(name)
-  mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, file)
+  mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, file)
   return mod.exports
 }
 
@@ -35,5 +35,14 @@ async function strudel() {
   return realStrudel
 }
 
-module.exports = { loadTs, strudel }
+function memoryStorage(memory) {
+  return {
+    get length() { return memory.size },
+    key: index => [...memory.keys()][index] ?? null,
+    getItem: key => memory.get(key) ?? null,
+    setItem: (key, value) => memory.set(key, String(value)),
+    removeItem: key => memory.delete(key),
+  }
+}
 
+module.exports = { loadTs, strudel, memoryStorage }

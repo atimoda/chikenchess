@@ -1,0 +1,222 @@
+{
+  "repository": "sgossner/VCSL",
+  "revision": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+  "recordings": [
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "snare-0.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 1/Snare2_HitSN_v5_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%201/Snare2_HitSN_v5_rr1_Mid.wav",
+      "source_sha256": "6ec8445cb207df8f1178d8c3894f47969fd53fb2b81c404317e466de4598dc3e",
+      "output_sha256": "a51c633f0a59c238e283b8188ebd36e06d3642b3b03eba677a6fa1e442428c0c",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "ghost-snare-0.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 1/Snare2_HitSN_v3_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%201/Snare2_HitSN_v3_rr1_Mid.wav",
+      "source_sha256": "3d71765aa0d1e13260abeb003720aef0841432df601883177bf70e97d9af6c99",
+      "output_sha256": "b335d04c3c1826cefc97b77b9f71f65c048d891a079b1f67c82413a0b22d2f2e",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "hat-0.wav",
+      "source": "Idiophones/Struck Idiophones/Hi-Hat Cymbal/HiHat_HitC_v2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_HitC_v2_rr1_Mid.wav",
+      "source_sha256": "e1fb54c9a030800038abcebbed1c056fb74bdeec627315f3cd5fd893c6e6b031",
+      "output_sha256": "b6c74db668309a3d3148efa74dbdc4711d9c5144c2d43b1db798b280d276c998",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "open-hat-0.wav",
+      "source": "Idiophones/Struck Idiophones/Hi-Hat Cymbal/HiHat_HitO_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_HitO_rr1_Mid.wav",
+      "source_sha256": "fa492ec14cc6924b43ad5fcf9e9a0f406d926998835bde2eb5847cd15ad25be7",
+      "output_sha256": "2cd2b52647f5341ab5de2fe8a1bebacb4dea009d70a135a78c3714d5df1b5225",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "tom-0.wav",
+      "source": "Membranophones/Struck Membranophones/Tom 1/Stick/TomH_HitS_v3_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Tom%201/Stick/TomH_HitS_v3_rr1_Mid.wav",
+      "source_sha256": "40bd5cf904ed20eb8e7bba6298e356b66cedd313b4f459c5a5884c054bf447a4",
+      "output_sha256": "699dfc30dd95798b85a11b393c9a914ce82863d6e3f682ca5f447a09a7b5213c",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "conga-0.wav",
+      "source": "Membranophones/Struck Membranophones/Conga/Conga_HitN_v2_rr1_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Conga/Conga_HitN_v2_rr1_Sum.wav",
+      "source_sha256": "13d322c0e7a830cdbcbdc5a6e05566dfe3f5a073b7b82a3262d3f6fc10f96764",
+      "output_sha256": "07808d6522e9ed33b6cc984c1c3082638a4dfe3c8b4269fec715a5b41ffc833b",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "muted-conga-0.wav",
+      "source": "Membranophones/Struck Membranophones/Conga/Conga_HitFM_v2_rr1_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Conga/Conga_HitFM_v2_rr1_Sum.wav",
+      "source_sha256": "1a24a11a7dae6fdc05405a706768a5b6d96ad534c95bee5d451aa49eedd84855",
+      "output_sha256": "9d69cebfa6a3cfb5e8093972eb4b474ea08b8dce172155d91e32cdab8e288906",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "bongo-0.wav",
+      "source": "Membranophones/Struck Membranophones/Bongos/BongoH_Hit1_v2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bongos/BongoH_Hit1_v2_rr1_Mid.wav",
+      "source_sha256": "dd9b6239a151702966a995937f74ac022c9bb950c967277fbd16beaced0c9e1a",
+      "output_sha256": "cd2cdc44b943c5b54b4a926339d9dd0a90dc67475ad0c6a7a0f0ac165258e63b",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "shaker-0.wav",
+      "source": "Idiophones/Struck Idiophones/Shaker, Large/LShaker_Hit_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Shaker%2C%20Large/LShaker_Hit_rr1_Mid.wav",
+      "source_sha256": "0d3d62742a6c01ec8b8812faee945eaa2e75bfe02f83df3cc622ba7f00213ddf",
+      "output_sha256": "c92598e9afe1102b78a9d3d3e20c7c611972dc2ddd34e3e3853abc8e06ced541",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "tambourine-0.wav",
+      "source": "Idiophones/Struck Idiophones/Tambourine 1/Tamb1_Shake_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Tambourine%201/Tamb1_Shake_rr1_Mid.wav",
+      "source_sha256": "5876b66d1e8009b3ee884ff3bf52fbc420b44f9ddffffe830b4074d3dfc09924",
+      "output_sha256": "8d0778643bb152b74758d0fbccb50d9de7ed8e3f766e5585d5964db44163a1f9",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "cymbal-tip-0.wav",
+      "source": "Idiophones/Struck Idiophones/Suspended Cymbal 1/susCymb1_hit_stick_mp1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%201/susCymb1_hit_stick_mp1.wav",
+      "source_sha256": "17294cefa7f50367d1d9ae885a5f63a52eab372b90aeb7c3a8b400942cc95b9f",
+      "output_sha256": "c41d72dc6dfa09d0ad79bcc0b5efa50fd2678809c3c77c8fa2769e5a13979f33",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "crash-0.wav",
+      "source": "Idiophones/Struck Idiophones/Suspended Cymbal 1/susCymb1_hit_f1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%201/susCymb1_hit_f1.wav",
+      "source_sha256": "42a8ece91eccec9b7063793e6644d037a9005c01d5b76f6bec358e8d53fb92a5",
+      "output_sha256": "775fda82c9037604c16e2c397acfad2f1f3e20ab85cb63afc4e74ab305bbf038",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "snare-1.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 1/Snare2_HitSN_v5_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%201/Snare2_HitSN_v5_rr2_Mid.wav",
+      "source_sha256": "6d563828174cf9f29d221b14e1d3309ad4db8a4ac2cf10ff0ae4f0564e0d2590",
+      "output_sha256": "e04e333356c6e633c0b142b81db55eb2bdefa808a9b00be3f3bd57a6f691c0b6",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "ghost-snare-1.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 1/Snare2_HitSN_v3_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%201/Snare2_HitSN_v3_rr2_Mid.wav",
+      "source_sha256": "770a0b6bfe95583c11014d5f9af9c94c425a15bd05234c86213aec356a2ffe29",
+      "output_sha256": "b401a1ee7dbd013b16cb153f2dccd054543041f7fd64084696fc9a59c226f234",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "hat-1.wav",
+      "source": "Idiophones/Struck Idiophones/Hi-Hat Cymbal/HiHat_HitC_v2_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_HitC_v2_rr2_Mid.wav",
+      "source_sha256": "72830eafed387f4b4b5904d4d6f1da23e13b48986fa1bc09d7c5771eafbb3a1a",
+      "output_sha256": "bc38fffae25bf3aaed7c2f1185ef4992c95e2af20752f9e6d9a37223f3b1b1d3",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "open-hat-1.wav",
+      "source": "Idiophones/Struck Idiophones/Hi-Hat Cymbal/HiHat_HitO_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_HitO_rr2_Mid.wav",
+      "source_sha256": "f71f21883f6fe5466d15610ef0e9241ba3851c821858a958f8a6a75bff774760",
+      "output_sha256": "64a678edc8d3b88435cfa6afe8f87cf4f4412649aea3ce3bda6ac25a38c851fd",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "tom-1.wav",
+      "source": "Membranophones/Struck Membranophones/Tom 1/Stick/TomH_HitS_v3_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Tom%201/Stick/TomH_HitS_v3_rr2_Mid.wav",
+      "source_sha256": "d7ad9e7f9faff3593a78404d867c8c214cc806d325a4751e126af18af713b799",
+      "output_sha256": "a0fbb53684fd0fd9d1b06910f7af609798ddb05d9e036ec6db6af2a8ec56a42e",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "conga-1.wav",
+      "source": "Membranophones/Struck Membranophones/Conga/Conga_HitN_v2_rr2_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Conga/Conga_HitN_v2_rr2_Sum.wav",
+      "source_sha256": "4f52f6619fd12d1d0e1e942e67cdf77fcad06fef6de44eba8bab6df99ade4acd",
+      "output_sha256": "43b07412eb881f8067bebe3b02133173b486e73c69145514c63c39c56363c582",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "muted-conga-1.wav",
+      "source": "Membranophones/Struck Membranophones/Conga/Conga_HitFM_v2_rr2_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Conga/Conga_HitFM_v2_rr2_Sum.wav",
+      "source_sha256": "f1d21c33c0cf8a5f22c18376c4bae481345b12177a243fc5571591ef7d29b51b",
+      "output_sha256": "87082746b04c95ae837b2b3519b162f4a8ff7ead557eee26a48e07625d5a3e90",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "bongo-1.wav",
+      "source": "Membranophones/Struck Membranophones/Bongos/BongoH_Hit1_v2_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bongos/BongoH_Hit1_v2_rr2_Mid.wav",
+      "source_sha256": "03d4653d70e2180643872da4ebb94845f4da81b8d8f9ba2c7df3a611bd9d65ac",
+      "output_sha256": "249651048cb66ac44c381725b19b02348f457999e8dd4c56852c49dbd8a22a25",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "shaker-1.wav",
+      "source": "Idiophones/Struck Idiophones/Shaker, Large/LShaker_Hit_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Shaker%2C%20Large/LShaker_Hit_rr2_Mid.wav",
+      "source_sha256": "cb8491cc4bf7ac760109d45de445a7a21fd70217575f503e2ce4873bcd4cf1f9",
+      "output_sha256": "b51ed37f5256d78202759a0aa6bb78303b99d0d69230a919b721ccaad404ede5",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "tambourine-1.wav",
+      "source": "Idiophones/Struck Idiophones/Tambourine 1/Tamb1_Shake_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Tambourine%201/Tamb1_Shake_rr2_Mid.wav",
+      "source_sha256": "5ab51f8cd9fba10ae7a7125b96a520c69e049687409532b745fddd5356c6d6f3",
+      "output_sha256": "af00371a76a815e7ef746c0fc331db94aeeb309be907b8f6e02354d7a088241b",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "cymbal-tip-1.wav",
+      "source": "Idiophones/Struck Idiophones/Suspended Cymbal 2/susCymb2_hit_stick_mp1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%202/susCymb2_hit_stick_mp1.wav",
+      "source_sha256": "16c523bae5b58e17eefcc207a91317ec51683941b26398c2473dafc92a08999e",
+      "output_sha256": "e0b30fadcff3612d1c87f12411051e276f47413afa49bfdbfb35db6c0f722505",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "crash-1.wav",
+      "source": "Idiophones/Struck Idiophones/Suspended Cymbal 2/susCymb2_hit_f1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%202/susCymb2_hit_f1.wav",
+      "source_sha256": "f34e43ec6f1118040096ff565fc8b15b1a9cc6f5eb3b5cd277045bacf8724c9b",
+      "output_sha256": "89bf3549e63c03c4330efb4aebc77f58c7ad316ebb913e266b051bebbf3654d7",
+      "license": "CC0-1.0"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Chess, type Move, type Square } from "chess.js"
 import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
@@ -17,19 +18,25 @@ import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './music-playback'
 import { MusicHarmonyReadout } from './music-transition-view'
 import { VersionChangelog } from './version-changelog'
+import { VictoryBasket } from './victory-basket'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { ArrowLeft, Code2, Music2, Settings2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search } from "lucide-react"
+import { ArrowLeft, Code2, Music2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search, Snowflake, Shield } from "lucide-react"
 import { toast } from "sonner"
-import { awardRankedMove, conquerCity, getPlayerProfile, markGameplayTipSeen, spendGoldenEggs, STARTING_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
+import { conquerCity, markGameplayTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
 import { MixerWidget } from "./mixer-widget"
+import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
 import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
 import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveLabelTone, rankedMoveReward, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
+import { WidgetToggleLayer } from "./widget-toggle-layer"
+import { advanceMatchPowers, createMatchPower, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
+import { clonePoweredChess, makePoweredChess, setPoweredChessPowers, syncPoweredMoveSan } from "@/lib/powered-chess"
+import { analyzePoweredMoves } from "@/lib/powered-analysis"
 
 import {
   DropdownMenu,
@@ -43,6 +50,7 @@ import {
 interface ChessGameProps {
   city: CityData
   onBack: () => void
+  panelsFollowPlayerTurn: boolean
 }
 
 interface EggFlight {
@@ -78,15 +86,12 @@ function randomMessage(messages: string[]) {
   return messages[Math.floor(Math.random() * messages.length)]
 }
 
-function rankedStreakFromHistory(history: string[], classifications: Map<string, RankedMoveReward | null>) {
-  const replay = new Chess()
+function rankedStreakFromHistory(history: Move[], classifications: Map<string, RankedMoveReward | null>) {
   let kind: RankedMoveReward | null = null
   let count = 0
-  for (const san of history) {
-    const before = replay.fen()
-    const move = replay.move(san)
-    if (move?.color !== 'w') continue
-    const key = `${before}|${move.from}${move.to}${move.promotion ?? ''}`
+  for (const move of history) {
+    if (move.color !== 'w') continue
+    const key = `${move.before}|${move.from}${move.to}${move.promotion ?? ''}`
     const next = classifications.get(key) ?? null
     if (next) {
       count = next === kind ? count + 1 : 1
@@ -99,28 +104,38 @@ function rankedStreakFromHistory(history: string[], classifications: Map<string,
   return { kind, count }
 }
 
-function rebuildChessSnapshot(history: string[]) {
-  const restored = new Chess()
+function rebuildChessEffects(history: Move[]) {
   const captured: { white: string[]; black: string[] } = { white: [], black: [] }
   const active = new Set<string>()
-  for (const san of history) {
-    const move = restored.move(san)
+  for (const move of history) {
     if (move.captured) captured[move.color === 'w' ? 'white' : 'black'].push(move.captured)
     active.delete(move.from)
     active.add(move.to)
-    if (move.san === 'O-O' || move.san === 'O-O-O') {
+    if (move.flags.includes('k') || move.flags.includes('q')) {
       if (move.to === 'g1') { active.delete('h1'); active.add('f1') }
       if (move.to === 'c1') { active.delete('a1'); active.add('d1') }
       if (move.to === 'g8') { active.delete('h8'); active.add('f8') }
       if (move.to === 'c8') { active.delete('a8'); active.add('d8') }
     }
   }
-  return { restored, captured, active }
+  return { captured, active }
+}
+
+function stockfishPosition(game: Chess): string {
+  const history = game.history({ verbose: true })
+  if (!history.length) return `position fen ${game.fen()}`
+  const replay = new Chess(history[0].before)
+  try {
+    for (const move of history) replay.move({ from: move.from, to: move.to, promotion: move.promotion })
+    if (replay.fen() === game.fen()) return `position fen ${history[0].before} moves ${history.map(move => `${move.from}${move.to}${move.promotion ?? ''}`).join(' ')}`
+  } catch { /* A protected king may have made a move chess.js normally rejects. */ }
+  return `position fen ${game.fen()}`
 }
 
 function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis | null; status?: string }) {
   if (status) return <div className="text-white/40">{status}</div>
   if (!analysis) return <div className="text-white/40">Analisando movimentos…</div>
+  if (analysis.source === 'powers') return <div aria-label="Desempenho da análise" className="border-t border-white/15 pt-2 text-white/40">Análise com poderes · {analysis.legalMoves} lances · {analysis.nodes.toLocaleString()} respostas · {analysis.elapsedMs} ms</div>
   return <div aria-label="Desempenho da análise" className="border-t border-white/15 pt-2">
     <div className="text-white/40">{analysis.final ? 'Estimativa final' : 'Prévia em atualização'} · {analysis.side === 'w' ? 'brancas' : 'pretas'} a jogar · avaliação {analysis.quickMs} ms / prof. {analysis.quickDepth} · ranking {analysis.engineMs} ms / prof. {analysis.depth} · {(analysis.quickNodes + analysis.nodes).toLocaleString()} nós</div>
     {!analysis.complete&&<div className="text-white/40">Orçamento esgotado antes de comparar todas as jogadas.</div>}
@@ -137,21 +152,24 @@ function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: 'best' | 'worst'):
   }))
 }
 
-export function ChessGame({ city, onBack }: ChessGameProps) {
+export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGameProps) {
   // The board starts with White at the bottom; keep mixer rows tied to that orientation.
   const boardOrientation: "white" | "black" = "white"
-  const [game, setGame] = useState(new Chess())
+  const [game, setGame] = useState(() => makePoweredChess(new Chess()))
   const [currentPattern, setCurrentPattern] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false)
   const [tabVisible, setTabVisible] = useState(true)
-  const [mobileControlsOpen, setMobileControlsOpen] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [moveHistory, setMoveHistory] = useState<string[]>([])
   const [redoStack, setRedoStack] = useState<string[]>([]) // Stack of SAN moves to redo
   const redoStackRef = useRef<string[]>([])
+  const powerTimelineRef = useRef<Array<{ game: Chess; powers: MatchPower[] }>>([{ game: clonePoweredChess(game, []), powers: [] }])
+  const redoTimelineRef = useRef<Array<{ game: Chess; powers: MatchPower[] }>>([])
+  const [undoAnimationKey, setUndoAnimationKey] = useState(0)
   const [gameStatus, setGameStatus] = useState<string>("Your move")
   const [aiDepth, setAiDepth] = useState(5)
+  const [openDropdown, setOpenDropdown] = useState<BoardDropdownId>(null)
   const aiDifficultyLabel = aiDepth === 5 ? "Easy" : aiDepth === 10 ? "Medium" : aiDepth === 15 ? "Hard" : "Expert"
   const [capturedPieces, setCapturedPieces] = useState<{ white: string[]; black: string[] }>({
     white: [],
@@ -198,16 +216,28 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [liveMoveAnalysis, setLiveMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
   const currentCompleteAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
   const analysisArrowKindRef = useRef<'best' | 'worst' | null>(null)
-  const [visibleEggs, setVisibleEggs] = useState(STARTING_GOLDEN_EGGS)
+  const [visibleEggs, setVisibleEggs] = useState(STARTING_MATCH_GOLDEN_EGGS)
+  const playerEggBalanceRef = useRef(STARTING_MATCH_GOLDEN_EGGS)
+  const collectedMatchEggsRef = useRef(0)
+  const victoryToastRef = useRef<string | number | null>(null)
+  useEffect(() => () => { if (victoryToastRef.current !== null) toast.dismiss(victoryToastRef.current) }, [])
+  const victorySettledRef = useRef(false)
   const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
   const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
   const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
-  const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | null>(null)
+  const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
+  const [restartConfirmOpen, setRestartConfirmOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
-  const [fadingCostAction, setFadingCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | null>(null)
-  const eggCounterRef = useRef<HTMLButtonElement | null>(null)
-  const pendingEggsRef = useRef(0)
+  const costHintHideTimerRef = useRef<number | null>(null)
+  const eggCounterRef = useRef<HTMLDivElement | null>(null)
+  const [armedPower, setArmedPower] = useState<MatchPowerKind | null>(null)
+  const powerCursorRef = useRef<HTMLDivElement | null>(null)
+  const powerCursorOriginRef = useRef<{ x: number; y: number } | null>(null)
+  const [matchPowers, setMatchPowers] = useState<MatchPower[]>([])
+  const matchPowersRef = useRef<MatchPower[]>([])
+  const powerButtonRefs = useRef<Record<MatchPowerKind, HTMLButtonElement | null>>({ freeze: null, shield: null })
+  const powerSerialRef = useRef(0)
   const rewardedMovesRef = useRef(new Set<string>())
   const rankedMoveKindsRef = useRef(new Map<string, RankedMoveReward | null>())
   const rankedMoveStreakRef = useRef<{ kind: RankedMoveReward | null; count: number }>({ kind: null, count: 0 })
@@ -221,6 +251,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const gameRef = useRef(game)
   const rewardedCheckmateFenRef = useRef<string | null>(null)
   const evaluationQueueRef = useRef<ChessEvaluationQueue | null>(null)
+  const poweredAnalysisSequenceRef = useRef(0)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const centerContainerRef = useRef<HTMLDivElement | null>(null)
   const knobsRef = useRef<HTMLDivElement | null>(null)
@@ -252,18 +283,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const [showIntroGlow, setShowIntroGlow] = useState(true)
   const [introExitStarted, setIntroExitStarted] = useState(false)
   const introStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const introTitleFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introVolumeFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introStartRequestedRef = useRef(false)
   const introContinueRequestedRef = useRef(false)
 
   useEffect(() => () => {
     if (introStartTimerRef.current) clearTimeout(introStartTimerRef.current)
-    if (introTitleFadeTimerRef.current) clearTimeout(introTitleFadeTimerRef.current)
     if (introVolumeFadeTimerRef.current) clearTimeout(introVolumeFadeTimerRef.current)
   }, [])
 
   const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([])
+  const [widgetTogglesReady, setWidgetTogglesReady] = useState(false)
   const [musicEngineOn, setMusicEngineOn] = useState(true)
 
   const [isBackgroundDark, setIsBackgroundDark] = useState(false)
@@ -302,78 +332,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       })
   }
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        const width = window.innerWidth
-        const height = window.innerHeight
-        const isMobile = width < 768
-        
-        // Initial Positions
-        if (isMobile) {
-            // Hide widgets on mobile by default or position off-screen/managed via CSS visibility
-            setKnobsPosition({ x: 0, y: 0 })
-            setGlobalPanelPosition({ x: 0, y: 0 })
-            setMixerPosition({ x: 0, y: 0 })
-            setSpectrogramPosition({ x: 0, y: 0 })
-            setLiveCodePosition({ x: 0, y: 0 })
-            
-            // Turn off widgets on mobile to maintain clean zero-scroll view
-            setKnobsOn(false)
-            setGlobalPanelOn(false)
-            setMixerOn(false)
-            setSpectrogramOn(false)
-            setLiveCodeOn(false)
-        } else {
-            // Desktop Layout: panels flank the centered board at a stable gap.
-            const widgetW = 340
-            const padding = 20
-            const headerH = 80
-            const boardSize = Math.min(width * 0.9, Math.max(0, height - 270), 512)
-            const boardHalfWidth = boardSize / 2
-            const centerX = width / 2
-            const centerY = height / 2
-            const boardGap = 48
-            const centerPadding = 32
-            const leftPanelX = Math.max(padding, centerX - boardHalfWidth - boardGap - widgetW)
-            const rightPanelX = Math.min(width - widgetW - padding, centerX + boardHalfWidth + boardGap)
-
-            // Keep left-side panels aligned with each other around the board.
-            setGlobalPanelPosition({ 
-                x: leftPanelX,
-                y: headerH
-            })
-            setMixerPosition({
-                x: leftPanelX,
-                y: headerH + 260
-            })
-
-            // Keep the right-side panels aligned with each other.
-            setSpectrogramPosition({
-                x: rightPanelX,
-                y: Math.max(headerH + 560, centerY + centerPadding)
-            })
-
-            // Keep Piece Params in the upper-right column.
-            setKnobsPosition({ 
-                x: rightPanelX,
-                y: Math.max(headerH, centerY - 550 - centerPadding)
-            })
-
-            // Keep transport and code in the lower-left column.
-            setLiveCodePosition({
-                x: leftPanelX,
-                y: headerH + 530
-            })
-            
-            // Default states
-            setSpectrogramOn(false)
-            setGlobalPanelOn(false)
-            setMixerOn(false)
-            setKnobsOn(false)
-            setLiveCodeOn(false)
-        }
-    }
-  }, [])
   
     // Auto-scroll to end (right) when history changes
     useEffect(() => {
@@ -424,16 +382,11 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }
 
   const beginGameTransition = () => {
-      // The title sound starts the glow and background fades. Keep the text in
-      // place for 3 seconds, then fade it without translating it vertically.
+      // Fade the city glow first, then fade the title itself over one second.
       engineRef.current?.playSeatbelt()
       setIntroExitStarted(true)
       setShowIntroGlow(false)
       setIsBackgroundDark(true)
-      introTitleFadeTimerRef.current = setTimeout(() => {
-          introTitleFadeTimerRef.current = null
-          setShowIntroBoxes(false)
-      }, 3000)
       
       // Let the title chime ring through before starting the gameplay volume fade.
       introVolumeFadeTimerRef.current = setTimeout(() => {
@@ -476,36 +429,39 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   const [isMobile, setIsMobile] = useState(false)
 
+  const widgetLayoutRef = useRef<Record<string, number> | null>(null)
+  const widgetJitterRef = useRef<Record<string, number>>({})
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-        const checkMobile = () => {
-            const mobile = window.innerWidth < 768
-            setIsMobile(mobile)
-            
-            if (mobile) {
-                document.body.style.overflow = '' // Allow scroll on mobile for widgets
-                document.body.style.position = ''
-                document.body.style.width = ''
-                document.body.style.height = ''
-            } else {
-                // Reset styles for desktop if needed, or leave as is
-            }
-        }
-        
-        checkMobile()
-        window.addEventListener('resize', checkMobile)
-        return () => window.removeEventListener('resize', checkMobile)
+    const checkMobile = () => {
+      const { innerWidth: width, innerHeight: height } = window
+      const boardWidth = Math.min(Math.max(0, height - 270), 512) * boardScale
+      setIsMobile(width <= boardWidth + 16 || (width <= 528 && height > width))
     }
-  }, [])
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [boardScale])
 
   const [knobsOn, setKnobsOn] = useState(false)
-    const knobsManuallyClosedRef = useRef(false)
+  const knobsManuallyClosedRef = useRef(false)
+  const mixerManuallyClosedRef = useRef(false)
   const firstMovePanelsActivatedRef = useRef(false)
   const [globalPanelOn, setGlobalPanelOn] = useState(false)
   const [mixerOn, setMixerOn] = useState(false)
   const [spectrogramOn, setSpectrogramOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
   const [codeBackdropOn, setCodeBackdropOn] = useState(false)
+  const toggleCodeBackdrop = () => {
+    const next = !codeBackdropOn
+    setCodeBackdropOn(next)
+    if (!next) {
+      setLiveCodeOn(false)
+      setActiveWidgetOrder(current => current.filter(id => id !== "liveCode"))
+      stockfishDebugOnRef.current = false
+      setStockfishDebugOn(false)
+    }
+  }
   const toggleStockfishDebug = () => {
     const next = !stockfishDebugOnRef.current
     stockfishDebugOnRef.current = next
@@ -543,11 +499,81 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   const deactivatePlaybackWidgets = useCallback(() => {
     setGlobalPanelOn(false)
     setMixerOn(false)
-    setActiveWidgetOrder(current => current.filter(id => id !== 'globalPanel' && id !== 'mixer'))
+    setKnobsOn(false)
+    setActiveWidgetOrder(current => current.filter(id => id !== 'globalPanel' && id !== 'mixer' && id !== 'knobs'))
   }, [])
   
   const spectrogramHandleRef = useRef<HTMLDivElement | null>(null)
   const spectrogramToggleRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    if (isMobile) {
+      widgetLayoutRef.current = null
+      return
+    }
+    if (introPhase < 3) return
+    if (rootRef.current) rootRef.current.scrollTop = 0
+    let frame = 0
+    const layout = () => {
+      const board = boardAreaRef.current?.getBoundingClientRect()
+      const root = rootRef.current?.getBoundingClientRect()
+      if (!board || !root) return
+      const firstLayout = !widgetLayoutRef.current
+      const previous = widgetLayoutRef.current ?? {}
+      const next: Record<string, number> = {}
+      const top = Math.max(80, board.top - root.top - 60)
+      const mixerHeight = mixerRef.current?.offsetHeight ?? 450
+      const spectrumHeight = spectrogramHandleRef.current?.offsetHeight ?? 100
+      const panels = [
+        { id: 'mixer', ref: mixerRef, set: setMixerPosition, side: 'left', y: top, width: 180 },
+        { id: 'spectrogram', ref: spectrogramHandleRef, set: setSpectrogramPosition, side: 'left', y: top + mixerHeight + 20, width: 180 },
+        { id: 'liveCode', ref: liveCodeRef, set: setLiveCodePosition, side: 'left', y: top + mixerHeight + spectrumHeight + 40, width: 180 },
+        { id: 'knobs', ref: knobsRef, set: setKnobsPosition, side: 'right', y: top, width: 340 },
+        { id: 'globalPanel', ref: globalPanelRef, set: setGlobalPanelPosition, side: 'left', y: 80, width: 340 },
+      ]
+      for (const panel of panels) {
+        const width = panel.ref.current?.offsetWidth || panel.width
+        const jitter = widgetJitterRef.current[panel.id] ??= Math.round(Math.random() * 20 - 10)
+        const left = board.left - root.left
+        const right = board.right - root.left
+        // Center in the available side area; allow clipping at the screen edge.
+        const limit = panel.side === 'left' ? left - width - 20 : right + 20
+        const centered = panel.side === 'left'
+          ? (left - width) / 2 + jitter
+          : (right + root.width - width) / 2 + jitter
+        const anchor = panel.side === 'left' ? Math.min(centered, limit) : Math.max(centered, limit)
+        next[panel.id] = anchor
+        next[`${panel.id}:y`] = panel.y
+        panel.set(current => {
+          const desired = firstLayout || !current ? anchor : current.x + anchor - (previous[panel.id] ?? anchor)
+          const x = panel.side === 'left' ? Math.min(desired, limit) : Math.max(desired, limit)
+          const y = firstLayout || !current ? panel.y : current.y + panel.y - (previous[`${panel.id}:y`] ?? panel.y)
+          return current?.x === x && current.y === y ? current : { x, y }
+        })
+      }
+      widgetLayoutRef.current = next
+    }
+    const scheduleLayout = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(layout)
+    }
+    const onTransitionEnd = (event: globalThis.TransitionEvent) => {
+      if (event.propertyName === 'margin-top' || event.propertyName === 'transform') scheduleLayout()
+    }
+    const observer = new window.ResizeObserver(scheduleLayout)
+    for (const ref of [boardAreaRef, rootRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, globalPanelRef]) {
+      if (ref.current) observer.observe(ref.current)
+    }
+    scheduleLayout()
+    window.addEventListener('resize', scheduleLayout)
+    rootRef.current?.addEventListener('transitionend', onTransitionEnd)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('resize', scheduleLayout)
+      rootRef.current?.removeEventListener('transitionend', onTransitionEnd)
+    }
+  }, [isMobile, introPhase, boardScale, codeBackdropOn])
 
   const [knobsConnection, setKnobsConnection] = useState<{
     x1: number
@@ -575,7 +601,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     targetSide?: 'left' | 'right' | 'top' | 'bottom'
   }[]>([])
 
-  const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || (liveCodeOn && (!isMobile || mobileControlsOpen)), musicEngineOn)
+  const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
   const { togglePlayback, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying && tabVisible, activeSquares, squareEffects, !music.enabled)
@@ -624,9 +650,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   }, [game])
 
   useEffect(() => {
-    setVisibleEggs(getPlayerProfile().goldenEggs)
     return () => {
       if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
+      if (costHintTimerRef.current !== null) window.clearTimeout(costHintTimerRef.current)
+      if (costHintHideTimerRef.current !== null) window.clearTimeout(costHintHideTimerRef.current)
       flightCleanupsRef.current.forEach(cleanup => cleanup())
       flightCleanupsRef.current.clear()
     }
@@ -645,8 +672,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     const fromRect = eggFlight.direction === 'spend' ? eggFlight.from : source?.getBoundingClientRect()
     const toRect = eggFlight.direction === 'spend' ? eggFlight.to : target?.getBoundingClientRect()
     const finishEgg = () => {
-      pendingEggsRef.current += eggFlight.direction === 'earn' ? -1 : 1
-      setVisibleEggs(count => Math.max(0, count + (eggFlight.direction === 'earn' ? 1 : -1)))
       eggCounterRef.current?.animate([
         { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
         { transform: `scale(${eggFlight.direction === 'earn' ? 1.24 : .88})`, boxShadow: `0 0 22px rgba(${eggFlight.direction === 'earn' ? '251,191,36' : '248,113,113'},.8)` },
@@ -753,7 +778,14 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     aiMoveDeadlineRef.current = null
   }, [])
 
-  const requestEvaluation = useCallback((gameInstance: Chess, opponentSkill?: number) => {
+  const requestEvaluation = useCallback((gameInstance: Chess, opponentSkill?: number, opponentDelayMs?: number) => {
+    const analysisSequence = ++poweredAnalysisSequenceRef.current
+    // Applying a power can change legal moves without changing the FEN. Clear
+    // the previous ranking so a quick move cannot earn an outdated reward.
+    currentCompleteAnalysisRef.current = null
+    setMoveAnalysis(null)
+    setLiveMoveAnalysis(null)
+    setPoweredChessPowers(gameInstance, matchPowersRef.current)
     if (aiMoveTimerRef.current !== null) window.clearTimeout(aiMoveTimerRef.current)
     aiMoveTimerRef.current = null
     aiMoveCandidateRef.current = null
@@ -762,6 +794,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setAnalysisArrows([])
     analysisArrowKindRef.current = null
     gameRef.current = gameInstance
+    if (matchPowersRef.current.length && !gameInstance.moves({ verbose: true }).length && clonePoweredChess(gameInstance, []).moves({ verbose: true }).length) {
+      matchPowersRef.current = []
+      setMatchPowers([])
+      setPoweredChessPowers(gameInstance, [])
+      powerTimelineRef.current[gameInstance.history().length] = { game: clonePoweredChess(gameInstance, []), powers: [] }
+      toast.info('Powers faded because no reply was available')
+    }
     if (gameInstance.isGameOver()) {
       aiMoveDeadlineRef.current = null
       evaluationQueueRef.current?.reset()
@@ -770,28 +809,44 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setIsThinking(false)
       return
     }
-    setLastEvalScore(null)
-    setLastEvalMate(null)
-    const candidates = gameInstance.moves({ verbose: true }).map(move => ({
+    const allMoves = clonePoweredChess(gameInstance, []).moves({ verbose: true })
+    let permittedMoves = permittedPowerMoves(allMoves, matchPowersRef.current, gameInstance.history().length + 1)
+    if (matchPowersRef.current.length) permittedMoves = gameInstance.moves({ verbose: true })
+    const candidates = permittedMoves.map(move => ({
       uci: `${move.from}${move.to}${move.promotion ?? ''}`, san: move.san,
     }))
-    const history = gameInstance.history({ verbose: true })
-    const position = history.length
-      ? `position fen ${history[0].before} moves ${history.map(move => `${move.from}${move.to}${move.promotion ?? ''}`).join(' ')}`
-      : `position fen ${gameInstance.fen()}`
-    evaluationQueueRef.current?.request(gameInstance.fen(), gameInstance.turn(), candidates, { position, skill: opponentSkill })
+    const opponentCandidates = permittedMoves.map(move => `${move.from}${move.to}${move.promotion ?? ''}`)
+    const position = stockfishPosition(gameInstance)
+    if (matchPowersRef.current.length) {
+      evaluationQueueRef.current?.reset()
+      setIsEvaluating(true)
+      const currentPowers = matchPowersRef.current.map(power => ({ ...power }))
+      void analyzePoweredMoves(gameInstance, currentPowers, () => poweredAnalysisSequenceRef.current !== analysisSequence).then(analysis => {
+        if (!analysis || poweredAnalysisSequenceRef.current !== analysisSequence) return
+        setMoveAnalysis(analysis)
+        setLiveMoveAnalysis(analysis)
+        currentCompleteAnalysisRef.current = analysis
+        setIsEvaluating(false)
+        setEvaluationError(null)
+        const whiteScore = (analysis.best[0]?.score ?? 0) * (analysis.side === 'w' ? 1 : -1)
+        setLastEvalScore(whiteScore)
+        setLastEvalMate(null)
+        if (analysis.side === 'b' && analysis.best[0]) aiMoveCandidateRef.current = { fen: analysis.fen, uci: analysis.best[0].uci }
+      })
+    } else evaluationQueueRef.current?.request(gameInstance.fen(), gameInstance.turn(), candidates, { position, skill: opponentSkill, searchMoves: permittedMoves.length < allMoves.length ? opponentCandidates : undefined })
     if (gameInstance.turn() === 'b' && opponentSkill !== undefined) {
       const fen = gameInstance.fen()
       const due = aiMoveDeadlineRef.current?.fen === fen
         ? aiMoveDeadlineRef.current.due
-        : globalThis.performance.now() + 1000 + Math.random() * 4000
+        : globalThis.performance.now() + (opponentDelayMs ?? (1000 + Math.random() * 4000))
       aiMoveDeadlineRef.current = { fen, due }
       aiMoveTimerRef.current = window.setTimeout(() => {
         aiMoveTimerRef.current = null
         aiMoveDeadlineRef.current = null
         if (gameRef.current.fen() !== fen || gameRef.current.turn() !== 'b') return
-        const uci = aiMoveCandidateRef.current?.fen === fen ? aiMoveCandidateRef.current.uci
-          : evaluationQueueRef.current?.bestAvailableMove(fen) ?? candidates[0]?.uci
+        const suggested = aiMoveCandidateRef.current?.fen === fen ? aiMoveCandidateRef.current.uci
+          : evaluationQueueRef.current?.bestAvailableMove(fen)
+        const uci = suggested && opponentCandidates.includes(suggested) ? suggested : opponentCandidates[0]
         if (uci) aiMoveCallbackRef.current(uci)
         setIsThinking(false)
       }, Math.max(0, due - globalThis.performance.now()))
@@ -833,18 +888,40 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
   }, [displayedAnalysis])
 
-  const spendEggForAction = (button: HTMLButtonElement, costAction: 'best' | 'undo' | 'redo' | 'worst', amount: number, action: () => void) => {
-    const result = spendGoldenEggs(amount)
-    if (!result) {
-      setHoveredCostAction(null)
-      toast.error(`You need ${amount} more golden egg${amount === 1 ? '' : 's'} to use this`)
-      return
-    }
+  const hideCostHint = () => {
+    if (costHintTimerRef.current !== null) window.clearTimeout(costHintTimerRef.current)
+    if (costHintHideTimerRef.current !== null) window.clearTimeout(costHintHideTimerRef.current)
+    costHintTimerRef.current = null
+    costHintHideTimerRef.current = null
     setHoveredCostAction(null)
-    setFadingCostAction(costAction)
-    window.setTimeout(() => setFadingCostAction(current => current === costAction ? null : current), 240)
+  }
+
+  const hasEggsForAction = (amount: number) => {
+    if (playerEggBalanceRef.current < amount) {
+      if (playerEggBalanceRef.current === 0) {
+        void engineRef.current?.playBlockedCue()
+        eggCounterRef.current?.animate([
+          { transform: 'translateX(0)', boxShadow: '0 0 0 rgba(248,113,113,0)' },
+          { transform: 'translateX(-4px)', boxShadow: '0 0 14px rgba(248,113,113,.55)' },
+          { transform: 'translateX(4px)' },
+          { transform: 'translateX(-3px)' },
+          { transform: 'translateX(3px)' },
+          { transform: 'translateX(0)', boxShadow: '0 0 0 rgba(248,113,113,0)' },
+        ], { duration: 360, easing: 'ease-in-out' })
+      }
+      const shortfall = amount - playerEggBalanceRef.current
+      toast.error(`You need ${shortfall} more golden egg${shortfall === 1 ? '' : 's'} to use this`)
+      return false
+    }
+    return true
+  }
+
+  const spendEggForAction = (button: HTMLButtonElement, amount: number, action: () => void) => {
+    hideCostHint()
+    if (!hasEggsForAction(amount)) return
     const bounds = (rect: DOMRect) => ({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
-    pendingEggsRef.current -= amount
+    playerEggBalanceRef.current -= amount
+    setVisibleEggs(playerEggBalanceRef.current)
     setEggFlight({
       id: ++rewardSerialRef.current,
       amount,
@@ -855,29 +932,132 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     action()
   }
 
-  const showCostHint = (action: 'best' | 'undo' | 'redo' | 'worst') => {
+  const targetPower = (square: Square) => {
+    if (!armedPower || introPhase !== 3 || gameRef.current.turn() !== 'w' || gameRef.current.isGameOver()) return
+    if (matchPowersRef.current.some(power => power.kind === armedPower && power.square === square)) {
+      toast.info('This square already has that power')
+      return
+    }
+    const button = powerButtonRefs.current[armedPower]
+    if (!button) return
+    const power = createMatchPower(armedPower, square, gameRef.current, ++powerSerialRef.current)
+    if (armedPower === 'freeze' && !clonePoweredChess(gameRef.current, [...matchPowersRef.current, power]).moves({ verbose: true }).length) {
+      toast.error('Freeze would leave no legal move')
+      return
+    }
+    spendEggForAction(button, 3, () => {
+      matchPowersRef.current = [...matchPowersRef.current, power]
+      setMatchPowers(matchPowersRef.current)
+      setPoweredChessPowers(gameRef.current, matchPowersRef.current)
+      powerTimelineRef.current[gameRef.current.history().length] = {
+        game: clonePoweredChess(gameRef.current, matchPowersRef.current), powers: matchPowersRef.current.map(item => ({ ...item })),
+      }
+      redoTimelineRef.current = []
+      redoStackRef.current = []
+      setRedoStack([])
+      setArmedPower(null)
+      const nextGame = clonePoweredChess(gameRef.current, matchPowersRef.current)
+      setGame(nextGame)
+      requestEvaluation(nextGame)
+    })
+  }
+
+  const togglePowerTargeting = (kind: MatchPowerKind, event: React.MouseEvent<HTMLButtonElement>) => {
+    hideCostHint()
+    if (armedPower === kind) { setArmedPower(null); return }
+    if (!hasEggsForAction(3)) { setArmedPower(null); return }
+    const pointerType = 'pointerType' in event.nativeEvent ? (event.nativeEvent as globalThis.PointerEvent).pointerType : ''
+    const hasCursor = pointerType === 'mouse' || pointerType === 'pen' || (!pointerType && !window.matchMedia('(pointer: coarse)').matches)
+    powerCursorOriginRef.current = event.detail > 0 && hasCursor ? { x: event.clientX, y: event.clientY } : null
+    setArmedPower(kind)
+  }
+
+  useEffect(() => {
+    if (!armedPower) return
+    const cancel = (event: KeyboardEvent) => { if (event.key === 'Escape') setArmedPower(null) }
+    window.addEventListener('keydown', cancel)
+    return () => window.removeEventListener('keydown', cancel)
+  }, [armedPower])
+
+  useEffect(() => {
+    if (!armedPower) return
+    const origin = powerCursorOriginRef.current
+    if (origin && powerCursorRef.current) {
+      powerCursorRef.current.style.transform = `translate3d(${origin.x + 12}px, ${origin.y + 16}px, 0)`
+      powerCursorRef.current.style.opacity = '1'
+    }
+    const moveIcon = (event: globalThis.PointerEvent) => {
+      const icon = powerCursorRef.current
+      if (!icon) return
+      if (event.pointerType === 'touch') { icon.style.opacity = '0'; return }
+      icon.style.transform = `translate3d(${event.clientX + 12}px, ${event.clientY + 16}px, 0)`
+      icon.style.opacity = '1'
+    }
+    const hideIcon = (event: globalThis.PointerEvent) => {
+      if (!event.relatedTarget && powerCursorRef.current) powerCursorRef.current.style.opacity = '0'
+    }
+    const blurIcon = () => { if (powerCursorRef.current) powerCursorRef.current.style.opacity = '0' }
+    window.addEventListener('pointermove', moveIcon)
+    document.addEventListener('pointerout', hideIcon)
+    window.addEventListener('blur', blurIcon)
+    return () => {
+      window.removeEventListener('pointermove', moveIcon)
+      document.removeEventListener('pointerout', hideIcon)
+      window.removeEventListener('blur', blurIcon)
+    }
+  }, [armedPower])
+
+  const settleCityVictory = useCallback(() => {
+    if (victorySettledRef.current) return
+    victorySettledRef.current = true
+    flightCleanupsRef.current.forEach(cleanup => cleanup())
+    flightCleanupsRef.current.clear()
+    setEggFlight(null)
+
+    const earnedEggs = playerEggBalanceRef.current
+    setVisibleEggs(earnedEggs)
+    const collected = collectedMatchEggsRef.current
+    const result = conquerCity(city.id, earnedEggs, collected)
+    playerEggBalanceRef.current = 0
+    victoryToastRef.current = toast.custom(id => <VictoryBasket result={result} collected={collected}
+      onLand={amount => { setVisibleEggs(current => Math.max(0, current - amount)); if (!document.hidden && amount > 0) engineRef.current?.playEggLanding() }}
+      onReturn={() => { toast.dismiss(id); onBack() }} />, { duration: Infinity })
+  }, [city.id, onBack])
+
+  const forceWin = useCallback(() => {
+    setGameStatus("CHECKMATE - White wins!")
+    setIsPlaying(false)
+    setHasPlaybackStarted(true)
+    deactivatePlaybackWidgets()
+    engineRef.current?.playSeatbelt()
+    settleCityVictory()
+  }, [deactivatePlaybackWidgets, settleCityVictory])
+
+  const showCostHint = (action: 'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield') => {
     if (costHintTimerRef.current !== null) window.clearTimeout(costHintTimerRef.current)
+    if (costHintHideTimerRef.current !== null) window.clearTimeout(costHintHideTimerRef.current)
     setHoveredCostAction(null)
-    costHintTimerRef.current = window.setTimeout(() => {
+    const reveal = () => {
       setHoveredCostAction(action)
       costHintTimerRef.current = null
-    }, 300)
+      costHintHideTimerRef.current = window.setTimeout(() => {
+        setHoveredCostAction(current => current === action ? null : current)
+        costHintHideTimerRef.current = null
+      }, 1500)
+    }
+    reveal()
   }
-  const hideCostHint = () => {
-    if (costHintTimerRef.current !== null) window.clearTimeout(costHintTimerRef.current)
-    costHintTimerRef.current = null
-    setHoveredCostAction(null)
-  }
-  const costHint = (action: 'best' | 'undo' | 'redo' | 'worst', amount: number) => (
+  const costHint = (action: 'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield', amount: number) => (
     <span
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute top-[5px] right-[5px] z-10 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[10px] leading-none font-bold text-amber-200 opacity-0 scale-100 transition-[opacity,transform] duration-200",
-        hoveredCostAction === action && fadingCostAction !== action && "opacity-100",
-        fadingCostAction === action && "opacity-0 scale-[1.3]",
+      "pointer-events-none absolute -right-2.5 z-10 flex items-center gap-1 whitespace-nowrap rounded border border-zinc-500 bg-white px-1.5 py-0.5 text-[10px] leading-none font-bold text-red-900 opacity-0",
+        hoveredCostAction === action && "opacity-100",
       )}
+      style={{ bottom: "calc(100% - 5px)" }}
     >
-      $ {amount} {amount === 1 ? 'egg' : 'eggs'}
+      <span>-{amount}</span>
+      <span className="inline-block h-3 w-[9px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_5px_#fbbf24]" />
     </span>
   )
 
@@ -912,22 +1092,12 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         if (rewardedCheckmateFenRef.current !== game.fen()) {
           playVictoryFanfare()
           rewardedCheckmateFenRef.current = game.fen()
-          const result = conquerCity(city.id)
-          setVisibleEggs(result.profile.goldenEggs - pendingEggsRef.current)
-          const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
-          toast.success(`CITY CONQUERED! +${result.earnedEggs} GOLDEN EGGS 🥚`, {
-            description: `${result.isFirstTime ? "City added to your conquests!" : "Victory reward claimed again!"}${rankMsg} (Basket: ${result.profile.goldenEggs.toLocaleString()} eggs · Historical: ${result.profile.points.toLocaleString()} PTS)`,
-            duration: Infinity,
-            action: {
-              label: "RETURN TO MAP",
-              onClick: onBack
-            }
-          })
+          settleCityVictory()
         }
       } else {
         playCheckmate()
         toast.error("DEFEAT!", {
-          description: "Try again to conquer this city and earn 10 golden eggs."
+          description: "Try again to conquer this city and keep your match eggs."
         })
       }
     } else if (game.isDraw() || game.isStalemate()) {
@@ -938,12 +1108,47 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       toast("DRAW", {
         description: "The game ended in a draw.",
       })
-    } else if (game.isCheck()) {
+    } else if (game.isCheck() && game.turn() === "w") {
       setGameStatus("CHECK!")
     } else {
-      setGameStatus(game.turn() === "w" ? "Your move" : "AI analyzing...")
+      setGameStatus(game.turn() === "w" ? "Your move" : "Thinking...")
     }
-  }, [game, city, activeSquares, squareEffects, globalEffects, deactivatePlaybackWidgets])
+  }, [game, city, activeSquares, squareEffects, globalEffects, deactivatePlaybackWidgets, settleCityVictory])
+
+  useEffect(() => {
+    if (introPhase !== 3 || panelsFollowPlayerTurn) return
+
+    setMixerOn(true)
+    setKnobsOn(true)
+    setActiveWidgetOrder(current => [
+      ...current.filter(id => id !== "mixer" && id !== "knobs"),
+      "mixer",
+      "knobs",
+    ])
+  }, [introPhase, panelsFollowPlayerTurn])
+
+  useEffect(() => {
+    if (introPhase !== 3 || !panelsFollowPlayerTurn) return
+
+    const playerCanEdit = game.turn() === "w" && !game.isGameOver()
+    if (!playerCanEdit) {
+      setMixerOn(false)
+      setKnobsOn(false)
+      setActiveWidgetOrder(current => current.filter(id => id !== "mixer" && id !== "knobs"))
+      return
+    }
+
+    const shouldOpenMixer = !mixerManuallyClosedRef.current
+    const shouldOpenPieceParams = !knobsManuallyClosedRef.current
+    setMixerOn(shouldOpenMixer)
+    setKnobsOn(shouldOpenPieceParams)
+    setActiveWidgetOrder(current => {
+      const next = current.filter(id => id !== "mixer" && id !== "knobs")
+      if (shouldOpenMixer) next.push("mixer")
+      if (shouldOpenPieceParams) next.push("knobs")
+      return next
+    })
+  }, [game, introPhase, panelsFollowPlayerTurn])
 
   // Track captured pieces
   const updateCapturedPieces = useCallback((move: Move) => {
@@ -970,8 +1175,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         return
       }
 
-      const gameCopy = new Chess()
-      gameCopy.loadPgn(currentGame.pgn())
+      const gameCopy = clonePoweredChess(currentGame, matchPowersRef.current)
       try {
         const from = moveStr.slice(0, 2)
         const to = moveStr.slice(2, 4)
@@ -979,7 +1183,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
         // Validate move legality to prevent errors
         const legalMoves = gameCopy.moves({ verbose: true })
-        const isLegal = legalMoves.some(m => m.from === from && m.to === to && (promotion ? m.promotion === promotion : true))
+        const matchingMove = legalMoves.find(m => m.from === from && m.to === to && (promotion ? m.promotion === promotion : true))
+        const isLegal = !!matchingMove && permitsPowerMove(matchingMove, matchPowersRef.current, gameCopy.history().length + 1)
 
         if (!isLegal) {
           console.warn("Ignored illegal AI move:", moveStr)
@@ -993,6 +1198,18 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         })
 
         if (move) {
+          // A freshly chosen bot reply replaces any remaining historical redo branch.
+          redoStackRef.current = []
+          setRedoStack([])
+          matchPowersRef.current = advanceMatchPowers(matchPowersRef.current, move, gameCopy, gameCopy.history().length)
+          setMatchPowers(matchPowersRef.current)
+          setPoweredChessPowers(gameCopy, matchPowersRef.current)
+          syncPoweredMoveSan(gameCopy, move)
+          powerTimelineRef.current = [
+            ...powerTimelineRef.current.slice(0, gameCopy.history().length),
+            { game: clonePoweredChess(gameCopy, matchPowersRef.current), powers: matchPowersRef.current.map(power => ({ ...power })) },
+          ]
+          redoTimelineRef.current = []
           setGame(gameCopy)
           requestEvaluation(gameCopy)
           setMoveHistory((prev) => [...prev, move.san])
@@ -1005,7 +1222,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             next.delete(move.from)
             next.add(move.to)
             // Handle castling
-            if (move.san === "O-O" || move.san === "O-O-O") {
+            if (move.flags.includes('k') || move.flags.includes('q')) {
               if (move.to === "g8") { next.delete("h8"); next.add("f8"); } // Black Kingside
               if (move.to === "c8") { next.delete("a8"); next.add("d8"); } // Black Queenside
             }
@@ -1025,17 +1242,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     (move: Move) => {
       if (!firstMovePanelsActivatedRef.current) {
         firstMovePanelsActivatedRef.current = true
-        knobsManuallyClosedRef.current = false
-        setKnobsOn(true)
         setGlobalPanelOn(true)
-        setMixerOn(true)
-        if (isMobile) setMobileControlsOpen(true)
-        setActiveWidgetOrder(current => [
-          ...current.filter(id => id !== 'globalPanel' && id !== 'mixer' && id !== 'knobs'),
-          'globalPanel',
-          'mixer',
-          'knobs',
-        ])
+        setActiveWidgetOrder(current => [...current.filter(id => id !== 'globalPanel'), 'globalPanel'])
       }
       const uci = `${move.from}${move.to}${move.promotion ?? ''}`
       const currentAnalysis = currentCompleteAnalysisRef.current
@@ -1050,11 +1258,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
         rewardedMovesRef.current.add(rewardKey)
         const streak = streakKind === rewardKind && streakCount >= 3
-        const reward = awardRankedMove(rewardKind, streak ? 2 : 1)
-        pendingEggsRef.current += reward.earnedEggs
+        const reward = {
+          earnedEggs: rankedMoveEggReward(rewardKind, streak ? 2 : 1),
+          firstNotice: markRankedMoveNotice(rewardKind),
+        }
+        playerEggBalanceRef.current += reward.earnedEggs
+        collectedMatchEggsRef.current += reward.earnedEggs
+        setVisibleEggs(playerEggBalanceRef.current)
         const id = ++rewardSerialRef.current
         setRankedMoveMark({ square: move.to, kind: rewardKind, id })
-        const legalMoveCount = new Chess(move.before).moves().length
+        const legalMoveCount = currentAnalysis?.legalMoves ?? 0
         const headline = legalMoveCount === 1
           ? randomMessage(SINGLE_LEGAL_MOVE_MESSAGES)
           : streak
@@ -1091,7 +1304,6 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
           rewardAnnouncementTimerRef.current = null
         }, 2400)
       }
-      setMoveHistory((prev) => [...prev, move.san])
       redoStackRef.current = []
       setRedoStack([]) // Clear redo stack on new move
       
@@ -1118,8 +1330,17 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       }
 
       // Preserve repetition history when copying the updated game.
-      const gameCopy = new Chess()
-      gameCopy.loadPgn(game.pgn())
+      const gameCopy = clonePoweredChess(game, matchPowersRef.current)
+      matchPowersRef.current = advanceMatchPowers(matchPowersRef.current, move, gameCopy, gameCopy.history().length)
+      setMatchPowers(matchPowersRef.current)
+      setPoweredChessPowers(gameCopy, matchPowersRef.current)
+      syncPoweredMoveSan(gameCopy, move)
+      setMoveHistory((prev) => [...prev, move.san])
+      powerTimelineRef.current = [
+        ...powerTimelineRef.current.slice(0, gameCopy.history().length),
+        { game: clonePoweredChess(gameCopy, matchPowersRef.current), powers: matchPowersRef.current.map(power => ({ ...power })) },
+      ]
+      redoTimelineRef.current = []
       setGame(gameCopy)
       gameRef.current = gameCopy // Ensure ref is updated immediately to prevent race conditions with AI
 
@@ -1129,7 +1350,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         const next = new Set(prev)
         next.delete(move.from)
         next.add(move.to)
-        if (move.san === "O-O" || move.san === "O-O-O") {
+        if (move.flags.includes('k') || move.flags.includes('q')) {
           if (move.to === "g1") { next.delete("h1"); next.add("f1"); }
           if (move.to === "c1") { next.delete("a1"); next.add("d1"); }
         }
@@ -1137,10 +1358,21 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       })
       requestEvaluation(gameCopy, aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20)
     },
-    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, engineRef, isMobile],
+    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, engineRef],
   )
 
   const resetGame = useCallback(() => {
+    matchPowersRef.current = []
+    setMatchPowers([])
+    setArmedPower(null)
+    flightCleanupsRef.current.forEach(cleanup => cleanup())
+    flightCleanupsRef.current.clear()
+    setEggFlight(null)
+    playerEggBalanceRef.current = STARTING_MATCH_GOLDEN_EGGS
+    collectedMatchEggsRef.current = 0
+    if (victoryToastRef.current !== null) { toast.dismiss(victoryToastRef.current); victoryToastRef.current = null }
+    setVisibleEggs(STARTING_MATCH_GOLDEN_EGGS)
+    victorySettledRef.current = false
     firstMovePanelsActivatedRef.current = false
     rewardedMovesRef.current.clear()
     rankedMoveKindsRef.current.clear()
@@ -1150,8 +1382,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
     if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
     evaluationQueueRef.current?.reset()
-    const freshGame = new Chess()
+    const freshGame = makePoweredChess(new Chess())
     gameRef.current = freshGame
+    powerTimelineRef.current = [{ game: clonePoweredChess(freshGame, []), powers: [] }]
+    redoTimelineRef.current = []
     setGame(freshGame)
     setIsPlaying(false)
     setHasPlaybackStarted(false)
@@ -1165,6 +1399,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     setSquareEffects({})
     music.reset()
     knobsManuallyClosedRef.current = false
+    mixerManuallyClosedRef.current = false
+    if (!panelsFollowPlayerTurn) {
+      setMixerOn(true)
+      setKnobsOn(true)
+      setActiveWidgetOrder(current => [
+        ...current.filter(id => id !== "mixer" && id !== "knobs"),
+        "mixer",
+        "knobs",
+      ])
+    }
     setLastEvalScore(null)
     setLastEvalMate(null)
     setIsEvaluating(false)
@@ -1172,7 +1416,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     else requestEvaluation(freshGame)
     setIsBackgroundDark(false)
     rewardedCheckmateFenRef.current = null
-  }, [evaluationError, requestEvaluation, restartStockfish])
+  }, [evaluationError, panelsFollowPlayerTurn, requestEvaluation, restartStockfish])
 
   const undoMove = useCallback(() => {
     const currentHistory = gameRef.current.history()
@@ -1187,13 +1431,23 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     
     if (currentHistory.length < stepsToUndo) return
 
-    const newHistory = currentHistory.slice(0, -stepsToUndo)
-    rankedMoveStreakRef.current = rankedStreakFromHistory(newHistory, rankedMoveKindsRef.current)
+    setArmedPower(null)
+
+    const targetPly = currentHistory.length - stepsToUndo
+    const removedSnapshots = powerTimelineRef.current.slice(targetPly + 1).reverse()
+    const restoredSnapshot = powerTimelineRef.current[targetPly]
+    if (!restoredSnapshot) return
+    redoTimelineRef.current = [...redoTimelineRef.current, ...removedSnapshots]
+    powerTimelineRef.current = powerTimelineRef.current.slice(0, targetPly + 1)
+    const newGame = clonePoweredChess(restoredSnapshot.game, restoredSnapshot.powers)
+    matchPowersRef.current = restoredSnapshot.powers.map(power => ({ ...power }))
+    setMatchPowers(matchPowersRef.current)
+    const newHistory = newGame.history()
+    rankedMoveStreakRef.current = rankedStreakFromHistory(newGame.history({ verbose: true }), rankedMoveKindsRef.current)
     setRankedMoveAnnouncement(null)
     if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
     
-    // Reconstruct from the current board history, which updates synchronously even on rapid clicks.
-    const { restored: newGame, captured: newCapturedPieces, active: newActiveSquares } = rebuildChessSnapshot(newHistory)
+    const { captured: newCapturedPieces, active: newActiveSquares } = rebuildChessEffects(newGame.history({ verbose: true }))
 
     // requestEvaluation cancels any pending opponent result before switching position.
     setIsThinking(false)
@@ -1203,6 +1457,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     redoStackRef.current = [...redoStackRef.current, ...movesToUndo]
     setRedoStack(redoStackRef.current)
 
+    setUndoAnimationKey(key => key + 1)
     setGame(newGame)
     setMoveHistory(newHistory)
     setCapturedPieces(newCapturedPieces as { white: string[], black: string[] })
@@ -1211,44 +1466,57 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       setHasPlaybackStarted(true)
       setIsPlaying(true)
       setGlobalPanelOn(true)
-      setMixerOn(true)
-      setActiveWidgetOrder(current => [...current.filter(id => id !== 'globalPanel' && id !== 'mixer'), 'globalPanel', 'mixer'])
+      if (!panelsFollowPlayerTurn) {
+        const shouldOpenMixer = !mixerManuallyClosedRef.current
+        const shouldOpenPieceParams = !knobsManuallyClosedRef.current
+        setMixerOn(shouldOpenMixer)
+        setKnobsOn(shouldOpenPieceParams)
+        setActiveWidgetOrder(current => {
+          const next = current.filter(id => id !== "mixer" && id !== "knobs")
+          if (shouldOpenMixer) next.push("mixer")
+          if (shouldOpenPieceParams) next.push("knobs")
+          return next
+        })
+      }
+      setActiveWidgetOrder(current => [...current.filter(id => id !== 'globalPanel'), 'globalPanel'])
       void togglePlayback()
     }
 
     // Re-evaluate the reconstructed position with its repetition history.
     console.log("Undo to FEN:", newGame.fen())
     requestEvaluation(newGame)
-  }, [requestEvaluation, togglePlayback])
+  }, [panelsFollowPlayerTurn, requestEvaluation, togglePlayback])
 
   const redoMove = useCallback(() => {
     const pendingRedo = redoStackRef.current
     if (pendingRedo.length === 0) return
 
-    // Pop one move from the stack
-    const moveSan = pendingRedo[pendingRedo.length - 1]
+    setArmedPower(null)
+
+    const restoredSnapshot = redoTimelineRef.current.at(-1)
+    if (!restoredSnapshot) return
     const newRedoStack = pendingRedo.slice(0, -1)
-
-    const gameCopy = new Chess()
-    gameCopy.loadPgn(gameRef.current.pgn())
-
-    const move = gameCopy.move(moveSan)
-    if (move) {
+    const gameCopy = clonePoweredChess(restoredSnapshot.game, restoredSnapshot.powers)
+    if (gameCopy.history().length === gameRef.current.history().length + 1) {
+        redoTimelineRef.current = redoTimelineRef.current.slice(0, -1)
+        powerTimelineRef.current.push({ game: clonePoweredChess(gameCopy, restoredSnapshot.powers), powers: restoredSnapshot.powers.map(power => ({ ...power })) })
+        matchPowersRef.current = restoredSnapshot.powers.map(power => ({ ...power }))
+        setMatchPowers(matchPowersRef.current)
         const nextHistory = gameCopy.history()
-        const { captured: nextCaptured, active: nextActiveSquares } = rebuildChessSnapshot(nextHistory)
+        const { captured: nextCaptured, active: nextActiveSquares } = rebuildChessEffects(gameCopy.history({ verbose: true }))
         redoStackRef.current = newRedoStack
         setGame(gameCopy)
         setMoveHistory(nextHistory)
-        rankedMoveStreakRef.current = rankedStreakFromHistory(nextHistory, rankedMoveKindsRef.current)
+        rankedMoveStreakRef.current = rankedStreakFromHistory(gameCopy.history({ verbose: true }), rankedMoveKindsRef.current)
         setRankedMoveAnnouncement(null)
         if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
         setRedoStack(newRedoStack)
         setCapturedPieces(nextCaptured)
         setActiveSquares(nextActiveSquares)
-        const skill = newRedoStack.length === 0 && gameCopy.turn() === 'b'
+        const skill = gameCopy.turn() === 'b' && !gameCopy.isGameOver()
           ? (aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20) : undefined
         if (skill !== undefined) setIsThinking(true)
-        requestEvaluation(gameCopy, skill)
+        requestEvaluation(gameCopy, skill, skill !== undefined ? 5000 : undefined)
     }
   }, [aiDepth, requestEvaluation])
 
@@ -1268,6 +1536,16 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
     })
   }, [])
 
+  const togglePlayerTurnPanel = useCallback((
+    id: "mixer" | "knobs",
+    isOn: boolean,
+    setIsOn: React.Dispatch<React.SetStateAction<boolean>>,
+    manuallyClosedRef: React.MutableRefObject<boolean>,
+  ) => {
+    manuallyClosedRef.current = isOn
+    toggleWidget(id, setIsOn)
+  }, [toggleWidget])
+
   const handleTogglePlay = useCallback(async () => {
     if (gameRef.current.isGameOver() || gameStatus === "DRAW!" || gameStatus.startsWith("CHECKMATE")) {
         deactivatePlaybackWidgets()
@@ -1275,13 +1553,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         return
     }
     if (!isPlaying) {
-        // Auto-activate Board Params (Global Control Panel) when play starts
-        setHasPlaybackStarted(true)
-        setGlobalPanelOn(true)
-        setMixerOn(true)
-        setActiveWidgetOrder(prev => [...prev.filter(id => id !== 'globalPanel' && id !== 'mixer'), 'globalPanel', 'mixer'])
+      // Auto-activate Board Params (Global Control Panel) when play starts
+      setHasPlaybackStarted(true)
+      setGlobalPanelOn(true)
+      setActiveWidgetOrder(prev => [...prev.filter(id => id !== 'globalPanel'), 'globalPanel'])
     } else {
-        deactivatePlaybackWidgets()
+        setGlobalPanelOn(false)
+        setActiveWidgetOrder(current => current.filter(id => id !== "globalPanel"))
     }
     await togglePlayback()
     setIsPlaying((prev) => !prev)
@@ -1604,21 +1882,32 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
   }, [synthSelectedSquare, knobsPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick])
 
-  const handleWidgetHeaderClick = (id: string) => {
+  const handleWidgetHeaderClick = useCallback((id: string) => {
     setActiveWidgetOrder(prev => {
         const filtered = prev.filter(wId => wId !== id)
         return [...filtered, id]
     })
-  }
+  }, [])
+
+  const markWidgetToggleLayerReady = useCallback(() => setWidgetTogglesReady(true), [])
+  const widgetToggleItems = useMemo(() => [
+    { id: 'spectrogram', label: 'Spectrogram', ref: spectrogramToggleRef, isOn: spectrogramOn, cityColor: city.color, onToggle: () => toggleWidget('spectrogram', setSpectrogramOn), position: spectrogramPosition ?? { x: 0, y: 0 }, onPositionChange: setSpectrogramPosition, onDragStart: () => handleWidgetHeaderClick('spectrogram') },
+    { id: 'knobs', label: 'Piece Params', ref: knobsToggleRef, isOn: knobsOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('knobs', knobsOn, setKnobsOn, knobsManuallyClosedRef), position: knobsPosition ?? { x: 0, y: 0 }, onPositionChange: setKnobsPosition, onDragStart: () => handleWidgetHeaderClick('knobs') },
+    { id: 'globalPanel', label: 'Board Params', ref: globalPanelToggleRef, isOn: globalPanelOn, cityColor: city.color, onToggle: () => toggleWidget('globalPanel', setGlobalPanelOn), position: globalPanelPosition ?? { x: 0, y: 0 }, onPositionChange: setGlobalPanelPosition, onDragStart: () => handleWidgetHeaderClick('globalPanel') },
+    { id: 'mixer', label: 'Mixer', ref: mixerToggleRef, isOn: mixerOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('mixer', mixerOn, setMixerOn, mixerManuallyClosedRef), position: mixerPosition ?? { x: 0, y: 0 }, onPositionChange: setMixerPosition, onDragStart: () => handleWidgetHeaderClick('mixer') },
+    { id: 'liveCode', label: 'Debug', ref: liveCodeToggleRef, isOn: liveCodeOn, cityColor: city.color, onToggle: () => toggleWidget('liveCode', setLiveCodeOn), position: liveCodePosition ?? { x: 0, y: 0 }, onPositionChange: setLiveCodePosition, onDragStart: () => handleWidgetHeaderClick('liveCode') },
+  ], [city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramOn, spectrogramPosition, resizeTick, togglePlayerTurnPanel, toggleWidget])
 
   const widgetsContent = (mobileMode: boolean) => {
-      const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', marginBottom: '1rem', zIndex: 10 } : undefined
+      const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', zIndex: 10 } : undefined
+      const togglePortalized = !mobileMode && widgetTogglesReady
       return (
           <>
             <SpectrogramWidget
                 getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
                 ref={spectrogramHandleRef}
                 toggleRef={spectrogramToggleRef}
+                togglePortalized={togglePortalized}
                 isOn={spectrogramOn}
                 onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
                 isPlaying={music.engineActive && (isPlaying || !!music.preview)}
@@ -1638,6 +1927,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 </> : undefined}
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
+                togglePortalized={togglePortalized}
+                monitor={knobsOn && music.enabled ? music.monitor : undefined}
+                monitorId={knobsOn && music.enabled ? music.selected?.id : undefined}
                 selectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
                 selectedStatus={music.enabled && music.selected ? <MusicVoiceBadge monitor={music.monitor} id={music.selected.id} /> : undefined}
                 selectedPieceInfo={(() => {
@@ -1678,10 +1970,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onPositionChange={setKnobsPosition}
                 handleRef={knobsHandleRef}
                 isOn={knobsOn}
-                onToggle={() => {
-                  if (knobsOn) knobsManuallyClosedRef.current = true
-                  setKnobsOn(!knobsOn)
-                }}
+                onToggle={() => togglePlayerTurnPanel("knobs", knobsOn, setKnobsOn, knobsManuallyClosedRef)}
                 onClick={(e) => { e.stopPropagation(); handleWidgetHeaderClick('knobs') }}
                 onMouseDown={(e) => e.stopPropagation()}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('knobs') + 10 }}
@@ -1691,6 +1980,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 showAmbience={!music.enabled}
                 ref={globalPanelRef}
                 toggleRef={globalPanelToggleRef}
+                togglePortalized={togglePortalized}
                 effects={globalEffects}
                 onEffectChange={handleGlobalEffectChange}
                 cityColor={city.color}
@@ -1704,30 +1994,30 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             />}
 
             <MixerWidget
-                teamMixes={music.teamMixes}
-                effects={globalEffects}
+              teamMixes={music.teamMixes}
+              sessionId={city.id}
+              effects={{ ...globalEffects, bpm: music.snapshot.bpm, volume: music.snapshot.volume }}
+              monitor={music.monitor}
                 onEffectChange={handleGlobalEffectChange}
                 topColor={boardOrientation === "white" ? "b" : "w"}
                 onTeamMixChange={music.updateTeamMix}
-                tonality={music.tonality}
-                onTonalityChange={music.setTonality}
-                harmony={music.harmony}
-                onHarmonyChange={music.setHarmony}
                 ref={mixerRef}
                 handleRef={mixerHandleRef}
                 toggleRef={mixerToggleRef}
+                togglePortalized={togglePortalized}
                 cityColor={city.color}
                 position={mobileMode ? undefined : (mixerPosition || undefined)}
                 onPositionChange={setMixerPosition}
                 isOn={mixerOn}
-                onToggle={() => toggleWidget('mixer', setMixerOn)}
+                onToggle={() => togglePlayerTurnPanel("mixer", mixerOn, setMixerOn, mixerManuallyClosedRef)}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('mixer') + 10 }}
                 onClickCapture={() => handleWidgetHeaderClick('mixer')}
             />
 
-            <LiveCodeWidget
+            {codeBackdropOn && <LiveCodeWidget
                 stockfishDebugOn={stockfishDebugOn}
                 onToggleStockfishDebug={toggleStockfishDebug}
+                onForceWin={forceWin}
                 playback={liveCodeOn && music.enabled && music.engineActive ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
                   {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
@@ -1738,6 +2028,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 </> : undefined}
                 ref={liveCodeRef}
                 toggleRef={liveCodeToggleRef}
+                togglePortalized={togglePortalized}
                 handleRef={liveCodeHandleRef}
                 pattern={music.enabled ? music.code : currentPattern}
                 city={city}
@@ -1749,7 +2040,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 onToggle={() => toggleWidget('liveCode', setLiveCodeOn)}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('liveCode') + 10 }}
                 onClickCapture={() => handleWidgetHeaderClick('liveCode')}
-            />
+            />}
           </>
       )
   }
@@ -1757,7 +2048,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
   return (
     <div
       ref={rootRef}
-      className="relative w-full h-[100dvh] max-h-[100dvh] max-w-[100vw] bg-background overflow-hidden select-none flex flex-col"
+      className={cn("relative w-full h-[100dvh] max-h-[100dvh] max-w-[100vw] bg-background select-none flex flex-col", isMobile ? "overflow-x-hidden overflow-y-auto" : "overflow-hidden")}
       onClick={() => {
         setSynthSelectedSquare(null)
       }}
@@ -1894,6 +2185,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               {(introPhase === 1 || introPhase === 2) && (
                   <div className="flex flex-col items-center gap-3 md:gap-4 w-full px-4 text-center">
                       <h2
+                          onTransitionEnd={event => {
+                            if (introExitStarted && event.propertyName === 'text-shadow') setShowIntroBoxes(false)
+                          }}
                           className={cn(
                               "text-5xl md:text-7xl lg:text-8xl font-black transition-[opacity,text-shadow]",
                               showIntroBoxes ? "opacity-100" : "opacity-0"
@@ -1902,7 +2196,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                             color: 'black',
                             textShadow: showIntroGlow ? `0 0 15px ${city.color}, 0 0 30px ${city.color}` : '0 0 0 transparent, 0 0 0 transparent',
                             transitionProperty: 'opacity, text-shadow',
-                            transitionDuration: introExitStarted ? '1500ms, 2000ms' : '700ms, 0ms',
+                            transitionDuration: introExitStarted ? (showIntroBoxes ? '0ms, 1500ms' : '1000ms, 0ms') : '700ms, 0ms',
                           }}
                       >
                           {city.name.toUpperCase()}
@@ -1916,7 +2210,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                             color: 'black',
                             textShadow: showIntroGlow ? `0 0 15px ${city.color}, 0 0 30px ${city.color}` : '0 0 0 transparent, 0 0 0 transparent',
                             transitionProperty: 'opacity, text-shadow',
-                            transitionDuration: introExitStarted ? '1500ms, 2000ms' : '700ms, 0ms',
+                            transitionDuration: introExitStarted ? (showIntroBoxes ? '0ms, 1500ms' : '1000ms, 0ms') : '700ms, 0ms',
                           }}
                       >
                           {city.genre} ({city.year})
@@ -1957,29 +2251,13 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
 
         <div className={cn("flex shrink-0 items-center gap-2 md:gap-3 transition-opacity duration-500 pointer-events-auto", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
-          <button
-            ref={eggCounterRef}
-            type="button"
-            aria-label={`${visibleEggs} golden eggs`}
-            title={`${visibleEggs} golden eggs`}
-            onClick={() => toast(`${visibleEggs.toLocaleString()} golden eggs`)}
-            className={cn(
-              "flex h-9 min-w-14 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold hover:bg-amber-400/15",
-              visibleEggs === 0
-                ? "border-red-500/80 text-red-400 hover:border-red-400 hover:bg-red-500/15"
-                : "border-amber-400/50 text-amber-200 hover:border-amber-300",
-            )}
-          >
-            <span>{visibleEggs.toLocaleString()}</span>
-            <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]" />
-          </button>
           {/* Settings */}
-          <DropdownMenu>
+          <DropdownMenu open={openDropdown === "difficulty"} onOpenChange={open => setOpenDropdown(current => open ? "difficulty" : current === "difficulty" ? null : current)}>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm"
-                aria-label={`Dificuldade da IA: ${aiDifficultyLabel}`}
+                aria-label={`Dificulty: ${aiDifficultyLabel}`}
                 className="hidden md:flex min-w-16 justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-[var(--hover-color)] active:text-black"
                 style={{
                     "--hover-color": city.color
@@ -1988,24 +2266,25 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 <span className="px-1 text-xs font-mono">{aiDifficultyLabel}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>
-                AI Difficulty: <span className="text-[var(--city-neon)] font-bold">{aiDifficultyLabel}</span>
-              </DropdownMenuLabel>
+            <DropdownMenuContent
+              align="end"
+              style={{ "--difficulty-hover": `color-mix(in srgb, ${city.color} 50%, black)` } as React.CSSProperties}
+            >
+              <DropdownMenuLabel>Dificulty:</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(5)} className={cn("justify-between", aiDepth === 5 && "bg-accent text-accent-foreground font-bold")}>
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(5)} style={aiDepth === 5 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 5 && "font-bold")}>
                 Easy (Skill 0)
                 {aiDepth === 5 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(10)} className={cn("justify-between", aiDepth === 10 && "bg-accent text-accent-foreground font-bold")}>
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(10)} style={aiDepth === 10 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 10 && "font-bold")}>
                 Medium (Skill 5)
                 {aiDepth === 10 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(15)} className={cn("justify-between", aiDepth === 15 && "bg-accent text-accent-foreground font-bold")}>
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(15)} style={aiDepth === 15 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 15 && "font-bold")}>
                 Hard (Skill 12)
                 {aiDepth === 15 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(20)} className={cn("justify-between", aiDepth === 20 && "bg-accent text-accent-foreground font-bold")}>
+              <DropdownMenuItem onClick={() => handleAIDifficultyChange(20)} style={aiDepth === 20 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 20 && "font-bold")}>
                 Expert (Skill 20)
                 {aiDepth === 20 && <Check className="w-4 h-4 ml-2" />}
               </DropdownMenuItem>
@@ -2014,22 +2293,35 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
 
           {/* Audio toggle */}
           <div className="flex gap-3">
-            {isMobile && <Button variant="outline" size="icon" aria-label="Parâmetros musicais" onClick={() => { setKnobsOn(true); setGlobalPanelOn(true); setLiveCodeOn(true); setMobileControlsOpen(true) }}><Settings2 className="w-4 h-4" /></Button>}
+
             <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setCodeBackdropOn(current => !current)}
-                aria-label={codeBackdropOn ? "Ocultar código Strudel no fundo" : "Exibir código Strudel no fundo"}
+                onClick={toggleCodeBackdrop}
+                title="View code / Debug"
+                aria-label={codeBackdropOn ? "Ocultar código Strudel e widget Debug" : "Mostrar código Strudel e widget Debug"}
                 aria-pressed={codeBackdropOn}
                 className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
                 style={{ "--city-neon": city.color } as React.CSSProperties}
             >
                 <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
             </Button>
+            <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setRestartConfirmOpen(true)}
+                title="Restart game"
+                aria-label="Restart game"
+                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                style={{ "--city-neon": city.color } as React.CSSProperties}
+            >
+                <RotateCcw className="w-4 h-4" />
+            </Button>
             <Button 
                 variant="outline" 
                 size="icon" 
                 onClick={handleToggleMusicEngine}
+                title={musicEngineOn ? "Desligar música" : "Ligar música"}
                 aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
                 aria-pressed={musicEngineOn}
                 className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
@@ -2041,6 +2333,8 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 variant="outline" 
                 size="icon" 
                 onClick={toggleFullscreen} 
+                title={isFullscreen ? "Restaurar" : "Maximizar"}
+                aria-label={isFullscreen ? "Restaurar janela" : "Maximizar janela"}
                 className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
                 style={{ "--city-neon": city.color } as React.CSSProperties}
             >
@@ -2050,57 +2344,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </div>
       </header>
 
-      <div className="relative z-10 w-full h-full flex flex-col lg:block justify-start pt-4 lg:pt-0 pointer-events-none">
+      <div className={cn("relative z-10 w-full flex flex-col lg:block justify-start pointer-events-none", isMobile ? "shrink-0 min-h-full pb-16 pt-4" : "h-full pt-4 lg:pt-0")}
+        style={{ "--game-board-width": isMobile ? "min(calc(100vw - 16px),512px)" : "min(90vw,calc(100dvh - 270px),512px)" } as React.CSSProperties}>
         
-        {/* Footer - Fixed Bottom */}
-        <div className={cn(
-            "fixed bottom-0 left-0 right-0 h-[60px] z-40 flex items-center justify-start px-6 border-t border-transparent bg-transparent transition-all duration-1000 pointer-events-none",
-            introPhase < 3 ? "opacity-0 translate-y-full" : "opacity-100 translate-y-0"
-        )}>
-             {/* Center: Restart & Win Buttons */}
-             <div className="flex items-center gap-4 pointer-events-auto">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={resetGame}
-                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black hover:cursor-pointer transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    <RotateCcw className="w-4 h-4" />
-                    <span className="hidden sm:inline">Restart</span>
-                </Button>
-                
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        setGameStatus("CHECKMATE - White wins!")
-                        setIsPlaying(false)
-                        setHasPlaybackStarted(true)
-                        deactivatePlaybackWidgets()
-                        const result = conquerCity(city.id)
-                        setVisibleEggs(result.profile.goldenEggs - pendingEggsRef.current)
-                        if (engineRef.current) {
-                            engineRef.current.playSeatbelt()
-                        }
-                        const rankMsg = result.rankedUp ? ` 🎖️ PROMOTED TO ${result.newRank.toUpperCase()}!` : ` Rank: ${result.newRank}`
-                        toast.success(`CITY CONQUERED! +${result.earnedEggs} GOLDEN EGGS 🥚`, {
-                            description: `${result.isFirstTime ? "City added to your conquests!" : "Victory reward claimed again!"}${rankMsg} (Basket: ${result.profile.goldenEggs.toLocaleString()} eggs · Historical: ${result.profile.points.toLocaleString()} PTS)`,
-                            duration: Infinity,
-                            action: {
-                                label: "RETURN TO MAP",
-                                onClick: onBack
-                            }
-                        })
-                    }}
-                    className="gap-2 bg-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black hover:cursor-pointer transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    <span className="hidden sm:inline">Win</span>
-                </Button>
-             </div>
-        </div>
-
         {/* Main Game Area (Board Container) */}
         {/* Animated Descent for Phase 2 -> 3 */}
         <div 
@@ -2111,7 +2357,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             style={{
                 // If introPhase is 3 (Game Active), we reset transform to allow normal layout flow
                 transform: introPhase === 3 ? "none" : undefined,
-                marginTop: introPhase === 3 ? (typeof window !== 'undefined' && window.innerWidth > 768 ? 'calc(50vh - 350px)' : '48px') : undefined
+                marginTop: introPhase === 3 ? (!isMobile ? 'calc(50vh - 350px)' : '48px') : undefined
             }}
         >
           <div
@@ -2119,15 +2365,21 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             ref={centerContainerRef}
           >
 
-            <div className={cn(
-                "mb-1 w-full text-center text-xs font-mono transition-opacity duration-1000 pointer-events-none",
-                introPhase < 3 ? "opacity-0" : "opacity-100",
-                (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse"
-              )}
-              style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
-            >{gameStatus}</div>
+            {music.tonality && music.baseTonality && music.harmony && <div className="mb-[30px] grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 pointer-events-none">
+              <div role="img" aria-label={`${STARTING_MATCH_GOLDEN_EGGS} golden egg for the opponent`} className={cn("flex w-fit items-center gap-1.5 rounded-md border border-zinc-500/20 bg-black/45 px-2 py-1 font-mono text-xs font-bold text-zinc-400/50 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
+                <span>{STARTING_MATCH_GOLDEN_EGGS}</span>
+                <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] opacity-40 grayscale" />
+              </div>
+              <div className="min-w-0 pointer-events-auto">
+                <BoardMusicSelectors cityColor={city.color} tonality={music.tonality} baseTonality={music.baseTonality} currentScaleLabel={music.currentScaleLabel} onTonalityChange={music.setTonality} harmony={music.harmony} onHarmonyChange={music.setHarmony} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} />
+              </div>
+              <div ref={eggCounterRef} role="img" aria-label={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"} for you`} title={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"}`} className={cn("ml-auto flex h-8 w-full max-w-14 min-w-0 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold transition-opacity duration-1000", visibleEggs === 0 ? "border-red-500/80 text-red-400" : "border-amber-400/50 text-amber-200", introPhase < 3 ? "opacity-0" : "opacity-100")}>
+                <span>{visibleEggs.toLocaleString()}</span>
+                <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]" />
+              </div>
+            </div>}
 
-            <div className="min-h-[2rem] h-8 w-full px-4 lg:px-0 pointer-events-none">
+            <div className="min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none">
               <div ref={capturedPiecesViewportRef} className="h-full w-full overflow-hidden">
                 <div
                   ref={capturedPiecesContentRef}
@@ -2138,7 +2390,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     {capturedPieces.black.map((p, i) => (
                       <div
                         key={i}
-                        className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 opacity-90 p-0.5"
+                        className="w-6 h-6 shrink-0 opacity-90 p-0.5"
                         dangerouslySetInnerHTML={{
                           __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
                         }}
@@ -2149,7 +2401,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     {capturedPieces.white.map((p, i) => (
                       <div
                         key={i}
-                        className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 opacity-90 p-0.5"
+                        className="w-6 h-6 shrink-0 opacity-90 p-0.5"
                         style={{
                           "--city-neon": city.color,
                           filter:
@@ -2168,7 +2420,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
             <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20 pointer-events-none">
               {/* Board Area - Moved to Top */}
               <div
-                className="w-[min(90vw,calc(100dvh-270px),512px)] aspect-square relative z-20 mb-2 sm:mb-4 pointer-events-auto"
+                className="w-[var(--game-board-width)] aspect-square relative z-20 mb-2 sm:mb-4 pointer-events-auto"
                 ref={boardAreaRef}
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -2178,14 +2430,20 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
               >
                   <ChessgroundBoard 
                   game={game} 
+                  undoAnimationKey={undoAnimationKey}
                   orientation={boardOrientation}
                   onMove={handlePlayerMove} 
+                  armedPower={armedPower}
+                  onPowerTarget={targetPower}
+                  matchPowers={matchPowers}
+                  isMoveAllowed={move => permitsPowerMove(move, matchPowersRef.current, game.history().length + 1)}
                   cityColor={city.color} 
                   isThinking={isThinking} 
                   synthSelectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
                   activeSquares={music.enabled ? music.activeSquares : activeSquares}
                   onPieceHold={music.enabled && music.engineActive ? music.audition : undefined}
-                  onPieceRelease={music.enabled && music.engineActive ? music.endAudition : undefined}
+                  onPieceRelease={music.enabled && music.engineActive ? music.releaseAudition : undefined}
+                  onPieceCancel={music.enabled && music.engineActive ? music.endAudition : undefined}
                   musicPulseMonitor={music.enabled && music.engineActive ? music.pulseMonitor : undefined}
                   analysisArrows={analysisArrows}
                   rankedMoveMark={rankedMoveMark}
@@ -2201,9 +2459,9 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     }
                   }}
                   onPieceDoubleTap={(square) => {
-                    if (introPhase !== 3 || game.isGameOver()) return
+                    if (introPhase !== 3 || game.turn() !== "w" || game.isGameOver()) return
                     const piece = game.get(square)
-                    if (piece?.color !== 'w') return
+                    if (!piece) return
                     let turnedOn = false
                     if (music.enabled) {
                       turnedOn = music.togglePiece(square)
@@ -2221,11 +2479,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                       setIsPlaying(true)
                       void togglePlayback()
                     }
-                    if (!knobsOn && !knobsManuallyClosedRef.current) {
+                    if (panelsFollowPlayerTurn && !knobsOn && !knobsManuallyClosedRef.current) {
                       setKnobsOn(true)
                       setActiveWidgetOrder(current => [...current.filter(id => id !== 'knobs'), 'knobs'])
-                      if (isMobile) setMobileControlsOpen(true)
-                    }
+                                  }
                   }}
                   onDragOverSquare={(from, to) => {
                     if (music.enabled) {
@@ -2244,7 +2501,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                     }
                   }}
                 />
-                {stockfishDebugOn && introPhase === 3 && <StockfishDebugOverlay
+                {stockfishDebugOn && codeBackdropOn && introPhase === 3 && <StockfishDebugOverlay
                   trace={stockfishTrace}
                   analysis={displayedAnalysis}
                   onClose={toggleStockfishDebug}
@@ -2255,9 +2512,27 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 />}
               </div>
 
+              <div className={cn(
+                  "relative z-50 mb-1 grid w-[var(--game-board-width)] grid-cols-[1fr_auto_1fr] items-center gap-2 transition-opacity duration-1000 pointer-events-none",
+                  introPhase < 3 ? "opacity-0" : "opacity-100"
+                )}
+              >
+                <button ref={element => { powerButtonRefs.current.freeze = element }} type="button" disabled={game.turn() !== 'w' || game.isGameOver()} aria-label="Freeze: escolher uma casa, custa 3 ovos" aria-pressed={armedPower === 'freeze'} title="Freeze · 3 ovos · escolha uma casa" onClick={event => togglePowerTargeting('freeze', event)} onMouseEnter={() => showCostHint('freeze')} onPointerLeave={hideCostHint} onFocus={() => showCostHint('freeze')} onBlur={hideCostHint} className={cn("pointer-events-auto relative flex h-8 w-fit items-center gap-1 rounded-md border bg-black/55 px-2 font-mono text-[10px] uppercase tracking-wide text-cyan-100 transition-colors disabled:opacity-40", armedPower === 'freeze' ? 'border-cyan-300 bg-cyan-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-cyan-300/35 hover:bg-cyan-950/70')}><Snowflake className="h-4 w-4" />Freeze{costHint('freeze', 3)}</button>
+
+                <div
+                  className={cn(
+                    "text-center text-xs font-mono",
+                    (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse"
+                  )}
+                  style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
+                >{armedPower ? 'Choose a square' : gameStatus}</div>
+
+                <button ref={element => { powerButtonRefs.current.shield = element }} type="button" disabled={game.turn() !== 'w' || game.isGameOver()} aria-label="Shield: escolher uma casa, custa 3 ovos" aria-pressed={armedPower === 'shield'} title="Shield · 3 ovos · escolha uma casa" onClick={event => togglePowerTargeting('shield', event)} onMouseEnter={() => showCostHint('shield')} onPointerLeave={hideCostHint} onFocus={() => showCostHint('shield')} onBlur={hideCostHint} className={cn("pointer-events-auto relative ml-auto flex h-8 w-fit items-center gap-1 rounded-md border bg-black/55 px-2 font-mono text-[10px] uppercase tracking-wide text-sky-100 transition-colors disabled:opacity-40", armedPower === 'shield' ? 'border-sky-300 bg-sky-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-sky-300/35 hover:bg-sky-950/70')}><Shield className="h-4 w-4" />Shield{costHint('shield', 3)}</button>
+              </div>
+
               {/* Time Control Buttons - Moved Below Board */}
               <div className={cn(
-                  "grid w-[90vw] max-w-[512px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center mb-2 sm:mb-4 gap-1 relative z-50 transition-opacity duration-1000 pointer-events-none",
+                  "grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center mb-2 sm:mb-4 gap-1 relative z-50 transition-opacity duration-1000 pointer-events-none",
                   introPhase < 3 ? "opacity-0" : "opacity-100"
               )}>
                 <Button
@@ -2265,7 +2540,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   variant="ghost"
                   size="default"
                   disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
-                  onClick={event => spendEggForAction(event.currentTarget, 'best', 1, () => showAnalysisArrows("best"))}
+                  onClick={event => spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best"))}
                   onMouseEnter={() => { showCostHint('best'); playClosedAnalysisHat() }}
                   onPointerLeave={() => { hideCostHint(); playClosedAnalysisHat() }}
                   onFocus={() => showCostHint('best')}
@@ -2280,7 +2555,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   <Button
                     variant="ghost"
                     size="default"
-                    onClick={event => spendEggForAction(event.currentTarget, 'undo', 1, undoMove)}
+                    onClick={event => spendEggForAction(event.currentTarget, 1, undoMove)}
                     aria-label="Undo · costs 1 golden egg"
                     onMouseEnter={() => { showCostHint('undo'); playControlHoverKick(0.67) }}
                     onPointerLeave={hideCostHint}
@@ -2334,7 +2609,7 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                   variant="ghost"
                   size="default"
                   disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
-                  onClick={event => spendEggForAction(event.currentTarget, 'worst', 1, () => showAnalysisArrows("worst"))}
+                  onClick={event => spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst"))}
                   onMouseEnter={() => { showCostHint('worst'); playDrum('oh', 0.696) }}
                   onPointerLeave={() => { hideCostHint(); playClosedAnalysisHat() }}
                   onFocus={() => showCostHint('worst')}
@@ -2347,45 +2622,10 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
                 </Button>
               </div>
 
-              {/* Moves Ticker - Moved ABOVE Eval */}
-              <div 
-                  className="w-[90vw] max-w-[512px] h-6 flex items-center justify-normal mb-1.5 px-1 relative z-20 overflow-hidden pointer-events-auto"
-               >
-                   <div
-                      ref={movesTickerRef}
-                      className="flex items-center justify-start gap-3 text-xs font-mono whitespace-nowrap overflow-x-auto scrollbar-hide mask-fade-left w-full"
-                      style={{ textShadow: "1px 1px 1px black" }}
-                   >
-                       {moveHistory.map((move, i) => {
-                           // Use regular index
-                           return (
-                               <span key={i} className={cn(
-                                   i % 2 === 0 ? "text-white" : "text-muted-foreground"
-                               )}>
-                                   {i % 2 === 0 ? `${Math.floor(i/2) + 1}.` : ""} {move}
-                               </span>
-                           )
-                       })}
-                   </div>
-              </div>
-
-              {/* Evaluation bar, marker, and temporary move hints */}
-              <div className={cn(
-                  "w-[90vw] max-w-[512px] mb-2 sm:mb-6 transition-opacity duration-1000 pointer-events-none",
-                  introPhase < 3 ? "opacity-0" : "opacity-100"
-              )}>
-                <div className="h-2 bg-black/40 rounded-[12px] overflow-hidden relative border border-white/10 pointer-events-auto select-none" role="img" aria-label={`Avaliação da posição: ${evaluationError ? 'indisponível' : lastEvalScore === null ? 'em análise' : formatEvaluation(lastEvalScore, lastEvalMate)}`}>
-                  <div
-                    className={cn("absolute inset-y-0 left-0 bg-white ease-in-out", lastEvalScore === null ? "transition-none" : "transition-[width] duration-1000", thermometerDimmed ? "opacity-25" : "opacity-100")}
-                    style={{ width: `${whitePercent}%` }}
-                  />
-                  {isEvaluating && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-30">
-                      <Loader2 className="w-2 h-2 text-white animate-spin" />
-                    </div>
-                  )}
-                </div>
-              </div>
+              {isMobile && introPhase >= 3 && <div
+                data-mobile-widgets
+                className="flex w-[var(--game-board-width)] flex-col gap-5 pt-5 pointer-events-auto [&>[data-widget=piece]]:order-1 [&>[data-widget=mixer]]:order-2 [&>[data-widget=spectrum]]:order-3 [&>[data-widget=strudel]]:order-4 [&>[data-widget=board]]:order-5"
+              >{widgetsContent(true)}</div>}
             </div>
           </div>
 
@@ -2494,6 +2734,21 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
       <div className={cn("transition-opacity duration-1000", introPhase < 2 ? "opacity-0 pointer-events-none" : "opacity-100")}>
       {!isMobile && widgetsContent(false)}
       </div>
+      {!isMobile && introPhase >= 2 && <WidgetToggleLayer items={widgetToggleItems} onReady={markWidgetToggleLayerReady} />}
+
+      <div className={cn("fixed inset-x-0 bottom-0 z-[40] w-full pointer-events-none transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
+        <div aria-label="Histórico de jogadas" className="flex h-6 w-full items-center overflow-hidden bg-black/65 px-3 pointer-events-auto">
+          <div ref={movesTickerRef} className="flex w-full items-center justify-start gap-3 overflow-x-auto whitespace-nowrap font-mono text-xs scrollbar-hide" style={{ textShadow: "1px 1px 1px black" }}>
+            {moveHistory.map((move, i) => <span key={i} className={i % 2 === 0 ? "text-white" : "text-muted-foreground"}>
+              {i % 2 === 0 ? `${Math.floor(i / 2) + 1}.` : ""} {move}
+            </span>)}
+          </div>
+        </div>
+        <div className="relative h-2 w-full overflow-hidden border-t border-white/10 bg-black/40 select-none" role="img" aria-label={`Avaliação da posição: ${evaluationError ? 'indisponível' : lastEvalScore === null ? 'em análise' : formatEvaluation(lastEvalScore, lastEvalMate)}`}>
+          <div className={cn("absolute inset-y-0 left-0 bg-white ease-in-out", lastEvalScore === null ? "transition-none" : "transition-[width] duration-1000", thermometerDimmed ? "opacity-25" : "opacity-100")} style={{ width: `${whitePercent}%` }} />
+          {isEvaluating && <div className="absolute right-2 top-1/2 z-30 -translate-y-1/2"><Loader2 className="h-2 w-2 animate-spin text-white" /></div>}
+        </div>
+      </div>
 
       <Dialog open={gameplayTipOpen} onOpenChange={setGameplayTipOpen}>
         <DialogContent className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
@@ -2507,26 +2762,42 @@ export function ChessGame({ city, onBack }: ChessGameProps) {
         </DialogContent>
       </Dialog>
 
-      {isMobile && <Dialog open={mobileControlsOpen} onOpenChange={setMobileControlsOpen}>
-        <DialogContent className="z-[130] max-h-[88dvh] overflow-y-auto bg-black border-white/20 p-5 text-white">
-          <DialogHeader><DialogTitle>Parâmetros musicais</DialogTitle><DialogDescription>Selecione uma peça no tabuleiro para ajustar seu instrumento. Tom, escala e progressão afetam toda a banda.</DialogDescription></DialogHeader>
-          <div className="flex flex-col gap-3 [&>[data-widget=piece]]:order-first [&>[data-widget=spectrum]]:order-last">{widgetsContent(true)}</div>
+      <Dialog open={restartConfirmOpen} onOpenChange={setRestartConfirmOpen}>
+        <DialogContent className="z-[140] max-w-md border-white/20 bg-[#101713] p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-white">Deseja reiniciar a partida?</DialogTitle>
+            <DialogDescription className="pt-2 text-white/70">
+              O progresso atual da partida será perdido.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRestartConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={() => { setRestartConfirmOpen(false); resetGame() }} className="bg-[var(--city-neon)] text-black hover:opacity-90" style={{ "--city-neon": city.color } as React.CSSProperties}>Confirmar</Button>
+          </div>
         </DialogContent>
-      </Dialog>}
+      </Dialog>
+
+
 
       {/* Bottom Right Info & Version */}
       <div 
-        className="hidden sm:flex absolute bottom-3 right-3 z-30 pointer-events-auto items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
+        className="hidden sm:flex absolute bottom-9 right-3 z-30 pointer-events-auto items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
       >
         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
         <VersionChangelog />
       </div>
       <div 
-        className="flex sm:hidden absolute bottom-1.5 right-2 z-30 pointer-events-auto items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
+        className="flex sm:hidden absolute bottom-9 right-2 z-30 pointer-events-auto items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
       >
         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
         <VersionChangelog />
       </div>
+
+      {armedPower && createPortal(
+        <div ref={powerCursorRef} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 z-[9999] flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/60 bg-black/75 text-cyan-100 opacity-0 shadow-[0_0_12px_rgba(165,243,252,.55)]" style={{ transform: 'translate3d(-100px, -100px, 0)' }}>
+          {armedPower === 'freeze' ? <Snowflake className="h-[18px] w-[18px]" /> : <Shield className="h-[18px] w-[18px]" />}
+        </div>, document.body,
+      )}
 
     </div>
   )

@@ -1,28 +1,41 @@
 'use client'
-import {useState,useSyncExternalStore} from 'react'
-import type {CreativeSession} from '@/lib/music/creative'
-import type {MusicMonitor} from '@/lib/music/monitor'
-import {beatsPerBar} from '@/lib/music/meter'
-import {performancePosition} from '@/lib/music/performance'
-import {HelpLabel,InfoTip} from './info-tip'
-import {CompactNumberInput} from './compact-number-input'
-export function MusicPerformanceControls({instrument,onChange,monitor,override}:{instrument:CreativeSession['instruments'][string];onChange:(v:Partial<CreativeSession['instruments'][string]>)=>void;monitor:MusicMonitor;override?:number}){
- const [selected,setSelected]=useState(0),frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot),plan=instrument.performance
- const following=instrument.selectedVariation===undefined&&override===undefined
- const pos=plan?performancePosition(plan,frame.cycle,beatsPerBar(frame.transport?.meter)):null
- const index=Math.min(selected,(plan?.steps.length??1)-1),step=plan?.steps[index]
- const patch=(v:Partial<NonNullable<typeof step>>)=>plan&&onChange({performance:{...plan,steps:plan.steps.map((s,i)=>i===index?{...s,...v}:s)}})
- return <details open><summary>Fraseado e seções da peça<InfoTip label="Arranjo por peça">Cada bloco escolhe uma variação, duração em tempos, transposição cromática e presença. Desmarcado, segue a Timeline compartilhada A–H, visível em “Forma e variações · código avançado”. O título da variação ou uma regra do jogo pode assumir prioridade. A transposição cromática pode sair da escala.</InfoTip></summary>
- <label><input type="checkbox" checked={!!plan} onChange={e=>onChange({performance:e.target.checked?{restart:true,steps:[{beats:16,variation:0,transpose:0,active:true},{beats:12,variation:1,transpose:0,active:true},{beats:16,variation:2,transpose:0,active:true},{beats:4,variation:3,transpose:0,active:true}]}:undefined})}/>Arranjo próprio</label>
- {plan&&step&&<>
- <div style={{fontSize:11,minHeight:24}} aria-label="Estado do arranjo da peça">{!following?`Variação ${String.fromCharCode(65+(override??instrument.selectedVariation??0))} fixa${override!==undefined?' pela regra':''}`:frame.running&&pos?`Seção ${pos.index+1}/${plan.steps.length} · ${pos.step.active?String.fromCharCode(65+pos.step.variation):'pausa'} · ${Math.round(pos.progress*100)}%`:'Arranjo pausado'}</div>
- <div style={{display:'flex',gap:2,margin:'8px 0'}}>{plan.steps.map((s,i)=><button key={i} onClick={()=>setSelected(i)} aria-label={`Editar seção ${i+1}`} aria-pressed={i===index} style={{flex:s.beats,padding:'6px 2px',minWidth:16,background:frame.running&&following&&pos?.index===i?'#75904f':s.active?'#263c30':'#141b16',borderColor:i===index?'#ebdca0':'#405246',fontSize:10}}>{s.active?String.fromCharCode(65+s.variation):'—'}<br/>{s.beats}</button>)}</div>
- <label><HelpLabel label="Tempos da seção">O número de tempos por compasso acompanha o compasso escolhido no kit. Use 3, 5 ou 7 para agrupamentos assimétricos; 0,5 para meio tempo.</HelpLabel><CompactNumberInput ariaLabel="Tempos da seção" min={.25} max={64} step={.25} value={step.beats} onChange={n=>{if(plan.steps.reduce((v,s,i)=>v+(i===index?n:s.beats),0)<=512)patch({beats:n})}}/></label>
- <label>Variação da seção<select value={step.variation} onChange={e=>patch({variation:Number(e.target.value)})}>{Array.from({length:8},(_,i)=><option key={i} value={i}>{String.fromCharCode(65+i)}</option>)}</select></label>
- <label><HelpLabel label="Transposição da seção">Deslocamento cromático, em semitons. Atua somente nas vozes afinadas. Zero conserva a escala da base.</HelpLabel><CompactNumberInput ariaLabel="Transposição da seção" min={-24} max={24} value={step.transpose} onChange={n=>{if(Number.isInteger(n))patch({transpose:n})}}/></label>
- <label><input type="checkbox" checked={step.active} onChange={e=>patch({active:e.target.checked})}/>Peça presente nesta seção</label>
- <label><input type="checkbox" checked={plan.restart} onChange={e=>onChange({performance:{...plan,restart:e.target.checked}})}/>Reiniciar frase na entrada da seção<InfoTip label="Reinício da frase">Marcado segue pickRestart: a frase começa ao entrar no bloco. Desmarcado mantém a fase global do loop, permitindo comprimentos independentes.</InfoTip></label>
- <div><button disabled={plan.steps.length>=24||plan.steps.reduce((n,s)=>n+s.beats,0)+step.beats>512} onClick={()=>onChange({performance:{...plan,steps:[...plan.steps,{...step}]}})}>Adicionar seção</button><button disabled={plan.steps.length<=1} onClick={()=>onChange({performance:{...plan,steps:plan.steps.filter((_,i)=>i!==index)}})}>Remover seção</button></div>
- </>}
- </details>
+import { useState, useSyncExternalStore } from 'react'
+import type { CreativeSession } from '@/lib/music/creative'
+import type { MusicMonitor } from '@/lib/music/monitor'
+import { beatsPerBar } from '@/lib/music/meter'
+import { arrangementPosition, pieceSection, type Arrangement, type PieceArrangement } from '@/lib/music/arrangement'
+import { HelpLabel, InfoTip } from './info-tip'
+import { CompactNumberInput } from './compact-number-input'
+import styles from './creative-studio.module.css'
+
+type CreativeInstrument = CreativeSession['instruments'][string]
+
+export function MusicPerformanceControls({ instrument, arrangement, onChange, monitor, override }: {
+  instrument: CreativeInstrument; arrangement: Arrangement; onChange: (patch: Partial<CreativeInstrument>) => void; monitor: MusicMonitor; override?: number
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
+  const position = arrangementPosition(arrangement, frame.cycle, beatsPerBar(frame.transport?.meter))
+  const index = Math.max(0, arrangement.sections.findIndex(section => section.id === selectedId))
+  const section = arrangement.sections[index]
+  const step = pieceSection(instrument, arrangement, index)
+  const currentStep = pieceSection(instrument, arrangement, position.index)
+  const count = instrument.pianoRolls.length
+  const fixed = override ?? instrument.selectedVariation
+  const variation = (fixed ?? currentStep.variation) % count
+  const patch = (update: Partial<PieceArrangement['sections'][string]>, restart = instrument.arrangement?.restart ?? true) => {
+    const sections = Object.fromEntries(arrangement.sections.map((item, sectionIndex) => [item.id, pieceSection(instrument, arrangement, sectionIndex)]))
+    onChange({ arrangement: { restart, sections: { ...sections, [section.id]: { ...step, ...update } } } })
+  }
+  return <details open className={styles.pieceArrangement}>
+    <summary>Arranjo desta peça<InfoTip label="Arranjo desta peça">Os nomes, durações e a ordem vêm do Arranjo global acima do tabuleiro. Aqui você escolhe somente a variação MIDI, a transposição e a presença desta peça em cada seção. Pins e regras substituem somente a variação: presença, transposição e relógio global continuam valendo.</InfoTip></summary>
+    <div className={styles.arrangementStatus} aria-label="Estado do arranjo da peça">{frame.running ? 'Em execução' : 'Parado'} · {position.section.label} · {currentStep.active ? `Variação ${String.fromCharCode(65 + variation)}` : 'Pausa da peça'} · {Math.round(position.progress * 100)}%</div>
+    {fixed !== undefined && <p className={styles.hint}>Variação {String.fromCharCode(65 + variation)} {override !== undefined ? 'forçada pela regra' : 'fixada na aba'}; somente a variação muda. Presença, transposição e duração seguem a seção global.</p>}
+    <label>Seção global para esta peça<select aria-label="Seção global para esta peça" value={section.id} onChange={event => setSelectedId(event.target.value)}>{arrangement.sections.map(item => <option key={item.id} value={item.id}>{item.label} · {item.beats} tempos</option>)}</select></label>
+    <div className={styles.pieceSectionIdentity} aria-label="Nome e duração da seção global"><span>{section.label}</span><span>{section.beats} tempos · editados no Arranjo global</span></div>
+    <label>Variação MIDI da peça<select aria-label="Variação MIDI da peça nesta seção" value={step.variation % count} onChange={event => patch({ variation: Number(event.target.value) })}>{instrument.pianoRolls.map((_, bank) => <option key={bank} value={bank}>{String.fromCharCode(65 + bank)}</option>)}</select></label>
+    <label><HelpLabel label="Transposição da peça nesta seção">Deslocamento cromático de −24 a +24 semitons, somente nas vozes afinadas. Zero conserva a escala base; a transposição pode sair da escala e continua valendo com uma variação fixada ou forçada.</HelpLabel><CompactNumberInput ariaLabel="Transposição da peça nesta seção" min={-24} max={24} value={step.transpose} onChange={transpose => { if (Number.isInteger(transpose)) patch({ transpose }) }} /></label>
+    <label><input type="checkbox" checked={step.active} onChange={event => patch({ active: event.target.checked })} />Peça presente nesta seção global</label>
+    <label><input type="checkbox" checked={instrument.arrangement?.restart ?? true} onChange={event => patch({}, event.target.checked)} />Reiniciar MIDI na entrada da seção global<InfoTip label="Reinício do MIDI">Marcado, o loop desta peça começa na entrada da seção global. Desmarcado, conserva sua fase global. A duração da seção e a presença/transposição continuam compartilhando o mesmo relógio, inclusive com pins e regras.</InfoTip></label>
+  </details>
 }

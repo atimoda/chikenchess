@@ -1,137 +1,509 @@
 // Northern Jazz Breaks — original ChickenChess arrangement inspired by Get a Move On!
-// Samples are original synthesis. Serve /samples from this project when running this score.
-// 16 white voices; 123 BPM; G Dorian; A4 / B6 / C3 / D6 bars.
+// Exported from the schema-7 MIDI preset and global arrangement. Serve /samples from this project when running this score.
 // Manchester 1999 · Northern Jazz Breaks · Strudel
 // Degrees follow the shared scale; each piece keeps its instrument.
 // Meter 4/4; BPM counts quarter pulses.
 setcps(123 / 60 / 4)
-samples({"cc_chicken_jazz_v1_kick_0_hit":"/samples/chicken-jazz-v1/kick-0.wav"})
-samples({"cc_chicken_jazz_v1_snare_0_hit":"/samples/chicken-jazz-v1/snare-0.wav"})
-samples({"cc_chicken_electro_v1_hat_1_hit":"/samples/chicken-electro-v1/hat-1.wav"})
-samples({"cc_chicken_jazz_v1_snare_1_hit":"/samples/chicken-jazz-v1/snare-1.wav"})
-samples({"cc_chicken_drums_v1_ride_0_hit":"/samples/chicken-drums-v1/ride-0.wav"})
-samples({"cc_chicken_electro_v1_open_hat_0_hit":"/samples/chicken-electro-v1/open-hat-0.wav"})
+samples({"cc_chicken_percussion_v1_kick_0_hit":"/samples/chicken-percussion-v1/kick-0.wav"})
+samples({"cc_chicken_percussion_v1_snare_0_hit":"/samples/chicken-percussion-v1/snare-0.wav"})
+samples({"cc_chicken_percussion_v1_hat_1_hit":"/samples/chicken-percussion-v1/hat-1.wav"})
+samples({"cc_chicken_percussion_v1_ghost_snare_1_hit":"/samples/chicken-percussion-v1/ghost-snare-1.wav"})
+samples({"cc_chicken_percussion_v1_ride_0_hit":"/samples/chicken-percussion-v1/ride-0.wav"})
+samples({"cc_chicken_percussion_v1_open_hat_0_hit":"/samples/chicken-percussion-v1/open-hat-0.wav"})
 samples({"cc_chicken_electro_v1_rim_0_hit":"/samples/chicken-electro-v1/rim-0.wav"})
-samples({"cc_chicken_electro_v1_shaker_0_hit":"/samples/chicken-electro-v1/shaker-0.wav"})
-samples({"cc_chicken_jazz_v1_baritone_0_pitched":{"c3":"/samples/chicken-jazz-v1/baritone-0.wav"}})
-samples({"cc_chicken_jazz_v1_pluck_0_pitched":{"c2":"/samples/chicken-jazz-v1/pluck-0.wav"}})
+samples({"cc_chicken_percussion_v1_shaker_0_hit":"/samples/chicken-percussion-v1/shaker-0.wav"})
+samples({"cc_chicken_band_v1_tenor_sax_1_pitched":{"c4":"/samples/chicken-band-v1/tenor-sax-1-c3.wav","e4":"/samples/chicken-band-v1/tenor-sax-1-e3.wav","f#4":"/samples/chicken-band-v1/tenor-sax-1-f%233.wav","c5":"/samples/chicken-band-v1/tenor-sax-1-c4.wav","e5":"/samples/chicken-band-v1/tenor-sax-1-e4.wav","f#5":"/samples/chicken-band-v1/tenor-sax-1-f%234.wav"}})
+samples({"cc_chicken_guitars_v1_bass_0_pitched":{"c1":"/samples/chicken-guitars-v1/bass-0-c2.wav","e1":"/samples/chicken-guitars-v1/bass-0-e2.wav","g1":"/samples/chicken-guitars-v1/bass-0-g2.wav","c2":"/samples/chicken-guitars-v1/bass-0-c3.wav"}})
 samples({"cc_chicken_keys_v1_rhodes_0_pitched":{"c4":"/samples/chicken-keys-v1/rhodes-0.wav"}})
-samples({"cc_chicken_jazz_v1_reed_0_pitched":{"c4":"/samples/chicken-jazz-v1/reed-0.wav"}})
+samples({"cc_chicken_band_v1_tenor_sax_0_pitched":{"c4":"/samples/chicken-band-v1/tenor-sax-0-c3.wav","e4":"/samples/chicken-band-v1/tenor-sax-0-e3.wav","f#4":"/samples/chicken-band-v1/tenor-sax-0-f%233.wav","c5":"/samples/chicken-band-v1/tenor-sax-0-c4.wav","e5":"/samples/chicken-band-v1/tenor-sax-0-e4.wav","f#5":"/samples/chicken-band-v1/tenor-sax-0-f%234.wav"}})
 samples({"cc_chicken_jazz_v1_formant_0_pitched":{"c4":"/samples/chicken-jazz-v1/formant-0.wav"}})
-samples({"cc_chicken_keys_v1_grand_0_pitched":{"c4":"/samples/chicken-keys-v1/grand-0.wav"}})
-samples({"cc_chicken_jazz_v1_brass_0_pitched":{"c4":"/samples/chicken-jazz-v1/brass-0.wav"}})
+samples({"cc_chicken_band_v1_piano_0_pitched":{"c2":"/samples/chicken-band-v1/piano-0-c2.wav","c3":"/samples/chicken-band-v1/piano-0-c3.wav","c4":"/samples/chicken-band-v1/piano-0-c4.wav","c5":"/samples/chicken-band-v1/piano-0-c5.wav"}})
+samples({"cc_chicken_guitars_v1_bass_1_pitched":{"c1":"/samples/chicken-guitars-v1/bass-1-c2.wav","e1":"/samples/chicken-guitars-v1/bass-1-e2.wav","g1":"/samples/chicken-guitars-v1/bass-1-g2.wav","c2":"/samples/chicken-guitars-v1/bass-1-c3.wav"}})
+samples({"cc_chicken_samba_reggae_v2_trompete_0_pitched":{"g3":"/samples/chicken-samba-reggae-v2/trompete-g3-0.wav","f4":"/samples/chicken-samba-reggae-v2/trompete-f4-0.wav","c5":"/samples/chicken-samba-reggae-v2/trompete-c5-0.wav"}})
 stack(
   // w:a2 · Bumbo seco
   (() => {
-    const part0 = n("0").struct("x ~ [x@5 ~@4] [~@5 x@4]").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = n("0").struct("x [~@5 x@4] x ~").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part2 = n("0").struct("x ~ ~ ~").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("x ~ [x@5 ~@4] [~@5 x@4]").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, part2, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.361111111111").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part2 = n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_percussion_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.361111111111").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part4 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.361111111111").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_kick_0_hit").speed(1).gain(0.52).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.29).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, part2, part3, part4, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(0),
   // w:b2 · Caixa breaks
   (() => {
-    const part0 = n("0").struct("~ x ~ x").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = n("0").struct("~ x ~ x").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part2 = n("0").struct("~ x ~ x").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("~ x ~ [x@5 x@4]").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, part2, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = stack(
+n("~@0.25 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+n("~@0.25 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part2 = stack(
+n("~@0.25 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+n("~@0.25 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part4 = n("~@0.25 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_percussion_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("~@0.25 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.6875 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_snare_0_hit").speed(1).gain(0.34).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.33285714285714285).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, part2, part3, part4, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(1),
   // w:c2 · Chimbal longo-curto
   (() => {
-    const part0 = n("0").struct("[x@5 x@4]*4").velocity("1 .5 .75 .45 1 .5 .7 .4").s("cc_chicken_electro_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = n("0").struct("[x@5 x@4]*4").velocity("1 .5 .75 .45 1 .5 .7 .4").s("cc_chicken_electro_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part2 = n("0").struct("[~@5 x@4]*4").velocity("1 .5 .75 .45 1 .5 .7 .4").s("cc_chicken_electro_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("[x@5 x@4]*4").velocity("1 .5 .75 .45 1 .5 .7 .4").s("cc_chicken_electro_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, part2, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = stack(
+n("0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.25 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.611111111111").velocity(0.75).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.111111111111").velocity(0.7).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.45).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+n("0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.25 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.611111111111").velocity(0.75).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.111111111111").velocity(0.7).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.45).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part2 = stack(
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.45).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+n("0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.25 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.611111111111").velocity(0.75).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.111111111111").velocity(0.7).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.45).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part4 = n("0@0.25 ~@0.25 0@0.25 ~@0.25 0@0.25 ~@0.25 0@0.25 ~@0.25 0@0.25 ~@0.25 0@0.25 ~@0.25 0@0.25 ~@0.25 0@0.25 ~@0.25").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_percussion_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111 0@0.138888888889 ~@0.361111111111").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.25 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.5").velocity(0.75).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_hat_1_hit").speed(1).gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.3757142857142857).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, part2, part3, part4, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(0),
   // w:d2 · Caixa fantasma
   (() => {
-    const part0 = n("0").struct("~ ~ [~ ~ ~ x] ~").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_snare_1_hit").speed(1).gain(0.13).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.41857142857142854).room(0.035).delay(0).delaytime(0.36585365853658536).penv(mini("0")).patt(mini(".09")).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = n("0").struct("[~ ~ ~ x] ~ [~ ~ ~ x] ~").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_snare_1_hit").speed(1).gain(0.13).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.41857142857142854).room(0.035).delay(0).delaytime(0.36585365853658536).penv(mini("0")).patt(mini(".09")).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("~ ~ [~ ~ ~ x] ~").velocity("1 .85 .9 .8").s("cc_chicken_jazz_v1_snare_1_hit").speed(1).gain(0.13).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.41857142857142854).room(0.035).delay(0).delaytime(0.36585365853658536).penv(mini("<0 0 0 -2>")).patt(mini(".09")).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = n("~@0.6875 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_percussion_v1_ghost_snare_1_hit").speed(1).gain(0.13).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.41857142857142854).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+n("~@0.1875 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.6875 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_ghost_snare_1_hit").speed(1).gain(0.13).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.41857142857142854).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+n("~@0.6875 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@1.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@3.6875 0@0.0625 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_ghost_snare_1_hit").speed(1).gain(0.13).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.41857142857142854).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("~@0.125 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.8125").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.6875 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.9375 0@0.0625 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_ghost_snare_1_hit").speed(1).gain(0.13).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.41857142857142854).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, silence, part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(1),
   // w:e2 · Ride pontuado
   (() => {
-    const part0 = n("0").struct("x ~ x ~").velocity("1 .85 .9 .8").s("cc_chicken_drums_v1_ride_0_hit").speed(1).gain(0.15).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.46142857142857147).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = n("0").struct("x [~@5 x@4] x ~").velocity("1 .85 .9 .8").s("cc_chicken_drums_v1_ride_0_hit").speed(1).gain(0.15).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.46142857142857147).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("x ~ [x@5 x@4] ~").velocity("1 .85 .9 .8").s("cc_chicken_drums_v1_ride_0_hit").speed(1).gain(0.15).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.46142857142857147).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_ride_0_hit").speed(1).gain(0.15).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.46142857142857147).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_ride_0_hit").speed(1).gain(0.15).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.46142857142857147).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111 ~@0.75 0@0.138888888889 0@0.111111111111 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_ride_0_hit").speed(1).gain(0.15).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.46142857142857147).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.5 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.75 0@0.25 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_ride_0_hit").speed(1).gain(0.15).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.46142857142857147).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, silence, part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(0),
   // w:f2 · Chimbal de resposta
   (() => {
-    const part0 = n("0").struct("~ ~ ~ [~@5 x@4]").velocity("1 .85 .9 .8").s("cc_chicken_electro_v1_open_hat_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5042857142857142).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = n("0").struct("~ [~@5 x@4] ~ ~").velocity("1 .85 .9 .8").s("cc_chicken_electro_v1_open_hat_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5042857142857142).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("~ ~ ~ [~@5 x@4]").velocity("1 .85 .9 .8").s("cc_chicken_electro_v1_open_hat_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5042857142857142).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_percussion_v1_open_hat_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5042857142857142).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_percussion_v1_open_hat_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5042857142857142).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_percussion_v1_open_hat_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5042857142857142).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_open_hat_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5042857142857142).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, silence, part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(1),
   // w:g2 · Rim de madeira
   (() => {
-    const part0 = n("0").struct("~ [~@5 x@4] ~ ~").velocity("1 .85 .9 .8").s("cc_chicken_electro_v1_rim_0_hit").speed(1).gain(0.19).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5471428571428572).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("[~@5 x@4] ~ ~ ~").velocity("1 .85 .9 .8").s("cc_chicken_electro_v1_rim_0_hit").speed(1).gain(0.19).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5471428571428572).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, silence, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_electro_v1_rim_0_hit").speed(1).gain(0.19).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5471428571428572).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = n("~@0.138888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_electro_v1_rim_0_hit").speed(1).gain(0.19).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5471428571428572).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.75 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_electro_v1_rim_0_hit").speed(1).gain(0.19).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5471428571428572).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, silence, silence, part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(0),
   // w:h2 · Shaker sincopado
   (() => {
-    const part0 = n("0").struct("[~@5 x@4]*4").velocity("1 .5 .75 .45 1 .5 .7 .4").s("cc_chicken_electro_v1_shaker_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5900000000000001).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = n("0").struct("[~@5 x@4]*4").velocity("1 .5 .75 .45 1 .5 .7 .4").s("cc_chicken_electro_v1_shaker_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5900000000000001).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, silence, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
+    const part0 = stack(
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.45).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_shaker_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5900000000000001).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.388888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.5").velocity(0.45).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_shaker_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5900000000000001).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+n("~@0.138888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.388888888889 0@0.111111111111 ~@0.25").velocity(0.5).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.25 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.861111111111 0@0.138888888889 ~@0.611111111111").velocity(0.75).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+n("~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111 ~@0.888888888889 0@0.111111111111").velocity(0.4).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_percussion_v1_shaker_0_hit").speed(1).gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.9).lpf(12000).hpf(0).pan(0.5900000000000001).room(0.035).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, silence, silence, part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
   })().postgain(0.5692099788303083).orbit(1),
-  // w:a1 · Barítono · apoio
-  (() => {
-    const part0 = note("55 ~ [~@5 62@4] ~").s("cc_chicken_jazz_v1_baritone_0_pitched").gain(0.27).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.29).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .78 .9 .72").mul(0.27)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = note("60 ~ [64@5 67@4] ~").s("cc_chicken_jazz_v1_baritone_0_pitched").gain(0.27).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.29).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.27)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("55 [~@5 58@4] 62 ~").s("cc_chicken_jazz_v1_baritone_0_pitched").gain(0.27).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.29).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.27)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(0),
+  // w:a1 · Sax tenor · apoio grave
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part0 = stack(
+note("55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.638888888889 62@0.111111111111 ~@0.888888888889 62@0.111111111111 ~@0.888888888889 62@0.111111111111 ~@0.888888888889 62@0.111111111111 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_tenor_sax_1_pitched").gain(0.27).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.29).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+note("55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 58@0.138888888889 62@0.111111111111 ~@0.75 58@0.138888888889 62@0.111111111111 ~@0.75 58@0.138888888889 62@0.111111111111 ~@0.75 58@0.138888888889 62@0.111111111111 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_tenor_sax_1_pitched").gain(0.27).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.29).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+note("55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.388888888889 58@0.111111111111 ~@0.888888888889 58@0.111111111111 ~@0.888888888889 58@0.111111111111 ~@0.888888888889 58@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 62@0.25 ~@0.75 62@0.25 ~@0.75 62@0.25 ~@0.75 62@0.25 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_tenor_sax_1_pitched").gain(0.27).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.29).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("55@0.138888888889 ~@0.861111111111 55@0.138888888889 ~@0.861111111111 55@0.138888888889 ~@0.861111111111 55@0.138888888889 ~@0.861111111111").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.25 58@0.138888888889 62@0.111111111111 ~@0.75 58@0.138888888889 62@0.111111111111 ~@0.75 58@0.138888888889 62@0.111111111111 ~@0.75 58@0.138888888889 62@0.111111111111 ~@0.5").velocity(0.82).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25 ~@0.75 55@0.25").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_tenor_sax_1_pitched").gain(0.27).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.29).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, silence, part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"55000000":[55],"62000000":[62]}]},{"beats":24,"transpose":0,"notes":[{"55000000":[60],"58000000":[64],"62000000":[67]}]},{"beats":12,"transpose":2,"notes":[{"55000000":[62]}]},{"beats":24,"transpose":0,"notes":[{"55000000":[55],"58000000":[58],"62000000":[62]}]},{"beats":16,"transpose":0,"notes":[{"55000000":[55],"58000000":[58]}]},{"beats":32,"transpose":0,"notes":[{"55000000":[60],"58000000":[64],"62000000":[67]}]}]}).room((() => {const r=rand.seed(10436).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":true}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(0),
   // w:b1 · Baixo · pergunta
-  (() => {
-    const part0 = note("[43@5 ~@4] ~ [43@5 50@4] [~@5 53@4]").s("cc_chicken_jazz_v1_pluck_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .78 .9 .72").mul(0.42)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = note("[48@5 ~@4] [~@5 52@4] 55 [~@5 46@4]").s("cc_chicken_jazz_v1_pluck_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.42)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part2 = note("50 ~ ~ [57@5 ~@4]").s("cc_chicken_jazz_v1_pluck_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini(".85 .65 .8 .65").mul(0.42)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("[43@5 43@4] ~ [50@5 48@4] [~@5 41@4]").s("cc_chicken_jazz_v1_pluck_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.42)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, part2.transpose(2), part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(1),
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part0 = stack(
+note("43@0.138888888889 ~@0.861111111111 43@0.138888888889 ~@0.861111111111 43@0.138888888889 ~@0.861111111111 43@0.138888888889 ~@0.861111111111").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 43@0.138888888889 50@0.111111111111 ~@0.75 43@0.138888888889 50@0.111111111111 ~@0.75 43@0.138888888889 50@0.111111111111 ~@0.75 43@0.138888888889 50@0.111111111111 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.888888888889 53@0.111111111111 ~@0.888888888889 53@0.111111111111 ~@0.888888888889 53@0.111111111111 ~@0.888888888889 53@0.111111111111").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_guitars_v1_bass_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+note("43@0.138888888889 ~@0.861111111111 43@0.138888888889 ~@0.861111111111 43@0.138888888889 ~@0.861111111111 43@0.138888888889 ~@0.861111111111").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.388888888889 46@0.111111111111 ~@0.888888888889 46@0.111111111111 ~@0.888888888889 46@0.111111111111 ~@0.888888888889 46@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 50@0.25 ~@0.75 50@0.25 ~@0.75 50@0.25 ~@0.75 50@0.25 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.888888888889 41@0.111111111111 ~@0.888888888889 41@0.111111111111 ~@0.888888888889 41@0.111111111111 ~@0.888888888889 41@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_guitars_v1_bass_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part2 = stack(
+note("43@0.25 ~@0.75 43@0.25 ~@0.75 43@0.25 ~@0.75 43@0.25 ~@0.75").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 50@0.138888888889 ~@0.861111111111 50@0.138888888889 ~@0.861111111111 50@0.138888888889 ~@0.861111111111 50@0.138888888889 ~@0.111111111111").velocity(0.65).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_guitars_v1_bass_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+note("43@0.138888888889 43@0.111111111111 ~@0.75 43@0.138888888889 43@0.111111111111 ~@0.75 43@0.138888888889 43@0.111111111111 ~@0.75 43@0.138888888889 43@0.111111111111 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 50@0.138888888889 48@0.111111111111 ~@0.75 50@0.138888888889 48@0.111111111111 ~@0.75 50@0.138888888889 48@0.111111111111 ~@0.75 50@0.138888888889 48@0.111111111111 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.888888888889 41@0.111111111111 ~@0.888888888889 41@0.111111111111 ~@0.888888888889 41@0.111111111111 ~@0.888888888889 41@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_guitars_v1_bass_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part4 = stack(
+note("43@0.25 ~@0.75 43@0.25 ~@0.75 43@0.25 ~@0.75 43@0.25 ~@0.75").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 46@0.138888888889 50@0.111111111111 ~@0.75 46@0.138888888889 50@0.111111111111 ~@0.75 46@0.138888888889 50@0.111111111111 ~@0.75 46@0.138888888889 50@0.111111111111 ~@0.25").velocity(0.75).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_guitars_v1_bass_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("43@0.138888888889 50@0.111111111111 ~@0.75 43@0.138888888889 50@0.111111111111 ~@0.75 43@0.138888888889 50@0.111111111111 ~@0.75 43@0.138888888889 50@0.111111111111 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 53@0.138888888889 50@0.111111111111 ~@0.75 53@0.138888888889 50@0.111111111111 ~@0.75 53@0.138888888889 50@0.111111111111 ~@0.75 53@0.138888888889 50@0.111111111111 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 46@0.138888888889 43@0.111111111111 ~@0.75 46@0.138888888889 43@0.111111111111 ~@0.75 46@0.138888888889 43@0.111111111111 ~@0.75 46@0.138888888889 43@0.111111111111").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_guitars_v1_bass_0_pitched").gain(0.42).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.33285714285714285).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, part2.transpose(2), part3, part4, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"43000000":[43],"50000000":[50],"53000000":[53]}]},{"beats":24,"transpose":0,"notes":[{"41000000":[46],"43000000":[48],"46000000":[52],"50000000":[55]}]},{"beats":12,"transpose":2,"notes":[{"43000000":[50],"50000000":[57]}]},{"beats":24,"transpose":0,"notes":[{"41000000":[41],"43000000":[43],"48000000":[48],"50000000":[50]}]},{"beats":16,"transpose":0,"notes":[{"43000000":[43],"46000000":[46],"50000000":[50]}]},{"beats":32,"transpose":0,"notes":[{"43000000":[48],"46000000":[52],"50000000":[55],"53000000":[58]}]}]}).room((() => {const r=rand.seed(10845).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":true}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(1),
   // w:c1 · Teclas · acordes curtos
-  (() => {
-    const part0 = note("~ [67,70,74] ~ ~").s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .78 .9 .72").mul(0.12)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = note("~ [67,72,76] ~ [67,72,76]").s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.12)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("~ [70,74,79] ~ [70,74,79]").s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.12)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pick([part0, part1, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(0),
-  // w:d1 · Palheta · motivo principal
-  (() => {
-    const part1 = note("[72@5 76@4] [79@5 82@4] [79@5 ~@4] [76@5 72@4]").s("cc_chicken_jazz_v1_reed_0_pitched").gain(0.31).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.41857142857142854).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.31)).penv(mini("0")).patt(mini(".09")).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("[67@5 70@4] [74@5 ~@4] [77@5 74@4] [70@5 65@4]").s("cc_chicken_jazz_v1_reed_0_pitched").gain(0.31).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.41857142857142854).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.31)).penv(mini("<0 0 0 -2>")).patt(mini(".09")).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([silence, part1, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(1),
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part0 = note("~@0.25 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.5").velocity(0.78).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = stack(
+note("~@0.25 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+note("~@0.25 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25 ~@0.75 77@0.25").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part4 = note("77@2 77@2").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("~@0.25 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.5").velocity(0.82).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.638888888889 77@0.111111111111 ~@0.888888888889 77@0.111111111111 ~@0.888888888889 77@0.111111111111 ~@0.888888888889 77@0.111111111111 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_keys_v1_rhodes_0_pitched").gain(0.12).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.3757142857142857).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pick([part0, part1, silence, part3, part4, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"67000000":[67,70,74],"70000000":[67,70,74],"77000000":[67,70,74]}]},{"beats":24,"transpose":0,"notes":[{"67000000":[67,72,76],"70000000":[67,72,76],"74000000":[67,72,76],"77000000":[67,72,76]}]},{"beats":12,"transpose":2,"notes":[{"67000000":[69,74,77],"70000000":[69,74,77],"74000000":[69,74,77]}]},{"beats":24,"transpose":0,"notes":[{"67000000":[70,74,79],"70000000":[70,74,79],"72000000":[70,74,79],"77000000":[70,74,79]}]},{"beats":16,"transpose":0,"notes":[{"67000000":[70,74,79],"70000000":[70,74,79],"77000000":[70,74,79]}]},{"beats":32,"transpose":0,"notes":[{"67000000":[72,76,79],"70000000":[72,76,79],"74000000":[72,76,79],"77000000":[72,76,79]}]}]}).room((() => {const r=rand.seed(11254).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":false}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(0),
+  // w:d1 · Sax tenor · motivo principal
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part1 = stack(
+note("67@0.138888888889 70@0.111111111111 ~@0.75 67@0.138888888889 70@0.111111111111 ~@0.75 67@0.138888888889 70@0.111111111111 ~@0.75 67@0.138888888889 70@0.111111111111 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.25 74@0.138888888889 77@0.111111111111 ~@0.75 74@0.138888888889 77@0.111111111111 ~@0.75 74@0.138888888889 77@0.111111111111 ~@0.75 74@0.138888888889 77@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 74@0.138888888889 ~@0.861111111111 74@0.138888888889 ~@0.861111111111 74@0.138888888889 ~@0.861111111111 74@0.138888888889 ~@0.361111111111").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_tenor_sax_0_pitched").gain(0.31).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.41857142857142854).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+note("67@0.138888888889 70@0.111111111111 ~@0.75 67@0.138888888889 70@0.111111111111 ~@0.75 67@0.138888888889 70@0.111111111111 ~@1.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@3 67@0.138888888889 70@0.111111111111 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {"penv":-2,"pattack":0.15}})),
+note("~@0.25 74@0.138888888889 ~@0.861111111111 74@0.138888888889 ~@0.861111111111 74@0.138888888889 ~@1.611111111111").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@3.25 74@0.138888888889 ~@0.611111111111").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {"penv":-2,"pattack":0.15}})),
+note("~@0.5 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111 ~@1.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@3.5 77@0.138888888889 74@0.111111111111 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {"penv":-2,"pattack":0.15}})),
+note("~@0.75 70@0.138888888889 65@0.111111111111 ~@0.75 70@0.138888888889 65@0.111111111111 ~@0.75 70@0.138888888889 65@0.111111111111 ~@1").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@3.75 70@0.138888888889 65@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {"penv":-2,"pattack":0.15}}))
+).s("cc_chicken_band_v1_tenor_sax_0_pitched").gain(0.31).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.41857142857142854).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part4 = stack(
+note("~@0.25 70@0.138888888889 74@0.111111111111 ~@0.75 70@0.138888888889 74@0.111111111111 ~@0.75 70@0.138888888889 74@0.111111111111 ~@0.75 70@0.138888888889 74@0.111111111111 ~@0.5").velocity(0.65).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111").velocity(0.6).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_tenor_sax_0_pitched").gain(0.31).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.41857142857142854).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("74@0.138888888889 77@0.111111111111 ~@0.75 74@0.138888888889 77@0.111111111111 ~@0.75 74@0.138888888889 77@0.111111111111 ~@0.75 74@0.138888888889 77@0.111111111111 ~@0.75").velocity(1).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.25 79@0.138888888889 ~@0.861111111111 79@0.138888888889 ~@0.861111111111 79@0.138888888889 ~@0.861111111111 79@0.138888888889 ~@0.611111111111").velocity(0.82).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 74@0.138888888889 70@0.111111111111 ~@0.75 74@0.138888888889 70@0.111111111111 ~@0.75 74@0.138888888889 70@0.111111111111 ~@0.75 74@0.138888888889 70@0.111111111111 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.888888888889 67@0.111111111111 ~@0.888888888889 67@0.111111111111 ~@0.888888888889 67@0.111111111111 ~@0.888888888889 67@0.111111111111").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_tenor_sax_0_pitched").gain(0.31).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.41857142857142854).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([silence, part1, silence, part3, part4, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"67000000":[67],"70000000":[70],"72000000":[72],"74000000":[74]}]},{"beats":24,"transpose":0,"notes":[{"67000000":[72],"70000000":[76],"74000000":[79],"77000000":[82]}]},{"beats":12,"transpose":2,"notes":[{"67000000":[74],"70000000":[77],"74000000":[81]}]},{"beats":24,"transpose":0,"notes":[{"65000000":[65],"67000000":[67],"70000000":[70],"74000000":[74],"77000000":[77]}]},{"beats":16,"transpose":0,"notes":[{"67000000":[67],"70000000":[70],"74000000":[74]}]},{"beats":32,"transpose":0,"notes":[{"67000000":[72],"70000000":[76],"74000000":[79],"77000000":[82],"79000000":[84]}]}]}).room((() => {const r=rand.seed(11663).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":true}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(1),
   // w:e1 · Vogal · interjeições
-  (() => {
-    const part0 = note("~ ~ [~@5 67@4] ~").s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .78 .9 .72").mul(0.18)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part1 = note("~ ~ ~ [76@5 72@4]").s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.18)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part2 = note("~ 74 ~ ~").s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini(".85 .65 .8 .65").mul(0.18)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("~ [~@5 74@4] ~ [70@5 ~@4]").s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.18)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([part0, part1, part2.transpose(2), part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(0),
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part0 = note("~@0.638888888889 67@0.111111111111 ~@0.888888888889 67@0.111111111111 ~@0.888888888889 67@0.111111111111 ~@0.888888888889 67@0.111111111111 ~@0.25").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part1 = note("~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part2 = note("~@0.25 67@0.25 ~@0.75 67@0.25 ~@0.75 67@0.25 ~@0.75 67@0.25 ~@0.5").velocity(0.65).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+note("~@0.388888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 70@0.138888888889 ~@0.861111111111 70@0.138888888889 ~@0.861111111111 70@0.138888888889 ~@0.861111111111 70@0.138888888889 ~@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("~@0.25 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.5").velocity(0.82).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111 ~@0.75 70@0.138888888889 67@0.111111111111").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_jazz_v1_formant_0_pitched").gain(0.18).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.46142857142857147).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([part0, part1, part2.transpose(2), part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"67000000":[67]}]},{"beats":24,"transpose":0,"notes":[{"67000000":[72],"70000000":[76]}]},{"beats":12,"transpose":2,"notes":[{"67000000":[74]}]},{"beats":24,"transpose":0,"notes":[{"70000000":[70],"74000000":[74]}]},{"beats":16,"transpose":0,"notes":[{"67000000":[67]}]},{"beats":32,"transpose":0,"notes":[{"67000000":[72],"70000000":[76],"74000000":[79]}]}]}).room((() => {const r=rand.seed(12072).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":true}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(0),
   // w:f1 · Teclas · resposta
-  (() => {
-    const part1 = note("~ ~ [~@5 [67,72,76]@4] ~").s("cc_chicken_keys_v1_grand_0_pitched").gain(0.11).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.5042857142857142).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.11)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part2 = note("[69,74,77]/2").s("cc_chicken_keys_v1_grand_0_pitched").gain(0.11).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.5042857142857142).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini(".85 .65 .8 .65").mul(0.11)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("~ ~ ~ [70,74,79]").s("cc_chicken_keys_v1_grand_0_pitched").gain(0.11).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.5042857142857142).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.11)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pick([silence, part1, part2.transpose(2), part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(1),
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part1 = note("~@0.638888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_band_v1_piano_0_pitched").gain(0.11).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.5042857142857142).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part2 = note("74@2 74@2").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_band_v1_piano_0_pitched").gain(0.11).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.5042857142857142).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = note("~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_band_v1_piano_0_pitched").gain(0.11).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.5042857142857142).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("~@0.25 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.75 74@0.25 ~@0.5").velocity(0.82).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 70@0.25 ~@0.75 70@0.25 ~@0.75 70@0.25 ~@0.75 70@0.25").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_band_v1_piano_0_pitched").gain(0.11).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.4).lpf(3800).hpf(120).pan(0.5042857142857142).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pick([silence, part1, part2.transpose(2), part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"70000000":[67,70,74],"74000000":[67,70,74]}]},{"beats":24,"transpose":0,"notes":[{"70000000":[67,72,76],"74000000":[67,72,76]}]},{"beats":12,"transpose":2,"notes":[{"70000000":[69,74,77],"74000000":[69,74,77]}]},{"beats":24,"transpose":0,"notes":[{"70000000":[70,74,79],"74000000":[70,74,79]}]},{"beats":16,"transpose":0,"notes":[{"70000000":[70,74,79],"74000000":[70,74,79]}]},{"beats":32,"transpose":0,"notes":[{"67000000":[72,76,79],"70000000":[72,76,79],"74000000":[72,76,79]}]}]}).room((() => {const r=rand.seed(12481).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":false}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(1),
   // w:g1 · Baixo · resposta
-  (() => {
-    const part1 = note("~ [~@5 55@4] ~ ~").s("cc_chicken_jazz_v1_pluck_0_pitched").gain(0.29).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.5471428571428572).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.29)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("~ ~ [~@5 53@4] ~").s("cc_chicken_jazz_v1_pluck_0_pitched").gain(0.29).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.5471428571428572).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.29)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([silence, part1, silence, part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(0),
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part1 = note("~@0.388888888889 50@0.111111111111 ~@0.888888888889 50@0.111111111111 ~@0.888888888889 50@0.111111111111 ~@0.888888888889 50@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_guitars_v1_bass_1_pitched").gain(0.29).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.5471428571428572).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = note("~@0.638888888889 53@0.111111111111 ~@0.888888888889 53@0.111111111111 ~@0.888888888889 53@0.111111111111 ~@0.888888888889 53@0.111111111111 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_guitars_v1_bass_1_pitched").gain(0.29).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.5471428571428572).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("~@0.388888888889 50@0.111111111111 ~@0.888888888889 50@0.111111111111 ~@0.888888888889 50@0.111111111111 ~@0.888888888889 50@0.111111111111 ~@0.5").velocity(0.82).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 46@0.138888888889 43@0.111111111111 ~@0.75 46@0.138888888889 43@0.111111111111 ~@0.75 46@0.138888888889 43@0.111111111111 ~@0.75 46@0.138888888889 43@0.111111111111").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_guitars_v1_bass_1_pitched").gain(0.29).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(1400).hpf(25).pan(0.5471428571428572).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([silence, part1, silence, part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"50000000":[50]}]},{"beats":24,"transpose":0,"notes":[{"50000000":[55]}]},{"beats":12,"transpose":2,"notes":[{"43000000":[50]}]},{"beats":24,"transpose":0,"notes":[{"53000000":[53]}]},{"beats":16,"transpose":0,"notes":[{"46000000":[46]}]},{"beats":32,"transpose":0,"notes":[{"43000000":[48],"46000000":[52],"50000000":[55]}]}]}).room((() => {const r=rand.seed(12890).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":true}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(0),
   // w:h1 · Metal · resposta
-  (() => {
-    const part1 = note("~ [~@5 79@4] ~ [82@5 79@4]").s("cc_chicken_jazz_v1_brass_0_pitched").gain(0.23).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.5900000000000001).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.23)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part2 = note("~ ~ ~ 77").s("cc_chicken_jazz_v1_brass_0_pitched").gain(0.23).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.5900000000000001).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini(".85 .65 .8 .65").mul(0.23)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    const part3 = note("~ ~ [~@5 77@4] [74@5 70@4]").s("cc_chicken_jazz_v1_brass_0_pitched").gain(0.23).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.5900000000000001).room(0.08).delay(0).delaytime(0.36585365853658536).gain(mini("1 .85 .95 .8").mul(0.23)).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
-    return pickRestart([silence, part1, part2.transpose(2), part3], mini("[0@16 1@24 2@12 3@24]/19"));
-  })().postgain(0.5692099788303083).orbit(1)
+  (function harmonicPattern(pattern, config) {
+    const total = config.sections.reduce((sum, section) => sum + section.beats, 0);
+    const Pattern = pattern.constructor;
+    return new Pattern(state => pattern.query(state).flatMap((hap) => {
+        const time = Number(hap.whole?.begin ?? hap.part.begin) * config.pulses;
+        let local = ((time % total) + total) % total;
+        let section = config.sections[config.sections.length - 1];
+        for (const candidate of config.sections) {
+            if (local < candidate.beats) {
+                section = candidate;
+                break;
+            }
+            local -= candidate.beats;
+        }
+        const map = section.notes[Math.floor(local / config.pulses) % section.notes.length];
+        const key = String(Math.round((Number(hap.value.note) - section.transpose) * 1e6));
+        const notes = map[key];
+        return notes ? notes.map(note => hap.withValue((value) => ({ ...value, note: note + section.transpose }))) : [hap];
+    }));
+})((() => {
+    const part1 = stack(
+note("~@0.388888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.888888888889 74@0.111111111111 ~@0.5").velocity(0.85).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_samba_reggae_v2_trompete_0_pitched").gain(0.23).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.5900000000000001).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part2 = note("~@0.75 70@0.25 ~@0.75 70@0.25 ~@0.75 70@0.25 ~@0.75 70@0.25").velocity(0.65).slow(4).withValue(v => ({...v, ccOverrides: {}})).s("cc_chicken_samba_reggae_v2_trompete_0_pitched").gain(0.23).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.5900000000000001).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part3 = stack(
+note("~@0.638888888889 77@0.111111111111 ~@0.888888888889 77@0.111111111111 ~@0.888888888889 77@0.111111111111 ~@0.888888888889 77@0.111111111111 ~@0.25").velocity(0.95).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 74@0.138888888889 70@0.111111111111 ~@0.75 74@0.138888888889 70@0.111111111111 ~@0.75 74@0.138888888889 70@0.111111111111 ~@0.75 74@0.138888888889 70@0.111111111111").velocity(0.8).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_samba_reggae_v2_trompete_0_pitched").gain(0.23).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.5900000000000001).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    const part5 = stack(
+note("~@0.25 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111 ~@0.75 77@0.138888888889 74@0.111111111111 ~@0.5").velocity(0.82).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.5 70@0.138888888889 ~@0.861111111111 70@0.138888888889 ~@0.861111111111 70@0.138888888889 ~@0.861111111111 70@0.138888888889 ~@0.361111111111").velocity(0.9).slow(4).withValue(v => ({...v, ccOverrides: {}})),
+note("~@0.75 67@0.25 ~@0.75 67@0.25 ~@0.75 67@0.25 ~@0.75 67@0.25").velocity(0.72).slow(4).withValue(v => ({...v, ccOverrides: {}}))
+).s("cc_chicken_samba_reggae_v2_trompete_0_pitched").gain(0.23).attack(0.002).decay(0.16).sustain(1).release(0.04).clip(0.82).lpf(5500).hpf(120).pan(0.5900000000000001).room(0.08).delay(0).delaytime(0.36585365853658536).withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}));
+    return pickRestart([silence, part1, part2.transpose(2), part3, silence, part5], mini("[0@16 1@24 2@12 3@24 4@16 5@32]/31"));
+  })(),{"pulses":4,"sections":[{"beats":16,"transpose":0,"notes":[{"70000000":[70],"74000000":[74]}]},{"beats":24,"transpose":0,"notes":[{"74000000":[79],"77000000":[82]}]},{"beats":12,"transpose":2,"notes":[{"70000000":[77]}]},{"beats":24,"transpose":0,"notes":[{"70000000":[70],"74000000":[74],"77000000":[77]}]},{"beats":16,"transpose":0,"notes":[{"70000000":[70],"74000000":[74]}]},{"beats":32,"transpose":0,"notes":[{"67000000":[72],"70000000":[76],"74000000":[79],"77000000":[82]}]}]}).room((() => {const r=rand.seed(13299).range(0.06,0.1);return signal(time=>{const c={"total":31,"loops":9,"steps":[{"start":0,"end":4,"bars":4,"offset":0,"variation":0},{"start":4,"end":10,"bars":4,"offset":1,"variation":1},{"start":10,"end":13,"bars":4,"offset":3,"variation":2},{"start":13,"end":19,"bars":4,"offset":4,"variation":3},{"start":19,"end":23,"bars":4,"offset":6,"variation":4},{"start":23,"end":31,"bars":4,"offset":7,"variation":5}],"restart":true}; const t=Number(time); const local=((t%c.total)+c.total)%c.total; const step=c.steps.find(s=>local<s.end)||c.steps[c.steps.length-1]; const index=c.restart?Math.floor(t/c.total)*c.loops+step.offset+Math.floor((local-step.start+1e-9)/step.bars):Math.floor(t/step.bars)*8+step.variation;return r.queryArc(index,index+.0001)[0].value;});})()).postgain(0.5692099788303083).orbit(1)
 )

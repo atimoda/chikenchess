@@ -17,6 +17,7 @@ interface GlobalControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivEleme
   onPositionChange?: (pos: { x: number; y: number }) => void
   handleRef?: React.RefObject<HTMLDivElement | null>
   toggleRef?: React.RefObject<HTMLButtonElement | null>
+  togglePortalized?: boolean
   isOn: boolean
   onToggle: () => void
 }
@@ -30,6 +31,7 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
   onPositionChange,
   handleRef,
   toggleRef,
+  togglePortalized = false,
   isOn,
   onToggle,
   ...props
@@ -80,15 +82,19 @@ export const GlobalControlPanel = forwardRef<HTMLDivElement, GlobalControlPanelP
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
         aria-label={isOn ? 'Desligar Board Params' : 'Ligar Board Params'}
+        aria-hidden={togglePortalized || undefined}
+        tabIndex={togglePortalized ? -1 : 0}
         ref={toggleRef}
         className={cn(
           "absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center transition-all z-70 shadow-md group cursor-pointer hover:text-[#60a5fa]",
+          togglePortalized && "invisible pointer-events-none",
           !isOn && "hover:drop-shadow-[0_0_8px_#60a5fa]",
           isOn ? "text-[var(--city-neon)]" : "text-white",
         )}
         style={{ 
           ...panelStyle,
           borderColor: widgetBorderColor,
+          backgroundColor: isOn ? undefined : "color-mix(in srgb, var(--background) 50%, transparent)",
           top: -5, 
           left: -8,
           boxShadow: isOn ? `0 0 10px ${cityColor}40` : "none"

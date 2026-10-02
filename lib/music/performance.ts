@@ -1,21 +1,11 @@
-import { z } from 'zod'
+import type { Instrument } from './model'
+import { DEFAULT_ARRANGEMENT, arrangementPosition, pieceSection, type Arrangement } from './arrangement'
 
-/** Musical time stays in pulses; one transport cycle is one bar. */
-export const performanceSchema = z.object({
-  restart: z.boolean().default(true),
-  steps: z.array(z.object({
-    beats: z.number().finite().min(.25).max(64),
-    variation: z.number().int().min(0).max(7),
-    transpose: z.number().int().min(-24).max(24).default(0),
-    active: z.boolean().default(true),
-  })).min(1).max(24),
-}).superRefine((performance, context) => {
-  if (performance.steps.reduce((sum, step) => sum + step.beats, 0) > 512) {
-    context.addIssue({code: 'custom', message: 'Arranjo limitado a 512 tempos.'})
-  }
-})
-
-export type Performance = z.infer<typeof performanceSchema>
+/** Compiler-only form derived from the global arrangement. Never persisted. */
+export interface Performance {
+  restart: boolean
+  steps: {beats:number;variation:number;transpose:number;active:boolean}[]
+}
 
 /** Square brackets preserve the intended total length, unlike slow angle groups. */
 export function performancePattern(performance: Performance, indices = false, beatsPerBar = 4) {
@@ -34,4 +24,15 @@ export function performancePosition(performance: Performance, cycle: number, bea
     start += step.beats
   }
   return {index: 0, step: performance.steps[0], progress: 0}
+}
+
+/** Editor phase from authored data; drawing a piano roll never compiles audio patterns. */
+export function variationPosition(instrument: Instrument, section: number, cycle: number, beatsPerBar = 4, override?: number, arrangement?: Arrangement) {
+  const count = instrument.pianoRolls.length
+  const plan = arrangement ?? DEFAULT_ARRANGEMENT
+  const position = arrangementPosition(plan,cycle,beatsPerBar)
+  const step = pieceSection(instrument,plan,position.index)
+  const variation = ((override ?? instrument.selectedVariation ?? step.variation) % count + count) % count
+  return { variation, present:step.active,
+    phase: (instrument.arrangement?.restart ?? false) ? position.progress * position.section.beats / beatsPerBar : cycle }
 }

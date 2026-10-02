@@ -2,20 +2,20 @@
 import type { Square } from 'chess.js'
 import type { SquareEffects } from '../types'
 import type { Performance } from './performance'
+import type { Arrangement } from './arrangement'
+import type { HarmonicConfig } from './harmonic-pattern'
 import type { PianoRoll } from './piano-roll'
 import type { Reactions, ReactionContext } from './reactions'
 import type { TeamMixes } from './team-mixer'
 import type { Instrument, MovementMapping, MusicPiece } from './model'
-import type { Automations } from './automation'
-import type { Groove, GrooveLane } from './grooves'
 import type { HarmonyPlanId } from './harmony'
 import type { Meter } from './meter'
 
 export type Strudel = typeof import('@strudel/web')
 export type StrudelPattern = ReturnType<Strudel['note']>
 export type StrudelWithPick = Strudel & {
-  pick: (lookup: StrudelPattern[], selector: string) => StrudelPattern
-  pickRestart: (lookup: StrudelPattern[], selector: string) => StrudelPattern
+  pick: (lookup: StrudelPattern[], selector: string | StrudelPattern) => StrudelPattern
+  pickRestart: (lookup: StrudelPattern[], selector: string | StrudelPattern) => StrudelPattern
 }
 
 export interface MusicSnapshot {
@@ -24,6 +24,7 @@ export interface MusicSnapshot {
 
   sectionOverrides?: Record<string, number>
   harmony?: HarmonyPlanId
+  arrangement?: Arrangement
   pieces: MusicPiece[]
   scale: string[]
   bpm: number
@@ -34,15 +35,14 @@ export interface MusicSnapshot {
   instruments?: Record<string, Instrument>
   mappings?: Record<string, MovementMapping>
   title?: string
-  sectionPattern?: string
   soloId?: string | null
-  grooves?: Record<string, Groove>
   teamMixes?: TeamMixes
   tuning?: number
 }
 export interface Preview { id: string; square: Square; mode?: 'manual' | 'pattern' }
 export interface MusicPulse { id: string; square: Square; preview: boolean; duration: number }
 export interface VoiceSpec {
+  harmonic?: HarmonicConfig
   performance?: Performance
   beatsPerBar?: number
 
@@ -51,15 +51,11 @@ export interface VoiceSpec {
   square: Square
   preview: boolean
   manual: boolean
+  previewFilterLimit?: number
   orbit: number
-  notes: string
-  phrases: string[]
-  pianoRolls?: (PianoRoll | null)[]
+  pianoRolls: PianoRoll[]
   sectionPattern: string
-  mask?: string
   controls: Record<string, number | string>
   instrument: Instrument
   unpitched: boolean
-  groove?: GrooveLane
-  automations?: Automations
 }

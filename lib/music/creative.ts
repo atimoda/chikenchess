@@ -1,13 +1,11 @@
 import { METER_IDS } from './meter'
-import { performanceSchema } from './performance'
+import { arrangementSchema, pieceArrangementSchema, migrateGlobalArrangement, DEFAULT_ARRANGEMENT, pieceSection, type Arrangement } from './arrangement'
 import { pianoRollSchema } from './piano-roll'
 import { z } from 'zod'
 import { DEFAULT_MOVEMENT, instrumentFor, piecesFromHistory } from './model'
-import { patternRecipe } from './pattern-library'
 import type { MusicSnapshot } from './runtime-types'
-import { AUTOMATION_TARGETS, hasControlPatternBudget } from './automation'
 import { sampleAsset } from './sample-banks'
-import { electronicGrooves } from './grooves'
+import dusseldorfMidi from '../../public/presets/dusseldorf-original.json'
 import { defaultReactions, isLegacyReactionPreset, REACTION_PRESET_REVISION, reactionsSchema } from './reactions'
 import { HARMONY_PLAN_IDS } from './harmony'
 
@@ -17,63 +15,33 @@ export { SCALE_INTERVALS as SCALES } from './scales'
 import { SCALE_INTERVALS as SCALES, SCALE_NAMES } from './scales'
 
 const finite = (min: number, max: number) => z.number().finite().min(min).max(max)
-// A deliberately bounded subset of mini-notation; never arbitrary JavaScript.
-// Cap nested speed multipliers before asking Strudel to expand a pattern.
-export function hasPatternBudget(notes: string) {
-  if (!notes.trim() || notes.length > 512 || !/^[\d\s\-~[\]<>,*/!@]+$/.test(notes)) return false
-  if ((notes.match(/\d+/g) ?? []).some(n => Number(n) > 48)) return false
-  let expansions = 1
-  for (const match of notes.matchAll(/([*!])\s*(\d+(?:\.\d+)?)/g)) {
-    expansions *= Number(match[2])
-    if (expansions > 32) return false
-  }
-  return !/[*/!@]\s*0(?:\D|$)/.test(notes)
-}
-
-export function hasMaskBudget(mask: string) {
-  return /^[xX\d~\s[\]<>*/!@]+$/.test(mask) && hasControlPatternBudget(mask.replace(/[xX]/g, '1').replace(/~/g, '0'), 0, 1)
-}
-
-export const automationSchema = z.record(z.enum(['gain', 'lpf', 'pan', 'room', 'delay', 'penv', 'patt', 'distort']), z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('pattern'), patterns: z.array(z.string()).min(1).max(4) }),
-  z.object({ kind: z.literal('sine'), min: z.number().finite(), max: z.number().finite(), cycles: finite(0.25, 32) }),
-  z.object({ kind: z.literal('ramp'), min: z.number().finite(), max: z.number().finite(), cycles: finite(0.25, 32) }),
-])).superRefine((automations, ctx) => {
-  for (const [key, value] of Object.entries(automations)) {
-    const bounds = AUTOMATION_TARGETS[key as keyof typeof AUTOMATION_TARGETS]
-    const valid = value.kind === 'pattern'
-      ? value.patterns.every(pattern => hasControlPatternBudget(pattern, bounds.min, bounds.max))
-      : [value.min, value.max].every(n => n >= bounds.min && n <= bounds.max)
-    if (!valid) ctx.addIssue({ code: 'custom', message: `${bounds.label}: use valores entre ${bounds.min} e ${bounds.max}, sem código JavaScript.`, path: [key] })
-  }
-})
-const grooveSchema = z.object({ name: z.string().min(1).max(80), lanes: z.record(z.object({
-  name: z.string().min(1).max(60),
-  rhythms: z.array(z.string().refine(hasMaskBudget)).min(1).max(4),
-  accents: z.array(z.string().refine(p => hasControlPatternBudget(p, 0, 1))).min(1).max(4),
-})).refine(lanes => Object.keys(lanes).length > 0 && Object.keys(lanes).length <= 16) })
 const sourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('synth') }),
   z.object({ kind: z.literal('sample'), bank: z.string().max(80), asset: z.string().max(80), variant: finite(0, 127).int(), pitched: z.boolean() }),
 ]).superRefine((source, ctx) => {
   if (source.kind === 'sample' && !sampleAsset(source)?.variants[source.variant]) ctx.addIssue({ code: 'custom', message: 'Banco, som ou articulação de sample inexistente.' })
 })
+const rangeFrequencySchema = z.enum(['loop', 'section', 'note']).optional()
+const octaveRangeSchema = z.union([
+  z.object({ first: finite(0, 7).int(), second: finite(0, 7).int(), frequency: rangeFrequencySchema }),
+  z.object({ min: finite(0, 7).int(), max: finite(0, 7).int(), frequency: rangeFrequencySchema }).transform(({ min, max, frequency }) => ({ first: min, second: max, ...(frequency ? { frequency } : {}) })),
+]).optional()
+const parameterRangeSchema = (max: number) => z.object({ first: finite(0, max), second: finite(0, max), frequency: rangeFrequencySchema }).optional()
 const instrumentSchema = z.object({
   name: z.string().trim().min(1).max(60).transform(name => name.replace(/\s*·\s*[a-h][1-8]$/i, '')), behavior: z.enum(['pulse', 'phrase', 'sustain']),
-  sound: z.enum(SOUNDS), notes: z.string().refine(hasPatternBudget, 'Use graus, pausas e grupos; limite repetições a 32 e graus a ±48.'),
+  sound: z.enum(SOUNDS),
   octave: finite(0, 7).int(), gain: finite(0, 1), attack: finite(0.001, 2),
+  octaveRange: octaveRangeSchema,
+  driveRange: parameterRangeSchema(10), reverbRange: parameterRangeSchema(1), swingRange: parameterRangeSchema(.5),
+  lpfRange: z.object({ first: finite(20, 20000), second: finite(20, 20000), frequency: rangeFrequencySchema }).optional(),
   release: finite(0.01, 2), lpf: finite(20, 20000), hpf: finite(0, 20000),
   decay: finite(0.01, 2).optional(), sustain: finite(0, 1).optional(), clip: finite(0.01, 1).optional(),
-  phrases: z.array(z.string().refine(hasPatternBudget, 'Variação inválida.')).min(1).max(8).optional(),
-  pianoOnly: z.boolean().optional(),
-  pianoRolls: z.array(pianoRollSchema.nullable()).max(8).optional(),
-  performance: performanceSchema.optional(),
+  pianoRolls: z.array(pianoRollSchema).min(1).max(8),
+  arrangement: pieceArrangementSchema,
   distortion: finite(0,10).optional(), distortionMix: finite(0,1).optional(), pitchEnvelope: finite(-24,24).optional(), pitchAttack: finite(.001,2).optional(), extraSwing: finite(0,.5).optional(),
   selectedVariation: z.number().int().min(0).max(7).optional(),
   loopEnabled: z.boolean().optional(),
-  mask: z.string().refine(hasMaskBudget, 'Máscara inválida.').optional(),
-  source: sourceSchema.optional(), automations: automationSchema.optional(),
-  groove: z.object({ groove: z.string().max(80), lane: z.string().max(80) }).optional(),
+  source: sourceSchema.optional(),
 })
 const effectsSchema = z.object({
   gain: finite(0, 2), pitch: finite(0.5, 2), pan: finite(-1, 1),
@@ -90,16 +58,15 @@ const pieceSchema = z.object({
 export const creativeSchema = z.object({
   reactions: reactionsSchema,
   reactionPresetRevision: z.string().max(80).default(REACTION_PRESET_REVISION),
-  harmony: z.enum(HARMONY_PLAN_IDS).default('static'),
+  harmony: z.enum(HARMONY_PLAN_IDS).default('kit'),
   catalogRevision: z.string().max(80).optional(),
-  version: z.literal(4), name: z.string().trim().min(1).max(80),
+  version: z.literal(7), name: z.string().trim().min(1).max(80),
   cityId: z.string().trim().regex(/^[a-z0-9-]+$/).optional(),
   bpm: finite(30, 240), meter: z.enum(METER_IDS).default('4/4'), volume: finite(0, 1), root: z.enum(ROOTS),
   scale: z.enum(SCALE_NAMES),
-  sectionPattern: z.string().refine(hasPatternBudget, 'Timeline inválida.'),
+  arrangement: arrangementSchema,
   pieces: z.array(pieceSchema).length(32),
   instruments: z.record(instrumentSchema), effects: z.record(effectsSchema), mappings: z.record(mappingSchema),
-  grooves: z.record(grooveSchema).refine(g => Object.keys(g).length <= 8).default({}),
 }).superRefine((data, ctx) => {
   const initial = piecesFromHistory([])
   if (new Set(data.pieces.map(p => p.square)).size !== 32 || new Set(data.pieces.map(p => p.id)).size !== 32) {
@@ -115,17 +82,20 @@ export const creativeSchema = z.object({
     if (Object.keys(map).length !== 32) ctx.addIssue({ code: 'custom', message: 'O kit precisa configurar exatamente 32 peças.' })
   }
   for (const instrument of Object.values(data.instruments)) {
-    if (instrument.groove && !data.grooves[instrument.groove.groove]?.lanes[instrument.groove.lane]) ctx.addIssue({ code: 'custom', message: `Trilha de groove ausente: ${instrument.name}.` })
+    const entries = instrument.arrangement.sections
+    if (Object.keys(entries).length !== data.arrangement.sections.length || data.arrangement.sections.some(s => !Object.hasOwn(entries,s.id) || entries[s.id].variation >= instrument.pianoRolls.length)) {
+      ctx.addIssue({code:'custom', message:'Cada peça precisa referenciar todas as seções globais e bancos MIDI existentes.'})
+    }
   }
 })
 export type CreativeSession = z.infer<typeof creativeSchema>
-export const CREATIVE_STORAGE = 'chickenchess:creative:v1'
+export const CREATIVE_STORAGE = 'chickenchess:creative:v5'
 
 export function createCreativeSession(): CreativeSession {
   const pieces = piecesFromHistory([])
   return creativeSchema.parse({
-    version: 4, name: 'Meu kit eletrônico', bpm: 118, meter: '4/4', volume: 0.75, root: 'C', scale: 'Pentatônica menor', sectionPattern: '0', pieces, grooves: electronicGrooves(),
-    instruments: Object.fromEntries(pieces.map(p => [p.id, { ...instrumentFor(p) }])),
+    version: 7, name: 'Meu kit eletrônico', bpm: 118, meter: '4/4', volume: 0.75, root: 'C', scale: 'Pentatônica menor', arrangement: globalThis.structuredClone(DEFAULT_ARRANGEMENT), pieces,
+    instruments: Object.fromEntries(pieces.map(p => [p.id, { ...instrumentFor(p), arrangement:{restart:false,sections:{'section-a':{variation:0,transpose:0,active:true}}} }])),
     effects: Object.fromEntries(pieces.map(p => [p.id, { gain: 1, pitch: 1, pan: 0, delay: 0, reverb: 0.12, decay: 0.15 }])),
     mappings: Object.fromEntries(pieces.map(p => [p.id, { ...DEFAULT_MOVEMENT }])),
   })
@@ -134,9 +104,8 @@ export function createCreativeSession(): CreativeSession {
 export function creativeSnapshot(session: CreativeSession, playing: boolean, soloId: string | null = null): MusicSnapshot {
   return {
     title: session.name, bpm: session.bpm, meter: session.meter, volume: session.volume, playing,
-    sectionPattern: session.sectionPattern,
+    arrangement: session.arrangement,
     harmony: session.harmony,
-    grooves: session.grooves,
     soloId,
     scale: scaleForCreativeSession(session),
     pieces: session.pieces.map(p => ({ ...p, origin: p.origin as MusicSnapshot['pieces'][number]['origin'], square: p.square as MusicSnapshot['pieces'][number]['square'], active: p.active && (!soloId || soloId === p.id) })),
@@ -158,22 +127,21 @@ export function moveCreativePiece(session: CreativeSession, id: string, square: 
 }
 
 export function parseCreativeSession(text: string): CreativeSession {
-  if (text.length > 150_000) throw new Error('Arquivo de kit muito grande.')
+  // Explicit note banks are larger than the retired compact text format.
+  // Individual banks still cap duration and note count in pianoRollSchema.
+  if (text.length > 2_000_000) throw new Error('Arquivo de kit muito grande.')
   const data = JSON.parse(text)
-  if (data?.version === 1) {
-    data.version = 2
-    data.volume = Math.min(1, Number(data.volume) * 1.12)
-    for (const instrument of Object.values(data.instruments ?? {}) as Array<{ gain?: number }>) {
-      if (typeof instrument.gain === 'number') instrument.gain = Math.min(1, instrument.gain * 1.4)
+  // Text-era imports are intentionally simplified; no old pattern engine survives.
+  if ([1, 2, 3, 4].includes(data?.version)) {
+    data.version = 5
+    data.sectionPattern ??= '0'
+    for (const piece of data.pieces ?? []) {
+      const instrument = data.instruments?.[piece.id]
+      if (!instrument) continue
+      const fallback = instrumentFor(piece).pianoRolls
+      const count = Math.max(1, Math.min(8, instrument.pianoRolls?.length ?? instrument.phrases?.length ?? 1))
+      instrument.pianoRolls = Array.from({ length: count }, (_, index) => instrument.pianoRolls?.[index] ?? fallback[index % fallback.length])
     }
-  }
-  if (data?.version === 2) {
-    data.version = 3
-    data.sectionPattern = '0'
-  }
-  if (data?.version === 3) {
-    data.version = 4
-    data.grooves = electronicGrooves()
   }
   // Replace old factory presets; authored rules win while missing triggers gain defaults.
   if (data?.reactionPresetRevision !== REACTION_PRESET_REVISION) {
@@ -188,103 +156,29 @@ export function parseCreativeSession(text: string): CreativeSession {
   // Repair the old factory timeline: <...> already spans 16 cycles; /16
   // accidentally stretched it to 256. Preserve other authored timelines.
   if (data?.sectionPattern === '<0@4 1@4 2@4 1@4>/16') data.sectionPattern = '[0@4 1@4 2@4 1@4]/16'
+  if (data?.version === 5) {
+    migrateGlobalArrangement(data)
+    data.version = 6
+  }
+  // Earlier kits always played section degrees even with another plan selected.
+  // Migrate once; v7 can persist an explicit plan without deleting those degrees.
+  if (data?.version === 6) {
+    if (data.arrangement?.sections?.some((section: { harmony?: number[] }) => section.harmony?.length)) data.harmony = 'kit'
+    data.version = 7
+  }
   return creativeSchema.parse(data)
 }
 
-const DUSSELDORF_CORE_IDS = ['w:a2', 'w:b2', 'w:c2', 'w:b1', 'w:c1', 'w:d1'] as const
-
-function mirroredBlackId(whiteId: string) {
-  const square = whiteId.slice(2)
-  return `b:${square[0]}${9 - Number(square[1])}`
+/** Stable identities keep piece assignments attached when sections move or rename. */
+export function updateCreativeArrangement(session: CreativeSession, next: Arrangement): CreativeSession {
+  const arrangement = arrangementSchema.parse(next)
+  return {...session,arrangement,instruments:Object.fromEntries(Object.entries(session.instruments).map(([id,instrument]) => [id,{...instrument,
+    arrangement:{restart:instrument.arrangement.restart,sections:Object.fromEntries(arrangement.sections.map((section,index) => [section.id,
+      Object.hasOwn(instrument.arrangement.sections,section.id) ? instrument.arrangement.sections[section.id] : pieceSection({...instrument,arrangement:undefined},arrangement,index)]))},
+  }]))}
 }
 
+/** Explicit MIDI study; clone so edits never mutate the bundled preset. */
 export function createDusseldorfSession(): CreativeSession {
-  const session = createCreativeSession()
-  const instruments = { ...session.instruments }
-  const effects = { ...session.effects }
-
-  function configure(id: typeof DUSSELDORF_CORE_IDS[number], recipeId: string, name: string, phrases: string[], mask?: string) {
-    const recipe = patternRecipe(recipeId)
-    if (!recipe) throw new Error(`Receita ausente: ${recipeId}`)
-    const configured = { ...instruments[id], ...recipe.instrument, name, behavior: recipe.behavior, notes: phrases[0], phrases, mask }
-    instruments[id] = configured
-    instruments[mirroredBlackId(id)] = { ...configured }
-  }
-
-  configure('w:a2', 'elliptical-kick', 'Bumbo elíptico', [
-    '<[0 ~ 0 0] [0 ~ [0 0] 0]>',
-    '<0 ~ 0 [0 0]>',
-    '<[0 ~ 0 ~] [0 0 ~ 0]>',
-  ])
-  configure('w:b2', 'elliptical-backbeat', 'Caixa elíptica', [
-    '~ 0 ~ 0',
-    '<[~ 0 ~ 0] [~ 0 [~ 0] 0]>',
-    '~ [0 ~] ~ [0 0]',
-  ])
-  configure('w:c2', 'elliptical-hats', 'Chimbal elíptico', [
-    '0*8',
-    '<[0 0 [0 0] 0] [0 [0 0] 0 [0 0]]>*2',
-    '<[0 0 [0 0] 0] [[0 0] 0 [0 0] [0 0]]>*2',
-  ], '<~@4 x@12>/16')
-  configure('w:b1', 'elliptical-bass', 'Baixo supersaw', [
-    '<[0 ~ ~ -1 2 ~ ~ -1] [0 0 3 ~ ~ 0 4 ~]>*2',
-    '<[0 ~ 0 2] [0 4 ~ 2]>',
-    '<[7 7 [4 6] 7] [9 9 [6 7] 11] [~ 9 12 12]>*2',
-  ], '<~@4 x@12>/16')
-  configure('w:c1', 'bonespurs-harmony', 'Pad harmônico', [
-    '<[-3,0] [-4,0] [-2,0]>/4',
-    '<[0,2,4] [0,3,4]>/2',
-    '<[2,4,6] [-3,-1,1] [5,7,9] [4,7,8]>/2',
-  ], '<~@8 x@8>/16')
-  configure('w:d1', 'bennington-lead', 'Lead de resposta', [
-    '<[~ [4 3] 2 ~] [[2 4] ~ 3 [2 ~]]>',
-    '<[~ ~ 2 2] [3 4 [5 6] 7] [~ 4 3 4] [5 6 [7 8] ~]>*2',
-    '<[~ 7 ~ 5] [4 ~ [3 2] ~]>*2',
-  ])
-
-  effects['w:a2'] = { ...effects['w:a2'], reverb: 0.06 }
-  effects['w:b2'] = { ...effects['w:b2'], reverb: 0.2 }
-  effects['w:c2'] = { ...effects['w:c2'], reverb: 0.08, pan: 0.15 }
-  effects['w:b1'] = { ...effects['w:b1'], reverb: 0.16, pan: -0.12 }
-  effects['w:c1'] = { ...effects['w:c1'], reverb: 0.38, pan: 0.1 }
-  effects['w:d1'] = { ...effects['w:d1'], reverb: 0.3, delay: 0.22, pan: -0.08 }
-  for (const id of DUSSELDORF_CORE_IDS) {
-    const blackId = mirroredBlackId(id)
-    effects[blackId] = { ...effects[id] }
-  }
-
-  const assets = ['kick', 'snare', 'hat', 'clap', 'tom', 'open-hat', 'rim', 'shaker']
-  const lanes = ['kick', 'snare', 'hat', 'clap', 'tom', 'open', 'rim', 'shaker']
-  for (const [index, asset] of assets.entries()) {
-    const id = `w:${'abcdefgh'[index]}2`
-    const next = { ...instruments[id], source: { kind: 'sample' as const, bank: 'chicken-electro-v1', asset, variant: 0, pitched: false },
-      groove: { groove: 'motorik', lane: lanes[index] }, notes: '0', phrases: undefined, mask: undefined,
-      gain: [0.65, 0.48, 0.28, 0.28, 0.38, 0.25, 0.3, 0.24][index],
-      attack: 0.001, release: 0.05, sustain: 1, clip: 1, lpf: 18000, hpf: 0 }
-    instruments[id] = next
-    instruments[mirroredBlackId(id)] = { ...next }
-  }
-  for (const id of ['w:b1', 'b:b8']) {
-    instruments[id] = { ...instruments[id], mask: undefined, automations: {
-      gain: { kind: 'pattern', patterns: ['1 .65 .85 .65', '1 .8 .6 .9', '.9 .65 1 .7'] },
-      lpf: { kind: 'sine', min: 900, max: 2400, cycles: 8 },
-    } }
-  }
-  for (const id of ['w:c1', 'b:c8']) instruments[id] = { ...instruments[id], mask: undefined }
-
-  return creativeSchema.parse({
-    ...session,
-    name: 'Düsseldorf · Electro 01',
-    cityId: 'dusseldorf',
-    bpm: 122,
-    root: 'C#',
-    scale: 'Menor natural',
-    sectionPattern: '[0@4 1@4 2@4 1@4]/16',
-    // The lab starts with the complete white team so the whole city kit can be
-    // auditioned immediately. Gameplay still activates each identity only after
-    // its first move.
-    pieces: session.pieces.map(piece => ({ ...piece, active: piece.color === 'w' })),
-    instruments,
-    effects,
-  })
+  return parseCreativeSession(JSON.stringify(dusseldorfMidi))
 }

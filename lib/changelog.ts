@@ -1,7 +1,125 @@
-export const RELEASE_LABEL = 'v0.7.0'
+export const RELEASE_LABEL = 'v0.11.0'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    "version": "0.11.0",
+    "date": "02/10/2026",
+    "title": "MIDI explícito, arranjo global e ranges por loop, seção e nota",
+    "groups": [
+      {
+        "title": "Música",
+        "items": [
+          "Os knobs Range de oitava, Drive, Reverb e Swing oferecem três bolinhas L/S/N no Criativo e em Piece Params: sorteio por loop, seção ou ataque.",
+          "Notas simultâneas de acordes compartilham o sorteio; Swing por ataque conserva sua ordem e kits anteriores mantêm a frequência original, com indicação de oitava por compasso quando legada.",
+          "A ajuda de Pan esclarece que o knob conserva o ajuste adicional salvo, enquanto a coluna da peça muda a posição estéreo do áudio conforme a abertura do tabuleiro.",
+          "Todos os kits e estudos usam notas explícitas no editor MIDI; os painéis Receitas e código Strudel, Forma e variações e Groove compartilhado, e o modo Padrão Strudel, foram retirados.",
+          "Ritmos, acentos e slides foram incorporados às notas; automações foram simplificadas em parâmetros e ranges, incluindo um novo Range L/S/N no passa-baixas.",
+          "A primeira etapa MIDI desta entrega reiniciou uma vez os rascunhos e kits personalizados antigos, sem alterar conquistas, ovos ou pontos; a migração seguinte para o arranjo global preserva os kits MIDI já salvos.",
+          "O Criativo oferece Arranjo global para nomear, ordenar, adicionar/remover e definir a duração das seções; cada peça escolhe seu banco MIDI, presença, transposição e reinício nesse mesmo relógio.",
+          "Cada seção pode definir um percurso harmônico por compasso, independente da duração do loop; o relógio mostra seus nomes personalizados e as pausas das peças.",
+          "Fixar uma variação ou forçá-la por regra troca somente o banco MIDI: as pausas, transposições e o reinício de cada seção continuam valendo. Reordenar seções conserva as escolhas de todas as peças.",
+          "Ao abrir o Criativo, o painel Arranjo global mantém seu rótulo acessível sem gerar divergência de hidratação no React.",
+          "No Arranjo global, clique marca a próxima seção para entrar ao fim da atual, arraste reordena e duplo clique abre a edição. Excluir uma seção preserva os bancos MIDI das peças.",
+          "O progresso aparece dentro da seção tocando; os limites deixam de ocupar uma linha e são informados quando uma edição tenta ultrapassá-los.",
+          "Kit Harmony usa os graus das seções. Outros planos desabilitam sua edição sem apagá-los; voltar a Kit Harmony recupera o percurso salvo. Kits com harmonia própria selecionam essa opção automaticamente.",
+          "Adicionar seção virou um + no final da faixa. O popup reúne só os campos, com ajuda no nome, lixeira à esquerda e Cancelar/Salvar à direita; a linha repetida de execução foi retirada.",
+          "No Criativo, os controles mostram Volume e BPM sem ajuda extra, e a faixa das seções fica integrada à base do painel de transporte.",
+          "Na partida, histórico e barra de avaliação ocupam o rodapé em largura total; o Mixer ganhou 20 px livres abaixo do crossfader."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.9.0",
+    "date": "01/10/2026",
+    "title": "Freeze, Shield e novos arranjos musicais",
+    "groups": [
+      {
+        "title": "Música",
+        "items": [
+          "Os 46 kits de cidades agora têm seis cenas A–F, com pontes mais espaçadas, respostas e retornos; E e F dos kits de piano roll também mudam os acordes a cada compasso.",
+          "Três bancos novos oferecem piano, sax, marimba, guitarras, violão de nylon, baixo e percussão gravados, com dinâmicas e tomadas alternativas; os bancos anteriores continuam disponíveis para kits salvos.",
+          "Drive, Reverb e Swing ganharam knobs Range no Criativo e em Piece Params: um valor por repetição completa da variação, inclusive quando ela volta na música; limites iguais deixam o parâmetro fixo.",
+          "Samples com sustenidos nos nomes agora carregam corretamente; os novos mapas de sax, marimba e baixo respeitam a oitava real das gravações.",
+          "A música aguarda a preparação do Drive quando necessário; Drive zero deixa o som seco, sem erro de processador na primeira reprodução.",
+          "Abrir o Criativo não gera mais o aviso de renderização dos indicadores dos knobs, sem alterar os valores dos instrumentos.",
+          "Variações no Criativo e na partida usam uma grade por vez, com abas que quebram linha sem scroll e botões +/− para criar/remover bancos; subdivisão, reverse, sorteio de notas e duração ficam abaixo do MIDI.",
+          "Note params reúne quatro knobs 30% menores: Slide e Tempo dentro do box da curva, Acento e Pan à direita, antes da lixeira, tanto no Criativo quanto na partida.",
+          "O Criativo mostra a harmonia atual entre parênteses no rótulo do seletor e usa espaços entre as notas; o painel duplicado Relógio e transições foi removido, reunindo BPM, unidade do pulso, rampa e regras pendentes no transporte.",
+          "Volume geral e BPM viraram knobs na linha superior do Criativo; a curva de BPM fica na linha inferior à esquerda, sem aviso quando não há rampa. Tempo do slide também usa knob.",
+          "A ajuda de Comportamento detalha Pulso, Frase e Sustentado, suas diferenças na harmonia e a relação com fonte, parâmetros e gesto manual.",
+          "Knobs de Volume, BPM e Range seguem a paleta verde do Criativo; as ajudas dos parâmetros ficam acima dos rótulos e explicam a unidade do BPM, Avançar meio-lance e a multiplicação dos dois ganhos.",
+          "Notas avulsas de clique/arraste não iniciam nem recompilam os loops ou alteram o relógio; a partida antecipa os samples, o MIDI desenha notas explícitas sem preparar a música inteira e seu cursor não simula um loop desligado. A ajuda do filtro esclarece a audição manual.",
+          "Kits antigos são preservados em Meus kits antes de atualizar a instrumentação e as seções da cidade."
+        ]
+      },
+      {
+        "title": "Partida",
+        "items": [
+          "No celular, Piece Params, Mixer, Spectrogram e Debug ficam numa coluna abaixo do tabuleiro, com a mesma largura e rolagem conjunta; o botão Parâmetros musicais e seu diálogo foram retirados.",
+          "No desktop, os widgets começam centralizados nas laterais com uma pequena variação horizontal; acompanham o resize até a distância mínima de 20 px do tabuleiro, podendo ficar parcialmente fora da tela.",
+          "Dois cliques no pegador do crossfader centralizam a mistura dos times.",
+          "BLACKS e WHITES ficam acima das colunas de knobs do Mixer; o centro da faixa de mistura passa a mostrar CROSSFADER.",
+          "A vitória mostra uma cesta ilustrada com ovos chegando e som de queda, saldo atualizado, pontos e um botão Return to map maior. Os ovos restantes vão para a cesta; os coletados durante a partida também rendem um bônus de pontos históricos, mesmo quando foram gastos.",
+          "Os knobs dos dois times no Mixer compartilham uma coluna central de rótulos, inclusive quando o painel fica estreito.",
+          "A linha de seletores musicais e ovos e a faixa de peças capturadas mantêm a largura do tabuleiro em telas menores.",
+          "O Mixer agora abre no tamanho compacto de 180 × 430 px, mantendo os rótulos entre as duas colunas de knobs.",
+          "Peças congeladas não podem ser capturadas nem ameaçam o rei enquanto o gelo durar; o rei do jogador com Shield pode ocupar uma casa normalmente atacada.",
+          "Durante os poderes, Best e Worst comparam os lances e respostas permitidos pelas novas regras; a adversária também respeita essas respostas. Sem poderes ativos, a análise continua com Stockfish.",
+          "Undo e Redo restauram Freeze e Shield conforme a posição de cada meia-jogada, sem cobrar os poderes outra vez; uma nova continuação descarta a antiga.",
+          "Freeze e Shield agora avisam sobre ovos insuficientes já no botão e mostram seu ícone junto ao cursor enquanto uma casa é escolhida; o gasto só acontece na aplicação.",
+          "Os preços dos controles pagos aparecem acima da borda direita, com um pequeno ovo dourado no lugar da palavra egg.",
+          "Spectrogram inicia com a largura do Mixer e sua altura mínima, podendo ser estreitado até a mesma largura mínima do Mixer.",
+          "O preço de Freeze e Shield aparece imediatamente no hover ou foco; o botão de energia das variações voltou ao canto superior direito de Piece Params.",
+          "Tom, Escala e Progressão mostram só a borda no hover; as opções selecionadas nos menus ficam brancas sem bolinha nem espaço reservado, e a barra de rolagem usa o fundo do menu.",
+          "Debug começa com a mesma largura do Mixer e a menor altura permitida; Spectrogram inicia na coluna esquerda, abaixo do Mixer e acima do Debug.",
+          "O menu de dificuldade mostra apenas Dificulty:, deixa a opção ativa em preto sobre a cor da cidade e escurece o hover das demais opções; os preços usam marcador branco -1 ou -3 em vermelho escuro, sem atraso, e o cabeçalho reúne View code / Debug, Restart game, música e tela cheia nessa ordem, com legendas no hover; Debug oferece Debug SF e Force win, e Restart game pede confirmação."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.8.1",
+    "date": "30/09/2026",
+    "title": "Controles da partida, crossfader e ovos",
+    "groups": [
+      {
+        "title": "Partida",
+        "items": [
+          "Mixer, Debug, Piece Params e Spectrogram ganharam posições padrão mais equilibradas ao redor do tabuleiro, com pequenas variações aleatórias ao iniciar cada partida.",
+          "O botão Code também controla a disponibilidade do widget Debug: ambos começam desligados, e ocultar o código fecha Debug e sua sobreposição do Stockfish.",
+          "Histórico de jogadas e avaliação ficam acima de Tom, Escala e Progressão; o status da vez aparece abaixo do tabuleiro, entre Freeze e Shield e antes de Best/Worst moves.",
+          "Os knobs do Mixer agora formam pilhas verticais com rótulos laterais; o widget pode ser redimensionado.",
+          "Cada modo escolhe se Mixer e Piece Params acompanham a vez; nas campanhas atuais contra IA, ambos ficam ativos durante todos os turnos, e os botões manuais continuam disponíveis.",
+          "Na vez do jogador, o loop e os parâmetros de peças pretas também podem ser editados; o status da vez adversária diz “Thinking...”.",
+          "No mapa, o texto “golden eggs” recolhe após cinco segundos e volta com animação reversa no hover ou foco; há 6 px entre o saldo e o rótulo.",
+          "No mapa, o saldo global de ovos fica à direita do botão Maximizar; na partida, os saldos dos dois lados ladeiam Tom, Escala e Progressão.",
+          "O preço dos controles pagos fica encostado ao canto do botão e some sem animação ao sair do hover; após 1,5 s também desaparece em toque.",
+          "Mixer e Debug podem ficar mais estreitos; o Mixer recolhe os rótulos dos knobs em larguras compactas e mantém todos os controles visíveis sem rolagem interna.",
+          "Na entrada da partida, o brilho do nome da cidade apaga primeiro e o texto desaparece em seguida ao longo de 1 s.",
+          "Ao tentar usar um recurso sem ovos, um som curto e o balanço do ícone avisam que a ação foi bloqueada.",
+          "O botão de energia das variações agora tem o mesmo tamanho dos demais botões da fileira, com ícone reduzido.",
+          "No mapa, cartões de cidade podem ficar até 80% fora da tela após a abertura, mantendo pelo menos 20% visíveis; ao abrir, entram totalmente visíveis na horizontal. O globo retoma o giro ao sair de um pin.",
+          "O Mixer ganhou um crossfader graduado com pegador vertical mais alto e trilho mais curto, que encaixa no zero; BLACKS e WHITES ficam alinhados às marcas das extremidades, com 35% de branco nos ticks. O traço central do pegador fica com 25% de opacidade. O indicador dos knobs usa a cor da cidade no hover e fica branco durante o arraste. Gain fica no fim dos grupos, LPF/HPF no começo e os títulos centrais ocultos.",
+          "Cada lado começa a partida com 1 ovo; as recompensas de lance aumentam o saldo do jogador, e ações pagas o consomem. Ao vencer, ele recebe no saldo global os ovos que restaram na partida. O contador do Stockfish fica à esquerda dos seletores musicais, em cinza apagado.",
+          "A barra de avaliação transita diretamente entre posições; Undo anima as peças de volta em 40% menos tempo que o avanço.",
+          "Mixer, seletores de tom/escala/progressão e Piece Params acompanham os valores musicais resolvidos pelas regras ativas, incluindo o BPM durante rampas.",
+          "Os botões de energia dos widgets ficam acessíveis acima do tabuleiro, mesmo quando o painel está atrás dele; ligar traz o painel à frente. Nos modos que acompanham o turno, Mixer e Piece Params também podem ser reabertos manualmente durante a vez do Stockfish até a próxima mudança de turno.",
+          "O botão de energia das variações acompanha o tamanho e o raio das abas. Os valores transitórios de ganho, filtro, pan, reverb e delay agora piscam como traços cinza nos knobs correspondentes.",
+          "Os botões de energia dos widgets também servem para arrastá-los e, desligados, mostram fundo com 50% de opacidade.",
+          "Freeze e Shield ficam ao lado do estado da jogada: escolha qualquer peça ou casa vazia por 3 ovos. Gelo impede a próxima jogada da peça ou congela quem entrar na casa; Shield impede a resposta do Stockfish de ocupar a casa protegida.",
+          "Ao refazer uma meia-jogada que deixa a vez com o Stockfish, a IA responde após 5 segundos mesmo que ainda existam lances na pilha de Redo; continuar navegando cancela essa contagem, e uma nova resposta da IA descarta a continuação antiga."
+        ]
+      },
+      {
+        "title": "Música",
+        "items": [
+          "O Criativo e Piece Params ganharam o knob Range: escolha dois valores de oitava em qualquer ordem, com o intervalo destacado pela cor da cidade; uma oitava é sorteada por compasso."
+        ]
+      }
+    ]
+  },
   {
     "version": "0.7.0",
     "date": "29/09/2026",

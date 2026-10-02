@@ -1,11 +1,12 @@
-import type { Performance } from './performance'
+import type { PieceArrangement } from './arrangement'
 import type { PianoRoll } from './piano-roll'
+import { noteRoll } from './piano-roll'
 import { Chess, type PieceSymbol, type Square } from 'chess.js'
 import type { SampleSource } from './sample-banks'
-import type { Automations } from './automation'
-import type { GrooveBinding } from './grooves'
 
 export type Behavior = 'pulse' | 'phrase' | 'sustain'
+export type RangeFrequency = 'loop' | 'section' | 'note'
+export interface ParameterRange { first: number; second: number; frequency?: RangeFrequency }
 export interface MusicPiece {
   id: string
   slot: number
@@ -21,8 +22,12 @@ export interface Instrument {
   name: string
   behavior: Behavior
   sound: string
-  notes: string
   octave: number
+  octaveRange?: ParameterRange
+  driveRange?: ParameterRange
+  reverbRange?: ParameterRange
+  swingRange?: ParameterRange
+  lpfRange?: ParameterRange
   gain: number
   attack: number
   release: number
@@ -31,21 +36,16 @@ export interface Instrument {
   decay?: number
   sustain?: number
   clip?: number
-  phrases?: string[]
-  pianoOnly?: boolean
-  pianoRolls?: (PianoRoll | null)[]
+  pianoRolls: PianoRoll[]
   selectedVariation?: number
   loopEnabled?: boolean
-  performance?: Performance
+  arrangement?: PieceArrangement
   distortion?: number
   distortionMix?: number
   pitchEnvelope?: number
   pitchAttack?: number
   extraSwing?: number
-  mask?: string
   source?: { kind: 'synth' } | SampleSource
-  automations?: Automations
-  groove?: GrooveBinding
 }
 
 export interface MovementMapping {
@@ -55,29 +55,29 @@ export interface MovementMapping {
   previewFilter: boolean
 }
 
-export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'notes' | 'octave' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'pitchEnvelope' | 'pitchAttack' | 'extraSwing' | 'automations' | 'phrases' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled'>>
+export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'octaveRange' | 'driveRange' | 'reverbRange' | 'swingRange' | 'lpfRange' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'pitchEnvelope' | 'pitchAttack' | 'extraSwing' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled' | 'arrangement'>>
 
 export const DEFAULT_MOVEMENT: MovementMapping = {
   fileDegrees: 1, rankDegrees: 0.5, panWidth: 0.5, previewFilter: true,
 }
 
 const drums: Instrument[] = [
-  { name: 'Bumbo', sound: 'sbd', notes: '0 0 0 0', lpf: 900, hpf: 0 },
-  { name: 'Caixa', sound: 'white', notes: '~ 0 ~ 0', lpf: 6500, hpf: 1200 },
-  { name: 'Chimbal', sound: 'white', notes: '0*8', lpf: 14000, hpf: 7000 },
-  { name: 'Clap eletrônico', sound: 'pink', notes: '~ 0 ~ [0 ~]', lpf: 6000, hpf: 1800 },
-  { name: 'Tom', sound: 'sine', notes: '<[~ ~ 0 ~] [~ 0 ~ 2]>', lpf: 1500, hpf: 0 },
-  { name: 'Chimbal aberto', sound: 'white', notes: '~ 0 ~ 0', lpf: 12000, hpf: 6000 },
-  { name: 'Rim eletrônico', sound: 'triangle', notes: '<[~ 0 ~ ~] [~ ~ 0 ~]>', lpf: 6500, hpf: 900 },
-  { name: 'Percussão', sound: 'sine', notes: '<[~ ~ ~ 0] [~ 2 ~ 0]>', lpf: 2200, hpf: 100 },
+  { name: 'Bumbo', sound: 'sbd', pianoRolls: [noteRoll([0,0,0,0])], lpf: 900, hpf: 0 },
+  { name: 'Caixa', sound: 'white', pianoRolls: [noteRoll([null,0,null,0])], lpf: 6500, hpf: 1200 },
+  { name: 'Chimbal', sound: 'white', pianoRolls: [noteRoll([0,0,0,0,0,0,0,0])], lpf: 14000, hpf: 7000 },
+  { name: 'Clap eletrônico', sound: 'pink', pianoRolls: [noteRoll([null,0,null,0,null,null])], lpf: 6000, hpf: 1800 },
+  { name: 'Tom', sound: 'sine', pianoRolls: [noteRoll([null,null,0,null,null,null,0,2],2)], lpf: 1500, hpf: 0 },
+  { name: 'Chimbal aberto', sound: 'white', pianoRolls: [noteRoll([null,0,null,0])], lpf: 12000, hpf: 6000 },
+  { name: 'Rim eletrônico', sound: 'triangle', pianoRolls: [noteRoll([null,0,null,null,null,null,0,null],2)], lpf: 6500, hpf: 900 },
+  { name: 'Percussão', sound: 'sine', pianoRolls: [noteRoll([null,null,null,0,null,2,null,0],2)], lpf: 2200, hpf: 100 },
 ].map((d, i) => ({ ...d, behavior: 'pulse', octave: i === 6 ? 5 : 2, gain: i === 0 ? 0.62 : 0.25, attack: 0.002, release: i === 5 ? 0.16 : 0.035 }))
 
 const instruments: Record<Exclude<PieceSymbol, 'p'>, Instrument> = {
-  n: { name: 'Baixo analógico', behavior: 'phrase', sound: 'sawtooth', notes: '<[0 ~ 0 2] [0 4 ~ 2]>', octave: 2, gain: 0.42, attack: 0.008, release: 0.08, lpf: 900, hpf: 30 },
-  r: { name: 'Sopro eletrônico', behavior: 'phrase', sound: 'square', notes: '<[~ 2 ~ 4] [~ ~ 3 2]>', octave: 4, gain: 0.24, attack: 0.06, release: 0.12, lpf: 1600, hpf: 180 },
-  b: { name: 'Teclas sequenciadas', behavior: 'phrase', sound: 'triangle', notes: '<[0 [2 4] ~ 2] [4 ~ [3 2] ~]>', octave: 4, gain: 0.32, attack: 0.01, release: 0.16, lpf: 7000, hpf: 180 },
-  k: { name: 'Cordas sintetizadas', behavior: 'sustain', sound: 'supersaw', notes: '<[0,2,4] [0,3,4]>/2', octave: 3, gain: 0.18, attack: 0.3, release: 0.3, lpf: 1600, hpf: 120 },
-  q: { name: 'Melodia principal', behavior: 'phrase', sound: 'triangle', notes: '<[~ [4 3] 2 ~] [[2 4] ~ 3 [2 ~]]>', octave: 5, gain: 0.32, attack: 0.02, release: 0.15, lpf: 6000, hpf: 300 },
+  n: { name: 'Baixo analógico', behavior: 'phrase', sound: 'sawtooth', pianoRolls: [noteRoll([0,null,0,2,0,4,null,2],2)], octave: 2, gain: 0.42, attack: 0.008, release: 0.08, lpf: 900, hpf: 30 },
+  r: { name: 'Sopro eletrônico', behavior: 'phrase', sound: 'square', pianoRolls: [noteRoll([null,2,null,4,null,null,3,2],2)], octave: 4, gain: 0.24, attack: 0.06, release: 0.12, lpf: 1600, hpf: 180 },
+  b: { name: 'Teclas sequenciadas', behavior: 'phrase', sound: 'triangle', pianoRolls: [noteRoll([0,2,4,null,2,4,null,3,2,null],2)], octave: 4, gain: 0.32, attack: 0.01, release: 0.16, lpf: 7000, hpf: 180 },
+  k: { name: 'Cordas sintetizadas', behavior: 'sustain', sound: 'supersaw', pianoRolls: [noteRoll([[0,2,4],[0,3,4]],4,.95)], octave: 3, gain: 0.18, attack: 0.3, release: 0.3, lpf: 1600, hpf: 120 },
+  q: { name: 'Melodia principal', behavior: 'phrase', sound: 'triangle', pianoRolls: [noteRoll([null,4,3,2,null,2,4,null,3,2,null],2)], octave: 5, gain: 0.32, attack: 0.02, release: 0.15, lpf: 6000, hpf: 300 },
 }
 
 export function instrumentFor(piece: MusicPiece): Instrument {

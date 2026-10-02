@@ -8,6 +8,7 @@ export interface EvaluatedMove extends EvaluationCandidate {
   changeMate: number | null
 }
 export interface ChessMoveAnalysis {
+  source?: 'powers'
   fen: string
   side: EvaluationSide
   legalMoves: number
@@ -87,7 +88,7 @@ export const ANALYSIS_BUDGETS = {
 } as const
 interface Request {
   fen: string; side: EvaluationSide; candidates: EvaluationCandidate[]
-  position: string; key: string; skill?: number
+  position: string; key: string; skill?: number; searchMoves?: string[]
 }
 interface Line { uci: string; score: number; mate: number | null; depth: number }
 interface Active {
@@ -119,7 +120,9 @@ export class ChessEvaluationQueue {
   bestAvailableMove(fen: string): string | null {
     const active = this.active
     if (!active || active.cancelled || active.request.fen !== fen || active.request.key !== this.requestedKey) return null
-    return active.completeLines[0]?.uci ?? active.traceLines.get(1)?.uci ?? active.score?.uci ?? null
+    const allowed = active.request.searchMoves
+    return [active.completeLines[0]?.uci, ...active.completeLines.map(line => line.uci), active.traceLines.get(1)?.uci, active.score?.uci]
+      .find((uci): uci is string => !!uci && (!allowed || allowed.includes(uci))) ?? null
   }
   fail(message = 'Stockfish indisponível. Reabra a partida para tentar novamente.') {
     this.failed = true
@@ -131,12 +134,12 @@ export class ChessEvaluationQueue {
     this.emitTrace({ ...(this.lastTrace ?? this.emptyTrace('', 'w', 'error', 0)), phase: 'error' })
     this.callbacks.onError?.(message)
   }
-  request(fen: string, side: EvaluationSide, candidates: EvaluationCandidate[], options: { position?: string; skill?: number } = {}) {
+  request(fen: string, side: EvaluationSide, candidates: EvaluationCandidate[], options: { position?: string; skill?: number; searchMoves?: string[] } = {}) {
     if (this.failed) return
     const position = options.position ?? `position fen ${fen}`
-    const key = position
+    const key = options.searchMoves?.length ? `${position} | searchmoves ${options.searchMoves.join(' ')}` : position
     this.requestedKey = key
-    const request = { fen, side, candidates, position, key, skill: options.skill }
+    const request = { fen, side, candidates, position, key, skill: options.skill, searchMoves: options.searchMoves }
     this.queued = request
     this.emitTrace(this.emptyTrace(fen, side, 'waiting', candidates.length))
     this.callbacks.onAnalysis(null)
@@ -245,7 +248,7 @@ export class ChessEvaluationQueue {
       this.startQueued()
     } else {
       const uci = message.split(/\s+/)[1]
-      if (request.candidates.some(move => move.uci === uci)) this.callbacks.onMove?.(uci, request.fen)
+      if (request.candidates.some(move => move.uci === uci) && (!request.searchMoves || request.searchMoves.includes(uci))) this.callbacks.onMove?.(uci, request.fen)
       else this.fail('Stockfish não retornou um movimento legal.')
       if (!this.failed) {
         if (this.cache.has(request.key)) this.startQueued()
@@ -283,7 +286,8 @@ export class ChessEvaluationQueue {
     const nodes = phase === 'rank' ? (tactical ? this.budget.tacticalNodes : this.budget.rankNodes) : phase === 'move' ? this.budget.moveNodes : this.budget.quickNodes
     const ms = phase === 'rank' ? (tactical ? this.budget.tacticalMs : this.budget.rankMs) : phase === 'move' ? this.budget.moveMs : this.budget.quickMs
     const depth = phase === 'rank' && !this.constrained ? ' depth 15' : ''
-    this.worker.postMessage(`go nodes ${nodes} movetime ${ms}${depth}`)
+    const searchMoves = request.searchMoves?.length ? ` searchmoves ${request.searchMoves.join(' ')}` : ''
+    this.worker.postMessage(`go nodes ${nodes} movetime ${ms}${depth}${searchMoves}`)
   }
   private emptyTrace(fen: string, side: EvaluationSide, phase: StockfishTrace['phase'], legalMoves: number): StockfishTrace {
     return { fen, side, phase, legalMoves, depth: 0, completeDepth: 0, nodes: 0, engineMs: 0, nps: 0, lines: [], raw: [] }

@@ -1,10 +1,13 @@
 // Text export of the same voice specifications consumed by the pattern compiler.
 import { optimizeRoll, rollLaneNotation } from './roll-optimizer'
 import { performancePattern } from './performance'
+import { harmonicPattern } from './harmonic-pattern'
 import { beatsPerBar, beatUnit } from './meter'
 import { sampleRegistration } from './sample-banks'
 import { voiceSpecs } from './voice-spec'
-import type { Automation } from './automation'
+import { loopClockCode, loopRange } from './loop-ranges'
+import { eventRangeConfig, eventRangePattern } from './range-frequency'
+import type { ParameterRange } from './model'
 import type { MusicSnapshot, Preview, VoiceSpec } from './runtime-types'
 
 export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): string {
@@ -28,46 +31,68 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
 }
 
 function voiceCode(voice: VoiceSpec): string {
+  const octaveRange = voice.instrument.octaveRange
+  const rangeMin = octaveRange && Math.min(octaveRange.first, octaveRange.second)
+  const rangeMax = octaveRange && Math.max(octaveRange.first, octaveRange.second)
+  if (octaveRange && !octaveRange.frequency && !voice.unpitched && (rangeMin !== voice.instrument.octave || rangeMax !== voice.instrument.octave)) {
+    const baseVoice = { ...voice, instrument: { ...voice.instrument, octaveRange: undefined } }
+    const base = voiceCode(baseVoice)
+    const registers = Array.from({ length: rangeMax! - rangeMin! + 1 }, (_, index) => rangeMin! + index)
+      .map(octave => {
+        const semitones = (octave - voice.instrument.octave) * 12
+        return semitones ? `${base}.transpose(${semitones})` : base
+      })
+    if (registers.length === 1) return registers[0]
+    return `pick([${registers.join(', ')}], irand(${registers.length}).segment(1).seed(${voice.piece.slot + 1}))`
+  }
   if (voice.performance) {
     const plan = voice.performance
+    const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined,
+      ...(voice.instrument.octaveRange?.frequency ? { octaveRange: undefined } : {}),
+      ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
     const variations = [...new Set(plan.steps.filter(step=>step.active).map(step=>step.variation))]
-    const declarations = variations.map(index=>`const part${index} = ${voiceCode({...voice,performance:undefined,sectionPattern:String(index)})};`).join('\n    ')
+    const declarations = variations.map(index=>`const part${index} = ${voiceCode({...baseVoice,performance:undefined,harmonic:undefined,sectionPattern:String(index)})};`).join('\n    ')
     const banks = plan.steps.map(step=>step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence')
     const selector = JSON.stringify(performancePattern(plan, true, voice.beatsPerBar))
     const form = `${plan.restart ? 'pickRestart' : 'pick'}([${banks.join(', ')}], mini(${selector}))`
-    return `(() => {\n    ${declarations}\n    return ${form};\n  })()`
+    const source = `(() => {\n    ${declarations}\n    return ${form};\n  })()`
+    return rangesCode(voice, voice.harmonic ? `(${harmonicPattern.toString()})(${source},${JSON.stringify(voice.harmonic)})` : source)
   }
   const event = voice.unpitched ? 'n' : 'note'
   const fixed = /^\d+$/.test(voice.sectionPattern) ? Number(voice.sectionPattern) : undefined
-  const banks = voice.phrases.map((phrase, i) => {
-    if (fixed !== undefined && i !== fixed % voice.phrases.length) return 'silence'
-    if (fixed === undefined && !voice.pianoRolls?.some(Boolean)) return 'silence'
-    const roll = voice.pianoRolls?.[i]
-    const lanes = roll ? optimizeRoll(roll).map(lane => {
+  const banks = voice.pianoRolls.map((roll, i) => {
+    if (fixed !== undefined && i !== fixed % voice.pianoRolls.length) return 'silence'
+    return stackCode(optimizeRoll(roll).map(lane => {
       const overrides = { ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .5 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}) }
       return `${event}(${JSON.stringify(rollLaneNotation(lane))}).velocity(${lane.velocity}).slow(${roll.bars}).withValue(v => ({...v, ccOverrides: ${JSON.stringify(overrides)}}))`
-    }) : undefined
-    let source = lanes ? stackCode(lanes) : `${event}(${JSON.stringify(phrase)})`
-    if (!roll && voice.groove) source += `.struct(${JSON.stringify(voice.groove.rhythms[(fixed??i)%voice.groove.rhythms.length])}).velocity(${JSON.stringify(voice.groove.accents[(fixed??i)%voice.groove.accents.length])})`
-    return source
+    }))
   })
-  let source = fixed !== undefined ? banks[fixed % banks.length] : voice.pianoRolls?.some(Boolean)
-    ? stackCode(banks.map((bank,i)=>`${bank}.mask(mini(${JSON.stringify(voice.sectionPattern)}).withValue(v => Number(v) % ${banks.length} === ${i}))`))
-    : voice.phrases.length > 1 ? `pickRestart([${voice.phrases.map(p=>`${event}(${JSON.stringify(p)})`).join(', ')}], mini(${JSON.stringify(voice.sectionPattern)}))` : `${event}(${JSON.stringify(voice.notes)})`
-  if (voice.groove && fixed === undefined && !voice.pianoRolls?.some(Boolean)) source += `.struct(${patternBankCode(voice.groove.rhythms,voice.sectionPattern)}).velocity(${patternBankCode(voice.groove.accents,voice.sectionPattern)})`
-  if (voice.mask) source += `.mask(${JSON.stringify(voice.mask)})`
-  if (!voice.manual && voice.instrument.extraSwing) source += `.swingBy(${voice.instrument.extraSwing},${voice.beatsPerBar ?? 4})`
+  let source = fixed !== undefined ? banks[fixed % banks.length]
+    : stackCode(banks.map((bank,i)=>`${bank}.mask(mini(${JSON.stringify(voice.sectionPattern)}).withValue(v => Number(v) % ${banks.length} === ${i}))`))
+  if (!voice.manual && !voice.instrument.swingRange && voice.instrument.extraSwing) source += `.swingBy(${voice.instrument.extraSwing},${voice.beatsPerBar ?? 4})`
   source += Object.entries(voice.controls).map(([key,value])=>`.${key}(${JSON.stringify(value)})`).join('')
-  source += Object.entries(voice.automations??{}).map(([key,value])=>`.${key}(${automationCode(value,voice.sectionPattern)}${key==='gain'?`.mul(${Number(voice.controls.gain)})`:key==='lpf'&&voice.preview?`.withValue(x => Math.min(x, ${voice.controls.lpf}))`:''})`).join('')
+  source = rangesCode(voice, source)
   return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}))`
 }
 
-function patternBankCode(patterns: string[], section: string) {
-  if(/^\d+$/.test(section))return `mini(${JSON.stringify(patterns[Number(section)%patterns.length])})`
-  return patterns.length === 1 ? `mini(${JSON.stringify(patterns[0])})` : `pickRestart([${patterns.map(p => `mini(${JSON.stringify(p)})`).join(', ')}], mini(${JSON.stringify(section)}))`
+function rangeCode(voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {
+  const recipe = loopRange(voice, range, target)
+  if (recipe.min === recipe.max) return `mini(${JSON.stringify(String(recipe.min))})`
+  if (recipe.clock) return `(() => {const r=rand.seed(${recipe.seed}).range(${recipe.min},${recipe.max});return signal(time=>{${loopClockCode(recipe.clock)}return r.queryArc(index,index+.0001)[0].value;});})()`
+  if (recipe.selection) return `(() => {const r=rand.seed(${recipe.seed}).range(${recipe.min},${recipe.max}),c=${JSON.stringify(recipe.selection)},selector=mini(c.pattern);return signal(time=>{const t=Number(time),section=selector.queryArc(t,t+.0001)[0],variation=Number(section?.value??0)%c.bars.length,start=Number(section?.whole?.begin??0);const index=c.restart?Math.floor(start*4096)+Math.floor((t-start)/c.bars[variation])*8+variation:Math.floor(t/c.bars[variation])*c.bars.length+variation;return r.queryArc(index,index+.0001)[0].value;});})()`
+  return `rand.seed(${recipe.seed}).range(${recipe.min},${recipe.max}).segment(1).slow(${recipe.bars})`
 }
-function automationCode(value: Automation, section: string) {
-  return value.kind === 'pattern' ? patternBankCode(value.patterns, section) : `${value.kind === 'sine' ? 'sine' : 'saw'}.range(${value.min}, ${value.max}).slow(${value.cycles})`
+
+function rangesCode(voice: VoiceSpec, source: string) {
+  if (!voice.manual && voice.instrument.swingRange && (!voice.instrument.swingRange.frequency || voice.instrument.swingRange.frequency === 'loop')) source += `.swingBy(${rangeCode(voice, voice.instrument.swingRange, 'swing')},${voice.beatsPerBar ?? 4})`
+  if (voice.instrument.driveRange && (!voice.instrument.driveRange.frequency || voice.instrument.driveRange.frequency === 'loop')) {
+    const drive = rangeCode(voice, voice.instrument.driveRange, 'drive')
+    source += `.distort(${drive}).distortvol(${voice.instrument.distortionMix ?? .25}).withValue(({distort,distortvol,...value})=>Number(distort)===0?value:{...value,distort,distortvol})`
+  }
+  if (voice.instrument.reverbRange && (!voice.instrument.reverbRange.frequency || voice.instrument.reverbRange.frequency === 'loop')) source += `.room(${rangeCode(voice, voice.instrument.reverbRange, 'reverb')})`
+  const config = eventRangeConfig(voice)
+  if (config.ranges.length) source = `(${eventRangePattern.toString()})(${source},${JSON.stringify(config)}${!voice.manual && !voice.performance && !/^\d+$/.test(voice.sectionPattern) ? `,mini(${JSON.stringify(voice.sectionPattern)})` : ''})`
+  return source
 }
 
 function stackCode(parts: string[]) {

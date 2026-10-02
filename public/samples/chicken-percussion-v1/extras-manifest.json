@@ -1,0 +1,50 @@
+{
+  "sources": [
+    [
+      "freepats/spanish-classical-guitar",
+      "6f4eb1b092acc88f5448cea1a0001bd07b971af8"
+    ],
+    [
+      "sfzinstruments/virtuosity_drums",
+      "9f04cf9a734527edfbb0a4eee1f674e45bbf71bc"
+    ]
+  ],
+  "recordings": [
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "kick-0.wav",
+      "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr1.flac",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr1.flac",
+      "source_sha256": "4f5ce76c313c39f3f3af340deee3c5d2058632b6d1c6c1aab561d3f2433f30d4",
+      "output_sha256": "709840171ee2bab7ea38392f550e1a0196573102c4d310067312175766bb6526",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "ride-0.wav",
+      "source": "Samples/oh/ride/oh_ride_ride_vl2_rr1.flac",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_ride_vl2_rr1.flac",
+      "source_sha256": "56481c1109ac7baba9ab4b049cacfbc5050cf29d59951c654e7316595385eeaa",
+      "output_sha256": "9641d679425ce1eea17d07051bba28ecaa89e10f45ddfd35e5a6b3efeb58f059",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "kick-1.wav",
+      "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr2.flac",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr2.flac",
+      "source_sha256": "a8150dac10dff5f34a581e2359dd98dc245571aaaeed23c3228e8b02516574e5",
+      "output_sha256": "7549af56790111a2d8b32b1f25f0e83d49e012ed42e23407ae7f1353f02c8a34",
+      "license": "CC0-1.0"
+    },
+    {
+      "bank": "chicken-percussion-v1",
+      "file": "ride-1.wav",
+      "source": "Samples/oh/ride/oh_ride_ride_vl2_rr2.flac",
+      "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_ride_vl2_rr2.flac",
+      "source_sha256": "5cec02ecdc875cfc5fde8d2cd7f5be23cc8e0b1ad35e4bcdef222328f6fbb6ab",
+      "output_sha256": "8d9d2e1482bca740bec1ec0191e4c748d691ff307e15011719225d65041b825a",
+      "license": "CC0-1.0"
+    }
+  ]
+}
