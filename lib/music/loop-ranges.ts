@@ -36,6 +36,8 @@ export function loopRange(voice: VoiceSpec, range: ParameterRange, target: 'driv
   const clock: LoopClock | undefined = steps ? { total: start, loops, steps, restart: voice.performance!.restart } : undefined
   const selection = !clock && !voice.manual && !/^\d+$/.test(voice.sectionPattern) && voice.pianoRolls.length > 1
     ? { pattern: voice.sectionPattern, bars: voice.pianoRolls.map((_, index) => variationBars(voice, index)), restart: false } : undefined
-  return { min: Math.min(range.first, range.second), max: Math.max(range.first, range.second),
+  const orderedMin = Math.min(range.first, range.second), orderedMax = Math.max(range.first, range.second)
+  const fixed = range.frequency === 'fixed'
+  return { min: fixed ? range.first : orderedMin, max: fixed ? range.first : orderedMax,
     bars, seed: (voice.piece.slot + 1) * 409 + offset + index * 17, clock, selection }
 }

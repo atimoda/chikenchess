@@ -36,6 +36,7 @@ export interface MusicSnapshot {
   mappings?: Record<string, MovementMapping>
   title?: string
   soloId?: string | null
+  soloIds?: string[]
   teamMixes?: TeamMixes
   tuning?: number
 }

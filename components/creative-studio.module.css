@@ -100,12 +100,10 @@
 .parameterKnobLabel [data-info-tip] { margin: 0; }
 .parameterKnobLabel [data-info-tip] > button { margin: 0; }
 .parameterKnob, .transportKnob { --city-neon: #b6e5ac; }
-.parameterKnob [role='slider'], .transportKnob [role='slider'], .parameterKnob [role='group'] { background: #25372b; border-color: #526c54; }
+.parameterKnob [role='slider']:not([data-range-thumb]), .transportKnob [role='slider'], .parameterKnob [role='group'] { background: #25372b; border-color: #526c54; }
 .parameterKnob [role='group'] > output { color: #d7ebc9; }
-.parameterKnob [role='slider'][data-range-thumb] { width: 9px; height: 9px; padding: 0; background: #b6e5ac; border-color: #142017; }
-.parameterKnob [role='slider'][data-range-thumb]:hover { background: var(--city-neon, #39ff14); }
+.parameterKnob [role='slider'][data-range-thumb] { width: 9px; height: 9px; padding: 0; border-color: #142017; }
 .parameterKnob [role='slider'] > span, .transportKnob [role='slider'] > span { top: 50%; color: #d7ebc9; font-size: 9px; }
-.parameterKnob [role='slider'] > div > div, .transportKnob [role='slider'] > div > div { background: #b6e5ac; }
 .wideControl { grid-column: span 2; }
 .range > span { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; }
 .range output { font-family: monospace; font-size: 10px; color: #daebc5; }

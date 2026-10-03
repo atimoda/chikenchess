@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('../helpers/music.cjs')
-const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation, rankedMoveReward, rankedMoveLabelTone } = loadTs('lib/chess-evaluation.ts')
+const { ChessEvaluationQueue, formatMoveCoordinates, formatEvaluation, rankedMoveReward, rankedMoveLabelTone, rememberMoveSuggestions, rankedMoveRewardDetails } = loadTs('lib/chess-evaluation.ts')
 const candidates = ['a2a3','b2b3','c2c3','d2d3','e2e3','f2f3'].map(uci => ({ uci, san: uci.slice(2) }))
 function setup() {
   const commands=[], scores=[], analyses=[], progress=[], played=[], errors=[], traces=[]
@@ -251,4 +251,59 @@ test('real Stockfish Lite WASM handles legal root moves on desktop and e4 and ma
     }
     if(constrained) assert.equal(results.find(r=>r.position==='mate').mate,1)
   }
+})
+
+
+function rewardAnalysis(best, worst = [], fen = 'before') {
+  const moves = list => list.map(([uci, score]) => ({ uci, score, mate: null }))
+  return { fen, side: 'w', legalMoves: 8, complete: true, final: false, best: moves(best), worst: moves(worst) }
+}
+
+test('last seen recommendations and unseen current candidates both earn their relative rewards', () => {
+  const seen = rememberMoveSuggestions([], { kind: 'best', analysis: rewardAnalysis([['e2e4', 25]], [['c2c3', -200]]) })
+  const current = rewardAnalysis([['d2d4', 30]], [['e2e4', -200], ['f2f3', -300]])
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'e2e4', seen), { kind: 'best', comeback: false })
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'd2d4', seen), { kind: 'best', comeback: false })
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'f2f3', seen), { kind: 'worst', comeback: false })
+  // The unseen Worst group of the remembered analysis does not count.
+  assert.equal(rankedMoveRewardDetails(current, 'before', 'c2c3', seen), null)
+})
+
+test('remembered Worst suggestions survive ranking updates and the latest display of each group replaces it', () => {
+  let seen = rememberMoveSuggestions([], { kind: 'worst', analysis: rewardAnalysis([], [['f2f3', -200]]) })
+  const current = rewardAnalysis([['f2f3', 30]], [])
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'f2f3', seen), { kind: 'worst', comeback: false })
+  seen = rememberMoveSuggestions(seen, { kind: 'best', analysis: rewardAnalysis([['e2e4', 10]]) })
+  seen = rememberMoveSuggestions(seen, { kind: 'best', analysis: rewardAnalysis([['d2d4', 20]]) })
+  assert.equal(seen.length, 2)
+  assert.equal(rankedMoveRewardDetails(current, 'before', 'e2e4', seen), null)
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'd2d4', seen), { kind: 'best', comeback: false })
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'f2f3', seen), { kind: 'worst', comeback: false })
+  // If groups conflict for the same move, the one most recently visible wins.
+  seen = rememberMoveSuggestions(seen, { kind: 'best', analysis: current })
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'f2f3', seen), { kind: 'best', comeback: false })
+})
+
+test('remembered scores preserve comeback phrases and the one-pawn boundary despite later scores', () => {
+  const current = rewardAnalysis([['e2e4', 30], ['d2d4', -200]])
+  const seen = rememberMoveSuggestions([], { kind: 'best', analysis: rewardAnalysis([['e2e4', -101], ['d2d4', -100]]) })
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'e2e4', seen), { kind: 'worst', comeback: true })
+  assert.deepEqual(rankedMoveRewardDetails(current, 'before', 'd2d4', seen), { kind: 'best', comeback: false })
+})
+
+test('suggestions are temporary copied snapshots scoped to a valid player position and never reward forced moves', () => {
+  const analysis = rewardAnalysis([['e2e4', 20]])
+  const seen = rememberMoveSuggestions([], { kind: 'best', analysis })
+  analysis.best[0].score = -200
+  analysis.best.length = 0
+  assert.deepEqual(rankedMoveRewardDetails(null, 'before', 'e2e4', seen), { kind: 'best', comeback: false })
+  assert.equal(rankedMoveRewardDetails(null, 'after', 'e2e4', seen), null)
+  const next = rememberMoveSuggestions(seen, { kind: 'worst', analysis: rewardAnalysis([], [['f2f3', -200]], 'after') })
+  assert.equal(next.length, 1)
+  assert.equal(rankedMoveRewardDetails(null, 'after', 'e2e4', next), null)
+  for (const invalid of [{ ...seen[0].analysis, complete: false }, { ...seen[0].analysis, side: 'b' }, { ...seen[0].analysis, legalMoves: 1 }]) {
+    assert.equal(rankedMoveRewardDetails(null, 'before', 'e2e4', [{ kind: 'best', analysis: invalid }]), null)
+  }
+  assert.equal(rankedMoveRewardDetails({ ...seen[0].analysis, legalMoves: 1 }, 'before', 'e2e4', seen), null)
+  assert.deepEqual(rememberMoveSuggestions(seen, { kind: 'best', analysis: { ...seen[0].analysis, complete: false } }), seen)
 })

@@ -29,13 +29,17 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const [effects, setEffects] = useState<Record<string, SquareEffects>>(builtInKit?.effects ?? {})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [manuallyActiveIds, setManuallyActiveIds] = useState<Set<string>>(() => new Set())
+  const [soloIds, setSoloIds] = useState<Set<string>>(() => new Set())
+  const [soloRestoredIds, setSoloRestoredIds] = useState<Set<string>>(() => new Set())
+  const soloMemoryRef = useRef<Set<string> | null>(null)
+  const soloCycleIdsRef = useRef<Set<string>>(new Set())
   const [preview, setPreview] = useState<Preview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
   const pulseMonitor = useMemo(createMusicPulseMonitor, [])
   const baseSnapshot = useMemo(() => ({
-    pieces: pieces.map(p => ({ ...p, active: p.activation === 'move' || manuallyActiveIds.has(p.id), checkEnsemble: false })),
+    pieces: pieces.map(p => ({ ...p, active: p.activation === 'move' || manuallyActiveIds.has(p.id) || soloRestoredIds.has(p.id), checkEnsemble: false })),
     scale: kit ? scaleForCreativeSession(kit) : city.scale,
     harmony: kit?.harmony,
     arrangement: kit?.arrangement,
@@ -49,11 +53,27 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     mappings: kit?.mappings,
     teamMixes,
     title: kit ? `${city.name} · ${kit.name}` : city.name,
-  }), [pieces, manuallyActiveIds, kit, city.scale, city.name, bpm, volume, playing, effects, teamMixes])
+  }), [pieces, manuallyActiveIds, soloRestoredIds, kit, city.scale, city.name, bpm, volume, playing, effects, teamMixes])
   const [audible, setAudible] = useState<MusicSnapshot | null>(null)
-  const input = useMemo(() => ({...baseSnapshot,reactionInput:kit?{config:kit.reactions,context,scope:city.id}:undefined}),[baseSnapshot,kit,context,city.id])
   const resolved = useMemo(() => kit ? applyReactions(baseSnapshot,kit.reactions,context) : {snapshot:baseSnapshot,descriptions:[]},[baseSnapshot,kit,context])
-  const snapshot: MusicSnapshot = audible ?? resolved.snapshot
+  const soloIdsList = useMemo(() => [...soloIds], [soloIds])
+  const soloSnapshot = useMemo<MusicSnapshot>(() => {
+    if (!soloIdsList.length) return resolved.snapshot
+    const instruments = resolved.snapshot.instruments ? { ...resolved.snapshot.instruments } : undefined
+    for (const id of soloIdsList) {
+      const instrument = instruments?.[id]
+      if (instrument) instruments![id] = { ...instrument, loopEnabled: true }
+    }
+    return {
+      ...resolved.snapshot,
+      soloId: soloIdsList.length === 1 ? soloIdsList[0] : null,
+      soloIds: soloIdsList,
+      instruments,
+      pieces: resolved.snapshot.pieces.map(piece => ({ ...piece, active: soloIds.has(piece.id) })),
+    }
+  }, [resolved.snapshot, soloIds, soloIdsList])
+  const input = useMemo(() => ({...baseSnapshot,soloIds:soloIdsList.length ? soloIdsList : undefined,reactionInput:kit?{config:kit.reactions,context,scope:city.id}:undefined}),[baseSnapshot,soloIdsList,kit,context,city.id])
+  const snapshot: MusicSnapshot = audible ?? soloSnapshot
   const currentPitchCollection = useMemo(() => identifyPitchCollection(snapshot.scale, kit?.scale), [snapshot.scale, kit?.scale])
   const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active && snapshot.instruments?.[p.id]?.loopEnabled !== false).map(p => p.square)), [snapshot.pieces, snapshot.instruments])
   const code = useMemo(() => enabled && showCode ? renderMusicCode(snapshot, preview) : '', [enabled, showCode, snapshot, preview])
@@ -65,6 +85,10 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     setEffects(resolved?.effects ?? {})
     setSelectedId(null)
     setManuallyActiveIds(new Set())
+    setSoloIds(new Set())
+    setSoloRestoredIds(new Set())
+    soloMemoryRef.current = null
+    soloCycleIdsRef.current = new Set()
     setPreview(null)
     runtime.current?.endAudition()
   }, [city.id])
@@ -144,9 +168,59 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     }))
     return turnOn
   }, [pieces, kit, resolved.snapshot.pieces])
-  const reset = useCallback(() => { setEffects(kit?.effects ?? {}); setSelectedId(null); setManuallyActiveIds(new Set()); endAudition() }, [endAudition, kit])
+  const toggleSolo = useCallback((id: string) => {
+    if (!pieces.some(piece => piece.id === id)) return false
+    endAudition()
+    if (soloIds.has(id)) {
+      const next = new Set(soloIds)
+      next.delete(id)
+      if (next.size === 0) {
+        const aliveIds = new Set(pieces.map(piece => piece.id))
+        const restoreIds = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current].filter(pieceId => aliveIds.has(pieceId)))
+        setSoloRestoredIds(current => new Set([...current, ...restoreIds]))
+        soloMemoryRef.current = null
+        soloCycleIdsRef.current = new Set()
+      }
+      setSoloIds(next)
+      return false
+    }
+    if (soloIds.size === 0) {
+      soloMemoryRef.current = new Set(resolved.snapshot.pieces
+        .filter(piece => piece.active && resolved.snapshot.instruments?.[piece.id]?.loopEnabled !== false)
+        .map(piece => piece.id))
+      soloCycleIdsRef.current = new Set()
+    }
+    soloCycleIdsRef.current.add(id)
+    setManuallyActiveIds(current => new Set(current).add(id))
+    setSelectedId(id)
+    setSoloIds(current => new Set([...current, id]))
+    return true
+  }, [pieces, endAudition, soloIds, resolved.snapshot])
+  useEffect(() => {
+    if (!soloIds.size) return
+    const aliveIds = new Set(pieces.map(piece => piece.id))
+    const next = new Set([...soloIds].filter(id => aliveIds.has(id)))
+    if (next.size === soloIds.size) return
+    if (next.size === 0) {
+      const restoreIds = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current].filter(id => aliveIds.has(id)))
+      setSoloRestoredIds(current => new Set([...current, ...restoreIds]))
+      soloMemoryRef.current = null
+      soloCycleIdsRef.current = new Set()
+    }
+    setSoloIds(next)
+  }, [soloIds, pieces])
+  const reset = useCallback(() => {
+    setEffects(kit?.effects ?? {})
+    setSelectedId(null)
+    setManuallyActiveIds(new Set())
+    setSoloIds(new Set())
+    setSoloRestoredIds(new Set())
+    soloMemoryRef.current = null
+    soloCycleIdsRef.current = new Set()
+    endAudition()
+  }, [endAudition, kit])
   const selected = snapshot.pieces.find(p => p.id === selectedId)
-  const instrument = selected ? (kit?.instruments[selected.id] ?? instrumentFor(selected)) : null
+  const instrument = selected ? (snapshot.instruments?.[selected.id] ?? kit?.instruments[selected.id] ?? instrumentFor(selected)) : null
   const updateInstrument = useCallback((patch: InstrumentPerformanceEdit) => {
     if (!selectedId) return
     setKit(current => {
@@ -173,7 +247,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     else data.fill(0)
   }, [])
   return {
-    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, reset, selected, effects: snapshot.effects, setEffects, snapshot, teamMixes, updateTeamMix,
+    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects, setEffects, snapshot, teamMixes, updateTeamMix,
     code, preview, pulseMonitor, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,

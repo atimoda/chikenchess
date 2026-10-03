@@ -5,7 +5,7 @@ import { Chess, type PieceSymbol, type Square } from 'chess.js'
 import type { SampleSource } from './sample-banks'
 
 export type Behavior = 'pulse' | 'phrase' | 'sustain'
-export type RangeFrequency = 'loop' | 'section' | 'note'
+export type RangeFrequency = 'fixed' | 'loop' | 'section' | 'note'
 export interface ParameterRange { first: number; second: number; frequency?: RangeFrequency }
 export interface MusicPiece {
   id: string
@@ -42,6 +42,7 @@ export interface Instrument {
   arrangement?: PieceArrangement
   distortion?: number
   distortionMix?: number
+  playChance?: number
   pitchEnvelope?: number
   pitchAttack?: number
   extraSwing?: number
@@ -55,7 +56,7 @@ export interface MovementMapping {
   previewFilter: boolean
 }
 
-export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'octaveRange' | 'driveRange' | 'reverbRange' | 'swingRange' | 'lpfRange' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'pitchEnvelope' | 'pitchAttack' | 'extraSwing' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled' | 'arrangement'>>
+export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'octaveRange' | 'driveRange' | 'reverbRange' | 'swingRange' | 'lpfRange' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'playChance' | 'pitchEnvelope' | 'pitchAttack' | 'extraSwing' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled' | 'arrangement'>>
 
 export const DEFAULT_MOVEMENT: MovementMapping = {
   fileDegrees: 1, rankDegrees: 0.5, panWidth: 0.5, previewFilter: true,

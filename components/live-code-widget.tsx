@@ -26,6 +26,7 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   stockfishDebugOn: boolean
   onToggleStockfishDebug: () => void
   onForceWin?: () => void
+  onGetEggs?: () => void
 }
 
 export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
@@ -44,6 +45,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   stockfishDebugOn,
   onToggleStockfishDebug,
   onForceWin,
+  onGetEggs,
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
@@ -199,7 +201,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
                 DEBUG
              </span>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <button
               type="button"
               aria-pressed={stockfishDebugOn}
@@ -211,6 +213,11 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               onClick={event => { event.stopPropagation(); onForceWin() }}
               className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white"
             >Force win</button>}
+            {onGetEggs && <button
+              type="button"
+              onClick={event => { event.stopPropagation(); onGetEggs() }}
+              className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white"
+            >Get eggs</button>}
           </div>
           {playback && <div className="debug-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden space-y-1 pr-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
 
@@ -224,7 +231,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
         .debug-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.38); border-radius: 999px; }
         .debug-scroll:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.72); }
       `}</style>
-      {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}
+      {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
       </Resizable>
     </Draggable>
   )

@@ -7,8 +7,6 @@ import { eventRangeConfig, eventRangePattern } from './range-frequency'
 import type { ParameterRange } from './model'
 import type { Strudel, StrudelPattern, StrudelWithPick, VoiceSpec } from './runtime-types'
 
-type StrudelWithIntegerRandom = Strudel & { irand: (max: number) => StrudelPattern }
-
 function rangePattern(api: Strudel, voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {
   const recipe = loopRange(voice, range, target)
   if (recipe.min === recipe.max) return api.mini(String(recipe.min))
@@ -32,42 +30,28 @@ function rangePattern(api: Strudel, voice: VoiceSpec, range: ParameterRange, tar
 }
 
 function applyRanges(api: Strudel, voice: VoiceSpec, pattern: StrudelPattern) {
-  if (!voice.manual && voice.instrument.swingRange && (!voice.instrument.swingRange.frequency || voice.instrument.swingRange.frequency === 'loop')) pattern = pattern.swingBy(rangePattern(api, voice, voice.instrument.swingRange, 'swing'), voice.beatsPerBar ?? 4)
-  if (voice.instrument.driveRange && (!voice.instrument.driveRange.frequency || voice.instrument.driveRange.frequency === 'loop')) {
+  if (!voice.manual && voice.instrument.swingRange && voice.instrument.swingRange.frequency === 'loop') pattern = pattern.swingBy(rangePattern(api, voice, voice.instrument.swingRange, 'swing'), voice.beatsPerBar ?? 4)
+  if (voice.instrument.driveRange && voice.instrument.driveRange.frequency === 'loop') {
     const drive = rangePattern(api, voice, voice.instrument.driveRange, 'drive')
     pattern = pattern.distort(drive).distortvol(voice.instrument.distortionMix ?? .25)
       .withValue(({ distort, distortvol, ...value }: any) => Number(distort) === 0 ? value : { ...value, distort, distortvol })
   }
-  if (voice.instrument.reverbRange && (!voice.instrument.reverbRange.frequency || voice.instrument.reverbRange.frequency === 'loop')) pattern = pattern.room(rangePattern(api, voice, voice.instrument.reverbRange, 'reverb'))
+  if (voice.instrument.reverbRange && voice.instrument.reverbRange.frequency === 'loop') pattern = pattern.room(rangePattern(api, voice, voice.instrument.reverbRange, 'reverb'))
   const config = eventRangeConfig(voice)
   if (config.ranges.length) pattern = eventRangePattern(pattern, config,
     !voice.manual && !voice.performance && !/^\d+$/.test(voice.sectionPattern) ? api.mini(voice.sectionPattern) : undefined)
+  if (!voice.manual && voice.instrument.playChance !== undefined && voice.instrument.playChance < 1) {
+    pattern = pattern.degradeBy(1 - voice.instrument.playChance)
+  }
   return pattern
 }
 
 export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
   if (!voice.manual && voice.instrument.loopEnabled === false) return api.silence
-  const octaveRange = voice.instrument.octaveRange
-  const rangeMin = octaveRange && Math.min(octaveRange.first, octaveRange.second)
-  const rangeMax = octaveRange && Math.max(octaveRange.first, octaveRange.second)
-  if (octaveRange && !octaveRange.frequency && !voice.unpitched && (rangeMin !== voice.instrument.octave || rangeMax !== voice.instrument.octave)) {
-    // Compile the same voice at its base register, then select one transposed
-    // copy for each global Strudel cycle (one bar in this engine).
-    const baseVoice = { ...voice, instrument: { ...voice.instrument, octaveRange: undefined } }
-    const base = compileVoice(api, baseVoice)
-    const registers = Array.from({ length: rangeMax! - rangeMin! + 1 }, (_, index) => rangeMin! + index)
-      .map(octave => {
-        const semitones = (octave - voice.instrument.octave) * 12
-        return semitones ? base.transpose(semitones) : base
-      })
-    if (registers.length === 1) return registers[0]
-    const selector = (api as StrudelWithIntegerRandom).irand(registers.length).segment(1).seed(voice.piece.slot + 1)
-    return (api as StrudelWithPick).pick(registers, selector)
-  }
   if(voice.performance){
     const plan=voice.performance
-    const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined,
-      ...(voice.instrument.octaveRange?.frequency ? { octaveRange: undefined } : {}),
+    const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined, playChance: undefined,
+      ...(voice.instrument.octaveRange ? { octaveRange: undefined } : {}),
       ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
     const compiled=new Map<string,StrudelPattern>()
     const banks=plan.steps.map(step=>{

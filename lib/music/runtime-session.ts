@@ -203,6 +203,21 @@ export class MusicRuntime {
     const resolved=input?applyReactions(this.sourceState,input.config,input.context,this.reactionQueue.entries):undefined
     this.state=resolved?{...resolved.snapshot,reactionDescriptions:resolved.descriptions}:this.sourceState
     if(input?.lockedBpm!==undefined){this.state={...this.state,bpm:input.lockedBpm};this.rampBars=0}
+    const soloIds = this.sourceState.soloIds?.length ? this.sourceState.soloIds : this.sourceState.soloId ? [this.sourceState.soloId] : []
+    if (soloIds.length) {
+      const instruments = this.state.instruments ? { ...this.state.instruments } : undefined
+      for (const id of soloIds) {
+        const instrument = instruments?.[id]
+        if (instrument) instruments![id] = { ...instrument, loopEnabled: true }
+      }
+      this.state = {
+        ...this.state,
+        soloId: soloIds.length === 1 ? soloIds[0] : null,
+        soloIds,
+        instruments,
+        pieces: this.state.pieces.map(piece => ({ ...piece, active: soloIds.includes(piece.id) })),
+      }
+    }
     this.onResolved?.(this.state)
   }
   private transportFrame(cycle=this.scheduler?.cycle??this.pendingSeek??0) {
@@ -382,6 +397,7 @@ export class MusicRuntime {
       const cycleIndex = Math.floor(cycle)
       const section = arrangementPosition(this.state.arrangement ?? DEFAULT_ARRANGEMENT,cycle,beatsPerBar(this.state.meter)).index
       const tracks: Record<string, TrackFrame> = {}
+      const soloIds = this.state.soloIds?.length ? this.state.soloIds : this.state.soloId ? [this.state.soloId] : []
       for (const piece of this.state.pieces) {
         const manual = this.preview?.mode === 'manual' && !this.releaseTimer && this.preview.id === piece.id
         const voice = manual ? this.manualHit?.voice : this.voices.get(`${piece.id}:preview`) ?? this.voices.get(`${piece.id}:loop`)
@@ -390,7 +406,7 @@ export class MusicRuntime {
         const sampleKey = source?.kind === 'sample' ? sampleRegistration(source).sound : ''
         const empty = { notes: [], events: [], values: {} }
         if (!manual && !(this.preview?.id === piece.id && this.preview.mode !== 'manual')) {
-          if (this.state.soloId && this.state.soloId !== piece.id) { tracks[piece.id] = { ...empty, status: 'solo-muted' }; continue }
+          if (soloIds.length && !soloIds.includes(piece.id)) { tracks[piece.id] = { ...empty, status: 'solo-muted' }; continue }
           if (!piece.active || instrument.loopEnabled === false) { tracks[piece.id] = { ...empty, status: 'inactive' }; continue }
           if (!this.state.playing) { tracks[piece.id] = { ...empty, status: 'paused' }; continue }
           if (!variationPosition(instrument,section,cycle,beatsPerBar(this.state.meter),this.state.sectionOverrides?.[piece.id],this.state.arrangement).present) { tracks[piece.id] = {...empty,status:'masked'};continue }
@@ -499,8 +515,9 @@ export class MusicRuntime {
     if (!this.state || this.disposed) return
     if (!this.api || !this.scheduler) {
       const cycle = this.pendingSeek ?? 0
+      const soloIds = this.state.soloIds?.length ? this.state.soloIds : this.state.soloId ? [this.state.soloId] : []
       this.monitor.publish({ running: false, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section: arrangementPosition(this.state.arrangement ?? DEFAULT_ARRANGEMENT,cycle,beatsPerBar(this.state.meter)).index, transport: this.transportFrame(cycle), tracks: Object.fromEntries(this.state.pieces.map(piece => [piece.id, {
-        status: this.state!.soloId && this.state!.soloId !== piece.id ? 'solo-muted' : piece.active && this.state!.instruments?.[piece.id]?.loopEnabled !== false ? 'paused' : 'inactive', notes: [], events: [], values: {},
+        status: soloIds.length && !soloIds.includes(piece.id) ? 'solo-muted' : piece.active && this.state!.instruments?.[piece.id]?.loopEnabled !== false ? 'paused' : 'inactive', notes: [], events: [], values: {},
       }])) })
       return
     }

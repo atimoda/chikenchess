@@ -11,11 +11,13 @@ export function eventRangeConfig(voice: VoiceSpec): RangeConfig {
   const ranges: EventRange[] = []
   for (const target of ['drive', 'reverb', 'swing', 'octave', 'lpf'] as const) {
     const range = voice.instrument[target === 'drive' ? 'driveRange' : target === 'reverb' ? 'reverbRange' : target === 'swing' ? 'swingRange' : target === 'lpf' ? 'lpfRange' : 'octaveRange']
-    if (!range || (target !== 'lpf' && (!range.frequency || (target !== 'octave' && range.frequency === 'loop')))) continue
+    if (!range) continue
+    const frequency = range.frequency ?? 'note'
+    if (target !== 'lpf' && target !== 'octave' && frequency === 'loop') continue
     if (target === 'octave' && voice.unpitched || target === 'swing' && voice.manual) continue
     const recipe = loopRange(voice, range, target)
     if (target === 'lpf' && voice.previewFilterLimit !== undefined) { recipe.min = Math.min(recipe.min, voice.previewFilterLimit); recipe.max = Math.min(recipe.max, voice.previewFilterLimit) }
-    ranges.push({ target, ...recipe, frequency: range.frequency ?? 'loop' })
+    ranges.push({ target, ...recipe, frequency })
   }
   return { ranges, beats: voice.beatsPerBar ?? 4, octave: voice.instrument.octave, mix: voice.instrument.distortionMix ?? .25 }
 }
@@ -34,7 +36,7 @@ export function eventRangePattern(pattern: StrudelPattern, config: RangeConfig, 
   }
   const sample = (range: EventRange, time: number) => {
     let index = time
-    if (range.frequency !== 'note') {
+    if (range.frequency !== 'note' && range.frequency !== 'fixed') {
       const clock = range.clock
       if (clock) {
         const local = ((time % clock.total) + clock.total) % clock.total

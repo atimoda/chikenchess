@@ -9,7 +9,7 @@ import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor
 import { applyReactions, type ReactionContext } from '@/lib/music/reactions'
 import type { SampleSource } from '@/lib/music/sample-banks'
 
-export function useCreativeMusic(session: CreativeSession, playing: boolean, soloId: string | null, context: ReactionContext, showCode = false) {
+export function useCreativeMusic(session: CreativeSession, playing: boolean, soloIds: ReadonlySet<string>, context: ReactionContext, showCode = false) {
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
   const [preview, setPreview] = useState<Preview | null>(null)
@@ -17,7 +17,8 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   const [audible, setAudible] = useState<MusicSnapshot | null>(null)
   const [preparedFingerprint, setPreparedFingerprint] = useState<string | null>(null)
   const pulseMonitor = useMemo(createMusicPulseMonitor, [])
-  const input = useMemo(() => ({...creativeSnapshot(session,playing,soloId), reactionInput:{config:session.reactions,context,scope:session.cityId??session.name}}),[session,playing,soloId,context])
+  const soloList = useMemo(() => [...soloIds], [soloIds])
+  const input = useMemo(() => ({...creativeSnapshot(session,playing,soloList), reactionInput:{config:session.reactions,context,scope:session.cityId??session.name}}),[session,playing,soloList,context])
   const sampleFingerprint = JSON.stringify(Object.values(session.instruments).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source] : []))
   const sampleSources = useMemo(() => JSON.parse(sampleFingerprint) as SampleSource[], [sampleFingerprint])
   const auditionReady = preparedFingerprint === sampleFingerprint

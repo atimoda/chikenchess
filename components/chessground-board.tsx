@@ -23,6 +23,7 @@ interface ChessgroundBoardProps {
   onPieceHold?: (square: Square) => void
   onPieceRelease?: () => void
   onPieceCancel?: () => void
+  musicEffectsEnabled?: boolean
   musicPulseMonitor?: MusicPulseMonitor
   onDragOverSquare?: (from: Square, to: Square) => void
   cityColor: string
@@ -32,7 +33,7 @@ interface ChessgroundBoardProps {
   activeSquares?: Set<string>
   analysisArrows?: AnalysisArrow[]
   rankedMoveMark?: { square: Square; kind: 'best' | 'worst'; id: number } | null
-  rankedMoveAnnouncement?: { square: Square; kind: 'best' | 'worst' | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean } | null
+  rankedMoveAnnouncement?: { square: Square; kind: 'best' | 'worst' | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null
   freeMode?: {
     mode: "move" | "play"
     auditionPiece: { color: "w" | "b"; type: string }
@@ -40,6 +41,7 @@ interface ChessgroundBoardProps {
     onTogglePiece: (square: Square) => void
     squareLabel?: (square: Square) => string
   }
+  entranceActive?: boolean
 }
 
 export interface AnalysisArrow {
@@ -103,11 +105,13 @@ export function ChessgroundBoard({
   onPieceHold,
   onPieceRelease,
   onPieceCancel,
+  musicEffectsEnabled = true,
   musicPulseMonitor,
   analysisArrows = [],
   rankedMoveMark,
   rankedMoveAnnouncement,
   freeMode,
+  entranceActive = false,
 }: ChessgroundBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -166,6 +170,17 @@ export function ChessgroundBoard({
   }, [onPieceRelease, onPieceCancel])
 
   const board = game.board()
+  const entranceDelayBySquareRef = useRef<Record<string, number> | null>(null)
+  if (!entranceDelayBySquareRef.current) {
+    const shuffledSquares = ROWS.flatMap(row => COLUMNS.map(col => `${col}${row}`))
+    for (let index = shuffledSquares.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1))
+      ;[shuffledSquares[index], shuffledSquares[swapIndex]] = [shuffledSquares[swapIndex], shuffledSquares[index]]
+    }
+    entranceDelayBySquareRef.current = Object.fromEntries(
+      shuffledSquares.map((square, index) => [square, index * 34 + Math.round(Math.random() * 36)]),
+    )
+  }
   const inCheck = freeMode ? false : game.isCheck()
   const turn = game.turn()
   const lastMove = freeMode ? null : game.history({ verbose: true }).at(-1) ?? null
@@ -618,14 +633,45 @@ export function ChessgroundBoard({
         onPointerUp={e => handleDragEnd(e.nativeEvent)}
 
       >
+        <svg aria-hidden="true" className="pointer-events-none absolute h-0 w-0" focusable="false">
+          <defs>
+            <filter id="frozen-piece-texture" x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB">
+              <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="desaturated" />
+              <feComponentTransfer in="desaturated" result="iceTone">
+                <feFuncR type="linear" slope=".72" intercept=".1" />
+                <feFuncG type="linear" slope=".82" intercept=".13" />
+                <feFuncB type="linear" slope=".9" intercept=".18" />
+              </feComponentTransfer>
+              <feTurbulence type="fractalNoise" baseFrequency="0.06 0.28" numOctaves="2" seed="9" result="frostMottle" />
+              <feColorMatrix
+                in="frostMottle"
+                type="matrix"
+                values="0 0 0 0 0.62 0 0 0 0 0.82 0 0 0 0 1 0.25 0.25 0.25 0 0"
+                result="frostColor"
+              />
+              <feComposite in="frostColor" in2="SourceAlpha" operator="in" result="frostInsidePiece" />
+              <feBlend in="iceTone" in2="frostInsidePiece" mode="screen" />
+            </filter>
+          </defs>
+        </svg>
         <style jsx>{`
           .board-square-light {
             background-color: rgba(255, 255, 255, 0.2);
           }
-          .board-square-dark {
+        .board-square-dark {
             background-color: color-mix(in srgb, var(--city-color) 60%, rgba(150, 150, 150, 0.75) 80%);
-          }
-          :global(.black-piece-outline svg *) {
+        }
+        @keyframes board-square-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .board-square-entering {
+          animation: board-square-fade-in 280ms ease-out both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .board-square-entering { animation: none; }
+        }
+        :global(.black-piece-outline svg *) {
             stroke: rgba(255, 255, 255, .3) !important;
           }
           @keyframes ranked-move-flash {
@@ -647,10 +693,22 @@ export function ChessgroundBoard({
             const isDragging = dragPiece?.from === square
             const isAnimatingTo = animatingPieces.some(animation => animation.to === square)
             const isSynthSelected = synthSelectedSquare === square
-            const isActive = activeSquares?.has(square)
+            const isActive = musicEffectsEnabled && activeSquares?.has(square)
             const isPressedPiece = pressedPieceSquare === square
             const frozen = matchPowers.some(power => power.kind === 'freeze' && power.square === square)
             const shielded = matchPowers.some(power => power.kind === 'shield' && power.square === square)
+            const squareBackgroundColor = isKingInCheck
+              ? "rgba(239, 68, 68, 0.6)"
+              : isSelected
+                ? `${cityColor}40`
+                : isPremoveSquare
+                  ? "rgba(59, 130, 246, 0.3)"
+                  : isLight
+                    ? `color-mix(in srgb, ${cityColor} 20%, #6c6c6cbf 80%)`
+                    : `color-mix(in srgb, ${cityColor} 20%, #303030bf 80%)`
+            const displayedSquareBackgroundColor = isLastMove
+              ? `color-mix(in srgb, ${squareBackgroundColor} 85%, transparent)`
+              : squareBackgroundColor
 
             return (
               <button
@@ -659,23 +717,15 @@ export function ChessgroundBoard({
                 data-square={square}
                 className={cn(
                   "relative aspect-square flex items-center justify-center transition-colors duration-150 w-full",
+                  entranceActive && "board-square-entering",
                   !isKingInCheck && !isSelected && !isPremoveSquare && (isLight ? "board-square-light" : "board-square-dark"),
                   (isSynthSelected || (piece && isSynthSelected)) &&
-                    "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]",
+                    "after:absolute after:inset-0 after:border-2 after:border-white after:pointer-events-none after:z-20",
+                  isSynthSelected && musicEffectsEnabled && "shadow-[0_0_15px_rgba(255,255,255,0.5)]",
                 )}
                 style={{
-                  backgroundColor: isKingInCheck
-                    ? "rgba(239, 68, 68, 0.6)"
-                    : isSelected
-                      ? `${cityColor}40`
-                      : isPremoveSquare
-                        ? "rgba(59, 130, 246, 0.3)"
-                    : isLight
-                      ? `color-mix(in srgb, ${cityColor} 20%, #6c6c6cbf 80%)`
-                      : `color-mix(in srgb, ${cityColor} 20%, #303030bf 80%)`,
-                  backgroundImage: isLastMove
-                    ? 'linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5))'
-                    : undefined,
+                  backgroundColor: displayedSquareBackgroundColor,
+                  ...(entranceActive ? { animationDelay: `${entranceDelayBySquareRef.current?.[square] ?? 0}ms` } : {}),
                 }}
                 onPointerDown={(e) => {
                   if (!e.isPrimary || e.button !== 0) {
@@ -739,6 +789,24 @@ export function ChessgroundBoard({
                 onKeyUp={e => { if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter')) onPieceRelease?.() }}
                 onBlur={() => { if (freeMode?.mode === 'play') { if (onPieceCancel) onPieceCancel(); else onPieceRelease?.() } }}
               >
+                {isLastMove && (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        WebkitBackdropFilter: "invert(100%)",
+                        backdropFilter: "invert(100%)",
+                        zIndex: 0,
+                      }}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0"
+                      style={{ backgroundColor: "rgba(220, 205, 255, 0.1)", zIndex: 1 }}
+                    />
+                  </>
+                )}
                 {isActive && (
                   <>
                     <div
@@ -797,14 +865,14 @@ export function ChessgroundBoard({
                   <div
                     className={cn("relative z-10 w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
                     style={{
-                      filter: frozen ? 'grayscale(.7) brightness(1.35) drop-shadow(0 0 7px #bcecff)' : isActive || isPressedPiece ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
+                      filter: frozen ? 'url(#frozen-piece-texture) drop-shadow(0 0 7px #bcecff)' : isActive || (musicEffectsEnabled && isPressedPiece) ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
                     }}
                     dangerouslySetInnerHTML={{
                       __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "",
                     }}
                   />
                 )}
-                {shielded && <svg aria-hidden="true" viewBox="0 0 64 72" className="pointer-events-none absolute left-[11%] top-[2%] z-[12] h-[96%] w-[78%] opacity-50 drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/><path d="m19 35 9 9 18-21" fill="none" strokeWidth="5"/></svg>}
+                {shielded && <svg aria-hidden="true" viewBox="0 0 64 72" className="pointer-events-none absolute left-[11%] top-[2%] z-[12] h-[96%] w-[78%] opacity-50 drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/></svg>}
 
                 {/* Coordinate labels */}
                 {colIndex === 0 && (
@@ -835,13 +903,14 @@ export function ChessgroundBoard({
           className="absolute left-0 top-0 w-[12.5%] h-[12.5%] pointer-events-none opacity-0"
           style={{ border: '2px solid #fb923c', transition: 'opacity 1s ease-out, box-shadow 1s ease-out', zIndex: 15 }}
         />
-        {musicPulseMonitor && <MusicPulseOverlay monitor={musicPulseMonitor} />}
+        {musicEffectsEnabled && musicPulseMonitor && <MusicPulseOverlay monitor={musicPulseMonitor} />}
       </div>
 
       {rankedMoveAnnouncement && (() => {
         const fileIndex = COLUMNS.indexOf(rankedMoveAnnouncement.square[0])
         const rowIndex = 8 - Number(rankedMoveAnnouncement.square[1])
         const good = rankedMoveAnnouncement.kind === 'best'
+        const headlineColor = rankedMoveAnnouncement.comeback ? '#ff9d32' : rankedMoveAnnouncement.kind === 'neutral' ? '#ffffff' : good ? '#41ed8c' : '#ff5d64'
         return <div
           key={rankedMoveAnnouncement.id}
           aria-live="polite"
@@ -850,7 +919,7 @@ export function ChessgroundBoard({
         >
           <span
             className={cn(rewardStyles.rankedRewardHeadline, "font-mono font-bold text-[11px] drop-shadow-[0_1px_5px_rgba(0,0,0,.95)]", rankedMoveAnnouncement.streak && [rewardStyles.rankedRewardHeadlineStreak, "text-[13px]"])}
-            style={{ color: rankedMoveAnnouncement.kind === 'neutral' ? '#ffffff' : good ? '#41ed8c' : '#ff5d64', textShadow: `0 0 8px ${rankedMoveAnnouncement.kind === 'neutral' ? '#ffffff' : good ? '#41ed8c' : '#ff5d64'}80` }}
+            style={{ color: headlineColor, textShadow: `0 0 8px ${headlineColor}80` }}
           >{rankedMoveAnnouncement.headline}</span>
           {rankedMoveAnnouncement.earnedEggs > 0 && <span className={cn(rewardStyles.rankedRewardAmount, "font-mono text-[10px] font-bold text-amber-300 drop-shadow-[0_1px_4px_rgba(0,0,0,.95)]")}>
             {good
@@ -956,7 +1025,7 @@ export function ChessgroundBoard({
              <div
                 className={cn("w-[85%] h-[85%]", animation.piece.startsWith('b') && "black-piece-outline")}
                 style={{
-                  filter: `drop-shadow(0 0 12px ${cityColor})`,
+                  filter: musicEffectsEnabled ? `drop-shadow(0 0 12px ${cityColor})` : undefined,
                 }}
                 dangerouslySetInnerHTML={{
                   __html: PiecesSVG[animation.piece as PieceKey] || "",
@@ -976,7 +1045,7 @@ export function ChessgroundBoard({
             top: 0,
             transform: `translate(${dragPiece.x - 32}px, ${dragPiece.y - 32}px)`,
             willChange: 'transform',
-            filter: `drop-shadow(0 0 12px ${cityColor})`,
+            filter: musicEffectsEnabled ? `drop-shadow(0 0 12px ${cityColor})` : undefined,
           }}
           dangerouslySetInnerHTML={{
             __html: PiecesSVG[dragPiece.piece as PieceKey] || "",

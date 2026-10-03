@@ -22,6 +22,25 @@ test('loop voices use four shared effect buses while previews remain isolated', 
   assert.equal(preview.orbit, 64 + piece.slot)
 })
 
+test('play chance compiles with Strudel degradeBy, exports the same control and leaves manual hits intact', async () => {
+  const api = await strudel()
+  const kit = cityKits.defaultCityKit('detroit')
+  const piece = kit.pieces.find(candidate => candidate.active)
+  const snapshot = creative.creativeSnapshot(kit, true)
+  const instrument = snapshot.instruments[piece.id]
+  const voice = voiceSpecs(snapshot, null).find(candidate => candidate.piece.id === piece.id)
+  const events = pattern => pattern.queryArc(0, 16).filter(event => event.hasOnset())
+  assert.equal(events(compileVoice(api, { ...voice, instrument: { ...instrument, playChance: 0 } })).length, 0)
+  const fullChance = compileVoice(api, { ...voice, instrument: { ...instrument, playChance: 1 } })
+  const legacyDefault = compileVoice(api, { ...voice, instrument: { ...instrument, playChance: undefined } })
+  assert.deepEqual(events(fullChance), events(legacyDefault))
+
+  const partial = { ...snapshot, instruments: { ...snapshot.instruments, [piece.id]: { ...instrument, playChance: .4 } } }
+  assert.match(renderMusicCode(partial, null), /\.degradeBy\(0\.6\)/)
+  const manual = voiceSpecs({ ...snapshot, instruments: { ...snapshot.instruments, [piece.id]: { ...instrument, playChance: 0 } } }, { id: piece.id, square: piece.square, mode: 'manual' }).find(candidate => candidate.piece.id === piece.id)
+  assert.ok(events(compileVoice(api, manual)).length > 0)
+})
+
 test('continuous performances use pick with the same events as global-phase masks', async () => {
   const api = await strudel()
   const kit = cityKits.defaultCityKit('dusseldorf')
@@ -261,32 +280,33 @@ test('empty MIDI banks stay silent and manual audition still has an explicit not
   for (const name of ['preparePianoRoll', 'prepareVoiceVariations', 'compileVoiceVariations']) assert.equal(Object.hasOwn(facade, name), false, name)
 })
 
-test('octave range chooses one seeded register per bar and exported Strudel matches', async () => {
+test('explicit L octave range chooses one seeded register per MIDI loop and exported Strudel matches', async () => {
   const api = await strudel()
   const kit = creative.createCreativeSession()
   kit.pieces.forEach(piece => { piece.active = piece.id === 'w:b1' })
-  Object.assign(kit.instruments['w:b1'], { pianoRolls: [noteRoll([0, 1, 2, 3])], octave: 2, octaveRange: { first: 4, second: 1 } })
+  Object.assign(kit.instruments['w:b1'], { pianoRolls: [noteRoll([0, 1, 2, 3])], octave: 2, octaveRange: { first: 4, second: 1, frequency: 'loop' } })
   const snapshot = creative.creativeSnapshot(kit, true)
   const voice = voiceSpecs(snapshot, null)[0]
   const baseVoice = { ...voice, instrument: { ...voice.instrument, octaveRange: undefined } }
   const actual = compileVoice(api, voice)
   const base = compileVoice(api, baseVoice)
   const registerByBar = new Set()
-  for (let bar = 0; bar < 12; bar++) {
-    const events = actual.queryArc(bar, bar + 1).filter(event => event.hasOnset())
-    const baseEvents = base.queryArc(bar, bar + 1).filter(event => event.hasOnset())
+  for (let loop = 0; loop < 12; loop++) {
+    const events = actual.queryArc(loop, loop + 1).filter(event => event.hasOnset())
+    const baseEvents = base.queryArc(loop, loop + 1).filter(event => event.hasOnset())
     assert.equal(events.length, 4)
     assert.equal(baseEvents.length, 4)
-    const offsets = events.map((event, index) => event.value.note - baseEvents[index].value.note)
-    assert.equal(new Set(offsets).size, 1, `bar ${bar} uses one octave for every note`)
-    assert.equal(Math.abs(offsets[0] % 12), 0)
-    assert.ok(offsets[0] >= -12 && offsets[0] <= 24)
-    registerByBar.add(offsets[0])
+    const offsetsInLoop = new Set(events.map((event, index) => event.value.note - baseEvents[index].value.note))
+    assert.equal(offsetsInLoop.size, 1, `loop ${loop} uses one octave for every note`)
+    const offset = [...offsetsInLoop][0]
+    assert.equal(Math.abs(offset % 12), 0)
+    assert.ok(offset >= -12 && offset <= 24)
+    registerByBar.add(offset)
   }
-  assert.ok(registerByBar.size > 1, 'different bars can select different octaves')
+  assert.ok(registerByBar.size > 1, 'different loops can select different octaves')
 
   const code = renderMusicCode(snapshot, null)
-  assert.match(code, /irand\(4\)\.segment\(1\)\.seed\(\d+\)/)
+  assert.match(code, /"frequency":"loop"/)
   const expression = code.split('\n').filter(line => !line.startsWith('//') && !line.startsWith('setcps(') && !line.startsWith('samples(')).join('\n')
   const exported = Function('api', `with(api){return (${expression})}`)(api)
   const pitches = pattern => pattern.queryArc(0, 12).filter(event => event.hasOnset())

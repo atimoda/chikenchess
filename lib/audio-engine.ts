@@ -224,10 +224,10 @@ export class AudioEngine {
     }
   }
 
-  playDrum(sample: string, gain: number = 0.6, pitch: number = 1) {
+  playDrum(sample: string, gain: number = 0.6, pitch: number = 1, openHatDecay: number = 1) {
     if (!this.audioContext || !this.masterGain) return
     const now = this.audioContext.currentTime
-    this.playPawn(now, sample, gain, 0, "w", pitch)
+    this.playPawn(now, sample, gain, 0, "w", pitch, 0, 0, undefined, undefined, undefined, openHatDecay)
   }
 
   async playBlockedCue() {
@@ -1103,7 +1103,7 @@ export class AudioEngine {
     }
   }
 
-  private playPawn(time: number, sample: string, gain: number, pan: number, color?: "w" | "b", pitchMultiplier: number = 1, delay: number = 0, reverb: number = 0, frequency?: number, lpf?: number, hpf?: number) {
+  private playPawn(time: number, sample: string, gain: number, pan: number, color?: "w" | "b", pitchMultiplier: number = 1, delay: number = 0, reverb: number = 0, frequency?: number, lpf?: number, hpf?: number, openHatDecay: number = 1) {
     if (!this.audioContext || !this.masterGain) return
 
     // Tweak sound based on color
@@ -1121,7 +1121,7 @@ export class AudioEngine {
       case "lt": this.playTom(time, gain, 100 * pitchMod, pan, delay, reverb, lpf, hpf); break;
       case "cy": this.playCymbal(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
       case "cb": this.playCowbell(time, gain, pan, pitchMod, delay, reverb, lpf, hpf); break;
-      case "oh": this.playOpenHihat(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
+      case "oh": this.playOpenHihat(time, gain, pan, delay, reverb, pitchMod, lpf, hpf, openHatDecay); break;
       case "ch": this.playHihat(time, gain, pan, delay, reverb, pitchMod, lpf, hpf); break;
       case "lc": this.playConga(time, gain, 150 * pitchMod, pan, delay, reverb, lpf, hpf); break;
       case "mc": this.playConga(time, gain, 250 * pitchMod, pan, delay, reverb, lpf, hpf); break;
@@ -1211,9 +1211,10 @@ export class AudioEngine {
     noise.start(time); noise.stop(time + 0.05)
   }
 
-  private playOpenHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number) {
+  private playOpenHihat(time: number, gain: number, pan: number, delay: number = 0, reverb: number = 0, pitch: number = 1, lpf?: number, hpf?: number, decay: number = 1) {
     if (!this.audioContext || !this.masterGain) return
-    const bufferSize = this.audioContext.sampleRate * 0.3
+    const duration = Math.max(0.05, 0.3 * decay)
+    const bufferSize = Math.ceil(this.audioContext.sampleRate * duration)
     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
     const data = buffer.getChannelData(0)
     for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
@@ -1225,7 +1226,7 @@ export class AudioEngine {
     
     const gainNode = this.audioContext.createGain()
     gainNode.gain.setValueAtTime(gain * 0.3, time)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.3)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration)
     
     const panner = this.audioContext.createStereoPanner()
     panner.pan.value = pan

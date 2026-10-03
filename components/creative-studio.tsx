@@ -10,7 +10,7 @@ import { MusicBpmRamp, MusicHarmonyReadout, MusicPendingTransitions } from './mu
 import Link from 'next/link'
 import { MusicReactionEditor } from './music-reaction-editor'
 import type { ReactionContext } from '@/lib/music/reactions'
-import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Square } from 'chess.js'
 import { ArrowLeft, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
 import { ChessgroundBoard, PiecesSVG } from './chessground-board'
@@ -49,7 +49,9 @@ export function CreativeStudio() {
   const [busy, setBusy] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [selectedId, setSelectedId] = useState('w:b1')
-  const [soloId, setSoloId] = useState<string | null>(null)
+  const [soloIds, setSoloIds] = useState<Set<string>>(() => new Set())
+  const soloMemoryRef = useRef<string[] | null>(null)
+  const soloCycleIdsRef = useRef<Set<string>>(new Set())
   const [mode, setMode] = useState<'move' | 'play'>('move')
   const [notice, setNotice] = useState('')
   const [kits, setKits] = useState<CreativeSession[]>([])
@@ -57,7 +59,7 @@ export function CreativeStudio() {
   const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
   const [showCode, setShowCode] = useState(false)
   const [editingInstrumentName, setEditingInstrumentName] = useState(false)
-  const music = useCreativeMusic(session, playing, soloId, simulation, showCode)
+  const music = useCreativeMusic(session, playing, soloIds, simulation, showCode)
   const selected = session.pieces.find(p => p.id === selectedId)!
   const boardGame = useMemo(() => {
     const board = new Chess()
@@ -67,7 +69,10 @@ export function CreativeStudio() {
   }, [session.pieces])
   const boardColor = getCityById(session.cityId ?? '')?.color ?? '#00ffaa'
   const boardActiveSquares = useMemo(() => new Set(session.pieces.filter(piece => piece.active).map(piece => piece.square)), [session.pieces])
-  const instrument = session.instruments[selectedId]
+  const selectedInstrument = session.instruments[selectedId]
+  const instrument = soloIds.has(selectedId) && selectedInstrument.loopEnabled === false
+    ? { ...selectedInstrument, loopEnabled: true }
+    : selectedInstrument
   const effects = session.effects[selectedId]
   const mapping = session.mappings[selectedId]
   const activeCount = session.pieces.filter(p => p.active).length
@@ -158,12 +163,31 @@ export function CreativeStudio() {
   }
   function toggleSolo(id: string) {
     music.endAudition()
-    const nextSolo = soloId === id ? null : id
-    setSoloId(nextSolo)
-    if (nextSolo) {
-      setPlaying(true)
-      setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: true } : p) }))
+    if (soloIds.has(id)) {
+      const nextSoloIds = new Set(soloIds)
+      nextSoloIds.delete(id)
+      setSoloIds(nextSoloIds)
+      if (nextSoloIds.size) {
+        setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: nextSoloIds.has(p.id) })) }))
+      } else {
+        const restore = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current, ...session.pieces.filter(p => p.active).map(p => p.id)])
+        setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: restore.has(p.id) })) }))
+        soloMemoryRef.current = null
+        soloCycleIdsRef.current = new Set()
+      }
+      return
     }
+    if (!soloIds.size) {
+      soloMemoryRef.current = session.pieces
+        .filter(p => p.active && session.instruments[p.id]?.loopEnabled !== false)
+        .map(p => p.id)
+      soloCycleIdsRef.current = new Set()
+    }
+    const nextSoloIds = new Set([...soloIds, id])
+    soloCycleIdsRef.current.add(id)
+    setSoloIds(nextSoloIds)
+    setPlaying(true)
+    setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: nextSoloIds.has(p.id) })) }))
   }
   function stop() { setPlaying(false); music.endAudition(); setNotice('Arranjo pausado.') }
   function select(id: string) { music.endAudition(); setSelectedId(id) }
@@ -172,7 +196,7 @@ export function CreativeStudio() {
     setBusy(true)
     try {
       await validateMusicSnapshot(creativeSnapshot(next, false))
-      music.endAudition(); setSoloId(null); setSimulation({ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}); setSession(next); setPlaying(autoplay)
+      music.endAudition(); setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set(); setSimulation({ply:0,states:[{trigger:'opening',color:'w',ply:0}],events:[]}); setSession(next); setPlaying(autoplay)
       setNotice(`Kit “${next.name}” carregado${autoplay ? ' e tocando' : ' e pausado'}.`)
     } catch (error) { setNotice(`Kit não carregado: ${messageOf(error)}`) }
     finally { setBusy(false) }
@@ -301,7 +325,7 @@ export function CreativeStudio() {
             const harmony = e.target.value as HarmonyPlanId
             setSession(s => ({ ...s, harmony }))
           }}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label></div>
-          <div className={styles.transportFooter}><MusicTransportReadout arrangement={session.arrangement} monitor={music.monitor} activeCount={activeCount} solo={!!soloId} showBeatUnit /><div className={styles.rampSlot}><MusicBpmRamp monitor={music.monitor}/></div><MusicPendingTransitions monitor={music.monitor}/></div>
+          <div className={styles.transportFooter}><MusicTransportReadout arrangement={session.arrangement} monitor={music.monitor} activeCount={activeCount} solo={soloIds.size > 0} showBeatUnit /><div className={styles.rampSlot}><MusicBpmRamp monitor={music.monitor}/></div><MusicPendingTransitions monitor={music.monitor}/></div>
           <MusicArrangementControls arrangement={session.arrangement} harmony={session.harmony} monitor={music.monitor} onSeek={music.seekSection} onChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))} />
         </section>
       </div>
@@ -364,8 +388,8 @@ export function CreativeStudio() {
             </div>
 
             <div className={styles.actions}>
-              <button onClick={() => { setSoloId(null); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === 'w' })) })); setPlaying(true) }}>Ativar brancas</button>
-              <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloId(null) }}>Silenciar todas</button>
+              <button onClick={() => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === 'w' })) })); setPlaying(true) }}>Ativar brancas</button>
+              <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }}>Silenciar todas</button>
               <button onClick={() => { music.endAudition(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Repor posições</button>
             </div>
 
@@ -378,7 +402,7 @@ export function CreativeStudio() {
             <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'Brancas' : 'Pretas'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
               <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
                 <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span><span>{session.instruments[p.id].name}<MusicVoiceBadge monitor={music.monitor} id={p.id} /></span></button>
-                <button className={styles.voiceSolo} aria-label={`${soloId === p.id ? 'Desativar' : 'Ativar'} solo ${p.id}`} title="Solo" aria-pressed={soloId === p.id} onClick={() => toggleSolo(p.id)}>S</button>
+                <button className={styles.voiceSolo} aria-label={`${soloIds.has(p.id) ? 'Desativar' : 'Ativar'} solo ${p.id}`} title="Solo" aria-pressed={soloIds.has(p.id)} onClick={() => toggleSolo(p.id)}>S</button>
                 <button className={styles.voiceToggle} aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
               </div>)}</div>)}</div>
           </section>
@@ -400,7 +424,7 @@ export function CreativeStudio() {
             </div>
             <div className={styles.actions}>
               <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={selected.active ? 'Desativar loop' : 'Ativar loop'} title={selected.active ? 'Loop ativo' : music.preview?.id === selectedId ? 'Prévia temporária' : 'Loop inativo'} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
-              <button aria-pressed={soloId === selectedId} onClick={() => toggleSolo(selectedId)}>Solo</button>
+              <button aria-pressed={soloIds.has(selectedId)} onClick={() => toggleSolo(selectedId)}>Solo</button>
             </div>
             <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
             <MusicPerformanceControls key={selectedId} arrangement={session.arrangement} override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
