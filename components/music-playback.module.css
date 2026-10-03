@@ -5,6 +5,10 @@
 .beats i[data-on='true'] { background: #e1eeac; }
 .scale { color: #d0dccb; }
 .voice { padding: 12px 0; min-height: 150px; }
+.pieceParamsVoice { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 42px; height: 100%; padding: 0; overflow: hidden; }
+.pieceParamsVariationViewer { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 42px; overflow: hidden; }
+.pieceParamsVoice .variationTabs { flex: 0 0 auto; }
+.pieceParamsVoice .pieceParamsVariationViewer > section[aria-label='Editor de variações'] { flex: 1 1 0%; min-height: 0; overflow: hidden; }
 .variations { height: 174px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; font: 10px monospace; }
 .variations[data-tabbed='true'] { height: 124px; overflow: hidden; }
 .variationViewer { min-width: 0; transition: opacity 160ms ease, filter 160ms ease; }

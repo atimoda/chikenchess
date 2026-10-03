@@ -1,3 +1,9 @@
+.powerFrost {
+  background: repeating-linear-gradient(125deg, transparent 0px, transparent 10px, rgba(200, 239, 255, .22) 11px, transparent 14px),
+    radial-gradient(circle at 25% 20%, rgba(235, 250, 255, .55), transparent 60%);
+  box-shadow: inset 0 0 15px rgba(175, 230, 255, .75);
+}
+
 @keyframes rankedRewardHeadlineEntry {
   0% {
     opacity: 0;
@@ -79,6 +85,15 @@
     rankedRewardAmountFadeOut 2s ease-out 1.9s forwards;
 }
 
+@keyframes recentMoveTintFade {
+  from { opacity: 1; }
+  to { opacity: .5; }
+}
+
+.recentMoveTint {
+  animation: recentMoveTintFade 2s ease-in-out 1s both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rankedRewardHeadline,
   .rankedRewardHeadlineStreak {
@@ -91,5 +106,10 @@
     animation:
       rankedRewardReducedAmountEntry 0.5s ease-out 0.5s both,
       rankedRewardAmountFadeOut 2s ease-out 1.9s forwards;
+  }
+
+  .recentMoveTint {
+    animation: none;
+    opacity: .5;
   }
 }

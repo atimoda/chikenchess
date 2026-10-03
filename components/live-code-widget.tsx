@@ -27,6 +27,8 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   onToggleStockfishDebug: () => void
   onForceWin?: () => void
   onGetEggs?: () => void
+  pieceDebugOn: boolean
+  onTogglePieceDebug: () => void
 }
 
 export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
@@ -46,6 +48,8 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   onToggleStockfishDebug,
   onForceWin,
   onGetEggs,
+  pieceDebugOn,
+  onTogglePieceDebug,
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
@@ -202,6 +206,12 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
              </span>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              aria-pressed={pieceDebugOn}
+              onClick={event => { event.stopPropagation(); onTogglePieceDebug() }}
+              className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", pieceDebugOn ? "border-sky-300/70 bg-sky-300/15 text-sky-200" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
+            >Piece debug</button>
             <button
               type="button"
               aria-pressed={stockfishDebugOn}

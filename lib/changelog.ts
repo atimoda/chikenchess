@@ -1,34 +1,54 @@
-export const RELEASE_LABEL = 'v0.12.1'
+export const RELEASE_LABEL = 'v0.14.2'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    "version": "0.12.1",
+    "version": "0.14.2",
     "date": "03/10/2026",
-    "title": "Ajustes musicais e entrada da partida",
+    "title": "Piece Debug e integração de widgets",
     "groups": [
       {
         "title": "Partida",
         "items": [
           "As casas da última jogada deixam aparecer mais a imagem de fundo e recebem um lilás mais discreto; peças e marcadores mantêm as cores normais.",
           "Freeze aplica textura gelada às peças afetadas, e o ícone Shield fica sem a marca de seleção.",
+          "Freeze e Shield podem ser levados do botão até uma casa por arraste ou escolhidos por clique; clicar fora do tabuleiro no modo de escolha ou soltar o arraste fora cancela sem gastar ovos. Freeze mostra gelo na prévia; Shield mostra um escudo sobre a peça. As casas tocam gelo craquelando ou metal, e Freeze deixa um rastro que descongela em 2 segundos.",
+          "Freeze e Shield usam cursor de pegar; Best e Worst usam cursor de clique. As dicas descrevem congelar/proteger por uma rodada e ver as três melhores/piores jogadas.",
+          "O novo widget Piece Debug mostra a fonte sonora e as configurações adicionais da peça selecionada, abaixo de Piece Params; o botão Piece debug no Debug abre ou fecha esse painel.",
+          "Quando nenhuma peça está selecionada, Piece Params mostra “No piece selected” no cabeçalho.",
+          "O título do Piece Debug fica centralizado no cabeçalho. Seu único conector aponta para o alvo mais próximo: a peça selecionada ou Piece Params.",
           "Em Piece Params, o valor acompanha o arraste e é aplicado ao áudio uma vez ao soltar; o marcador cinza sinaliza esse modo.",
-          "O botão S ao lado do loop em Piece Params isola uma ou mais peças; ao desligar o último Solo, retornam as vozes que já tocavam e continuam vivas."
+          "O botão S ao lado do loop em Piece Params isola uma ou mais peças; ao desligar o último Solo, retornam as vozes que já tocavam e continuam vivas.",
+          "O botão de variações em Piece Params mostra M e continua controlando apenas o loop automático da peça.",
+          "Worst ocupa o espaço que era de Freeze, Freeze vai para o de Shield e Shield para o de Worst; os sons de hover continuam ligados às posições.",
+          "Sair de Worst ou Freeze pelo mouse toca chimbal fechado com volume 40% menor que no hover.",
+          "O pitch do som de Freeze varia um pouco mais ao passar entre casas durante o arraste.",
+          "Os knobs acompanham o ângulo do toque ou ponteiro; valores únicos ficam centralizados no dial e os dois limites de range aparecem empilhados no centro.",
+          "Piece Params redimensiona verticalmente entre as abas de variação e 90% da tela; a atualização visual do MIDI pausa quando ele fica totalmente oculto. Piece Debug só é montado quando aberto.",
+          "O realce lilás da última jogada mantém a intensidade atual por 1 segundo e depois cai suavemente à metade em 2 segundos.",
+          "Os símbolos ✓/× atrás da peça recomendada por Best/Worst ficam ocultos no modo Chicken Chess e continuam disponíveis como opção para outros modos.",
+          "O título da fase usa Bitcount Prop Single, mostra ano e nome em maiúsculas na cor da fase e fica sem fundo.",
+          "Desligar música fecha Mixer, Spectrogram, Piece Params e Piece Debug e esconde todas as linhas de conexão; religar restaura o estado e a ordem desses widgets.",
+          "Piece Params conecta-se à peça selecionada; Piece Debug liga-se somente ao destino mais próximo entre ela e Piece Params.",
+          "O histórico de jogadas fica transparente. O controle de versão passa para o canto inferior direito, sobrepondo o histórico e a barra de avaliação com recuos iguais das bordas."
         ]
       },
       {
         "title": "Criativo e Mixer",
         "items": [
-          "Nos ranges de oitava, Drive, Reverb, Swing e passa-baixas, desmarcar L/S/N deixa um valor fixo; selecionar uma frequência abre os dois limites. N vem selecionado por padrão.",
-          "Arrastar a metade esquerda do range controla o limite menor e a metade direita controla o maior; os cursores também podem ser arrastados diretamente.",
+          "Nos ranges de oitava, Drive, Reverb, Swing e passa-baixas, desmarcar L/S/N deixa um valor fixo; ao selecionar L/S/N, os limites começam a 15% do curso acima e abaixo do valor atual. N vem selecionado por padrão.",
+          "Arrastar a metade esquerda do range controla o limite menor e a metade direita controla o maior; os cursores também podem ser arrastados diretamente. No hover, só o cursor correspondente à metade fica branco.",
+          "A borda do dial de range fica branca enquanto ele é arrastado.",
           "Os marcadores usam a cor da cidade e ficam brancos no hover. No arraste, Piece Params mostra o marcador cinza; Criativo e Mixer continuam com atualização imediata e marcador na cor da cidade.",
-          "No Criativo, vários botões Solo podem ficar ligados juntos; as vozes que tocavam antes do primeiro Solo retornam quando o último é desligado."
+          "No Criativo, vários botões Solo podem ficar ligados juntos; as vozes que tocavam antes do primeiro Solo retornam quando o último é desligado.",
+          "Os botões L/S/N dos ranges usam os nomes acessíveis e tooltips “Shuffle value every LOOP”, “Shuffle value every SESSION” e “Shuffle value every NOTE”."
         ]
       },
       {
         "title": "Entrada da partida",
         "items": [
-          "O tabuleiro fica parado enquanto suas casas surgem uma a uma em ordem aleatória; os widgets chegam voando pelas laterais e param perto do tabuleiro."
+          "O tabuleiro fica parado enquanto suas casas surgem uma a uma em ordem aleatória; os widgets chegam voando pelas laterais e param perto do tabuleiro.",
+          "Depois de arrastar um widget, sua posição não muda sozinha; o cálculo automático só roda na montagem e ao redimensionar a janela."
         ]
       }
     ]

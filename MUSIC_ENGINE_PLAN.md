@@ -1,6 +1,6 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 03/10/2026 — v0.12.1. Status: schema 7 MIDI-only com arranjo global, engine Strudel nas 46 fases / 34 cidades, com seis campanhas, onze compassos e seis cenas por preset; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua pendente. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
+Atualizado em 03/10/2026 — v0.14.2. Status: schema 7 MIDI-only com arranjo global, engine Strudel nas 46 fases / 34 cidades, com seis campanhas, onze compassos e seis cenas por preset; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua pendente. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
 
 ## Investigação mobile — 02/10, pendente
 

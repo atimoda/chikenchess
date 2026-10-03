@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useState, useSyncExternalStore } from 'react'
+import { createContext, memo, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { isLoopRunning, VOICE_STATUS_LABELS, type MusicMonitor, type VoiceStatus } from '@/lib/music/monitor'
 import type { MusicSnapshot } from '@/lib/music/runtime'
 import { MUSIC_GRID_DIVISIONS, MusicPianoEditor, defaultGridDivision, gridDivisionLabel } from './music-piano-editor'
@@ -15,6 +15,20 @@ import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music
 import { ArrowLeftRight, Dices, Minus, Pin, Plus } from 'lucide-react'
 import styles from './music-playback.module.css'
 import type { KnobUpdateMode } from './knob'
+
+interface MusicPlaybackViewportState {
+  visualUpdatesEnabled: boolean
+  pieceParamsLayout: boolean
+}
+
+const defaultPlaybackViewport: MusicPlaybackViewportState = { visualUpdatesEnabled: true, pieceParamsLayout: false }
+const MusicPlaybackViewportContext = createContext(defaultPlaybackViewport)
+const subscribeNothing = () => () => {}
+
+export function MusicPlaybackViewport({ children, visualUpdatesEnabled, pieceParamsLayout = false }: { children: ReactNode; visualUpdatesEnabled: boolean; pieceParamsLayout?: boolean }) {
+  const value = useMemo(() => ({ visualUpdatesEnabled, pieceParamsLayout }), [visualUpdatesEnabled, pieceParamsLayout])
+  return <MusicPlaybackViewportContext.Provider value={value}>{children}</MusicPlaybackViewportContext.Provider>
+}
 
 function noteLabel(note: number | null) {
   if (note == null || !Number.isFinite(note)) return 'ataque'
@@ -45,7 +59,10 @@ export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: st
   return <span className={styles.badge} data-status={status}>{VOICE_STATUS_LABELS[status]}</span>
 }
 export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, showStatus = true, instrument, onInstrumentChange, variationTabs = false, manageVariations = variationTabs, knobUpdateMode = 'immediate' }: { instrument?:Instrument; onInstrumentChange?:(patch:InstrumentPerformanceEdit)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean; showStatus?: boolean; variationTabs?: boolean; manageVariations?: boolean; knobUpdateMode?:KnobUpdateMode }) {
-  const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
+  const viewport = useContext(MusicPlaybackViewportContext)
+  const subscribe = viewport.visualUpdatesEnabled ? monitor.subscribe : subscribeNothing
+  const getSnapshot = viewport.visualUpdatesEnabled ? monitor.getSnapshot : monitor.getServerSnapshot
+  const frame = useSyncExternalStore(subscribe, getSnapshot, monitor.getServerSnapshot)
   const track = frame.tracks[id]
   const [division,setDivision]=useState(defaultGridDivision(snapshot.meter))
   useEffect(() => setDivision(defaultGridDivision(snapshot.meter)), [snapshot.meter])
@@ -76,9 +93,9 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
   const notes = sourceInstrument?.pianoRolls.flatMap(roll => roll.notes.map(note => note.degree)) ?? []
   const bottom = notes.length ? Math.min(...notes) : 0
   const top = notes.length ? Math.max(...notes) : 0
-  return <div className={styles.voice} aria-label="Execução do instrumento">
+  return <div className={`${styles.voice}${viewport.pieceParamsLayout ? ` ${styles.pieceParamsVoice}` : ''}`} aria-label="Execução do instrumento">
     {showStatus&&<div className={styles.line}><MusicVoiceBadge monitor={monitor} id={id} /><span>{track?.notes.map(noteLabel).join(' + ')}</span></div>}
-    {pianoEditor ? <MusicPianoEditor snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode}/> : <div className={styles.variationViewer} data-loop-enabled={instrument?.loopEnabled!==false}>
+    {pianoEditor ? <MusicPianoEditor snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode}/> : <div className={`${styles.variationViewer}${viewport.pieceParamsLayout ? ` ${styles.pieceParamsVariationViewer}` : ''}`} data-loop-enabled={instrument?.loopEnabled!==false}>
       {variationTabs && instrument && onInstrumentChange && <>
       <div className={styles.variationTabs} data-manage-variations={manageVariations||undefined}>
         <div className={styles.variationTabList} role="tablist" aria-label="Variações do instrumento">{Array.from({ length: sourceVariationCount }, (_, index) => {
@@ -91,7 +108,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
         </>}
         </div>
       </div>
-      <MusicPianoEditor compact actions={variationActions} onlyVariation={activeTab} division={division} onDivisionChange={setDivision} snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode}/>
+      <MusicPianoEditor compact actions={variationActions} onlyVariation={activeTab} division={division} onDivisionChange={setDivision} snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode} visualUpdatesEnabled={viewport.visualUpdatesEnabled}/>
       </>}
       {!variationTabs&&<>
       <div className={styles.variations} data-tabbed={variationTabs || undefined} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Variações salvas da peça">
