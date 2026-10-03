@@ -21,6 +21,8 @@ export const MUSIC_GRID_DIVISIONS = [
  {value:7,label:'7 partes · septinas'}, {value:8,label:'8 partes · fusas'},
 ] as const
 
+const subscribeNothing = () => () => {}
+
 export function gridDivisionLabel(value:number,meter:Meter='4/4') {
  if(subdivisionsPerBeat(meter)===3){
   if(value===3)return '3 partes · colcheias'
@@ -41,8 +43,10 @@ export function defaultGridDivision(meter:Meter='4/4') {
  return subdivisionsPerBeat(meter)===3?3:meter==='3/4'||beatUnit(meter)==='eighth'?2:4
 }
 
-export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate'}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode;division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode}){
- const frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot)
+export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate',visualUpdatesEnabled=true}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode;division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode;visualUpdatesEnabled?:boolean}){
+ const subscribe=visualUpdatesEnabled?monitor.subscribe:subscribeNothing
+ const getSnapshot=visualUpdatesEnabled?monitor.getSnapshot:monitor.getServerSnapshot
+ const frame=useSyncExternalStore(subscribe,getSnapshot,monitor.getServerSnapshot)
  const [error,setError]=useState('')
  const [selectedNote,setSelectedNote]=useState<{index:number;note:number}|null>(null)
  const [draft,setDraft]=useState<{index:number;roll:PianoRoll}|null>(null),[localDivision,setLocalDivision]=useState(defaultGridDivision(snapshot.meter))
@@ -64,7 +68,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
  }
  const point=(e:React.PointerEvent<SVGSVGElement>,bars:number,low:number,high:number)=>{const box=e.currentTarget.getBoundingClientRect();return {start:Math.max(0,Math.min(bars-1/(pulses*division),Math.floor((e.clientX-box.left)/box.width*bars*pulses*division)/(pulses*division))),degree:Math.max(low,Math.min(high,high-Math.floor((e.clientY-box.top)/box.height*(high-low+1))))}}
  const cancel=()=>{drag.current=null;setDraft(null)}
- return <section aria-label="Editor de variações" data-compact={compact||undefined}>
+ return <section aria-label="Editor de variações" data-midi-visual-panel data-compact={compact||undefined}>
   {!compact&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}><label><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>Subdivisão do tempo<InfoTip label="Como editar as notas">A subdivisão define os pontos rítmicos dentro de cada pulso: 3 partes mostram as colcheias em 6/8, 9/8 e 12/8. Clique numa área vazia e arraste para desenhar. Arraste uma nota para movê-la; segure Alt ao arrastar para duplicá-la com seus parâmetros. Arraste sua borda direita para alongar ou encurtar. Duplo clique numa nota para apagar. Também é possível selecionar e usar Excluir nota, Delete ou Backspace.</InfoTip></span><select value={division} onChange={e=>setDivision(Number(e.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,snapshot.meter)}</option>)}</select></label></div>}
   
   {snapshot.sectionOverrides?.[id]!==undefined&&<p>Regra do jogo força somente a variação {String.fromCharCode(65+playback.variation)} e tem prioridade sobre a aba fixa. Tempo, presença e transposição continuam seguindo a seção global.</p>}

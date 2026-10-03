@@ -18,6 +18,8 @@ export class AudioEngine {
   private ambienceOscillators: OscillatorNode[] = []
   private ambienceBaseFreqs: number[] = []
   private ambiencePitchMultiplier: number = 1
+  private powerCrackleBuffer: AudioBuffer | null = null
+  private lastPowerHoverTime = -Infinity
 
   // Sound parameters
   private bpm = 120
@@ -228,6 +230,55 @@ export class AudioEngine {
     if (!this.audioContext || !this.masterGain) return
     const now = this.audioContext.currentTime
     this.playPawn(now, sample, gain, 0, "w", pitch, 0, 0, undefined, undefined, undefined, openHatDecay)
+  }
+
+  playPowerHover(kind: 'freeze' | 'shield') {
+    const ctx = this.audioContext, master = this.masterGain
+    if (!ctx || !master || ctx.state !== 'running') return
+    const time = ctx.currentTime
+    // Fast sweeps stay quiet and bounded; holding one square never retriggers.
+    if (time - this.lastPowerHoverTime < .045) return
+    this.lastPowerHoverTime = time
+    if (kind === 'freeze') {
+      if (!this.powerCrackleBuffer) {
+        const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * .16), ctx.sampleRate)
+        const data = buffer.getChannelData(0)
+        for (let i = 0; i < data.length; i++) {
+          const phase = i / ctx.sampleRate
+          const crack = Math.pow(Math.max(0, Math.sin(phase * 260)), 12)
+          data[i] = (Math.random() * 2 - 1) * (.08 + crack * .92)
+        }
+        this.powerCrackleBuffer = buffer
+      }
+      const noise = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), envelope = ctx.createGain()
+      noise.buffer = this.powerCrackleBuffer
+      noise.playbackRate.value = .9 + Math.random() * .2
+      filter.type = 'bandpass'
+      filter.frequency.value = 2300 + Math.random() * 850
+      filter.Q.value = .8
+      envelope.gain.setValueAtTime(.001, time)
+      envelope.gain.exponentialRampToValueAtTime(.055, time + .006)
+      envelope.gain.exponentialRampToValueAtTime(.001, time + .16)
+      noise.connect(filter).connect(envelope).connect(master)
+      noise.onended = () => { noise.disconnect(); filter.disconnect(); envelope.disconnect() }
+      noise.start(time)
+      noise.stop(time + .18)
+    } else {
+      const pitch = .97 + Math.random() * .06
+      for (const [index, frequency] of [740, 1379, 2183].entries()) {
+        const tone = ctx.createOscillator(), envelope = ctx.createGain()
+        tone.type = 'sine'
+        tone.frequency.setValueAtTime(frequency * pitch, time)
+        tone.frequency.exponentialRampToValueAtTime(frequency * pitch * .985, time + .2)
+        envelope.gain.setValueAtTime(.001, time)
+        envelope.gain.exponentialRampToValueAtTime(.028 / (index + 1), time + .003)
+        envelope.gain.exponentialRampToValueAtTime(.001, time + .2 - index * .025)
+        tone.connect(envelope).connect(master)
+        tone.onended = () => { tone.disconnect(); envelope.disconnect() }
+        tone.start(time)
+        tone.stop(time + .22)
+      }
+    }
   }
 
   async playBlockedCue() {

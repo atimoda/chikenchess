@@ -33,6 +33,7 @@ interface ChessgroundBoardProps {
   activeSquares?: Set<string>
   analysisArrows?: AnalysisArrow[]
   rankedMoveMark?: { square: Square; kind: 'best' | 'worst'; id: number } | null
+  showRankedMoveMarks?: boolean
   rankedMoveAnnouncement?: { square: Square; kind: 'best' | 'worst' | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null
   freeMode?: {
     mode: "move" | "play"
@@ -109,6 +110,7 @@ export function ChessgroundBoard({
   musicPulseMonitor,
   analysisArrows = [],
   rankedMoveMark,
+  showRankedMoveMarks = true,
   rankedMoveAnnouncement,
   freeMode,
   entranceActive = false,
@@ -183,7 +185,9 @@ export function ChessgroundBoard({
   }
   const inCheck = freeMode ? false : game.isCheck()
   const turn = game.turn()
-  const lastMove = freeMode ? null : game.history({ verbose: true }).at(-1) ?? null
+  const gameHistory = freeMode ? [] : game.history({ verbose: true })
+  const lastMove = gameHistory.at(-1) ?? null
+  const lastMoveHighlightKey = lastMove ? `${gameHistory.length}-${lastMove.from}-${lastMove.to}` : undefined
 
   const [animatingPieces, setAnimatingPieces] = useState<PieceAnimation[]>([])
   const animationFrameRef = useRef<number | null>(null)
@@ -741,7 +745,6 @@ export function ChessgroundBoard({
                     setPressedPieceSquare(null)
                     setSelectedSquare(null)
                     setLegalMoves([])
-                    onPowerTarget?.(square)
                     return
                   }
                   setPressedPieceSquare(piece ? square : null)
@@ -785,7 +788,10 @@ export function ChessgroundBoard({
                 onDoubleClick={() => {
                   if (freeMode?.mode === 'move' && piece) freeMode.onTogglePiece(square)
                 }}
-                onKeyDown={e => { if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); onPieceHold?.(square) } }}
+                onKeyDown={e => {
+                  if (armedPower && !freeMode && (e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); onPowerTarget?.(square) }
+                  else if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); onPieceHold?.(square) }
+                }}
                 onKeyUp={e => { if (freeMode?.mode === 'play' && (e.key === ' ' || e.key === 'Enter')) onPieceRelease?.() }}
                 onBlur={() => { if (freeMode?.mode === 'play') { if (onPieceCancel) onPieceCancel(); else onPieceRelease?.() } }}
               >
@@ -801,9 +807,11 @@ export function ChessgroundBoard({
                       }}
                     />
                     <span
+                      key={lastMoveHighlightKey}
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-0"
                       style={{ backgroundColor: "rgba(220, 205, 255, 0.1)", zIndex: 1 }}
+                      data-recent-move-tint
+                      className={cn("pointer-events-none absolute inset-0", rewardStyles.recentMoveTint)}
                     />
                   </>
                 )}
@@ -842,7 +850,7 @@ export function ChessgroundBoard({
                 )}
 
                 {/* Piece */}
-                {rankedMoveMark?.square === square && (
+                {showRankedMoveMarks && rankedMoveMark?.square === square && (
                   <svg
                     key={rankedMoveMark.id}
                     aria-hidden="true"
@@ -860,7 +868,12 @@ export function ChessgroundBoard({
                       : <path d="M22 22 78 78 M78 22 22 78" />}
                   </svg>
                 )}
-                {frozen && <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-[2] bg-[repeating-linear-gradient(125deg,transparent_0px,transparent_10px,rgba(200,239,255,.22)_11px,transparent_14px),radial-gradient(circle_at_25%_20%,rgba(235,250,255,.55),transparent_60%)] shadow-[inset_0_0_15px_rgba(175,230,255,.75)]" />}
+                {(frozen || shielded) && <span aria-hidden="true" data-power-frost className={cn(rewardStyles.powerFrost, "pointer-events-none absolute inset-0 z-[2]")} />}
+                {!freeMode && (armedPower === 'shield'
+                  ? <span aria-hidden="true" data-power-preview className="pointer-events-none absolute inset-0 z-[11] flex items-center justify-center" style={{ opacity: 0 }}>
+                      <svg viewBox="0 0 64 72" className="h-[96%] w-[78%] drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/></svg>
+                    </span>
+                  : <span aria-hidden="true" data-power-preview className={cn(rewardStyles.powerFrost, "pointer-events-none absolute inset-0 z-[2]")} style={{ opacity: 0 }} />)}
                 {piece && (!isDragging || freeMode?.mode === 'play') && !isAnimatingTo && (
                   <div
                     className={cn("relative z-10 w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
@@ -872,7 +885,7 @@ export function ChessgroundBoard({
                     }}
                   />
                 )}
-                {shielded && <svg aria-hidden="true" viewBox="0 0 64 72" className="pointer-events-none absolute left-[11%] top-[2%] z-[12] h-[96%] w-[78%] opacity-50 drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/></svg>}
+                {shielded && <svg aria-hidden="true" data-power-shield viewBox="0 0 64 72" className="pointer-events-none absolute left-[11%] top-[2%] z-[12] h-[96%] w-[78%] opacity-50 drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/></svg>}
 
                 {/* Coordinate labels */}
                 {colIndex === 0 && (

@@ -6,6 +6,7 @@ import { Chess, type Move, type Square } from "chess.js"
 import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
 import { ChessgroundBoard, PiecesSVG, type AnalysisArrow } from "./chessground-board"
+import { usePowerTargetingGesture } from '@/hooks/use-power-targeting-gesture'
 import { LiveCodeOverlay } from "./live-code-overlay"
 import { LiveCodeWidget } from "./live-code-widget"
 import { StockfishDebugOverlay } from "./stockfish-debug-overlay"
@@ -13,6 +14,7 @@ import { AudioVisualizer } from "./audio-visualizer"
 import { GameControls } from "./game-controls"
 import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
+import { PieceDebugWidget } from "./piece-debug-widget"
 import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './music-playback'
@@ -52,6 +54,8 @@ interface ChessGameProps {
   city: CityData
   onBack: () => void
   panelsFollowPlayerTurn: boolean
+  /** Other game modes can show the Best/Worst glyph behind the destination piece. */
+  showRankedMoveMarks?: boolean
 }
 
 interface EggFlight {
@@ -61,6 +65,19 @@ interface EggFlight {
   sourceSquare?: Square
   from?: { left: number; top: number; width: number; height: number }
   to?: { left: number; top: number; width: number; height: number }
+}
+
+interface WidgetConnection {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  anchorX1: number
+  anchorY1: number
+  anchorX2: number
+  anchorY2: number
+  sourceSide?: 'left' | 'right' | 'top' | 'bottom'
+  targetSide?: 'left' | 'right' | 'top' | 'bottom'
 }
 
 const BEST_MOVE_MESSAGES = [
@@ -157,7 +174,7 @@ function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: 'best' | 'worst'):
   }))
 }
 
-export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGameProps) {
+export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMoveMarks = false }: ChessGameProps) {
   // The board starts with White at the bottom; keep mixer rows tied to that orientation.
   const boardOrientation: "white" | "black" = "white"
   const [game, setGame] = useState(() => makePoweredChess(new Chess()))
@@ -242,8 +259,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
   const costHintHideTimerRef = useRef<number | null>(null)
   const eggCounterRef = useRef<HTMLDivElement | null>(null)
   const [armedPower, setArmedPower] = useState<MatchPowerKind | null>(null)
-  const powerCursorRef = useRef<HTMLDivElement | null>(null)
-  const powerCursorOriginRef = useRef<{ x: number; y: number } | null>(null)
   const [matchPowers, setMatchPowers] = useState<MatchPower[]>([])
   const matchPowersRef = useRef<MatchPower[]>([])
   const powerButtonRefs = useRef<Record<MatchPowerKind, HTMLButtonElement | null>>({ freeze: null, shield: null })
@@ -267,6 +282,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
   const knobsRef = useRef<HTMLDivElement | null>(null)
   const knobsHandleRef = useRef<HTMLDivElement | null>(null)
   const knobsToggleRef = useRef<HTMLButtonElement | null>(null)
+  const pieceDebugRef = useRef<HTMLDivElement | null>(null)
+  const pieceDebugHandleRef = useRef<HTMLDivElement | null>(null)
+  const pieceDebugToggleRef = useRef<HTMLButtonElement | null>(null)
   const globalPanelRef = useRef<HTMLDivElement | null>(null)
   const globalPanelHandleRef = useRef<HTMLDivElement | null>(null)
   const globalPanelToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -279,6 +297,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
   const boardAreaRef = useRef<HTMLDivElement | null>(null)
   const movesTickerRef = useRef<HTMLDivElement>(null)
   const [knobsPosition, setKnobsPosition] = useState<{ x: number; y: number } | null>(null)
+  const [pieceDebugPosition, setPieceDebugPosition] = useState<{ x: number; y: number } | null>(null)
   const [globalPanelPosition, setGlobalPanelPosition] = useState<{ x: number; y: number } | null>(null)
   const [mixerPosition, setMixerPosition] = useState<{ x: number; y: number } | null>(null)
   const [spectrogramPosition, setSpectrogramPosition] = useState<{ x: number; y: number } | null>(null)
@@ -442,6 +461,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
 
   const widgetLayoutRef = useRef<Record<string, number> | null>(null)
   const widgetJitterRef = useRef<Record<string, number>>({})
+  const boardScaleRef = useRef(boardScale)
+  boardScaleRef.current = boardScale
 
   useEffect(() => {
     const checkMobile = () => {
@@ -459,10 +480,19 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
   const mixerManuallyClosedRef = useRef(false)
+  const musicWidgetsBeforeMuteRef = useRef<{
+    mixer: boolean
+    spectrogram: boolean
+    knobs: boolean
+    pieceDebug: boolean
+    order: string[]
+  } | null>(null)
+  const restoreMusicWidgetsOnNextEffectRef = useRef(false)
   const firstMovePanelsActivatedRef = useRef(false)
   const [globalPanelOn, setGlobalPanelOn] = useState(false)
   const [mixerOn, setMixerOn] = useState(false)
   const [spectrogramOn, setSpectrogramOn] = useState(false)
+  const [pieceDebugOn, setPieceDebugOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
   const [codeBackdropOn, setCodeBackdropOn] = useState(false)
   const toggleCodeBackdrop = () => {
@@ -470,7 +500,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     setCodeBackdropOn(next)
     if (!next) {
       setLiveCodeOn(false)
-      setActiveWidgetOrder(current => current.filter(id => id !== "liveCode"))
+      setPieceDebugOn(false)
+      setActiveWidgetOrder(current => current.filter(id => id !== "liveCode" && id !== "pieceDebug"))
       stockfishDebugOnRef.current = false
       setStockfishDebugOn(false)
     }
@@ -520,14 +551,17 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
   const spectrogramToggleRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
-    if (isMobile) {
-      widgetLayoutRef.current = null
-      return
-    }
-    if (introPhase < 2) return
     if (rootRef.current) rootRef.current.scrollTop = 0
     let frame = 0
+    let lastViewportSize: { width: number; height: number } | null = null
     const layout = () => {
+      const { innerWidth, innerHeight } = window
+      const scaledBoardWidth = Math.min(Math.max(0, innerHeight - 270), 512) * boardScaleRef.current
+      const mobileLayout = innerWidth <= scaledBoardWidth + 16 || (innerWidth <= 528 && innerHeight > innerWidth)
+      if (mobileLayout) {
+        widgetLayoutRef.current = null
+        return
+      }
       const board = boardAreaRef.current?.getBoundingClientRect()
       const root = rootRef.current?.getBoundingClientRect()
       if (!board || !root) return
@@ -535,22 +569,32 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
       const previous = widgetLayoutRef.current ?? {}
       const next: Record<string, number> = {}
       const panelSpecs = [
-        { id: 'mixer', ref: mixerRef, set: setMixerPosition, side: 'left', width: 180, height: 530, visible: true },
-        { id: 'spectrogram', ref: spectrogramHandleRef, set: setSpectrogramPosition, side: 'left', width: 180, height: 100, visible: true },
-        { id: 'liveCode', ref: liveCodeRef, set: setLiveCodePosition, side: 'left', width: 300, height: 360, visible: codeBackdropOn },
-        { id: 'globalPanel', ref: globalPanelRef, set: setGlobalPanelPosition, side: 'left', width: 340, height: 420, visible: !music.enabled },
-        { id: 'knobs', ref: knobsRef, set: setKnobsPosition, side: 'right', width: 340, height: 520, visible: true },
-      ].filter(panel => panel.visible)
-      const leftPanels = panelSpecs.filter(panel => panel.side === 'left')
+        { id: 'mixer', ref: mixerRef, set: setMixerPosition, side: 'left', width: 180, height: 530 },
+        { id: 'spectrogram', ref: spectrogramHandleRef, set: setSpectrogramPosition, side: 'left', width: 180, height: 100 },
+        { id: 'liveCode', ref: liveCodeRef, set: setLiveCodePosition, side: 'left', width: 300, height: 360 },
+        { id: 'globalPanel', ref: globalPanelRef, set: setGlobalPanelPosition, side: 'left', width: 340, height: 420 },
+        { id: 'knobs', ref: knobsRef, set: setKnobsPosition, side: 'right', width: 340, height: 520 },
+      ]
+      const leftPanels = panelSpecs.filter(panel => panel.side === 'left' && panel.ref.current)
       const leftStackHeight = leftPanels.reduce((height, panel) => height + (panel.ref.current?.offsetHeight || panel.height), 0)
         + Math.max(0, leftPanels.length - 1) * 20
       let nextLeftY = (root.height - leftStackHeight) / 2
-      const panels = panelSpecs.map(panel => {
+      const leftYById = new Map<string, number>()
+      for (const panel of leftPanels) {
         const height = panel.ref.current?.offsetHeight || panel.height
-        const y = panel.side === 'left' ? nextLeftY : (root.height - height) / 2
-        if (panel.side === 'left') nextLeftY += height + 20
-        return { ...panel, y }
-      })
+        leftYById.set(panel.id, nextLeftY)
+        nextLeftY += height + 20
+      }
+      for (const panel of panelSpecs.filter(item => item.side === 'left' && !item.ref.current)) {
+        leftYById.set(panel.id, nextLeftY)
+        nextLeftY += panel.height + 20
+      }
+      const panels = panelSpecs.map(panel => ({
+        ...panel,
+        y: panel.side === 'left'
+          ? leftYById.get(panel.id) ?? (root.height - panel.height) / 2
+          : (root.height - (panel.ref.current?.offsetHeight || panel.height)) / 2,
+      }))
       const jitter = (key: string) => widgetJitterRef.current[key] ??= Math.round(Math.random() * 40 - 20)
       for (const panel of panels) {
         const width = panel.ref.current?.offsetWidth || panel.width
@@ -575,52 +619,23 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
       widgetLayoutRef.current = next
     }
     const scheduleLayout = () => {
+      // Placement runs at mount and only when the viewport dimensions change.
+      const viewportSize = { width: window.innerWidth, height: window.innerHeight }
+      if (lastViewportSize?.width === viewportSize.width && lastViewportSize.height === viewportSize.height) return
+      lastViewportSize = viewportSize
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(layout)
     }
-    const onTransitionEnd = (event: globalThis.TransitionEvent) => {
-      if (event.propertyName === 'margin-top' || event.propertyName === 'transform') scheduleLayout()
-    }
-    const observer = new window.ResizeObserver(scheduleLayout)
-    for (const ref of [boardAreaRef, rootRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, globalPanelRef]) {
-      if (ref.current) observer.observe(ref.current)
-    }
     scheduleLayout()
     window.addEventListener('resize', scheduleLayout)
-    rootRef.current?.addEventListener('transitionend', onTransitionEnd)
     return () => {
       cancelAnimationFrame(frame)
-      observer.disconnect()
       window.removeEventListener('resize', scheduleLayout)
-      rootRef.current?.removeEventListener('transitionend', onTransitionEnd)
     }
-  }, [isMobile, introPhase, boardScale, codeBackdropOn])
+  }, [])
 
-  const [knobsConnection, setKnobsConnection] = useState<{
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-    anchorX1: number
-    anchorY1: number
-    anchorX2: number
-    anchorY2: number
-    sourceSide?: 'left' | 'right'
-    targetSide?: 'left' | 'right' | 'bottom'
-  } | null>(null)
-
-  const [chainConnections, setChainConnections] = useState<{
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-    anchorX1: number
-    anchorY1: number
-    anchorX2: number
-    anchorY2: number
-    sourceSide?: 'left' | 'right' | 'top' | 'bottom'
-    targetSide?: 'left' | 'right' | 'top' | 'bottom'
-  }[]>([])
+  const [pieceWidgetConnections, setPieceWidgetConnections] = useState<WidgetConnection[]>([])
+  const [chainConnections, setChainConnections] = useState<WidgetConnection[]>([])
 
   const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
@@ -960,16 +975,16 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     action()
   }
 
-  const targetPower = (square: Square) => {
-    if (!armedPower || introPhase !== 3 || gameRef.current.turn() !== 'w' || gameRef.current.isGameOver()) return
-    if (matchPowersRef.current.some(power => power.kind === armedPower && power.square === square)) {
+  const targetPower = (square: Square, kind = armedPower) => {
+    if (!kind || introPhase !== 3 || gameRef.current.turn() !== 'w' || gameRef.current.isGameOver()) return
+    if (matchPowersRef.current.some(power => power.kind === kind && power.square === square)) {
       toast.info('This square already has that power')
       return
     }
-    const button = powerButtonRefs.current[armedPower]
+    const button = powerButtonRefs.current[kind]
     if (!button) return
-    const power = createMatchPower(armedPower, square, gameRef.current, ++powerSerialRef.current)
-    if (armedPower === 'freeze' && !clonePoweredChess(gameRef.current, [...matchPowersRef.current, power]).moves({ verbose: true }).length) {
+    const power = createMatchPower(kind, square, gameRef.current, ++powerSerialRef.current)
+    if (kind === 'freeze' && !clonePoweredChess(gameRef.current, [...matchPowersRef.current, power]).moves({ verbose: true }).length) {
       toast.error('Freeze would leave no legal move')
       return
     }
@@ -990,50 +1005,16 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     })
   }
 
-  const togglePowerTargeting = (kind: MatchPowerKind, event: React.MouseEvent<HTMLButtonElement>) => {
-    hideCostHint()
-    if (armedPower === kind) { setArmedPower(null); return }
-    if (!hasEggsForAction(3)) { setArmedPower(null); return }
-    const pointerType = 'pointerType' in event.nativeEvent ? (event.nativeEvent as globalThis.PointerEvent).pointerType : ''
-    const hasCursor = pointerType === 'mouse' || pointerType === 'pen' || (!pointerType && !window.matchMedia('(pointer: coarse)').matches)
-    powerCursorOriginRef.current = event.detail > 0 && hasCursor ? { x: event.clientX, y: event.clientY } : null
-    setArmedPower(kind)
-  }
-
-  useEffect(() => {
-    if (!armedPower) return
-    const cancel = (event: KeyboardEvent) => { if (event.key === 'Escape') setArmedPower(null) }
-    window.addEventListener('keydown', cancel)
-    return () => window.removeEventListener('keydown', cancel)
-  }, [armedPower])
-
-  useEffect(() => {
-    if (!armedPower) return
-    const origin = powerCursorOriginRef.current
-    if (origin && powerCursorRef.current) {
-      powerCursorRef.current.style.transform = `translate3d(${origin.x + 12}px, ${origin.y + 16}px, 0)`
-      powerCursorRef.current.style.opacity = '1'
-    }
-    const moveIcon = (event: globalThis.PointerEvent) => {
-      const icon = powerCursorRef.current
-      if (!icon) return
-      if (event.pointerType === 'touch') { icon.style.opacity = '0'; return }
-      icon.style.transform = `translate3d(${event.clientX + 12}px, ${event.clientY + 16}px, 0)`
-      icon.style.opacity = '1'
-    }
-    const hideIcon = (event: globalThis.PointerEvent) => {
-      if (!event.relatedTarget && powerCursorRef.current) powerCursorRef.current.style.opacity = '0'
-    }
-    const blurIcon = () => { if (powerCursorRef.current) powerCursorRef.current.style.opacity = '0' }
-    window.addEventListener('pointermove', moveIcon)
-    document.addEventListener('pointerout', hideIcon)
-    window.addEventListener('blur', blurIcon)
-    return () => {
-      window.removeEventListener('pointermove', moveIcon)
-      document.removeEventListener('pointerout', hideIcon)
-      window.removeEventListener('blur', blurIcon)
-    }
-  }, [armedPower])
+  const powerTargeting = usePowerTargetingGesture({
+    armedPower,
+    enabled: introPhase === 3 && game.turn() === 'w' && !game.isGameOver(),
+    boardRef: boardAreaRef,
+    onArm: setArmedPower,
+    canArm: () => hasEggsForAction(3),
+    onBegin: () => { void engineRef.current?.resume() },
+    onTarget: targetPower,
+    onHover: kind => engineRef.current?.playPowerHover(kind),
+  })
 
   // Temporary testing easter egg: each ten clicks grants ten match eggs.
   const getDebugEggs = useCallback(() => {
@@ -1167,6 +1148,20 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
   useEffect(() => {
     if (introPhase !== 3 || !panelsFollowPlayerTurn) return
 
+    if (restoreMusicWidgetsOnNextEffectRef.current) {
+      restoreMusicWidgetsOnNextEffectRef.current = false
+      return
+    }
+
+    if (!musicEngineOn) {
+      setMixerOn(false)
+      setKnobsOn(false)
+      setSpectrogramOn(false)
+      setPieceDebugOn(false)
+      setActiveWidgetOrder(current => current.filter(id => !['mixer', 'knobs', 'spectrogram', 'pieceDebug'].includes(id)))
+      return
+    }
+
     const playerCanEdit = game.turn() === "w" && !game.isGameOver()
     if (!playerCanEdit) {
       setMixerOn(false)
@@ -1185,7 +1180,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
       if (shouldOpenPieceParams) next.push("knobs")
       return next
     })
-  }, [game, introPhase, panelsFollowPlayerTurn])
+  }, [game, introPhase, panelsFollowPlayerTurn, musicEngineOn])
 
   // Track captured pieces
   const updateCapturedPieces = useCallback((move: Move) => {
@@ -1448,16 +1443,22 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     setSynthSelectedSquare(null)
     setSquareEffects({})
     music.reset()
-    knobsManuallyClosedRef.current = false
-    mixerManuallyClosedRef.current = false
-    if (!panelsFollowPlayerTurn) {
+    knobsManuallyClosedRef.current = !musicEngineOn
+    mixerManuallyClosedRef.current = !musicEngineOn
+    setPieceDebugOn(false)
+    setSpectrogramOn(false)
+    if (!panelsFollowPlayerTurn && musicEngineOn) {
       setMixerOn(true)
       setKnobsOn(true)
       setActiveWidgetOrder(current => [
-        ...current.filter(id => id !== "mixer" && id !== "knobs"),
+        ...current.filter(id => !['mixer', 'knobs', 'spectrogram', 'pieceDebug'].includes(id)),
         "mixer",
         "knobs",
       ])
+    } else {
+      setMixerOn(false)
+      setKnobsOn(false)
+      setActiveWidgetOrder(current => current.filter(id => !['mixer', 'knobs', 'spectrogram', 'pieceDebug'].includes(id)))
     }
     setLastEvalScore(null)
     setLastEvalMate(null)
@@ -1466,7 +1467,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     else requestEvaluation(freshGame)
     setIsBackgroundDark(false)
     rewardedCheckmateFenRef.current = null
-  }, [evaluationError, panelsFollowPlayerTurn, requestEvaluation, restartStockfish])
+  }, [evaluationError, musicEngineOn, panelsFollowPlayerTurn, requestEvaluation, restartStockfish])
 
   const undoMove = useCallback(() => {
     const currentHistory = gameRef.current.history()
@@ -1596,6 +1597,30 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     toggleWidget(id, setIsOn)
   }, [toggleWidget])
 
+  const togglePieceDebug = useCallback(() => {
+    const next = !pieceDebugOn
+    if (next && !isMobile && pieceDebugPosition === null) {
+      const root = rootRef.current?.getBoundingClientRect()
+      const params = knobsRef.current?.getBoundingClientRect()
+      if (root && params) {
+        const x = params.left - root.left
+        const currentY = params.top - root.top
+        const height = Math.min(300, root.height * .34)
+        const desiredTop = params.bottom - root.top + 12
+        const overflow = Math.max(0, desiredTop + height + 12 - root.height)
+        const shiftUp = Math.min(overflow, Math.max(0, currentY - 8))
+        if (shiftUp > 0) setKnobsPosition(position => ({ x: position?.x ?? x, y: Math.max(8, (position?.y ?? currentY) - shiftUp) }))
+        setPieceDebugPosition({ x, y: desiredTop - shiftUp })
+      } else {
+        setPieceDebugPosition({ x: knobsPosition?.x ?? 0, y: (knobsPosition?.y ?? 0) + (knobsRef.current?.offsetHeight ?? 520) + 12 })
+      }
+    }
+    setPieceDebugOn(next)
+    setActiveWidgetOrder(order => next
+      ? [...order.filter(id => id !== 'pieceDebug'), 'pieceDebug']
+      : order.filter(id => id !== 'pieceDebug'))
+  }, [isMobile, knobsPosition, pieceDebugOn, pieceDebugPosition])
+
   const handleTogglePlay = useCallback(async () => {
     if (gameRef.current.isGameOver() || gameStatus === "DRAW!" || gameStatus.startsWith("CHECKMATE")) {
         deactivatePlaybackWidgets()
@@ -1619,7 +1644,47 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     setIsPlaying((prev) => !prev)
   }, [togglePlayback, isPlaying, gameStatus, deactivatePlaybackWidgets, playDrum])
 
-  const handleToggleMusicEngine = useCallback(() => setMusicEngineOn(current => !current), [])
+  const handleToggleMusicEngine = useCallback(() => {
+    const next = !musicEngineOn
+    setMusicEngineOn(next)
+    if (!next) {
+      musicWidgetsBeforeMuteRef.current = {
+        mixer: mixerOn,
+        spectrogram: spectrogramOn,
+        knobs: knobsOn,
+        pieceDebug: pieceDebugOn,
+        order: activeWidgetOrder.filter(id => ['mixer', 'spectrogram', 'knobs', 'pieceDebug'].includes(id)),
+      }
+      setMixerOn(false)
+      setSpectrogramOn(false)
+      setKnobsOn(false)
+      setPieceDebugOn(false)
+      setActiveWidgetOrder(order => order.filter(id => !['mixer', 'spectrogram', 'knobs', 'pieceDebug'].includes(id)))
+    } else {
+      const previous = musicWidgetsBeforeMuteRef.current
+      if (!previous) return
+
+      const restoredIds: string[] = []
+      if (previous.mixer) restoredIds.push('mixer')
+      if (previous.spectrogram) restoredIds.push('spectrogram')
+      if (previous.knobs) restoredIds.push('knobs')
+      if (previous.pieceDebug) restoredIds.push('pieceDebug')
+      const restoredOrder = [
+        ...previous.order.filter(id => restoredIds.includes(id)),
+        ...restoredIds.filter(id => !previous.order.includes(id)),
+      ]
+      restoreMusicWidgetsOnNextEffectRef.current = panelsFollowPlayerTurn
+      setMixerOn(previous.mixer)
+      setSpectrogramOn(previous.spectrogram)
+      setKnobsOn(previous.knobs)
+      setPieceDebugOn(previous.pieceDebug)
+      setActiveWidgetOrder(order => [
+        ...order.filter(id => !['mixer', 'spectrogram', 'knobs', 'pieceDebug'].includes(id)),
+        ...restoredOrder,
+      ])
+      musicWidgetsBeforeMuteRef.current = null
+    }
+  }, [activeWidgetOrder, knobsOn, mixerOn, musicEngineOn, panelsFollowPlayerTurn, pieceDebugOn, spectrogramOn])
 
   const hasStarted = moveHistory.length > 0
 
@@ -1635,9 +1700,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
       if (spectrogramHandleRef.current) observer.observe(spectrogramHandleRef.current)
       if (liveCodeRef.current) observer.observe(liveCodeRef.current)
       if (knobsRef.current) observer.observe(knobsRef.current)
+      if (pieceDebugRef.current) observer.observe(pieceDebugRef.current)
       
       return () => observer.disconnect()
-  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, introPhase])
+  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, pieceDebugOn, introPhase])
 
   // Visual balance only, not a probability model. Keep large non-mate scores distinguishable.
   const whitePercent = lastEvalScore === null ? 50 : lastEvalMate !== null
@@ -1649,8 +1715,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
     || gameStatus.startsWith("CHECKMATE")
 
   useEffect(() => {
-    if (!rootRef.current || !boardAreaRef.current) {
-      setKnobsConnection(null)
+    if (!musicEngineOn || !rootRef.current || !boardAreaRef.current) {
+      setPieceWidgetConnections([])
+      setChainConnections([])
       return
     }
 
@@ -1851,90 +1918,77 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
 
     setChainConnections(newConnections)
 
-    // --- KNOBS CONNECTION ---
-    if (synthSelectedSquare && knobsOn && knobsRef.current) {
-        const fileChar = synthSelectedSquare[0]
-        const rankChar = synthSelectedSquare[1]
-        const files = "abcdefgh"
-        const fileIndex = files.indexOf(fileChar)
-        const rank = parseInt(rankChar, 10)
-
-        if (fileIndex >= 0 && Number.isFinite(rank)) {
-             const toggleRect = knobsRef.current.getBoundingClientRect()
-             
-             // Widget Point (Source) - Center Vertical
-             const knobY = toggleRect.top + toggleRect.height / 2 - containerRect.top
-             const knobCenterX = toggleRect.left + toggleRect.width / 2
-             
-             const rankIndexFromBottom = rank - 1
-             const rowFromTop = 7 - rankIndexFromBottom
-             
-             // Target is square center
-             const squareCenterX = boardRect.left + (fileIndex + 0.5) * squareWidth - containerRect.left
-             const squareCenterY = boardRect.top + (rowFromTop + 0.5) * squareHeight - containerRect.top
-             
-             // Determine Source Side
-             let x1, sourceSide: 'left' | 'right'
-             if (squareCenterX > knobCenterX) {
-                 x1 = toggleRect.right - containerRect.left
-                 sourceSide = 'right'
-             } else {
-                 x1 = toggleRect.left - containerRect.left
-                 sourceSide = 'left'
-             }
-             
-             const dx = x1 - squareCenterX
-             const dy = knobY - squareCenterY
-             
-             let x2 = squareCenterX
-             let y2 = squareCenterY
-             let targetSide: 'left' | 'right' | 'bottom'
-
-             // Simple proximity check to attach to the closest side of the square
-             // Avoid attaching to the top side (dy < 0 and |dy| > |dx|)
-             // If widget is above, force attachment to left or right side
-             if (dy < 0 && Math.abs(dy) > Math.abs(dx)) {
-                 // Widget is above, attach to side
-                 x2 = squareCenterX + (dx > 0 ? squareWidth/2 : -squareWidth/2)
-                 targetSide = dx > 0 ? 'right' : 'left'
-             } else if (Math.abs(dx) > Math.abs(dy)) {
-                 // Widget is to the side
-                 x2 = squareCenterX + (dx > 0 ? squareWidth/2 : -squareWidth/2)
-                 targetSide = dx > 0 ? 'right' : 'left'
-             } else {
-                 // Widget is below, attach to bottom
-                 y2 = squareCenterY + (dy > 0 ? squareHeight/2 : -squareHeight/2)
-                 targetSide = 'bottom'
-             }
-
-             // Offset Logic for Knobs
-             const offset = 5
-             
-             // Source (Widget) - Left or Right
-             let anchorX1 = x1
-             let anchorY1 = knobY
-             if (sourceSide === 'left') {
-                 x1 = toggleRect.left - containerRect.left - offset
-             } else {
-                 x1 = toggleRect.right - containerRect.left + offset
-             }
-
-             // Target (Square)
-             let anchorX2 = x2
-             let anchorY2 = y2
-             if (targetSide === 'left') x2 -= offset
-             if (targetSide === 'right') x2 += offset
-             if (targetSide === 'bottom') y2 += offset
-             
-             setKnobsConnection({ x1, y1: knobY, x2, y2, anchorX1, anchorY1: knobY, anchorX2, anchorY2, sourceSide, targetSide })
-        } else {
-            setKnobsConnection(null)
+    // Piece Params connects to the selected square. Piece Debug chooses one nearby target.
+    const selectedSquare = (music.enabled ? music.selected?.square : synthSelectedSquare) as Square | null
+    const directConnections: WidgetConnection[] = []
+    type ConnectionRect = { left: number; right: number; top: number; bottom: number; width: number; height: number }
+    const squareRectFor = (square: Square): ConnectionRect | null => {
+      const fileIndex = 'abcdefgh'.indexOf(square[0])
+      const rank = Number.parseInt(square[1], 10)
+      if (fileIndex < 0 || !Number.isFinite(rank)) return null
+      const rowFromTop = 8 - rank
+      const left = boardRect.left + fileIndex * squareWidth
+      const top = boardRect.top + rowFromTop * squareHeight
+      return { left, top, right: left + squareWidth, bottom: top + squareHeight, width: squareWidth, height: squareHeight }
+    }
+    const selectedSquareRect = selectedSquare ? squareRectFor(selectedSquare) : null
+    const connectWidgetToRect = (widgetRef: React.RefObject<HTMLDivElement | null>, targetRect: ConnectionRect) => {
+      const widget = widgetRef.current
+      if (!widget) return
+      const sourceRect = widget.getBoundingClientRect()
+      const dx = targetRect.left + targetRect.width / 2 - sourceRect.left - sourceRect.width / 2
+      const dy = targetRect.top + targetRect.height / 2 - sourceRect.top - sourceRect.height / 2
+      const horizontal = Math.abs(dx) >= Math.abs(dy)
+      const sourceSide: NonNullable<WidgetConnection['sourceSide']> = horizontal
+        ? dx >= 0 ? 'right' : 'left'
+        : dy >= 0 ? 'bottom' : 'top'
+      const targetSide: NonNullable<WidgetConnection['targetSide']> = horizontal
+        ? dx >= 0 ? 'left' : 'right'
+        : dy >= 0 ? 'top' : 'bottom'
+      const point = (rect: ConnectionRect, side: NonNullable<WidgetConnection['sourceSide']>) => {
+        switch (side) {
+          case 'left': return { anchorX: rect.left, anchorY: rect.top + rect.height / 2, x: rect.left - 5, y: rect.top + rect.height / 2 }
+          case 'right': return { anchorX: rect.right, anchorY: rect.top + rect.height / 2, x: rect.right + 5, y: rect.top + rect.height / 2 }
+          case 'top': return { anchorX: rect.left + rect.width / 2, anchorY: rect.top, x: rect.left + rect.width / 2, y: rect.top - 5 }
+          case 'bottom': return { anchorX: rect.left + rect.width / 2, anchorY: rect.bottom, x: rect.left + rect.width / 2, y: rect.bottom + 5 }
         }
-    } else {
-      setKnobsConnection(null)
+      }
+      const source = point(sourceRect, sourceSide)
+      const target = point(targetRect, targetSide)
+      directConnections.push({
+        x1: source.x - containerRect.left,
+        y1: source.y - containerRect.top,
+        x2: target.x - containerRect.left,
+        y2: target.y - containerRect.top,
+        anchorX1: source.anchorX - containerRect.left,
+        anchorY1: source.anchorY - containerRect.top,
+        anchorX2: target.anchorX - containerRect.left,
+        anchorY2: target.anchorY - containerRect.top,
+        sourceSide,
+        targetSide,
+      })
     }
 
-  }, [synthSelectedSquare, knobsPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick])
+    if (knobsOn && selectedSquareRect) connectWidgetToRect(knobsRef, selectedSquareRect)
+    if (pieceDebugOn) {
+      const debugRect = pieceDebugRef.current?.getBoundingClientRect()
+      const paramsRect = knobsOn ? knobsRef.current?.getBoundingClientRect() : undefined
+      const candidates = [selectedSquareRect, paramsRect].filter((rect): rect is ConnectionRect => !!rect)
+      if (debugRect && candidates.length > 0) {
+        const distanceBetweenRects = (first: ConnectionRect, second: ConnectionRect) => {
+          const dx = Math.max(first.left - second.right, second.left - first.right, 0)
+          const dy = Math.max(first.top - second.bottom, second.top - first.bottom, 0)
+          return Math.hypot(dx, dy)
+        }
+        const nearestTarget = candidates.reduce((nearest, candidate) =>
+          distanceBetweenRects(debugRect, candidate) < distanceBetweenRects(debugRect, nearest) ? candidate : nearest,
+        )
+        connectWidgetToRect(pieceDebugRef, nearestTarget)
+      }
+    }
+    setPieceWidgetConnections(directConnections)
+
+  }, [musicEngineOn, music.enabled, music.selected?.square, synthSelectedSquare, knobsPosition, pieceDebugPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick])
 
   const handleWidgetHeaderClick = useCallback((id: string) => {
     setActiveWidgetOrder(prev => {
@@ -1947,10 +2001,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
   const widgetToggleItems = useMemo(() => [
     { id: 'spectrogram', label: 'Spectrogram', ref: spectrogramToggleRef, isOn: spectrogramOn, cityColor: city.color, onToggle: () => toggleWidget('spectrogram', setSpectrogramOn), position: spectrogramPosition ?? { x: 0, y: 0 }, onPositionChange: setSpectrogramPosition, onDragStart: () => handleWidgetHeaderClick('spectrogram') },
     { id: 'knobs', label: 'Piece Params', ref: knobsToggleRef, isOn: knobsOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('knobs', knobsOn, setKnobsOn, knobsManuallyClosedRef), position: knobsPosition ?? { x: 0, y: 0 }, onPositionChange: setKnobsPosition, onDragStart: () => handleWidgetHeaderClick('knobs') },
+    { id: 'pieceDebug', label: 'Piece Debug', ref: pieceDebugToggleRef, isOn: pieceDebugOn, cityColor: city.color, onToggle: () => toggleWidget('pieceDebug', setPieceDebugOn), position: pieceDebugPosition ?? { x: 0, y: 0 }, onPositionChange: setPieceDebugPosition, onDragStart: () => handleWidgetHeaderClick('pieceDebug') },
     { id: 'globalPanel', label: 'Board Params', ref: globalPanelToggleRef, isOn: globalPanelOn, cityColor: city.color, onToggle: () => toggleWidget('globalPanel', setGlobalPanelOn), position: globalPanelPosition ?? { x: 0, y: 0 }, onPositionChange: setGlobalPanelPosition, onDragStart: () => handleWidgetHeaderClick('globalPanel') },
     { id: 'mixer', label: 'Mixer', ref: mixerToggleRef, isOn: mixerOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('mixer', mixerOn, setMixerOn, mixerManuallyClosedRef), position: mixerPosition ?? { x: 0, y: 0 }, onPositionChange: setMixerPosition, onDragStart: () => handleWidgetHeaderClick('mixer') },
     { id: 'liveCode', label: 'Debug', ref: liveCodeToggleRef, isOn: liveCodeOn, cityColor: city.color, onToggle: () => toggleWidget('liveCode', setLiveCodeOn), position: liveCodePosition ?? { x: 0, y: 0 }, onPositionChange: setLiveCodePosition, onDragStart: () => handleWidgetHeaderClick('liveCode') },
-  ], [city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramOn, spectrogramPosition, resizeTick, togglePlayerTurnPanel, toggleWidget])
+  ], [city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramOn, spectrogramPosition, resizeTick, togglePlayerTurnPanel, toggleWidget])
 
   const widgetsContent = (mobileMode: boolean) => {
       const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', zIndex: 10 } : undefined
@@ -1974,6 +2029,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
 
             <SynthControlPanel
                 instrument={music.enabled ? music.instrument : undefined}
+                selectedPiece={music.enabled ? music.selected : null}
                 onInstrumentChange={music.updateInstrument}
                 isSolo={!!music.selected && music.soloIds.has(music.selected.id)}
                 onSoloToggle={music.enabled && music.selected ? () => {
@@ -2041,6 +2097,27 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('knobs') + 10 }}
             />
 
+            {pieceDebugOn && <PieceDebugWidget
+              ref={pieceDebugRef}
+              toggleRef={pieceDebugToggleRef}
+              handleRef={pieceDebugHandleRef}
+              togglePortalized={togglePortalized}
+              isStatic={mobileMode}
+              selectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
+              instrument={music.enabled ? music.instrument ?? null : null}
+              selectedPiece={music.enabled ? music.selected ?? null : null}
+              movementMapping={music.enabled && music.selected ? music.snapshot.mappings?.[music.selected.id] : undefined}
+              arrangement={music.enabled ? music.snapshot.arrangement : undefined}
+              sectionOverride={music.enabled && music.selected ? music.snapshot.sectionOverrides?.[music.selected.id] : undefined}
+              cityColor={city.color}
+              position={mobileMode ? undefined : pieceDebugPosition ?? { x: knobsPosition?.x ?? 0, y: (knobsPosition?.y ?? 0) + (knobsRef.current?.offsetHeight ?? 520) + 12 }}
+              onPositionChange={setPieceDebugPosition}
+              onToggle={() => toggleWidget('pieceDebug', setPieceDebugOn)}
+              className={mobileMode ? 'w-full' : undefined}
+              style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('pieceDebug') + 10 }}
+              onClickCapture={() => handleWidgetHeaderClick('pieceDebug')}
+            />}
+
             {!music.enabled && <GlobalControlPanel
                 showAmbience={!music.enabled}
                 ref={globalPanelRef}
@@ -2083,6 +2160,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
             {codeBackdropOn && <LiveCodeWidget
                 stockfishDebugOn={stockfishDebugOn}
                 onToggleStockfishDebug={toggleStockfishDebug}
+                pieceDebugOn={pieceDebugOn}
+                onTogglePieceDebug={togglePieceDebug}
                 onForceWin={forceWin}
                 onGetEggs={getDebugEggs}
                 playback={liveCodeOn && music.enabled && music.engineActive ? <>
@@ -2330,9 +2409,16 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className={cn("transition-opacity duration-500", introPhase < 3 ? "opacity-0" : "opacity-100")}>
-            <h1 className="font-mono font-bold text-base md:text-lg flex min-w-0 items-center gap-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
-              <span className="hidden truncate sm:inline" style={{ color: city.color }}>{city.name.toUpperCase()}</span>
+            <h1
+              aria-label={`${city.year} ${city.name.toUpperCase()}`}
+              className="max-w-[min(48vw,360px)] truncate text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:text-sm"
+              style={{
+                color: city.color,
+                fontFamily: '"Bitcount Prop Single", sans-serif',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {city.year} {city.name.toUpperCase()}
             </h1>
           </div>
         </div>
@@ -2539,6 +2625,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
                   musicPulseMonitor={music.enabled && music.engineActive ? music.pulseMonitor : undefined}
                   analysisArrows={analysisArrows}
                   rankedMoveMark={rankedMoveMark}
+                  showRankedMoveMarks={showRankedMoveMarks}
                   rankedMoveAnnouncement={rankedMoveAnnouncement}
                   onBoardClick={(square) => {
                     if (music.enabled) { music.select(square); return }
@@ -2613,8 +2700,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
                   <button
                     data-ranked-move-action="best"
                     type="button"
-                    aria-label="Best · costs 1 golden egg"
-                    title="Best · 1 golden egg"
+                    aria-label="Veja as 3 melhores jogadas"
+                    title="Veja as 3 melhores jogadas"
                     disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
                     onClick={event => spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best"))}
                     onMouseEnter={() => { showCostHint('best'); playClosedAnalysisHat() }}
@@ -2622,12 +2709,28 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
                     onPointerLeave={hideCostHint}
                     onFocus={() => showCostHint('best')}
                     onBlur={hideCostHint}
-                    className="pointer-events-auto relative flex h-8 w-fit shrink-0 items-center gap-0.5 sm:gap-1 rounded-md border border-green-300/35 bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-green-100 transition-colors hover:bg-green-950/70 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="pointer-events-auto cursor-pointer relative flex h-8 w-fit shrink-0 items-center gap-0.5 sm:gap-1 rounded-md border border-green-300/35 bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-green-100 transition-colors hover:bg-green-950/70 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {costHint('best', 1)}
                     <Eye className="h-3 w-3 sm:h-4 sm:w-4" />Best
                   </button>
-                  <button ref={element => { powerButtonRefs.current.freeze = element }} type="button" disabled={game.turn() !== 'w' || game.isGameOver()} aria-label="Freeze: escolher uma casa, custa 3 ovos" aria-pressed={armedPower === 'freeze'} title="Freeze · 3 ovos · escolha uma casa" onClick={event => togglePowerTargeting('freeze', event)} onMouseEnter={() => { showCostHint('freeze'); playClosedAnalysisHat(0.85) }} onPointerLeave={hideCostHint} onFocus={() => showCostHint('freeze')} onBlur={hideCostHint} className={cn("pointer-events-auto relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-cyan-100 transition-colors disabled:opacity-40", armedPower === 'freeze' ? 'border-cyan-300 bg-cyan-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-cyan-300/35 hover:bg-cyan-950/70')}><Snowflake className="h-3 w-3 sm:h-4 sm:w-4" />Freeze{costHint('freeze', 3)}</button>
+                  <button
+                    data-ranked-move-action="worst"
+                    type="button"
+                    aria-label="Veja as 3 piores jogadas"
+                    title="Veja as 3 piores jogadas"
+                    disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
+                    onClick={event => spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst"))}
+                    onMouseEnter={() => { showCostHint('worst'); playClosedAnalysisHat(0.85) }}
+                    onMouseLeave={() => playClosedAnalysisHat(0.6)}
+                    onPointerLeave={hideCostHint}
+                    onFocus={() => showCostHint('worst')}
+                    onBlur={hideCostHint}
+                    className="pointer-events-auto cursor-pointer relative flex h-8 w-fit shrink-0 items-center gap-0.5 sm:gap-1 rounded-md border border-red-300/35 bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-red-100 transition-colors hover:bg-red-950/70 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {costHint('worst', 1)}
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />Worst
+                  </button>
                 </div>
 
                 <div className="flex items-center justify-center gap-1 sm:gap-2">
@@ -2689,29 +2792,47 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
                 </div>
 
                 <div className="flex min-w-0 items-center justify-self-end gap-1 sm:gap-2">
-                  <button ref={element => { powerButtonRefs.current.shield = element }} type="button" disabled={game.turn() !== 'w' || game.isGameOver()} aria-label="Shield: escolher uma casa, custa 3 ovos" aria-pressed={armedPower === 'shield'} title="Shield · 3 ovos · escolha uma casa" onClick={event => togglePowerTargeting('shield', event)} onMouseEnter={() => { showCostHint('shield'); playClosedAnalysisHat() }} onPointerLeave={hideCostHint} onFocus={() => showCostHint('shield')} onBlur={hideCostHint} className={cn("pointer-events-auto relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-sky-100 transition-colors disabled:opacity-40", armedPower === 'shield' ? 'border-sky-300 bg-sky-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-sky-300/35 hover:bg-sky-950/70')}><Shield className="h-3 w-3 sm:h-4 sm:w-4" />Shield{costHint('shield', 3)}</button>
                   <button
-                    data-ranked-move-action="worst"
+                    ref={element => { powerButtonRefs.current.freeze = element }}
+                    data-match-power-action="freeze"
                     type="button"
-                    aria-label="Worst · costs 1 golden egg"
-                    title="Worst · 1 golden egg"
-                    disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
-                    onClick={event => spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst"))}
-                    onMouseEnter={() => { showCostHint('worst'); playDrum('oh', 0.696) }}
+                    disabled={game.turn() !== 'w' || game.isGameOver()}
+                    aria-label="Congele uma casa por uma rodada"
+                    aria-pressed={armedPower === 'freeze'}
+                    title="Congele uma casa por uma rodada"
+                    onPointerDown={event => { hideCostHint(); powerTargeting.onButtonPointerDown('freeze', event) }}
+                    onLostPointerCapture={powerTargeting.onLostPointerCapture}
+                    onClick={event => { hideCostHint(); powerTargeting.onButtonClick('freeze', event) }}
+                    onMouseEnter={() => { showCostHint('freeze'); playClosedAnalysisHat() }}
+                    onMouseLeave={() => playClosedAnalysisHat(0.6)}
                     onPointerLeave={hideCostHint}
-                    onFocus={() => showCostHint('worst')}
+                    onFocus={() => showCostHint('freeze')}
                     onBlur={hideCostHint}
-                    className="pointer-events-auto relative flex h-8 w-fit shrink-0 items-center gap-0.5 sm:gap-1 rounded-md border border-red-300/35 bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-red-100 transition-colors hover:bg-red-950/70 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {costHint('worst', 1)}
-                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />Worst
-                  </button>
+                    className={cn("pointer-events-auto touch-none cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-cyan-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'freeze' ? 'border-cyan-300 bg-cyan-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-cyan-300/35 hover:bg-cyan-950/70')}
+                  ><Snowflake className="h-3 w-3 sm:h-4 sm:w-4" />Freeze{costHint('freeze', 3)}</button>
+                  <button
+                    ref={element => { powerButtonRefs.current.shield = element }}
+                    data-match-power-action="shield"
+                    type="button"
+                    disabled={game.turn() !== 'w' || game.isGameOver()}
+                    aria-label="Proteja uma casa por uma rodada"
+                    aria-pressed={armedPower === 'shield'}
+                    title="Proteja uma casa por uma rodada"
+                    onPointerDown={event => { hideCostHint(); powerTargeting.onButtonPointerDown('shield', event) }}
+                    onLostPointerCapture={powerTargeting.onLostPointerCapture}
+                    onClick={event => { hideCostHint(); powerTargeting.onButtonClick('shield', event) }}
+                    onMouseEnter={() => { showCostHint('shield'); playDrum('oh', 0.696) }}
+                    onPointerLeave={hideCostHint}
+                    onFocus={() => showCostHint('shield')}
+                    onBlur={hideCostHint}
+                    className={cn("pointer-events-auto touch-none cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-sky-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'shield' ? 'border-sky-300 bg-sky-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-sky-300/35 hover:bg-sky-950/70')}
+                  ><Shield className="h-3 w-3 sm:h-4 sm:w-4" />Shield{costHint('shield', 3)}</button>
                 </div>
               </div>
 
               {isMobile && introPhase >= 3 && <div
                 data-mobile-widgets
-                className="flex w-[var(--game-board-width)] flex-col gap-5 pt-5 pointer-events-auto [&>[data-widget=piece]]:order-1 [&>[data-widget=mixer]]:order-2 [&>[data-widget=spectrum]]:order-3 [&>[data-widget=strudel]]:order-4 [&>[data-widget=board]]:order-5"
+                className="flex w-[var(--game-board-width)] flex-col gap-5 pt-5 pointer-events-auto [&>[data-widget=piece]]:order-1 [&>[data-widget=piece-debug]]:order-2 [&>[data-widget=mixer]]:order-3 [&>[data-widget=spectrum]]:order-4 [&>[data-widget=strudel]]:order-5 [&>[data-widget=board]]:order-6"
               >{widgetsContent(true)}</div>}
             </div>
           </div>
@@ -2720,8 +2841,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
       </div>
       
       {/* Connection Lines Layer - Moved BEHIND widgets and board (z-0 to z-10 range, but above BG) */}
-      {!isPortraitMobile && <svg aria-label="Conexões entre widgets e tabuleiro" className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 5 }}>
-        {[knobsConnection, ...chainConnections].map((conn, i) => {
+      {musicEngineOn && !isPortraitMobile && <svg aria-label="Conexões entre widgets e tabuleiro" className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 5 }}>
+        {[...pieceWidgetConnections, ...chainConnections].map((conn, i) => {
           if (!conn) return null
           
           const startX = conn.x1
@@ -2827,7 +2948,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
       {!isMobile && introPhase >= 2 && <WidgetToggleLayer items={widgetToggleItems} onReady={markWidgetToggleLayerReady} />}
 
       <div className={cn("fixed inset-x-0 bottom-0 z-[40] w-full pointer-events-none transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
-        <div aria-label="Histórico de jogadas" className="flex h-6 w-full items-center overflow-hidden bg-black/65 px-3 pointer-events-auto">
+        <div aria-label="Histórico de jogadas" className="flex h-6 w-full items-center overflow-hidden bg-transparent px-3 pointer-events-auto">
           <div ref={movesTickerRef} className="flex w-full items-center justify-start gap-3 overflow-x-auto whitespace-nowrap font-mono text-xs scrollbar-hide" style={{ textShadow: "1px 1px 1px black" }}>
             {moveHistory.map((move, i) => <span key={i} className={i % 2 === 0 ? "text-white" : "text-muted-foreground"}>
               {i % 2 === 0 ? `${Math.floor(i / 2) + 1}.` : ""} {move}
@@ -2871,20 +2992,20 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn }: ChessGamePro
 
       {/* Bottom Right Info & Version */}
       <div 
-        className="hidden sm:flex absolute bottom-9 right-3 z-30 pointer-events-auto items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
+        className="hidden sm:flex fixed bottom-3 right-3 z-[50] pointer-events-auto items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
       >
         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
         <VersionChangelog />
       </div>
       <div 
-        className="flex sm:hidden absolute bottom-9 right-2 z-30 pointer-events-auto items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
+        className="flex sm:hidden fixed bottom-3 right-3 z-[50] pointer-events-auto items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
       >
         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
         <VersionChangelog />
       </div>
 
       {armedPower && createPortal(
-        <div ref={powerCursorRef} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 z-[9999] flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/60 bg-black/75 text-cyan-100 opacity-0 shadow-[0_0_12px_rgba(165,243,252,.55)]" style={{ transform: 'translate3d(-100px, -100px, 0)' }}>
+        <div ref={powerTargeting.cursorRef} data-power-cursor={armedPower} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 z-[9999] flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/60 bg-black/75 text-cyan-100 opacity-0 shadow-[0_0_12px_rgba(165,243,252,.55)]" style={{ transform: 'translate3d(-100px, -100px, 0)' }}>
           {armedPower === 'freeze' ? <Snowflake className="h-[18px] w-[18px]" /> : <Shield className="h-[18px] w-[18px]" />}
         </div>, document.body,
       )}
