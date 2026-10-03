@@ -1,7 +1,38 @@
-export const RELEASE_LABEL = 'v0.11.0'
+export const RELEASE_LABEL = 'v0.12.1'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    "version": "0.12.1",
+    "date": "03/10/2026",
+    "title": "Ajustes musicais e entrada da partida",
+    "groups": [
+      {
+        "title": "Partida",
+        "items": [
+          "As casas da última jogada deixam aparecer mais a imagem de fundo e recebem um lilás mais discreto; peças e marcadores mantêm as cores normais.",
+          "Freeze aplica textura gelada às peças afetadas, e o ícone Shield fica sem a marca de seleção.",
+          "Em Piece Params, o valor acompanha o arraste e é aplicado ao áudio uma vez ao soltar; o marcador cinza sinaliza esse modo.",
+          "O botão S ao lado do loop em Piece Params isola uma ou mais peças; ao desligar o último Solo, retornam as vozes que já tocavam e continuam vivas."
+        ]
+      },
+      {
+        "title": "Criativo e Mixer",
+        "items": [
+          "Nos ranges de oitava, Drive, Reverb, Swing e passa-baixas, desmarcar L/S/N deixa um valor fixo; selecionar uma frequência abre os dois limites. N vem selecionado por padrão.",
+          "Arrastar a metade esquerda do range controla o limite menor e a metade direita controla o maior; os cursores também podem ser arrastados diretamente.",
+          "Os marcadores usam a cor da cidade e ficam brancos no hover. No arraste, Piece Params mostra o marcador cinza; Criativo e Mixer continuam com atualização imediata e marcador na cor da cidade.",
+          "No Criativo, vários botões Solo podem ficar ligados juntos; as vozes que tocavam antes do primeiro Solo retornam quando o último é desligado."
+        ]
+      },
+      {
+        "title": "Entrada da partida",
+        "items": [
+          "O tabuleiro fica parado enquanto suas casas surgem uma a uma em ordem aleatória; os widgets chegam voando pelas laterais e param perto do tabuleiro."
+        ]
+      }
+    ]
+  },
   {
     "version": "0.11.0",
     "date": "02/10/2026",
@@ -13,6 +44,7 @@ export const CHANGELOG = [
           "Os knobs Range de oitava, Drive, Reverb e Swing oferecem três bolinhas L/S/N no Criativo e em Piece Params: sorteio por loop, seção ou ataque.",
           "Notas simultâneas de acordes compartilham o sorteio; Swing por ataque conserva sua ordem e kits anteriores mantêm a frequência original, com indicação de oitava por compasso quando legada.",
           "A ajuda de Pan esclarece que o knob conserva o ajuste adicional salvo, enquanto a coluna da peça muda a posição estéreo do áudio conforme a abertura do tabuleiro.",
+          "O knob Chance de tocar controla a frequência dos eventos de cada voz no Criativo e em Piece Params; kits antigos começam em 100%, e o ajuste da partida não é salvo no kit da cidade.",
           "Todos os kits e estudos usam notas explícitas no editor MIDI; os painéis Receitas e código Strudel, Forma e variações e Groove compartilhado, e o modo Padrão Strudel, foram retirados.",
           "Ritmos, acentos e slides foram incorporados às notas; automações foram simplificadas em parâmetros e ranges, incluindo um novo Range L/S/N no passa-baixas.",
           "A primeira etapa MIDI desta entrega reiniciou uma vez os rascunhos e kits personalizados antigos, sem alterar conquistas, ovos ou pontos; a migração seguinte para o arranjo global preserva os kits MIDI já salvos.",
@@ -57,6 +89,14 @@ export const CHANGELOG = [
       {
         "title": "Partida",
         "items": [
+          "Best, Freeze, Undo/Play/Redo, Shield e Worst compartilham a linha abaixo do tabuleiro, nessa ordem; o status passa para a faixa superior com os ovos, e Tom/Escala/Progressão ficam no Mixer, abaixo do crossfader. Mutar a música também apaga a iluminação musical do tabuleiro.",
+          "As casas da última jogada ficam no negativo da cor do tabuleiro; Pause mantém apenas o som de hover, Play toca somente bumbo com o volume original, e Voltar jogada toca caixa no clique.",
+          "Undo, Play/Pause e Redo ficam 20% menores; os hovers de Undo/Redo caem mais 20%, os de Play/Pause 15% e Freeze 15%. Sair de Best pelo mouse toca um chimbal aberto um pouco mais curto que o de Worst.",
+          "No celular vertical, as conexões entre widgets e tabuleiro ficam ocultas, e deslizar sobre widgets desligados permite rolar a página. Celulares compatíveis vibram brevemente quando a IA joga.",
+          "Debug inclui temporariamente Get eggs: a cada dez cliques, acrescenta dez ovos ao saldo da partida para facilitar os testes.",
+          "As últimas sugestões Best/Worst vistas continuam rendendo ovos e a mensagem correspondente mesmo quando o Stockfish muda o ranking; novas opções do ranking atual também podem premiar sem terem aparecido nas setas.",
+          "Best moves com score abaixo de −1 peão mostram a primeira frase em laranja, com uma nova lista de incentivo para boas escolhas em posições difíceis.",
+          "Pause também congela a espera para a IA jogar, incluindo os 5 segundos após avançar o histórico; Play retoma o tempo restante somente na mesma posição.",
           "No celular, Piece Params, Mixer, Spectrogram e Debug ficam numa coluna abaixo do tabuleiro, com a mesma largura e rolagem conjunta; o botão Parâmetros musicais e seu diálogo foram retirados.",
           "No desktop, os widgets começam centralizados nas laterais com uma pequena variação horizontal; acompanham o resize até a distância mínima de 20 px do tabuleiro, podendo ficar parcialmente fora da tela.",
           "Dois cliques no pegador do crossfader centralizam a mistura dos times.",

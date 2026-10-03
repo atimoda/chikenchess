@@ -6,6 +6,7 @@ import type { Meter } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
 import { memo, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { MusicNoteParams } from './music-note-params'
+import type { KnobUpdateMode } from './knob'
 import { addVariation, removeLastVariation } from '@/lib/music/variation-edit'
 import type { Instrument } from '@/lib/music/model'
 import type { InstrumentPerformanceEdit } from '@/lib/music/model'
@@ -40,7 +41,7 @@ export function defaultGridDivision(meter:Meter='4/4') {
  return subdivisionsPerBeat(meter)===3?3:meter==='3/4'||beatUnit(meter)==='eighth'?2:4
 }
 
-export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode;division?:number;onDivisionChange?:(division:number)=>void}){
+export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate'}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode;division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode}){
  const frame=useSyncExternalStore(monitor.subscribe,monitor.getSnapshot,monitor.getServerSnapshot)
  const [error,setError]=useState('')
  const [selectedNote,setSelectedNote]=useState<{index:number;note:number}|null>(null)
@@ -110,7 +111,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       {sounding&&present&&<line data-playhead x1={cursor/bars*480} x2={cursor/bars*480} y1={0} y2={264} stroke="#fff1b7" strokeWidth={2}/>}
      </svg>
      {actions}
-     {selectedNote?.index===index&&roll.notes[selectedNote.note]&&<MusicNoteParams note={roll.notes[selectedNote.note]} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selectedNote.note?{...note,...patch}:note)})} onDelete={()=>removeNote(index,roll,selectedNote.note)}/>}
+     {selectedNote?.index===index&&roll.notes[selectedNote.note]&&<MusicNoteParams note={roll.notes[selectedNote.note]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selectedNote.note?{...note,...patch}:note)})} onDelete={()=>removeNote(index,roll,selectedNote.note)}/>}
    </div>
   })}
   {onlyVariation===undefined&&<div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:8}}><button type="button" disabled={bankCount>=8} onClick={()=>onChange(addVariation(instrument))}>Adicionar variação</button><button type="button" disabled={bankCount<=1} onClick={()=>onChange(removeLastVariation(instrument))}>Remover última variação</button></div>}

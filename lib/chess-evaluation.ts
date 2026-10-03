@@ -49,6 +49,48 @@ export function rankedMoveReward(
   if (analysis.worst.some(candidate => candidate.uci === uci)) return 'worst'
   return null
 }
+
+export interface ShownMoveSuggestions {
+  kind: 'best' | 'worst'
+  analysis: ChessMoveAnalysis
+}
+
+/** Keep only the last committed display of each group, newest first. */
+export function rememberMoveSuggestions(
+  previous: readonly ShownMoveSuggestions[],
+  shown: ShownMoveSuggestions,
+): ShownMoveSuggestions[] {
+  const { analysis, kind } = shown
+  if (!analysis.complete || analysis.side !== 'w') return [...previous]
+  return [{
+    kind,
+    analysis: { ...analysis, best: analysis.best.map(move => ({ ...move })), worst: analysis.worst.map(move => ({ ...move })) },
+  }, ...previous.filter(entry => entry.kind !== kind && entry.analysis.fen === analysis.fen)]
+}
+
+/** Honor a suggestion the player last saw; otherwise reward the current ranking. */
+export function rankedMoveRewardDetails(
+  analysis: ChessMoveAnalysis | null,
+  startingFen: string,
+  uci: string,
+  shown: readonly ShownMoveSuggestions[] = [],
+): { kind: 'best' | 'worst'; comeback: boolean } | null {
+  if (analysis?.complete && analysis.side === 'w' && analysis.fen === startingFen && analysis.legalMoves === 1) return null
+  for (const entry of shown) {
+    const snapshot = entry.analysis
+    if (!snapshot.complete || snapshot.fen !== startingFen || snapshot.side !== 'w' || snapshot.legalMoves === 1) continue
+    // Only the group actually shown counts as remembered, not its unseen counterpart.
+    const move = snapshot[entry.kind].find(candidate => candidate.uci === uci)
+    if (!move) continue
+    return {
+      kind: entry.kind === 'best' && rankedMoveLabelTone(move.score, move.mate) !== 'worst' ? 'best' : 'worst',
+      comeback: entry.kind === 'best' && move.score < -100,
+    }
+  }
+  const kind = rankedMoveReward(analysis, startingFen, uci)
+  return kind ? { kind, comeback: analysis?.best.some(move => move.uci === uci && move.score < -100) ?? false } : null
+}
+
 interface EvaluationCallbacks {
   onBusy(busy: boolean): void
   onScore(score: number, mate: number | null): void

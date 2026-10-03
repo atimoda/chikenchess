@@ -31,24 +31,10 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
 }
 
 function voiceCode(voice: VoiceSpec): string {
-  const octaveRange = voice.instrument.octaveRange
-  const rangeMin = octaveRange && Math.min(octaveRange.first, octaveRange.second)
-  const rangeMax = octaveRange && Math.max(octaveRange.first, octaveRange.second)
-  if (octaveRange && !octaveRange.frequency && !voice.unpitched && (rangeMin !== voice.instrument.octave || rangeMax !== voice.instrument.octave)) {
-    const baseVoice = { ...voice, instrument: { ...voice.instrument, octaveRange: undefined } }
-    const base = voiceCode(baseVoice)
-    const registers = Array.from({ length: rangeMax! - rangeMin! + 1 }, (_, index) => rangeMin! + index)
-      .map(octave => {
-        const semitones = (octave - voice.instrument.octave) * 12
-        return semitones ? `${base}.transpose(${semitones})` : base
-      })
-    if (registers.length === 1) return registers[0]
-    return `pick([${registers.join(', ')}], irand(${registers.length}).segment(1).seed(${voice.piece.slot + 1}))`
-  }
   if (voice.performance) {
     const plan = voice.performance
-    const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined,
-      ...(voice.instrument.octaveRange?.frequency ? { octaveRange: undefined } : {}),
+    const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined, playChance: undefined,
+      ...(voice.instrument.octaveRange ? { octaveRange: undefined } : {}),
       ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
     const variations = [...new Set(plan.steps.filter(step=>step.active).map(step=>step.variation))]
     const declarations = variations.map(index=>`const part${index} = ${voiceCode({...baseVoice,performance:undefined,harmonic:undefined,sectionPattern:String(index)})};`).join('\n    ')
@@ -84,14 +70,15 @@ function rangeCode(voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'r
 }
 
 function rangesCode(voice: VoiceSpec, source: string) {
-  if (!voice.manual && voice.instrument.swingRange && (!voice.instrument.swingRange.frequency || voice.instrument.swingRange.frequency === 'loop')) source += `.swingBy(${rangeCode(voice, voice.instrument.swingRange, 'swing')},${voice.beatsPerBar ?? 4})`
-  if (voice.instrument.driveRange && (!voice.instrument.driveRange.frequency || voice.instrument.driveRange.frequency === 'loop')) {
+  if (!voice.manual && voice.instrument.swingRange && voice.instrument.swingRange.frequency === 'loop') source += `.swingBy(${rangeCode(voice, voice.instrument.swingRange, 'swing')},${voice.beatsPerBar ?? 4})`
+  if (voice.instrument.driveRange && voice.instrument.driveRange.frequency === 'loop') {
     const drive = rangeCode(voice, voice.instrument.driveRange, 'drive')
     source += `.distort(${drive}).distortvol(${voice.instrument.distortionMix ?? .25}).withValue(({distort,distortvol,...value})=>Number(distort)===0?value:{...value,distort,distortvol})`
   }
-  if (voice.instrument.reverbRange && (!voice.instrument.reverbRange.frequency || voice.instrument.reverbRange.frequency === 'loop')) source += `.room(${rangeCode(voice, voice.instrument.reverbRange, 'reverb')})`
+  if (voice.instrument.reverbRange && voice.instrument.reverbRange.frequency === 'loop') source += `.room(${rangeCode(voice, voice.instrument.reverbRange, 'reverb')})`
   const config = eventRangeConfig(voice)
   if (config.ranges.length) source = `(${eventRangePattern.toString()})(${source},${JSON.stringify(config)}${!voice.manual && !voice.performance && !/^\d+$/.test(voice.sectionPattern) ? `,mini(${JSON.stringify(voice.sectionPattern)})` : ''})`
+  if (!voice.manual && voice.instrument.playChance !== undefined && voice.instrument.playChance < 1) source += `.degradeBy(${1 - voice.instrument.playChance})`
   return source
 }
 

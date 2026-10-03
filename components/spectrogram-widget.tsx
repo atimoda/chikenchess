@@ -239,7 +239,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
 
         </div>
       </div>
-      {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}
+      {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
       </Resizable>
     </Draggable>
   )

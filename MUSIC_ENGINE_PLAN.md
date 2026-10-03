@@ -1,6 +1,12 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 02/10/2026 — v0.11.0. Status: schema 7 MIDI-only com arranjo global, engine Strudel nas 46 fases / 34 cidades, com seis campanhas, onze compassos e seis cenas por preset; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua pendente. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
+Atualizado em 03/10/2026 — v0.12.1. Status: schema 7 MIDI-only com arranjo global, engine Strudel nas 46 fases / 34 cidades, com seis campanhas, onze compassos e seis cenas por preset; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua pendente. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
+
+## Investigação mobile — 02/10, pendente
+
+A v0.11.0 publicada apresentou atraso/ruído em Chrome no Redmi informado pelo usuário, em três cidades e com cerca de oito vozes ligadas. Evidência e auditoria estrutural em `docs/CPU_OPTIMIZATION.md`; o runtime mantém o perfil atual de dois buses, 32 fontes e 180 ms. Não há mitigação nova aprovada no aparelho.
+
+Prioridade: comparar reverb, delay e Drive separadamente, medir fontes/caudas e recompilações, e prototipar perfil de saída leve sem modificar os kits salvos. Preservar peças ativadas, MIDI, forma, BPM, regras e mixagem por equipe antes de considerar reduzir notas/polifonia. Headroom/limiter só trata clipping, e lookahead só trata margem de agendamento; ambos precisam de causa medida. O perfil leve é proposta futura, não comportamento implementado.
 
 ## Entrega de 02/10 — MIDI-only e arranjo global
 
@@ -87,7 +93,7 @@ A primeira regra tática coletiva ativa temporariamente a banda atacante durante
 
 ## Modo Criativo (primeira bancada implementada)
 
-O laboratório em `/creative` usa o mesmo `MusicRuntime` das partidas e abre sem introdução, adversário ou validação de movimentos. Ele permite ativar e solar qualquer uma das 32 vozes, mover ou trocar peças livremente, tocar casas temporariamente, editar notas MIDI, a forma global e as atribuições por peça, escolher fonte/comportamento e ajustar timbre, envelope, filtros, efeitos e os mapeamentos de posição para grau, pan e filtro. Edição textual, receitas, Groove compartilhado e automações foram retirados em v0.11.0.
+O laboratório em `/creative` usa o mesmo `MusicRuntime` das partidas e abre sem introdução, adversário ou validação de movimentos. Ele permite ativar e solar qualquer uma das 32 vozes, mover ou trocar peças livremente, tocar casas temporariamente, editar notas MIDI, a forma global e as atribuições por peça, escolher fonte/comportamento e ajustar timbre, envelope, chance de tocar, filtros, efeitos e os mapeamentos de posição para grau, pan e filtro. Edição textual, receitas, Groove compartilhado e automações foram retirados em v0.11.0.
 
 O rascunho e kits nomeados são guardados no navegador. A exportação/importação JSON conserva todas as identidades e configurações e valida o schema e a compilação dos padrões antes de substituir a sessão atual. Persistência oficial, versionamento de kits, publicação e administração em banco ficam para a camada futura de conteúdo e contas.
 
@@ -295,7 +301,7 @@ Proposta histórica de modo código, fora do escopo atual: não prometer convers
 Separar três ações:
 - Selecionar: fixa o inspetor da peça; não muda o lance e não silencia a banda.
 - Destaque: eleva temporariamente presença e elaboração após um lance, com orçamento de densidade/ganho.
-- Solo de mixagem: ouvir apenas uma peça ou grupo por comando explícito.
+- Solo de mixagem (entregue em v0.12.0): os botões S isolam uma ou mais peças e restauram, ao sair do último Solo, as vozes que tocavam e continuam vivas.
 
 Modo tocar é explícito para evitar conflito entre clicar uma casa para jogar xadrez e clicar para tocar uma nota. No modo normal, casas válidas efetuam lances. No modo tocar, casas vazias são pads/notas da peça selecionada; tecla/botão retorna a mover. Funciona com mouse, teclado e toque.
 

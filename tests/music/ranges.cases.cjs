@@ -13,8 +13,8 @@ function fixture() {
     behavior: 'phrase',
     pianoRolls: [{ bars: 4, notes: Array.from({ length: 32 }, (_, index) => ({ start: index / 8, duration: .0625, degree: 0, velocity: .8 })) }],
     arrangement: { restart: true, sections: { a: { variation: 0, transpose: 0, active: true }, b: { variation: 0, transpose: 0, active: true } } },
-    driveRange: { first: 2, second: .5 }, reverbRange: { first: .04, second: .2 },
-    swingRange: { first: .01, second: .08 }, lpfRange: { first: 400, second: 4000 }, octaveRange: undefined,
+    driveRange: { first: 2, second: .5, frequency: 'loop' }, reverbRange: { first: .04, second: .2, frequency: 'loop' },
+    swingRange: { first: .01, second: .08, frequency: 'loop' }, lpfRange: { first: 400, second: 4000, frequency: 'loop' }, octaveRange: undefined,
   })
   return kit
 }
@@ -94,7 +94,7 @@ test('S follows global section boundaries with both pinned and rule-forced MIDI 
   assert.deepEqual(eventValues(exported(api, snapshot)), eventValues(pattern))
 })
 
-test('explicit L octave holds for the loop and legacy octave ranges keep their bar clock', async () => {
+test('explicit L octave holds for the loop and a missing frequency defaults to N', async () => {
   const api = await strudel(), kit = fixture(), inst = kit.instruments['w:b1']
   inst.swingRange = { first: 0, second: 0 }; inst.octaveRange = { first: 1, second: 7, frequency: 'loop' }
   let snapshot = creative.creativeSnapshot(kit, true), pattern = compileVoice(api, voiceSpecs(snapshot, null)[0])
@@ -102,13 +102,37 @@ test('explicit L octave holds for the loop and legacy octave ranges keep their b
   assert.deepEqual(eventValues(exported(api, snapshot)), eventValues(pattern))
   delete inst.octaveRange.frequency; snapshot = creative.creativeSnapshot(kit, true); pattern = compileVoice(api, voiceSpecs(snapshot, null)[0])
   assert.ok(new Set(eventValues(pattern, 0, 4).map(event => event.note)).size > 1)
-  for (let bar = 0; bar < 4; bar++) assert.equal(new Set(eventValues(pattern, bar, bar + 1).map(event => event.note)).size, 1)
   assert.deepEqual(eventValues(exported(api, snapshot)), eventValues(pattern))
+  for (const key of ['driveRange', 'reverbRange', 'swingRange', 'lpfRange']) delete inst[key].frequency
+  snapshot = creative.creativeSnapshot(kit, true); pattern = compileVoice(api, voiceSpecs(snapshot, null)[0])
+  const events = eventValues(pattern, 0, 4)
+  assert.ok(new Set(events.map(event => event.room)).size > 1)
+  assert.ok(new Set(events.map(event => event.distort)).size > 1)
+  assert.ok(new Set(events.map(event => event.cutoff)).size > 1)
+  assert.deepEqual(eventValues(exported(api, snapshot), 0, 4), events)
+})
+
+test('fixed frequency keeps the first endpoint for every range target', async () => {
+  const api = await strudel(), kit = fixture(), inst = kit.instruments['w:b1']
+  inst.driveRange = { first: 1.3, second: 2.8, frequency: 'fixed' }
+  inst.reverbRange = { first: .1, second: .3, frequency: 'fixed' }
+  inst.swingRange = { first: .01, second: .2, frequency: 'fixed' }
+  inst.lpfRange = { first: 1200, second: 8000, frequency: 'fixed' }
+  inst.octaveRange = { first: inst.octave - 1, second: inst.octave + 1, frequency: 'fixed' }
+  const snapshot = creative.creativeSnapshot(kit, true), pattern = compileVoice(api, voiceSpecs(snapshot, null)[0])
+  const events = eventValues(pattern)
+  assert.ok(events.length > 0)
+  assert.ok(events.every(event => event.distort === 1.3 && event.room === .1 && event.cutoff === 1200))
+  const baseKit = structuredClone(kit); delete baseKit.instruments['w:b1'].octaveRange
+  const base = eventValues(compileVoice(api, voiceSpecs(creative.creativeSnapshot(baseKit, true), null)[0]))
+  const shift = (inst.octave - 1 - inst.octave) * 12
+  assert.deepEqual(events.map(event => event.note), base.map(event => event.note + shift))
+  assert.deepEqual(eventValues(exported(api, snapshot)), events)
 })
 
 test('range frequencies persist, equal limits stay fixed, and manual attacks stay immediate', async () => {
   const api = await strudel(), kit = fixture(), inst = kit.instruments['w:b1']
-  for (const frequency of ['loop', 'section', 'note']) {
+  for (const frequency of ['fixed', 'loop', 'section', 'note']) {
     inst.driveRange = { first: 0, second: 0, frequency }; inst.reverbRange = { first: .1, second: .1, frequency }
     inst.swingRange = { first: .1, second: .1, frequency }; inst.octaveRange = { first: 3, second: 3, frequency }
     inst.lpfRange = { first: 1200, second: 1200, frequency }
@@ -126,7 +150,7 @@ test('LPF ranges are optional, accept reversed endpoints and validate both limit
   const kit = fixture(), instrument = kit.instruments['w:b1']
   delete instrument.lpfRange
   assert.equal(creative.parseCreativeSession(JSON.stringify(kit)).instruments['w:b1'].lpfRange, undefined)
-  for (const frequency of [undefined, 'loop', 'section', 'note']) {
+  for (const frequency of [undefined, 'fixed', 'loop', 'section', 'note']) {
     instrument.lpfRange = { first: 20000, second: 20, ...(frequency ? { frequency } : {}) }
     assert.deepEqual(creative.parseCreativeSession(JSON.stringify(kit)).instruments['w:b1'].lpfRange, instrument.lpfRange)
   }

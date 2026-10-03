@@ -21,7 +21,7 @@ const sourceSchema = z.discriminatedUnion('kind', [
 ]).superRefine((source, ctx) => {
   if (source.kind === 'sample' && !sampleAsset(source)?.variants[source.variant]) ctx.addIssue({ code: 'custom', message: 'Banco, som ou articulação de sample inexistente.' })
 })
-const rangeFrequencySchema = z.enum(['loop', 'section', 'note']).optional()
+const rangeFrequencySchema = z.enum(['fixed', 'loop', 'section', 'note']).optional()
 const octaveRangeSchema = z.union([
   z.object({ first: finite(0, 7).int(), second: finite(0, 7).int(), frequency: rangeFrequencySchema }),
   z.object({ min: finite(0, 7).int(), max: finite(0, 7).int(), frequency: rangeFrequencySchema }).transform(({ min, max, frequency }) => ({ first: min, second: max, ...(frequency ? { frequency } : {}) })),
@@ -38,7 +38,7 @@ const instrumentSchema = z.object({
   decay: finite(0.01, 2).optional(), sustain: finite(0, 1).optional(), clip: finite(0.01, 1).optional(),
   pianoRolls: z.array(pianoRollSchema).min(1).max(8),
   arrangement: pieceArrangementSchema,
-  distortion: finite(0,10).optional(), distortionMix: finite(0,1).optional(), pitchEnvelope: finite(-24,24).optional(), pitchAttack: finite(.001,2).optional(), extraSwing: finite(0,.5).optional(),
+  distortion: finite(0,10).optional(), distortionMix: finite(0,1).optional(), playChance: finite(0,1).optional(), pitchEnvelope: finite(-24,24).optional(), pitchAttack: finite(.001,2).optional(), extraSwing: finite(0,.5).optional(),
   selectedVariation: z.number().int().min(0).max(7).optional(),
   loopEnabled: z.boolean().optional(),
   source: sourceSchema.optional(),
@@ -101,14 +101,16 @@ export function createCreativeSession(): CreativeSession {
   })
 }
 
-export function creativeSnapshot(session: CreativeSession, playing: boolean, soloId: string | null = null): MusicSnapshot {
+export function creativeSnapshot(session: CreativeSession, playing: boolean, solo: string | readonly string[] | null = null): MusicSnapshot {
+  const soloIds = typeof solo === 'string' ? [solo] : [...(solo ?? [])]
   return {
     title: session.name, bpm: session.bpm, meter: session.meter, volume: session.volume, playing,
     arrangement: session.arrangement,
     harmony: session.harmony,
-    soloId,
+    soloId: soloIds.length === 1 ? soloIds[0] : null,
+    soloIds: soloIds.length ? soloIds : undefined,
     scale: scaleForCreativeSession(session),
-    pieces: session.pieces.map(p => ({ ...p, origin: p.origin as MusicSnapshot['pieces'][number]['origin'], square: p.square as MusicSnapshot['pieces'][number]['square'], active: p.active && (!soloId || soloId === p.id) })),
+    pieces: session.pieces.map(p => ({ ...p, origin: p.origin as MusicSnapshot['pieces'][number]['origin'], square: p.square as MusicSnapshot['pieces'][number]['square'], active: p.active && (!soloIds.length || soloIds.includes(p.id)) })),
     instruments: session.instruments, effects: session.effects, mappings: session.mappings,
   }
 }

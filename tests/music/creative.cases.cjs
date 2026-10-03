@@ -57,6 +57,19 @@ test('creative kits persist two independently movable octave range endpoints', (
   assert.throws(() => creative.parseCreativeSession(invalid({ first: 0, second: 8 })))
 })
 
+test('creative kits persist a bounded play chance while older kits keep full chance', () => {
+  const lab = creative.createCreativeSession()
+  const instrument = lab.instruments['w:b1']
+  assert.equal(instrument.playChance, undefined)
+  instrument.playChance = .37
+  assert.equal(creative.parseCreativeSession(JSON.stringify(lab)).instruments['w:b1'].playChance, .37)
+  for (const playChance of [-.01, 1.01, Infinity, NaN]) {
+    const edited = structuredClone(lab)
+    edited.instruments['w:b1'].playChance = playChance
+    assert.throws(() => creative.parseCreativeSession(JSON.stringify(edited)))
+  }
+})
+
 test('version 1 through 4 imports preserve explicit rolls and seed missing text banks once', () => {
   const current = creative.createCreativeSession()
   const authored = { bars: 2, notes: [{ start: .5, duration: .25, degree: -3, velocity: .6, slide: 2, slideSeconds: .3, pan: .8 }] }

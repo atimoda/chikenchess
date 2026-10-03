@@ -53,16 +53,20 @@ export function WidgetToggleLayer({ items, onReady }: WidgetToggleLayerProps) {
     onReady()
 
     const observer = typeof globalThis.ResizeObserver === "undefined" ? null : new globalThis.ResizeObserver(measure)
+    const animatedAnchors: HTMLElement[] = []
     for (const item of items) {
       const anchor = item.ref.current
       if (!anchor) continue
       observer?.observe(anchor)
       if (anchor.parentElement) observer?.observe(anchor.parentElement)
+      anchor.addEventListener("animationend", measure)
+      animatedAnchors.push(anchor)
     }
     window.addEventListener("resize", measure)
     window.addEventListener("scroll", measure, true)
     return () => {
       observer?.disconnect()
+      for (const anchor of animatedAnchors) anchor.removeEventListener("animationend", measure)
       window.removeEventListener("resize", measure)
       window.removeEventListener("scroll", measure, true)
     }

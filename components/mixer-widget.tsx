@@ -30,6 +30,7 @@ interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "o
   togglePortalized?: boolean
   isOn: boolean
   onToggle: () => void
+  boardMusicSelectors: React.ReactNode
 }
 
 type BpmHoverPreview = { x: number; y: number; percent: number }
@@ -177,7 +178,7 @@ function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityCo
 
 export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
   teamMixes, effects, monitor, onEffectChange, topColor, onTeamMixChange, cityColor, position, onPositionChange,
-  sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle, ...props
+  sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle, boardMusicSelectors, ...props
 }, ref) => {
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
@@ -209,10 +210,10 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
     {...props}
   >
     <Resizable
-      defaultSize={{ width: 180, height: 450 }}
-      size={props.style?.position === 'static' ? { width: '100%', height: 450 } : undefined}
+      defaultSize={{ width: 180, height: 530 }}
+      size={props.style?.position === 'static' ? { width: '100%', height: 530 } : undefined}
       minWidth={156}
-      minHeight={450}
+      minHeight={530}
       enable={props.style?.position === 'static' ? false : { top: false, right: true, bottom: true, left: true, topRight: false, bottomRight: true, bottomLeft: true, topLeft: false }}
       handleStyles={{
         right: { zIndex: 80 },
@@ -266,7 +267,7 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
           {['LPF/HPF', 'HI', 'MID', 'LOW', 'GAIN'].map(label => <span key={label} className="flex h-10 w-full items-center justify-center whitespace-nowrap">{label}</span>)}
         </div>
       </fieldset>
-      <fieldset disabled={!isOn} aria-label="Crossfader de equipe" className="mt-4 min-w-0 px-1 pb-5">
+      <fieldset disabled={!isOn} aria-label="Crossfader de equipe" className="mt-4 min-w-0 px-1">
         <legend className="sr-only">Crossfader de equipe</legend>
         <div className={cn("relative mx-auto mb-1 h-3 w-[58%] font-mono font-bold tracking-wide text-muted-foreground", compactLayout ? "text-[8px]" : "text-[9px]")}>
           <span className="absolute top-0 left-1/2 -translate-x-1/2 text-foreground/70">CROSSFADER</span>
@@ -292,8 +293,12 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
           />
         </div>
       </fieldset>
+      {boardMusicSelectors && <fieldset disabled={!isOn} aria-label="Tom, escala e progressão" className="m-0 mt-1 min-w-0 border-0 p-0 pb-5">
+        <legend className="sr-only">Tom, escala e progressão</legend>
+        {boardMusicSelectors}
+      </fieldset>}
     </div>
-    {!isOn && <div className="absolute inset-0 z-[65] touch-none" aria-hidden="true" />}
+    {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
     </Resizable>
   </Draggable>
 })

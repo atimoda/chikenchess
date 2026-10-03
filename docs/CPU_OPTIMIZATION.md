@@ -72,3 +72,35 @@ Os 32 loops agora se distribuem em quatro orbits de efeitos, dois por equipe. Ca
 O teste físico da v0.3.3 ainda apresentou atraso nas cidades e, em menor grau, no Criativo. As duas telas já usavam o mesmo runtime, compilador compacto e quatro buses; portanto a diferença restante não era uma otimização restrita ao editor. A partida também recebia cada pulso pelo estado React do componente completo, fazendo tabuleiro, controles e widgets participarem de atualizações visuais recorrentes.
 
 Na v0.3.4, os pulsos passam por uma store externa e apenas um overlay do tabuleiro assina as mudanças. A página não recebe mais `setState` por ataque. Aparelhos detectados como restritos usam ainda dois buses de efeitos, um por equipe, configuração que no ensaio anterior manteve as 32 vozes e não registrou `skip query: too late`; desktop conserva quatro. Notas, polifonia configurada, filtros, envelopes, pan e quantidade do send de cada evento permanecem. O compartilhamento maior pode aproximar a textura das caudas de peças da mesma equipe. A melhora final precisa ser repetida no mesmo celular e no build de produção.
+
+
+## Retorno físico da v0.11.0 — Redmi / Chrome, 02/10
+
+O usuário testou a v0.11.0 publicada no Xiaomi informado como Redmi 13 Pro, com Chrome. Em três cidades não identificadas, o início toca bem; por volta de oito vozes ativadas surgem atrasos, e com mais vozes o áudio chega a ruído e perde o tempo. É evidência física de falha da experiência, não uma medição do limite exato de CPU. Navegador/build foram confirmados; não há trace, sequência de jogadas, kits locais, temperatura ou saída de áudio registrada.
+
+O perfil restrito atual já seleciona dois buses de efeitos, polifonia máxima de 32 fontes, janela de 180 ms, pulsos visuais limitados a 8 Hz e monitor de 150 ms. A detecção considera viewport menor que 768 px, ponteiro coarse ou até quatro cores; oito cores não impedem a classificação restrita no celular. Esses cortes não limitam a oito as peças nem removem processamento por nota. O Drive positivo cria um AudioWorklet de distorção por ataque no Superdough instalado. Reverb e delay são compartilhados por orbit, mas sends/filtros/envelopes/fontes continuam por ataque. Caudas e acordes ampliam a quantidade de fontes simultâneas. A atenuação atual por quantidade de loops só começa acima de dez; não é um limiter de pico e não prova ausência de clipping.
+
+### Auditoria reproduzível, sem alteração de áudio
+
+`node scripts/benchmark-mobile-audio.cjs` consulta o Strudel real dos kits de fábrica em Node, com grupos de 4/8/16/32 peças em ordem fixa de slots, dois buses e toda a forma A–F. Argumentos permitem escolher outras cidades. Mede ataques, notas no mesmo onset, sends/Drive positivos, fontes e tempo de compilação/consulta. Não reproduz uma partida real, não mede DSP, Redmi, memória, aquecimento ou clipping. Exportar/consultar um evento com room positivo não equivale a criar um convolver por nota.
+
+Na execução de 02/10, com oito peças na fixture:
+
+| Kit | Notas por segundo, média da forma | Maior número de notas no mesmo onset | Notas com Drive / total | Notas com reverb / total |
+| --- | ---: | ---: | ---: | ---: |
+| Memphis 1967 | 5,96 | 8 | 0 / 547 | 547 / 547 |
+| Manchester 1999 | 12,40 | 10 | 0 / 750 | 750 / 750 |
+| Detroit | 7,66 | 7 | 113 / 423 | 423 / 423 |
+| Vienna | 4,83 | 8 | 0 / 311 | 311 / 311 |
+
+Oito peças não são oito fontes DSP: Manchester já tem dez notas no mesmo ataque, antes das caudas anteriores. Drive não pode ser tratado como causa universal: nesta fixture, está ausente em três kits. Reverb é um primeiro experimento abrangente; sua causalidade atual ainda precisa de comparação no aparelho. A compilação nova do lote de oito vozes de Memphis custou cerca de 189 ms nesta execução; é custo de uma construção completa em Node, sem o cache da sessão, e não um tempo medido por jogada ou no celular. É sinal para medir recompilações durante movimentos/trocas de seção, separadamente da sobrecarga sustentada de DSP.
+
+### Próximos experimentos, ainda não implementados
+
+1. Medir no mesmo Chrome/aparelho um trecho fixo com 4/8/12/16 peças, com assets aquecidos, widgets/Code desligados, comparando original, sem reverb, sem delay e sem Drive separadamente. Medir atrasos do scheduler, capacidade de renderização, crescimento de nós/fontes ao longo de minutos e pico de saída. Repetir reduzindo vozes para verificar recuperação; só piorar com o tempo, sem recuperação, exige investigação de retenção/caudas/aquecimento.
+2. Prototipar perfil leve de runtime para celular: primeiro reduzir custo do reverb (impulso mais curto ou ambiência alternativa; reduzir apenas o send não elimina o convolver), bypass real de Drive e filtros neutros quando aplicável. Conservar notas, BPM, arranjo, ativações, reações, equipe/pan e kits salvos. As reações/ranges continuam resolvidos e só a saída recebe a política do perfil; alterações de timbre devem ser explícitas.
+3. Medir compilação e query separadamente. Pré-compilar/cachear trechos independentes de movimento ou resolver/preparar fora do trecho crítico pode ajudar às pausas de jogadas; não corrige sozinho DSP sobrecarregado. Aumentar lookahead ajuda bloqueios curtos de JS, não aumenta o orçamento de renderização do áudio.
+4. Só se o perfil de efeitos não bastar, testar limite de fontes simultâneas e caudas mais curtas com prioridade musical. Reduzir 32 → 16/24 fontes altera notas/caudas e precisa de validação; evitar um corte indiscriminado de peças ativas ou aumentar polifonia para tentar corrigir ruído.
+5. Separar proteção contra soma de volumes (headroom/limiter, se houver clipping medido) de redução de CPU. Limiter não recupera notas atrasadas nem deadline perdido.
+
+Referências primárias: [perfil de Web Audio no Chrome](https://web.dev/articles/profiling-web-audio-apps-in-chrome) explica deadlines, glitches e GC; [métricas WebAudio](https://developer.chrome.com/docs/devtools/webaudio) descreve Render Capacity. Uma medição de Node ou emulação desktop não aprova desempenho no Redmi. Nenhuma simplificação desta seção foi aplicada ao playback; agenda em `MUSIC_ENGINE_PLAN.md`.
