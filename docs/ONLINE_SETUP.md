@@ -4,13 +4,17 @@ O frontend continua sendo uma exportação estática do Next.js. Supabase fornec
 
 ## Estado da ativação — 04/10/2026
 
-Projeto **ChickenChess**, ref `arqjqjopihtsubpvuccj`, região São Paulo: vinculado ao CLI; migrações `202610040001_online.sql` e `202610040002_business_conflicts.sql` aplicadas; Functions `match-command`, `piece-params` e `profile-transfer` implantadas. Anonymous Sign-ins funciona com sessões reais. Google está habilitado; a geração de vínculo PKCE e a URL de callback foram conferidas na API, e o usuário confirmou login/vínculo em localhost preservando o perfil e o saldo. As onze tabelas públicas online têm RLS; a publicação Realtime contém somente as cinco projeções abaixo. CORS das Functions permite `http://localhost:3000` neste momento.
+Projeto **ChickenChess**, ref `arqjqjopihtsubpvuccj`, região São Paulo: vinculado ao CLI; migrações `202610040001_online.sql` e `202610040002_business_conflicts.sql` aplicadas; Functions `match-command`, `piece-params` e `profile-transfer` implantadas. Anonymous Sign-ins funciona com sessões reais. Google está habilitado; a geração de vínculo PKCE e a URL de callback foram conferidas na API, e o usuário confirmou login/vínculo em localhost preservando o perfil e o saldo. As onze tabelas públicas online têm RLS; a publicação Realtime contém somente as cinco projeções abaixo. CORS das três Functions permite `http://localhost:3000`, `https://chickenchess.com` e `https://www.chickenchess.com`: o segredo `ONLINE_ALLOWED_ORIGINS` foi configurado em 04/10, e nove preflights retornaram 204 com a origem exata. Antes desse ajuste, a origem de produção retornava `ORIGIN_NOT_ALLOWED`/403.
 
 Teste remoto com três sessões descartáveis validou importação exata/idempotente do perfil, isolamento de dados, rejeição de escrita direta, diretório ao vivo, convite privado sem ocupar vaga, corrida pela segunda vaga, Ready simultâneo/repetido, Presence privada e rejeição de terceiro, amizade com aceite, Best/Worst compartilhado, poderes só na própria vez, Undo/Redo sem repetir prêmio, parâmetros apenas do dono, liquidação única, revanche com cores invertidas e empate com aceite. Duas jogadas simultâneas tiveram uma confirmação e uma resposta 409 em cerca de 0,3 s, sem duplicar lance/prêmio.
 
 Teste adicional com sessões Auth reais validou CAS do perfil com conflito 409 imediato e transferência visitante → conta permanente: exigência das duas sessões, escolha de uma cópia inteira sem somar saldos, retry idempotente, aposentadoria da origem e migração de amizade pendente. A conta permanente foi uma fixture criada pela API administrativa, sem enviar email; isso não valida entrega SMTP ou vínculo Google. Todas as contas, backups, salas e partidas descartáveis foram removidos; o perfil pessoal não foi usado como fixture.
 
-Pendências para disponibilização pública: teste de login em conta Google existente com escolha de save, código real por email, SMTP/domínio remetente, deploy do frontend e origins/callbacks de produção. Nome/logo verificados no consentimento Google são uma etapa de apresentação da marca. Testes de banco/API não substituem esses fluxos nem medição de áudio em aparelhos físicos.
+O frontend foi publicado na Vercel, incluindo as páginas legais. O primeiro deploy não incorporou as variáveis `NEXT_PUBLIC_*`; após a configuração/redeploy, o usuário confirmou que o Google abre em produção. Esse teste retornou `identity_already_exists` para localhost: a conta Google já estava vinculada ao usuário permanente criado no teste local. A leitura remota de Auth confirmou `site_url=http://localhost:3000` e `uri_allow_list` vazio. Foi solicitado o ajuste abaixo no painel; a leitura não significa que a configuração tenha sido alterada.
+
+Pendências para disponibilização pública: salvar Site URL/Redirect URLs de produção, publicar o tratamento de Google já vinculado, teste de login em conta Google existente com escolha de save e código real por email. O usuário confirmou SMTP salvo/ativado e domínio Brevo Authenticated; entrega real ainda precisa de teste. Nome/logo verificados no consentimento Google são uma etapa de apresentação da marca. Testes de banco/API não substituem esses fluxos nem medição de áudio em aparelhos físicos.
+
+Diagnóstico da tentativa seguinte: o frontend público ainda entrega o handler antigo, que converte qualquer callback `ok:false` em “O login Google não foi concluído”. A leitura dos scripts publicados confirmou a ausência do novo tratamento de identidade existente. O callback local também passou a consultar o resultado de `auth.initialize()` antes da sessão, para preservar falhas PKCE ocultadas por `getSession`; isso precisa entrar no mesmo novo deploy. O logout já existia em Online → Perfil e agora aparece também no popup de Golden eggs para contas permanentes.
 
 ## 1. Projeto Supabase e migração
 
@@ -50,7 +54,11 @@ O login normal confirma com `verifyOtp` de tipo `email`; o vínculo do visitante
 
 ### Credencial Google para o projeto ChickenChess
 
-Durante os testes locais, mantenha `http://localhost:3000` na Site URL do Supabase e permita `http://localhost:3000/**` em Redirect URLs. Acrescente a URL definitiva quando o frontend estiver publicado.
+Com o frontend publicado, use **Site URL** `https://chickenchess.com`. Em **Redirect URLs**, cadastre `https://chickenchess.com/`, `https://chickenchess.com/?authCallback=1`, os mesmos dois retornos com `www` se esse host for utilizado e `http://localhost:3000/**` para desenvolvimento. O código já envia o retorno da origem atual com `?authCallback=1`; ele precisa estar permitido, inclusive nos testes locais. A Site URL de produção também é o fallback para erros OAuth sem o marcador. Não use `supabase config push` com o arquivo local para corrigir apenas URLs: o stack local conserva localhost e não contém toda a configuração remota de Google/SMTP. [Supabase: retornos Auth](https://supabase.com/docs/guides/auth/redirect-urls).
+
+Um visitante usa `linkIdentity` para salvar a mesma identidade em uma conta nova. Se o Google já pertence a outra conta, o callback preserva `identity_already_exists`, marca **Já tenho uma conta** e pede novo clique em **Continue with Google**, que usa `signInWithOAuth`. O retry passa novamente pelo bloqueio de sala/partida ativa antes de trocar de conta; depois do login oferece a escolha entre os saves completos. Cancelar/fechar a janela ou um erro diferente não seleciona esse retry nem transfere progresso. A credencial visitante fica somente em memória e os backups de perfil continuam isolados por identidade.
+
+Validação do tratamento inicial em 04/10: 29 casos online (oito de callback/Auth), TypeScript, lint dos arquivos alterados, dois casos de consistência da versão e build estático de produção aprovados. A tela local abriu o login, ignorou mensagem sem popup ativo e conservou os 43 ovos visíveis ao fechar; `v1.0.0` foi conferida na interface. Esses checks não autenticaram uma conta Google nem substituem o teste humano em produção após salvar os retornos e publicar o novo código.
 
 No Google Auth Platform, configure o app **ChickenChess**, Audience **External** e seu email como contato/usuário de teste enquanto estiver em Testing. Em Data Access, configure somente `openid`, `userinfo.email` e `userinfo.profile`. Em **Clients → Create client**, escolha **Web application** e o nome **ChickenChess Web**. Origens autorizadas: `http://localhost:3000` e `https://chickenchess.com`; acrescente `https://www.chickenchess.com` somente se esse host for utilizado. Retorno autorizado:
 
@@ -74,7 +82,7 @@ Contato público: `hello@chickenchess.com`. Páginas em inglês implementadas co
 - Application privacy policy link: `https://chickenchess.com/privacy-policy`
 - Application terms of service link: `https://chickenchess.com/terms-of-service`
 
-Os documentos são acessíveis sem login e sem conexão com Supabase; os links ficam no popup About e no login e abrem outra aba para preservar perfil e login. Os textos identificam o projeto ChickenChess como responsável, descrevem os dados realmente usados e oferecem pedidos de exclusão por email. O HTML exportado deve ser publicado no domínio e os dois links precisam responder publicamente antes de preencher/submeter o Branding. URL local não serve para essa verificação. Consulta de 04/10 confirmou HTTP 404 nas duas URLs de produção: o código novo ainda não está publicado. O app usa `metadataBase` e canonicals nesse domínio. [Google: requisitos de marca e páginas públicas](https://support.google.com/cloud/answer/13464321).
+Os documentos são acessíveis sem login e sem conexão com Supabase; os links ficam no popup About e no login e abrem outra aba para preservar perfil e login. Os textos identificam o projeto ChickenChess como responsável, descrevem os dados realmente usados e oferecem pedidos de exclusão por email. O HTML exportado deve ser publicado no domínio e os dois links precisam responder publicamente antes de preencher/submeter o Branding. URL local não serve para essa verificação. Após o deploy de 04/10, ambas as URLs foram abertas publicamente e mostram os documentos corretos sem login. O app usa `metadataBase` e canonicals nesse domínio. [Google: requisitos de marca e páginas públicas](https://support.google.com/cloud/answer/13464321).
 
 Validação local de 04/10: exportação estática com os dois documentos completos e links na home sem JavaScript, build/TypeScript/lint aprovados, cinco casos de filtro de analytics/consistência de versão aprovados. Navegador confirmou índice/âncoras, leitura mobile sem overflow, zoom permitido nos documentos e abertura pelo login em nova aba mantendo popup e email digitado. A versão visível permanece `v1.0.0`, na mesma entrada diária. Refinamento posterior moveu os links para About, preservando o popup ao abrir os documentos e oferecendo scroll em telas baixas. Hover de online/Amigos foi comparado ao Modo Criativo no navegador, incluindo a prioridade de borda do tema escuro; TypeScript, lint e consistência da versão aprovados.
 
@@ -131,9 +139,17 @@ A migração publica somente:
 
 O cliente aguarda a confirmação da inscrição Postgres Changes (`postgres_changes_options.wait=true`) antes de indicar conexão pronta e recupera o estado após a inscrição/reconexão. Ao receber uma notificação, recupera o estado pelas RPCs. Estados de xadrez, parâmetros MIDI completos, receipts de comando e remoções de participantes/amizades não são publicados globalmente. Realtime DELETE tem limitações de filtragem/RLS, por isso o lobby anuncia alterações atualizando a sala e amizades usam revisões individuais. [Supabase: Postgres Changes](https://supabase.com/docs/guides/realtime/postgres-changes).
 
-## 5. Frontend e Cloudflare Pages
+## 5. Frontend: Vercel atual e Cloudflare Pages opcional
 
-Configure no ambiente de build do Pages:
+### Configuração na Vercel
+
+Em Project → Settings → Environment Variables, cadastre `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com os mesmos valores públicos do `.env.local`. A URL do projeto é `https://arqjqjopihtsubpvuccj.supabase.co`; a chave deve ser a Publishable Key desse projeto, nunca uma credencial SMTP/secret/service role. Selecione **Production**, e **Preview** se esses deployments também usarem online. Salve e faça um novo **Redeploy** em Deployments; só atualizar os campos não modifica o JavaScript já publicado. O gerenciador/lockfile está configurado em `vercel.json`. [Vercel: variáveis por ambiente e deployment](https://vercel.com/docs/environment-variables).
+
+A mensagem “O modo online ainda não foi configurado” é disparada no cliente quando faltam URL HTTP(S) válida e chave pública no build. Não é um erro de SMTP ou banco; o guard roda antes de chamar Supabase. `.env.local` é configuração da máquina local e não acompanha o Git/deploy. Depois do redeploy, teste o diretório e confira os retornos em Authentication → URL Configuration: Site URL de produção `https://chickenchess.com`, callbacks explícitos de produção e localhost que realmente serão usados.
+
+### Cloudflare Pages
+
+Para usar o destino opcional planejado, configure no ambiente de build do Pages:
 
 ```dotenv
 NEXT_PUBLIC_SUPABASE_URL=https://SEU_PROJECT_REF.supabase.co

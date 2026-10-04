@@ -5,9 +5,10 @@ import type { User } from '@supabase/supabase-js'
 import { normalizePlayerProfile, savePlayerProfile, type PlayerProfile } from '@/lib/game-progression'
 import type { OnlineProfile } from '@/lib/online/types'
 import { cacheLocalProfile, cacheOnlineProfile, getOnlineClient, onlineConfigured, onlineErrorMessage, onlineRpc, preserveProfileBackup, readCachedLocalProfile, readCachedOnlineProfile, readLocalProfile, readLocalProfileOwner, requireOnlineClient, samePlayerProfileContent, setLocalProfileOwner } from '@/lib/online/client'
+import { authCallbackMessage, completeAuthCallback, readAuthCallback } from '@/lib/online/auth-callback'
 import { LoginDialog } from './login-dialog'
 
-/* global URLSearchParams, Response, CustomEvent, Event */
+/* global Response, CustomEvent, Event */
 
 interface GuestTransfer {
   sourceUserId: string
@@ -254,17 +255,17 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
 
   // An OAuth popup writes the ordinary Supabase session; the opener rechecks it.
   useEffect(() => {
-    if (!onlineConfigured || new URLSearchParams(window.location.search).get('authCallback') !== '1') return
+    const callback = readAuthCallback(window.location.search, window.location.hash)
+    if (!onlineConfigured || (!callback.requested && !(window.opener && callback.error))) return
     let active = true
-    void requireOnlineClient().auth.getSession().then(({ data, error: sessionError }) => {
+    void completeAuthCallback(requireOnlineClient().auth, callback).then((message) => {
       if (!active) return
-      const query = new URLSearchParams(window.location.search)
-      const hash = new URLSearchParams(window.location.hash.slice(1))
-      const failed = sessionError?.message || query.get('error_description') || hash.get('error_description')
-      window.opener?.postMessage({ type: 'chickenchess:auth-complete', ok: !failed && Boolean(data.session?.user && !data.session.user.is_anonymous), error: failed || null }, window.location.origin)
+      window.opener?.postMessage(message, window.location.origin)
       window.close()
-    }).catch(() => {
-      if (active) window.opener?.postMessage({ type: 'chickenchess:auth-complete', ok: false }, window.location.origin)
+    }).catch((cause) => {
+      if (!active) return
+      window.opener?.postMessage(authCallbackMessage(callback, { message: onlineErrorMessage(cause) }, false), window.location.origin)
+      window.close()
     })
     return () => { active = false }
   }, [])
