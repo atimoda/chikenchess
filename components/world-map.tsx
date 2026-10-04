@@ -15,9 +15,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
 import { OnlineHub } from './online/online-hub'
 import { useOnline } from './online/online-provider'
 import { LegalLinks } from './legal-links'
+import { onlineErrorMessage } from '@/lib/online/client'
 
 import { Button } from "@/components/ui/button"
-import { Plus, Minus, Maximize, Minimize } from "lucide-react"
+import { Plus, Minus, Maximize, Minimize, LogOut, Loader2 } from "lucide-react"
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
@@ -55,6 +56,15 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
   const [showAbout, setShowAbout] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [profileLogoutBusy, setProfileLogoutBusy] = useState(false)
+  const [profileLogoutError, setProfileLogoutError] = useState<string | null>(null)
+  const logOutFromProfile = async () => {
+    setProfileLogoutBusy(true)
+    setProfileLogoutError(null)
+    try { await online.signOut() }
+    catch (cause) { setProfileLogoutError(onlineErrorMessage(cause)) }
+    finally { setProfileLogoutBusy(false) }
+  }
   const [eggLabelExpanded, setEggLabelExpanded] = useState(true)
   const eggLabelPointerHoveredRef = useRef(false)
   const eggLabelFocusedRef = useRef(false)
@@ -1037,7 +1047,16 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           </DialogHeader>
           <div className="space-y-4 font-mono">
             {online.profile?.baptismal_name && <div className="text-xs text-white/60"><p>Baptismal name</p><p className="mt-1 break-words text-[#dfe8df]">{online.profile.baptismal_name}</p><p className="mt-1 text-[10px]">Nome de batismo permanente</p></div>}
-            {!online.user || online.user.is_anonymous ? <button className="text-xs text-amber-200 underline underline-offset-4" onClick={() => { setShowProfile(false); online.openLogin() }}>Sign in to save your profile</button> : <p className="text-xs text-white/60">Profile saved · {online.profile?.code}</p>}
+            {!online.user || online.user.is_anonymous ? <button className="text-xs text-amber-200 underline underline-offset-4" onClick={() => { setShowProfile(false); online.openLogin() }}>Sign in to save your profile</button>
+              : online.pendingTransfer ? <Button className="w-full" onClick={() => { setShowProfile(false); online.openLogin() }}>Escolher perfil para a conta</Button>
+                : <div className="space-y-2">
+                  <p className="text-xs text-white/60">Profile saved · {online.profile?.code}</p>
+                  {online.user.email && <p className="break-all text-xs text-white/60">{online.user.email}</p>}
+                  <Button size="sm" variant="outline" className="border-white/20 bg-transparent" disabled={profileLogoutBusy} onClick={() => void logOutFromProfile()}>
+                    {profileLogoutBusy ? <Loader2 className="animate-spin" /> : <LogOut />}{profileLogoutBusy ? 'Saindo…' : 'Sair da conta'}
+                  </Button>
+                </div>}
+            {profileLogoutError && <p role="alert" className="text-xs text-rose-200">{profileLogoutError}</p>}
             <div className="space-y-3 font-mono">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Golden eggs</span>

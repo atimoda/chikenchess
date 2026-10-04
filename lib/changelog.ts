@@ -9,6 +9,8 @@ export const CHANGELOG = [
     groups: [
       { title: 'Contas e amigos', items: [
         'O globo oferece login com Google ou código por email, preservando o perfil visitante ao vincular uma conta. Visitantes encontram “Sign in to save your profile” no popup de ovos.',
+        'Se o Google já pertence a uma conta ChickenChess, o login identifica a conta existente e orienta a entrar novamente para escolher qual progresso conservar, sem descartar o perfil visitante. Falhas na confirmação do login mostram a causa recebida em vez de um aviso genérico.',
+        'O popup de Golden eggs mostra o email da conta conectada e o botão Sair da conta; o logout também continua disponível na aba Perfil do online.',
         'O perfil tem nome e código público; amizades começam com um pedido e exigem aceite. Há listas de amigos e pedidos enviados/recebidos.',
         'Novos perfis recebem um nome de batismo permanente, sorteado entre 304 títulos, adjetivos e termos divertidos de galinhas, xadrez, música e outras invenções. O nome público continua editável e pode ser importado do Google; perfis existentes mantêm seus nomes.',
         'Privacy Policy e Terms of Service têm páginas públicas em inglês, com links no About e no login que preservam a tela atual ao abrir outra aba.',

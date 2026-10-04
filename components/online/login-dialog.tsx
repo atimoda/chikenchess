@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ONLINE_CONFIGURATION_MESSAGE, onlineErrorMessage, onlineRpc, requireOnlineClient } from '@/lib/online/client'
 import type { PlayerProfile } from '@/lib/game-progression'
 import type { OnlineRoom } from '@/lib/online/types'
+import { googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
 import { useOnline } from './online-provider'
 import { LegalLinks } from '@/components/legal-links'
 
@@ -90,11 +91,13 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.source !== popupRef.current || event.data?.type !== 'chickenchess:auth-complete') return
+      if (!popupWaiting.current || !popupRef.current || event.origin !== window.location.origin || event.source !== popupRef.current || !isAuthCallbackMessage(event.data)) return
       popupWaiting.current = false
       popupRef.current = null
       if (!event.data.ok) {
-        setError('O login Google não foi concluído. Tente novamente ou use email.')
+        const failure = googleLoginFailure(event.data.errorCode, event.data.error)
+        if (failure.existingAccount) setExistingAccount(true)
+        setError(failure.message)
         setBusy(false)
         return
       }
@@ -177,6 +180,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 
   const signInGoogle = async () => {
     setError(null)
+    setNotice(null)
     setBusy(true)
     const popup = window.open('about:blank', 'chickenchess-google-login', 'popup,width=500,height=700')
     if (!popup) {
@@ -204,7 +208,10 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       popupRef.current = null
       popupWaiting.current = false
       setBusy(false)
-      setError(onlineErrorMessage(cause))
+      const code = cause && typeof cause === 'object' && 'code' in cause && typeof cause.code === 'string' ? cause.code : null
+      const failure = googleLoginFailure(code, onlineErrorMessage(cause))
+      if (failure.existingAccount) setExistingAccount(true)
+      setError(failure.message)
     }
   }
 
