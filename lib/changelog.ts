@@ -1,17 +1,56 @@
-export const RELEASE_LABEL = 'v0.14.2'
+export const RELEASE_LABEL = 'v1.0.0'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    "version": "0.14.2",
+    version: '1.0.0',
+    date: '04/10/2026',
+    title: 'ChickenChess 1v1 casual online',
+    groups: [
+      { title: 'Contas e amigos', items: [
+        'O globo oferece login com Google ou código por email, preservando o perfil visitante ao vincular uma conta. Visitantes encontram “Sign in to save your profile” no popup de ovos.',
+        'O perfil tem nome e código público; amizades começam com um pedido e exigem aceite. Há listas de amigos e pedidos enviados/recebidos.',
+        'Novos perfis recebem um nome de batismo permanente, sorteado entre 304 títulos, adjetivos e termos divertidos de galinhas, xadrez, música e outras invenções. O nome público continua editável e pode ser importado do Google; perfis existentes mantêm seus nomes.',
+        'Privacy Policy e Terms of Service têm páginas públicas em inglês, com links no About e no login que preservam a tela atual ao abrir outra aba.',
+      ] },
+      { title: 'Salas e partida online', items: [
+        '1v1 casual online abre a lista de salas públicas, entrada por ID e criação de sala pública ou privada, com link de convite.',
+        'Os botões 1v1 casual online e Amigos ganham borda e brilho verdes com texto branco no hover, como o Modo Criativo.',
+        'Cada pessoa escolhe seu kit e confirma Começar. A chegada de outra pessoa avisa com som e realce; a partida começa quando ambas confirmam.',
+        'As duas equipes usam poderes na própria vez e pagam os mesmos custos. Best/Worst mostram as mesmas sugestões aos dois jogadores; Undo volta até a vez de quem usou e Redo restaura sua continuação.',
+        'Best e Worst podem ser usados por qualquer jogador durante a vez de qualquer equipe. Enquanto as sugestões ficam visíveis por três segundos, ambos os botões aguardam para evitar novos pedidos e gastos; Freeze e Shield continuam exclusivos da própria vez.',
+        'A equipe local fica embaixo. O adversário tem popup de perfil, conexão, Adicionar amigo e preferência individual de parâmetros musicais.',
+        'A composição reúne as peças dos dois kits sobre uma forma comum. Os parâmetros adversários ficam bloqueados quando a sincronização está ligada; Mixer, Solo, audição e arraste são locais.',
+        'Play/Pause controla somente a música, retomada pelo próximo lance. O globo oferece desistência e empate; o resultado permite convidar para outra partida.',
+        'Ações confirmadas podem ser recuperadas após reconexão sem repetir custos ou recompensas. Salas e login exigem a configuração do projeto Supabase.',
+        'A conexão aguarda o recebimento das atualizações ficar pronto. Ações simultâneas devolvem conflitos sem travar, e uma confirmação pendente mantém Retry disponível após reconexão ou recarga.',
+      ] },
+      { title: 'Poderes da partida', items: [
+        'Freeze cancela a tentativa que deixaria o adversário sem jogadas legais, sem gastar ovos, e avisa “Você não pode deixar seu oponente sem jogadas.”. A proteção vale na campanha e para as duas equipes online.',
+        'A avaliação com poderes carrega seu Worker JavaScript na versão publicada, mantendo a busca fora da interface na campanha e no online.',
+      ] },
+    ],
+  },
+  {
+    "version": "0.14.3",
     "date": "03/10/2026",
-    "title": "Piece Debug e integração de widgets",
+    "title": "Widgets e controles da partida",
     "groups": [
       {
         "title": "Partida",
         "items": [
+          "O retorno ao mapa fica depois de Maximizar, no extremo direito do cabeçalho; seu globo mantém apenas a circunferência e os pontos coloridos.",
+          "O controle de dificuldade do cabeçalho identifica-se como Dificuldade do Bot e conserva a cor da cidade no foco e no clique; o botão do mapa segue a mesma cor.",
+          "O Mixer termina cerca de 20 px abaixo do crossfader, sem o espaço livre que ocupava antes.",
+          "Tom, Escala e Harmonia passam do Mixer para o lado do nome da cidade; o cabeçalho quebra linha no celular e permanece acessível sobre os widgets.",
+          "Best e Worst ficam indisponíveis enquanto Freeze ou Shield estiver ativo no tabuleiro e voltam após o fim dos poderes.",
+          "Congelar uma peça que dá cheque e mover outra peça, ou usar Shield no rei, não interrompe mais a partida com erro; a música acompanha os poderes, o descongelamento e Undo/Redo.",
           "As casas da última jogada deixam aparecer mais a imagem de fundo e recebem um lilás mais discreto; peças e marcadores mantêm as cores normais.",
           "Freeze aplica textura gelada às peças afetadas, e o ícone Shield fica sem a marca de seleção.",
+          "Os ícones de Freeze e Shield acompanham o ponteiro 10 px acima e à esquerda. A textura de gelo varia sua rotação entre as casas, mantendo o mesmo desenho na prévia e no efeito aplicado.",
+          "A avaliação de jogadas após aplicar Freeze ou Shield roda em segundo plano, evitando que a busca trave a interface e atrapalhe o agendamento da música.",
+          "No modo de escolher uma casa para Freeze ou Shield, o cursor permanece como mão aberta durante o percurso. Peças congeladas ficam fixas na casa, sem iniciar arraste.",
+          "Peças com Shield não podem capturar nem ser capturadas por qualquer equipe, inclusive por en passant; tentativas do jogador mostram o aviso da peça protegida ou o popup de proteção do alvo.",
           "Freeze e Shield podem ser levados do botão até uma casa por arraste ou escolhidos por clique; clicar fora do tabuleiro no modo de escolha ou soltar o arraste fora cancela sem gastar ovos. Freeze mostra gelo na prévia; Shield mostra um escudo sobre a peça. As casas tocam gelo craquelando ou metal, e Freeze deixa um rastro que descongela em 2 segundos.",
           "Freeze e Shield usam cursor de pegar; Best e Worst usam cursor de clique. As dicas descrevem congelar/proteger por uma rodada e ver as três melhores/piores jogadas.",
           "O novo widget Piece Debug mostra a fonte sonora e as configurações adicionais da peça selecionada, abaixo de Piece Params; o botão Piece debug no Debug abre ou fecha esse painel.",
@@ -23,6 +62,7 @@ export const CHANGELOG = [
           "Worst ocupa o espaço que era de Freeze, Freeze vai para o de Shield e Shield para o de Worst; os sons de hover continuam ligados às posições.",
           "Sair de Worst ou Freeze pelo mouse toca chimbal fechado com volume 40% menor que no hover.",
           "O pitch do som de Freeze varia um pouco mais ao passar entre casas durante o arraste.",
+          "Shield protege o próprio rei e bloqueia a entrada adversária pelas mesmas regras para brancas e pretas, conforme a equipe que aplicou o poder.",
           "Os knobs acompanham o ângulo do toque ou ponteiro; valores únicos ficam centralizados no dial e os dois limites de range aparecem empilhados no centro.",
           "Piece Params redimensiona verticalmente entre as abas de variação e 90% da tela; a atualização visual do MIDI pausa quando ele fica totalmente oculto. Piece Debug só é montado quando aberto.",
           "O realce lilás da última jogada mantém a intensidade atual por 1 segundo e depois cai suavemente à metade em 2 segundos.",
@@ -36,7 +76,7 @@ export const CHANGELOG = [
       {
         "title": "Criativo e Mixer",
         "items": [
-          "Nos ranges de oitava, Drive, Reverb, Swing e passa-baixas, desmarcar L/S/N deixa um valor fixo; ao selecionar L/S/N, os limites começam a 15% do curso acima e abaixo do valor atual. N vem selecionado por padrão.",
+          "Nos ranges de oitava, Drive, Reverb, Swing e passa-baixas, desmarcar L/S/N deixa um valor fixo; ao selecionar L/S/N, os limites começam a 25% do curso acima e abaixo do valor atual. N vem selecionado por padrão.",
           "Arrastar a metade esquerda do range controla o limite menor e a metade direita controla o maior; os cursores também podem ser arrastados diretamente. No hover, só o cursor correspondente à metade fica branco.",
           "A borda do dial de range fica branca enquanto ele é arrastado.",
           "Os marcadores usam a cor da cidade e ficam brancos no hover. No arraste, Piece Params mostra o marcador cinza; Criativo e Mixer continuam com atualização imediata e marcador na cor da cidade.",

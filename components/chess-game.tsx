@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { ArrowLeft, Code2, Music2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search, Snowflake, Shield, Eye } from "lucide-react"
+import { Code2, Music2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Loader2, Maximize, Minimize, Plus, Minus, Search, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, markGameplayTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
@@ -37,9 +37,9 @@ import { isConstrainedDevice } from "@/lib/performance"
 import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveLabelTone, rankedMoveRewardDetails, rememberMoveSuggestions, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 import { WidgetToggleLayer } from "./widget-toggle-layer"
 import { OpponentMoveTimer } from "@/lib/opponent-move-timer"
-import { advanceMatchPowers, createMatchPower, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
-import { clonePoweredChess, makePoweredChess, setPoweredChessPowers, syncPoweredMoveSan } from "@/lib/powered-chess"
-import { analyzePoweredMoves } from "@/lib/powered-analysis"
+import { advanceMatchPowers, canUseMatchPower, createMatchPower, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
+import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, syncPoweredMoveSan } from "@/lib/powered-chess"
+import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 
 import {
   DropdownMenu,
@@ -255,6 +255,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
   const [restartConfirmOpen, setRestartConfirmOpen] = useState(false)
+  const [shieldCaptureNoticeOpen, setShieldCaptureNoticeOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
   const costHintHideTimerRef = useRef<number | null>(null)
   const eggCounterRef = useRef<HTMLDivElement | null>(null)
@@ -569,7 +570,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       const previous = widgetLayoutRef.current ?? {}
       const next: Record<string, number> = {}
       const panelSpecs = [
-        { id: 'mixer', ref: mixerRef, set: setMixerPosition, side: 'left', width: 180, height: 530 },
+        { id: 'mixer', ref: mixerRef, set: setMixerPosition, side: 'left', width: 180, height: 450 },
         { id: 'spectrogram', ref: spectrogramHandleRef, set: setSpectrogramPosition, side: 'left', width: 180, height: 100 },
         { id: 'liveCode', ref: liveCodeRef, set: setLiveCodePosition, side: 'left', width: 300, height: 360 },
         { id: 'globalPanel', ref: globalPanelRef, set: setGlobalPanelPosition, side: 'left', width: 340, height: 420 },
@@ -637,7 +638,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [pieceWidgetConnections, setPieceWidgetConnections] = useState<WidgetConnection[]>([])
   const [chainConnections, setChainConnections] = useState<WidgetConnection[]>([])
 
-  const music = useMusic(moveHistory, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn)
+  const musicPositions = useMemo(() => powerTimelineRef.current.map(entry => entry.game), [game, matchPowers])
+  const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn, musicPositions)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
   const { togglePlayback, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying && tabVisible, activeSquares, squareEffects, !music.enabled)
@@ -814,6 +816,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   useEffect(() => () => { aiMoveTimerRef.current?.cancel() }, [])
 
+  useEffect(() => () => { poweredAnalysisSequenceRef.current++ }, [])
+
   const requestEvaluation = useCallback((gameInstance: Chess, opponentSkill?: number, opponentDelayMs?: number) => {
     const analysisSequence = ++poweredAnalysisSequenceRef.current
     // Applying a power can change legal moves without changing the FEN. Clear
@@ -860,7 +864,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       evaluationQueueRef.current?.reset()
       setIsEvaluating(true)
       const currentPowers = matchPowersRef.current.map(power => ({ ...power }))
-      void analyzePoweredMoves(gameInstance, currentPowers, () => poweredAnalysisSequenceRef.current !== analysisSequence).then(analysis => {
+      void analyzePoweredMovesInWorker(gameInstance, currentPowers, () => poweredAnalysisSequenceRef.current !== analysisSequence).then(analysis => {
         if (!analysis || poweredAnalysisSequenceRef.current !== analysisSequence) return
         setMoveAnalysis(analysis)
         setLiveMoveAnalysis(analysis)
@@ -871,6 +875,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         setLastEvalScore(whiteScore)
         setLastEvalMate(null)
         if (analysis.side === 'b' && analysis.best[0]) aiMoveCandidateRef.current = { fen: analysis.fen, uci: analysis.best[0].uci }
+      }).catch(error => {
+        if (poweredAnalysisSequenceRef.current !== analysisSequence) return
+        setIsEvaluating(false)
+        setEvaluationError(error instanceof Error ? error.message : 'Não foi possível avaliar os poderes.')
       })
     } else evaluationQueueRef.current?.request(gameInstance.fen(), gameInstance.turn(), candidates, { position, skill: opponentSkill, searchMoves: permittedMoves.length < allMoves.length ? opponentCandidates : undefined })
     if (gameInstance.turn() === 'b' && opponentSkill !== undefined) {
@@ -903,7 +911,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
   const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
-    if (!displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
+    if (matchPowersRef.current.length || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
     analysisArrowKindRef.current = kind
@@ -919,7 +927,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   useEffect(() => {
     const kind = analysisArrowKindRef.current
-    if (!kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
+    if (matchPowersRef.current.length || !kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
     pendingShownSuggestionsRef.current = { kind, analysis: displayedAnalysis }
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
   }, [displayedAnalysis])
@@ -976,7 +984,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }
 
   const targetPower = (square: Square, kind = armedPower) => {
-    if (!kind || introPhase !== 3 || gameRef.current.turn() !== 'w' || gameRef.current.isGameOver()) return
+    if (!kind || introPhase !== 3 || !canUseMatchPower(gameRef.current, 'w')) return
     if (matchPowersRef.current.some(power => power.kind === kind && power.square === square)) {
       toast.info('This square already has that power')
       return
@@ -984,8 +992,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const button = powerButtonRefs.current[kind]
     if (!button) return
     const power = createMatchPower(kind, square, gameRef.current, ++powerSerialRef.current)
-    if (kind === 'freeze' && !clonePoweredChess(gameRef.current, [...matchPowersRef.current, power]).moves({ verbose: true }).length) {
-      toast.error('Freeze would leave no legal move')
+    const freezeError = freezeApplicationError(gameRef.current, matchPowersRef.current, power)
+    if (freezeError) {
+      setArmedPower(null)
+      toast.error(freezeError)
       return
     }
     spendEggForAction(button, 3, () => {
@@ -1007,7 +1017,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const powerTargeting = usePowerTargetingGesture({
     armedPower,
-    enabled: introPhase === 3 && game.turn() === 'w' && !game.isGameOver(),
+    enabled: introPhase === 3 && canUseMatchPower(game, 'w'),
     boardRef: boardAreaRef,
     onArm: setArmedPower,
     canArm: () => hasEggsForAction(3),
@@ -2137,7 +2147,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
             <MixerWidget
               teamMixes={music.teamMixes}
-              boardMusicSelectors={music.tonality && music.baseTonality && music.harmony ? <BoardMusicSelectors cityColor={city.color} tonality={music.tonality} baseTonality={music.baseTonality} currentScaleLabel={music.currentScaleLabel} onTonalityChange={music.setTonality} harmony={music.harmony} onHarmonyChange={music.setHarmony} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} /> : null}
               sessionId={city.id}
               effects={{ ...globalEffects, bpm: music.snapshot.bpm, volume: music.snapshot.volume }}
               monitor={music.monitor}
@@ -2388,132 +2397,139 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       )}
 
       {/* Header */}
-      <header 
+      <header
         className={cn(
-          "absolute top-0 left-0 w-full flex items-center justify-between px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000 pointer-events-none",
-          introPhase < 3 ? "z-[110] opacity-100" : "z-20 opacity-100"
+          "top-0 left-0 w-full flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000 pointer-events-none",
+          introPhase < 3 ? "z-[110] opacity-100" : "z-[130] opacity-100",
+          isMobile ? "relative shrink-0" : "absolute"
         )}
         style={{ "--city-neon": city.color } as React.CSSProperties}
       >
-        <div className={cn("flex min-w-0 items-center gap-3 pointer-events-auto", introPhase < 3 && "relative z-[111]")}>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onBack} 
-            className="shrink-0 hover:text-white hover:bg-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-            style={{ 
-                "--city-neon": city.color,
-                backgroundColor: "var(--city-neon)20"
-            } as React.CSSProperties}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className={cn("transition-opacity duration-500", introPhase < 3 ? "opacity-0" : "opacity-100")}>
-            <h1
-              aria-label={`${city.year} ${city.name.toUpperCase()}`}
-              className="max-w-[min(48vw,360px)] truncate text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:text-sm"
-              style={{
-                color: city.color,
-                fontFamily: '"Bitcount Prop Single", sans-serif',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {city.year} {city.name.toUpperCase()}
-            </h1>
-          </div>
+        <div
+          className={cn("flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:w-auto md:flex-1 md:text-sm pointer-events-none transition-opacity duration-500", introPhase < 3 ? "opacity-0" : "opacity-100")}
+          style={{ color: city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' }}
+        >
+          <h1 aria-label={`${city.year} ${city.name.toUpperCase()}`} className="max-w-full">
+            {city.year} {city.name.toUpperCase()}
+          </h1>
+          {music.tonality && music.baseTonality && music.harmony ? <BoardMusicSelectors cityColor={city.color} tonality={music.tonality} baseTonality={music.baseTonality} currentScaleLabel={music.currentScaleLabel} onTonalityChange={music.setTonality} harmony={music.harmony} onHarmonyChange={music.setHarmony} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} /> : null}
         </div>
 
-        <div className={cn("flex shrink-0 items-center gap-2 md:gap-3 transition-opacity duration-500 pointer-events-auto", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
-          {/* Settings */}
-          <DropdownMenu open={openDropdown === "difficulty"} onOpenChange={open => setOpenDropdown(current => open ? "difficulty" : current === "difficulty" ? null : current)}>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm"
-                aria-label={`Dificulty: ${aiDifficultyLabel}`}
-                className="hidden md:flex min-w-16 justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-[var(--hover-color)] active:text-black"
-                style={{
-                    "--hover-color": city.color
-                } as React.CSSProperties}
+        <div className={cn("ml-auto flex shrink-0 items-center gap-2 md:gap-3 pointer-events-auto", introPhase < 3 && "relative z-[111]")}>
+
+          <div className={cn("flex items-center gap-2 md:gap-3 transition-opacity duration-500", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
+            {/* Settings */}
+            <DropdownMenu open={openDropdown === "difficulty"} onOpenChange={open => setOpenDropdown(current => open ? "difficulty" : current === "difficulty" ? null : current)}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Dificuldade do Bot"
+                  title="Dificuldade do Bot"
+                  className="hidden md:flex min-w-16 justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-black/70 active:border-[var(--hover-color)] active:text-[var(--hover-color)] focus-visible:border-[var(--hover-color)] focus-visible:text-[var(--hover-color)]"
+                  style={{
+                      "--hover-color": city.color
+                  } as React.CSSProperties}
+                >
+                  <span className="px-1 text-xs font-mono">{aiDifficultyLabel}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="z-[135]"
+                align="end"
+                style={{ "--difficulty-hover": `color-mix(in srgb, ${city.color} 50%, black)` } as React.CSSProperties}
               >
-                <span className="px-1 text-xs font-mono">{aiDifficultyLabel}</span>
+                <DropdownMenuLabel>Dificulty:</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleAIDifficultyChange(5)} style={aiDepth === 5 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 5 && "font-bold")}>
+                  Easy (Skill 0)
+                  {aiDepth === 5 && <Check className="w-4 h-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleAIDifficultyChange(10)} style={aiDepth === 10 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 10 && "font-bold")}>
+                  Medium (Skill 5)
+                  {aiDepth === 10 && <Check className="w-4 h-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleAIDifficultyChange(15)} style={aiDepth === 15 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 15 && "font-bold")}>
+                  Hard (Skill 12)
+                  {aiDepth === 15 && <Check className="w-4 h-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleAIDifficultyChange(20)} style={aiDepth === 20 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 20 && "font-bold")}>
+                  Expert (Skill 20)
+                  {aiDepth === 20 && <Check className="w-4 h-4 ml-2" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Audio toggle */}
+            <div className="flex gap-3">
+
+              <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleCodeBackdrop}
+                  title="View code / Debug"
+                  aria-label={codeBackdropOn ? "Ocultar código Strudel e widget Debug" : "Mostrar código Strudel e widget Debug"}
+                  aria-pressed={codeBackdropOn}
+                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                  style={{ "--city-neon": city.color } as React.CSSProperties}
+              >
+                  <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              style={{ "--difficulty-hover": `color-mix(in srgb, ${city.color} 50%, black)` } as React.CSSProperties}
-            >
-              <DropdownMenuLabel>Dificulty:</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(5)} style={aiDepth === 5 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 5 && "font-bold")}>
-                Easy (Skill 0)
-                {aiDepth === 5 && <Check className="w-4 h-4 ml-2" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(10)} style={aiDepth === 10 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 10 && "font-bold")}>
-                Medium (Skill 5)
-                {aiDepth === 10 && <Check className="w-4 h-4 ml-2" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(15)} style={aiDepth === 15 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 15 && "font-bold")}>
-                Hard (Skill 12)
-                {aiDepth === 15 && <Check className="w-4 h-4 ml-2" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAIDifficultyChange(20)} style={aiDepth === 20 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 20 && "font-bold")}>
-                Expert (Skill 20)
-                {aiDepth === 20 && <Check className="w-4 h-4 ml-2" />}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Audio toggle */}
-          <div className="flex gap-3">
-
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleCodeBackdrop}
-                title="View code / Debug"
-                aria-label={codeBackdropOn ? "Ocultar código Strudel e widget Debug" : "Mostrar código Strudel e widget Debug"}
-                aria-pressed={codeBackdropOn}
-                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                style={{ "--city-neon": city.color } as React.CSSProperties}
-            >
-                <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
-            </Button>
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setRestartConfirmOpen(true)}
-                title="Restart game"
-                aria-label="Restart game"
-                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                style={{ "--city-neon": city.color } as React.CSSProperties}
-            >
-                <RotateCcw className="w-4 h-4" />
-            </Button>
-            <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={handleToggleMusicEngine}
-                title={musicEngineOn ? "Desligar música" : "Ligar música"}
-                aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
-                aria-pressed={musicEngineOn}
-                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                style={{ "--city-neon": city.color } as React.CSSProperties}
-            >
-                <Music2 className={`w-4 h-4 ${musicEngineOn ? '' : 'opacity-35'}`} />
-            </Button>
-            <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={toggleFullscreen} 
-                title={isFullscreen ? "Restaurar" : "Maximizar"}
-                aria-label={isFullscreen ? "Restaurar janela" : "Maximizar janela"}
-                className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                style={{ "--city-neon": city.color } as React.CSSProperties}
-            >
-                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-            </Button>
+              <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setRestartConfirmOpen(true)}
+                  title="Restart game"
+                  aria-label="Restart game"
+                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                  style={{ "--city-neon": city.color } as React.CSSProperties}
+              >
+                  <RotateCcw className="w-4 h-4" />
+              </Button>
+              <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleToggleMusicEngine}
+                  title={musicEngineOn ? "Desligar música" : "Ligar música"}
+                  aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
+                  aria-pressed={musicEngineOn}
+                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                  style={{ "--city-neon": city.color } as React.CSSProperties}
+              >
+                  <Music2 className={`w-4 h-4 ${musicEngineOn ? '' : 'opacity-35'}`} />
+              </Button>
+              <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Restaurar" : "Maximizar"}
+                  aria-label={isFullscreen ? "Restaurar janela" : "Maximizar janela"}
+                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                  style={{ "--city-neon": city.color } as React.CSSProperties}
+              >
+                  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              </Button>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onBack}
+            aria-label="Voltar ao mapa"
+            title="Voltar ao mapa"
+            className="text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <circle cx="12" cy="12" r="9" />
+              <g stroke="none">
+                <circle cx="7.3" cy="8" r="1.3" fill="#38bdf8" />
+                <circle cx="15.8" cy="7.2" r="1.3" fill="#f472b6" />
+                <circle cx="11.4" cy="12.5" r="1.3" fill="#fbbf24" />
+                <circle cx="16.4" cy="15.5" r="1.3" fill="#a78bfa" />
+                <circle cx="8.4" cy="17.2" r="1.3" fill="#4ade80" />
+              </g>
+            </svg>
+          </Button>
         </div>
       </header>
 
@@ -2526,7 +2542,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             "flex flex-col items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 px-2 pointer-events-none lg:pt-6"
             )}
             style={{
-                marginTop: !isMobile ? 'calc(50vh - 350px)' : '48px'
+                marginTop: !isMobile ? 'calc(50vh - 350px)' : '0px'
             }}
         >
           <div
@@ -2613,6 +2629,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   armedPower={armedPower}
                   onPowerTarget={targetPower}
                   matchPowers={matchPowers}
+                  onShieldCaptureBlocked={reason => {
+                    if (reason === 'protected-target') setShieldCaptureNoticeOpen(true)
+                    else toast('Peças protegidas não podem comer outras peças.', { id: 'shield-capture-blocked', duration: 3000 })
+                  }}
                   isMoveAllowed={move => permitsPowerMove(move, matchPowersRef.current, game.history().length + 1)}
                   cityColor={city.color} 
                   isThinking={isThinking} 
@@ -2701,9 +2721,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     data-ranked-move-action="best"
                     type="button"
                     aria-label="Veja as 3 melhores jogadas"
-                    title="Veja as 3 melhores jogadas"
-                    disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
-                    onClick={event => spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best"))}
+                    title={matchPowers.length ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 melhores jogadas"}
+                    disabled={matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
+                    onClick={event => {
+                      if (matchPowersRef.current.length) return
+                      spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best"))
+                    }}
                     onMouseEnter={() => { showCostHint('best'); playClosedAnalysisHat() }}
                     onMouseLeave={() => playDrum('oh', 0.63, 1, 0.9)}
                     onPointerLeave={hideCostHint}
@@ -2718,9 +2741,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     data-ranked-move-action="worst"
                     type="button"
                     aria-label="Veja as 3 piores jogadas"
-                    title="Veja as 3 piores jogadas"
-                    disabled={!displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
-                    onClick={event => spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst"))}
+                    title={matchPowers.length ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 piores jogadas"}
+                    disabled={matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
+                    onClick={event => {
+                      if (matchPowersRef.current.length) return
+                      spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst"))
+                    }}
                     onMouseEnter={() => { showCostHint('worst'); playClosedAnalysisHat(0.85) }}
                     onMouseLeave={() => playClosedAnalysisHat(0.6)}
                     onPointerLeave={hideCostHint}
@@ -2796,7 +2822,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     ref={element => { powerButtonRefs.current.freeze = element }}
                     data-match-power-action="freeze"
                     type="button"
-                    disabled={game.turn() !== 'w' || game.isGameOver()}
+                    disabled={!canUseMatchPower(game, 'w')}
                     aria-label="Congele uma casa por uma rodada"
                     aria-pressed={armedPower === 'freeze'}
                     title="Congele uma casa por uma rodada"
@@ -2814,7 +2840,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     ref={element => { powerButtonRefs.current.shield = element }}
                     data-match-power-action="shield"
                     type="button"
-                    disabled={game.turn() !== 'w' || game.isGameOver()}
+                    disabled={!canUseMatchPower(game, 'w')}
                     aria-label="Proteja uma casa por uma rodada"
                     aria-pressed={armedPower === 'shield'}
                     title="Proteja uma casa por uma rodada"
@@ -2970,6 +2996,15 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             </DialogDescription>
           </DialogHeader>
           <Button autoFocus onClick={() => setGameplayTipOpen(false)} className="mt-2 w-full bg-amber-400 text-black hover:bg-amber-300">Ok!</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={shieldCaptureNoticeOpen} onOpenChange={setShieldCaptureNoticeOpen}>
+        <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-sky-300/40 bg-[#101713] p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sky-100">Nem tente. Essa peça está protegida.</DialogTitle>
+          </DialogHeader>
+          <Button onClick={() => setShieldCaptureNoticeOpen(false)} className="mt-2">Entendi</Button>
         </DialogContent>
       </Dialog>
 

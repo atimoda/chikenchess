@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strict": true
+  },
+  "lint": {
+    "exclude": [
+      "match-command/domain.js",
+      "piece-params/params.js"
+    ],
+    "rules": {
+      "exclude": [
+        "no-import-prefix"
+      ]
+    }
+  }
+}

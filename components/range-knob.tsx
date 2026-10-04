@@ -188,7 +188,7 @@ export function RangeKnob({
       onChange({ ...value, first: fixedValue, second: fixedValue, frequency: 'fixed' })
     } else if (isFixed) {
       const center = snap(value.first)
-      const radius = (max - min) * 0.15
+      const radius = (max - min) * 0.25
       onChange({
         first: snap(center - radius),
         second: snap(center + radius),

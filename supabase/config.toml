@@ -1,0 +1,50 @@
+project_id = "chickenchess"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:3000/**"]
+enable_signup = true
+enable_anonymous_sign_ins = true
+enable_manual_linking = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+otp_length = 6
+otp_expiry = 600
+
+[auth.email.template.magic_link]
+subject = "Your ChickenChess access code"
+content_path = "./supabase/templates/access-code.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your email for ChickenChess"
+content_path = "./supabase/templates/access-code.html"
+
+# Verify the bearer token with Auth.getUser inside each handler; supports modern
+# asymmetric signing keys without depending on the platform legacy JWT check.
+[functions.match-command]
+verify_jwt = false
+
+[functions.piece-params]
+verify_jwt = false
+
+[functions.profile-transfer]
+verify_jwt = false

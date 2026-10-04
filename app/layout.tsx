@@ -1,14 +1,18 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
+import { SiteAnalytics } from "@/components/site-analytics"
+import { SITE_URL } from "@/lib/site-info"
 import { Toaster } from "sonner"
 import "./globals.css"
+
+/* global URL, process */
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "ChiKenChess - Play Chess, Compose Music",
   description:
     "An immersive audiovisual experience that fuses chess strategy with generative electronic music. Each board state composes a real-time soundtrack.",
@@ -60,7 +64,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
-        <Analytics />
+        {process.env.VERCEL === '1' ? <SiteAnalytics /> : null}
         <Toaster duration={3000} />
       </body>
     </html>

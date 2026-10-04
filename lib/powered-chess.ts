@@ -39,17 +39,18 @@ function square(index: number): Square {
 }
 
 function activeSquare(game: Chess, power: MatchPower): Square {
-  if (power.frozenColor && game.get(power.square)?.color === power.frozenColor) return power.square
+  const color = power.kind === 'freeze' ? power.frozenColor : power.attachedColor
+  if (color && game.get(power.square)?.color === color) return power.square
   const last = (game as unknown as ChessInternals)._history.at(-1)?.move
-  return last && square(last.from) === power.square && last.color === power.frozenColor ? square(last.to) : power.square
+  return last && square(last.from) === power.square && last.color === color ? square(last.to) : power.square
 }
 
-function shieldedWhiteKing(game: Chess, powers: MatchPower[]): boolean {
+function shieldedOwnKing(game: Chess, powers: MatchPower[], color: 'w' | 'b'): boolean {
   return powers.some(power => {
-    if (power.kind !== 'shield' || power.attachedColor !== 'w') return false
+    if (power.kind !== 'shield' || power.attachedColor !== color || (power.appliedBy ?? 'w') !== color) return false
     if (game.get(power.square)?.type === 'k') return true
     const last = (game as unknown as ChessInternals)._history.at(-1)?.move
-    return last?.color === 'w' && last.piece === 'k' && square(last.from) === power.square
+    return last?.color === color && last.piece === 'k' && square(last.from) === power.square
   })
 }
 
@@ -66,12 +67,12 @@ export function makePoweredChess(game: Chess = new Chess(), powers: MatchPower[]
   variant._attacked = function (this: Chess, color: 'w' | 'b', target: number, verbose = false) {
     const attackers = original._attacked.call(this, color, target, true) as Square[]
     const effective = attackers.filter(from => !context.powers.some(power =>
-      power.kind === 'freeze' && power.frozenColor === color && activeSquare(this, power) === from,
+      ((power.kind === 'freeze' && power.frozenColor === color) || power.kind === 'shield') && activeSquare(this, power) === from,
     ))
-    // Only the player's shielded king gets the king-safety exception. A shield
-    // placed on the black king still prevents capture but does not lead the bot
-    // into an illegal position when the shield expires after its own move.
-    const protectedKing = color === 'b' && shieldedWhiteKing(this, context.powers)
+    // Only the applying player's own king gets the king-safety exception.
+    // Shielding the opponent's king must not allow an unsafe move immediately
+    // before that shield expires after the opponent's response.
+    const protectedKing = shieldedOwnKing(this, context.powers, color === 'w' ? 'b' : 'w')
     return verbose ? (protectedKing ? [] : effective) : !protectedKing && effective.length > 0
   }
   variant._moves = function (this: Chess, options = {}) {
@@ -91,7 +92,8 @@ export function makePoweredChess(game: Chess = new Chess(), powers: MatchPower[]
   return game
 }
 
-export function clonePoweredChess(game: Chess, powers: MatchPower[]): Chess {
+/** Structured-cloneable position, including repetition and powered move history. */
+export function poweredChessSnapshot(game: Chess) {
   const source = game as unknown as ChessInternals
   const fields = {
     _board: source._board, _turn: source._turn, _header: source._header, _kings: source._kings,
@@ -99,9 +101,41 @@ export function clonePoweredChess(game: Chess, powers: MatchPower[]): Chess {
     _history: source._history, _comments: source._comments, _castling: source._castling,
     _hash: source._hash, _positionCount: source._positionCount,
   }
+  return { fields, records: contexts.get(game)?.records ?? game.history({ verbose: true }) }
+}
+
+export function restorePoweredChess(snapshot: ReturnType<typeof poweredChessSnapshot>, powers: MatchPower[]): Chess {
   const copy = new Chess()
-  Object.assign(copy, globalThis.structuredClone(fields))
-  return makePoweredChess(copy, powers, contexts.get(game)?.records ?? game.history({ verbose: true }))
+  Object.assign(copy, globalThis.structuredClone(snapshot.fields))
+  return makePoweredChess(copy, powers, snapshot.records)
+}
+
+export function clonePoweredChess(game: Chess, powers: MatchPower[]): Chess {
+  return restorePoweredChess(poweredChessSnapshot(game), powers)
+}
+
+/** Validate a Freeze before charging, using the current board for both teams. */
+export function freezeApplicationError(game: Chess, powers: MatchPower[], power: MatchPower): string | null {
+  if (power.kind !== 'freeze') return null
+  const nextPowers = [...powers, power]
+  if (!clonePoweredChess(game, nextPowers).moves().length) return 'Freeze would leave no legal move'
+
+  // Probe the opponent's upcoming turn without moving any piece. A fresh game
+  // needs relative power deadlines; effects expiring on our move are excluded.
+  // En passant belongs to the current turn and cannot carry over to this probe.
+  const ownPly = game.history().length + 1
+  const fen = game.fen().split(' ')
+  fen[1] = game.turn() === 'w' ? 'b' : 'w'
+  fen[3] = '-'
+  const opponentPowers = nextPowers
+    .filter(item => (item.trapUntilPly ?? item.blocksOnPly) > ownPly)
+    .map(item => ({
+      ...item,
+      blocksOnPly: item.blocksOnPly - ownPly,
+      trapUntilPly: item.trapUntilPly === undefined ? undefined : item.trapUntilPly - ownPly,
+    }))
+  const opponent = makePoweredChess(new Chess(fen.join(' ')), opponentPowers)
+  return opponent.moves().length ? null : 'Você não pode deixar seu oponente sem jogadas.'
 }
 
 export function syncPoweredMoveSan(game: Chess, move: Move): void {

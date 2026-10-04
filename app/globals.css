@@ -138,3 +138,14 @@ select[data-city-dropdown] option:focus {
     @apply bg-background text-foreground;
   }
 }
+
+/* Keep the targeting hand across the board, widgets and empty screen space. */
+html[data-power-targeting-cursor="grab"],
+html[data-power-targeting-cursor="grab"] * {
+  cursor: grab !important;
+}
+
+html[data-power-targeting-cursor="grabbing"],
+html[data-power-targeting-cursor="grabbing"] * {
+  cursor: grabbing !important;
+}

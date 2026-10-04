@@ -1,6 +1,6 @@
 # ChickenChess — plano da engine musical e evolução do produto
 
-Atualizado em 03/10/2026 — v0.14.2. Status: schema 7 MIDI-only com arranjo global, engine Strudel nas 46 fases / 34 cidades, com seis campanhas, onze compassos e seis cenas por preset; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua pendente. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
+Atualizado em 04/10/2026 — v1.0.0. Status: schema 7 MIDI-only com arranjo global, engine Strudel nas 46 fases / 34 cidades, com seis campanhas, onze compassos e seis cenas por preset; Brazilian e World rhythms implementadas com 19 estudos originais. Cada kit tem fotografia própria por época ou contexto musical. Catálogo detalhado em `docs/RHYTHM_ATLAS.md`. Validação de escuta continua pendente. O comportamento atual e suas prioridades estão em `GAME_MECHANICS.md`.
 
 ## Investigação mobile — 02/10, pendente
 
@@ -386,6 +386,9 @@ A ativação por primeiro movimento e o silêncio por captura são preservados m
 - Escolher banco e infraestrutura quando esses fluxos estiverem comprovados. Não implementar loja antes de autoria e compatibilidade.
 
 ### Etapa 7 — modos, multiplayer e vestiário
+
+Base online implementada em 04/10/2026 — v1.0.0: **1v1 casual** ChickenChess, contas, salas, amizade por pedido/aceite, áudio local e preferência individual de parâmetros; não exige alinhamento de pulso entre aparelhos. Comportamento em `GAME_MECHANICS.md`, ativação remota em `docs/ONLINE_SETUP.md` e pesquisa em `docs/MULTIPLAYER_PLAN.md`. O backend remoto foi instalado e validado com sessões reais; Google foi habilitado e o usuário confirmou o vínculo local preservando perfil/saldo. SMTP, publicação do frontend e callbacks de produção ainda precisam de configuração e validação. Sincronização de arraste saiu da estreia, preservando o gesto local. Base gratuita: Next exportado no Cloudflare Pages, Supabase Auth/Postgres/Realtime/Edge Functions e SMTP Brevo; essas cotas não cobrem a meta anterior de 300 simultâneos contínuos. Chat foi reservado para a versão online seguinte. Um futuro modo de plataforma 2D terá vários jogadores e sincronização rápida; avaliar Node/Colyseus quando esse modo começar. Os itens abaixo são propostas futuras de modos e economia, não regras desta estreia.
+
 - Classic Chess: regras/objetivo convencional, vs IA e posteriormente online.
 - ChickenChess: proposta cooperativa/invertida; dar mate faz perder, empate recompensa ambos, longevidade e marcos musicais geram ovos de ouro.
 - Definir antes de implementar: abandono, desconexão, timeout, repetição, regra dos lances sem captura/peão, empate automático, acordo de encerramento e limites de farm. Regras legais e condições de término podem diferir por modo, explicitamente.

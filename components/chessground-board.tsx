@@ -8,7 +8,7 @@ import type { MusicPulseMonitor } from "@/lib/music/monitor"
 import { MusicPulseOverlay } from "./music-pulse-overlay"
 import { cn } from "@/lib/utils"
 import rewardStyles from "./chessground-board.module.css"
-import type { MatchPower, MatchPowerKind } from "@/lib/chess-powers"
+import { shieldCaptureBlock, type ShieldCaptureBlock, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
 
 interface ChessgroundBoardProps {
   game: Chess
@@ -19,6 +19,7 @@ interface ChessgroundBoardProps {
   onPowerTarget?: (square: Square) => void
   matchPowers?: MatchPower[]
   isMoveAllowed?: (move: Move) => boolean
+  onShieldCaptureBlocked?: (reason: ShieldCaptureBlock) => void
   onPieceDoubleTap?: (square: Square) => void
   onPieceHold?: (square: Square) => void
   onPieceRelease?: () => void
@@ -29,6 +30,10 @@ interface ChessgroundBoardProps {
   cityColor: string
   isThinking: boolean
   orientation?: "white" | "black"
+  playerColor?: "w" | "b"
+  movesDisabled?: boolean
+  /** Online waits for a server confirmation before mutating the position. */
+  deferMoves?: boolean
   synthSelectedSquare?: Square | null
   activeSquares?: Set<string>
   analysisArrows?: AnalysisArrow[]
@@ -93,12 +98,16 @@ export function ChessgroundBoard({
   onMove,
   cityColor,
   isThinking,
-  orientation: _orientation = "white",
+  orientation = "white",
+  playerColor = "w",
+  movesDisabled = false,
+  deferMoves = false,
   onBoardClick,
   armedPower,
   onPowerTarget,
   matchPowers = [],
   isMoveAllowed,
+  onShieldCaptureBlocked,
   onPieceDoubleTap,
   synthSelectedSquare,
   activeSquares,
@@ -115,6 +124,8 @@ export function ChessgroundBoard({
   freeMode,
   entranceActive = false,
 }: ChessgroundBoardProps) {
+  const columns = orientation === "black" ? [...COLUMNS].reverse() : COLUMNS
+  const rows = orientation === "black" ? [...ROWS].reverse() : ROWS
   const boardRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [pressedPieceSquare, setPressedPieceSquare] = useState<Square | null>(null)
@@ -172,6 +183,11 @@ export function ChessgroundBoard({
   }, [onPieceRelease, onPieceCancel])
 
   const board = game.board()
+  const [frostRotations, setFrostRotations] = useState<Record<string, number>>({})
+  useEffect(() => {
+    // Sample once after hydration; preview, trail and final frost share each square's rotation.
+    setFrostRotations(Object.fromEntries(ROWS.flatMap(row => COLUMNS.map(col => [`${col}${row}`, Math.random() * 360]))))
+  }, [])
   const entranceDelayBySquareRef = useRef<Record<string, number> | null>(null)
   if (!entranceDelayBySquareRef.current) {
     const shuffledSquares = ROWS.flatMap(row => COLUMNS.map(col => `${col}${row}`))
@@ -197,7 +213,7 @@ export function ChessgroundBoard({
   const getCoords = (sq: Square) => {
     const col = sq.charCodeAt(0) - 97
     const row = 8 - parseInt(sq[1])
-    return { x: col * 12.5, y: row * 12.5 }
+    return { x: (orientation === "black" ? 7 - col : col) * 12.5, y: (orientation === "black" ? 7 - row : row) * 12.5 }
   }
 
   const animatePieces = useCallback((pieces: PieceAnimationInput[], duration: number) => {
@@ -287,6 +303,18 @@ export function ChessgroundBoard({
 
   const kingSquare = inCheck ? findKingSquare() : null
 
+  const rejectShieldCapture = useCallback((from: Square, to: Square) => {
+    const attacker = game.get(from)
+    if (!attacker || attacker.color !== game.turn()) return false
+    const target = game.get(to)
+    const enPassant = attacker.type === 'p' && from[0] !== to[0] && !target && game.fen().split(' ')[3] === to
+    if (!enPassant && (!target || target.color === attacker.color)) return false
+    const reason = shieldCaptureBlock({ from, to, color: attacker.color, flags: enPassant ? 'e' : 'c', captured: enPassant ? 'p' : target?.type }, matchPowers)
+    if (!reason) return false
+    onShieldCaptureBlocked?.(reason)
+    return true
+  }, [game, matchPowers, onShieldCaptureBlocked])
+
   const handleSquareClick = useCallback(
     (square: Square) => {
       if (freeMode) {
@@ -301,7 +329,7 @@ export function ChessgroundBoard({
         return
       }
 
-      if (isThinking && turn === "b") {
+      if (!deferMoves && isThinking && turn !== playerColor) {
         if (selectedSquare) {
           setPremove({ from: selectedSquare, to: square })
           setSelectedSquare(null)
@@ -310,7 +338,7 @@ export function ChessgroundBoard({
         }
       }
 
-      if (turn !== "w" || game.isGameOver()) {
+      if (movesDisabled || turn !== playerColor || game.isGameOver()) {
         if (selectedSquare) {
           setSelectedSquare(null)
           setLegalMoves([])
@@ -321,10 +349,15 @@ export function ChessgroundBoard({
       const piece = game.get(square)
 
       if (selectedSquare) {
+        if (rejectShieldCapture(selectedSquare, square)) {
+          setSelectedSquare(null)
+          setLegalMoves([])
+          return true
+        }
         try {
           const candidate = game.moves({ square: selectedSquare, verbose: true }).find(move => move.to === square && (!move.promotion || move.promotion === 'q'))
           if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
-          const move = game.move({
+          const move = deferMoves ? candidate : game.move({
             from: selectedSquare,
             to: square,
             promotion: "q",
@@ -365,7 +398,7 @@ export function ChessgroundBoard({
         }
       }
     },
-    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares, freeMode, onBoardClick, isMoveAllowed],
+    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares, freeMode, onBoardClick, isMoveAllowed, rejectShieldCapture, playerColor, movesDisabled, deferMoves, orientation],
   )
 
   // Handle drag and drop
@@ -375,10 +408,14 @@ export function ChessgroundBoard({
         heldSquareRef.current = square
         onPieceHold?.(square)
       }
-      if (!freeMode && !onPieceHold && (turn !== "w" || game.isGameOver())) return
+      if (!freeMode && matchPowers.some(power => power.kind === 'freeze' && power.square === square)) {
+        e.preventDefault()
+        return
+      }
+      if (!freeMode && !onPieceHold && (movesDisabled || turn !== playerColor || game.isGameOver())) return
 
       const piece = freeMode?.mode === 'play' ? freeMode.auditionPiece : game.get(square)
-      if (!piece || (!freeMode && !onPieceHold && piece.color !== "w")) return
+      if (!piece || (!freeMode && !onPieceHold && piece.color !== playerColor)) return
 
       if (!boardRef.current) return
 
@@ -404,7 +441,7 @@ export function ChessgroundBoard({
         setLegalMoves(moves.map((m) => m.to as Square))
       }
     },
-    [game, turn, onPieceHold, freeMode, isMoveAllowed],
+    [game, turn, onPieceHold, freeMode, isMoveAllowed, matchPowers, playerColor, movesDisabled],
   )
 
   const handleDragMove = useCallback(
@@ -436,7 +473,7 @@ export function ChessgroundBoard({
       const rank = Math.floor(y / squareSize)
 
       if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
-        const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
+        const targetSquare = `${columns[file]}${rows[rank]}` as Square
         if (lastHoverSquareRef.current !== targetSquare) {
           lastHoverSquareRef.current = targetSquare
           if (dragHighlightRef.current) {
@@ -462,7 +499,7 @@ export function ChessgroundBoard({
         if (dragHighlightRef.current) dragHighlightRef.current.style.opacity = '0'
       }
     },
-    [onDragOverSquare],
+    [onDragOverSquare, orientation],
   )
 
   const handleBoardMouseMove = useCallback(
@@ -482,14 +519,14 @@ export function ChessgroundBoard({
       const rank = Math.floor(y / squareSize)
 
       if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
-        const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
+        const targetSquare = `${columns[file]}${rows[rank]}` as Square
         if (targetSquare !== selectionLastSquareRef.current) {
           selectionLastSquareRef.current = targetSquare
           handleSquareClick(targetSquare)
         }
       }
     },
-    [isSelectingSquares, handleSquareClick, dragPiece, freeMode],
+    [isSelectingSquares, handleSquareClick, dragPiece, freeMode, orientation],
   )
 
   const handleDragEnd = useCallback(
@@ -516,18 +553,19 @@ export function ChessgroundBoard({
 
       let didMove = false
       if (file >= 0 && file < 8 && rank >= 0 && rank < 8 && freeMode) {
-        const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
+        const targetSquare = `${columns[file]}${rows[rank]}` as Square
         if (freeMode.mode === 'move' && targetSquare !== dragPiece.from) {
           freeMode.onMove(dragPiece.from, targetSquare)
           didMove = true
         }
-      } else if (didDrag && file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith("w") && game.turn() === "w" && !game.isGameOver()) {
-        const targetSquare = `${COLUMNS[file]}${ROWS[rank]}` as Square
+      } else if (didDrag && file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith(playerColor) && game.turn() === playerColor && !movesDisabled && !game.isGameOver()) {
+        const targetSquare = `${columns[file]}${rows[rank]}` as Square
 
         try {
+          if (rejectShieldCapture(dragPiece.from, targetSquare)) throw new Error('Shield capture blocked')
           const candidate = game.moves({ square: dragPiece.from, verbose: true }).find(move => move.to === targetSquare && (!move.promotion || move.promotion === 'q'))
           if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
-          const move = game.move({
+          const move = deferMoves ? candidate : game.move({
             from: dragPiece.from,
             to: targetSquare,
             promotion: "q",
@@ -558,7 +596,7 @@ export function ChessgroundBoard({
         setLegalMoves([])
       }
     },
-    [game, onMove, freeMode, isMoveAllowed],
+    [game, onMove, freeMode, isMoveAllowed, rejectShieldCapture, playerColor, movesDisabled, deferMoves, orientation],
   )
 
   useEffect(() => {
@@ -593,12 +631,13 @@ export function ChessgroundBoard({
 
   // Clear premove when turn changes
   useEffect(() => {
-    if (!freeMode && turn === "w" && premove) {
+    if (!freeMode && !deferMoves && !movesDisabled && turn === playerColor && premove) {
       // Try to execute premove
       try {
+        if (rejectShieldCapture(premove.from, premove.to)) throw new Error('Shield capture blocked')
         const candidate = game.moves({ square: premove.from, verbose: true }).find(move => move.to === premove.to && (!move.promotion || move.promotion === 'q'))
         if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
-        const move = game.move({
+        const move = deferMoves ? candidate : game.move({
           from: premove.from,
           to: premove.to,
           promotion: "q",
@@ -611,7 +650,7 @@ export function ChessgroundBoard({
       }
       setPremove(null)
     }
-  }, [turn, premove, game, onMove, freeMode, isMoveAllowed])
+  }, [turn, premove, game, onMove, freeMode, isMoveAllowed, rejectShieldCapture, playerColor, movesDisabled, deferMoves, orientation])
 
   return (
     <div className="relative select-none w-full h-full">
@@ -684,10 +723,10 @@ export function ChessgroundBoard({
           }
           .ranked-move-mark { animation: ranked-move-flash .65s ease-out both; }
         `}</style>
-        {ROWS.map((row, rowIndex) =>
-          COLUMNS.map((col, colIndex) => {
+        {rows.map((row, rowIndex) =>
+          columns.map((col, colIndex) => {
             const square = `${col}${row}` as Square
-            const piece = board[rowIndex][colIndex]
+            const piece = game.get(square)
             const isLight = (rowIndex + colIndex) % 2 === 0
             const isSelected = selectedSquare === square
             const isLegalMove = legalMoves.includes(square)
@@ -729,8 +768,11 @@ export function ChessgroundBoard({
                 )}
                 style={{
                   backgroundColor: displayedSquareBackgroundColor,
+                  '--power-frost-angle': `${125 + (frostRotations[square] ?? 0)}deg`,
+                  '--power-frost-x': `${50 - 25 * Math.cos((frostRotations[square] ?? 0) * Math.PI / 180) + 30 * Math.sin((frostRotations[square] ?? 0) * Math.PI / 180)}%`,
+                  '--power-frost-y': `${50 - 25 * Math.sin((frostRotations[square] ?? 0) * Math.PI / 180) - 30 * Math.cos((frostRotations[square] ?? 0) * Math.PI / 180)}%`,
                   ...(entranceActive ? { animationDelay: `${entranceDelayBySquareRef.current?.[square] ?? 0}ms` } : {}),
-                }}
+                } as React.CSSProperties}
                 onPointerDown={(e) => {
                   if (!e.isPrimary || e.button !== 0) {
                     tapStartRef.current = null
@@ -764,7 +806,7 @@ export function ChessgroundBoard({
                   } else {
                     setIsSelectingSquares(false)
                   }
-                  if (!isSecondTap) handleSquareClick(square)
+                  if (!isSecondTap && handleSquareClick(square)) return
                   if (hasPiece || freeMode?.mode === 'play') handleDragStart(e, square)
                 }}
                 onPointerUp={(e) => {
@@ -916,12 +958,12 @@ export function ChessgroundBoard({
           className="absolute left-0 top-0 w-[12.5%] h-[12.5%] pointer-events-none opacity-0"
           style={{ border: '2px solid #fb923c', transition: 'opacity 1s ease-out, box-shadow 1s ease-out', zIndex: 15 }}
         />
-        {musicEffectsEnabled && musicPulseMonitor && <MusicPulseOverlay monitor={musicPulseMonitor} />}
+        {musicEffectsEnabled && musicPulseMonitor && <MusicPulseOverlay monitor={musicPulseMonitor} orientation={orientation} />}
       </div>
 
       {rankedMoveAnnouncement && (() => {
-        const fileIndex = COLUMNS.indexOf(rankedMoveAnnouncement.square[0])
-        const rowIndex = 8 - Number(rankedMoveAnnouncement.square[1])
+        const fileIndex = columns.indexOf(rankedMoveAnnouncement.square[0])
+        const rowIndex = rows.indexOf(rankedMoveAnnouncement.square[1])
         const good = rankedMoveAnnouncement.kind === 'best'
         const headlineColor = rankedMoveAnnouncement.comeback ? '#ff9d32' : rankedMoveAnnouncement.kind === 'neutral' ? '#ffffff' : good ? '#41ed8c' : '#ff5d64'
         return <div
