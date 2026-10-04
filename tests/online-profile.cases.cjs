@@ -77,8 +77,8 @@ test('local and confirmed cloud snapshots stay isolated for two accounts and the
   const guest = profile({ goldenEggs: 11, points: 11 })
   const alice = profile({ goldenEggs: 14, points: 24, updatedAt: 200 })
   const bob = profile({ goldenEggs: 22, points: 52, updatedAt: 300 })
-  const cloudAlice = { id: 'alice', code: 'ALICE1', display_name: 'Alice', profile: alice }
-  const cloudBob = { id: 'bob', code: 'BOB001', display_name: 'Bob', profile: bob }
+  const cloudAlice = { id: 'alice', code: 'ALICE1', display_name: 'Alice', baptismal_name: 'Lady Wobbly Kazoo', profile: alice }
+  const cloudBob = { id: 'bob', code: 'BOB001', display_name: 'Bob', baptismal_name: 'Mx. Clucks-a-Lot', profile: bob }
 
   cacheLocalProfile(null, guest)
   cacheLocalProfile('alice', alice)

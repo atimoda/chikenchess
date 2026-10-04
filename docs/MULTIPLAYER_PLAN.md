@@ -387,7 +387,7 @@ A retirada dos arrastes elimina o cenário de mensagens contínuas daquela funci
 - Chat entra na versão online seguinte à estreia, sem implementação na primeira.
 - Plataforma 2D terá vários jogadores por partida; limite de participantes ainda aberto.
 
-Escolhas iniciais implementadas: visitante permitido, nome editável, cores sorteadas, ausência de relógio, Mixer local, Undo/Redo somente antes do resultado, classificação local e crédito único de vitória ao perfil. Prazo automático de abandono e catálogo histórico fixado no servidor permanecem futuros.
+Escolhas iniciais implementadas: visitante permitido, nome público editável/importável do Google e nome de batismo permanente separado, cores sorteadas, ausência de relógio, Mixer local, Undo/Redo somente antes do resultado, classificação local e crédito único de vitória ao perfil. Prazo automático de abandono e catálogo histórico fixado no servidor permanecem futuros.
 
 ## Fontes oficiais
 

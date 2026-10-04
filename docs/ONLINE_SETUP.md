@@ -26,6 +26,10 @@ npx supabase db push
 
 As migrações ficam em `supabase/migrations/`; a primeira instala a base, e `202610040002_business_conflicts.sql` corrige a resposta dos conflitos de versão. Não as execute novamente manualmente após `db push`; o histórico registra cada aplicação. Os saves completos e os backups de transferência ficam em `online_private`, que não entra nos schemas expostos pela Data API. A lista pública usa `online_public_rooms`, contendo somente ID, código, nome do criador e ocupação de salas públicas abertas com uma vaga. Convites privados usam códigos aleatórios de 128 bits.
 
+A migração complementar `202610040003_baptism_names.sql` está preparada e validada localmente; sua aplicação remota permanece pendente. Ela acrescenta `baptismal_name` imutável, a biblioteca de 304 termos e o sorteio no primeiro perfil, preservando nomes/progresso existentes. O nome público (`display_name`) continua editável; o nome do Google é importado no primeiro cadastro ou explicitamente pelo painel, sem sobrescrever edições ao relogar. Aplique com `npx supabase db push` antes de validar novos cadastros remotamente. Não há nova versão diária: permanece `v1.0.0`.
+
+Validação local dos nomes de conta em 04/10: 22 casos SQL/PGlite, 21 casos online, TypeScript, lint dos arquivos alterados e consistência da versão aprovados. A interface com sessão simulada mostrou os dois nomes no mapa/perfil, edição e importação Google preservando o nome de batismo, e `v1.0.0` visível. Essa prévia não valida OAuth real nem aplicação remota da migração; não alterou perfis pessoais.
+
 O catálogo de kits autorizado está em `online_private.kit_catalog`, com os 46 IDs atuais. Acrescentar cidades exige migração complementar; o teste do banco compara esse catálogo com `lib/cities-data.ts`.
 
 ## 2. Auth, Google e códigos por email
@@ -166,7 +170,7 @@ npm install --prefix /tmp/chicken-online-db-test --no-audit --no-fund @electric-
 ONLINE_TEST_MODULES=/tmp/chicken-online-db-test node --test supabase/tests/database.test.cjs
 ```
 
-Os 16 casos executam todas as migrações em ordem, grants, RLS, importação/CAS/identidade esperada, salas, versões/idempotência, autor musical, liquidação, revanche, amigos, transferência e políticas de Presence. Auth e Realtime são stubs nesse teste. PGlite usa uma conexão; estes casos não comprovam a corrida de duas conexões Postgres nem entrega WebSocket hospedada.
+Os 22 casos executam todas as migrações em ordem, grants, RLS, importação/CAS/identidade esperada, salas, versões/idempotência, autor musical, liquidação, revanche, amigos, transferência, catálogo/imutabilidade de nomes de batismo, edição/importação Google e políticas de Presence. Auth e Realtime são stubs nesse teste. PGlite usa uma conexão; estes casos não comprovam a corrida de duas conexões Postgres nem entrega WebSocket hospedada.
 
 Após recompilar os bundles, valide os handlers com Deno e a aplicação com seus checks:
 

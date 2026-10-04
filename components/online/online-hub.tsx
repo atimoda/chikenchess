@@ -146,7 +146,7 @@ function ProfilePane() {
   const [error, setError] = useState<string | null>(null)
   const googleIdentity = user?.identities?.find((identity) => identity.provider === 'google')
   const googleNameValue = googleIdentity?.identity_data?.full_name || googleIdentity?.identity_data?.name || (googleIdentity ? user?.user_metadata?.full_name || user?.user_metadata?.name : null)
-  const googleName = typeof googleNameValue === 'string' ? googleNameValue.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40) : ''
+  const googleName = typeof googleNameValue === 'string' ? Array.from(googleNameValue).filter((character) => character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127).join('').trim().slice(0, 40) : ''
   useEffect(() => { setName(profile?.display_name || '') }, [profile?.display_name, profile?.id])
   const saveName = async (displayName: string) => {
     setBusy(true)
