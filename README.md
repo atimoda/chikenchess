@@ -12,6 +12,10 @@ Any changes you make to your deployed app will be automatically pushed to this r
 
 ## Deployment
 
+Use npm for this repository. `package-lock.json` is the only dependency lockfile;
+commit its updates together with `package.json` after adding dependencies.
+Vercel runs `npm ci` and `npm run build` through `vercel.json`.
+
 Your project is live at:
 
 **[https://vercel.com/atimoda-1935s-projects/v0-chi-ken-chess-project](https://vercel.com/atimoda-1935s-projects/v0-chi-ken-chess-project)**

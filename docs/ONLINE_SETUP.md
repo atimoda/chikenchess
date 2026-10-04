@@ -159,6 +159,10 @@ Conecte o repositório ao Cloudflare Pages Free, use o comando `npm run build` e
 
 ## Desenvolvimento e validação
 
+O gerenciador do projeto é npm, com `package-lock.json` como único lockfile. Ao acrescentar dependências, use `npm install` e comite manifesto e lockfile juntos. `vercel.json` fixa `npm ci` na instalação e `npm run build` na compilação. O lockfile antigo do pnpm foi removido após o erro `ERR_PNPM_OUTDATED_LOCKFILE` na Vercel; não use instalação sem lockfile congelado para contornar divergências.
+
+Validação da correção de instalação de 04/10: `npm ci` em diretório limpo instalou as dependências; o build com diretório separado do dev concluiu a compilação e exportação estática. TypeScript e consistência da versão diária aprovados, mantendo `v1.0.0`. O deploy remoto precisa receber o commit com a remoção de `pnpm-lock.yaml` e o novo `vercel.json`; repetir o commit anterior conserva a falha.
+
 O Worker de avaliação é gerado por `npm run build:powered-analysis`; `npm run dev`/`build` executam essa etapa automaticamente. Se alterar suas fontes durante um servidor dev já aberto, execute novamente a geração.
 
 Com Docker e CLI instalados, `npx supabase start` inicia o stack local; `npx supabase db reset` recria o banco **local** a partir das migrações. Copie `supabase/edge.env.example` para `supabase/.env.local`, preencha com valores locais e execute `npx supabase functions serve --env-file supabase/.env.local`. Os arquivos `.env` são ignorados pelo Git.

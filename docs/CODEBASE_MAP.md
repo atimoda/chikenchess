@@ -6,6 +6,7 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 
 | Pedido | Entrada principal | Dependências / contratos relevantes |
 | --- | --- | --- |
+| Instalação e deploy | `package.json`, `package-lock.json`, `vercel.json` | npm é o gerenciador do projeto; mantenha somente seu lockfile. Vercel instala com `npm ci` e compila com `npm run build` |
 | Tom, graus, identidade e ativação | `lib/music/model.ts`, `reactions.ts` | `runtime-types.ts`; lances registrados e snapshots da partida com poderes (sem revalidar SAN como xadrez comum) |
 | Plano harmônico, cifras e voicings | `lib/music/harmony.ts`, `voice-spec.ts`, `harmonic-pattern.ts` | `arrangement.ts`, `creative.ts`, `reactions.ts`, `monitor.ts`; a harmonia é resolvida no ataque pela seção global e seu compasso local, independentemente da fase/comprimento MIDI. Compilador e exportação compartilham `harmonicPattern`; Kit Harmony usa os graus salvos, outros planos e reações os ignoram sem apagá-los |
 | Forma global, IDs e atribuições por peça | `lib/music/arrangement.ts`, `creative.ts` | `arrangementSchema`, migração e `updateCreativeArrangement` mantêm IDs e bancos existentes; `piecePerformance` deriva durações para execução, sem persistir forma independente. `performance.ts` resolve fase/presença; `runtime-session.ts`/`monitor.ts` expõem seção, rótulo e pausa |
