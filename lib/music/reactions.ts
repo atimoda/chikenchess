@@ -75,11 +75,22 @@ const other = (c:'w'|'b') => c==='w'?'b':'w'
 
 /** Deterministic ledger: undo/redo reconstructs events without applying them twice. */
 export function reactionContext(history: readonly string[], minimum=4, initialFen?:string): ReactionContext {
-  const chess=new Chess(initialFen), events:Occurrence[]=[]
-  const counts=() => { const board=chess.board().flat().filter(p=>p!==null); return { w:board.filter(p=>p.color==='w'), b:board.filter(p=>p.color==='b') } }
-  let before=counts(), castles=0, captures=0, quiet=0, wasCheck=false
-  history.forEach((san,i)=>{
-    const move=chess.move(san), after=counts(), ply=i+1
+  const chess=new Chess(initialFen), positions:Chess[]=[]
+  for(const san of history){
+    positions.push(new Chess(chess.fen()))
+    chess.move(san)
+  }
+  return reactionContextFromGame(chess,minimum,positions)
+}
+
+/** Recorded FENs supply material; variant snapshots supply effective check states. */
+export function reactionContextFromGame(chess:Chess, minimum=4, positions:readonly Chess[]=[]): ReactionContext {
+  const moves=chess.history({verbose:true}), events:Occurrence[]=[]
+  const counts=(position:Chess) => { const board=position.board().flat().filter(p=>p!==null); return { w:board.filter(p=>p.color==='w'), b:board.filter(p=>p.color==='b') } }
+  let before=counts(new Chess(moves[0]?.before ?? chess.fen())), castles=0, captures=0, quiet=0
+  moves.forEach((move,i)=>{
+    const after=counts(new Chess(move.after)), ply=i+1
+    const wasCheck=positions[i]?.isCheck() ?? (i>0 && /[+#]$/.test(moves[i-1].san))
     const emit=(trigger:Trigger,color=move.color)=>events.push({trigger,color,ply})
     if(move.isKingsideCastle() || move.isQueensideCastle()) emit(++castles===1?'firstCastle':'secondCastle')
     if(move.captured){ emit('capture'); if(++captures===1)emit('firstCapture'); if(move.captured==='q')emit('queenCapture') }
@@ -94,9 +105,9 @@ export function reactionContext(history: readonly string[], minimum=4, initialFe
     if((before.w.length>minimum||before.b.length>minimum)&&after.w.length<=minimum&&after.b.length<=minimum)emit('minimumBoth')
     quiet=move.captured||move.piece==='p'?0:quiet+1
     if(quiet===10)emit('quiet')
-    wasCheck=chess.isCheck(); before=after
+    before=after
   })
-  const ply=history.length, states:Occurrence[]=[]
+  const ply=moves.length, states:Occurrence[]=[]
   const add=(trigger:Trigger,color:'w'|'b'=chess.turn())=>states.push({trigger,color,ply})
   add(before.w.length+before.b.length<=10?'endgame':ply<=20?'opening':'middle')
   if(chess.isCheck())add('check',other(chess.turn()))

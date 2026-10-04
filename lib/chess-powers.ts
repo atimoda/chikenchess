@@ -5,6 +5,8 @@ export interface MatchPower {
   id: number
   kind: MatchPowerKind
   square: Square
+  // Older in-memory snapshots came from the white player's powers.
+  appliedBy?: Move["color"]
   // A freeze on an empty tile becomes attached to the first piece that lands there.
   trapUntilPly?: number
   frozenColor?: "w" | "b"
@@ -14,15 +16,31 @@ export interface MatchPower {
 
 type PowerMove = Pick<Move, "from" | "to" | "color" | "flags"> & { captured?: string }
 
+export type ShieldCaptureBlock = 'protected-attacker' | 'protected-target'
+
+export function canUseMatchPower(game: Chess, color: Move["color"]): boolean {
+  return game.turn() === color && !game.isGameOver()
+}
+
+export function shieldCaptureBlock(move: PowerMove, powers: MatchPower[]): ShieldCaptureBlock | null {
+  if (!move.captured) return null
+  const capturedSquare = move.flags.includes('e') ? `${move.to[0]}${move.from[1]}` : move.to
+  if (powers.some(power => power.kind === 'shield' && power.square === capturedSquare)) return 'protected-target'
+  if (powers.some(power => power.kind === 'shield' && power.square === move.from)) return 'protected-attacker'
+  return null
+}
+
 export function createMatchPower(kind: MatchPowerKind, square: Square, game: Chess, id: number): MatchPower {
   const ply = game.history().length
   const occupant = game.get(square)
-  if (kind === "shield") return { id, kind, square, attachedColor: occupant?.color, blocksOnPly: ply + 2 }
-  if (!occupant) return { id, kind, square, trapUntilPly: ply + 2, blocksOnPly: ply + 2 }
-  return { id, kind, square, frozenColor: occupant.color, blocksOnPly: ply + (occupant.color === game.turn() ? 3 : 2) }
+  const appliedBy = game.turn()
+  if (kind === "shield") return { id, kind, square, appliedBy, attachedColor: occupant?.color, blocksOnPly: ply + 2 }
+  if (!occupant) return { id, kind, square, appliedBy, trapUntilPly: ply + 2, blocksOnPly: ply + 2 }
+  return { id, kind, square, appliedBy, frozenColor: occupant.color, blocksOnPly: ply + (occupant.color === appliedBy ? 3 : 2) }
 }
 
 export function permitsPowerMove(move: PowerMove, powers: MatchPower[], ply: number): boolean {
+  if (shieldCaptureBlock(move, powers)) return false
   for (const power of powers) {
     if (power.kind === "freeze") {
       const capturedSquare = move.flags.includes("e") ? `${move.to[0]}${move.from[1]}` : move.to
@@ -33,7 +51,7 @@ export function permitsPowerMove(move: PowerMove, powers: MatchPower[], ply: num
         if (move.flags.includes("q") && power.square === (move.color === "w" ? "a1" : "a8")) return false
       }
     }
-    if (power.kind === "shield" && move.color === "b" && power.blocksOnPly === ply) {
+    if (power.kind === "shield" && move.color !== (power.appliedBy ?? "w") && power.blocksOnPly === ply) {
       if (move.to === power.square) return false
       // En passant captures a pawn on the square beside the landing square.
       if (move.flags.includes("e") && `${move.to[0]}${move.from[1]}` === power.square) return false

@@ -1,7 +1,7 @@
 import type { PieceArrangement } from './arrangement'
 import type { PianoRoll } from './piano-roll'
 import { noteRoll } from './piano-roll'
-import { Chess, type PieceSymbol, type Square } from 'chess.js'
+import { Chess, type Move, type PieceSymbol, type Square } from 'chess.js'
 import type { SampleSource } from './sample-banks'
 
 export type Behavior = 'pulse' | 'phrase' | 'sustain'
@@ -85,17 +85,16 @@ export function instrumentFor(piece: MusicPiece): Instrument {
   return piece.type === 'p' ? drums[piece.origin.charCodeAt(0) - 97] : instruments[piece.type]
 }
 
-// Replaying legal moves preserves identity across captures, castling and promotion,
-// and makes undo/redo independent of the current Chess instance's truncated history.
-function reconstructPosition(history: readonly string[]) {
-  const chess = new Chess()
+// Recorded moves preserve identity without revalidating power-enabled moves
+// under ordinary chess rules. Undo/redo supplies the restored game history.
+export function piecesFromMoves(moves: readonly Move[], initialFen?: string): MusicPiece[] {
+  const chess = new Chess(moves[0]?.before ?? initialFen)
   const pieces: MusicPiece[] = chess.board().flatMap(row => row.flatMap(p => p ? [{
     id: `${p.color}:${p.square}`, slot: 0, origin: p.square, square: p.square,
     type: p.type, color: p.color, active: false,
   }] : []))
   pieces.forEach((p, i) => { p.slot = i })
-  for (const san of history) {
-    const move = chess.move(san)
+  for (const move of moves) {
     const moving = pieces.find(p => p.square === move.from)
     if (!moving) throw new Error(`Missing musical piece at ${move.from}`)
     const capturedSquare = move.isEnPassant() ? `${move.to[0]}${move.from[1]}` : move.to
@@ -113,16 +112,25 @@ function reconstructPosition(history: readonly string[]) {
       }
     }
   }
-  return { pieces, chess }
+  return pieces
 }
 
 export function piecesFromHistory(history: readonly string[]): MusicPiece[] {
-  return reconstructPosition(history).pieces
+  const chess = new Chess()
+  for (const san of history) chess.move(san)
+  return piecesFromMoves(chess.history({ verbose: true }))
 }
 
 /** Check is a temporary performance overlay; it never marks a piece as moved. */
 export function gameMusicStateFromHistory(history: readonly string[]) {
-  const { pieces, chess } = reconstructPosition(history)
+  const chess = new Chess()
+  for (const san of history) chess.move(san)
+  return gameMusicStateFromGame(chess)
+}
+
+/** The live variant is authoritative for check and mate, including active powers. */
+export function gameMusicStateFromGame(chess: Chess) {
+  const pieces = piecesFromMoves(chess.history({ verbose: true }), chess.fen())
   const attackingColor = chess.isCheck() ? (chess.turn() === 'w' ? 'b' : 'w') : null
   return {
     attackingColor,

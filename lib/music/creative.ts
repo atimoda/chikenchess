@@ -27,7 +27,7 @@ const octaveRangeSchema = z.union([
   z.object({ min: finite(0, 7).int(), max: finite(0, 7).int(), frequency: rangeFrequencySchema }).transform(({ min, max, frequency }) => ({ first: min, second: max, ...(frequency ? { frequency } : {}) })),
 ]).optional()
 const parameterRangeSchema = (max: number) => z.object({ first: finite(0, max), second: finite(0, max), frequency: rangeFrequencySchema }).optional()
-const instrumentSchema = z.object({
+export const instrumentSchema = z.object({
   name: z.string().trim().min(1).max(60).transform(name => name.replace(/\s*·\s*[a-h][1-8]$/i, '')), behavior: z.enum(['pulse', 'phrase', 'sustain']),
   sound: z.enum(SOUNDS),
   octave: finite(0, 7).int(), gain: finite(0, 1), attack: finite(0.001, 2),
@@ -43,7 +43,7 @@ const instrumentSchema = z.object({
   loopEnabled: z.boolean().optional(),
   source: sourceSchema.optional(),
 })
-const effectsSchema = z.object({
+export const effectsSchema = z.object({
   gain: finite(0, 2), pitch: finite(0.5, 2), pan: finite(-1, 1),
   delay: finite(0, 1), reverb: finite(0, 1), decay: finite(0.01, 2),
 })

@@ -1,5 +1,7 @@
 "use client"
 
+/* global DynamicsCompressorNode */
+
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { cities, type CityData } from "@/lib/cities-data"
@@ -10,17 +12,26 @@ import { CampaignCityList } from './campaign-city-list'
 import { VersionChangelog } from './version-changelog'
 import { RELEASE_LABEL } from '@/lib/changelog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import { OnlineHub } from './online/online-hub'
+import { useOnline } from './online/online-provider'
+import { LegalLinks } from './legal-links'
 
 import { Button } from "@/components/ui/button"
 import { Plus, Minus, Maximize, Minimize } from "lucide-react"
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
+  onOnlineMatch?: (id: string) => void
+  inviteCode?: string | null
 }
 
-export function WorldMap({ onCitySelect }: WorldMapProps) {
+export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapProps) {
+  const online = useOnline()
   const [unlockedCities, setUnlockedCities] = useState<string[]>([])
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null)
+  useEffect(() => {
+    setPlayerProfile(online.profile?.profile ?? getPlayerProfile())
+  }, [online.profile])
 
   interface PopupState {
     x: number
@@ -1014,15 +1025,19 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         </div>
       </header>
 
+      {onOnlineMatch ? <div className="pointer-events-auto absolute bottom-32 left-1/2 z-30 w-max max-w-[90vw] -translate-x-1/2"><OnlineHub onMatch={onOnlineMatch} inviteCode={inviteCode} /></div> : null}
+
       <Dialog open={showProfile} onOpenChange={setShowProfile}>
         <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]" closeLabel="Fechar perfil">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <span aria-hidden="true" className="text-5xl leading-none">🐔</span>
-              <DialogTitle className="font-mono text-xl">Sir Clucks-a-Lot</DialogTitle>
+              <DialogTitle className="min-w-0 break-words font-mono text-xl">{online.profile?.display_name ?? (online.user ? 'Carregando perfil…' : 'Perfil visitante')}</DialogTitle>
             </div>
           </DialogHeader>
           <div className="space-y-4 font-mono">
+            {online.profile?.baptismal_name && <div className="text-xs text-white/60"><p>Baptismal name</p><p className="mt-1 break-words text-[#dfe8df]">{online.profile.baptismal_name}</p><p className="mt-1 text-[10px]">Nome de batismo permanente</p></div>}
+            {!online.user || online.user.is_anonymous ? <button className="text-xs text-amber-200 underline underline-offset-4" onClick={() => { setShowProfile(false); online.openLogin() }}>Sign in to save your profile</button> : <p className="text-xs text-white/60">Profile saved · {online.profile?.code}</p>}
             <div className="space-y-3 font-mono">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Golden eggs</span>
@@ -1069,19 +1084,21 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
 
       {/* About Popup */}
       {showAbout && (
-        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
             <div 
-                className="relative bg-card border border-border p-8 rounded-lg max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 pointer-events-auto"
+                role="dialog" aria-modal="true" aria-labelledby="about-title"
+                className="relative max-h-[90dvh] overflow-y-auto bg-card border border-border p-8 rounded-lg max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 pointer-events-auto"
                 onClick={(e) => e.stopPropagation()}
             >
                 <button 
+                    type="button" aria-label="Fechar About"
                     onClick={() => setShowAbout(false)}
                     className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
 
-                <h2 className="mb-1 flex items-center gap-3 font-mono text-2xl font-bold text-primary"><img src="/chickenchess-logo.png" alt="" className="h-16 w-16 object-contain" />chickenchess</h2>
+                <h2 id="about-title" className="mb-1 flex items-center gap-3 font-mono text-2xl font-bold text-primary"><img src="/chickenchess-logo.png" alt="" className="h-16 w-16 object-contain" />chickenchess</h2>
                 
                 <p className="text-xs font-bold text-muted-foreground mb-4">{RELEASE_LABEL}</p>
 
@@ -1109,6 +1126,9 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
                 >
                     <span>☕</span> Buy me a coffee
                 </a>
+                <div className="mt-6 border-t border-border pt-4">
+                  <LegalLinks newTab className="text-muted-foreground" />
+                </div>
             </div>
             
             <div className="absolute inset-0 -z-10" onClick={() => setShowAbout(false)} />
@@ -1120,7 +1140,7 @@ export function WorldMap({ onCitySelect }: WorldMapProps) {
         
         {/* Bottom Right Info & Controls */}
         <div 
-          className="flex fixed bottom-4 right-4 items-stretch gap-2 pointer-events-auto z-50">
+          className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
           <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Modo Criativo</Link>
           <VersionChangelog mapButton />

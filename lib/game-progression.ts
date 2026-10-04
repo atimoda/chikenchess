@@ -187,6 +187,7 @@ export function savePlayerProfile(profile: PlayerProfile) {
     const json = JSON.stringify(profile)
     writeCookie(COOKIE_NAME, json)
     localStorage.setItem(COOKIE_NAME, json)
+    if (typeof CustomEvent !== "undefined") window.dispatchEvent?.(new CustomEvent("chickenchess:profile-saved", { detail: profile }))
 }
 
 export interface ConquestResult {

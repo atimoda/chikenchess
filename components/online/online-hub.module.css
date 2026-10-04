@@ -1,0 +1,16 @@
+.joinFlash {
+  animation: join-flash 380ms ease-out 3;
+}
+
+@keyframes join-flash {
+  0%, 100% { border-color: rgb(113 196 134 / 30%); }
+  50% { border-color: #b5f7c4; box-shadow: 0 0 28px rgb(113 196 134 / 35%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joinFlash {
+    animation: none;
+    border-color: #b5f7c4;
+    box-shadow: 0 0 0 2px rgb(113 196 134 / 30%);
+  }
+}

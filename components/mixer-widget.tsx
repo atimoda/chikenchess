@@ -30,7 +30,6 @@ interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "o
   togglePortalized?: boolean
   isOn: boolean
   onToggle: () => void
-  boardMusicSelectors: React.ReactNode
 }
 
 type BpmHoverPreview = { x: number; y: number; percent: number }
@@ -178,7 +177,7 @@ function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityCo
 
 export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
   teamMixes, effects, monitor, onEffectChange, topColor, onTeamMixChange, cityColor, position, onPositionChange,
-  sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle, boardMusicSelectors, ...props
+  sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle, ...props
 }, ref) => {
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
@@ -210,10 +209,10 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
     {...props}
   >
     <Resizable
-      defaultSize={{ width: 180, height: 530 }}
-      size={props.style?.position === 'static' ? { width: '100%', height: 530 } : undefined}
+      defaultSize={{ width: 180, height: 450 }}
+      size={props.style?.position === 'static' ? { width: '100%', height: 450 } : undefined}
       minWidth={156}
-      minHeight={530}
+      minHeight={450}
       enable={props.style?.position === 'static' ? false : { top: false, right: true, bottom: true, left: true, topRight: false, bottomRight: true, bottomLeft: true, topLeft: false }}
       handleStyles={{
         right: { zIndex: 80 },
@@ -293,10 +292,6 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
           />
         </div>
       </fieldset>
-      {boardMusicSelectors && <fieldset disabled={!isOn} aria-label="Tom, escala e progressão" className="m-0 mt-1 min-w-0 border-0 p-0 pb-5">
-        <legend className="sr-only">Tom, escala e progressão</legend>
-        {boardMusicSelectors}
-      </fieldset>}
     </div>
     {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
     </Resizable>

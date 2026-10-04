@@ -1,6 +1,6 @@
 # Strudel music engine and Creative lab
 
-Current release: v0.14.2 — 03/10/2026. All 46 stages (34 cities) and Creative use `@strudel/web` 1.3.0. Instruments store explicit MIDI rolls and shared global arrangements in schema v7; Strudel remains the playback and generated-code backend. The existing native engine continues to provide introductory/UI/end-game sound effects; its loop compilation and playback are disabled for these stages.
+Current release: v1.0.0 — 04/10/2026. All 46 stages (34 cities) and Creative use `@strudel/web` 1.3.0. Instruments store explicit MIDI rolls and shared global arrangements in schema v7; Strudel remains the playback and generated-code backend. The existing native engine continues to provide introductory/UI/end-game sound effects; its loop compilation and playback are disabled for these stages.
 
 For task-oriented navigation, start with `docs/CODEBASE_MAP.md` and `tests/README.md`.
 

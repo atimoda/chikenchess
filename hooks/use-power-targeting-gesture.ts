@@ -38,10 +38,15 @@ export function usePowerTargetingGesture(options: Options) {
   const completedPress = useRef<{ kind: MatchPowerKind; previous: MatchPowerKind | null; suppress: boolean } | null>(null)
   const preview = useRef<{ square: Square; layer: HTMLElement; kind: MatchPowerKind } | null>(null)
 
+  const syncTargetCursor = () => {
+    if (armed.current) document.documentElement.dataset.powerTargetingCursor = gesture.current ? 'grabbing' : 'grab'
+    else delete document.documentElement.dataset.powerTargetingCursor
+  }
+
   const moveCursor = (x: number, y: number, visible: boolean) => {
     cursorPoint.current = { x, y, visible }
     if (!cursorRef.current) return
-    cursorRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`
+    cursorRef.current.style.transform = `translate3d(${x - 10}px, ${y - 10}px, 0) translate(-50%, -50%)`
     cursorRef.current.style.opacity = visible ? '1' : '0'
   }
 
@@ -77,6 +82,7 @@ export function usePowerTargetingGesture(options: Options) {
 
   const arm = (kind: MatchPowerKind | null) => {
     armed.current = kind
+    syncTargetCursor()
     latest.current.onArm(kind)
     if (!kind) {
       leaveSquare()
@@ -100,6 +106,7 @@ export function usePowerTargetingGesture(options: Options) {
       const point = cursorPoint.current
       moveCursor(point.x, point.y, point.visible)
     }
+    syncTargetCursor()
   }, [options.armedPower, options.enabled])
 
   useEffect(() => {
@@ -112,6 +119,7 @@ export function usePowerTargetingGesture(options: Options) {
         return
       }
       gesture.current = { pointerId: event.pointerId, kind: armed.current, origin: 'board', previous: armed.current, x: event.clientX, y: event.clientY, dragged: false }
+      syncTargetCursor()
       moveCursor(event.clientX, event.clientY, true)
       updatePreview(event.clientX, event.clientY)
     }
@@ -134,6 +142,7 @@ export function usePowerTargetingGesture(options: Options) {
       }
       current.dragged ||= Math.hypot(event.clientX - current.x, event.clientY - current.y) > 5
       gesture.current = null
+      syncTargetCursor()
       if (current.origin === 'button') completedPress.current = { ...current, suppress: current.dragged }
       const cell = squareAt(event.clientX, event.clientY)
       if (current.origin === 'board' || current.dragged) {
@@ -171,6 +180,7 @@ export function usePowerTargetingGesture(options: Options) {
       document.removeEventListener('pointerout', out)
       document.removeEventListener('visibilitychange', hidden)
       leaveSquare(false)
+      delete document.documentElement.dataset.powerTargetingCursor
     }
   }, [])
 

@@ -6,6 +6,7 @@
 
 # next.js
 /.next/
+/.next-online-build/
 /out/
 
 # production
@@ -19,6 +20,11 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
+/supabase/functions/match-command/domain.js
+/supabase/functions/piece-params/params.js
+/supabase/.temp/
+/public/engine/powered-analysis.js
 
 # vercel
 .vercel

@@ -1,32 +1,47 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Square } from 'chess.js'
+import type { Chess, Square } from 'chess.js'
 import type { CityData } from '@/lib/cities-data'
 import type { SquareEffects } from '@/lib/types'
-import { instrumentFor, gameMusicStateFromHistory, type InstrumentPerformanceEdit } from '@/lib/music/model'
+import { instrumentFor, gameMusicStateFromGame, type Instrument, type InstrumentPerformanceEdit } from '@/lib/music/model'
 import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
 import { defaultCityKit, loadCityKit } from '@/lib/music/city-kits'
-import { scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
+import { creativeSchema, scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
 import { createTeamMixes, TEAM_GAIN_MAX, type TeamMix } from '@/lib/music/team-mixer'
 import type { HarmonyPlanId } from '@/lib/music/harmony'
-import { applyReactions, reactionContext } from '@/lib/music/reactions'
+import { applyReactions, reactionContextFromGame } from '@/lib/music/reactions'
 import { identifyPitchCollection } from '@/lib/music/scales'
 import type { SampleSource } from '@/lib/music/sample-banks'
 
-export function useMusic(history: string[], city: CityData, playing: boolean, bpm: number, volume: number, showCode = true, engineActive = true) {
-  const builtInKit = useMemo(() => defaultCityKit(city.id), [city.id])
+export interface UseMusicOptions {
+  initialKit?: CreativeSession
+  canEditPiece?: (id: string) => boolean
+  onPieceChange?: (id: string, instrument: Instrument, effects: SquareEffects | undefined) => void
+}
+
+export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: number, volume: number, showCode = true, engineActive = true, positions: readonly Chess[] = [], options: UseMusicOptions = {}) {
+  const builtInKit = useMemo(() => options.initialKit ?? defaultCityKit(city.id), [city.id, options.initialKit])
   const enabled = builtInKit !== null
   const [kit, setKit] = useState<CreativeSession | null>(builtInKit)
+  const kitRef = useRef(kit)
+  kitRef.current = kit
+  const canEditPieceRef = useRef(options.canEditPiece)
+  const onPieceChangeRef = useRef(options.onPieceChange)
+  canEditPieceRef.current = options.canEditPiece
+  onPieceChangeRef.current = options.onPieceChange
   const sampleFingerprint = JSON.stringify(Object.values(kit?.instruments ?? {}).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source] : []))
   const sampleSources = useMemo(() => JSON.parse(sampleFingerprint) as SampleSource[], [sampleFingerprint])
   const [teamMixes, setTeamMixes] = useState(() => createTeamMixes(TEAM_GAIN_MAX / 2))
   const updateTeamMix = useCallback((color: 'w' | 'b', patch: Partial<TeamMix>) => setTeamMixes(current => ({ ...current, [color]: { ...current[color], ...patch } })), [])
-  const gameMusicState = useMemo(() => gameMusicStateFromHistory(history), [history])
+  const history = useMemo(() => game.history(), [game])
+  const gameMusicState = useMemo(() => gameMusicStateFromGame(game), [game, positions])
   const pieces = gameMusicState.pieces
-  const context = useMemo(() => reactionContext(history, kit?.reactions.minimumPieces), [history, kit?.reactions.minimumPieces])
+  const context = useMemo(() => reactionContextFromGame(game, kit?.reactions.minimumPieces, positions), [game, kit?.reactions.minimumPieces, positions])
   const [effects, setEffects] = useState<Record<string, SquareEffects>>(builtInKit?.effects ?? {})
+  const effectsRef = useRef(effects)
+  effectsRef.current = effects
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [manuallyActiveIds, setManuallyActiveIds] = useState<Set<string>>(() => new Set())
   const [soloIds, setSoloIds] = useState<Set<string>>(() => new Set())
@@ -79,10 +94,12 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const code = useMemo(() => enabled && showCode ? renderMusicCode(snapshot, preview) : '', [enabled, showCode, snapshot, preview])
 
   useEffect(() => {
-    const resolved = loadCityKit(city.id)
+    const resolved = options.initialKit ?? loadCityKit(city.id)
+    kitRef.current = resolved
     setKit(resolved)
     setTeamMixes(createTeamMixes(TEAM_GAIN_MAX / 2))
-    setEffects(resolved?.effects ?? {})
+    effectsRef.current = resolved?.effects ?? {}
+    setEffects(effectsRef.current)
     setSelectedId(null)
     setManuallyActiveIds(new Set())
     setSoloIds(new Set())
@@ -91,7 +108,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     soloCycleIdsRef.current = new Set()
     setPreview(null)
     runtime.current?.endAudition()
-  }, [city.id])
+  }, [city.id, options.initialKit])
   useEffect(() => {
     if (!enabled || !engineActive) {
       setPreview(null)
@@ -153,21 +170,20 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   }, [pieces])
   const togglePiece = useCallback((square: Square) => {
     const piece = pieces.find(p => p.square === square)
-    if (!piece || !kit) return false
+    const currentKit = kitRef.current
+    if (!piece || !currentKit || canEditPieceRef.current?.(piece.id) === false) return false
     const active = resolved.snapshot.pieces.some(p => p.id === piece.id && p.active)
-    const enabled = kit.instruments[piece.id]?.loopEnabled !== false
+    const enabled = currentKit.instruments[piece.id]?.loopEnabled !== false
     const turnOn = !active || !enabled
     setSelectedId(piece.id)
     if (turnOn) setManuallyActiveIds(current => new Set(current).add(piece.id))
-    setKit(current => current && ({
-      ...current,
-      instruments: {
-        ...current.instruments,
-        [piece.id]: { ...current.instruments[piece.id], loopEnabled: turnOn },
-      },
-    }))
+    const nextInstrument = { ...currentKit.instruments[piece.id], loopEnabled: turnOn }
+    const nextKit = { ...currentKit, instruments: { ...currentKit.instruments, [piece.id]: nextInstrument } }
+    kitRef.current = nextKit
+    setKit(nextKit)
+    onPieceChangeRef.current?.(piece.id, nextInstrument, effectsRef.current[piece.id])
     return turnOn
-  }, [pieces, kit, resolved.snapshot.pieces])
+  }, [pieces, resolved.snapshot.pieces])
   const toggleSolo = useCallback((id: string) => {
     if (!pieces.some(piece => piece.id === id)) return false
     endAudition()
@@ -222,20 +238,52 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
   const selected = snapshot.pieces.find(p => p.id === selectedId)
   const instrument = selected ? (snapshot.instruments?.[selected.id] ?? kit?.instruments[selected.id] ?? instrumentFor(selected)) : null
   const updateInstrument = useCallback((patch: InstrumentPerformanceEdit) => {
-    if (!selectedId) return
-    setKit(current => {
-      if (!current) return current
-      const previous = current.instruments[selectedId]
-      const next = { ...previous, ...patch }
-      return { ...current, instruments: { ...current.instruments, [selectedId]: next } }
-    })
+    const currentKit = kitRef.current
+    if (!selectedId || !currentKit || canEditPieceRef.current?.(selectedId) === false) return
+    const next = { ...currentKit.instruments[selectedId], ...patch }
+    const nextKit = { ...currentKit, instruments: { ...currentKit.instruments, [selectedId]: next } }
+    kitRef.current = nextKit
+    setKit(nextKit)
+    onPieceChangeRef.current?.(selectedId, next, effectsRef.current[selectedId])
   }, [selectedId])
   const setPieceEffect = useCallback((key: keyof SquareEffects, value: number) => {
-    if (!selected || !instrument) return
+    const currentKit = kitRef.current
+    if (!selected || !instrument || !currentKit || canEditPieceRef.current?.(selected.id) === false) return
     const id = selected.id
-    setEffects(current => ({ ...current, [id]: { ...(current[id] ?? { delay: 0, reverb: .12, gain: 1, pan: 0, pitch: 1, decay: instrument.decay ?? .15, lpf: instrument.lpf, hpf: instrument.hpf }), [key]: value } }))
-    if (key === 'lpf' && instrument.lpfRange) updateInstrument({ lpfRange: undefined })
-  }, [selected, instrument, updateInstrument])
+    const currentEffects = effectsRef.current
+    const nextEffects = { ...(currentEffects[id] ?? { delay: 0, reverb: .12, gain: 1, pan: 0, pitch: 1, decay: instrument.decay ?? .15, lpf: instrument.lpf, hpf: instrument.hpf }), [key]: value }
+    const nextInstrument = key === 'lpf' && instrument.lpfRange ? { ...currentKit.instruments[id], lpfRange: undefined } : currentKit.instruments[id]
+    effectsRef.current = { ...currentEffects, [id]: nextEffects }
+    setEffects(effectsRef.current)
+    if (nextInstrument !== currentKit.instruments[id]) {
+      kitRef.current = { ...currentKit, instruments: { ...currentKit.instruments, [id]: nextInstrument } }
+      setKit(kitRef.current)
+    }
+    onPieceChangeRef.current?.(id, nextInstrument, nextEffects)
+  }, [selected, instrument])
+  const applySharedPiece = useCallback((id: string, sharedInstrument: Instrument, sharedEffects: SquareEffects | undefined) => {
+    const current = kitRef.current
+    if (current?.instruments[id]) {
+      const instrument = {
+        ...current.instruments[id],
+        ...globalThis.structuredClone(sharedInstrument),
+        arrangement: sharedInstrument.arrangement ?? current.instruments[id].arrangement,
+      }
+      const parsed = creativeSchema.safeParse({ ...current, instruments: { ...current.instruments, [id]: instrument } })
+      if (!parsed.success) return false
+      kitRef.current = parsed.data
+      setKit(kitRef.current)
+    }
+    const currentEffects = effectsRef.current
+    if (sharedEffects) effectsRef.current = { ...currentEffects, [id]: globalThis.structuredClone(sharedEffects) }
+    else {
+      const next = { ...currentEffects }
+      delete next[id]
+      effectsRef.current = next
+    }
+    setEffects(effectsRef.current)
+    return true
+  }, [])
   const setTonality = useCallback((root: CreativeSession['root'], scale: CreativeSession['scale']) => {
     setKit(current => current && ({ ...current, root, scale }))
   }, [])
@@ -247,7 +295,7 @@ export function useMusic(history: string[], city: CityData, playing: boolean, bp
     else data.fill(0)
   }, [])
   return {
-    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects, setEffects, snapshot, teamMixes, updateTeamMix,
+    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects, setEffects, snapshot, teamMixes, updateTeamMix, kit, applySharedPiece,
     code, preview, pulseMonitor, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,
