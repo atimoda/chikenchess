@@ -6,6 +6,7 @@ import type { MatchCommand, OnlineMatch } from "@/lib/online/types";
 import { useOnline } from "@/components/online/online-provider";
 import type { Instrument } from "@/lib/music/model";
 import type { SquareEffects } from "@/lib/types";
+import type { PendingMatchCommand } from "@/lib/online/pending-move";
 /* global Response, crypto */
 
 export interface SharedPiece {
@@ -13,12 +14,6 @@ export interface SharedPiece {
   instrument: Instrument;
   effects?: SquareEffects;
   revision: number;
-}
-interface PendingCommand {
-  matchId: string;
-  commandId: string;
-  expectedVersion: number;
-  command: MatchCommand;
 }
 
 export function useOnlineMatch(matchId: string) {
@@ -28,7 +23,7 @@ export function useOnlineMatch(matchId: string) {
   const [connected, setConnected] = useState(false);
   const [opponentConnected, setOpponentConnected] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<PendingCommand | null>(null);
+  const [pending, setPending] = useState<PendingMatchCommand | null>(null);
   const [error, setError] = useState<string | null>(null);
   const current = useRef(match);
   current.current = match;
@@ -141,7 +136,7 @@ export function useOnlineMatch(matchId: string) {
   }, [localKey]);
 
   const execute = useCallback(
-    async (request: PendingCommand) => {
+    async (request: PendingMatchCommand) => {
       if (activeRequest.current) return;
       const client = getOnlineClient();
       if (!client) throw new Error("Online is not configured");

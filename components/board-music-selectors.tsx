@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 
 interface BoardMusicSelectorsProps {
   cityColor: string
+  disabled?: boolean
   tonality: { root: CreativeSession["root"]; scale: CreativeSession["scale"] | null }
   baseTonality: Pick<CreativeSession, "root" | "scale">
   currentScaleLabel: string
@@ -21,7 +22,7 @@ interface BoardMusicSelectorsProps {
 
 export type BoardDropdownId = "difficulty" | "root" | "scale" | "harmony" | null
 
-export function BoardMusicSelectors({ cityColor, tonality, baseTonality, currentScaleLabel, onTonalityChange, harmony, onHarmonyChange, openDropdown, setOpenDropdown }: BoardMusicSelectorsProps) {
+export function BoardMusicSelectors({ disabled = false, cityColor, tonality, baseTonality, currentScaleLabel, onTonalityChange, harmony, onHarmonyChange, openDropdown, setOpenDropdown }: BoardMusicSelectorsProps) {
   const triggerClass = "pointer-events-auto inline-flex h-7 w-auto max-w-full items-center gap-1 rounded border border-transparent bg-transparent px-0 leading-none transition-colors hover:border-white/20 focus-visible:border-white/30 focus-visible:outline-none"
   const triggerStyle = {
     color: cityColor,
@@ -46,7 +47,7 @@ export function BoardMusicSelectors({ cityColor, tonality, baseTonality, current
   return <div role="group" aria-label="Tom, escala e harmonia" className="contents">
     <DropdownMenu open={openDropdown === "root"} onOpenChange={open => setOpenDropdown(current => open ? "root" : current === "root" ? null : current)}>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label="Tom da partida" data-city-dropdown className={`${triggerClass} min-w-0 max-w-full`} style={triggerStyle}>
+        <button disabled={disabled} type="button" aria-label="Tom da partida" data-city-dropdown className={`${triggerClass} min-w-0 max-w-full`} style={triggerStyle}>
           <span className="truncate">{tonality.root}</span><ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-70" />
         </button>
       </DropdownMenuTrigger>
@@ -59,7 +60,7 @@ export function BoardMusicSelectors({ cityColor, tonality, baseTonality, current
 
     <DropdownMenu open={openDropdown === "scale"} onOpenChange={open => setOpenDropdown(current => open ? "scale" : current === "scale" ? null : current)}>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label="Escala da partida" data-city-dropdown className={`${triggerClass} min-w-0 max-w-full`} style={triggerStyle}>
+        <button disabled={disabled} type="button" aria-label="Escala da partida" data-city-dropdown className={`${triggerClass} min-w-0 max-w-full`} style={triggerStyle}>
           <span className="truncate">{currentScaleLabel}</span><ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-70" />
         </button>
       </DropdownMenuTrigger>
@@ -73,7 +74,7 @@ export function BoardMusicSelectors({ cityColor, tonality, baseTonality, current
 
     <DropdownMenu open={openDropdown === "harmony"} onOpenChange={open => setOpenDropdown(current => open ? "harmony" : current === "harmony" ? null : current)}>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label="Harmonia da partida" data-city-dropdown className={`${triggerClass} min-w-0 max-w-full`} style={triggerStyle}>
+        <button disabled={disabled} type="button" aria-label="Harmonia da partida" data-city-dropdown className={`${triggerClass} min-w-0 max-w-full`} style={triggerStyle}>
           <span className="truncate">{HARMONY_PLANS[harmony].compactLabel}</span><ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-70" />
         </button>
       </DropdownMenuTrigger>

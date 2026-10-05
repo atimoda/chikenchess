@@ -2,6 +2,12 @@
 
 O frontend continua sendo uma exportação estática do Next.js. Supabase fornece Auth, Postgres, Realtime e três Edge Functions; o destino planejado para a hospedagem gratuita é Cloudflare Pages, entregando `out/`. Em 04/10, o domínio público ainda responde pela Vercel; a migração de hospedagem não foi realizada. As contas, domínio e credenciais são configurados nos painéis dos serviços. A existência dos arquivos não comprova ativação remota; o registro abaixo distingue configuração realizada de etapas pendentes.
 
+## Prévia do lance pendente — 05/10/2026, v1.0.1
+
+O frontend projeta lances legais no destino com 45% de opacidade até a versão oficial chegar. `lib/online/pending-move.ts` usa cópia isolada das regras com poderes; música, análise, economia e histórico continuam lendo somente o estado confirmado. Recusa 4xx restaura o tabuleiro oficial; rede/timeout/5xx conserva pedido/prévia para Retry. A confirmação via Realtime antes do recibo HTTP já normaliza a peça, sem repetir o deslocamento. Reenvio mantém o mesmo ID. Não há nova migração ou alteração de Function; precisa publicar o frontend.
+
+Checks: 47 casos online (dez novos de projeção), 32 casos pertinentes de poderes/música/combinação de kits, dois de versão, TypeScript, lint e build estático aprovados. QA do build com SQL local e Auth/Realtime/Function simulados reteve deliberadamente a resposta: arraste nas brancas permaneceu no destino sem reaparecer na origem em 35 frames; recusa exibiu erro e restaurou a origem; 503 conservou a peça translúcida/Retry e o mesmo ID; confirmação Realtime antes do HTTP normalizou sem duplicar lance. Pretas foram verificadas com orientação inversa, bloqueio de novo arraste e recuperação da prévia após reload; confirmação normalizou a peça. v1.0.1 visível, sem erros JS. Não houve alteração de perfis pessoais nem chamadas de jogo ao backend remoto nesses testes; o simulador não mede latência hospedada ou áudio em aparelhos físicos.
+
 ## Correções do lobby — 05/10/2026, v1.0.1
 
 O frontend inclui avisos temporários de chegada à sala e aceite de amizade, acompanhamento de amizades pelo provider e a correção da escuta do convidado: a prévia sem vaga passa a acompanhar a sala assim que a admissão é confirmada, mesmo com o mesmo ID. Callbacks de inscrições antigas e respostas atrasadas são ignorados; não há polling contínuo. Convites aguardam a identidade correta.
@@ -131,6 +137,8 @@ npx supabase functions deploy piece-params
 npx supabase functions deploy profile-transfer
 ```
 
+Em 05/10, `match-command` foi recompilada, validada com Deno e republicada no projeto ChickenChess para confirmar mudanças de Tom/Escala/Harmonia feitas por qualquer participante. `board-music` usa o estado JSON/versionamento existente; não há nova migração, tabela ou configuração a preencher. Campos ausentes herdam o kit do criador da sala, e clientes anteriores continuam compatíveis. O frontend atualizado precisa de novo deploy para exibir os dropdowns e a apresentação compartilhada.
+
 Os arquivos `domain.js` e `params.js` são saídas geradas do build. O código durável fica em `lib/online/` e nos handlers; não edite os bundles manualmente. O Supabase disponibiliza `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` dentro das Functions. A service role fica exclusivamente no backend. [Supabase: segredos das Functions](https://supabase.com/docs/guides/functions/secrets).
 
 Configure o segredo **ONLINE_ALLOWED_ORIGINS** com origins exatos separados por vírgula, por exemplo `https://SEU_SITE.pages.dev,https://SEU_DOMINIO`. Para desenvolvimento, inclua `http://localhost:3000`. Use o painel Edge Functions ou um arquivo local ignorado pelo Git passado a `supabase secrets set --env-file`; não use curingas de origem.
@@ -213,3 +221,6 @@ npm run test:music
 ```
 
 Antes de abrir a beta, valide no projeto configurado com pelo menos três contas: isolamento de perfis e salas privadas; três tentativas simultâneas de ocupar uma sala; Ready concorrente e repetido; comandos duplicados e com versão antiga; recompensa exatamente uma vez; transferência e vínculo Google/email; refresh/reconexão; permissões de parâmetros e Presence, inclusive a tentativa de uma terceira conta acessar o canal privado. Confira envio SMTP e origem dos callbacks em produção. Testes de padrões e SQL não aprovam qualidade musical ou desempenho em aparelhos físicos. Meça invocações, mensagens, conexões e envios de email da beta antes de dimensionar o uso dos planos gratuitos.
+
+
+Validação da apresentação comum — 05/10, v1.0.1: 244 testes musicais (incluindo os dois de versão), 51 online, TypeScript, lint dos módulos compartilhados, controles online e testes novos, além da exportação estática, aprovados. A campanha conserva os erros de lint preexistentes; a extração não acrescentou novos. No navegador, campanha e online mostraram o mesmo retângulo de tabuleiro, fonte do título, posições/tamanhos dos poderes e rodapé em 1280×850; widgets usam o mesmo arraste/conexões. Telas de 320/390 px conservaram largura, coluna única e controles sem sobreposição; a conexão à casa selecionada também foi conferida na orientação preta. Duas identidades em um simulador local com as migrações reais/PGlite e Realtime de teste receberam Tom/Escala/Harmonia, recuperaram os valores ao recarregar e mantiveram o Mixer local. O lance pendente conservou 45% de opacidade/destino até a confirmação. Sem erros JavaScript observados nesses cenários. Isso não substitui uma nova partida entre aparelhos reais em produção nem avaliação subjetiva/desempenho do áudio. O CLI confirmou o deploy remoto de `match-command`; os testes de navegador não usam dados pessoais do projeto hospedado.

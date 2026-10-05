@@ -1,5 +1,8 @@
 import { Chess, type Square } from "chess.js";
 import { z } from "zod";
+import { ROOTS } from "../music/creative";
+import { HARMONY_PLAN_IDS } from "../music/harmony";
+import { SCALE_NAMES } from "../music/scales";
 import {
   advanceMatchPowers,
   createMatchPower,
@@ -40,6 +43,22 @@ const simpleCommands = [
   "accept-rematch",
 ] as const;
 const commandSchema = z.union([
+  z
+    .object({
+      kind: z.literal("board-music"),
+      patch: z
+        .object({
+          root: z.enum(ROOTS).optional(),
+          scale: z.enum(SCALE_NAMES).optional(),
+          harmony: z.enum(HARMONY_PLAN_IDS).optional(),
+        })
+        .strict()
+        .refine(
+          (patch) => Object.keys(patch).length > 0 && Object.values(patch).every(value => value !== undefined),
+          "Provide at least one musical setting",
+        ),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("move"),
@@ -230,6 +249,10 @@ export function applyMatchCommand(
     return state;
   }
   if (state.result) reject("This match has ended");
+  if (command.kind === "board-music") {
+    state.boardMusic = { ...state.boardMusic, ...command.patch };
+    return state;
+  }
   if (command.kind === "resign") {
     state.result = { winner: actor === "w" ? "b" : "w", reason: "resign" };
     clearSuggestions(state);

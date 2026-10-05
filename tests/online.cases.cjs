@@ -4,6 +4,82 @@ const { loadTs } = require('./helpers/music.cjs')
 const { createMatchState, applyMatchCommand: command, replayMatch, matchPosition, parseMatchCommand } = loadTs('lib/online/domain.ts')
 const move = (s, c, from, to, reward) => command(s, c, { kind: 'move', from, to, ...(reward ? { analysis: { position: matchPosition(s), best: [{ uci: from + to, score: reward === 'worst' ? -101 : 0 }], worst: [{ uci: from + to, score: -101 }] } } : {}) })
 
+test('Either player can change shared root, scale and harmony on either turn without changing the board or economy', () => {
+  for (const turn of ['w', 'b']) {
+    for (const actor of ['w', 'b']) {
+      const original = turn === 'w' ? createMatchState() : move(createMatchState(), 'w', 'e2', 'e4')
+      const before = globalThis.structuredClone(original)
+      const pitch = command(original, actor, { kind: 'board-music', patch: { root: 'F#', scale: 'Dórica' } })
+      assert.deepEqual(pitch.boardMusic, { root: 'F#', scale: 'Dórica' }, 'root and scale commit together')
+      const harmony = command(pitch, actor, { kind: 'board-music', patch: { harmony: 'jazz-251' } })
+      assert.deepEqual(harmony.boardMusic, { root: 'F#', scale: 'Dórica', harmony: 'jazz-251' })
+      const changedRoot = command(harmony, actor, { kind: 'board-music', patch: { root: 'G' } })
+      assert.deepEqual(changedRoot.boardMusic, { root: 'G', scale: 'Dórica', harmony: 'jazz-251' })
+      const unchanged = { ...changedRoot }; delete unchanged.boardMusic
+      assert.deepEqual(unchanged, before)
+      assert.equal(matchPosition(changedRoot), matchPosition(before))
+      assert.equal(replayMatch(changedRoot).game.turn(), turn)
+      assert.deepEqual(original, before, 'accepted commands do not mutate their input')
+      assert.equal(Object.hasOwn(original, 'boardMusic'), false, 'legacy states need no override or migration')
+    }
+  }
+})
+test('Shared board music preserves active suggestions, powers, draw offers and Undo/Redo continuation', () => {
+  let suggestions = createMatchState()
+  suggestions.eggs.w = 5
+  suggestions = command(suggestions, 'w', { kind: 'suggest', group: 'best', position: matchPosition(suggestions), moves: [{ uci: 'e2e4', score: 0 }] }, 1000)
+  suggestions = command(suggestions, 'b', { kind: 'offer-draw' })
+  let powered = move(createMatchState(), 'w', 'e2', 'e4', 'worst')
+  powered = move(powered, 'b', 'e7', 'e5', 'worst')
+  powered = command(powered, 'w', { kind: 'power', power: 'shield', square: 'e4' })
+  let undone = move(createMatchState(), 'w', 'e2', 'e4', 'best')
+  undone = move(undone, 'b', 'e7', 'e5')
+  undone = command(undone, 'w', { kind: 'undo' })
+  for (const original of [suggestions, powered, undone]) {
+    const before = globalThis.structuredClone(original)
+    const updated = command(original, 'b', { kind: 'board-music', patch: { harmony: 'blues-145' } }, 1500)
+    const unchanged = { ...updated }; delete unchanged.boardMusic
+    assert.deepEqual(unchanged, before, 'musical controls neither spend eggs nor invalidate game controls')
+    assert.deepEqual(replayMatch(updated).powers, replayMatch(before).powers)
+    assert.deepEqual(original, before)
+  }
+  const musicalUndo = command(undone, 'b', { kind: 'board-music', patch: { root: 'D', scale: 'Maior', harmony: 'circle' } })
+  const restored = command(musicalUndo, 'w', { kind: 'redo' })
+  assert.deepEqual(restored.actions, undone.redo.actions)
+  assert.deepEqual(restored.boardMusic, musicalUndo.boardMusic, 'Redo preserves global musical settings')
+  const nextUndo = command(restored, 'w', { kind: 'undo' })
+  assert.deepEqual(nextUndo.boardMusic, musicalUndo.boardMusic, 'Undo preserves global musical settings')
+  const laterMove = move(restored, 'w', 'g1', 'f3')
+  assert.deepEqual(laterMove.boardMusic, musicalUndo.boardMusic, 'future moves retain shared settings')
+})
+test('Shared board music rejects ended matches and a fresh match inherits the host context', () => {
+  const musical = command(createMatchState(), 'w', { kind: 'board-music', patch: { root: 'A', harmony: 'cadence' } })
+  const ended = command(musical, 'b', { kind: 'resign' })
+  const before = globalThis.structuredClone(ended)
+  for (const actor of ['w', 'b']) {
+    assert.throws(() => command(ended, actor, { kind: 'board-music', patch: { root: 'B' } }), /ended/)
+    assert.deepEqual(ended, before)
+  }
+  assert.equal(Object.hasOwn(createMatchState(), 'boardMusic'), false)
+})
+test('Shared board music accepts only nonempty patches from the authoritative musical catalogs', () => {
+  const { ROOTS } = loadTs('lib/music/creative.ts')
+  const { SCALE_NAMES } = loadTs('lib/music/scales.ts')
+  const { HARMONY_PLAN_IDS } = loadTs('lib/music/harmony.ts')
+  for (const [field, values] of [['root', ROOTS], ['scale', SCALE_NAMES], ['harmony', HARMONY_PLAN_IDS]]) {
+    for (const value of values) {
+      const input = { kind: 'board-music', patch: { [field]: value } }
+      assert.deepEqual(parseMatchCommand(input), input)
+    }
+  }
+  for (const patch of [{}, null, [], { root: 'H' }, { root: 'Db' }, { scale: 'unknown' }, { harmony: 'unknown' }, { bpm: 120 }, { volume: 0.5 }, { root: 'D', instrument: {} }, { root: null }, { root: undefined }, { root: undefined, harmony: 'kit' }]) {
+    const original = createMatchState()
+    assert.throws(() => command(original, 'w', { kind: 'board-music', patch }))
+    assert.deepEqual(original, createMatchState())
+  }
+  assert.throws(() => parseMatchCommand({ kind: 'board-music', patch: { root: 'D' }, actor: 'w' }))
+})
+
 test('server validates both turns and preserves the original state on rejection', () => {
   const initial = createMatchState()
   assert.throws(() => move(initial, 'b', 'e7', 'e5'), /turn/)
@@ -17,7 +93,7 @@ test('server validates both turns and preserves the original state on rejection'
 test('Undo returns to either actor, costs once, Redo belongs to its actor and cannot repeat reward', () => {
   let s = move(createMatchState(), 'w', 'e2', 'e4', 'best')
   s = move(s, 'b', 'e7', 'e5', 'worst')
-  const collected = structuredClone(s.collected)
+  const collected = globalThis.structuredClone(s.collected)
   s = command(s, 'w', { kind: 'undo' })
   assert.equal(s.actions.length, 0)
   assert.equal(s.eggs.w, 1)
@@ -77,7 +153,7 @@ test('Visible suggestions enforce a shared cooldown, preserve eggs on rejection 
   const position = matchPosition(s)
   const suggest = group => ({ kind: 'suggest', group, position, moves: [{ uci: 'e2e4', score: 0 }] })
   s = command(s, 'b', suggest('best'), 1000)
-  const before = structuredClone(s)
+  const before = globalThis.structuredClone(s)
   for (const actor of ['w', 'b']) {
     for (const group of ['best', 'worst']) {
       assert.throws(() => command(s, actor, suggest(group), 3999), /visible suggestions/)
@@ -121,7 +197,7 @@ test('Freeze rejects the last opponent move before charging either actor, includ
     for (const square of squares) s = command(s, actor, { kind: 'power', power: 'freeze', square })
     assert.equal(replayMatch(s).powers.length, 15)
     assert.equal(s.eggs[actor], 55)
-    const before = structuredClone(s)
+    const before = globalThis.structuredClone(s)
     assert.throws(() => command(s, actor, { kind: 'power', power: 'freeze', square: last }), {
       message: 'Você não pode deixar seu oponente sem jogadas.',
     })
