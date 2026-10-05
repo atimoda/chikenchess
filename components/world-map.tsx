@@ -11,7 +11,7 @@ import { GlobeComponent } from "./globe-component"
 import { CampaignCityList } from './campaign-city-list'
 import { VersionChangelog } from './version-changelog'
 import { RELEASE_LABEL } from '@/lib/changelog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 import { OnlineHub } from './online/online-hub'
 import { useOnline } from './online/online-provider'
 import { LegalLinks } from './legal-links'
@@ -1044,6 +1044,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               <span aria-hidden="true" className="text-5xl leading-none">🐔</span>
               <DialogTitle className="min-w-0 break-words font-mono text-xl">{online.profile?.display_name ?? (online.user ? 'Carregando perfil…' : 'Perfil visitante')}</DialogTitle>
             </div>
+            <DialogDescription className="sr-only">Seu saldo de golden eggs, pontos históricos, conquistas e conta.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 font-mono">
             {online.profile?.baptismal_name && <div className="text-xs text-white/60"><p>Baptismal name</p><p className="mt-1 break-words text-[#dfe8df]">{online.profile.baptismal_name}</p><p className="mt-1 text-[10px]">Nome de batismo permanente</p></div>}
