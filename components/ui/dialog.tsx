@@ -18,9 +18,11 @@ export function DialogContent({ children, className, closeLabel = 'Fechar parâm
       <Primitive.Close className="absolute right-3 top-3 rounded p-1 text-white/70 hover:text-white focus-visible:outline-2" aria-label={closeLabel}><X className="h-4 w-4" /></Primitive.Close>
     </Primitive.Content>
 
+  // Radix forwards DOM refs to each portal child; a Fragment ref is not an Element.
   return <Primitive.Portal>
-    {mobileViewportScroll
-      ? <Primitive.Overlay className={cn('fixed inset-0 z-[120] bg-black/75', styles.mobileViewport)}>{content}</Primitive.Overlay>
-      : <><Primitive.Overlay className="fixed inset-0 z-[120] bg-black/75" />{content}</>}
+    <Primitive.Overlay className={cn('fixed inset-0 z-[120] bg-black/75', mobileViewportScroll && styles.mobileViewport)}>
+      {mobileViewportScroll ? content : null}
+    </Primitive.Overlay>
+    {mobileViewportScroll ? null : content}
   </Primitive.Portal>
 }

@@ -7,6 +7,9 @@ export const CHANGELOG = [
     date: '05/10/2026',
     title: 'Salas, avisos e interface mobile',
     groups: [
+      { title: 'Correções', items: [
+        'O perfil de Golden eggs e a dica inicial da campanha voltam a abrir sem interromper o jogo. O perfil também recebe uma descrição para leitores de tela.',
+      ] },
       { title: 'Online', items: [
         'Quando alguém entra na sua sala, um aviso temporário mostra o nome da pessoa, acompanhado do som e realce da sala. O aceite de um pedido de amizade também aparece como aviso na tela.',
         'Salas, Amigos e Perfil se adaptam ao celular, com rolagem da tela do modal e sem barras internas no cartão ou nas listas.',
