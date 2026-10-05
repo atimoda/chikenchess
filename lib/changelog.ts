@@ -13,7 +13,8 @@ export const CHANGELOG = [
       { title: 'Online', items: [
         'Quando alguém entra na sua sala, um aviso temporário mostra o nome da pessoa, acompanhado do som e realce da sala. O aceite de um pedido de amizade também aparece como aviso na tela.',
         'Salas, Amigos e Perfil se adaptam ao celular, com rolagem da tela do modal e sem barras internas no cartão ou nas listas.',
-        'Ao tentar entrar em outra sala com uma vaga já ocupada, o aviso explica o conflito e permite voltar à sala atual. Erros de entrada aparecem acima do botão, e a sala é atualizada após tentativas recusadas. Convites deixam de perder seus dados quando a sessão termina de carregar.',
+        'Entrar em outra sala libera automaticamente sua vaga anterior. Se o destino estiver cheio ou indisponível, você permanece na sala atual. Erros aparecem acima do botão de entrada; convites preservam seus dados ao carregar a sessão.',
+        'O convidado acompanha os kits e a prontidão ao entrar; quando os dois confirmam Começar, ambos seguem para a mesma partida, sem precisar recarregar.',
       ] },
     ],
   },
