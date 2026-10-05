@@ -45,7 +45,8 @@ test('only acceptance of the current sender pending request announces; a new req
 test('different-room conflicts receive visible guidance without hiding other errors', () => {
   const conflict = { code: 'P0001', message: 'ALREADY_IN_ROOM' }
   assert.equal(isAlreadyInRoom(conflict), true)
-  assert.match(roomErrorMessage(conflict), /Volte à sua sala atual e saia/)
+  assert.match(roomErrorMessage(conflict), /trocar automaticamente/)
+  assert.match(roomErrorMessage({ message: 'ACTIVE_MATCH' }), /partida em andamento/)
   assert.match(roomErrorMessage({ message: 'ROOM_FULL' }), /dois participantes/)
   assert.match(roomErrorMessage({ message: 'ROOM_CLOSED' }), /encerrada/)
   assert.match(roomErrorMessage({ message: 'ROOM_NOT_FOUND' }), /Confira o código/)

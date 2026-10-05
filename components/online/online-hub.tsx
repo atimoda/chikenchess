@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { useOnline } from './online-provider'
 import { disposeLobbyAudio, playLobbyJoinSound, prepareLobbyAudio } from './lobby-audio'
 import styles from './online-hub.module.css'
-import { isAlreadyInRoom, roomArrivalNames, roomErrorMessage } from '@/lib/online/lobby-updates'
+import { roomArrivalNames, roomErrorMessage } from '@/lib/online/lobby-updates'
 
 /* global URL, Blob */
 export type OnlineHubTab = 'rooms' | 'friends' | 'profile'
@@ -29,6 +29,7 @@ const inputClass = 'h-10 min-w-0 rounded-md border border-white/20 bg-black/30 p
 const DEFAULT_CITY_ID = cities[0]?.id || 'dusseldorf'
 type FriendAction = 'request' | 'accept' | 'reject' | 'cancel' | 'remove'
 let friendChannelSequence = 0
+let roomChannelSequence = 0
 
 function useFriendList(active: boolean) {
   const { user, configured, ensureGuest } = useOnline()
@@ -238,12 +239,13 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
   const [connected, setConnected] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [flash, setFlash] = useState(false)
-  const [blockingRoom, setBlockingRoom] = useState<OnlineRoom | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const matched = useRef<string | null>(null)
   const roomRef = useRef<OnlineRoom | null>(null)
   const identityRef = useRef<string | null>(null)
   const roomGeneration = useRef(0)
+  const roomRefreshRevision = useRef(0)
+  const isRoomMember = Boolean(room?.members.some((member) => member.user_id === user?.id))
 
   const setOpen = useCallback((next: boolean) => { setInternalOpen(next); onOpenChange?.(next) }, [onOpenChange])
   const launch = (nextTab: OnlineHubTab) => { setTab(nextTab); setOpen(true) }
@@ -268,7 +270,6 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
       applyRoom(null)
       setRooms([])
       setError(null)
-      setBlockingRoom(null)
       setBusy(null)
       matched.current = null
     }
@@ -276,23 +277,25 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
   }, [user?.id, applyRoom])
 
   useEffect(() => () => {
+    roomGeneration.current += 1
     if (flashTimer.current) clearTimeout(flashTimer.current)
     disposeLobbyAudio()
   }, [])
 
-  const refreshRooms = useCallback(async () => {
+  const refreshRooms = useCallback(async (isCurrent: () => boolean = () => true) => {
     const generation = roomGeneration.current
     await ensureGuest()
     const next = await onlineRpc<PublicRoom[]>('online_rooms')
-    if (generation === roomGeneration.current) { setRooms(next || []); setError(null) }
+    if (isCurrent() && generation === roomGeneration.current) { setRooms(next || []); setError(null) }
   }, [ensureGuest])
 
-  const refreshRoom = useCallback(async () => {
+  const refreshRoom = useCallback(async (isCurrent: () => boolean = () => true) => {
     const current = roomRef.current
     if (!current) return
     const generation = roomGeneration.current
+    const revision = ++roomRefreshRevision.current
     const next = await onlineRpc<OnlineRoom>('online_room', { p_action: 'get', p_code: current.code })
-    if (generation === roomGeneration.current && roomRef.current?.id === current.id) applyRoom(next)
+    if (isCurrent() && revision === roomRefreshRevision.current && generation === roomGeneration.current && roomRef.current?.id === current.id) applyRoom(next)
   }, [applyRoom])
 
   useEffect(() => {
@@ -316,10 +319,10 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
     if (!isOpen || tab !== 'rooms' || room || createOpen || !configured) return
     let active = true
     setLoading(true)
-    void refreshRooms().catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }).finally(() => { if (active) setLoading(false) })
+    void refreshRooms(() => active).catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }).finally(() => { if (active) setLoading(false) })
     const online = requireOnlineClient()
-    const update = () => { void refreshRooms().catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }) }
-    const channel = online.channel('public-room-directory', { config: { postgres_changes_options: { wait: true } } })
+    const update = () => { if (active) void refreshRooms(() => active).catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }) }
+    const channel = online.channel(`public-room-directory:${++roomChannelSequence}`, { config: { postgres_changes_options: { wait: true } } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'online_public_rooms' }, update)
       .subscribe((status) => {
         if (!active) return
@@ -340,17 +343,17 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
 
   useEffect(() => {
     const online = getOnlineClient()
-    if (!room?.id || !online || !room.members.some((member) => member.user_id === user?.id)) return
+    if (!room?.id || !online || !isRoomMember) return
     let active = true
-    const update = () => { void refreshRoom().catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }) }
-    const channel = online.channel(`lobby:${room.id}:${user?.id}`, { config: { postgres_changes_options: { wait: true } } })
+    const update = () => { if (active) void refreshRoom(() => active).catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }) }
+    const channel = online.channel(`lobby:${room.id}:${user?.id}:${++roomChannelSequence}`, { config: { postgres_changes_options: { wait: true } } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'online_rooms', filter: `id=eq.${room.id}` }, update)
       .subscribe((status) => { if (active) { setConnected(status === 'SUBSCRIBED'); if (status === 'SUBSCRIBED') update() } })
     const onVisible = () => { if (document.visibilityState === 'visible') update() }
     window.addEventListener('online', update)
     document.addEventListener('visibilitychange', onVisible)
-    return () => { active = false; window.removeEventListener('online', update); document.removeEventListener('visibilitychange', onVisible); void online.removeChannel(channel) }
-  }, [room?.id, user?.id, refreshRoom])
+    return () => { active = false; setConnected(false); window.removeEventListener('online', update); document.removeEventListener('visibilitychange', onVisible); void online.removeChannel(channel) }
+  }, [room?.id, isRoomMember, user?.id, refreshRoom])
 
   useEffect(() => {
     if (!room?.match_id || !room.members.some((member) => member.user_id === user?.id) || matched.current === room.match_id) return
@@ -384,7 +387,6 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
     if (action === 'create' || action === 'join') prepareLobbyAudio()
     setBusy(action)
     setError(null)
-    setBlockingRoom(null)
     setNotice(null)
     let actor = identityRef.current
     let generation = roomGeneration.current
@@ -402,25 +404,13 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
     } catch (cause) {
       if (identityRef.current !== actor || generation !== roomGeneration.current) return
       setError(roomErrorMessage(cause) || onlineErrorMessage(cause))
-      if (isAlreadyInRoom(cause)) {
-        try {
-          const current = await onlineRpc<OnlineRoom | null>('online_room', { p_action: 'get', p_code: null })
-          if (identityRef.current !== actor || generation !== roomGeneration.current) return
-          if (current && current.code === roomCode?.trim().toUpperCase()) {
-            applyRoom(current)
-            setError(null)
-          } else if (current) {
-            setBlockingRoom(current)
-            setError(`Você já está na sala ${current.code}. Volte à sua sala atual e saia dela antes de entrar nesta.`)
-          }
-        } catch { /* Keep the visible action error and allow a manual retry. */ }
-      } else if (action === 'join' && roomRef.current) {
+      if (action === 'join' && roomRef.current) {
         await refreshRoom().catch(() => {})
       }
     } finally { if (identityRef.current === actor) setBusy(null) }
   }
 
-  const actionError = error && <div className="space-y-2"><p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>{blockingRoom && <Button variant="outline" className="w-full border-white/20 bg-transparent" disabled={Boolean(busy)} onClick={() => { roomGeneration.current += 1; applyRoom(blockingRoom); setBlockingRoom(null); setError(null); setCreateOpen(false) }}>Voltar à minha sala · {blockingRoom.code}</Button>}</div>
+  const actionError = error && <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>
 
   const ownMember = room?.members.find((member) => member.user_id === user?.id)
   const inviteLink = room && typeof window !== 'undefined' ? `${window.location.origin}/?room=${encodeURIComponent(room.code)}` : ''
