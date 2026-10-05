@@ -6,7 +6,7 @@ import { Knob } from "./knob"
 import { RangeKnob } from "./range-knob"
 import type { SquareEffects } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Power } from "lucide-react"
+import { LockKeyhole, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
@@ -39,6 +39,8 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   monitor?: MusicMonitor
   monitorId?: string
   selectedPiece?: MusicPiece | null
+  readOnly?: boolean
+  readOnlyMessage?: string
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -64,6 +66,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   monitor,
   monitorId,
   selectedPiece,
+  readOnly = false,
+  readOnlyMessage = "Piece Params locked",
   ...props
 }, ref) => {
   const isStatic = props.style?.position === 'static'
@@ -89,7 +93,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
     setMidiVisualUpdatesEnabled(true)
     const editor = viewport.querySelector<HTMLElement>('[data-midi-visual-panel]')
-    const observer = new IntersectionObserver(entries => {
+    const observer = new window.IntersectionObserver(entries => {
       for (const entry of entries) {
         const visible = entry.isIntersecting && entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0
         if (entry.target === editor) setMidiVisualUpdatesEnabled(visible)
@@ -112,7 +116,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       setMinPanelHeight(current => current === next ? current : next)
     }
     updateMinimumHeight()
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateMinimumHeight)
+    const observer = typeof ResizeObserver === 'undefined' ? null : new window.ResizeObserver(updateMinimumHeight)
     observer?.observe(viewport)
     if (knobGridRef.current) observer?.observe(knobGridRef.current)
     const tabs = viewport.querySelector<HTMLElement>('[role="tablist"][aria-label="Variações do instrumento"]')
@@ -214,7 +218,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         className="absolute inset-x-0 top-0 h-8 z-60"
       />
 
-      {isOn && selectedSquare && instrument && onInstrumentChange && playback && <>
+      {isOn && !readOnly && selectedSquare && instrument && onInstrumentChange && playback && <>
         {onSoloToggle && <button
           type="button"
           aria-label={isSolo ? 'Desativar Solo da peça' : 'Ativar Solo da peça'}
@@ -247,7 +251,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       </>}
 
       {/* Main Content - z-50 */}
-      <div ref={contentViewportRef} className={cn("relative z-50 max-w-full px-2.5", isStatic ? "w-full max-h-none overflow-visible py-2.5" : "h-full w-full min-h-0 overflow-hidden pt-2.5 pb-0", !isOn && "opacity-50 grayscale")} style={panelStyle}>
+      <div ref={contentViewportRef} inert={readOnly} aria-disabled={readOnly || undefined} className={cn("relative z-50 max-w-full px-2.5", isStatic ? "w-full max-h-none overflow-visible py-2.5" : "h-full w-full min-h-0 overflow-hidden pt-2.5 pb-0", !isOn && "opacity-50 grayscale")} style={panelStyle}>
         <div className={cn("flex flex-col gap-3", !isStatic && "h-full min-h-0")}>
           <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
             {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={{ __html: pieceSvg }} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
@@ -421,6 +425,11 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
           </div>
         </div>
       </div>
+      {isOn && readOnly && <div className={cn("absolute inset-0 z-[65] flex items-center justify-center rounded-md bg-black/35", isStatic ? "touch-pan-y" : "touch-none")}>
+        <div className="pointer-events-none flex items-center gap-2 rounded-lg border border-white/20 bg-black/90 p-4 text-sm text-white">
+          <LockKeyhole className="h-5 w-5" />{readOnlyMessage}
+        </div>
+      </div>}
       {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
       </Resizable>
     </Draggable>

@@ -24,7 +24,7 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   isPlaying: boolean
   playback?: React.ReactNode
   stockfishDebugOn: boolean
-  onToggleStockfishDebug: () => void
+  onToggleStockfishDebug?: () => void
   onForceWin?: () => void
   onGetEggs?: () => void
   pieceDebugOn: boolean
@@ -212,12 +212,12 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               onClick={event => { event.stopPropagation(); onTogglePieceDebug() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", pieceDebugOn ? "border-sky-300/70 bg-sky-300/15 text-sky-200" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
             >Piece debug</button>
-            <button
+            {onToggleStockfishDebug && <button
               type="button"
               aria-pressed={stockfishDebugOn}
               onClick={event => { event.stopPropagation(); onToggleStockfishDebug() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", stockfishDebugOn ? "border-emerald-400/70 bg-emerald-400/20 text-emerald-300" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >Debug SF</button>
+            >Debug SF</button>}
             {onForceWin && <button
               type="button"
               onClick={event => { event.stopPropagation(); onForceWin() }}

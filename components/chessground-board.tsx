@@ -34,6 +34,8 @@ interface ChessgroundBoardProps {
   movesDisabled?: boolean
   /** Online waits for a server confirmation before mutating the position. */
   deferMoves?: boolean
+  /** Visual-only online move destinations awaiting authoritative confirmation. */
+  pendingSquares?: readonly Square[]
   synthSelectedSquare?: Square | null
   activeSquares?: Set<string>
   analysisArrows?: AnalysisArrow[]
@@ -102,6 +104,7 @@ export function ChessgroundBoard({
   playerColor = "w",
   movesDisabled = false,
   deferMoves = false,
+  pendingSquares = [],
   onBoardClick,
   armedPower,
   onPowerTarget,
@@ -756,6 +759,7 @@ export function ChessgroundBoard({
             return (
               <button
                 key={square}
+                aria-busy={pendingSquares.includes(square) || undefined}
                 aria-label={freeMode?.squareLabel?.(square) ?? `${square}${piece ? ` ${piece.color} ${piece.type}` : " empty"}`}
                 data-square={square}
                 className={cn(
@@ -918,8 +922,10 @@ export function ChessgroundBoard({
                   : <span aria-hidden="true" data-power-preview className={cn(rewardStyles.powerFrost, "pointer-events-none absolute inset-0 z-[2]")} style={{ opacity: 0 }} />)}
                 {piece && (!isDragging || freeMode?.mode === 'play') && !isAnimatingTo && (
                   <div
+                    data-pending-move={pendingSquares.includes(square) ? square : undefined}
                     className={cn("relative z-10 w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
                     style={{
+                      opacity: pendingSquares.includes(square) ? 0.45 : undefined,
                       filter: frozen ? 'url(#frozen-piece-texture) drop-shadow(0 0 7px #bcecff)' : isActive || (musicEffectsEnabled && isPressedPiece) ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
                     }}
                     dangerouslySetInnerHTML={{
@@ -1078,8 +1084,10 @@ export function ChessgroundBoard({
           }}
         >
              <div
+                data-pending-move={pendingSquares.includes(animation.to) ? animation.to : undefined}
                 className={cn("w-[85%] h-[85%]", animation.piece.startsWith('b') && "black-piece-outline")}
                 style={{
+                  opacity: pendingSquares.includes(animation.to) ? 0.45 : undefined,
                   filter: musicEffectsEnabled ? `drop-shadow(0 0 12px ${cityColor})` : undefined,
                 }}
                 dangerouslySetInnerHTML={{

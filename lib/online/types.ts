@@ -1,6 +1,8 @@
 import type { Square } from "chess.js";
 import type { PlayerProfile } from "../game-progression";
 import type { MatchPowerKind } from "../chess-powers";
+import type { CreativeSession } from "../music/creative";
+import type { HarmonyPlanId } from "../music/harmony";
 
 export type OnlineColor = "w" | "b";
 export interface OnlineProfile {
@@ -42,6 +44,9 @@ export interface SharedSuggestion {
   score: number;
   mate?: number | null;
 }
+export type BoardMusicSettings = Pick<CreativeSession, "root" | "scale"> & {
+  harmony: HarmonyPlanId;
+};
 export type GameAction =
   | {
       kind: "move";
@@ -60,6 +65,8 @@ export type GameAction =
     };
 export interface MatchState {
   schema: 1;
+  /** Missing settings inherit the host kit's shared musical context. */
+  boardMusic?: Partial<BoardMusicSettings>;
   actions: GameAction[];
   redo: { actor: OnlineColor; actions: GameAction[] } | null;
   eggs: Record<OnlineColor, number>;
@@ -94,6 +101,7 @@ export interface OnlineMatch {
   context_city_id?: string;
 }
 export type MatchCommand =
+  | { kind: "board-music"; patch: Partial<BoardMusicSettings> }
   | {
       kind: "move";
       from: Square;
