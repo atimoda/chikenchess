@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 04/10/2026 — v1.0.0 (1v1 casual online). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 05/10/2026 — v1.0.1 (1v1 casual online). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam no fim e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 
@@ -24,6 +24,12 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. Consulte as seções 
 ## 1v1 casual online — 04/10, v1.0.0
 
 O código da primeira versão online está implementado. O projeto ChickenChess no Supabase já recebeu as migrações e as três Functions; acesso de visitante e fluxos de partida foram validados com sessões reais. Google está habilitado e o usuário confirmou login/vínculo local preservando perfil e saldo. O usuário confirmou SMTP salvo/ativado e o frontend já está publicado na Vercel. O usuário já confirmou a abertura do Google em produção após configurar o frontend. O teste expôs o retorno Auth ainda em localhost e Google já vinculado a outra conta; Site URL/Redirect URLs precisam ser salvas no painel e o tratamento de conta existente publicado. CORS das três Functions já permite localhost e os domínios de produção, validado por preflight; entrega real por email, login em conta existente e callbacks Auth de produção permanecem checks separados. `docs/ONLINE_SETUP.md` registra o estado da ativação. As seções abaixo continuam descrevendo campanha/Criativo; diferenças do online têm prioridade nesta seção. Chat, Ranked, Clássico, plataforma 2D e gesto remoto permanecem futuros.
+
+**Avisos e mobile — 05/10, v1.0.1.** Ao detectar um novo participante na mesma sala que o usuário criou, aparece “NOME entrou na sua sala.” por seis segundos, com botão para fechar; som e realce existentes acompanham a chegada. A leitura inicial/recuperação e refetch não anunciam participantes antigos. Uma saída seguida de nova entrada gera outro aviso. O aceite de um pedido previamente enviado pelo usuário gera “NOME aceitou seu pedido de amizade.”; pedidos recebidos, recusas e amizades já aceitas na primeira leitura não anunciam. A escuta de amizades fica no provider, inclusive com o popup fechado ou durante uma partida. Reconexão/retorno à aba comparam o estado observado; troca de conta limpa avisos, timers e baseline. Não há promessa de notificações offline do sistema: são avisos dentro da página aberta, até três visíveis, independentes da engine musical.
+
+Abaixo de 640 px, Salas/Amigos/Perfil usam o viewport do modal para rolagem vertical quando o conteúdo excede a tela, com safe areas; cartão e listas não criam rolagem interna. Nomes/códigos longos quebram linha, controles se reorganizam e o fechamento/foco/Escape continuam com Radix. Desktop conserva o popup central e limites de altura.
+
+`ALREADY_IN_ROOM` significa que a identidade já ocupa outra sala, inclusive uma sala encerrada ainda não abandonada. A tentativa não admite essa pessoa na prévia do convite; só participantes confirmados são mostrados. O aviso fica acima de Entrar na sala e inclui o código da sala ocupada e **Voltar à minha sala**. O usuário precisa sair explicitamente da sala antiga antes de tentar o convite de novo; fechar popup não libera vaga e a correção não muda isso. Repetir entrada na mesma sala aberta conserva membros, kit, cor e prontidão. Tentativas recusadas atualizam a prévia quando possível, para mostrar a ocupação confirmada. O convite refaz a leitura ao confirmar/trocar a identidade; uma resposta anterior não pode apagar ou sobrescrever a sala atual. Respostas de ação/recuperação de outra identidade ou geração de sala são descartadas. A admissão de duas pessoas, concorrência e início continuam validados pelo backend.
 
 **Globo, salas e amigos.** O botão destacado **1v1 casual online** abre o diretório público, Create e entrada por ID. Public é padrão; Private não entra no diretório. Create ocupa uma vaga e mostra código, link, participantes e seletor do próprio kit. Link `/?room=CODE` mostra a sala e Entrar na sala, sem ocupar vaga automaticamente. Duas vagas são garantidas na transação; cores são sorteadas na criação/admissão. Trocar kit retira a própria prontidão; chegada/saída limpa confirmações. Começar depende de duas pessoas e a segunda confirmação cria uma única partida. Entrada real avisa por som e realce, deduplicada por IDs; refetch não repete. Fechar o popup preserva a vaga; Sair da sala libera-a, e a última saída fecha a sala. Amigos permitem pedido por código, aceite pelo destinatário, recusa, cancelamento e remoção; pedido inverso não aceita automaticamente. O popup adversário oferece Adicionar amigo.
 
@@ -57,7 +63,7 @@ A avaliação com poderes usa o Worker JavaScript `/engine/powered-analysis.js`,
 
 ## Páginas públicas e privacidade — 04/10
 
-`/privacy-policy` e `/terms-of-service` são páginas estáticas públicas em inglês, sem depender de sessão, Supabase ou configuração de login. Contato: `hello@chickenchess.com`. O layout tem índice com âncoras, data, links entre documentos e retorno à página inicial; permite zoom no navegador em mobile. O fallback inicial da home também apresenta a identidade do jogo e links legais no HTML exportado.
+`/privacy-policy` e `/terms-of-service` são páginas estáticas públicas em inglês, sem depender de sessão, Supabase ou configuração de login. Contato: `hello@chickenchess.com`. O layout tem índice com âncoras, data, links entre documentos e retorno à página inicial; permite zoom no navegador em mobile. A espera inicial da home mostra apenas fundo preto até o globo ficar pronto; os links legais ficam nos popups About/login.
 
 No globo, Privacy Policy e Terms of Service ficam dentro do popup **About**, abaixo da doação; não aparecem nos controles do canto inferior. About permite scroll quando excede 90% da altura disponível. Os links também permanecem em todas as etapas do popup de login e abrem outra aba. O clique preserva o popup, email/código e sessão em andamento; fechar a aba retorna à mesma tela. Esses links não criam sessão, não transferem perfil e não registram aceite separado. O X ou clique fora fecha About sem navegar. Cancel e fechamento do login conservam suas regras existentes. As páginas descrevem comportamento atual, com chat explicitamente futuro; valem para campanha, Criativo e online sem alterar áudio ou poderes.
 
@@ -424,6 +430,9 @@ No desktop, os loops usam quatro buses de efeitos do Superdough: dois para Branc
 Notas explícitas são agrupadas por início/duração e controles compatíveis; sobreposições permanecem separadas. Playback consome segmentos diretamente e exportação usa mini-notation ponderada. Seções, andamento, instrumentos, envelopes e regras não mudam; saves conservam o schema atual. Decisões, medições e limitações em `docs/CPU_OPTIMIZATION.md`.
 
 ## Mapa e entrada na fase
+
+Ao abrir a raiz do site, a espera de hidratação mostra somente o fundo preto, sem nome, descrição, “Loading the game…” ou links legais centrais. Quando o cliente fica pronto, entra na apresentação existente do globo; não há nova ação, duração mínima ou clique de introdução. Os permalinks legais continuam acessíveis diretamente e pelos popups About/login. Esse carregamento não altera o processamento dos parâmetros de convite, partida, cidade ou callback Auth.
+
 
 No cabeçalho de todas as cidades da partida, o botão **Voltar ao mapa** fica no grupo à direita, depois do botão Maximizar, no extremo direito. Seu ícone tem somente a circunferência externa e cinco pontos coloridos, em referência ao mapa de navegação. Clique ou ativação pelo teclado retorna ao mapa pelo mesmo fluxo de saída, encerrando a sessão da partida e seus gestos/áudio; não cria confirmação nem salva a partida. O botão permanece disponível na introdução e não aparece no Criativo.
 
