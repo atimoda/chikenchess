@@ -1,6 +1,6 @@
 {
   "name": "chikenchess",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "prebuild": "npm run build:powered-analysis",
@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "build:online": "node scripts/build-online.mjs",
     "build:powered-analysis": "node scripts/build-powered-analysis.mjs",
-    "test:online": "node --test tests/online.cases.cjs tests/online-profile.cases.cjs tests/online-params.cases.cjs tests/online-auth.cases.cjs"
+    "test:online": "node --test tests/online.cases.cjs tests/online-profile.cases.cjs tests/online-params.cases.cjs tests/online-auth.cases.cjs tests/online-lobby.cases.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

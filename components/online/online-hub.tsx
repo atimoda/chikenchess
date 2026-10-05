@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { useOnline } from './online-provider'
 import { disposeLobbyAudio, playLobbyJoinSound, prepareLobbyAudio } from './lobby-audio'
 import styles from './online-hub.module.css'
+import { isAlreadyInRoom, roomArrivalNames, roomErrorMessage } from '@/lib/online/lobby-updates'
 
 /* global URL, Blob */
 export type OnlineHubTab = 'rooms' | 'friends' | 'profile'
@@ -213,16 +214,16 @@ function FriendsPane() {
     { title: 'Pedidos enviados', entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id === user?.id) },
   ]
   return <div className="space-y-5">
-    <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); void action('request') }}><label className="sr-only" htmlFor="friend-code">Código público do perfil</label><input id="friend-code" className={`${inputClass} flex-1 font-mono uppercase`} value={targetCode} onChange={(event) => setTargetCode(event.target.value.toUpperCase())} placeholder="Código de perfil" maxLength={20} required /><Button type="submit" disabled={Boolean(busy) || !targetCode.trim()}><UserPlus />Adicionar</Button></form>
+    <form className="flex flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); void action('request') }}><label className="sr-only" htmlFor="friend-code">Código público do perfil</label><input id="friend-code" className={`${inputClass} flex-1 font-mono uppercase`} value={targetCode} onChange={(event) => setTargetCode(event.target.value.toUpperCase())} placeholder="Código de perfil" maxLength={20} required /><Button type="submit" disabled={Boolean(busy) || !targetCode.trim()}><UserPlus />Adicionar</Button></form>
     <div className="flex items-center justify-between text-xs text-white/45"><span>{connected ? 'Lista ao vivo' : loading ? 'Carregando…' : 'Reconectando atualizações…'}</span><button type="button" aria-label="Atualizar amigos" onClick={() => void refresh().catch((cause) => setActionError(onlineErrorMessage(cause)))}><RefreshCw className="size-3.5" /></button></div>
-    {groups.map((group) => <section key={group.title} className="space-y-2"><h3 className="text-sm font-medium text-white/80">{group.title} <span className="text-white/40">{group.entries.length}</span></h3>{group.entries.length ? group.entries.map((friend) => <div key={friend.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="text-sm">{friend.profile.display_name}</p><p className="font-mono text-[11px] text-white/45">{friend.profile.code}</p></div><div className="flex gap-2">{friend.status === 'accepted' ? <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('remove', friend)}>Remover</Button> : friend.sender_id === user?.id ? <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('cancel', friend)}>Cancelar</Button> : <><Button size="sm" disabled={Boolean(busy)} onClick={() => void action('accept', friend)}>Aceitar</Button><Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('reject', friend)}>Recusar</Button></>}</div></div>) : <p className="text-xs text-white/40">{loading ? 'Carregando…' : 'Nenhum perfil aqui ainda.'}</p>}</section>)}
+    {groups.map((group) => <section key={group.title} className="space-y-2"><h3 className="text-sm font-medium text-white/80">{group.title} <span className="text-white/40">{group.entries.length}</span></h3>{group.entries.length ? group.entries.map((friend) => <div key={friend.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{friend.profile.display_name}</p><p className="font-mono text-[11px] text-white/45">{friend.profile.code}</p></div><div className="flex flex-wrap gap-2">{friend.status === 'accepted' ? <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('remove', friend)}>Remover</Button> : friend.sender_id === user?.id ? <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('cancel', friend)}>Cancelar</Button> : <><Button size="sm" disabled={Boolean(busy)} onClick={() => void action('accept', friend)}>Aceitar</Button><Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('reject', friend)}>Recusar</Button></>}</div></div>) : <p className="text-xs text-white/40">{loading ? 'Carregando…' : 'Nenhum perfil aqui ainda.'}</p>}</section>)}
     {(error || actionError) && <p role="alert" className="text-sm text-rose-200">{actionError || error}</p>}
     {notice && <p role="status" className="text-xs text-primary">{notice}</p>}
   </div>
 }
 
 export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab, showLaunchers = true }: OnlineHubProps) {
-  const { configured, user, profile, ensureGuest, refreshProfile, openLogin } = useOnline()
+  const { configured, user, profile, ensureGuest, refreshProfile, openLogin, notify } = useOnline()
   const [internalOpen, setInternalOpen] = useState(Boolean(inviteCode))
   const isOpen = open ?? internalOpen
   const [tab, setTab] = useState<OnlineHubTab>(initialTab || 'rooms')
@@ -237,7 +238,7 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
   const [connected, setConnected] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [flash, setFlash] = useState(false)
-  const seenMembers = useRef<{ roomId: string; ids: Set<string> } | null>(null)
+  const [blockingRoom, setBlockingRoom] = useState<OnlineRoom | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const matched = useRef<string | null>(null)
   const roomRef = useRef<OnlineRoom | null>(null)
@@ -249,24 +250,17 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
   useEffect(() => { if (initialTab && isOpen) setTab(initialTab) }, [initialTab, isOpen])
 
   const applyRoom = useCallback((next: OnlineRoom | null) => {
-    if (!next) {
-      seenMembers.current = null
-    } else if (seenMembers.current?.roomId !== next.id) {
-      seenMembers.current = { roomId: next.id, ids: new Set(next.members.map((member) => member.user_id)) }
-    } else {
-      const newcomers = next.members.filter((member) => !seenMembers.current!.ids.has(member.user_id))
-      for (const member of newcomers) seenMembers.current.ids.add(member.user_id)
-      if (newcomers.some((member) => member.user_id !== identityRef.current)) {
-        playLobbyJoinSound()
-        setFlash(true)
-        setNotice('Um participante entrou na sala.')
-        if (flashTimer.current) clearTimeout(flashTimer.current)
-        flashTimer.current = setTimeout(() => setFlash(false), 1400)
-      }
+    const arrivals = roomArrivalNames(roomRef.current, next, identityRef.current)
+    if (arrivals.length) {
+      playLobbyJoinSound()
+      setFlash(true)
+      for (const name of arrivals) notify(`${name} entrou na sua sala.`)
+      if (flashTimer.current) clearTimeout(flashTimer.current)
+      flashTimer.current = setTimeout(() => setFlash(false), 1400)
     }
     roomRef.current = next
     setRoom(next)
-  }, [])
+  }, [notify])
 
   useEffect(() => {
     if (identityRef.current !== user?.id) {
@@ -274,6 +268,8 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
       applyRoom(null)
       setRooms([])
       setError(null)
+      setBlockingRoom(null)
+      setBusy(null)
       matched.current = null
     }
     identityRef.current = user?.id || null
@@ -370,26 +366,61 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
     setCode(inviteCode.trim().toUpperCase())
     if (!configured) return
     let active = true
+    const generation = roomGeneration.current
     setBusy('invite')
     setError(null)
-    void ensureGuest().then(() => onlineRpc<OnlineRoom>('online_room', { p_action: 'get', p_code: inviteCode.trim().toUpperCase() })).then((next) => { if (active) { roomGeneration.current += 1; applyRoom(next) } }).catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }).finally(() => { if (active) setBusy(null) })
+    void (async () => {
+      const current = await ensureGuest()
+      const next = await onlineRpc<OnlineRoom>('online_room', { p_action: 'get', p_code: inviteCode.trim().toUpperCase() })
+      if (active && identityRef.current === current.id && generation === roomGeneration.current) {
+        roomGeneration.current += 1
+        applyRoom(next)
+      }
+    })().catch((cause) => { if (active) setError(roomErrorMessage(cause) || onlineErrorMessage(cause)) }).finally(() => { if (active) setBusy(null) })
     return () => { active = false }
-  }, [inviteCode, configured, ensureGuest, applyRoom, setOpen])
+  }, [inviteCode, configured, user?.id, ensureGuest, applyRoom, setOpen])
 
   const roomAction = async (action: 'create' | 'join' | 'leave' | 'kit' | 'ready', roomCode = room?.code, cityId = DEFAULT_CITY_ID) => {
     if (action === 'create' || action === 'join') prepareLobbyAudio()
     setBusy(action)
     setError(null)
+    setBlockingRoom(null)
     setNotice(null)
+    let actor = identityRef.current
+    let generation = roomGeneration.current
     try {
-      await ensureGuest()
+      const current = await ensureGuest()
+      actor = current.id
       await refreshProfile()
+      if (identityRef.current !== actor) return
+      generation = roomGeneration.current
       const next = await onlineRpc<OnlineRoom | null>('online_room', { p_action: action, p_code: roomCode?.trim().toUpperCase() || null, p_public: isPublic, p_city_id: cityId })
+      if (identityRef.current !== actor || generation !== roomGeneration.current) return
       roomGeneration.current += 1
       applyRoom(action === 'leave' ? null : next)
       setCreateOpen(false)
-    } catch (cause) { setError(onlineErrorMessage(cause)) } finally { setBusy(null) }
+    } catch (cause) {
+      if (identityRef.current !== actor || generation !== roomGeneration.current) return
+      setError(roomErrorMessage(cause) || onlineErrorMessage(cause))
+      if (isAlreadyInRoom(cause)) {
+        try {
+          const current = await onlineRpc<OnlineRoom | null>('online_room', { p_action: 'get', p_code: null })
+          if (identityRef.current !== actor || generation !== roomGeneration.current) return
+          if (current && current.code === roomCode?.trim().toUpperCase()) {
+            applyRoom(current)
+            setError(null)
+          } else if (current) {
+            setBlockingRoom(current)
+            setError(`Você já está na sala ${current.code}. Volte à sua sala atual e saia dela antes de entrar nesta.`)
+          }
+        } catch { /* Keep the visible action error and allow a manual retry. */ }
+      } else if (action === 'join' && roomRef.current) {
+        await refreshRoom().catch(() => {})
+      }
+    } finally { if (identityRef.current === actor) setBusy(null) }
   }
+
+  const actionError = error && <div className="space-y-2"><p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>{blockingRoom && <Button variant="outline" className="w-full border-white/20 bg-transparent" disabled={Boolean(busy)} onClick={() => { roomGeneration.current += 1; applyRoom(blockingRoom); setBlockingRoom(null); setError(null); setCreateOpen(false) }}>Voltar à minha sala · {blockingRoom.code}</Button>}</div>
 
   const ownMember = room?.members.find((member) => member.user_id === user?.id)
   const inviteLink = room && typeof window !== 'undefined' ? `${window.location.origin}/?room=${encodeURIComponent(room.code)}` : ''
@@ -401,25 +432,26 @@ export function OnlineHub({ onMatch, inviteCode, open, onOpenChange, initialTab,
   return <>
     {showLaunchers && <div className="flex flex-wrap gap-2"><Button variant="outline" className="border-primary/60 bg-[#101713]/90 text-primary transition-all hover:border-primary dark:hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]" onClick={() => launch('rooms')}><Globe2 />1v1 casual online</Button><Button variant="outline" className="border-white/25 bg-[#101713]/90 text-white/80 transition-all hover:border-primary dark:hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]" onClick={() => launch('friends')}><Users />Amigos</Button></div>}
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogContent className={cn('max-h-[90dvh] max-w-xl overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]', flash && styles.joinFlash)} closeLabel="Fechar área online">
+      <DialogContent mobileViewportScroll className={cn('sm:max-h-[90dvh] max-w-xl sm:overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent, flash && styles.joinFlash)} closeLabel="Fechar área online">
         <DialogHeader><DialogTitle className="text-xl">{tab === 'rooms' ? '1v1 casual online' : tab === 'friends' ? 'Amigos' : 'Seu perfil'}</DialogTitle><DialogDescription className="text-sm text-white/55">{tab === 'rooms' ? 'ChickenChess para duas pessoas, com poderes e os kits de cada equipe.' : tab === 'friends' ? 'Adicione pelo código de perfil e aceite os pedidos recebidos.' : 'Seu nome, progresso e conta online.'}</DialogDescription></DialogHeader>
-        <nav aria-label="Área online" className="flex gap-2 border-b border-white/10 pb-3">{([{ id: 'rooms', label: 'Salas', icon: DoorOpen }, { id: 'friends', label: 'Amigos', icon: Users }, { id: 'profile', label: 'Perfil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" size="sm" aria-pressed={tab === id} className={tab === id ? 'bg-primary/15 text-primary' : 'text-white/60'} onClick={() => setTab(id)}><Icon />{label}</Button>)}</nav>
+        <nav aria-label="Área online" className="grid grid-cols-3 gap-1 sm:flex sm:gap-2 border-b border-white/10 pb-3">{([{ id: 'rooms', label: 'Salas', icon: DoorOpen }, { id: 'friends', label: 'Amigos', icon: Users }, { id: 'profile', label: 'Perfil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" size="sm" aria-pressed={tab === id} className={cn('min-w-0 px-2 sm:px-3', tab === id ? 'bg-primary/15 text-primary' : 'text-white/60')} onClick={() => setTab(id)}><Icon />{label}</Button>)}</nav>
         {!configured ? <p className="rounded-md border border-white/15 p-4 text-sm leading-relaxed text-white/65">{ONLINE_CONFIGURATION_MESSAGE}</p>
           : tab === 'profile' ? <ProfilePane /> : tab === 'friends' ? <FriendsPane /> : room ? <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs text-white/50">{room.is_public ? 'Sala pública' : 'Sala privada'}</p><p className="font-mono text-xl tracking-widest text-primary">{room.code}</p></div><Button size="sm" variant="outline" className="border-white/20 bg-transparent" onClick={() => void copyInvite()}><Copy />Copiar convite</Button></div>
             <input readOnly aria-label="Link de convite" className={`${inputClass} w-full text-xs text-white/50`} value={inviteLink} onFocus={(event) => event.currentTarget.select()} />
-            <div className="space-y-3">{room.members.map((member) => <div key={member.user_id} className="space-y-3 rounded-md border border-white/15 bg-black/20 p-3"><div className="flex items-center justify-between gap-2"><div><p className="text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (você)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'Brancas' : 'Pretas'} · {member.profile.code}</p></div><span className={cn('text-xs', member.ready ? 'text-primary' : 'text-white/40')}>{member.ready ? 'Pronto' : 'Escolhendo kit'}</span></div>{member.user_id === user?.id && room.status === 'open' && <label className="block space-y-1 text-xs text-white/60"><span>Kit da sua equipe</span><select aria-label="Kit da sua equipe" className={`${inputClass} w-full`} value={member.city_id} disabled={Boolean(busy)} onChange={(event) => void roomAction('kit', room.code, event.target.value)}>{cities.map((city) => <option className="bg-[#101713]" key={city.id} value={city.id}>{city.year} {city.name} · {city.genre}</option>)}</select></label>}<KitPreview member={member} />{member.user_id !== user?.id && ownMember && <AddFriendButton targetCode={member.profile.code} />}</div>)}{room.members.length < 2 && <div className="rounded-md border border-dashed border-white/15 p-4 text-center text-sm text-white/40">Aguardando outro participante · {room.members.length}/2</div>}</div>
+            <div className="space-y-3">{room.members.map((member) => <div key={member.user_id} className="space-y-3 rounded-md border border-white/15 bg-black/20 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (você)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'Brancas' : 'Pretas'} · {member.profile.code}</p></div><span className={cn('text-xs', member.ready ? 'text-primary' : 'text-white/40')}>{member.ready ? 'Pronto' : 'Escolhendo kit'}</span></div>{member.user_id === user?.id && room.status === 'open' && <label className="block space-y-1 text-xs text-white/60"><span>Kit da sua equipe</span><select aria-label="Kit da sua equipe" className={`${inputClass} w-full`} value={member.city_id} disabled={Boolean(busy)} onChange={(event) => void roomAction('kit', room.code, event.target.value)}>{cities.map((city) => <option className="bg-[#101713]" key={city.id} value={city.id}>{city.year} {city.name} · {city.genre}</option>)}</select></label>}<KitPreview member={member} />{member.user_id !== user?.id && ownMember && <AddFriendButton targetCode={member.profile.code} />}</div>)}{room.members.length < 2 && <div className="rounded-md border border-dashed border-white/15 p-4 text-center text-sm text-white/40">Aguardando outro participante · {room.members.length}/2</div>}</div>
+            {actionError}
             {room.status !== 'open' ? <p className="text-sm text-white/60">{room.status === 'playing' ? 'Esta sala já está em uma partida.' : 'Esta sala foi encerrada.'}</p> : ownMember ? <><Button className="h-11 w-full" disabled={Boolean(busy) || room.members.length !== 2 || ownMember.ready} onClick={() => void roomAction('ready')}>{busy === 'ready' ? <Loader2 className="animate-spin" /> : <Check />}{ownMember.ready ? 'Aguardando o outro participante…' : 'Começar'}</Button><p className="text-center text-xs text-white/45">Os dois participantes precisam clicar em Começar. Trocar o kit limpa sua confirmação.</p></> : <Button className="h-11 w-full" disabled={Boolean(busy) || room.members.length >= 2} onClick={() => void roomAction('join', room.code)}><DoorOpen />Entrar na sala</Button>}
             <div className="flex items-center justify-between gap-3"><Button size="sm" variant="ghost" className="text-white/55" disabled={Boolean(busy)} onClick={() => { if (ownMember) void roomAction('leave'); else { roomGeneration.current += 1; applyRoom(null) } }}><ArrowLeft />{ownMember ? 'Sair da sala' : 'Voltar às salas'}</Button><button type="button" className="text-white/45" aria-label="Atualizar sala" onClick={() => void refreshRoom().catch((cause) => setError(onlineErrorMessage(cause)))}><RefreshCw className="size-4" /></button></div>
           </div> : createOpen ? <div className="space-y-5"><p className="text-sm text-white/65">Escolha quem pode encontrar sua sala.</p><div className="grid grid-cols-2 gap-3"><button type="button" className={cn('rounded-md border p-4 text-sm', isPublic ? 'border-primary bg-primary/10 text-primary' : 'border-white/20 text-white/55')} aria-pressed={isPublic} onClick={() => setIsPublic(true)}>Public<p className="mt-1 text-xs text-white/50">Aparece na lista de salas.</p></button><button type="button" className={cn('rounded-md border p-4 text-sm', !isPublic ? 'border-primary bg-primary/10 text-primary' : 'border-white/20 text-white/55')} aria-pressed={!isPublic} onClick={() => setIsPublic(false)}>Private<p className="mt-1 text-xs text-white/50">Entrada por ID ou convite.</p></button></div><Button className="w-full" disabled={Boolean(busy)} onClick={() => void roomAction('create')}>{busy ? <Loader2 className="animate-spin" /> : <Plus />}Create</Button><Button size="sm" variant="ghost" className="text-white/50" disabled={Boolean(busy)} onClick={() => setCreateOpen(false)}><ArrowLeft />Voltar às salas</Button></div> : <div className="space-y-4">
             <Button className="h-11 w-full" disabled={Boolean(busy)} onClick={() => { setIsPublic(true); setCreateOpen(true); setError(null) }}><Plus />Criar sala</Button>
             <div className="flex items-center justify-between text-xs text-white/45"><span>{connected ? 'Salas públicas ao vivo' : loading ? 'Carregando salas…' : 'Reconectando atualizações…'}</span><button type="button" aria-label="Atualizar salas" onClick={() => void refreshRooms().catch((cause) => setError(onlineErrorMessage(cause)))}><RefreshCw className="size-3.5" /></button></div>
-            <div className="max-h-64 space-y-2 overflow-y-auto">{loading && !rooms.length ? <p role="status" className="py-6 text-center text-sm text-white/45">Carregando salas…</p> : rooms.length ? rooms.map((entry) => <div key={entry.code} className="flex items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="text-sm">{entry.creator_name}</p><p className="text-xs text-white/45">1v1 casual · {entry.players}/2 · <span className="font-mono">{entry.code}</span></p></div><Button size="sm" disabled={Boolean(busy) || entry.players >= 2} onClick={() => void roomAction('join', entry.code)}>Join</Button></div>) : <p className="rounded-md border border-dashed border-white/15 py-6 text-center text-sm text-white/45">Nenhuma sala pública aberta. Crie a primeira.</p>}</div>
-            <form className="space-y-2 border-t border-white/10 pt-4" onSubmit={(event) => { event.preventDefault(); void roomAction('join', code) }}><label htmlFor="online-room-code" className="text-xs text-white/55">Já tem um ID de sala?</label><div className="flex flex-wrap gap-2"><input id="online-room-code" className={`${inputClass} flex-1 font-mono uppercase`} value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ID da sala" maxLength={20} required /><Button type="submit" variant="outline" className="border-white/20 bg-transparent" disabled={Boolean(busy) || !code.trim()}>Join room by ID</Button></div></form>
+            <div className="space-y-2 sm:max-h-64 sm:overflow-y-auto">{loading && !rooms.length ? <p role="status" className="py-6 text-center text-sm text-white/45">Carregando salas…</p> : rooms.length ? rooms.map((entry) => <div key={entry.code} className="flex items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{entry.creator_name}</p><p className="text-xs text-white/45">1v1 casual · {entry.players}/2 · <span className="font-mono">{entry.code}</span></p></div><Button size="sm" disabled={Boolean(busy) || entry.players >= 2} onClick={() => void roomAction('join', entry.code)}>Join</Button></div>) : <p className="rounded-md border border-dashed border-white/15 py-6 text-center text-sm text-white/45">Nenhuma sala pública aberta. Crie a primeira.</p>}</div>
+            {actionError}<form className="space-y-2 border-t border-white/10 pt-4" onSubmit={(event) => { event.preventDefault(); void roomAction('join', code) }}><label htmlFor="online-room-code" className="text-xs text-white/55">Já tem um ID de sala?</label><div className="flex flex-wrap gap-2"><input id="online-room-code" className={`${inputClass} flex-1 font-mono uppercase`} value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ID da sala" maxLength={20} required /><Button type="submit" variant="outline" className="border-white/20 bg-transparent" disabled={Boolean(busy) || !code.trim()}>Join room by ID</Button></div></form>
           </div>}
         {configured && tab === 'rooms' && (!user || user.is_anonymous) && <button type="button" className="text-center text-xs text-primary underline underline-offset-4" onClick={openLogin}>Sign in to save your profile</button>}
         {configured && tab === 'rooms' && profile && <p className="text-center text-[11px] text-white/35">{profile.display_name} · {profile.code}</p>}
-        {error && <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
+        {tab === 'rooms' && (room || !createOpen) ? null : actionError}
         {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
         {busy === 'invite' && <p role="status" className="text-sm text-white/55">Abrindo convite…</p>}
       </DialogContent>

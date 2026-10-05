@@ -1,0 +1,36 @@
+@media (max-width: 639px) {
+  .mobileViewport {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    scroll-padding-block: 1rem;
+  }
+
+  .mobileViewport .mobileContent {
+    position: relative;
+    top: auto;
+    left: auto;
+    flex-shrink: 0;
+    width: 100%;
+    min-width: 0;
+    max-height: none;
+    margin: auto;
+    overflow: visible;
+    padding: 1.25rem;
+    overflow-wrap: anywhere;
+    transform: none;
+    translate: none;
+  }
+
+  .mobileContent > * {
+    min-width: 0;
+  }
+}

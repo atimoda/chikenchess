@@ -1,7 +1,19 @@
-export const RELEASE_LABEL = 'v1.0.0'
+export const RELEASE_LABEL = 'v1.0.1'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    version: '1.0.1',
+    date: '05/10/2026',
+    title: 'Salas, avisos e interface mobile',
+    groups: [
+      { title: 'Online', items: [
+        'Quando alguém entra na sua sala, um aviso temporário mostra o nome da pessoa, acompanhado do som e realce da sala. O aceite de um pedido de amizade também aparece como aviso na tela.',
+        'Salas, Amigos e Perfil se adaptam ao celular, com rolagem da tela do modal e sem barras internas no cartão ou nas listas.',
+        'Ao tentar entrar em outra sala com uma vaga já ocupada, o aviso explica o conflito e permite voltar à sala atual. Erros de entrada aparecem acima do botão, e a sala é atualizada após tentativas recusadas. Convites deixam de perder seus dados quando a sessão termina de carregar.',
+      ] },
+    ],
+  },
   {
     version: '1.0.0',
     date: '04/10/2026',
@@ -14,6 +26,7 @@ export const CHANGELOG = [
         'O perfil tem nome e código público; amizades começam com um pedido e exigem aceite. Há listas de amigos e pedidos enviados/recebidos.',
         'Novos perfis recebem um nome de batismo permanente, sorteado entre 304 títulos, adjetivos e termos divertidos de galinhas, xadrez, música e outras invenções. O nome público continua editável e pode ser importado do Google; perfis existentes mantêm seus nomes.',
         'Privacy Policy e Terms of Service têm páginas públicas em inglês, com links no About e no login que preservam a tela atual ao abrir outra aba.',
+        'A abertura do site deixa de exibir a apresentação textual antes do globo; a espera inicial fica sem conteúdo redundante.',
       ] },
       { title: 'Salas e partida online', items: [
         '1v1 casual online abre a lista de salas públicas, entrada por ID e criação de sala pública ou privada, com link de convite.',

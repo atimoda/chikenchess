@@ -7,7 +7,6 @@ import { DusseldorfGame } from "@/components/modes/dusseldorf-game"
 import { type CityData, getCityById } from "@/lib/cities-data"
 import { OnlineProvider } from '@/components/online/online-provider'
 import { OnlineGame } from '@/components/online/online-game'
-import { LegalLinks } from '@/components/legal-links'
 
 function GameContent() {
   const searchParams = useSearchParams()
@@ -54,12 +53,7 @@ function GameContent() {
 
 export default function Home() {
   return (
-    <Suspense fallback={<main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
-      <h1 className="text-3xl font-semibold">ChickenChess</h1>
-      <p className="max-w-md text-sm leading-relaxed text-white/60">Play chess. Compose music. Explore musical cities, create your own kits, and play casual online matches.</p>
-      <p role="status" className="text-xs text-white/45">Loading the game…</p>
-      <LegalLinks newTab className="text-white/55" />
-    </main>}>
+    <Suspense fallback={<div aria-hidden="true" className="min-h-dvh bg-black" />}>
       <OnlineProvider><GameContent /></OnlineProvider>
     </Suspense>
   )

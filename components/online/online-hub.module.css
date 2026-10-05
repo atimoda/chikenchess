@@ -14,3 +14,21 @@
     box-shadow: 0 0 0 2px rgb(113 196 134 / 30%);
   }
 }
+.responsiveContent {
+  overflow-wrap: anywhere;
+}
+
+.responsiveContent input,
+.responsiveContent select,
+.responsiveContent form,
+.responsiveContent form > *,
+.responsiveContent details {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  .responsiveContent form > input {
+    flex-basis: 100%;
+  }
+}
