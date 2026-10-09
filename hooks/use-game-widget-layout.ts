@@ -84,7 +84,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
     const widgets = latest.current.widgets
     if (rootRef.current) rootRef.current.scrollTop = 0
     let frame = 0
-    let lastViewportSize: { width: number; height: number } | null = null
+    let lastLayoutSize: { width: number; height: number } | null = null
     const layout = () => {
       const { innerWidth, innerHeight } = window
       const scaledBoardWidth = Math.min(Math.max(0, innerHeight - 270), 512) * boardScaleRef.current
@@ -150,10 +150,11 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
       widgetLayoutRef.current = next
     }
     const scheduleLayout = () => {
-      // Placement runs at mount and only when the viewport dimensions change.
-      const viewportSize = { width: window.innerWidth, height: window.innerHeight }
-      if (lastViewportSize?.width === viewportSize.width && lastViewportSize.height === viewportSize.height) return
-      lastViewportSize = viewportSize
+      // Only a viewport resize recalculates widget anchors; board resize leaves
+      // floating panels where the user placed them, even when they overlap it.
+      const layoutSize = { width: window.innerWidth, height: window.innerHeight }
+      if (lastLayoutSize?.width === layoutSize.width && lastLayoutSize.height === layoutSize.height) return
+      lastLayoutSize = layoutSize
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(layout)
     }
@@ -181,9 +182,10 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
       if (liveCodeRef.current) observer.observe(liveCodeRef.current)
       if (knobsRef.current) observer.observe(knobsRef.current)
       if (pieceDebugRef.current) observer.observe(pieceDebugRef.current)
+      if (boardAreaRef.current) observer.observe(boardAreaRef.current)
       
       return () => observer.disconnect()
-  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, pieceDebugOn, introPhase, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef])
+  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, pieceDebugOn, introPhase, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, boardAreaRef])
 
 
   useEffect(() => {

@@ -1,49 +1,95 @@
-// City-specific authoring lives in the sibling profile files. Manchester 1999 has its own composer.
+// Canonical, normalized profiles include the existing timbre and arrangement curation.
 import type { StyleProfile } from './types'
-import { profile as dusseldorf } from './dusseldorf'
-import { profile as nyc } from './nyc'
-import { profile as chicago } from './chicago'
-import { profile as detroit } from './detroit'
-import { profile as ibiza } from './ibiza'
-import { profile as manchester } from './manchester'
-import { profile as berlin } from './berlin'
-import { profile as tokyo } from './tokyo'
-import { profile as london } from './london'
-import { profile as saopaulo } from './saopaulo'
-import { profile as paris } from './paris'
-import { profile as vienna } from './vienna'
-import { profile as johannesburg } from './johannesburg'
-import { profile as buenosAires1940 } from './buenos-aires-1940'
-import { profile as dublin1990 } from './dublin-1990'
-import { profile as newOrleans1953 } from './new-orleans-1953'
-import { RHYTHM_STAGE_PROFILES } from './rhythm-stages'
-import { profile as salvador1992 } from './salvador-1992'
-import { HARMONIC_STAGE_PROFILES } from './harmonic-stages'
-import { curateTimbres } from './timbre-curation'
-import { curateArrangement } from './arrangement-curation'
+import profile0 from '../../../data/music/profiles/dusseldorf.json'
+import profile1 from '../../../data/music/profiles/nyc.json'
+import profile2 from '../../../data/music/profiles/chicago.json'
+import profile3 from '../../../data/music/profiles/detroit.json'
+import profile4 from '../../../data/music/profiles/ibiza.json'
+import profile5 from '../../../data/music/profiles/manchester.json'
+import profile6 from '../../../data/music/profiles/berlin.json'
+import profile7 from '../../../data/music/profiles/tokyo.json'
+import profile8 from '../../../data/music/profiles/london.json'
+import profile9 from '../../../data/music/profiles/saopaulo.json'
+import profile10 from '../../../data/music/profiles/paris.json'
+import profile11 from '../../../data/music/profiles/vienna.json'
+import profile12 from '../../../data/music/profiles/johannesburg.json'
+import profile13 from '../../../data/music/profiles/buenos-aires-1940.json'
+import profile14 from '../../../data/music/profiles/dublin-1990.json'
+import profile15 from '../../../data/music/profiles/new-orleans-1953.json'
+import profile16 from '../../../data/music/profiles/san-diego-1999.json'
+import profile17 from '../../../data/music/profiles/london-1970.json'
+import profile18 from '../../../data/music/profiles/berkeley-2004.json'
+import profile19 from '../../../data/music/profiles/new-york-1961.json'
+import profile20 from '../../../data/music/profiles/san-francisco-1993.json'
+import profile21 from '../../../data/music/profiles/paris-1945.json'
+import profile22 from '../../../data/music/profiles/columbus-2013.json'
+import profile23 from '../../../data/music/profiles/new-york-1930.json'
+import profile24 from '../../../data/music/profiles/jacksonville-1974.json'
+import profile25 from '../../../data/music/profiles/chicago-1958.json'
+import profile26 from '../../../data/music/profiles/rio-1930.json'
+import profile27 from '../../../data/music/profiles/rio-1910.json'
+import profile28 from '../../../data/music/profiles/recife-1935.json'
+import profile29 from '../../../data/music/profiles/recife-1950.json'
+import profile30 from '../../../data/music/profiles/piracicaba-1940.json'
+import profile31 from '../../../data/music/profiles/rio-1960.json'
+import profile32 from '../../../data/music/profiles/new-york-1962.json'
+import profile33 from '../../../data/music/profiles/london-1977.json'
+import profile34 from '../../../data/music/profiles/memphis-1967.json'
+import profile35 from '../../../data/music/profiles/kingston-1973.json'
+import profile36 from '../../../data/music/profiles/leipzig-1723.json'
+import profile37 from '../../../data/music/profiles/vienna-1825.json'
+import profile38 from '../../../data/music/profiles/oakland-1959.json'
+import profile39 from '../../../data/music/profiles/canterbury-1972.json'
+import profile40 from '../../../data/music/profiles/cambridge-1973.json'
+import profile41 from '../../../data/music/profiles/istanbul-1970.json'
+import profile42 from '../../../data/music/profiles/kalamata-1930.json'
+import profile43 from '../../../data/music/profiles/santiago-del-estero-1960.json'
+import profile44 from '../../../data/music/profiles/salvador-1992.json'
 
-const authoredProfiles: Record<string, StyleProfile> = {
-  dusseldorf,
-  nyc,
-  chicago,
-  detroit,
-  ibiza,
-  manchester,
-  berlin,
-  tokyo,
-  london,
-  saopaulo,
-  paris,
-  vienna,
-  johannesburg,
-  'buenos-aires-1940': buenosAires1940,
-  'dublin-1990': dublin1990,
-  'new-orleans-1953': newOrleans1953,
-  ...HARMONIC_STAGE_PROFILES,
-  ...RHYTHM_STAGE_PROFILES,
-  'salvador-1992': salvador1992,
-}
-
-export const STYLE_PROFILES: Record<string, StyleProfile> = Object.fromEntries(
-  Object.entries(authoredProfiles).map(([id, profile]) => [id, curateArrangement(id, curateTimbres(id, profile))]),
-)
+export const STYLE_PROFILES = {
+  'dusseldorf': profile0,
+  'nyc': profile1,
+  'chicago': profile2,
+  'detroit': profile3,
+  'ibiza': profile4,
+  'manchester': profile5,
+  'berlin': profile6,
+  'tokyo': profile7,
+  'london': profile8,
+  'saopaulo': profile9,
+  'paris': profile10,
+  'vienna': profile11,
+  'johannesburg': profile12,
+  'buenos-aires-1940': profile13,
+  'dublin-1990': profile14,
+  'new-orleans-1953': profile15,
+  'san-diego-1999': profile16,
+  'london-1970': profile17,
+  'berkeley-2004': profile18,
+  'new-york-1961': profile19,
+  'san-francisco-1993': profile20,
+  'paris-1945': profile21,
+  'columbus-2013': profile22,
+  'new-york-1930': profile23,
+  'jacksonville-1974': profile24,
+  'chicago-1958': profile25,
+  'rio-1930': profile26,
+  'rio-1910': profile27,
+  'recife-1935': profile28,
+  'recife-1950': profile29,
+  'piracicaba-1940': profile30,
+  'rio-1960': profile31,
+  'new-york-1962': profile32,
+  'london-1977': profile33,
+  'memphis-1967': profile34,
+  'kingston-1973': profile35,
+  'leipzig-1723': profile36,
+  'vienna-1825': profile37,
+  'oakland-1959': profile38,
+  'canterbury-1972': profile39,
+  'cambridge-1973': profile40,
+  'istanbul-1970': profile41,
+  'kalamata-1930': profile42,
+  'santiago-del-estero-1960': profile43,
+  'salvador-1992': profile44,
+} as unknown as Record<string, StyleProfile>

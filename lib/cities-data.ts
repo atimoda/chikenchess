@@ -4,6 +4,8 @@ import { cityCoordinates } from "./city-coordinates"
 import { placePinsOnGrid } from './globe-pin-grid'
 import type { Meter } from './music/meter'
 import type { CampaignId } from './campaigns'
+import cityIntros from '../data/ui/city-intros.json'
+import cityDescriptions from '../data/ui/city-descriptions.json'
 
 export interface CityData {
   id: string
@@ -533,7 +535,11 @@ const rhythmCities: Omit<CityData, 'coordinates' | 'campaigns' | 'pinCoordinates
   introPhrases: ['A new pulse draws a circle.', 'Listen for the returning accent.', 'A melody leaves room for an answer.', 'Every piece joins the conversation.', 'Find your place in the rhythm.'],
 }))
 
-const citySources = [...rawCities, ...rhythmCities]
+const citySources = [...rawCities, ...rhythmCities].map(city => ({
+  ...city,
+  description: cityDescriptions[city.id as keyof typeof cityDescriptions] ?? city.description,
+  introPhrases: cityIntros[city.id as keyof typeof cityIntros] ?? city.introPhrases,
+}))
 const pinCoordinates = placePinsOnGrid(citySources)
 
 export const cities: CityData[] = citySources.map(city => ({

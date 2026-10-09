@@ -1,0 +1,21 @@
+.row { position: relative; z-index: 50; width: var(--game-board-width); padding: 20px 0 22px; pointer-events: none; }
+.hand { display: flex; width: 80%; margin: 0 auto; container-type: inline-size; justify-content: center; align-items: flex-start; }
+.card { position: relative; flex: 0 0 25%; aspect-ratio: 2 / 3; border: 1px solid var(--card-color); border-radius: 7px; background: #080b0d; color: #fff9e7; box-shadow: 0 0 5px var(--card-color), 2px 4px 9px #000a; overflow: hidden; cursor: pointer; pointer-events: auto; transform-origin: 50% 85%; transform: translateX(var(--spread)) translateY(calc(var(--lift) + var(--arc-y))) rotate(var(--angle)); transition: transform 180ms ease, box-shadow 180ms ease; padding: 0; touch-action: manipulation; }
+.card + .card { margin-left: -6.25%; }
+.card:last-child { margin-left: -7.5%; }
+.card[data-entry-animating="true"] { animation: card-enter 460ms cubic-bezier(.2,.8,.2,1) var(--entry-delay) both; }
+.card[data-mulligan-animating="true"] { animation: mulligan-spin var(--mulligan-ms, 360ms) ease-in-out both; }
+.card[data-match-power-action] { cursor: grab; touch-action: none; }
+.card[data-match-power-action]:active { cursor: grabbing; }
+.card:disabled { cursor: not-allowed; filter: saturate(.6); }
+.card:disabled::after { content: ""; position: absolute; inset: 0; background: #0004; pointer-events: none; }
+.card:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+.card[aria-pressed="true"] { box-shadow: 0 0 14px var(--card-color); }
+.title { position: absolute; top: 5%; left: 6%; width: 58%; font-size: clamp(9px, 2.8cqw, 15px); font-weight: 750; line-height: 1; text-align: left; z-index: 1; letter-spacing: -.04em; }
+.cost { position: absolute; top: 3%; right: 3%; display: flex; align-items: center; justify-content: center; gap: 2px; border: 1px solid var(--card-color); background: #090a0c; border-radius: 999px; padding: 1px 3px; font-size: clamp(10px, 3.4cqw, 19px); font-weight: 700; line-height: 1; z-index: 2; }
+.egg { display: inline-block; width: .48em; height: .7em; border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; background: radial-gradient(circle at 32% 25%, #fff8c4 0%, #facc15 43%, #b45309 100%); box-shadow: 0 0 3px #fbbf24; }
+.art { position: absolute; left: 3%; right: 3%; bottom: 3%; overflow: hidden; border-radius: 5px; }
+.art img { position: absolute; height: auto; max-width: none; user-select: none; pointer-events: none; }
+@keyframes card-enter { from { opacity: 0; transform: translateY(calc(38px + var(--arc-y))) rotate(calc(var(--angle) - 4deg)); } to { opacity: 1; transform: translateX(var(--spread)) translateY(calc(var(--lift) + var(--arc-y))) rotate(var(--angle)); } }
+@keyframes mulligan-spin { from { transform: translateX(var(--spread)) translateY(calc(var(--lift) + var(--arc-y))) rotate(var(--angle)); } to { transform: translateX(var(--spread)) translateY(calc(var(--lift) + var(--arc-y))) rotate(calc(var(--angle) - 360deg)); } }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; animation: none; } .card[data-mulligan-animating="true"], .card[data-visible="true"][data-entry-animating="true"] { animation: none; } }

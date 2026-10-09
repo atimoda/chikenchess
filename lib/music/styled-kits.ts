@@ -83,9 +83,9 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
   }
 }
 
-export function createStyledCityKit(city: CityData): CreativeSession {
+export function createStyledCityKit(city: CityData, profileOverride?: StyleProfile): CreativeSession {
   if (city.id === 'manchester-1999') return createManchesterJazzKit()
-  const profile = STYLE_PROFILES[city.id]
+  const profile = profileOverride ?? STYLE_PROFILES[city.id]
   if (!profile) throw new Error(`Perfil ausente: ${city.id}`)
   if (profile.parts.length !== WHITE_SLOTS.length) throw new Error(`Perfil incompleto: ${city.id} tem ${profile.parts.length}/16 vozes.`)
   const kit = createCreativeSession()

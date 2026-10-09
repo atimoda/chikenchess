@@ -229,5 +229,5 @@ export function usePowerTargetingGesture(options: Options) {
     if (gesture.current?.pointerId === event.pointerId) cancel()
   }
 
-  return { cursorRef, onButtonPointerDown, onButtonClick, onLostPointerCapture }
+  return { cursorRef, onButtonPointerDown, onButtonClick, onLostPointerCapture, cancel }
 }

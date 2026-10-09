@@ -1,5 +1,7 @@
 "use client"
 
+/* global PointerEvent */
+
 import type React from "react"
 
 import { useEffect, useRef, useState, useCallback } from "react"
@@ -8,16 +10,22 @@ import type { MusicPulseMonitor } from "@/lib/music/monitor"
 import { MusicPulseOverlay } from "./music-pulse-overlay"
 import { cn } from "@/lib/utils"
 import rewardStyles from "./chessground-board.module.css"
-import { shieldCaptureBlock, type ShieldCaptureBlock, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
+import { frozenCaptureBlock, shieldCaptureBlock, type ShieldCaptureBlock, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
+import { getAudioEngine } from "@/lib/audio-engine"
+import { MULLIGAN_ANIMATION_MS, POWER_RELEASE_MS, mulliganProgress, releasedPowers } from "@/lib/power-presentation"
 
 interface ChessgroundBoardProps {
   game: Chess
   undoAnimationKey?: number
+  onUndoAnimation?: () => void
+  onFrozenCaptureBlocked?: () => void
   onMove: (move: Move) => void
   onBoardClick?: (square: Square) => void
   armedPower?: MatchPowerKind | null
   onPowerTarget?: (square: Square) => void
   matchPowers?: MatchPower[]
+  /** Release sounds follow confirmed history, rather than pending online previews. */
+  confirmedPowerState?: { powers: MatchPower[]; ply: number }
   isMoveAllowed?: (move: Move) => boolean
   onShieldCaptureBlocked?: (reason: ShieldCaptureBlock) => void
   onPieceDoubleTap?: (square: Square) => void
@@ -94,9 +102,28 @@ export const PiecesSVG = {
 
 type PieceKey = keyof typeof PiecesSVG
 
+function IceCrystal({ releasing = false }: { releasing?: boolean }) {
+  return <span aria-hidden="true" data-power-ice-crystal className={cn(rewardStyles.iceCrystal, releasing && rewardStyles.powerRelease)}>
+    <svg viewBox="0 0 100 100" fill="none"><path d="M18 16 40 5 72 12 90 35 84 80 55 95 16 82 7 45Z" fill="#39cfff" fillOpacity=".1" stroke="#8aeeff" strokeWidth="2" />
+      <path d="M18 16 32 38 7 45M40 5 45 27 72 12M90 35 68 42 84 80M16 82 36 64 55 95M32 38 45 27 68 42 36 64Z" stroke="#d5fbff" strokeOpacity=".65" strokeWidth="1.2" />
+      <path d="M10 45 32 38 36 64 16 82M68 42 55 95 84 80Z" fill="#24baff" fillOpacity=".16" />
+    </svg>
+  </span>
+}
+
+function GoldenShield({ releasing = false, preview = false }: { releasing?: boolean; preview?: boolean }) {
+  return <svg aria-hidden="true" data-power-shield={preview ? undefined : true} viewBox="0 0 64 72" className={cn(rewardStyles.powerShield, releasing && rewardStyles.powerRelease)} fill="#ffbd24" fillOpacity=".2" stroke="#ffcf48" strokeWidth="3">
+    <path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z" />
+    <path d="M32 9 51 17v16c0 13-8 23-19 30C21 56 13 46 13 33V17L32 9Z" fill="none" stroke="#fff0a6" strokeWidth="1" />
+    <path d="M32 10v51M14 19l18 9 18-9" fill="none" stroke="#ffe08b" strokeOpacity=".45" strokeWidth="1" />
+  </svg>
+}
+
 export function ChessgroundBoard({
   game,
   undoAnimationKey = 0,
+  onUndoAnimation,
+  onFrozenCaptureBlocked,
   onMove,
   cityColor,
   isThinking,
@@ -109,6 +136,7 @@ export function ChessgroundBoard({
   armedPower,
   onPowerTarget,
   matchPowers = [],
+  confirmedPowerState,
   isMoveAllowed,
   onShieldCaptureBlocked,
   onPieceDoubleTap,
@@ -151,14 +179,42 @@ export function ChessgroundBoard({
   const tapStartRef = useRef<{ square: Square; x: number; y: number; pointerType: string } | null>(null)
   const lastTapRef = useRef<{ square: Square; time: number; pointerType: string } | null>(null)
   const [isSelectingSquares, setIsSelectingSquares] = useState(false)
+  const frozenAttemptRef = useRef<{ square: Square; pointerId: number; notified: boolean } | null>(null)
+  const [frozenFeedbackSquare, setFrozenFeedbackSquare] = useState<Square | null>(null)
+  const frozenFeedbackTimeoutRef = useRef<number | null>(null)
+  const cancelFrozenSoundRef = useRef<(() => void) | null>(null)
+  const clearFrozenFeedback = useCallback(() => {
+    frozenAttemptRef.current = null
+    if (frozenFeedbackTimeoutRef.current !== null) window.clearTimeout(frozenFeedbackTimeoutRef.current)
+    frozenFeedbackTimeoutRef.current = null
+    cancelFrozenSoundRef.current?.()
+    cancelFrozenSoundRef.current = null
+    setFrozenFeedbackSquare(null)
+  }, [])
+
+  const frozenSquaresKey = matchPowers.filter(power => power.kind === 'freeze').map(power => power.square).sort().join(',')
+  const positionFen = game.fen()
+  useEffect(() => {
+    clearFrozenFeedback()
+    return clearFrozenFeedback
+  }, [positionFen, frozenSquaresKey, orientation, freeMode, clearFrozenFeedback])
 
   useEffect(() => {
-    const release = () => {
+    const release = (event: PointerEvent) => {
+      const frozenAttempt = frozenAttemptRef.current
+      if (frozenAttempt?.pointerId === event.pointerId) {
+        // Touch grants audio activation on release; resume only the cue already waiting in its feedback window.
+        if (event.isTrusted && frozenAttempt.notified && frozenFeedbackTimeoutRef.current !== null) {
+          void getAudioEngine().resume().catch(() => {})
+        }
+        frozenAttemptRef.current = null
+      }
       heldSquareRef.current = null
       setPressedPieceSquare(null)
       onPieceRelease?.()
     }
     const cancel = () => {
+      clearFrozenFeedback()
       tapStartRef.current = null
       lastTapRef.current = null
       heldSquareRef.current = null
@@ -176,14 +232,17 @@ export function ChessgroundBoard({
     window.addEventListener('pointerup', release)
     window.addEventListener('pointercancel', cancel)
     window.addEventListener('blur', cancel)
+    const visibility = () => { if (document.hidden) cancel() }
+    document.addEventListener('visibilitychange', visibility)
     window.addEventListener('keydown', escape)
     return () => {
       window.removeEventListener('pointerup', release)
       window.removeEventListener('pointercancel', cancel)
       window.removeEventListener('blur', cancel)
+      document.removeEventListener('visibilitychange', visibility)
       window.removeEventListener('keydown', escape)
     }
-  }, [onPieceRelease, onPieceCancel])
+  }, [onPieceRelease, onPieceCancel, clearFrozenFeedback])
 
   const board = game.board()
   const [frostRotations, setFrostRotations] = useState<Record<string, number>>({})
@@ -205,7 +264,9 @@ export function ChessgroundBoard({
   const inCheck = freeMode ? false : game.isCheck()
   const turn = game.turn()
   const gameHistory = freeMode ? [] : game.history({ verbose: true })
-  const lastMove = gameHistory.at(-1) ?? null
+  const lastMove = matchPowers.some(power => power.appliedAtPly === gameHistory.length)
+    ? null
+    : gameHistory.at(-1) ?? null
   const lastMoveHighlightKey = lastMove ? `${gameHistory.length}-${lastMove.from}-${lastMove.to}` : undefined
 
   const [animatingPieces, setAnimatingPieces] = useState<PieceAnimation[]>([])
@@ -219,7 +280,7 @@ export function ChessgroundBoard({
     return { x: (orientation === "black" ? 7 - col : col) * 12.5, y: (orientation === "black" ? 7 - row : row) * 12.5 }
   }
 
-  const animatePieces = useCallback((pieces: PieceAnimationInput[], duration: number) => {
+  const animatePieces = useCallback((pieces: PieceAnimationInput[], duration: number, easing = false) => {
     if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current)
     if (pieces.length === 0) {
       setAnimatingPieces([])
@@ -229,7 +290,7 @@ export function ChessgroundBoard({
     const startTime = globalThis.performance.now()
     const animate = () => {
       const progress = Math.min((globalThis.performance.now() - startTime) / duration, 1)
-      setAnimatingPieces(pieces.map(piece => ({ ...piece, progress })))
+      setAnimatingPieces(pieces.map(piece => ({ ...piece, progress: easing ? mulliganProgress(progress) : progress })))
       if (progress < 1) animationFrameRef.current = requestAnimationFrame(animate)
       else {
         animationFrameRef.current = null
@@ -285,11 +346,35 @@ export function ChessgroundBoard({
               targetY: to.y,
             }
           })
-          animatePieces(reverseAnimations, 120)
+          animatePieces(reverseAnimations, MULLIGAN_ANIMATION_MS, true)
+          onUndoAnimation?.()
       }
       prevHistory.current = history
       prevUndoAnimationKey.current = undoAnimationKey
-  }, [game, freeMode, undoAnimationKey, animatePieces])
+  }, [game, freeMode, undoAnimationKey, animatePieces, onUndoAnimation])
+
+  const [fadingPowers, setFadingPowers] = useState<MatchPower[]>([])
+  const effectPowers = confirmedPowerState?.powers ?? matchPowers
+  const effectPly = confirmedPowerState?.ply ?? game.history().length
+  const previousPowers = useRef({ powers: effectPowers, ply: effectPly })
+  useEffect(() => {
+    const removed = freeMode ? [] : releasedPowers(previousPowers.current.powers, effectPowers, previousPowers.current.ply, effectPly)
+    previousPowers.current = { powers: effectPowers, ply: effectPly }
+    const move = game.history({ verbose: true }).at(-1)
+    const effects = removed.map(power => {
+      if (move && (power.attachedColor ?? power.frozenColor) === move.color) {
+        if (power.square === move.from) return { ...power, square: move.to }
+        if (move.flags.includes('k') && power.square === (move.color === 'w' ? 'h1' : 'h8')) return { ...power, square: (move.color === 'w' ? 'f1' : 'f8') as Square }
+        if (move.flags.includes('q') && power.square === (move.color === 'w' ? 'a1' : 'a8')) return { ...power, square: (move.color === 'w' ? 'd1' : 'd8') as Square }
+      }
+      return power
+    })
+    setFadingPowers(effects)
+    if (!effects.length) return
+    const cancels = [...new Set(effects.map(power => power.kind))].map(kind => getAudioEngine().playPowerRelease(kind))
+    const timer = window.setTimeout(() => setFadingPowers([]), POWER_RELEASE_MS)
+    return () => { window.clearTimeout(timer); cancels.forEach(cancel => cancel()) }
+  }, [game, effectPowers, effectPly, freeMode])
 
   // Find king position for check highlight
   const findKingSquare = useCallback((): Square | null => {
@@ -306,17 +391,22 @@ export function ChessgroundBoard({
 
   const kingSquare = inCheck ? findKingSquare() : null
 
-  const rejectShieldCapture = useCallback((from: Square, to: Square) => {
+  const rejectPowerCapture = useCallback((from: Square, to: Square) => {
     const attacker = game.get(from)
     if (!attacker || attacker.color !== game.turn()) return false
     const target = game.get(to)
     const enPassant = attacker.type === 'p' && from[0] !== to[0] && !target && game.fen().split(' ')[3] === to
     if (!enPassant && (!target || target.color === attacker.color)) return false
-    const reason = shieldCaptureBlock({ from, to, color: attacker.color, flags: enPassant ? 'e' : 'c', captured: enPassant ? 'p' : target?.type }, matchPowers)
+    const capture = { from, to, color: attacker.color, flags: enPassant ? 'e' : 'c', captured: enPassant ? 'p' : target?.type }
+    if (frozenCaptureBlock(capture, matchPowers)) {
+      onFrozenCaptureBlocked?.()
+      return true
+    }
+    const reason = shieldCaptureBlock(capture, matchPowers)
     if (!reason) return false
     onShieldCaptureBlocked?.(reason)
     return true
-  }, [game, matchPowers, onShieldCaptureBlocked])
+  }, [game, matchPowers, onShieldCaptureBlocked, onFrozenCaptureBlocked])
 
   const handleSquareClick = useCallback(
     (square: Square) => {
@@ -352,7 +442,7 @@ export function ChessgroundBoard({
       const piece = game.get(square)
 
       if (selectedSquare) {
-        if (rejectShieldCapture(selectedSquare, square)) {
+        if (rejectPowerCapture(selectedSquare, square)) {
           setSelectedSquare(null)
           setLegalMoves([])
           return true
@@ -401,19 +491,16 @@ export function ChessgroundBoard({
         }
       }
     },
-    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares, freeMode, onBoardClick, isMoveAllowed, rejectShieldCapture, playerColor, movesDisabled, deferMoves, orientation],
+    [game, selectedSquare, turn, isThinking, onMove, isSelectingSquares, freeMode, onBoardClick, isMoveAllowed, rejectPowerCapture, playerColor, movesDisabled, deferMoves, orientation],
   )
 
   // Handle drag and drop
   const handleDragStart = useCallback(
     (e: React.PointerEvent, square: Square) => {
+      if (!freeMode && matchPowers.some(power => power.kind === 'freeze' && power.square === square)) return
       if (game.get(square) || freeMode?.mode === 'play') {
         heldSquareRef.current = square
         onPieceHold?.(square)
-      }
-      if (!freeMode && matchPowers.some(power => power.kind === 'freeze' && power.square === square)) {
-        e.preventDefault()
-        return
       }
       if (!freeMode && !onPieceHold && (movesDisabled || turn !== playerColor || game.isGameOver())) return
 
@@ -448,14 +535,40 @@ export function ChessgroundBoard({
   )
 
   const handleDragMove = useCallback(
-    (e: MouseEvent | TouchEvent) => {
+    (e: PointerEvent) => {
+      const frozenAttempt = frozenAttemptRef.current
+      if (frozenAttempt && frozenAttempt.pointerId === e.pointerId && boardRef.current) {
+        if (e.cancelable) e.preventDefault()
+        if (!frozenAttempt.notified) {
+          const rect = boardRef.current.getBoundingClientRect()
+          const coords = getCoords(frozenAttempt.square)
+          const left = rect.left + rect.width * coords.x / 100
+          const top = rect.top + rect.height * coords.y / 100
+          if (e.clientX < left || e.clientX >= left + rect.width / 8 || e.clientY < top || e.clientY >= top + rect.height / 8) {
+            frozenAttempt.notified = true
+            tapStartRef.current = null
+            lastTapRef.current = null
+            if (frozenFeedbackTimeoutRef.current !== null) window.clearTimeout(frozenFeedbackTimeoutRef.current)
+            cancelFrozenSoundRef.current?.()
+            setFrozenFeedbackSquare(frozenAttempt.square)
+            cancelFrozenSoundRef.current = getAudioEngine().playFrozenPieceClink()
+            frozenFeedbackTimeoutRef.current = window.setTimeout(() => {
+              frozenFeedbackTimeoutRef.current = null
+              setFrozenFeedbackSquare(null)
+              cancelFrozenSoundRef.current?.()
+              cancelFrozenSoundRef.current = null
+            }, 280)
+          }
+        }
+        return
+      }
       const dragPiece = dragPieceRef.current
       if (!dragPiece || !boardRef.current) return
       if (e.cancelable) e.preventDefault()
 
       const rect = boardRef.current.getBoundingClientRect()
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
+      const clientX = e.clientX
+      const clientY = e.clientY
 
       const x = clientX - rect.left
       const y = clientY - rect.top
@@ -565,7 +678,7 @@ export function ChessgroundBoard({
         const targetSquare = `${columns[file]}${rows[rank]}` as Square
 
         try {
-          if (rejectShieldCapture(dragPiece.from, targetSquare)) throw new Error('Shield capture blocked')
+          if (rejectPowerCapture(dragPiece.from, targetSquare)) throw new Error('Power capture blocked')
           const candidate = game.moves({ square: dragPiece.from, verbose: true }).find(move => move.to === targetSquare && (!move.promotion || move.promotion === 'q'))
           if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
           const move = deferMoves ? candidate : game.move({
@@ -599,7 +712,7 @@ export function ChessgroundBoard({
         setLegalMoves([])
       }
     },
-    [game, onMove, freeMode, isMoveAllowed, rejectShieldCapture, playerColor, movesDisabled, deferMoves, orientation],
+    [game, onMove, freeMode, isMoveAllowed, rejectPowerCapture, playerColor, movesDisabled, deferMoves, orientation],
   )
 
   useEffect(() => {
@@ -637,7 +750,7 @@ export function ChessgroundBoard({
     if (!freeMode && !deferMoves && !movesDisabled && turn === playerColor && premove) {
       // Try to execute premove
       try {
-        if (rejectShieldCapture(premove.from, premove.to)) throw new Error('Shield capture blocked')
+        if (rejectPowerCapture(premove.from, premove.to)) throw new Error('Power capture blocked')
         const candidate = game.moves({ square: premove.from, verbose: true }).find(move => move.to === premove.to && (!move.promotion || move.promotion === 'q'))
         if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
         const move = deferMoves ? candidate : game.move({
@@ -653,7 +766,7 @@ export function ChessgroundBoard({
       }
       setPremove(null)
     }
-  }, [turn, premove, game, onMove, freeMode, isMoveAllowed, rejectShieldCapture, playerColor, movesDisabled, deferMoves, orientation])
+  }, [turn, premove, game, onMove, freeMode, isMoveAllowed, rejectPowerCapture, playerColor, movesDisabled, deferMoves, orientation])
 
   return (
     <div className="relative select-none w-full h-full">
@@ -684,9 +797,9 @@ export function ChessgroundBoard({
             <filter id="frozen-piece-texture" x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB">
               <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="desaturated" />
               <feComponentTransfer in="desaturated" result="iceTone">
-                <feFuncR type="linear" slope=".72" intercept=".1" />
-                <feFuncG type="linear" slope=".82" intercept=".13" />
-                <feFuncB type="linear" slope=".9" intercept=".18" />
+                <feFuncR type="linear" slope=".5" intercept=".18" />
+                <feFuncG type="linear" slope=".75" intercept=".4" />
+                <feFuncB type="linear" slope=".9" intercept=".6" />
               </feComponentTransfer>
               <feTurbulence type="fractalNoise" baseFrequency="0.06 0.28" numOctaves="2" seed="9" result="frostMottle" />
               <feColorMatrix
@@ -802,6 +915,21 @@ export function ChessgroundBoard({
                     lastTapRef.current = null
                   }
                   e.currentTarget.setPointerCapture(e.pointerId)
+                  if (!freeMode && !movesDisabled && turn === playerColor && selectedSquare && selectedSquare !== square && rejectPowerCapture(selectedSquare, square)) {
+                    setSelectedSquare(null)
+                    setLegalMoves([])
+                    return
+                  }
+                  if (!freeMode && piece && frozen) {
+                    e.preventDefault()
+                    clearFrozenFeedback()
+                    frozenAttemptRef.current = { square, pointerId: e.pointerId, notified: false }
+                    setIsSelectingSquares(false)
+                    setSelectedSquare(square)
+                    setLegalMoves([])
+                    void getAudioEngine().resume()
+                    return
+                  }
                   const hasPiece = !!piece
                   const isSecondTap = !freeMode && !!piece && lastTapRef.current?.square === square && Date.now() - lastTapRef.current.time < 350
                   if (!freeMode && !hasPiece) {
@@ -831,6 +959,9 @@ export function ChessgroundBoard({
                   }
                 }}
                 onPointerCancel={() => { tapStartRef.current = null; lastTapRef.current = null; setPressedPieceSquare(null) }}
+                onLostPointerCapture={e => {
+                  if (frozenAttemptRef.current?.pointerId === e.pointerId) clearFrozenFeedback()
+                }}
                 onDoubleClick={() => {
                   if (freeMode?.mode === 'move' && piece) freeMode.onTogglePiece(square)
                 }}
@@ -844,8 +975,10 @@ export function ChessgroundBoard({
                 {isLastMove && (
                   <>
                     <span
+                      key={`${lastMoveHighlightKey}-filter`}
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-0"
+                      data-recent-move-filter
+                      className={cn("pointer-events-none absolute inset-0", rewardStyles.recentMoveTint)}
                       style={{
                         WebkitBackdropFilter: "invert(100%)",
                         backdropFilter: "invert(100%)",
@@ -914,26 +1047,31 @@ export function ChessgroundBoard({
                       : <path d="M22 22 78 78 M78 22 22 78" />}
                   </svg>
                 )}
-                {(frozen || shielded) && <span aria-hidden="true" data-power-frost className={cn(rewardStyles.powerFrost, "pointer-events-none absolute inset-0 z-[2]")} />}
+                {frozen && <span aria-hidden="true" data-power-frost className={cn(rewardStyles.powerFrost, "pointer-events-none absolute inset-0 z-[2]")} />}
                 {!freeMode && (armedPower === 'shield'
                   ? <span aria-hidden="true" data-power-preview className="pointer-events-none absolute inset-0 z-[11] flex items-center justify-center" style={{ opacity: 0 }}>
-                      <svg viewBox="0 0 64 72" className="h-[96%] w-[78%] drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/></svg>
+                      <GoldenShield preview />
                     </span>
                   : <span aria-hidden="true" data-power-preview className={cn(rewardStyles.powerFrost, "pointer-events-none absolute inset-0 z-[2]")} style={{ opacity: 0 }} />)}
                 {piece && (!isDragging || freeMode?.mode === 'play') && !isAnimatingTo && (
                   <div
                     data-pending-move={pendingSquares.includes(square) ? square : undefined}
-                    className={cn("relative z-10 w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105")}
+                    data-frozen-feedback={frozenFeedbackSquare === square || undefined}
+                    className={cn("relative z-10 w-[85%] h-[85%] transition-transform duration-150", freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full", piece.color === 'b' && "black-piece-outline", isSelected && "scale-105", frozenFeedbackSquare === square && rewardStyles.frozenAttemptPiece)}
                     style={{
                       opacity: pendingSquares.includes(square) ? 0.45 : undefined,
-                      filter: frozen ? 'url(#frozen-piece-texture) drop-shadow(0 0 7px #bcecff)' : isActive || (musicEffectsEnabled && isPressedPiece) ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
+                      filter: frozen ? 'url(#frozen-piece-texture) drop-shadow(0 0 5px #36dcff) drop-shadow(0 0 12px #7ae9ff)'  : isActive || (musicEffectsEnabled && isPressedPiece) ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
                     }}
                     dangerouslySetInnerHTML={{
                       __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "",
                     }}
                   />
                 )}
-                {shielded && <svg aria-hidden="true" data-power-shield viewBox="0 0 64 72" className="pointer-events-none absolute left-[11%] top-[2%] z-[12] h-[96%] w-[78%] opacity-50 drop-shadow-[0_0_8px_#c8f2ff]" fill="#8edcff" stroke="#d7f4ff" strokeWidth="5"><path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z"/></svg>}
+                {frozen && <IceCrystal />}
+                {shielded && <GoldenShield />}
+                {fadingPowers.filter(power => power.square === square).map(power => power.kind === 'freeze'
+                  ? <span key={power.id} data-power-releasing="freeze" className={cn(rewardStyles.powerFrost, rewardStyles.powerRelease, "pointer-events-none absolute inset-0 z-[12]")}><IceCrystal releasing /></span>
+                  : <span key={power.id} data-power-releasing="shield" className="pointer-events-none absolute inset-0 z-[12]"><GoldenShield releasing /></span>)}
 
                 {/* Coordinate labels */}
                 {colIndex === 0 && (

@@ -7,11 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ONLINE_CONFIGURATION_MESSAGE, onlineErrorMessage, onlineRpc, requireOnlineClient } from '@/lib/online/client'
 import type { PlayerProfile } from '@/lib/game-progression'
 import type { OnlineRoom } from '@/lib/online/types'
-import { googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
+import { AUTH_CALLBACK_CHANNEL, googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
 import { useOnline } from './online-provider'
 import { LegalLinks } from '@/components/legal-links'
 
-/* global Window, URL, MessageEvent */
+/* global Window, URL, MessageEvent, BroadcastChannel, crypto */
 type LoginStep = 'email' | 'code' | 'conflict' | 'saved'
 const inputClass = 'h-11 w-full rounded-md border border-white/20 bg-black/30 px-3 text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary'
 
@@ -48,7 +48,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const sourceId = useRef<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const popupWaiting = useRef(false)
-  const popupClosureHandled = useRef(false)
+  const popupRequestId = useRef<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -90,12 +90,13 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   }, [user?.id, user?.is_anonymous, finishLogin])
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (!popupWaiting.current || !popupRef.current || event.origin !== window.location.origin || event.source !== popupRef.current || !isAuthCallbackMessage(event.data)) return
+    const finishFromCallback = (value: unknown) => {
+      if (!popupWaiting.current || !isAuthCallbackMessage(value) || value.requestId !== popupRequestId.current) return
       popupWaiting.current = false
       popupRef.current = null
-      if (!event.data.ok) {
-        const failure = googleLoginFailure(event.data.errorCode, event.data.error)
+      popupRequestId.current = null
+      if (!value.ok) {
+        const failure = googleLoginFailure(value.errorCode, value.error)
         if (failure.existingAccount) setExistingAccount(true)
         setError(failure.message)
         setBusy(false)
@@ -103,15 +104,15 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       }
       void finishLogin().catch((cause) => setError(onlineErrorMessage(cause))).finally(() => setBusy(false))
     }
+    const onMessage = (event: MessageEvent) => {
+      if (!popupRef.current || event.origin !== window.location.origin || event.source !== popupRef.current) return
+      finishFromCallback(event.data)
+    }
+    const channel = new BroadcastChannel(AUTH_CALLBACK_CHANNEL)
+    const onBroadcast = (event: MessageEvent) => finishFromCallback(event.data)
+    channel.addEventListener('message', onBroadcast)
     window.addEventListener('message', onMessage)
-    const timer = setInterval(() => {
-      if (!popupWaiting.current || !popupRef.current?.closed || popupClosureHandled.current) return
-      popupClosureHandled.current = true
-      // COOP may detach the handle before login finishes. Keep watching Auth
-      // while allowing retry/cancel; never discard the in-memory guest source.
-      void finishLogin().then(() => { popupWaiting.current = false; popupRef.current = null }).catch(() => setError('Se o login Google não foi concluído, tente novamente ou use email.')).finally(() => setBusy(false))
-    }, 1000)
-    return () => { window.removeEventListener('message', onMessage); clearInterval(timer) }
+    return () => { window.removeEventListener('message', onMessage); channel.removeEventListener('message', onBroadcast); channel.close() }
   }, [finishLogin])
 
   const captureSource = async () => {
@@ -193,6 +194,9 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       const current = await captureSource()
       const redirect = new URL('/', window.location.origin)
       redirect.searchParams.set('authCallback', '1')
+      const requestId = crypto.randomUUID()
+      popupRequestId.current = requestId
+      redirect.searchParams.set('authCallbackId', requestId)
       const options = { redirectTo: redirect.toString(), skipBrowserRedirect: true }
       const online = requireOnlineClient()
       const result = current.is_anonymous && !existingAccount
@@ -201,12 +205,12 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       if (result.error) throw result.error
       if (!result.data.url) throw new Error('Não foi possível abrir o login Google.')
       popupWaiting.current = true
-      popupClosureHandled.current = false
       popup.location.href = result.data.url
     } catch (cause) {
       popup.close()
       popupRef.current = null
       popupWaiting.current = false
+      popupRequestId.current = null
       setBusy(false)
       const code = cause && typeof cause === 'object' && 'code' in cause && typeof cause.code === 'string' ? cause.code : null
       const failure = googleLoginFailure(code, onlineErrorMessage(cause))
@@ -228,6 +232,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const changeOpen = (next: boolean) => {
     if (!next && popupWaiting.current) {
       popupWaiting.current = false
+      popupRequestId.current = null
       popupRef.current?.close()
       popupRef.current = null
       setBusy(false)
@@ -245,11 +250,9 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     <DialogContent className="max-h-[90dvh] max-w-sm overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]" closeLabel="Fechar login">
       <DialogHeader>
         <DialogTitle className="text-xl font-semibold">{step === 'conflict' ? 'Escolha o perfil' : step === 'saved' ? 'Perfil salvo' : 'Sign in to save your profile'}</DialogTitle>
-        <DialogDescription className="text-sm leading-relaxed text-white/60">
-          {step === 'conflict' ? 'A conta já tem um perfil. Escolha qual progresso usar; os saldos não serão somados e as duas cópias ficam guardadas.'
-            : step === 'saved' ? 'Seu perfil foi confirmado pelo servidor e pode ser recuperado nesta conta.'
-              : 'Conecte Google ou email para recuperar seu perfil em outros aparelhos.'}
-        </DialogDescription>
+        {(step === 'conflict' || step === 'saved') && <DialogDescription className="text-sm leading-relaxed text-white/60">
+          {step === 'conflict' ? 'A conta já tem um perfil. Escolha qual progresso usar; os saldos não serão somados e as duas cópias ficam guardadas.' : 'Seu perfil foi confirmado pelo servidor e pode ser recuperado nesta conta.'}
+        </DialogDescription>}
       </DialogHeader>
       {!configured ? <p className="rounded border border-white/15 p-3 text-sm text-white/70">{ONLINE_CONFIGURATION_MESSAGE}</p>
         : step === 'saved' ? <div className="space-y-4">

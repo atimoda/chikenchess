@@ -1,10 +1,107 @@
+/* global __dirname, process, setTimeout, clearTimeout, structuredClone */
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { Chess } = require('chess.js')
 const { loadTs } = require('../helpers/music.cjs')
-const { canUseMatchPower, createMatchPower, permitsPowerMove, permittedPowerMoves, advanceMatchPowers, shieldCaptureBlock } = loadTs('lib/chess-powers.ts')
+const { canUseMatchPower, createMatchPower, permitsPowerMove, permittedPowerMoves, advanceMatchPowers, shieldCaptureBlock, frozenCaptureBlock } = loadTs('lib/chess-powers.ts')
 const { makePoweredChess, clonePoweredChess, freezeApplicationError, setPoweredChessPowers, syncPoweredMoveSan, poweredChessSnapshot, restorePoweredChess } = loadTs('lib/powered-chess.ts')
 const { analyzePoweredMoves } = loadTs('lib/powered-analysis.ts')
+const { releasedPowers } = loadTs('lib/power-presentation.ts')
+
+test('frozen capture feedback agrees with legality for both teams and en passant', () => {
+  for (const [color, targetColor, from, to] of [['w', 'b', 'e4', 'd5'], ['b', 'w', 'e5', 'd4']]) {
+    const move = { color, from, to, captured: 'p', flags: 'c' }
+    const powers = [{ id: 1, kind: 'freeze', square: to, frozenColor: targetColor, blocksOnPly: 2 }]
+    assert.equal(frozenCaptureBlock(move, powers), true)
+    assert.equal(permitsPowerMove(move, powers, 1), false)
+    assert.equal(frozenCaptureBlock({ ...move, captured: undefined }, powers), false)
+    assert.equal(frozenCaptureBlock(move, [{ ...powers[0], frozenColor: undefined, trapUntilPly: 2 }]), false, 'empty ice does not prevent landing')
+  }
+  const ep = { color: 'w', from: 'e5', to: 'd6', captured: 'p', flags: 'e' }
+  const powers = [{ id: 1, kind: 'freeze', square: 'd5', frozenColor: 'b', blocksOnPly: 2 }]
+  assert.equal(frozenCaptureBlock(ep, powers), true)
+  assert.equal(permitsPowerMove(ep, powers, 1), false)
+  assert.equal(frozenCaptureBlock(ep, [{ ...powers[0], square: 'd6' }]), false)
+})
+
+test('power release follows forward expiration without firing on Undo, initial recovery or attached movement', () => {
+  const ice = { id: 1, kind: 'freeze', square: 'd5', frozenColor: 'b', blocksOnPly: 2 }
+  const shield = { id: 2, kind: 'shield', square: 'e4', attachedColor: 'w', blocksOnPly: 2 }
+  assert.deepEqual(releasedPowers([ice, shield], [], 1, 2), [ice, shield])
+  assert.deepEqual(releasedPowers([ice], [], 2, 1), [])
+  assert.deepEqual(releasedPowers([ice], [], 2, 2), [])
+  assert.deepEqual(releasedPowers([shield], [{ ...shield, square: 'e5' }], 0, 1), [])
+  assert.deepEqual(releasedPowers([], [ice], 0, 0), [])
+})
+
+test('release cues have bounded lifetimes, disconnect on cancel, and never unlock a suspended context', () => {
+  const { AudioEngine } = loadTs('lib/audio-engine.ts')
+  const engine = new AudioEngine(), sources = [], envelopes = [], filters = []
+  const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} })
+  const node = extra => ({ ...extra, disconnected: false, connect() { return this }, disconnect() { this.disconnected = true } })
+  const source = () => {
+    const value = node({ frequency: param(), starts: [], stops: [], start(time) { this.starts.push(time) }, stop(time) { this.stops.push(time) } })
+    sources.push(value); return value
+  }
+  const context = {
+    state: 'suspended', currentTime: 10, sampleRate: 48000,
+    createBuffer: (_channels, length) => ({ getChannelData: () => new Float32Array(length) }),
+    createBufferSource: source, createOscillator: source,
+    createBiquadFilter: () => { const value = node({ frequency: param() }); filters.push(value); return value },
+    createGain: () => { const value = node({ gain: param() }); envelopes.push(value); return value },
+  }
+  engine.audioContext = context; engine.masterGain = node({})
+  engine.playPowerRelease('freeze')()
+  assert.equal(sources.length, 0)
+  context.state = 'running'
+  const cancelIce = engine.playPowerRelease('freeze')
+  const cancelShield = engine.playPowerRelease('shield')
+  assert.equal(sources.length, 6)
+  assert.ok(sources.every(value => value.starts.length === 1 && value.stops[0] - value.starts[0] <= .281))
+  cancelIce(); cancelShield()
+  assert.ok([...sources, ...envelopes, ...filters].every(value => value.disconnected))
+})
+
+test('frozen-piece auxiliary cue stays short and cancels active or still-unlocking audio', async () => {
+  const { AudioEngine } = loadTs('lib/audio-engine.ts')
+  const engine = new AudioEngine()
+  let finishResume
+  const oscillators = [], gains = []
+  const parameter = () => ({ setValueAtTime() {}, exponentialRampToValueAtTime() {} })
+  const node = extra => ({
+    ...extra,
+    disconnected: false,
+    connect() { return this },
+    disconnect() { this.disconnected = true },
+  })
+  const context = {
+    state: 'suspended', currentTime: 10,
+    resume: () => new Promise(resolve => { finishResume = () => { context.state = 'running'; resolve() } }),
+    createOscillator: () => {
+      const oscillator = node({ frequency: parameter(), startTimes: [], stopTimes: [], start(time) { this.startTimes.push(time) }, stop(time) { this.stopTimes.push(time) } })
+      oscillators.push(oscillator)
+      return oscillator
+    },
+    createGain: () => { const gain = node({ gain: parameter() }); gains.push(gain); return gain },
+  }
+  engine.audioContext = context
+  engine.masterGain = node({})
+  const cancelLoading = engine.playFrozenPieceClink()
+  cancelLoading()
+  finishResume()
+  await Promise.resolve()
+  assert.equal(oscillators.length, 0, 'cancelling the gesture before unlock never starts a late cue')
+
+  const cancelPlaying = engine.playFrozenPieceClink()
+  assert.equal(oscillators.length, 3)
+  for (const oscillator of oscillators) {
+    assert.deepEqual(oscillator.startTimes, [10])
+    assert.deepEqual(oscillator.stopTimes, [10.18], 'cue has a bounded 180ms lifetime')
+  }
+  cancelPlaying()
+  assert.ok(oscillators.every(oscillator => oscillator.disconnected && oscillator.stopTimes.length === 2))
+  assert.ok(gains.every(gain => gain.disconnected), 'cancellation disconnects every auxiliary envelope')
+})
 
 test('shipped powered Worker is bundled JavaScript and preserves the analysis protocol', async () => {
   const fs = require('node:fs')

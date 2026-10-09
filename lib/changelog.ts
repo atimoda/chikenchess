@@ -1,7 +1,93 @@
-export const RELEASE_LABEL = 'v1.0.1'
+export const RELEASE_LABEL = 'v1.2.0'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    version: '1.2.0',
+    date: '09/10/2026',
+    title: 'Cartas, tabuleiro e partidas simultâneas',
+    groups: [
+      { title: 'Online', items: [
+        'Você pode manter várias partidas em andamento e entrar em novas salas sem encerrar as anteriores.',
+        'Games in progress aparece no globo acima das salas públicas, com acesso a cada partida e indicação de quem está na vez.',
+        'Ao entrar no site, o globo permanece aberto. Voltar ao mapa durante a partida conserva o jogo; desistência e oferta de empate ficam nas ações do adversário.',
+      ] },
+      { title: 'Correções', items: [
+        'O retorno do login Google informa o motivo mesmo quando o navegador separa a janela de autenticação da página do jogo, incluindo a orientação para entrar numa conta já existente.',
+      ] },
+      { title: 'Interface', items: [
+        'Freeze ganha cristais azuis e Shield um escudo dourado; ao terminar, desaparecem rapidamente com um som curto. Tentar capturar uma peça congelada mostra um aviso.',
+        'Mulligan retorna as peças mais devagar e gira a carta; a mão forma um arco, entra deslizando e deixa os números dos preços visíveis.',
+        'O contador avisa sempre que faltam ovos para uma ação; Play/Pause ocupa a largura interna do Mixer com borda suave.',
+        'Os super-poderes aparecem como cartas inclinadas e sobrepostas abaixo do tabuleiro; passar o cursor ou focar uma carta revela seu preço.',
+        'Preferências permite alternar entre Modo cards e Modo botões e lembra a escolha neste navegador; abre sem bloquear o tabuleiro e pode ser reaberto normalmente.',
+        'Play/Pause fica abaixo do Crossfader no Mixer; Redo aparece somente no Modo botões. Reiniciar jogo sai do cabeçalho da campanha.',
+        'Mulligan e Undo passam a custar 2 ovos, na campanha e no online.',
+        'O tabuleiro pode ser redimensionado pelos quatro cantos em tablet e desktop, na campanha, no online e no Criativo; mantém o formato quadrado e acompanha os widgets.',
+        'Redimensionar o tabuleiro atualiza as linhas conectoras sem mover os widgets abertos; quatro símbolos nos cantos ficam mais discretos e 5 px mais afastados das quinas.',
+        'Salas, Amigos e Perfil abrem centralizados no globo e continuam arrastáveis, com o mapa acessível ao redor.',
+      ] },
+      { title: 'Ovos', items: [
+        'O vencedor leva os ovos restantes dos dois jogadores; no empate, a soma é dividida entre ambos. Se o total for ímpar, as pretas recebem o ovo restante.',
+        'Na vitória ou no empate, os ovos saem dos contadores, sobem um pouco e fazem uma curva até a cesta da conta.',
+        'A cesta mostra o número exato de ovos até dez; depois mantém dez mais um por centena no saldo, até vinte ovos visuais.',
+      ] },
+    ],
+  },
+  {
+    version: '1.1.0',
+    date: '08/10/2026',
+    title: 'Salas, kits e manutenção Admin',
+    groups: [
+      { title: 'Admin', items: [
+        'Contas administradoras ganham o botão Admin à direita de Creative no globo, com uma página própria para manutenção dos catálogos.',
+        'O Admin local permite editar, validar e salvar frases de abertura, introduções, mensagens de jogadas, descrições, campanhas, títulos dos ranks e palavras dos nomes de batismo diretamente nos arquivos JSON do projeto.',
+        'Os 45 perfis musicais e os três presets MIDI ficam acessíveis pelo painel, com atalho para o Criativo. A extração preserva os kits existentes.',
+        'Rascunhos podem ser cancelados ou salvos antes de trocar de arquivo; conflitos com alterações externas são informados sem sobrescrever o arquivo. Os nomes de batismo preparam uma atualização para publicação no Supabase.',
+      ] },
+      { title: 'Online e mapa', items: [
+        'Public e Private criam a sala diretamente. A entrada por ID aceita o código completo de 32 caracteres. Dentro da sala, apenas o criador vê os controles de visibilidade; participantes não veem Public/Private. O criador atualiza a listagem pública ao mudar a opção.',
+        'Random passa a ser a primeira opção e o padrão do kit de cada equipe. O sorteio acontece quando os dois confirmam Começar e permanece o mesmo ao reconectar.',
+        'Os popups das cidades oferecem CREATE ROOM: abre uma sala pública com o kit da cidade selecionado. Conquered aparece sobre a foto, no canto superior direito.',
+        'Salas, Amigos e Perfil ficam sem título e descrição redundantes; o rodapé repetido do perfil sai e Sair da sala usa o desenho contornado de porta aberta e seta do ícone anexado.',
+        'A aba Perfil reúne o conteúdo de Golden eggs, com edição do nick, código da conta, progresso e ações de perfil; o botão de ovos abre diretamente essa aba, e o link de login fica somente nela. Nome público vazio volta ao nome de batismo e oculta a linha secundária; o link de backup do perfil visitante fica na mesma linha de Reset Save.',
+        'Salas e Amigos ficam no canto superior esquerdo, sem escurecer ou bloquear o mapa. O conteúdo longo rola no viewport da janela, inclusive no celular.',
+        'Rooms, Friends e Creative ficam juntos no rodapé direito. O globo mostra as cinco salas públicas mais recentes, atualizadas ao vivo, com entrada animada e Ver todas quando houver mais salas; Atualizar salas gira durante a consulta.',
+        'About e Release notes compartilham um popup com duas abas. About fica oculto no cabeçalho do celular em posição vertical; as duas abas continuam acessíveis pelo botão da versão.',
+        'Public e Private são botões preenchidos na criação e transparentes dentro da sala, onde a opção ativa ganha destaque. No cartão da cidade, CAMPAIGN recebe um pin da cor local e CREATE ROOM fica abaixo dele, à direita, com ícone de porta, borda verde e synth verde/lilás mais grave. As salas públicas recentes mostram um ícone de entrada.',
+        'A aba Release notes volta a rolar dentro do espaço disponível no popup compartilhado com About.',
+        'O código curto da sala usa cinco algarismos; a sala aberta ganha uma aba Room XXXXX e o convite continua copiando o link completo em uma linha compacta.',
+        'Instrumentos da banda fica sob o estilo do kit, sem contagem. Cancelar pronto desfaz explicitamente a confirmação enquanto a sala continua aberta; a confirmação do segundo participante inicia a partida.',
+        'A janela de Salas/Amigos pode ser arrastada por áreas livres, sem interferir em botões, links ou campos. O login não repete o texto explicativo sobre recuperar o perfil.',
+        'O lápis de edição do nome fica à direita do nome na mesma linha; no hover mantém fundo transparente, borda e brilho verdes, com ícone branco. O perfil mostra Baptismal name com dois-pontos e, logo abaixo, Código de perfil na mesma tipografia.',
+        'O painel não muda o cursor durante o arraste; o seletor de visibilidade perdeu a linha explicativa e Join ganhou o ícone de entrada.',
+        'Na prévia do kit, nome e estilo ficam centralizados ao lado da foto; os instrumentos expandidos ocupam toda a largura abaixo dela. O cartão pronto ganha fundo verde suave; Cancelar pronto fica transparente com borda verde. A prévia Random não repete rótulo ou explicação.',
+        'Adicionar amigo destaca ícone e texto em branco com borda verde no hover, como os atalhos do globo.',
+        'Sair da sala fica à esquerda da ação de prontidão, com texto branco sem fundo no hover; o ícone de atualizar busca o estado atual da sala no servidor. Status Pronto ganha um check verde fluorescente.',
+        'As abas inativas da janela online ficam com texto branco e borda verde no hover ou foco.',
+        'No cartão da sala, Adicionar amigo fica como ícone à esquerda do nome do participante, com borda verde e rótulo acessível.',
+        'Estou pronto! mantém o tamanho e reduz pela metade o espaçamento lateral interno.',
+        'Copiar convite aparece como link branco com ícone ao lado do código; Public e Private mantêm o cursor normal; dentro da sala, os controles só aparecem para o criador.',
+        'No celular, Campanhas ocupa somente a largura do rótulo, com o padding preservado.',
+        'Nos popups das cidades, a fotografia ocupa a largura toda e o padding começa nas informações abaixo dela.',
+        'Abas inativas ficam sem fundo no hover, e a aba selecionada mantém seu fundo verde suave.',
+        'A aba Amigos remove o status Lista ao vivo e esconde mensagens de vazio quando Amigos ou Pedidos recebidos não têm registros.',
+        'Criar uma sala nova encerra a sala anterior do jogador e cria outra na mesma operação; uma partida ativa impede a troca.',
+        'Qualquer parte da foto ou do título/estilo do kit abre ou recolhe os instrumentos; o seletor perde o rótulo visível e o ícone de amizade ganha borda verde.',
+        'Voltar à sua sala fica abaixo de Criar sala com a mesma altura e metade do espaçamento; destaca texto e borda verdes no hover.',
+
+      ] },
+      { title: 'Abertura e partida', items: [
+        'A frase de abertura é sorteada entre três opções em inglês, incluindo The history of music, through a game of chess. e Making bad moves isn’t so bad.',
+        'Best e Worst bloqueiam somente o próprio botão enquanto suas sugestões estão visíveis; o outro pode substituí-las na campanha e no online.',
+        'Aplicar Freeze ou Shield limpa o destaque da última jogada. Após cada novo lance, o destaque espera 2 segundos e esmaece até a metade em 0,5 segundo.',
+      ] },
+      { title: 'Poderes', items: [
+        'Tentar arrastar uma peça congelada para fora de sua casa provoca uma breve tremida e um som de gelo, mantendo a peça imóvel e sem tocar seu instrumento.',
+        'Shield mantém o fundo normal da casa e mostra somente o escudo; a textura de gelo fica exclusiva do Freeze.',
+      ] },
+    ],
+  },
   {
     version: '1.0.1',
     date: '05/10/2026',

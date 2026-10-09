@@ -14,6 +14,8 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { Chess, type Square } from 'chess.js'
 import { ArrowLeft, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
 import { ChessgroundBoard, PiecesSVG } from './chessground-board'
+import { BoardResizeHandles } from './board-resize-handles'
+import { useBoardResize } from '@/hooks/use-board-resize'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, moveCreativePiece, parseCreativeSession, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
@@ -44,6 +46,8 @@ function messageOf(error: unknown) {
 }
 
 export function CreativeStudio() {
+  const boardRef = useRef<HTMLDivElement | null>(null)
+  const boardResize = useBoardResize({ boardRef, enabled: true, constrainToParent: true })
   const [session, setSession] = useState(createCreativeSession)
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -88,9 +92,16 @@ export function CreativeStudio() {
       resetLegacyMusicStorage()
       let restored: CreativeSession | undefined
       try {
-        const requestedCity = new window.URLSearchParams(window.location.search).get('city')
-        const requestedKit = requestedCity ? loadCityKit(requestedCity) : null
-        const saved = requestedKit ? JSON.stringify(prepareCityKitForCreative(requestedKit, requestedCity!)) : localStorage.getItem(CREATIVE_STORAGE)
+        const query = new window.URLSearchParams(window.location.search)
+        const requestedCity = query.get('city')
+        const requestedPreset = query.get('preset')
+        const requestedKit = requestedCity ? (query.get('official') === '1' ? defaultCityKit(requestedCity) : loadCityKit(requestedCity)) : null
+        let saved = requestedKit ? JSON.stringify(prepareCityKitForCreative(requestedKit, requestedCity!)) : localStorage.getItem(CREATIVE_STORAGE)
+        if (requestedPreset && ['manchester-1999', 'dusseldorf-original', 'mouth-breather'].includes(requestedPreset)) {
+          const response = await window.fetch(`/presets/${requestedPreset}.json`)
+          if (!response.ok) throw new Error('Preset oficial indisponível.')
+          saved = await response.text()
+        }
         if (saved) {
           const parsed = parseCreativeSession(saved)
           await validateMusicSnapshot(creativeSnapshot(parsed, false))
@@ -336,7 +347,8 @@ export function CreativeStudio() {
               <button aria-pressed={mode === 'move'} onClick={() => { music.endAudition(); setMode('move') }}>Mover</button>
               <button aria-pressed={mode === 'play'} onClick={() => { music.endAudition(); setMode('play') }}>Tocar casas</button>
             </div><InfoTip label="Tabuleiro livre">{mode === 'move' ? 'Segure para ouvir uma nota por casa. Arraste livremente ou selecione e clique numa casa vazia. Mover ativa a peça; casas ocupadas trocam as peças. Duplo clique na peça liga ou desliga seu loop. Esc cancela a prévia.' : 'Segure ou deslize pelas casas para tocar o instrumento selecionado. Nada é movido ou ativado. Pelo teclado: Tab e segure Espaço.'}</InfoTip></div>
-            <div className={styles.board} role="group" aria-label="Tabuleiro criativo" aria-busy={!music.auditionReady}>
+            <div ref={boardRef} className={styles.board} style={boardResize.width === null ? undefined : { width: boardResize.width }} role="group" aria-label="Tabuleiro criativo" aria-busy={!music.auditionReady}>
+              <BoardResizeHandles enabled={boardResize.enabled} onStart={boardResize.startResize} onResizeBy={boardResize.resizeBy} onCancel={boardResize.cancelResize} />
               <fieldset className={styles.boardReadyGate} disabled={!music.auditionReady} onMouseDownCapture={music.unlock}>
               <ChessgroundBoard
                 game={boardGame}

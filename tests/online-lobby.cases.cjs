@@ -1,11 +1,26 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { acceptedFriendNames, roomArrivalNames, roomErrorMessage, isAlreadyInRoom } = loadTs('lib/online/lobby-updates.ts')
+const { acceptedFriendNames, roomArrivalNames, roomErrorMessage, isAlreadyInRoom, startedRoomMatch } = loadTs('lib/online/lobby-updates.ts')
 
 const member = (id, name) => ({ user_id: id, profile: { display_name: name } })
 const room = (members, id = 'room-a') => ({ id, host_id: 'host', members })
 const friend = (status, sender = 'me', id = 'friend-a') => ({ id, sender_id: sender, status, profile: { display_name: 'Fulana' } })
+
+test('recovering a playing room never opens a game; only an observed lobby start does', () => {
+  const lobby = { ...room([member('host', 'Anfitrião'), member('guest', 'Fulano')]), status: 'open', match_id: null }
+  const playing = { ...lobby, status: 'playing', match_id: 'match-a' }
+  assert.equal(startedRoomMatch(null, playing, 'host'), null)
+  assert.equal(startedRoomMatch(playing, playing, 'host'), null)
+  assert.equal(startedRoomMatch(lobby, playing, 'host'), 'match-a')
+  assert.equal(startedRoomMatch(lobby, playing, 'guest'), 'match-a')
+  assert.equal(startedRoomMatch(lobby, playing, 'outsider'), null)
+  assert.equal(startedRoomMatch(lobby, playing, null), null)
+  assert.equal(startedRoomMatch(lobby, { ...playing, id: 'room-b' }, 'host'), null)
+  assert.equal(startedRoomMatch({ ...lobby, members: [] }, playing, 'host'), null)
+  assert.equal(startedRoomMatch(lobby, { ...playing, members: [] }, 'host'), null)
+  assert.equal(startedRoomMatch(lobby, { ...playing, status: 'closed' }, 'host'), null)
+})
 
 test('opening or recovering a full room establishes a baseline without announcing old arrivals', () => {
   const full = room([member('host', 'Anfitrião'), member('guest', 'Fulano')])

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "electronic-history",
+    "name": "Electronic Music"
+  },
+  {
+    "id": "world-ballads",
+    "name": "World ballads"
+  },
+  {
+    "id": "classical",
+    "name": "Classical music"
+  },
+  {
+    "id": "harmonic-songbook",
+    "name": "Harmonic songbook"
+  },
+  {
+    "id": "brazilian",
+    "name": "Brazilian"
+  },
+  {
+    "id": "world-rhythms",
+    "name": "World rhythms"
+  }
+]

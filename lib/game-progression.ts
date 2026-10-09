@@ -1,6 +1,9 @@
 "use client"
 
+/* global CustomEvent */
+
 import { cities } from "./cities-data"
+import rankTitles from "../data/ui/rank-titles.json"
 
 const COOKIE_NAME = "chikenchess_player"
 const LEGACY_STORAGE_KEY = "chikenchess_campaign"
@@ -31,13 +34,7 @@ export interface PlayerProfile {
     gameplayTipSeen: boolean
 }
 
-export const RANK_TIERS = [
-    { minPoints: 0, title: "Novice Beatmaker" },
-    { minPoints: 40, title: "Rhythm Apprentice" },
-    { minPoints: 80, title: "Groove Master" },
-    { minPoints: 120, title: "Synth Virtuoso" },
-    { minPoints: 250, title: "Grandmaster Producer" },
-]
+export const RANK_TIERS = rankTitles
 
 export function calculateRank(points: number): string {
     for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
@@ -200,16 +197,17 @@ export interface ConquestResult {
     rankedUp: boolean
 }
 
-export function applyCityVictory(
+function applyCityResult(
     source: PlayerProfile,
     cityId: string,
     now = Date.now(),
     earnedEggs = 0,
     collectedEggs = 0,
+    won = true,
 ): ConquestResult {
     const current = normalizePlayerProfile(source, now)
     const oldRank = current.rank
-    const isFirstTime = !current.conqueredCityIds.includes(cityId)
+    const isFirstTime = won && !current.conqueredCityIds.includes(cityId)
     const rewardEggs = integer(earnedEggs)
     const rewardPoints = rewardEggs + integer(collectedEggs)
     const points = current.points + rewardPoints
@@ -219,7 +217,7 @@ export function applyCityVictory(
         goldenEggs: current.goldenEggs + rewardEggs,
         points,
         rank: calculateRank(points),
-        winsCount: current.winsCount + 1,
+        winsCount: current.winsCount + (won ? 1 : 0),
         lastPlayedCityId: cityId,
         updatedAt: now,
     }
@@ -232,6 +230,20 @@ export function applyCityVictory(
         newRank: profile.rank,
         rankedUp: oldRank !== profile.rank,
     }
+}
+
+export function applyCityVictory(source: PlayerProfile, cityId: string, now = Date.now(), earnedEggs = 0, collectedEggs = 0): ConquestResult {
+    return applyCityResult(source, cityId, now, earnedEggs, collectedEggs)
+}
+
+export function applyCityDraw(source: PlayerProfile, cityId: string, now = Date.now(), earnedEggs = 0, collectedEggs = 0): ConquestResult {
+    return applyCityResult(source, cityId, now, earnedEggs, collectedEggs, false)
+}
+
+export function settleCityDraw(cityId: string, earnedEggs = 0, collectedEggs = 0): ConquestResult {
+    const result = applyCityDraw(getPlayerProfile(), cityId, Date.now(), earnedEggs, collectedEggs)
+    savePlayerProfile(result.profile)
+    return result
 }
 
 export function conquerCity(cityId: string, earnedEggs = 0, collectedEggs = 0): ConquestResult {

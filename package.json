@@ -1,9 +1,9 @@
 {
   "name": "chikenchess",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
-    "prebuild": "npm run build:powered-analysis",
+    "prebuild": "npm run admin:check && npm run build:powered-analysis",
     "build": "next build",
     "predev": "npm run build:powered-analysis",
     "dev": "next dev",
@@ -13,7 +13,11 @@
     "typecheck": "tsc --noEmit",
     "build:online": "node scripts/build-online.mjs",
     "build:powered-analysis": "node scripts/build-powered-analysis.mjs",
-    "test:online": "node --test tests/online.cases.cjs tests/online-profile.cases.cjs tests/online-params.cases.cjs tests/online-auth.cases.cjs tests/online-lobby.cases.cjs tests/online-pending-move.cases.cjs"
+    "test:online": "node --test tests/online.cases.cjs tests/online-profile.cases.cjs tests/online-params.cases.cjs tests/online-auth.cases.cjs tests/online-lobby.cases.cjs tests/online-pending-move.cases.cjs",
+    "admin:dev": "node scripts/admin/dev.mjs",
+    "admin:check": "node scripts/admin/catalog-cli.mjs",
+    "admin:names": "node scripts/admin/catalog-cli.mjs --names",
+    "test:admin": "node --test tests/admin.cases.cjs tests/admin-file-service.cases.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

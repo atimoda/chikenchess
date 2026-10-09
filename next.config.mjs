@@ -18,4 +18,10 @@ const nextConfig = {
  
 }
 
+// The maintenance bridge exists only in the explicit local admin command.
+if (process.env.CHICKENCHESS_ADMIN_SERVICE_URL && process.env.NODE_ENV !== 'production') {
+  delete nextConfig.output
+  nextConfig.rewrites = async () => [{ source: '/__admin-local/:path*', destination: `${process.env.CHICKENCHESS_ADMIN_SERVICE_URL}/:path*` }]
+}
+
 export default nextConfig

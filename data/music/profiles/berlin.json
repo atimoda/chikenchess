@@ -1,0 +1,1148 @@
+{
+  "name": "Tresor · concreto e aço",
+  "bpm": 136,
+  "root": "C",
+  "scale": "Phrygian",
+  "harmony": "descent",
+  "swing": 0,
+  "sections": [
+    16,
+    16,
+    8,
+    16,
+    16,
+    32
+  ],
+  "parts": [
+    {
+      "role": "rhythm",
+      "name": "Bumbo industrial",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "kick",
+        "variant": 1,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . . . 0 . . . 0 . . . 0 . 0 .",
+        "0 . . . 0 . . . . . . . 0 . . .",
+        "0 . . . 0 . . . 0 . 0 . 0 . 0 .",
+        "0 . . . 0 . . . . . . . 0 . . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.54,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 20,
+      "clip": 0.72,
+      "distortion": 2.4,
+      "distortionMix": 0.2,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Ventilação do bunker",
+      "behavior": "sustain",
+      "source": {
+        "kind": "synth",
+        "sound": "brown"
+      },
+      "patterns": [
+        "0 . . . . . . .",
+        "1 . . . . . . .",
+        "4 . . . . . . .",
+        "0 . . . 1 . . .",
+        "0 . . . . 0 . . 0 . . . . 0 . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 2,
+      "gain": 0.045,
+      "attack": 0.8,
+      "release": 1.1,
+      "decay": 0.2,
+      "sustain": 0.72,
+      "clip": 0.9,
+      "lpf": 900,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          false,
+          false
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.25
+      },
+      "reverbRange": {
+        "first": 0.23,
+        "second": 0.275
+      }
+    },
+    {
+      "role": "bass",
+      "name": "Baixo de aço",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "acid",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . 0 . 1 . 0 .",
+        "0 0 . 1 0 . 4 .",
+        "0 . . . 1 . . .",
+        "0 1 0 . 4 1 0 .",
+        "0 . . . . . . . . . . 1 0 . 4 .",
+        "0 . 0 . 1 . 0 . 0 1 0 . 4 1 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        4,
+        4
+      ],
+      "octave": 2,
+      "gain": 0.33,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 690,
+      "hpf": 25,
+      "distortion": 3,
+      "distortionMix": 0.25,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "lpfRange": {
+        "first": 320,
+        "second": 980,
+        "frequency": "note"
+      },
+      "driveRange": {
+        "first": 1.5,
+        "second": 4,
+        "frequency": "note"
+      },
+      "reverbRange": {
+        "first": 0.01,
+        "second": 0.025
+      },
+      "effects": {
+        "reverb": 0.02
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Caixa de chapa",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "snare",
+        "variant": 1,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . 0 . 0 . . .",
+        ". . . . . . . . . . . . 0 . . .",
+        ". . . . 0 . . . . 0 . . 0 . . 0",
+        ". . . . . . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.3,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 900,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Drone de concreto",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "analog-pad",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . 1 . . .",
+        "1 . . . 4 . . .",
+        "4 . . . 0 . . .",
+        "0 . 1 . 4 . 1 .",
+        "0 . . . . 0 . . 0 . . . . 0 . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 2,
+      "gain": 0.055,
+      "attack": 0.6,
+      "release": 0.8,
+      "decay": 0.2,
+      "sustain": 0.72,
+      "clip": 0.9,
+      "lpf": 1050,
+      "hpf": 100,
+      "distortion": 1.2,
+      "distortionMix": 0.15,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.2
+      },
+      "reverbRange": {
+        "first": 0.18000000000000002,
+        "second": 0.225
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chimbal serrilhado",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "hat",
+        "variant": 1,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 .",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . 0 0 0 . 0 . 0 . 0 0 0 . 0 .",
+        "0 . . . . . . . 0 . . . . . . .",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.105,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 8200,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Sirene do porão",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "trompete",
+        "pitched": true
+      },
+      "patterns": [
+        "0 . 1 . 4 . . .",
+        "4 1 . 0 . 1 4 .",
+        "1 . . . . . 0 .",
+        "0 1 4 . 1 0 . 4",
+        "1 . . . . . . . . . . 0 . 1 4 .",
+        "0 . 1 . 4 . . . 0 1 4 . 1 0 2 4"
+      ],
+      "bars": [
+        1.75,
+        1.75,
+        1.75,
+        1.75,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.1,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 7000,
+      "hpf": 100,
+      "gate": 0.42,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "transpose": [
+          0,
+          0,
+          -1,
+          0,
+          0,
+          0
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "effects": {
+        "delay": 0.2,
+        "reverb": 0.14
+      },
+      "reverbRange": {
+        "first": 0.12000000000000001,
+        "second": 0.165
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tom de túnel",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "tom",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 . . . . . . . 0 .",
+        ". . 0 . . . . . . . 0 . . . . .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . 0 . . 0 . . . 0 . . . 0 .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . . . . 0 . . . . . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 1300,
+      "hpf": 20,
+      "distortion": 1,
+      "distortionMix": 0.12,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "response",
+      "name": "Metal percussivo",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "fm-bell",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . 4 . . . 1 .",
+        ". 6 . . 4 . . 1",
+        ". . . . 0 . . .",
+        ". 4 . 6 . 1 . 0",
+        ". . . . 0 . . . . . . . 4 . . 1",
+        ". . 4 . . . 1 . . 4 . 6 . 1 2 0"
+      ],
+      "bars": [
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.09,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 7000,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "delay": 0.16,
+        "reverb": 0.19
+      },
+      "reverbRange": {
+        "first": 0.17,
+        "second": 0.215
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chimbal aberto agressivo",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "open-hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . . . . . 0 . . . . . . . . .",
+        ". . 0 . . . 0 . . . 0 . . 0 0 .",
+        ". . . . . . 0 . . . . . . . . .",
+        ". . 0 . . . 0 . . . 0 . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.1,
+      "attack": 0.002,
+      "release": 0.14,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Sequenciador Phrygian",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "wavetable",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . 1 . 4 . . .",
+        "4 . 1 . 0 . 1 .",
+        "1 . . . 4 . . .",
+        "0 1 4 1 0 . 4 .",
+        "1 . . . . . . . . . 1 . 0 . 1 .",
+        "0 . 1 . 4 . . . 0 1 4 1 0 4 4 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.08,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 1500,
+      "hpf": 100,
+      "distortion": 0.8,
+      "distortionMix": 0.12,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          false,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.08,
+        "second": 0.125
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Rim de ferro",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "rim",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . . . . . 0 . . . . 0 .",
+        ". . . 0 . . 0 . . . 0 . . . 0 .",
+        ". . . . . . . . . . . . . . 0 .",
+        ". . 0 . . 0 . . . . 0 . . 0 . .",
+        ". . . . . . . . . . . . . . 0 .",
+        ". . 0 . . . . . . 0 . . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.11,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "transpose": [
+          0,
+          0,
+          -1,
+          0,
+          0,
+          0
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Cordas subterrâneas",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "violin-sustain",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . . . . .",
+        "1 . . . . . . .",
+        "4 . . . . . . .",
+        "0 . . . 4 . . .",
+        "0 . . . . 0 . . 0 . . . . 0 . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.045,
+      "attack": 0.5,
+      "release": 0.9,
+      "decay": 0.2,
+      "sustain": 0.72,
+      "clip": 0.9,
+      "lpf": 1500,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          false,
+          true
+        ],
+        "transpose": [
+          0,
+          0,
+          -1,
+          0,
+          0,
+          0
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "effects": {
+        "reverb": 0.31
+      },
+      "reverbRange": {
+        "first": 0.29,
+        "second": 0.335
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Ruído de corrente",
+      "behavior": "pulse",
+      "source": {
+        "kind": "synth",
+        "sound": "white"
+      },
+      "patterns": [
+        ". 0 . . . 0 . . . 0 . . . 0 . .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . . . . . . . . 0 . 0 . 0 . 0",
+        ". 0 . 0 . . 0 . . 0 . 0 . . 0 .",
+        ". . . . . . . . . 0 . . . 0 . .",
+        ". 0 . . . 0 . . . 0 . . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 6,
+      "gain": 0.032,
+      "attack": 0.001,
+      "release": 0.018,
+      "lpf": 12000,
+      "hpf": 9800,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Órgão do bunker",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "keys",
+        "asset": "organ",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . 1 . . .",
+        "4 . . . 1 . . .",
+        "1 . . . 0 . . .",
+        "0 . 4 . 1 . 0 .",
+        "0 . . . . 0 . . 0 . . . . 0 . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.055,
+      "attack": 0.18,
+      "release": 0.35,
+      "decay": 0.2,
+      "sustain": 0.72,
+      "clip": 0.9,
+      "lpf": 1800,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.08,
+        "second": 0.125
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Crash metálico",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "crash",
+        "variant": 1,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . . . . . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.07,
+      "attack": 0.002,
+      "release": 0.5,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.17
+      },
+      "reverbRange": {
+        "first": 0.15000000000000002,
+        "second": 0.195
+      }
+    }
+  ],
+  "reference": "X-101 — Sonic Destroyer (1991)",
+  "url": "https://tresorberlin.com/release/tresor-001/",
+  "harmonicSequences": [
+    [
+      0
+    ],
+    [
+      -1
+    ],
+    [
+      -2
+    ],
+    [
+      -3
+    ],
+    [
+      -2,
+      3,
+      -1,
+      0
+    ],
+    [
+      0,
+      3,
+      4,
+      0
+    ]
+  ]
+}

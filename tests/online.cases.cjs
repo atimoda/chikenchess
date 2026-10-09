@@ -34,6 +34,7 @@ test('Shared board music preserves active suggestions, powers, draw offers and U
   powered = command(powered, 'w', { kind: 'power', power: 'shield', square: 'e4' })
   let undone = move(createMatchState(), 'w', 'e2', 'e4', 'best')
   undone = move(undone, 'b', 'e7', 'e5')
+  undone.eggs.w = 4
   undone = command(undone, 'w', { kind: 'undo' })
   for (const original of [suggestions, powered, undone]) {
     const before = globalThis.structuredClone(original)
@@ -93,19 +94,28 @@ test('server validates both turns and preserves the original state on rejection'
 test('Undo returns to either actor, costs once, Redo belongs to its actor and cannot repeat reward', () => {
   let s = move(createMatchState(), 'w', 'e2', 'e4', 'best')
   s = move(s, 'b', 'e7', 'e5', 'worst')
+  s.eggs.w = 2
+  s.eggs.b = 2
   const collected = globalThis.structuredClone(s.collected)
   s = command(s, 'w', { kind: 'undo' })
   assert.equal(s.actions.length, 0)
-  assert.equal(s.eggs.w, 1)
+  assert.equal(s.eggs.w, 0)
   assert.throws(() => command(s, 'b', { kind: 'redo' }))
   s = command(s, 'w', { kind: 'redo' })
   assert.equal(s.actions.length, 2)
   assert.deepEqual(s.collected, collected)
   s = command(s, 'b', { kind: 'undo' })
   assert.equal(replayMatch(s).game.turn(), 'b')
+  assert.equal(s.eggs.b, 0)
   s = move(s, 'b', 'e7', 'e5', 'worst')
   assert.deepEqual(s.collected, collected)
   assert.equal(s.redo, null)
+})
+test('Undo refuses with fewer than two eggs and preserves the match state', () => {
+  let s = move(createMatchState(), 'w', 'e2', 'e4')
+  const before = globalThis.structuredClone(s)
+  assert.throws(() => command(s, 'w', { kind: 'undo' }), /1 more golden egg/)
+  assert.deepEqual(s, before)
 })
 test('Best/Worst share legal suggestions, charge only caller and remember last displayed score', () => {
   let s = createMatchState()
@@ -147,30 +157,36 @@ test('Either player can request Best or Worst on either turn while Freeze/Shield
     }
   }
 })
-test('Visible suggestions enforce a shared cooldown, preserve eggs on rejection and unlock exactly at expiry', () => {
-  let s = createMatchState()
-  s.eggs = { w: 5, b: 5 }
-  const position = matchPosition(s)
-  const suggest = group => ({ kind: 'suggest', group, position, moves: [{ uci: 'e2e4', score: 0 }] })
-  s = command(s, 'b', suggest('best'), 1000)
-  const before = globalThis.structuredClone(s)
-  for (const actor of ['w', 'b']) {
-    for (const group of ['best', 'worst']) {
-      assert.throws(() => command(s, actor, suggest(group), 3999), /visible suggestions/)
-      assert.deepEqual(s, before, 'cooldown rejects without charge or replacement of visible suggestions and memory')
+test('Visible suggestions block only their own group, preserve eggs on rejection and unlock at expiry', () => {
+  for (const first of ['best', 'worst']) {
+    const other = first === 'best' ? 'worst' : 'best'
+    let s = createMatchState()
+    s.eggs = { w: 5, b: 5 }
+    const position = matchPosition(s)
+    const suggest = group => ({ kind: 'suggest', group, position, moves: [{ uci: 'e2e4', score: 0 }] })
+    s = command(s, 'b', suggest(first), 1000)
+    const before = globalThis.structuredClone(s)
+    for (const actor of ['w', 'b']) {
+      assert.throws(() => command(s, actor, suggest(first), 3999), /visible suggestions/)
+      assert.deepEqual(s, before, 'same-group rejection preserves eggs, arrows and memory')
+      const replaced = command(s, actor, suggest(other), 2000)
+      assert.equal(replaced.eggs[actor], s.eggs[actor] - 1)
+      assert.equal(replaced.suggestions.kind, other)
+      assert.equal(replaced.suggestions.expiresAt, 5000)
+      assert.equal(replaced.seen.length, 2)
+      assert.throws(() => command(replaced, actor, suggest(other), 4999), /visible suggestions/)
+      const switchedBack = command(replaced, actor, suggest(first), 2001)
+      assert.equal(switchedBack.suggestions.kind, first, 'the replaced group immediately becomes available again')
     }
-  }
-  const expired = command(s, 'b', suggest('worst'), 4000)
-  assert.equal(expired.eggs.b, 3)
-  assert.equal(expired.eggs.w, 5)
-  assert.equal(expired.suggestions.kind, 'worst')
-  assert.equal(expired.suggestions.expiresAt, 7000)
-  assert.equal(expired.seen.length, 2)
+    const expired = command(s, 'b', suggest(first), 4000)
+    assert.equal(expired.eggs.b, 3)
+    assert.equal(expired.suggestions.expiresAt, 7000)
 
-  const moved = move(s, 'w', 'e2', 'e4')
-  const next = command(moved, 'w', { kind: 'suggest', group: 'worst', position: matchPosition(moved), moves: [{ uci: 'e7e5', score: 0 }] }, 2000)
-  assert.equal(next.suggestions.kind, 'worst', 'a move clears visible arrows and unlocks without waiting on old expiry')
-  assert.equal(replayMatch(next).game.turn(), 'b')
+    const moved = move(s, 'w', 'e2', 'e4')
+    const next = command(moved, 'w', { kind: 'suggest', group: first, position: matchPosition(moved), moves: [{ uci: 'e7e5', score: 0 }] }, 2000)
+    assert.equal(next.suggestions.kind, first, 'a move clears visible arrows and unlocks without waiting on old expiry')
+    assert.equal(replayMatch(next).game.turn(), 'b')
+  }
 })
 test('Freeze/Shield are guarded by own turn, paid symmetrically, replayed and invalidate arrows', () => {
   let s = move(createMatchState(), 'w', 'e2', 'e4', 'worst')

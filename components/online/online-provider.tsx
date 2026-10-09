@@ -5,12 +5,12 @@ import type { User } from '@supabase/supabase-js'
 import { normalizePlayerProfile, savePlayerProfile, type PlayerProfile } from '@/lib/game-progression'
 import type { OnlineProfile } from '@/lib/online/types'
 import { cacheLocalProfile, cacheOnlineProfile, getOnlineClient, onlineConfigured, onlineErrorMessage, onlineRpc, preserveProfileBackup, readCachedLocalProfile, readCachedOnlineProfile, readLocalProfile, readLocalProfileOwner, requireOnlineClient, samePlayerProfileContent, setLocalProfileOwner } from '@/lib/online/client'
-import { authCallbackMessage, completeAuthCallback, readAuthCallback } from '@/lib/online/auth-callback'
+import { AUTH_CALLBACK_CHANNEL, authCallbackMessage, completeAuthCallback, readAuthCallback } from '@/lib/online/auth-callback'
 import { LoginDialog } from './login-dialog'
 import { useOnlineNotifications } from '@/hooks/use-online-notifications'
 import { X } from 'lucide-react'
 
-/* global Response, CustomEvent, Event */
+/* global Response, CustomEvent, Event, BroadcastChannel */
 
 interface GuestTransfer {
   sourceUserId: string
@@ -247,6 +247,27 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     return () => { active = false; subscription.subscription.unsubscribe() }
   }, [adoptUser])
 
+  // Refresh server-owned application permissions without changing profile ownership.
+  useEffect(() => {
+    const online = getOnlineClient()
+    if (!online || !user?.id) return
+    const id = user.id
+    let active = true
+    let revision = 0
+    const refreshIdentity = () => {
+      const request = ++revision
+      void online.auth.getUser().then(({ data, error: identityError }) => {
+        if (!active || request !== revision || identityError || !data.user || data.user.id !== id || userRef.current?.id !== id) return
+        userRef.current = data.user
+        setUser(data.user)
+      }).catch(() => { /* Offline sessions retain ordinary profile access; admin writes are rechecked remotely. */ })
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshIdentity() }
+    refreshIdentity()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { active = false; document.removeEventListener('visibilitychange', onVisible) }
+  }, [user?.id])
+
   useEffect(() => {
     if (!user?.id) return
     let active = true
@@ -265,10 +286,17 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     void completeAuthCallback(requireOnlineClient().auth, callback).then((message) => {
       if (!active) return
       window.opener?.postMessage(message, window.location.origin)
+      const channel = new BroadcastChannel(AUTH_CALLBACK_CHANNEL)
+      channel.postMessage(message)
+      channel.close()
       window.close()
     }).catch((cause) => {
       if (!active) return
-      window.opener?.postMessage(authCallbackMessage(callback, { message: onlineErrorMessage(cause) }, false), window.location.origin)
+      const message = authCallbackMessage(callback, { message: onlineErrorMessage(cause) }, false)
+      window.opener?.postMessage(message, window.location.origin)
+      const channel = new BroadcastChannel(AUTH_CALLBACK_CHANNEL)
+      channel.postMessage(message)
+      channel.close()
       window.close()
     })
     return () => { active = false }

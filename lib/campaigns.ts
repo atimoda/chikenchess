@@ -1,13 +1,14 @@
 import type { CityData } from './cities-data'
+import campaigns from '../data/ui/campaigns.json'
 
-export const CAMPAIGNS = [
-  { id: 'electronic-history', name: 'History of Electronic Music' },
-  { id: 'world-ballads', name: 'World ballads' },
-  { id: 'classical', name: 'Classical music' },
-  { id: 'harmonic-songbook', name: 'Harmonic songbook' },
-  { id: 'brazilian', name: 'Brazilian' },
-  { id: 'world-rhythms', name: 'World rhythms' },
-] as const
+export const CAMPAIGNS = campaigns as unknown as readonly [
+  { readonly id: 'electronic-history'; readonly name: string },
+  { readonly id: 'world-ballads'; readonly name: string },
+  { readonly id: 'classical'; readonly name: string },
+  { readonly id: 'harmonic-songbook'; readonly name: string },
+  { readonly id: 'brazilian'; readonly name: string },
+  { readonly id: 'world-rhythms'; readonly name: string },
+]
 
 export type CampaignId = typeof CAMPAIGNS[number]['id']
 
