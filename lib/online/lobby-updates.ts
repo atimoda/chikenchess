@@ -1,5 +1,11 @@
 import type { OnlineFriend, OnlineRoom } from './types'
 
+/** Only a lobby observed before its start can open a new game automatically. */
+export function startedRoomMatch(previous: OnlineRoom | null, next: OnlineRoom | null, userId: string | null): string | null {
+  if (!previous || !next || !userId || previous.id !== next.id || previous.status !== 'open' || previous.match_id || next.status !== 'playing' || !next.match_id) return null
+  return previous.members.some(member => member.user_id === userId) && next.members.some(member => member.user_id === userId) ? next.match_id : null
+}
+
 /** Initial snapshots establish a baseline; only later transitions announce activity. */
 export function roomArrivalNames(previous: OnlineRoom | null, next: OnlineRoom | null, userId: string | null): string[] {
   if (!previous || !next || previous.id !== next.id || next.host_id !== userId) return []

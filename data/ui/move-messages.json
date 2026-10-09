@@ -1,0 +1,83 @@
+{
+  "BEST_MOVE_MESSAGES": [
+    "Brilliant!",
+    "Eggcellent!",
+    "Masterful!",
+    "Sharp!",
+    "Clever!",
+    "Inspired!",
+    "Cluck yeah!",
+    "Genius!",
+    "Flawless!",
+    "Checkmate-worthy!"
+  ],
+  "BEST_MOVES_WITH_WORST_SCORES_MESSAGES": [
+    "You've got it!",
+    "You’re getting good!",
+    "Smart comeback!",
+    "Triple eggs!",
+    "Turning the tide!",
+    "Tough spot, sharp move!",
+    "That’s the spirit!",
+    "Clever under pressure!",
+    "Now you’re cooking!",
+    "Way to fight!"
+  ],
+  "WORST_MOVE_MESSAGES": [
+    "Oops!",
+    "Eggward!",
+    "Scrambled!",
+    "Yikes!",
+    "Risky!",
+    "Uh-oh, chicken!",
+    "Wobbly!",
+    "Questionable!",
+    "Fowl play!",
+    "Oh cluck!",
+    "Terrible!",
+    "Your \"lucky\" day"
+  ],
+  "BEST_STREAK_MESSAGES": [
+    "Unstoppable!",
+    "On fire!",
+    "Unbeakable!",
+    "Winning streak!",
+    "Cluckin’ brilliant!"
+  ],
+  "WORST_STREAK_MESSAGES": [
+    "Eggspiraling!",
+    "Cluckstorm!",
+    "Scramble mode!",
+    "Coop’s concerned!",
+    "Henough already!"
+  ],
+  "BEST_STREAK_6_PLUS_MESSAGES": [
+    "You’re on a roll!",
+    "Unbeakable streak!",
+    "The coop is cooking!",
+    "Cluck, you’re good!",
+    "Can’t stop this chicken!",
+    "Chickens make mistakes, but you?",
+    "Cooking!"
+  ],
+  "WORST_STREAK_6_PLUS_MESSAGES": [
+    "The eggs are scrambling.",
+    "A streak of… choices.",
+    "The coop is concerned.",
+    "Maybe trust the chicken?",
+    "This is getting eggward.",
+    "We’ll pretend that worked.",
+    "Uh-oh, chicken.",
+    "That’s a bold cluck.",
+    "The plot thickens…",
+    "Oopsie-daisy!",
+    "A little scrambled.",
+    "The board noticed.",
+    "Risky business!",
+    "That’s one way to play."
+  ],
+  "SINGLE_LEGAL_MOVE_MESSAGES": [
+    "Ok",
+    "Yep"
+  ]
+}

@@ -1,5 +1,7 @@
 "use client"
 
+/* global Event, CustomEvent */
+
 import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
@@ -78,6 +80,7 @@ interface GlobeProps {
   stopWhistleLoop: () => void
   setPressedPopupState: (state: { id: string } | null) => void
   onCitySelect: (city: CityData) => void
+  onCreateRoom?: (city: CityData) => void
   handleSmartPadSound: (e: React.MouseEvent<HTMLButtonElement>) => void
   handleSmartPadLeave: (e: React.MouseEvent<HTMLButtonElement>) => void
   stopPadSound: () => void
@@ -255,6 +258,7 @@ const PopupContainer = ({
     setIsDraggingPopup,
     standbyRef,
     onEraSelect,
+    onCreateRoom,
 }: any) => {
     // Local state for smooth dragging
     const [localPos, setLocalPos] = useState({ x: popup.x, y: popup.y })
@@ -433,6 +437,7 @@ const PopupContainer = ({
                           y: localPosRef.current.y + slowOffset.current.y + 10,
                         })}
                         city={city}
+                        onCreateRoom={onCreateRoom}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
                         isConquered={isConquered}
                         isUnlocked={isUnlocked}
@@ -540,6 +545,7 @@ const GlobeContent = ({
   stopWhistleLoop,
   setPressedPopupState,
   onCitySelect,
+  onCreateRoom,
   handleSmartPadSound,
   handleSmartPadLeave,
   stopPadSound,
@@ -1149,6 +1155,7 @@ const GlobeContent = ({
                       <PopupContainer
                           onEraSelect={(era: CityData, position: { x: number; y: number }) => { if (era.id !== city.id) { onPopupClose(city.id); centerCity(era); onCityClick(era, position) } }}
                           city={city}
+                          onCreateRoom={onCreateRoom}
                           popup={popup}
                           popupLayerRef={popupLayerRef}
                           isConquered={isConquered}

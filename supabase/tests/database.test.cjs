@@ -6,8 +6,10 @@ const { test, before, after } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { randomUUID } = require('node:crypto')
 const { PGlite } = require(require.resolve('@electric-sql/pglite', { paths: [process.env.ONLINE_TEST_MODULES || process.cwd()] }))
 const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333', '44444444-4444-4444-8444-444444444444', '55555555-5555-4555-8555-555555555555']
+const randomRoomIds = ['a1000000-0000-4000-8000-000000000001','a1000000-0000-4000-8000-000000000002','a1000000-0000-4000-8000-000000000003']
 let db; let profiles; let room; let match; let firstReceipt
 const legacyId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 async function admin(sql, args=[]) { await db.exec('reset role'); return db.query(sql,args) }
@@ -40,7 +42,8 @@ before(async () => {
     }
     await db.exec(fs.readFileSync(path.join(migrations,file),'utf8'))
   }
-  for (const id of ids) await db.query('insert into auth.users(id) values($1)',[id])
+  for (const id of [...ids,...randomRoomIds]) await db.query('insert into auth.users(id) values($1)',[id])
+  for (const id of randomRoomIds) await rpc(id,'online_profile')
   profiles=[]
   for (let i=0;i<ids.length;i++) profiles.push(await rpc(ids[i],'online_profile',[null,`Chicken ${i}`]))
 })
@@ -150,10 +153,14 @@ test('intended identity guard rejects switched-session sync even when both cloud
 })
 test('roles cannot directly mutate official data or call privileged service RPCs',async()=>{
   await assert.rejects(asUser(ids[0],"update public.online_profiles set golden_eggs=999 where id=$1",[ids[0]]),/permission denied/)
+  await assert.rejects(asUser(ids[0],"update public.online_rooms set is_public=false"),/permission denied/)
   await assert.rejects(asUser(ids[0],'select * from online_private.profile_saves'),/permission denied/)
   await assert.rejects(asUser(ids[0],'select * from public.online_match_commands'),/permission denied/)
   await assert.rejects(asUser(ids[0],"select public.online_commit_match(null,null,null,0,'{}','{}')"),/permission denied/)
-  await db.exec('reset role; set role anon'); await assert.rejects(db.query('select public.online_rooms()'),/permission denied/)
+  await db.exec('reset role; set role anon'); await db.query('select public.online_rooms()')
+  await assert.rejects(db.query('select * from public.online_rooms'),/permission denied/)
+  await assert.rejects(db.query('select * from public.online_profiles'),/permission denied/)
+  await assert.rejects(db.query("select public.online_room('create')"),/permission denied/)
 })
 test('server preset allowlist matches the shipped city catalog and rejects unknown kits',async()=>{
   const { loadTs }=require('../../tests/helpers/music.cjs')
@@ -161,12 +168,124 @@ test('server preset allowlist matches the shipped city catalog and rejects unkno
   assert.deepEqual((await admin('select id from online_private.kit_catalog order by id')).rows.map(r=>r.id),catalog)
   await assert.rejects(rpc(ids[0],'online_room',['create',null,true,'nonexistent-city']),/INVALID_KIT/)
 })
+test('Random remains a lobby choice until second Ready resolves independent concrete match kits',async()=>{
+  let current=await rpc(randomRoomIds[0],'online_room',['create'])
+  assert.equal(current.members[0].city_id,'random')
+  current=await rpc(randomRoomIds[1],'online_room',['join',current.code])
+  assert.deepEqual(current.members.map(m=>m.city_id),['random','random'])
+  const catalog=(await admin('select id from online_private.kit_catalog')).rows.map(r=>r.id)
+  // A reproducible PRNG sequence checks both independent draws and the absence
+  // of draws during get/first Ready, without probabilistic equality assertions.
+  await admin('select setseed(0.42)')
+  const hostExpected=(await admin('select id from online_private.kit_catalog order by random() limit 1')).rows[0].id
+  const guestExpected=(await admin('select id from online_private.kit_catalog order by random() limit 1')).rows[0].id
+  assert.notEqual(hostExpected,guestExpected)
+  await admin('select setseed(0.42)')
+  assert.deepEqual((await rpc(randomRoomIds[2],'online_room',['get',current.code])).members.map(m=>m.city_id),['random','random'])
+  current=await rpc(randomRoomIds[0],'online_room',['ready',current.code])
+  assert.equal(current.status,'open'); assert.equal(current.match_id,null)
+  assert.deepEqual(current.members.map(m=>m.city_id),['random','random'])
+  assert.equal((await admin('select count(*)::int as count from public.online_matches where room_id=$1',[current.id])).rows[0].count,0)
+  current=await rpc(randomRoomIds[1],'online_room',['ready',current.code])
+  assert.equal(current.status,'playing')
+  assert.deepEqual(current.members.map(m=>m.city_id),['random','random'])
+  let resolved=await rpc(randomRoomIds[0],'get_online_match',[current.match_id])
+  assert.equal(resolved.members.find(m=>m.user_id===randomRoomIds[0]).city_id,hostExpected)
+  assert.equal(resolved.members.find(m=>m.user_id===randomRoomIds[1]).city_id,guestExpected)
+  assert.equal(resolved.context_city_id,hostExpected)
+  assert.ok(resolved.members.every(m=>catalog.includes(m.city_id)))
+  await assert.rejects(rpc(randomRoomIds[0],'online_room',['visibility',current.code,false]),/ROOM_CLOSED/)
+  await assert.rejects(rpc(randomRoomIds[1],'online_room',['visibility',current.code,false]),/FORBIDDEN/)
+  await assert.rejects(rpc(randomRoomIds[0],'online_room',['kit',current.code,true,'nyc']),/ROOM_CLOSED/)
+  assert.equal((await rpc(randomRoomIds[0],'online_room',['ready',current.code])).match_id,current.match_id)
+  assert.equal((await rpc(randomRoomIds[1],'online_room',['ready',current.code])).match_id,current.match_id)
+  assert.deepEqual(await rpc(randomRoomIds[0],'get_online_match',[current.match_id]),resolved)
+  assert.equal((await admin('select count(*)::int as count from public.online_matches where room_id=$1',[current.id])).rows[0].count,1)
+  await assert.rejects(admin("update public.online_match_members set city_id='random' where match_id=$1",[current.match_id]),/online_match_members_concrete_kit/)
+  await assert.rejects(admin("update public.online_matches set context_city_id='random' where id=$1",[current.match_id]),/online_matches_concrete_context/)
+  // Revanche keeps the concrete draws and original context while swapping colors.
+  const offered=resolved.members.find(m=>m.user_id===randomRoomIds[0]).color
+  resolved=await service('online_commit_match',[resolved.id,randomRoomIds[0],randomUUID(),0,{...resolved.state,result:{winner:null,reason:'agreement'}},{kind:'accept-draw'}])
+  resolved=await service('online_commit_match',[resolved.id,randomRoomIds[0],randomUUID(),1,{...resolved.state,rematchOffer:offered},{kind:'offer-rematch'}])
+  const accepted=await service('online_commit_match',[resolved.id,randomRoomIds[1],randomUUID(),2,{...resolved.state,rematchOffer:null},{kind:'accept-rematch'}])
+  const again=await rpc(randomRoomIds[0],'get_online_match',[accepted.rematch_id])
+  assert.equal(again.context_city_id,hostExpected)
+  for(const m of again.members) {
+    const original=resolved.members.find(before=>before.user_id===m.user_id)
+    assert.equal(m.city_id,original.city_id); assert.notEqual(m.color,original.color)
+  }
+  await service('online_commit_match',[again.id,randomRoomIds[0],randomUUID(),0,{...again.state,result:{winner:null,reason:'agreement'}},{kind:'accept-draw'}])
+  await rpc(randomRoomIds[0],'online_room',['leave',current.code]); await rpc(randomRoomIds[1],'online_room',['leave',current.code])
+})
+test('explicit kits survive Ready and the explicit host supplies context while Random can be selected again',async()=>{
+  let current=await rpc(randomRoomIds[0],'online_room',['create',null,true,'nyc'])
+  current=await rpc(randomRoomIds[1],'online_room',['join',current.code,true,'chicago'])
+  current=await rpc(randomRoomIds[1],'online_room',['ready',current.code])
+  current=await rpc(randomRoomIds[1],'online_room',['kit',current.code,true,'random'])
+  assert.equal(current.members.find(m=>m.user_id===randomRoomIds[1]).city_id,'random')
+  assert.equal(current.members.find(m=>m.user_id===randomRoomIds[1]).ready,true)
+  const first=await rpc(randomRoomIds[0],'online_room',['ready',current.code])
+  assert.equal(first.members.find(m=>m.user_id===randomRoomIds[0]).city_id,'nyc')
+  current=await rpc(randomRoomIds[1],'online_room',['ready',current.code])
+  const resolved=await rpc(randomRoomIds[0],'get_online_match',[current.match_id])
+  assert.equal(resolved.context_city_id,'nyc')
+  assert.equal(resolved.members.find(m=>m.user_id===randomRoomIds[0]).city_id,'nyc')
+  const guest=resolved.members.find(m=>m.user_id===randomRoomIds[1])
+  assert.equal((await admin('select count(*)::int as count from online_private.kit_catalog where id=$1',[guest.city_id])).rows[0].count,1)
+  await service('online_commit_match',[resolved.id,randomRoomIds[0],randomUUID(),0,{...resolved.state,result:{winner:null,reason:'agreement'}},{kind:'accept-draw'}])
+  await rpc(randomRoomIds[0],'online_room',['leave',current.code]); await rpc(randomRoomIds[1],'online_room',['leave',current.code])
+})
+test('only the open-room host may change visibility and the directory refreshes without changing Ready',async()=>{
+  let current=await rpc(randomRoomIds[0],'online_room',['create',null,false])
+  const directoryHas=async()=> (await rpc(randomRoomIds[2],'online_rooms')).some(r=>r.code===current.code)
+  assert.equal(await directoryHas(),false)
+  await assert.rejects(rpc(randomRoomIds[2],'online_room',['visibility',current.code,true]),/FORBIDDEN/)
+  await assert.rejects(rpc(randomRoomIds[0],'online_room',['visibility',current.code,null]),/INVALID_VISIBILITY/)
+  current=await rpc(randomRoomIds[0],'online_room',['visibility',current.code,true])
+  assert.equal(current.is_public,true); assert.equal(await directoryHas(),true)
+  current=await rpc(randomRoomIds[1],'online_room',['join',current.code])
+  assert.equal(await directoryHas(),false)
+  const ready=await rpc(randomRoomIds[0],'online_room',['ready',current.code])
+  await assert.rejects(rpc(randomRoomIds[1],'online_room',['visibility',current.code,false]),/FORBIDDEN/)
+  current=await rpc(randomRoomIds[0],'online_room',['visibility',current.code,false])
+  assert.equal(current.is_public,false); assert.deepEqual(current.members,ready.members)
+  current=await rpc(randomRoomIds[0],'online_room',['visibility',current.code,true])
+  assert.equal(current.is_public,true); assert.equal(await directoryHas(),false)
+  await rpc(randomRoomIds[1],'online_room',['leave',current.code])
+  assert.equal(await directoryHas(),true)
+  current=await rpc(randomRoomIds[0],'online_room',['visibility',current.code,false])
+  assert.equal(await directoryHas(),false)
+  assert.equal((await rpc(randomRoomIds[2],'online_room',['get',current.code])).id,current.id)
+  await rpc(randomRoomIds[0],'online_room',['leave',current.code])
+  await assert.rejects(rpc(randomRoomIds[0],'online_room',['visibility',current.code,true]),/FORBIDDEN/)
+})
 test('unrelated profiles are hidden; public directory contains only open vacancies',async()=>{
   assert.equal((await asUser(ids[2],'select * from public.online_profiles')).rows.length,1)
   room=await rpc(ids[0],'online_room',['create',null,true,'dusseldorf'])
   assert.equal((await rpc(ids[2],'online_rooms')).length,1)
   assert.deepEqual(Object.keys((await rpc(ids[2],'online_rooms'))[0]).sort(),['code','creator_name','players'])
   assert.equal((await asUser(ids[2],'select * from public.online_rooms')).rows.length,0)
+})
+test('public directory orders by room creation and remains thin for anon readers',async()=>{
+  const older=await rpc(randomRoomIds[0],'online_room',['create',null,true,'dusseldorf'])
+  const newer=await rpc(randomRoomIds[1],'online_room',['create',null,true,'dusseldorf'])
+  await admin('update public.online_rooms set created_at=$1,updated_at=$2 where id=$3',[new Date('2026-01-01T00:00:00Z'),new Date('2026-01-03T00:00:00Z'),older.id])
+  await admin('update public.online_rooms set created_at=$1,updated_at=$2 where id=$3',[new Date('2026-01-02T00:00:00Z'),new Date('2026-01-01T00:00:00Z'),newer.id])
+  const first=await rpc(ids[2],'online_rooms')
+  assert.deepEqual(first.filter(r=>[older.code,newer.code].includes(r.code)).map(r=>r.code),[newer.code,older.code])
+  await admin('update public.online_rooms set updated_at=clock_timestamp() where id=$1',[older.id])
+  const second=await rpc(ids[2],'online_rooms')
+  assert.deepEqual(second.filter(r=>[older.code,newer.code].includes(r.code)).map(r=>r.code),[newer.code,older.code])
+  await db.exec("reset role; select set_config('request.jwt.claim.sub','',false); set role anon")
+  const anonymousDirectory=(await db.query('select public.online_rooms() as result')).rows[0].result
+  assert.deepEqual(anonymousDirectory,second)
+  const projection=(await db.query('select code,creator_name,players from public.online_public_rooms')).rows
+  assert.ok(projection.some(r=>r.code===newer.code))
+  assert.deepEqual(Object.keys(projection[0]).sort(),['code','creator_name','players'])
+  await assert.rejects(db.query('select * from public.online_profiles'),/permission denied/)
+  await assert.rejects(db.query('select * from public.online_rooms'),/permission denied/)
+  await assert.rejects(db.query("select public.online_room('join',$1)",[older.code]),/permission denied/)
+  await rpc(randomRoomIds[0],'online_room',['leave',older.code]); await rpc(randomRoomIds[1],'online_room',['leave',newer.code])
 })
 test('private room has an unguessable invite and stays out of directory and raw RLS reads',async()=>{
   const privateRoom=await rpc(ids[3],'online_room',['create',null,false,'dusseldorf'])
@@ -206,6 +325,26 @@ test('room switching replaces the old host, clears readiness and refreshes both 
   await rpc(ids[4],'online_room',['leave',old.code])
   await rpc(ids[2],'online_room',['leave',target.code]); await rpc(ids[3],'online_room',['leave',target.code])
 })
+test('creating a room closes the previous lobby and clears the remaining participant readiness',async()=>{
+  const old=await rpc(ids[2],'online_room',['create',null,true,'dusseldorf'])
+  await rpc(ids[4],'online_room',['join',old.code])
+  await rpc(ids[2],'online_room',['ready',old.code])
+  const next=await rpc(ids[2],'online_room',['create',null,true,'nyc'])
+  assert.notEqual(next.id,old.id)
+  assert.equal(next.members.length,1)
+  assert.equal((await rpc(ids[2],'online_room',['get'])).id,next.id)
+  assert.equal((await rpc(ids[2],'online_room',['get',old.code])).status,'closed')
+  const closed=await rpc(ids[4],'online_room',['get',old.code])
+  assert.equal(closed.status,'closed')
+  assert.deepEqual(closed.members.map(member=>[member.user_id,member.ready]),[[ids[4],false]])
+  const directory=await rpc(ids[4],'online_rooms')
+  assert.equal(directory.some(entry=>entry.code===old.code),false)
+  assert.equal(directory.some(entry=>entry.code===next.code),true)
+  await rpc(ids[4],'online_room',['leave',old.code])
+  assert.equal((await rpc(ids[2],'online_room',['get',old.code])).status,'closed')
+  assert.equal((await rpc(ids[4],'online_room',['get',old.code])).status,'closed')
+  await rpc(ids[2],'online_room',['leave',next.code])
+})
 test('failed switch to full, closed, missing or invalid-kit rooms keeps the previous seat and readiness',async()=>{
   const old=await rpc(ids[2],'online_room',['create',null,true,'dusseldorf'])
   await rpc(ids[2],'online_room',['ready',old.code])
@@ -231,22 +370,19 @@ test('admission prevents third occupant; host replacement and reload recovery pr
   room=await rpc(ids[1],'online_room',['get',room.code]); assert.equal(room.host_id,ids[1]); assert.equal(room.members[0].ready,false)
   room=await rpc(ids[0],'online_room',['join',room.code,true,'dusseldorf'])
 })
-test('kit changes reset own Ready and both Ready calls create only one initial match',async()=>{
-  await rpc(ids[0],'online_room',['ready',room.code])
-  room=await rpc(ids[0],'online_room',['kit',room.code,true,'dusseldorf']); assert.equal(room.members.find(m=>m.user_id===ids[0]).ready,false)
-  await rpc(ids[0],'online_room',['ready',room.code])
+test('kit changes preserve Ready, explicit cancellation clears it, and both ready players create one initial match',async()=>{
+  room=await rpc(ids[0],'online_room',['ready',room.code]); assert.equal(room.members.find(m=>m.user_id===ids[0]).ready,true)
+  room=await rpc(ids[0],'online_room',['kit',room.code,true,'dusseldorf']); assert.equal(room.members.find(m=>m.user_id===ids[0]).ready,true)
+  room=await rpc(ids[0],'online_room_cancel_ready',[room.code]); assert.equal(room.members.find(m=>m.user_id===ids[0]).ready,false)
+  room=await rpc(ids[0],'online_room_cancel_ready',[room.code]); assert.equal(room.members.find(m=>m.user_id===ids[0]).ready,false)
+  room=await rpc(ids[0],'online_room',['ready',room.code]); assert.equal(room.members.find(m=>m.user_id===ids[0]).ready,true)
   room=await rpc(ids[1],'online_room',['ready',room.code]); assert.equal(room.status,'playing'); assert.ok(room.match_id)
   assert.equal((await rpc(ids[0],'online_room',['ready',room.code])).match_id,room.match_id)
   match=await rpc(ids[0],'get_online_match',[room.match_id]); assert.equal(match.state.eggs.w,1); assert.equal(match.state.eggs.b,1)
   assert.equal(match.context_city_id,'new-orleans-1953')
-  assert.equal((await admin('select count(*)::int as total from public.online_matches')).rows[0].total,1)
+  assert.equal((await admin('select count(*)::int as total from public.online_matches where room_id=$1',[room.id])).rows[0].total,1)
   await assert.rejects(rpc(ids[2],'get_online_match',[match.id]),/FORBIDDEN/)
-  await assert.rejects(rpc(ids[0],'online_room',['leave',room.code]),/ACTIVE_MATCH/)
-  const other=await rpc(ids[2],'online_room',['create',null,true,'dusseldorf'])
-  await assert.rejects(rpc(ids[0],'online_room',['join',other.code]),/ACTIVE_MATCH/)
-  assert.equal((await rpc(ids[0],'online_room',['get'])).match_id,room.match_id)
-  assert.equal((await rpc(ids[2],'online_room',['get'])).members.length,1)
-  await rpc(ids[2],'online_room',['leave',other.code])
+  assert.equal((await rpc(ids[0],'online_running_games'))[0].id,match.id)
 })
 test('verified service commit checks membership/version and deduplicates exact command before conflict',async()=>{
   const command={kind:'offer-draw'}; const next={...match.state,drawOffer:match.members.find(m=>m.user_id===ids[0]).color}
@@ -274,7 +410,7 @@ test('result settlement credits only once and never conquers a campaign city',as
   const next={...match.state,eggs:{w:4,b:4},collected:{w:6,b:6},result:{winner,reason:'resign'}}
   const args=[match.id,ids[1],'cccccccc-cccc-4ccc-8ccc-cccccccccccc',1,next,{kind:'resign'}]
   match=await service('online_commit_match',args); assert.equal(match.version,2)
-  const p=await rpc(ids[0],'online_profile'); assert.equal(p.profile.goldenEggs,14); assert.equal(p.profile.points,20); assert.equal(p.profile.winsCount,1); assert.deepEqual(p.profile.conqueredCityIds,[])
+  const p=await rpc(ids[0],'online_profile'); assert.equal(p.profile.goldenEggs,18); assert.equal(p.profile.points,24); assert.equal(p.profile.winsCount,1); assert.deepEqual(p.profile.conqueredCityIds,[])
   await service('online_commit_match',args); assert.deepEqual((await rpc(ids[0],'online_profile')).profile,p.profile)
   assert.ok(p.profile.updatedAt>baseline.profile.updatedAt)
   await assert.rejects(rpc(ids[0],'online_sync_profile',[baseline.profile.updatedAt,{...baseline.profile,goldenEggs:99},ids[0]]),/PROFILE_CONFLICT/)
@@ -318,4 +454,274 @@ test('private presence accepts only match members and rejects broadcast and othe
   await asUser(ids[0],"insert into realtime.messages(extension) values('presence')")
   await assert.rejects(asUser(ids[0],"insert into realtime.messages(extension) values('broadcast')"),/row-level security/)
   await assert.rejects(asUser(ids[3],"insert into realtime.messages(extension) values('presence')"),/row-level security/)
+})
+
+async function settlementFixture() {
+  const players=[randomUUID(),randomUUID()]
+  const before={}
+  for(const id of players) {
+    await admin('insert into auth.users(id) values($1)',[id])
+    before[id]=await rpc(id,'online_profile',[{profileVersion:1,goldenEggs:20,points:34,winsCount:2,conqueredCityIds:['dusseldorf'],gameplayTipSeen:true,moveRewardNotices:{best:true,worst:false}}])
+  }
+  let lobby=await rpc(players[0],'online_room',['create',null,true,'nyc'])
+  lobby=await rpc(players[1],'online_room',['join',lobby.code,true,'chicago'])
+  lobby=await rpc(players[0],'online_room',['ready',lobby.code])
+  lobby=await rpc(players[1],'online_room',['ready',lobby.code])
+  return {players,before,initial:await rpc(players[0],'get_online_match',[lobby.match_id])}
+}
+
+for(const scenario of [
+  {label:'white win takes both unequal balances',winner:'w',eggs:{w:3,b:8},reward:{w:11,b:0}},
+  {label:'black win takes both unequal balances',winner:'b',eggs:{w:3,b:8},reward:{w:0,b:11}},
+  {label:'draw splits an even unequal pool',winner:null,eggs:{w:2,b:8},reward:{w:5,b:5}},
+  {label:'draw gives black the remaining egg of an odd pool',winner:null,eggs:{w:1,b:8},reward:{w:4,b:5}},
+  {label:'draw with no remaining eggs still adds each own collected bonus',winner:null,eggs:{w:0,b:0},reward:{w:0,b:0}},
+]) test(`pooled settlement: ${scenario.label}, preserves progress and retries once`,async()=>{
+  const {players,before,initial}=await settlementFixture()
+  const collected={w:6,b:2}
+  const state={...initial.state,eggs:scenario.eggs,collected,result:{winner:scenario.winner,reason:scenario.winner?'resign':'agreement'}}
+  const command={kind:scenario.winner?'resign':'accept-draw'}
+  const args=[initial.id,players[0],randomUUID(),0,state,command]
+  const settled=await service('online_commit_match',args)
+  assert.equal(settled.version,1)
+  assert.deepEqual(settled.state,state)
+  const credited={}
+  for(const member of initial.members) {
+    const baseline=before[member.user_id].profile
+    const profile=(await rpc(member.user_id,'online_profile')).profile
+    const receives=scenario.winner===null || scenario.winner===member.color
+    const amount=scenario.reward[member.color]
+    const points=baseline.points+amount+(receives?collected[member.color]:0)
+    credited[member.user_id]=profile
+    assert.equal(profile.goldenEggs,baseline.goldenEggs+amount)
+    assert.equal(profile.points,points)
+    assert.equal(profile.winsCount,baseline.winsCount+(scenario.winner===member.color?1:0))
+    assert.equal(profile.rank,points>=40?'Rhythm Apprentice':'Novice Beatmaker')
+    assert.deepEqual(profile.conqueredCityIds,baseline.conqueredCityIds)
+    assert.deepEqual(profile.moveRewardNotices,baseline.moveRewardNotices)
+    assert.equal(profile.gameplayTipSeen,baseline.gameplayTipSeen)
+    if(receives) assert.ok(profile.updatedAt>baseline.updatedAt)
+    else assert.deepEqual(profile,baseline)
+    const official=(await admin('select golden_eggs,points,wins_count from public.online_profiles where id=$1',[member.user_id])).rows[0]
+    assert.equal(Number(official.golden_eggs),profile.goldenEggs)
+    assert.equal(Number(official.points),profile.points)
+    assert.equal(Number(official.wins_count),profile.winsCount)
+  }
+  assert.equal(initial.members.reduce((total,m)=>total+credited[m.user_id].goldenEggs-before[m.user_id].profile.goldenEggs,0),scenario.eggs.w+scenario.eggs.b)
+  const settledAt=(await admin('select settled_at from public.online_matches where id=$1',[initial.id])).rows[0].settled_at
+  assert.ok(settledAt)
+  assert.deepEqual(await service('online_commit_match',args),settled)
+  await assert.rejects(service('online_commit_match',[...args.slice(0,5),{kind:'undo'}]),/COMMAND_ID_REUSED/)
+  await assert.rejects(service('online_commit_match',[initial.id,players[1],randomUUID(),1,state,command]),/MATCH_FINISHED/)
+  for(const id of players) assert.deepEqual((await rpc(id,'online_profile')).profile,credited[id])
+  assert.equal((await rpc(players[1],'get_online_match',[initial.id])).version,1)
+  assert.equal((await admin('select count(*)::int as count from public.online_match_commands where match_id=$1',[initial.id])).rows[0].count,1)
+  assert.deepEqual((await admin('select settled_at from public.online_matches where id=$1',[initial.id])).rows[0].settled_at,settledAt)
+})
+
+test('pooled settlement rejects invalid other-side eggs and draw bonuses without any partial credit',async()=>{
+  const {players,before,initial}=await settlementFixture()
+  const invalid=[
+    {eggs:{w:3,b:-1},collected:{w:6,b:2},result:{winner:'w',reason:'resign'}},
+    {eggs:{w:3,b:1.5},collected:{w:6,b:2},result:{winner:'w',reason:'resign'}},
+    {eggs:{w:3,b:8},collected:{w:6,b:-2},result:{winner:null,reason:'agreement'}},
+  ]
+  for(const result of invalid) {
+    await assert.rejects(service('online_commit_match',[initial.id,players[0],randomUUID(),0,{...initial.state,...result},{kind:'resign'}]),/INVALID_RESULT/)
+    for(const id of players) assert.deepEqual((await rpc(id,'online_profile')),before[id])
+    assert.deepEqual(await rpc(players[0],'get_online_match',[initial.id]),initial)
+    const stored=(await admin('select settled_at from public.online_matches where id=$1',[initial.id])).rows[0]
+    assert.equal(stored.settled_at,null)
+    assert.equal((await admin('select count(*)::int as count from public.online_match_commands where match_id=$1',[initial.id])).rows[0].count,0)
+  }
+})
+
+async function freshOnlinePlayers(count) {
+  const players=Array.from({length:count},()=>randomUUID())
+  for(const id of players) {
+    await admin('insert into auth.users(id) values($1)',[id])
+    await rpc(id,'online_profile',[null,`Player ${id.slice(0,8)}`])
+  }
+  return players
+}
+async function startOnlineMatch(players,city='nyc') {
+  let lobby=await rpc(players[0],'online_room',['create',null,true,city])
+  await rpc(players[1],'online_room',['join',lobby.code,true,'chicago'])
+  await rpc(players[0],'online_room',['ready',lobby.code])
+  lobby=await rpc(players[1],'online_room',['ready',lobby.code])
+  return {lobby:await rpc(players[0],'online_room',['get',lobby.code]),initial:await rpc(players[0],'get_online_match',[lobby.match_id])}
+}
+async function runningRevision(user) {
+  const rows=(await asUser(user,'select revision from public.online_running_game_updates where user_id=$1',[user])).rows
+  return rows[0]?.revision
+}
+
+test('creating and joining new lobbies preserves several active matches and both players can still commit',async()=>{
+  const players=await freshOnlinePlayers(4)
+  const first=await startOnlineMatch(players.slice(0,2))
+  const firstBefore=await rpc(players[1],'get_online_match',[first.initial.id])
+  const second=await startOnlineMatch([players[0],players[2]],'dusseldorf')
+  const oldLobby=await rpc(players[1],'online_room',['get',first.lobby.code])
+  assert.equal(oldLobby.status,'playing')
+  assert.equal(oldLobby.host_id,players[0])
+  assert.equal(oldLobby.match_id,first.initial.id)
+  assert.equal(oldLobby.members.length,1)
+  assert.equal(oldLobby.members[0].ready,true)
+  assert.deepEqual(await rpc(players[1],'get_online_match',[first.initial.id]),firstBefore)
+  assert.deepEqual(new Set((await rpc(players[0],'online_running_games')).map(g=>g.id)),new Set([first.initial.id,second.initial.id]))
+  const thirdLobby=await rpc(players[3],'online_room',['create',null,false,'nyc'])
+  const third=await rpc(players[0],'online_room',['join',thirdLobby.code])
+  assert.equal(third.id,thirdLobby.id)
+  assert.equal((await rpc(players[2],'online_room',['get',second.lobby.code])).status,'playing')
+  assert.equal((await rpc(players[2],'online_room',['get',second.lobby.code])).members[0].ready,true)
+  assert.deepEqual(await rpc(players[2],'get_online_match',[second.initial.id]),second.initial)
+  const firstCommit=await service('online_commit_match',[first.initial.id,players[1],randomUUID(),0,{...first.initial.state,drawOffer:first.initial.members.find(m=>m.user_id===players[1]).color},{kind:'offer-draw'}])
+  const secondCommit=await service('online_commit_match',[first.initial.id,players[0],randomUUID(),1,{...firstCommit.state,drawOffer:null},{kind:'decline-draw'}])
+  assert.equal(secondCommit.version,2)
+  assert.equal((await rpc(players[1],'get_online_match',[first.initial.id])).version,2)
+  assert.equal((await rpc(players[0],'online_room',['get'])).id,thirdLobby.id)
+  assert.equal((await admin('select count(*)::int as count from public.online_room_members where user_id=$1',[players[0]])).rows[0].count,1)
+})
+
+test('leaving every lobby slot of an unfinished match preserves its playing room and durable membership',async()=>{
+  const players=await freshOnlinePlayers(3)
+  const {lobby,initial}=await startOnlineMatch(players.slice(0,2))
+  const otherInitial=await rpc(players[1],'get_online_match',[initial.id])
+  await rpc(players[0],'online_room',['leave',lobby.code])
+  assert.equal(await rpc(players[0],'online_room',['get']),null)
+  const remaining=await rpc(players[1],'online_room',['get',lobby.code])
+  assert.equal(remaining.status,'playing')
+  assert.equal(remaining.members[0].ready,true)
+  await rpc(players[1],'online_room',['leave',lobby.code])
+  const empty=await rpc(players[0],'online_room',['get',lobby.code])
+  assert.equal(empty.status,'playing')
+  assert.equal(empty.members.length,0)
+  assert.equal(empty.match_id,initial.id)
+  assert.deepEqual(await rpc(players[0],'get_online_match',[initial.id]),initial)
+  assert.deepEqual(await rpc(players[1],'get_online_match',[initial.id]),otherInitial)
+  assert.equal((await rpc(players[0],'online_running_games'))[0].id,initial.id)
+  assert.equal((await rpc(players[1],'online_running_games'))[0].id,initial.id)
+  assert.equal((await rpc(players[2],'online_rooms')).some(r=>r.code===lobby.code),false)
+})
+
+test('failed admission and failed creation roll back active lobby slots and preserve match state',async()=>{
+  const players=await freshOnlinePlayers(4)
+  const {lobby,initial}=await startOnlineMatch(players.slice(0,2))
+  const otherInitial=await rpc(players[1],'get_online_match',[initial.id])
+  const target=await rpc(players[2],'online_room',['create',null,true,'nyc'])
+  await rpc(players[3],'online_room',['join',target.code])
+  const revision=await runningRevision(players[0])
+  for(const attempt of [
+    ['join',target.code,true,'nyc'],['join','MISSING'],['create',null,true,'invalid'],
+  ]) {
+    await assert.rejects(rpc(players[0],'online_room',attempt),/ROOM_FULL|ROOM_NOT_FOUND|INVALID_KIT/)
+    assert.deepEqual(await rpc(players[0],'online_room',['get']),lobby)
+    assert.deepEqual(await rpc(players[0],'get_online_match',[initial.id]),initial)
+    assert.equal(await runningRevision(players[0]),revision)
+  }
+  // Fail after detachment to exercise transaction rollback, not only preflight.
+  await admin("create function public.test_reject_room_insert() returns trigger language plpgsql as $$ begin raise exception 'TEST_CREATION_FAILED'; end $$")
+  await admin('create trigger test_reject_room_insert before insert on public.online_rooms for each row execute function public.test_reject_room_insert()')
+  try {
+    await assert.rejects(rpc(players[0],'online_room',['create',null,true,'nyc']),/TEST_CREATION_FAILED/)
+    assert.deepEqual(await rpc(players[0],'online_room',['get']),lobby)
+    assert.deepEqual(await rpc(players[1],'get_online_match',[initial.id]),otherInitial)
+  } finally {
+    await admin('drop trigger test_reject_room_insert on public.online_rooms')
+    await admin('drop function public.test_reject_room_insert()')
+  }
+})
+
+test('running games exposes caller metadata only, derives turn from moves, orders stably and removes results',async()=>{
+  const players=await freshOnlinePlayers(4)
+  const first=await startOnlineMatch(players.slice(0,2))
+  const second=await startOnlineMatch([players[0],players[2]],'dusseldorf')
+  const commonTime=new Date('2026-10-09T12:00:00Z')
+  await admin('update public.online_matches set updated_at=$1 where id in($2,$3)',[commonTime,first.initial.id,second.initial.id])
+  let list=await rpc(players[0],'online_running_games')
+  assert.deepEqual(list.map(g=>g.id),[first.initial.id,second.initial.id].sort())
+  for(const row of list) {
+    assert.deepEqual(Object.keys(row).sort(),['color','context_city_id','id','opponent','turn','updated_at'])
+    assert.deepEqual(Object.keys(row.opponent).sort(),['display_name','id'])
+    const initial=row.id===first.initial.id?first.initial:second.initial
+    assert.equal(row.color,initial.members.find(m=>m.user_id===players[0]).color)
+    assert.equal(row.turn,'w')
+    assert.equal(row.context_city_id,initial.context_city_id)
+    assert.equal(row.opponent.id,initial.members.find(m=>m.user_id!==players[0]).user_id)
+    assert.equal(row.opponent.display_name,(await rpc(row.opponent.id,'online_profile')).display_name)
+  }
+  assert.deepEqual((await rpc(players[1],'online_running_games')).map(g=>g.id),[first.initial.id])
+  assert.deepEqual((await rpc(players[2],'online_running_games')).map(g=>g.id),[second.initial.id])
+  assert.deepEqual(await rpc(players[3],'online_running_games'),[])
+  const power={kind:'power',power:'shield',square:'e4',color:'w',id:1}
+  const powered=await service('online_commit_match',[first.initial.id,players[0],randomUUID(),0,{...first.initial.state,actions:[power]},{kind:'power',power:'shield',square:'e4'}])
+  assert.equal((await rpc(players[0],'online_running_games'))[0].id,first.initial.id)
+  assert.equal((await rpc(players[0],'online_running_games'))[0].turn,'w')
+  const move={kind:'move',from:'e2',to:'e4',color:'w',san:'e4'}
+  const moved=await service('online_commit_match',[first.initial.id,players[0],randomUUID(),1,{...powered.state,actions:[power,move]},{kind:'move',from:'e2',to:'e4'}])
+  assert.equal((await rpc(players[0],'online_running_games'))[0].turn,'b')
+  const undone=await service('online_commit_match',[first.initial.id,players[0],randomUUID(),2,{...moved.state,actions:[power],redo:{actor:'w',actions:[move]}},{kind:'undo'}])
+  assert.equal((await rpc(players[0],'online_running_games'))[0].turn,'w')
+  await service('online_commit_match',[first.initial.id,players[1],randomUUID(),3,{...undone.state,result:{winner:null,reason:'agreement'}},{kind:'accept-draw'}])
+  assert.deepEqual((await rpc(players[0],'online_running_games')).map(g=>g.id),[second.initial.id])
+  assert.deepEqual(await rpc(players[1],'online_running_games'),[])
+  await assert.rejects(rpc(null,'online_running_games'),/UNAUTHORIZED/)
+  await admin("select set_config('request.jwt.claim.sub',$1,false)",[players[0]])
+  await db.exec('set role anon')
+  await assert.rejects(db.query('select public.online_running_games()'),/permission denied/)
+  await assert.rejects(db.query('select * from public.online_running_game_updates'),/permission denied/)
+})
+
+test('rematch restores a departed finished room without stealing either unrelated open lobby',async()=>{
+  const players=await freshOnlinePlayers(2)
+  const {lobby,initial}=await startOnlineMatch(players)
+  const settled=await service('online_commit_match',[initial.id,players[0],randomUUID(),0,{...initial.state,result:{winner:'w',reason:'resign'}},{kind:'resign'}])
+  const ownLobby=await rpc(players[0],'online_room',['create',null,false,'dusseldorf'])
+  const otherLobby=await rpc(players[1],'online_room',['create',null,true,'nyc'])
+  const ownReady=await rpc(players[0],'online_room',['ready',ownLobby.code])
+  const otherReady=await rpc(players[1],'online_room',['ready',otherLobby.code])
+  assert.equal((await rpc(players[0],'online_room',['get',lobby.code])).status,'closed')
+  const offering=initial.members.find(m=>m.user_id===players[0]).color
+  const offered=await service('online_commit_match',[initial.id,players[0],randomUUID(),1,{...settled.state,rematchOffer:offering},{kind:'offer-rematch'}])
+  const args=[initial.id,players[1],randomUUID(),2,{...offered.state,rematchOffer:null},{kind:'accept-rematch'}]
+  const accepted=await service('online_commit_match',args)
+  assert.ok(accepted.rematch_id)
+  assert.deepEqual(await service('online_commit_match',args),accepted)
+  assert.deepEqual(await rpc(players[0],'online_room',['get']),ownReady)
+  assert.deepEqual(await rpc(players[1],'online_room',['get']),otherReady)
+  const restored=await rpc(players[0],'online_room',['get',lobby.code])
+  assert.equal(restored.status,'playing')
+  assert.equal(restored.match_id,accepted.rematch_id)
+  assert.equal(restored.members.length,0)
+  const rematch=await rpc(players[0],'get_online_match',[accepted.rematch_id])
+  assert.equal(rematch.context_city_id,initial.context_city_id)
+  for(const member of initial.members) {
+    const next=rematch.members.find(m=>m.user_id===member.user_id)
+    assert.equal(next.color,member.color==='w'?'b':'w')
+    assert.equal(next.city_id,member.city_id)
+    assert.deepEqual((await rpc(member.user_id,'online_running_games')).map(g=>g.id),[rematch.id])
+  }
+  assert.equal((await admin('select count(*)::int as count from public.online_matches where room_id=$1',[lobby.id])).rows[0].count,2)
+  assert.equal((await rpc(players[0],'online_rooms')).some(r=>r.code===otherLobby.code),true)
+  assert.equal((await rpc(players[0],'online_rooms')).some(r=>r.code===lobby.code),false)
+})
+
+test('running game revisions cover new membership and offscreen commits with caller-only read and rollback',async()=>{
+  const players=await freshOnlinePlayers(3)
+  const {initial}=await startOnlineMatch(players.slice(0,2))
+  const before=[await runningRevision(players[0]),await runningRevision(players[1])]
+  assert.ok(before.every(revision=>revision>=1))
+  const read=(await asUser(players[0],'select user_id from public.online_running_game_updates')).rows
+  assert.deepEqual(read.map(row=>row.user_id),[players[0]])
+  assert.equal((await asUser(players[2],'select user_id from public.online_running_game_updates')).rows.length,0)
+  await assert.rejects(asUser(players[0],'update public.online_running_game_updates set revision=0'),/permission denied/)
+  const published=(await admin("select tablename from pg_publication_tables where pubname='supabase_realtime' and tablename='online_running_game_updates'")).rows
+  assert.equal(published.length,1)
+  await rpc(players[0],'online_room',['create',null,false,'dusseldorf'])
+  await service('online_commit_match',[initial.id,players[1],randomUUID(),0,{...initial.state,drawOffer:initial.members.find(m=>m.user_id===players[1]).color},{kind:'offer-draw'}])
+  const updated=[await runningRevision(players[0]),await runningRevision(players[1])]
+  assert.ok(updated.every((revision,index)=>revision>before[index]))
+  await assert.rejects(service('online_commit_match',[initial.id,players[1],randomUUID(),1,{...initial.state,eggs:{w:1,b:-1},result:{winner:'w',reason:'resign'}},{kind:'resign'}]),/INVALID_RESULT/)
+  assert.deepEqual([await runningRevision(players[0]),await runningRevision(players[1])],updated)
+  assert.equal((await rpc(players[0],'get_online_match',[initial.id])).version,1)
 })

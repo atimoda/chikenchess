@@ -1,7 +1,42 @@
 .powerFrost {
-  background: repeating-linear-gradient(var(--power-frost-angle, 125deg), transparent 0px, transparent 10px, rgba(200, 239, 255, .22) 11px, transparent 14px),
-    radial-gradient(circle at var(--power-frost-x, 25%) var(--power-frost-y, 20%), rgba(235, 250, 255, .55), transparent 60%);
-  box-shadow: inset 0 0 15px rgba(175, 230, 255, .75);
+  background: linear-gradient(145deg, #0779be70, #20cfff18 45%, #0b85dd65),
+    repeating-conic-gradient(from var(--power-frost-angle, 125deg) at var(--power-frost-x, 25%) var(--power-frost-y, 20%), #b6f7ff55 0deg 2deg, transparent 3deg 40deg),
+    radial-gradient(ellipse at 15% 10%, #e5fcff99, transparent 48%);
+  box-shadow: inset 0 0 0 1px #91f1ffa0, inset 0 0 16px #13caffaa, 0 0 9px #36dcff55;
+}
+
+.iceCrystal {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px #24d9ff);
+}
+.iceCrystal svg { width: 100%; height: 100%; }
+.powerShield {
+  position: absolute;
+  left: 11%; top: 2%; width: 78%; height: 96%;
+  z-index: 12;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px #ffb514) drop-shadow(0 0 9px #ffcf4866);
+}
+@keyframes powerDissolve {
+  0% { opacity: 1; transform: scale(1); }
+  35% { opacity: .85; transform: scale(1.06); filter: brightness(1.8) drop-shadow(0 0 7px #e4faff); }
+  100% { opacity: 0; transform: scale(1.25); filter: brightness(1); }
+}
+.powerRelease {
+  animation: powerDissolve 320ms ease-out forwards;
+}
+
+@keyframes frozenAttemptShake {
+  0%, 100% { translate: 0 0; }
+  15%, 45%, 75% { translate: -3px 0; }
+  30%, 60%, 90% { translate: 3px 0; }
+}
+
+.frozenAttemptPiece {
+  animation: frozenAttemptShake 280ms ease-out;
 }
 
 @keyframes rankedRewardHeadlineEntry {
@@ -91,10 +126,15 @@
 }
 
 .recentMoveTint {
-  animation: recentMoveTintFade 2s ease-in-out 1s both;
+  animation: recentMoveTintFade .5s ease-in-out 2s both;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .powerRelease { animation: none; opacity: 0; }
+  .frozenAttemptPiece {
+    animation: none;
+    opacity: .75;
+  }
   .rankedRewardHeadline,
   .rankedRewardHeadlineStreak {
     animation:

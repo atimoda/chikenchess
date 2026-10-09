@@ -281,6 +281,90 @@ export class AudioEngine {
     }
   }
 
+  /** Auxiliary ice feedback, independent of the musical engine and cancellable during unlock. */
+  playFrozenPieceClink(): () => void {
+    const ctx = this.audioContext, master = this.masterGain
+    if (!ctx || !master) return () => {}
+    let cancelled = false
+    const tones: { tone: OscillatorNode; envelope: GainNode }[] = []
+    const start = () => {
+      if (cancelled || ctx.state !== 'running') return
+      const time = ctx.currentTime
+      for (const [index, frequency] of [1850, 3370, 5210].entries()) {
+        const tone = ctx.createOscillator(), envelope = ctx.createGain()
+        tone.type = 'sine'
+        tone.frequency.setValueAtTime(frequency, time)
+        tone.frequency.exponentialRampToValueAtTime(frequency * .92, time + .16)
+        envelope.gain.setValueAtTime(.001, time)
+        envelope.gain.exponentialRampToValueAtTime(.04 / (index + 1), time + .003)
+        envelope.gain.exponentialRampToValueAtTime(.001, time + .16 - index * .025)
+        tone.connect(envelope).connect(master)
+        tone.onended = () => { tone.disconnect(); envelope.disconnect() }
+        tones.push({ tone, envelope })
+        tone.start(time)
+        tone.stop(time + .18)
+      }
+    }
+    if (ctx.state === 'running') start()
+    else void ctx.resume().then(start).catch(() => {})
+    return () => {
+      cancelled = true
+      for (const { tone, envelope } of tones) {
+        try { tone.stop() } catch { /* Already ended. */ }
+        tone.disconnect()
+        envelope.disconnect()
+      }
+    }
+  }
+
+  /** Short fracture/dissolve cue; never starts late after leaving the board. */
+  playPowerRelease(kind: 'freeze' | 'shield'): () => void {
+    const ctx = this.audioContext, master = this.masterGain
+    if (!ctx || !master || ctx.state !== 'running') return () => {}
+    const nodes: { source: AudioScheduledSourceNode; envelope: GainNode; filter?: BiquadFilterNode }[] = []
+    const time = ctx.currentTime
+    if (kind === 'freeze') {
+      const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * .12), ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length)
+      for (const offset of [0, .045, .095]) {
+        const source = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), envelope = ctx.createGain()
+        source.buffer = buffer
+        filter.type = 'highpass'
+        filter.frequency.value = 1800
+        envelope.gain.setValueAtTime(.001, time + offset)
+        envelope.gain.exponentialRampToValueAtTime(.07, time + offset + .003)
+        envelope.gain.exponentialRampToValueAtTime(.001, time + offset + .1)
+        source.connect(filter).connect(envelope).connect(master)
+        source.onended = () => { source.disconnect(); filter.disconnect(); envelope.disconnect() }
+        source.start(time + offset)
+        source.stop(time + offset + .12)
+        nodes.push({ source, filter, envelope })
+      }
+    } else {
+      for (const [index, frequency] of [880, 1760, 2640].entries()) {
+        const source = ctx.createOscillator(), envelope = ctx.createGain()
+        source.type = 'sine'
+        source.frequency.setValueAtTime(frequency, time)
+        source.frequency.exponentialRampToValueAtTime(frequency * .7, time + .26)
+        envelope.gain.setValueAtTime(.001, time)
+        envelope.gain.exponentialRampToValueAtTime(.055 / (index + 1), time + .004)
+        envelope.gain.exponentialRampToValueAtTime(.001, time + .26)
+        source.connect(envelope).connect(master)
+        source.onended = () => { source.disconnect(); envelope.disconnect() }
+        source.start(time)
+        source.stop(time + .28)
+        nodes.push({ source, envelope })
+      }
+    }
+    return () => {
+      for (const { source, filter, envelope } of nodes) {
+        try { source.stop() } catch { /* Already ended. */ }
+        source.disconnect(); filter?.disconnect(); envelope.disconnect()
+      }
+    }
+  }
+
   async playBlockedCue() {
     if (!this.audioContext || !this.masterGain) await this.init()
     await this.resume()

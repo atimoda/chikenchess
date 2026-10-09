@@ -15,6 +15,7 @@ import type { MusicMonitor } from "@/lib/music/monitor"
 import styles from "./mixer-widget.module.css"
 
 interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
+  playback?: React.ReactNode
   teamMixes: TeamMixes
   effects: GlobalEffects
   monitor: MusicMonitor
@@ -177,7 +178,7 @@ function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityCo
 
 export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
   teamMixes, effects, monitor, onEffectChange, topColor, onTeamMixChange, cityColor, position, onPositionChange,
-  sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle, ...props
+  playback, sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle, ...props
 }, ref) => {
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
@@ -209,10 +210,10 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
     {...props}
   >
     <Resizable
-      defaultSize={{ width: 180, height: 450 }}
-      size={props.style?.position === 'static' ? { width: '100%', height: 450 } : undefined}
+      defaultSize={{ width: 180, height: playback ? 500 : 450 }}
+      size={props.style?.position === 'static' ? { width: '100%', height: playback ? 500 : 450 } : undefined}
       minWidth={156}
-      minHeight={450}
+      minHeight={playback ? 500 : 450}
       enable={props.style?.position === 'static' ? false : { top: false, right: true, bottom: true, left: true, topRight: false, bottomRight: true, bottomLeft: true, topLeft: false }}
       handleStyles={{
         right: { zIndex: 80 },
@@ -293,6 +294,7 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
         </div>
       </fieldset>
     </div>
+    {playback && <div className="absolute inset-x-2 bottom-3 z-[70] flex w-[calc(100%-1rem)] justify-center rounded-md px-1 py-0.5" data-mixer-playback>{playback}</div>}
     {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
     </Resizable>
   </Draggable>

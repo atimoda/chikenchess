@@ -27,7 +27,7 @@ export interface CityPopupProps {
   startWhistleLoop: () => void
   stopWhistleLoop: () => void
   setPressedPopupState: (state: { id: string } | null) => void
-  handleSmartPadSound: (e: React.MouseEvent<HTMLButtonElement>) => void
+  handleSmartPadSound: (e: React.MouseEvent<HTMLButtonElement>, pitchMultiplier?: number) => void
   handleSmartPadLeave: (e: React.MouseEvent<HTMLButtonElement>) => void
   stopPadSound: () => void
   isEntering: boolean
@@ -38,6 +38,7 @@ export interface CityPopupProps {
   onDragEnd?: () => void
   transformOrigin?: string
   onEraSelect?: (city: CityData) => void
+  onCreateRoom?: (city: CityData) => void
 }
 
 export const CityPopup = ({
@@ -64,6 +65,7 @@ export const CityPopup = ({
   onDragEnd,
   transformOrigin,
   onEraSelect,
+  onCreateRoom,
 }: CityPopupProps) => {
   const dragHandleRef = useRef<HTMLButtonElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -153,7 +155,7 @@ export const CityPopup = ({
         ref={containerRef}
         data-drag-handle="true" // Make the entire popup draggable
         data-popup-surface="true"
-        className="popup-scrollbar-hidden relative overflow-hidden p-5 rounded-lg border bg-card/[0.82] shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
+        className="popup-scrollbar-hidden relative overflow-hidden rounded-lg border bg-card/[0.82] shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
         onClick={(e) => {
             e.stopPropagation()
         }}
@@ -198,7 +200,7 @@ export const CityPopup = ({
         {/* City Image */}
         <div
           data-drag-handle="true"
-          className="w-full h-32 mb-4 rounded-md overflow-hidden relative animate-content-1 group cursor-grab active:cursor-grabbing"
+          className="relative h-32 w-full overflow-hidden animate-content-1 group cursor-grab active:cursor-grabbing"
         >
           <img
             src={city.image}
@@ -206,9 +208,10 @@ export const CityPopup = ({
             className="w-full h-full object-cover pointer-events-none"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-
+          {isConquered && <span className="absolute top-2 right-2 text-[10px] font-mono font-bold bg-black/70 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full pointer-events-none shadow-[0_0_10px_rgba(234,179,8,0.2)]">👑 CONQUERED</span>}
         </div>
 
+        <div className="p-5">
         <div className="flex items-center justify-between mb-3 animate-content-2">
           <h3 className="font-mono font-bold text-xl tracking-wide" style={{ color: city.color }}>
             {city.name}
@@ -229,16 +232,11 @@ export const CityPopup = ({
         </nav>}
 
         <div className="space-y-3 animate-content-4">
-          <div className="flex items-center justify-between text-xs font-mono">
-            {isConquered ? (
-              <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
-                👑 CONQUERED
-              </span>
-            ) : <span />}
+          <div className="flex flex-col items-end gap-2 text-xs font-mono">
               <button
                 ref={enterButtonRef}
                 className={cn(
-                   "px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100] overflow-hidden group",
+                   "order-1 inline-flex items-center gap-2 px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100] overflow-hidden group",
                    isEntering && "pointer-events-none duration-[2000ms] ease-in"
                 )}
                 style={{
@@ -305,6 +303,7 @@ export const CityPopup = ({
                   onEnter();
                 }}
               >
+                <span aria-hidden="true" className="relative z-10 size-3.5 shrink-0 rounded-full border-[3px]" style={{ backgroundColor: city.color, borderColor: 'rgb(255 255 255 / 45%)' }} />
                 <div
                     className={cn(
                         "absolute inset-0 transition-opacity duration-300 pointer-events-none mix-blend-screen overflow-hidden rounded-sm",
@@ -325,11 +324,22 @@ export const CityPopup = ({
                     "relative z-10 block transition-opacity duration-[1000ms] ease-in-out",
                     isEntering ? "opacity-0" : "opacity-100"
                 )}>
-                    ENTER BOARD
+                    CAMPAIGN
                 </span>
               </button>
+              {onCreateRoom && <button type="button" data-no-drag disabled={isEntering}
+                className="group order-2 relative inline-flex items-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 text-primary transition-all hover:border-primary hover:shadow-[0_0_14px_rgba(16,185,129,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-50"
+                onPointerEnter={(e) => { if (!isEntering) handleSmartPadSound(e, 0.7) }}
+                onPointerMove={(e) => { if (!isEntering) handleSmartPadSound(e, 0.7) }}
+                onPointerLeave={(e) => { if (!isEntering) handleSmartPadLeave(e) }}
+                onClick={() => { stopPadSound(); onCreateRoom(city) }}>
+                <span aria-hidden="true" className="absolute inset-0 rounded-sm opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-active:opacity-100" style={{ background: 'linear-gradient(115deg, rgb(16 185 129 / 22%), rgb(167 139 250 / 25%), rgb(16 185 129 / 22%)), radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgb(167 139 250 / 45%), transparent 68%)' }} />
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-4 shrink-0"><path d="M4 21V4a1 1 0 0 1 1-1h9" /><path d="M14 3l6 3v14l-6-3V3Z" /><path d="M4 21h16" /></svg>
+                <span className="relative z-10">CREATE ROOM</span>
+              </button>}
             </div>
           </div>
+        </div>
       </div>
     </Draggable>
   )

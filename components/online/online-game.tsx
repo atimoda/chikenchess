@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
+import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
 import { replayMatch, matchPosition } from "@/lib/online/domain";
 import { pendingMovePreview } from "@/lib/online/pending-move";
@@ -35,6 +37,8 @@ import { getAudioEngine } from "@/lib/audio-engine";
 import { useMusic } from "@/hooks/use-music";
 import { useOnlineMatch } from "@/hooks/use-online-match";
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout";
+import { useBoardResize } from "@/hooks/use-board-resize";
+import { BoardResizeHandles } from "@/components/board-resize-handles";
 import { useOnlineAnalysis } from "@/hooks/use-online-analysis";
 import { usePowerTargetingGesture } from "@/hooks/use-power-targeting-gesture";
 import { createMatchPower, type MatchPowerKind } from "@/lib/chess-powers";
@@ -45,6 +49,10 @@ import {
   PiecesSVG,
   type AnalysisArrow,
 } from "../chessground-board";
+import { GamePreferences } from "../game-preferences";
+import { PowerCardHand } from "../power-card-hand";
+import { animateInsufficientEggs } from "@/lib/power-presentation";
+import { usePowerDisplay } from "@/hooks/use-power-display";
 import { MixerWidget } from "../mixer-widget";
 import { SynthControlPanel } from "../synth-control-panel";
 import { MusicVoiceReadout, MusicTransportReadout } from "../music-playback";
@@ -88,29 +96,6 @@ export function OnlineGame({
 }) {
   const online = useOnlineMatch(matchId);
   const { user } = useOnline();
-  const returnToGlobe = useCallback(async () => {
-    const client = getOnlineClient();
-    if (client && online.match?.state.result) {
-      const { data: room, error } = await client.rpc("online_room", {
-        p_action: "get",
-      });
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      if (room?.match_id === matchId) {
-        const { error: leaveError } = await client.rpc("online_room", {
-          p_action: "leave",
-          p_code: room.code,
-        });
-        if (leaveError) {
-          toast.error(leaveError.message);
-          return;
-        }
-      }
-    }
-    onBack();
-  }, [online.match?.state.result, matchId, onBack]);
   useEffect(() => {
     if (online.match?.rematch_id) onMatch(online.match.rematch_id);
   }, [online.match?.rematch_id, onMatch]);
@@ -136,7 +121,7 @@ export function OnlineGame({
       match={online.match}
       online={online}
       viewerId={user.id}
-      onBack={() => void returnToGlobe()}
+      onBack={onBack}
     />
   );
 }
@@ -155,6 +140,9 @@ export function OnlineMatchBoard({
   const me = match.members.find((m) => m.user_id === viewerId)!;
   const opponent = match.members.find((m) => m.user_id !== viewerId)!;
   const color = me.color;
+  const ownEggCounterRef = useRef<HTMLDivElement | null>(null);
+  const opponentEggCounterRef = useRef<HTMLDivElement | null>(null);
+  const [depositedEggs, setDepositedEggs] = useState({ w: 0, b: 0 });
   const city =
     getCityById(match.context_city_id ?? match.members[0].city_id) ?? cities[0];
   const enemyCity = getCityById(opponent.city_id) ?? cities[0];
@@ -177,6 +165,7 @@ export function OnlineMatchBoard({
     )!;
     return combineOnlineKits(white, black, common);
   }, [me.city_id, opponent.city_id, match.context_city_id]);
+  const [powerDisplay, setPowerDisplay] = usePowerDisplay();
   const [playing, setPlaying] = useState(false);
   const [engineOn, setEngineOn] = useState(true);
   const [mixerOn, setMixerOn] = useState(false);
@@ -254,6 +243,7 @@ export function OnlineMatchBoard({
   const [arrows, setArrows] = useState<AnalysisArrow[]>([]);
   const [pieceSaveError, setPieceSaveError] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
+  const boardResize = useBoardResize({ boardRef, enabled: !isPortraitMobile, controlHeightRatio: powerDisplay === "cards" ? 0.32 : 0 });
   const queuedPieces = useRef(
     new Map<string, { instrument: Instrument; effects?: SquareEffects }>(),
   );
@@ -263,6 +253,8 @@ export function OnlineMatchBoard({
   const alive = useRef(true);
   const [saveEpoch, setSaveEpoch] = useState(0);
   const previousMoves = useRef(replay.game.history().length);
+  const [mulliganAnimationKey, setMulliganAnimationKey] = useState(0);
+  const animateMulligan = useCallback(() => setMulliganAnimationKey(key => key + 1), []);
   const flushPieces = useCallback(async () => {
     const client = getOnlineClient();
     if (!client || savingPieces.current || !queuedPieces.current.size) return;
@@ -419,8 +411,19 @@ export function OnlineMatchBoard({
     !!online.pending ||
     !online.connected ||
     !!match.state.result;
+  const hasEggsForAction = useCallback((amount: number) => {
+    const balance = match.state.eggs[color];
+    if (balance >= amount) return true;
+    animateInsufficientEggs(ownEggCounterRef.current);
+    void getAudioEngine().playBlockedCue();
+    const shortfall = amount - balance;
+    toast.error(`You need ${shortfall} more golden egg${shortfall === 1 ? "" : "s"} to use this`);
+    return false;
+  }, [match.state.eggs, color]);
   const perform = useCallback(
     (command: MatchCommand) => {
+      const cost = command.kind === "power" ? 3 : command.kind === "undo" ? 2 : command.kind === "suggest" ? 1 : 0;
+      if (cost && !hasEggsForAction(cost)) return;
       if (command.kind === "power" && command.power === "freeze") {
         const power = createMatchPower(
           command.power,
@@ -441,15 +444,15 @@ export function OnlineMatchBoard({
           toast.error(e.message ?? "Could not confirm this action"),
         );
     },
-    [online.send, replay.game, replay.powers, match.state.actions.length],
+    [online.send, replay.game, replay.powers, match.state.actions.length, hasEggsForAction],
   );
   const gesture = usePowerTargetingGesture({
     armedPower,
     enabled: !intro && ownTurn && !disabled,
     boardRef,
     onArm: setArmedPower,
-    canArm: () => ownTurn && !disabled,
-    onBegin: () => music.endAudition(),
+    canArm: () => ownTurn && !disabled && hasEggsForAction(3),
+    onBegin: () => { music.endAudition(); void getAudioEngine().resume() },
     onTarget: (square, power) => {
       perform({ kind: "power", power, square });
       setArmedPower(null);
@@ -507,13 +510,13 @@ export function OnlineMatchBoard({
         : {}),
     });
   };
-  const canShowSuggestions =
+  const canShowSuggestions = (group: "best" | "worst") =>
     !disabled &&
     !replay.powers.length &&
-    !arrows.length &&
+    !arrows.some(arrow => arrow.tone === group) &&
     !!analysis.analysis?.complete;
   const show = (group: "best" | "worst") => {
-    if (!canShowSuggestions || !analysis.analysis?.complete) return;
+    if (!canShowSuggestions(group) || !analysis.analysis?.complete) return;
     const moves = analysis.analysis[group]
       .slice(0, 3)
       .map(({ uci, score, mate }) => ({ uci, score, mate }));
@@ -541,6 +544,16 @@ export function OnlineMatchBoard({
   const won = result?.winner === color;
   const currentEggs = match.state.eggs[color];
   const hasResult = !!result;
+  const payout = result ? matchEggPayout(match.state.eggs, result.winner)[color] : 0;
+  const basketSources = useMemo(() => {
+    const shares = result ? matchEggSources(match.state.eggs, result.winner, color) : { w: 0, b: 0 };
+    return [
+      { amount: shares[color], element: () => ownEggCounterRef.current },
+      { amount: shares[opponent.color], element: () => opponentEggCounterRef.current },
+    ];
+  }, [!!result, result?.winner, match.state.eggs.w, match.state.eggs.b, color, opponent.color]);
+  const visibleOwnEggs = hasResult && !won && result?.winner ? 0 : Math.max(0, currentEggs - depositedEggs[color]);
+  const visibleOpponentEggs = hasResult && !won && result?.winner ? 0 : Math.max(0, match.state.eggs[opponent.color] - depositedEggs[opponent.color]);
   useEffect(() => {
     if (introPhase !== 3) return;
     setMixerOn(!hasResult);
@@ -867,6 +880,22 @@ export function OnlineMatchBoard({
           />
         )}
         <MixerWidget
+          playback={<Button
+                variant="ghost"
+                size="icon"
+                className="h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:bg-[var(--city-neon)] hover:text-white pointer-events-auto cursor-pointer"
+                style={{ backgroundColor: "var(--city-neon)20" }}
+                aria-label={playing ? "Pause" : "Play"}
+                title={playing ? "Pause music" : "Play music"}
+                disabled={!engineOn || !!result}
+                onClick={() => setPlaying((p) => !p)}
+              >
+                {playing ? (
+                  <Pause className="w-7 h-7 sm:w-10 sm:h-10" />
+                ) : (
+                  <Play className="w-7 h-7 sm:w-10 sm:h-10" />
+                )}
+              </Button>}
           ref={mixerRef}
           handleRef={mixerHandleRef}
           toggleRef={mixerToggleRef}
@@ -1119,6 +1148,7 @@ export function OnlineMatchBoard({
                   className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")}
                 />
               </Button>
+              <GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} className={headerButtonClass} />
               <Button
                 variant="outline"
                 size="icon"
@@ -1167,7 +1197,7 @@ export function OnlineMatchBoard({
             )}
             aria-label="Voltar ao mapa"
             title="Voltar ao mapa"
-            onClick={() => (result ? onBack() : setExitOpen(true))}
+            onClick={onBack}
           >
             <svg
               aria-hidden="true"
@@ -1196,14 +1226,14 @@ export function OnlineMatchBoard({
         )}
         style={
           {
-            "--game-board-width": isMobile
+            "--game-board-width": boardResize.width !== null ? `${boardResize.width}px` : isMobile
               ? "min(calc(100vw - 16px),512px)"
-              : "min(90vw,calc(100dvh - 270px),512px)",
+              : powerDisplay === "cards" ? "min(90vw,calc(100dvh - 350px),512px)" : "min(90vw,calc(100dvh - 270px),512px)",
           } as React.CSSProperties
         }
       >
         <section
-          className="flex flex-col items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 px-2 pointer-events-none lg:pt-6"
+          className="flex flex-col items-center justify-start w-full mx-auto relative z-10 px-2 pointer-events-none lg:pt-6"
           style={{ marginTop: !isMobile ? "calc(50vh - 350px)" : "0px" }}
         >
           <div
@@ -1214,10 +1244,11 @@ export function OnlineMatchBoard({
           >
             <div
               role="img"
-              aria-label={`${match.state.eggs[opponent.color]} golden egg for the opponent`}
+              ref={opponentEggCounterRef}
+              aria-label={`${visibleOpponentEggs} golden eggs for the opponent`}
               className="flex w-fit items-center gap-1.5 rounded-md border border-zinc-500/20 bg-black/45 px-2 py-1 font-mono text-xs font-bold text-zinc-400/50"
             >
-              <span>{match.state.eggs[opponent.color]}</span>
+              <span>{visibleOpponentEggs}</span>
               <span
                 aria-hidden="true"
                 className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] opacity-40 grayscale"
@@ -1232,7 +1263,8 @@ export function OnlineMatchBoard({
             </div>
             <div
               role="img"
-              aria-label={`${currentEggs} golden eggs for you`}
+              ref={ownEggCounterRef}
+              aria-label={`${visibleOwnEggs} golden eggs for you`}
               className={cn(
                 "ml-auto flex h-8 w-full max-w-14 min-w-0 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold",
                 currentEggs === 0
@@ -1240,7 +1272,7 @@ export function OnlineMatchBoard({
                   : "border-amber-400/50 text-amber-200",
               )}
             >
-              <span>{currentEggs}</span>
+              <span>{visibleOwnEggs}</span>
               <span
                 aria-hidden="true"
                 className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]"
@@ -1282,6 +1314,7 @@ export function OnlineMatchBoard({
             className="w-[var(--game-board-width)] aspect-square relative z-20 mb-2 sm:mb-4 pointer-events-auto"
             style={{ visibility: introPhase < 2 ? "hidden" : "visible" }}
           >
+            <BoardResizeHandles enabled={boardResize.enabled && introPhase >= 3} onStart={boardResize.startResize} onResizeBy={boardResize.resizeBy} onCancel={boardResize.cancelResize} />
             <ChessgroundBoard
               entranceActive={introPhase === 2}
               game={movePreview?.game ?? replay.game}
@@ -1294,8 +1327,10 @@ export function OnlineMatchBoard({
               isThinking={online.busy}
               onMove={onMove}
               undoAnimationKey={match.version}
+              onUndoAnimation={animateMulligan}
               armedPower={armedPower}
               matchPowers={movePreview?.powers ?? replay.powers}
+              confirmedPowerState={{ powers: replay.powers, ply: replay.game.history().length }}
               onPowerTarget={(square) => {
                 if (armedPower)
                   perform({ kind: "power", power: armedPower, square });
@@ -1324,6 +1359,7 @@ export function OnlineMatchBoard({
                 );
                 if (piece) music.togglePiece(square);
               }}
+              onFrozenCaptureBlocked={() => toast.info("Não é possível capturar uma peça congelada.")}
               onShieldCaptureBlocked={() =>
                 toast.info("Shield prevents this capture")
               }
@@ -1335,7 +1371,21 @@ export function OnlineMatchBoard({
               showRankedMoveMarks={false}
             />
           </div>
-          <GameActionRow visible={!intro}>
+          {powerDisplay === "cards" ? <PowerCardHand visible={!intro} undoAnimationKey={mulliganAnimationKey} actions={{
+            best: { disabled: !canShowSuggestions("best"), onClick: () => show("best") },
+            worst: { disabled: !canShowSuggestions("worst"), onClick: () => show("worst") },
+            undo: { disabled: disabled || !match.state.actions.some(action => action.kind === "move" && action.color === color), onClick: () => perform({ kind: "undo" }), title: "Volta 1 jogada · 2 golden eggs" },
+            freeze: {
+              disabled: disabled || !ownTurn, 'aria-pressed': armedPower === "freeze",
+              onPointerDown: event => gesture.onButtonPointerDown("freeze", event), onLostPointerCapture: gesture.onLostPointerCapture,
+              onClick: event => gesture.onButtonClick("freeze", event),
+            },
+            shield: {
+              disabled: disabled || !ownTurn, 'aria-pressed': armedPower === "shield",
+              onPointerDown: event => gesture.onButtonPointerDown("shield", event), onLostPointerCapture: gesture.onLostPointerCapture,
+              onClick: event => gesture.onButtonClick("shield", event),
+            },
+          }} /> : <GameActionRow visible={!intro}>
             <div className="flex min-w-0 items-center gap-1 sm:gap-2">
               {(["best", "worst"] as const).map((group) => (
                 <button
@@ -1349,7 +1399,7 @@ export function OnlineMatchBoard({
                       : "Veja as 3 piores jogadas"
                   }
                   title={`${group} · 1 golden egg`}
-                  disabled={!canShowSuggestions}
+                  disabled={!canShowSuggestions(group)}
                   onClick={() => show(group)}
                   className={cn(
                     "pointer-events-auto cursor-pointer relative flex h-8 w-fit shrink-0 items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
@@ -1373,34 +1423,19 @@ export function OnlineMatchBoard({
                 size="icon"
                 className={centerButtonClass}
                 style={{ backgroundColor: "var(--city-neon)20" }}
-                aria-label="Undo · costs 1 golden egg"
+                aria-label="Undo · costs 2 golden eggs"
                 {...costEvents("undo")}
-                title="Undo · 1 golden egg"
+                title="Undo · 2 golden eggs"
                 disabled={disabled || replay.game.history().length === 0}
                 onClick={() => perform({ kind: "undo" })}
               >
                 <GameActionCostHint
                   visible={hoveredCost === "undo"}
-                  amount={1}
+                  amount={2}
                 />
                 <Undo2 className="pointer-events-none absolute inset-0 m-auto h-7 w-7 sm:h-10 sm:w-10" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={centerButtonClass}
-                style={{ backgroundColor: "var(--city-neon)20" }}
-                aria-label={playing ? "Pause" : "Play"}
-                title={playing ? "Pause music" : "Play music"}
-                disabled={!engineOn || !!result}
-                onClick={() => setPlaying((p) => !p)}
-              >
-                {playing ? (
-                  <Pause className="w-7 h-7 sm:w-10 sm:h-10" />
-                ) : (
-                  <Play className="w-7 h-7 sm:w-10 sm:h-10" />
-                )}
-              </Button>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -1442,11 +1477,11 @@ export function OnlineMatchBoard({
                     "pointer-events-auto touch-none cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
                     kind === "freeze"
                       ? "text-cyan-100 border-cyan-300/35 hover:bg-cyan-950/70"
-                      : "text-sky-100 border-sky-300/35 hover:bg-sky-950/70",
+                      : "text-amber-100 border-amber-300/35 hover:bg-amber-950/70",
                     armedPower === kind &&
                       (kind === "freeze"
                         ? "border-cyan-300 bg-cyan-900/70 shadow-[0_0_12px_#bcecff88]"
-                        : "border-sky-300 bg-sky-900/70 shadow-[0_0_12px_#bcecff88]"),
+                        : "border-amber-300 bg-amber-900/70 shadow-[0_0_12px_#bcecff88]"),
                   )}
                 >
                   {kind === "freeze" ? (
@@ -1462,7 +1497,7 @@ export function OnlineMatchBoard({
                 </button>
               ))}
             </div>
-          </GameActionRow>
+          </GameActionRow>}
           <div className="w-[var(--game-board-width)] pointer-events-auto">
             {analysis.error ? (
               <p role="alert" className="mt-2 text-sm text-amber-300">
@@ -1583,6 +1618,7 @@ export function OnlineMatchBoard({
               : "Disconnected · waiting for reconnection"}
           </p>
           <AddFriendButton targetCode={opponent.profile.code} />
+          {!result && <Button variant="outline" onClick={() => { setOpponentOpen(false); setExitOpen(true); }}>Desistir ou oferecer empate</Button>}
           <label className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -1600,7 +1636,7 @@ export function OnlineMatchBoard({
       <Dialog open={exitOpen} onOpenChange={setExitOpen}>
         <DialogContent className="z-[140] border-white/20 bg-[#101713] text-white">
           <DialogHeader>
-            <DialogTitle>Leave this match?</DialogTitle>
+            <DialogTitle>Ações da partida</DialogTitle>
             <DialogDescription>
               Desistir encerra a partida. A oferta de empate precisa ser aceita
               pelo adversário.
@@ -1664,13 +1700,24 @@ export function OnlineMatchBoard({
               {won ? "You won!" : result?.winner ? "You lost" : "Draw"}
             </DialogTitle>
             <DialogDescription>
-              {won
-                ? `You took home ${currentEggs} golden eggs. Historical points +${currentEggs + match.state.collected[color]}.`
+              {won || (result && !result.winner)
+                ? `You took home ${payout} golden eggs. Historical points +${payout + match.state.collected[color]}.`
                 : result?.reason === "resign"
                   ? "Match ended by resignation."
                   : "The match has ended."}
             </DialogDescription>
           </DialogHeader>
+          {result && (won || !result.winner) && <EggBasketTransfer
+            earnedEggs={payout}
+            accountEggs={me.profile.profile.goldenEggs}
+            sources={basketSources}
+            onLaunch={(amount, source) => {
+              const sourceColor = source === 0 ? color : opponent.color;
+              setDepositedEggs(current => ({ ...current, [sourceColor]: current[sourceColor] + amount }));
+            }}
+            onLand={amount => { if (!document.hidden && amount > 0) getAudioEngine().playEggLanding() }}
+            onComplete={() => setDepositedEggs({ ...match.state.eggs })}
+          />}
           {match.state.rematchOffer && match.state.rematchOffer !== color ? (
             <Button
               disabled={online.busy || !!online.pending}

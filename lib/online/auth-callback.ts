@@ -4,6 +4,7 @@ export interface AuthCallback {
   requested: boolean
   error: string | null
   errorCode: string | null
+  requestId: string | null
 }
 
 export interface AuthCallbackMessage {
@@ -11,7 +12,10 @@ export interface AuthCallbackMessage {
   ok: boolean
   error: string | null
   errorCode: string | null
+  requestId?: string
 }
+
+export const AUTH_CALLBACK_CHANNEL = 'chickenchess:auth-complete'
 
 interface CallbackAuthClient {
   initialize: () => Promise<{ error: { message: string; code?: string } | null }>
@@ -31,6 +35,7 @@ export function readAuthCallback(search: string, hash: string): AuthCallback {
     requested: query.get('authCallback') === '1',
     error: value('error_description') || value('error') || errorCode,
     errorCode,
+    requestId: query.get('authCallbackId'),
   }
 }
 
@@ -46,6 +51,7 @@ export function authCallbackMessage(
     ok: !error && hasPermanentSession,
     error,
     errorCode: callback.errorCode || sessionError?.code || null,
+    ...(callback.requestId ? { requestId: callback.requestId } : {}),
   }
 }
 
@@ -63,6 +69,7 @@ export function isAuthCallbackMessage(value: unknown): value is AuthCallbackMess
   return message.type === 'chickenchess:auth-complete' && typeof message.ok === 'boolean'
     && (message.error == null || typeof message.error === 'string')
     && (message.errorCode == null || typeof message.errorCode === 'string')
+    && (message.requestId == null || typeof message.requestId === 'string')
 }
 
 export function googleLoginFailure(errorCode: string | null | undefined, error: string | null): { existingAccount: boolean; message: string } {

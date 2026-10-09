@@ -1,5 +1,7 @@
 # Mecânica e documentação
 
+- Toda alteração de mecânica ou interface deve ser aplicada em todos os modos de jogo, salvo quando o pedido indicar explicitamente um modo específico.
+
 - Antes de alterar regras de jogo, gestos, áudio, widgets, mapa ou persistência, consulte `GAME_MECHANICS.md`.
 - Na mesma alteração, atualize esse documento com o comportamento realmente implementado: gatilho, efeitos, retorno/cancelamento, prioridades e escopo por modo/engine.
 - Mantenha ideias futuras separadas do comportamento atual. A agenda mais ampla fica em `MUSIC_ENGINE_PLAN.md`.

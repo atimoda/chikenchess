@@ -1,5 +1,12 @@
 "use client"
 
+import { GamePreferences } from "./game-preferences"
+import { PowerCardHand } from "./power-card-hand"
+import { animateInsufficientEggs } from "@/lib/power-presentation"
+import { usePowerDisplay } from "@/hooks/use-power-display"
+
+import moveMessages from "@/data/ui/move-messages.json"
+
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Chess, type Move, type Square } from "chess.js"
@@ -21,14 +28,15 @@ import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './mus
 import { MusicHarmonyReadout } from './music-transition-view'
 import { VersionChangelog } from './version-changelog'
 import { VictoryBasket } from './victory-basket'
+import { matchEggPayout, matchEggSources } from '@/lib/match-eggs'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { Code2, Music2, Undo2, Redo2, Pause, Power, Play, Check, RotateCcw, Maximize, Minimize, Plus, Minus, Search, Snowflake, Shield, Eye } from "lucide-react"
+import { Code2, Music2, Undo2, Redo2, Pause, Power, Play, Check, Maximize, Minimize, Plus, Minus, Search, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
-import { conquerCity, markGameplayTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
+import { conquerCity, settleCityDraw, markGameplayTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
@@ -41,6 +49,8 @@ import { advanceMatchPowers, canUseMatchPower, createMatchPower, permittedPowerM
 import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, syncPoweredMoveSan } from "@/lib/powered-chess"
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
+import { useBoardResize } from "@/hooks/use-board-resize"
+import { BoardResizeHandles } from "./board-resize-handles"
 import { GameActionCostHint, GameActionRow, GameCityBackground, GameCityTitleIntro, GameFooter, GameWidgetConnections, GameWidgetEntranceStyles } from "./game-presentation"
 
 import {
@@ -69,29 +79,7 @@ interface EggFlight {
   to?: { left: number; top: number; width: number; height: number }
 }
 
-const BEST_MOVE_MESSAGES = [
-  "Brilliant!", "Eggcellent!", "Masterful!", "Sharp!", "Clever!", "Inspired!", "Cluck yeah!", "Genius!", "Flawless!", "Checkmate-worthy!",
-]
-const BEST_MOVES_WITH_WORST_SCORES_MESSAGES = [
-  "You've got it!", "You’re getting good!", "Smart comeback!", "Triple eggs!", "Turning the tide!",
-  "Tough spot, sharp move!", "That’s the spirit!", "Clever under pressure!", "Now you’re cooking!", "Way to fight!",
-]
-const WORST_MOVE_MESSAGES = [
-  "Oops!", "Eggward!", "Scrambled!", "Yikes!", "Risky!", "Uh-oh, chicken!", "Wobbly!", "Questionable!", "Fowl play!", "Oh cluck!", "Terrible!", 'Your "lucky" day',
-]
-const BEST_STREAK_MESSAGES = [
-  "Unstoppable!", "On fire!", "Unbeakable!", "Winning streak!", "Cluckin’ brilliant!",
-]
-const WORST_STREAK_MESSAGES = [
-  "Eggspiraling!", "Cluckstorm!", "Scramble mode!", "Coop’s concerned!", "Henough already!",
-]
-const BEST_STREAK_6_PLUS_MESSAGES = [
-  "You’re on a roll!", "Unbeakable streak!", "The coop is cooking!", "Cluck, you’re good!", "Can’t stop this chicken!", "Chickens make mistakes, but you?", "Cooking!",
-]
-const WORST_STREAK_6_PLUS_MESSAGES = [
-  "The eggs are scrambling.", "A streak of… choices.", "The coop is concerned.", "Maybe trust the chicken?", "This is getting eggward.", "We’ll pretend that worked.", "Uh-oh, chicken.", "That’s a bold cluck.", "The plot thickens…", "Oopsie-daisy!", "A little scrambled.", "The board noticed.", "Risky business!", "That’s one way to play.",
-]
-const SINGLE_LEGAL_MOVE_MESSAGES = ["Ok", "Yep"]
+const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
 
 function randomMessage(messages: string[]) {
   return messages[Math.floor(Math.random() * messages.length)]
@@ -168,6 +156,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const boardOrientation: "white" | "black" = "white"
   const [game, setGame] = useState(() => makePoweredChess(new Chess()))
   const [currentPattern, setCurrentPattern] = useState("")
+  const [powerDisplay, setPowerDisplay] = usePowerDisplay()
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false)
   const [tabVisible, setTabVisible] = useState(true)
@@ -243,10 +232,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
   const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
-  const [restartConfirmOpen, setRestartConfirmOpen] = useState(false)
   const [shieldCaptureNoticeOpen, setShieldCaptureNoticeOpen] = useState(false)
+  const [frozenCaptureNoticeOpen, setFrozenCaptureNoticeOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
   const costHintHideTimerRef = useRef<number | null>(null)
+  const opponentEggCounterRef = useRef<HTMLDivElement | null>(null)
+  const [visibleOpponentEggs, setVisibleOpponentEggs] = useState(STARTING_MATCH_GOLDEN_EGGS)
   const eggCounterRef = useRef<HTMLDivElement | null>(null)
   const [armedPower, setArmedPower] = useState<MatchPowerKind | null>(null)
   const [matchPowers, setMatchPowers] = useState<MatchPower[]>([])
@@ -448,6 +439,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const [isMobile, setIsMobile] = useState(false)
   const [isPortraitMobile, setIsPortraitMobile] = useState(false)
+  const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, controlHeightRatio: powerDisplay === "cards" ? 0.32 : 0 })
 
   useEffect(() => {
     const checkMobile = () => {
@@ -846,17 +838,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const hasEggsForAction = (amount: number) => {
     if (playerEggBalanceRef.current < amount) {
-      if (playerEggBalanceRef.current === 0) {
-        void engineRef.current?.playBlockedCue()
-        eggCounterRef.current?.animate([
-          { transform: 'translateX(0)', boxShadow: '0 0 0 rgba(248,113,113,0)' },
-          { transform: 'translateX(-4px)', boxShadow: '0 0 14px rgba(248,113,113,.55)' },
-          { transform: 'translateX(4px)' },
-          { transform: 'translateX(-3px)' },
-          { transform: 'translateX(3px)' },
-          { transform: 'translateX(0)', boxShadow: '0 0 0 rgba(248,113,113,0)' },
-        ], { duration: 360, easing: 'ease-in-out' })
-      }
+      void engineRef.current?.playBlockedCue()
+      animateInsufficientEggs(eggCounterRef.current)
       const shortfall = amount - playerEggBalanceRef.current
       toast.error(`You need ${shortfall} more golden egg${shortfall === 1 ? '' : 's'} to use this`)
       return false
@@ -932,20 +915,33 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     setVisibleEggs(playerEggBalanceRef.current)
   }, [])
 
-  const settleCityVictory = useCallback(() => {
+  const settleCityVictory = useCallback((draw = false) => {
     if (victorySettledRef.current) return
     victorySettledRef.current = true
     flightCleanupsRef.current.forEach(cleanup => cleanup())
     flightCleanupsRef.current.clear()
     setEggFlight(null)
 
-    const earnedEggs = playerEggBalanceRef.current
-    setVisibleEggs(earnedEggs)
+    const eggs = { w: playerEggBalanceRef.current, b: STARTING_MATCH_GOLDEN_EGGS }
+    const winner = draw ? null : 'w'
+    const earnedEggs = matchEggPayout(eggs, winner).w
+    const shares = matchEggSources(eggs, winner, 'w')
+    const sources = [
+      { amount: shares.w, element: () => eggCounterRef.current },
+      { amount: shares.b, element: () => opponentEggCounterRef.current },
+    ]
+    setVisibleEggs(eggs.w)
+    setVisibleOpponentEggs(eggs.b)
     const collected = collectedMatchEggsRef.current
-    const result = conquerCity(city.id, earnedEggs, collected)
+    const result = draw ? settleCityDraw(city.id, earnedEggs, collected) : conquerCity(city.id, earnedEggs, collected)
     playerEggBalanceRef.current = 0
-    victoryToastRef.current = toast.custom(id => <VictoryBasket result={result} collected={collected}
-      onLand={amount => { setVisibleEggs(current => Math.max(0, current - amount)); if (!document.hidden && amount > 0) engineRef.current?.playEggLanding() }}
+    victoryToastRef.current = toast.custom(id => <VictoryBasket result={result} collected={collected} sources={sources} draw={draw}
+      onLaunch={(amount, source) => {
+        if (source === 0) setVisibleEggs(current => Math.max(0, current - amount))
+        else setVisibleOpponentEggs(current => Math.max(0, current - amount))
+      }}
+      onLand={amount => { if (!document.hidden && amount > 0) engineRef.current?.playEggLanding() }}
+      onComplete={() => { setVisibleEggs(0); setVisibleOpponentEggs(0) }}
       onReturn={() => { toast.dismiss(id); onBack() }} />, { duration: Infinity })
   }, [city.id, onBack])
 
@@ -1011,8 +1007,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         }
       } else {
         playCheckmate()
+        playerEggBalanceRef.current = 0
+        setVisibleEggs(0)
+        setVisibleOpponentEggs(0)
         toast.error("DEFEAT!", {
-          description: "Try again to conquer this city and keep your match eggs."
+          description: "The opponent takes the match eggs. Try again to conquer this city."
         })
       }
     } else if (game.isDraw() || game.isStalemate()) {
@@ -1020,9 +1019,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       setIsPlaying(false)
       deactivatePlaybackWidgets()
       playDrawKalimba()
-      toast("DRAW", {
-        description: "The game ended in a draw.",
-      })
+      settleCityVictory(true)
     } else if (game.isCheck() && game.turn() === "w") {
       setGameStatus("CHECK!")
     } else {
@@ -1298,73 +1295,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     },
     [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, engineRef],
   )
-
-  const resetGame = useCallback(() => {
-    matchPowersRef.current = []
-    setMatchPowers([])
-    setArmedPower(null)
-    flightCleanupsRef.current.forEach(cleanup => cleanup())
-    flightCleanupsRef.current.clear()
-    setEggFlight(null)
-    playerEggBalanceRef.current = STARTING_MATCH_GOLDEN_EGGS
-    debugEggClicksRef.current = 0
-    collectedMatchEggsRef.current = 0
-    if (victoryToastRef.current !== null) { toast.dismiss(victoryToastRef.current); victoryToastRef.current = null }
-    setVisibleEggs(STARTING_MATCH_GOLDEN_EGGS)
-    victorySettledRef.current = false
-    firstMovePanelsActivatedRef.current = false
-    rewardedMovesRef.current.clear()
-    rankedMoveKindsRef.current.clear()
-    rankedMoveStreakRef.current = { kind: null, count: 0 }
-    setRankedMoveMark(null)
-    setRankedMoveAnnouncement(null)
-    if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
-    if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
-    evaluationQueueRef.current?.reset()
-    const freshGame = makePoweredChess(new Chess())
-    gameRef.current = freshGame
-    powerTimelineRef.current = [{ game: clonePoweredChess(freshGame, []), powers: [] }]
-    redoTimelineRef.current = []
-    setGame(freshGame)
-    setIsPlaying(false)
-    shownSuggestionsRef.current = []
-    pendingShownSuggestionsRef.current = null
-    suggestionPositionKeyRef.current = null
-    setHasPlaybackStarted(false)
-    setMoveHistory([])
-    redoStackRef.current = []
-    setRedoStack([])
-    setIsThinking(false)
-    setCapturedPieces({ white: [], black: [] })
-    setActiveSquares(new Set())
-    setSynthSelectedSquare(null)
-    setSquareEffects({})
-    music.reset()
-    knobsManuallyClosedRef.current = !musicEngineOn
-    mixerManuallyClosedRef.current = !musicEngineOn
-    setPieceDebugOn(false)
-    setSpectrogramOn(false)
-    if (!panelsFollowPlayerTurn && musicEngineOn) {
-      setMixerOn(true)
-      setKnobsOn(true)
-      setActiveWidgetOrder(current => [
-        ...current.filter(id => !['mixer', 'knobs', 'spectrogram', 'pieceDebug'].includes(id)),
-        "mixer",
-        "knobs",
-      ])
-    } else {
-      setMixerOn(false)
-      setKnobsOn(false)
-      setActiveWidgetOrder(current => current.filter(id => !['mixer', 'knobs', 'spectrogram', 'pieceDebug'].includes(id)))
-    }
-    setLastEvalScore(null)
-    setLastEvalMate(null)
-    setIsEvaluating(false)
-    if (evaluationError) restartStockfish()
-    else requestEvaluation(freshGame)
-    setIsBackgroundDark(false)
-    rewardedCheckmateFenRef.current = null
-  }, [evaluationError, musicEngineOn, panelsFollowPlayerTurn, requestEvaluation, restartStockfish])
 
   const undoMove = useCallback(() => {
     const currentHistory = gameRef.current.history()
@@ -1749,6 +1679,22 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             />}
 
             <MixerWidget
+              playback={<Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleTogglePlay}
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                    onPointerEnter={event => {
+                      if (event.pointerType === "mouse") playControlHoverKick(0.85)
+                    }}
+                    className="h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
+                    style={{
+                        "--city-neon": city.color,
+                        backgroundColor: "var(--city-neon)20"
+                    } as React.CSSProperties}
+                  >
+                    {isPlaying ? <Pause className="w-7 h-7 sm:w-10 sm:h-10" /> : <Play className="w-7 h-7 sm:w-10 sm:h-10" />}
+                  </Button>}
               teamMixes={music.teamMixes}
               sessionId={city.id}
               effects={{ ...globalEffects, bpm: music.snapshot.bpm, volume: music.snapshot.volume }}
@@ -2001,17 +1947,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               >
                   <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
               </Button>
-              <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setRestartConfirmOpen(true)}
-                  title="Restart game"
-                  aria-label="Restart game"
-                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                  style={{ "--city-neon": city.color } as React.CSSProperties}
-              >
-                  <RotateCcw className="w-4 h-4" />
-              </Button>
+              <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
               <Button
                   variant="outline"
                   size="icon"
@@ -2060,12 +1996,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       </header>
 
       <div className={cn("relative z-10 w-full flex flex-col lg:block justify-start pointer-events-none", isMobile ? "shrink-0 min-h-full pb-16 pt-4" : "h-full pt-4 lg:pt-0")}
-        style={{ "--game-board-width": isMobile ? "min(calc(100vw - 16px),512px)" : "min(90vw,calc(100dvh - 270px),512px)" } as React.CSSProperties}>
+        style={{ "--game-board-width": boardResize.width !== null ? `${boardResize.width}px` : isMobile ? "min(calc(100vw - 16px),512px)" : powerDisplay === "cards" ? "min(90vw,calc(100dvh - 350px),512px)" : "min(90vw,calc(100dvh - 270px),512px)" } as React.CSSProperties}>
         
         {/* Main Game Area (Board Container) stays in place while its squares fade in. */}
         <div 
             className={cn(
-            "flex flex-col items-center justify-start w-full lg:max-w-[512px] mx-auto relative z-10 px-2 pointer-events-none lg:pt-6"
+            "flex flex-col items-center justify-start w-full mx-auto relative z-10 px-2 pointer-events-none lg:pt-6"
             )}
             style={{
                 marginTop: !isMobile ? 'calc(50vh - 350px)' : '0px'
@@ -2077,8 +2013,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           >
 
             <div className="mb-[30px] grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 pointer-events-none">
-              <div role="img" aria-label={`${STARTING_MATCH_GOLDEN_EGGS} golden egg for the opponent`} className={cn("flex w-fit items-center gap-1.5 rounded-md border border-zinc-500/20 bg-black/45 px-2 py-1 font-mono text-xs font-bold text-zinc-400/50 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
-                <span>{STARTING_MATCH_GOLDEN_EGGS}</span>
+              <div ref={opponentEggCounterRef} role="img" aria-label={`${visibleOpponentEggs} golden eggs for the opponent`} className={cn("flex w-fit items-center gap-1.5 rounded-md border border-zinc-500/20 bg-black/45 px-2 py-1 font-mono text-xs font-bold text-zinc-400/50 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
+                <span>{visibleOpponentEggs}</span>
                 <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] opacity-40 grayscale" />
               </div>
               <div
@@ -2146,6 +2082,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     visibility: introPhase < 2 ? 'hidden' : 'visible',
                 }}
               >
+                  <BoardResizeHandles enabled={boardResize.enabled && introPhase >= 3} onStart={boardResize.startResize} onResizeBy={boardResize.resizeBy} onCancel={boardResize.cancelResize} />
                   <ChessgroundBoard 
                   game={game} 
                   entranceActive={introPhase === 2}
@@ -2155,6 +2092,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   armedPower={armedPower}
                   onPowerTarget={targetPower}
                   matchPowers={matchPowers}
+                  onFrozenCaptureBlocked={() => setFrozenCaptureNoticeOpen(true)}
                   onShieldCaptureBlocked={reason => {
                     if (reason === 'protected-target') setShieldCaptureNoticeOpen(true)
                     else toast('Peças protegidas não podem comer outras peças.', { id: 'shield-capture-blocked', duration: 3000 })
@@ -2237,7 +2175,39 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 />}
               </div>
 
-              <GameActionRow visible={introPhase === 3}>
+              {powerDisplay === "cards" ? <PowerCardHand visible={introPhase === 3} undoAnimationKey={undoAnimationKey} actions={{
+                best: {
+                  disabled: matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best'),
+                  onClick: event => { if (!matchPowersRef.current.length) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best")) },
+                  onMouseEnter: () => playClosedAnalysisHat(), onMouseLeave: () => playDrum('oh', 0.63, 1, 0.9),
+                },
+                worst: {
+                  disabled: matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst'),
+                  onClick: event => { if (!matchPowersRef.current.length) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst")) },
+                  onMouseEnter: () => playClosedAnalysisHat(0.85), onMouseLeave: () => playClosedAnalysisHat(0.6),
+                },
+                undo: {
+                  disabled: moveHistory.length === 0,
+                  onClick: event => { playDrum("sd", 0.48); spendEggForAction(event.currentTarget, 2, undoMove) },
+                  onMouseEnter: () => playControlHoverKick(0.536), title: "Volta 1 jogada · 2 golden eggs",
+                },
+                freeze: {
+                  ref: element => { powerButtonRefs.current.freeze = element },
+                  disabled: !canUseMatchPower(game, 'w'), 'aria-pressed': armedPower === 'freeze',
+                  onPointerDown: event => powerTargeting.onButtonPointerDown('freeze', event),
+                  onLostPointerCapture: powerTargeting.onLostPointerCapture,
+                  onClick: event => powerTargeting.onButtonClick('freeze', event),
+                  onMouseEnter: () => playClosedAnalysisHat(), onMouseLeave: () => playClosedAnalysisHat(0.6),
+                },
+                shield: {
+                  ref: element => { powerButtonRefs.current.shield = element },
+                  disabled: !canUseMatchPower(game, 'w'), 'aria-pressed': armedPower === 'shield',
+                  onPointerDown: event => powerTargeting.onButtonPointerDown('shield', event),
+                  onLostPointerCapture: powerTargeting.onLostPointerCapture,
+                  onClick: event => powerTargeting.onButtonClick('shield', event),
+                  onMouseEnter: () => playDrum('oh', 0.696),
+                },
+              }} /> : <GameActionRow visible={introPhase === 3}>
                 <div className="flex min-w-0 items-center gap-1 sm:gap-2">
                   <button
                     data-ranked-move-action="best"
@@ -2287,9 +2257,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     size="icon"
                     onClick={event => {
                       playDrum("sd", 0.48)
-                      spendEggForAction(event.currentTarget, 1, undoMove)
+                      spendEggForAction(event.currentTarget, 2, undoMove)
                     }}
-                    aria-label="Undo · costs 1 golden egg"
+                    aria-label="Undo · costs 2 golden eggs"
                     onMouseEnter={() => { showCostHint('undo'); playControlHoverKick(0.536) }}
                     onPointerLeave={hideCostHint}
                     onFocus={() => showCostHint('undo')}
@@ -2301,25 +2271,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                         backgroundColor: "var(--city-neon)20"
                     } as React.CSSProperties}
                   >
-                    {costHint('undo', 1)}
+                    {costHint('undo', 2)}
                     <Undo2 className="pointer-events-none absolute inset-0 m-auto h-7 w-7 sm:h-10 sm:w-10" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleTogglePlay}
-                    aria-label={isPlaying ? "Pause" : "Play"}
-                    onPointerEnter={event => {
-                      if (event.pointerType === "mouse") playControlHoverKick(0.85)
-                    }}
-                    className="size-[38px] p-0 sm:size-[51px] rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
-                    style={{
-                        "--city-neon": city.color,
-                        backgroundColor: "var(--city-neon)20"
-                    } as React.CSSProperties}
-                  >
-                    {isPlaying ? <Pause className="w-7 h-7 sm:w-10 sm:h-10" /> : <Play className="w-7 h-7 sm:w-10 sm:h-10" />}
-                  </Button>
+
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2373,10 +2328,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     onPointerLeave={hideCostHint}
                     onFocus={() => showCostHint('shield')}
                     onBlur={hideCostHint}
-                    className={cn("pointer-events-auto touch-none cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-sky-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'shield' ? 'border-sky-300 bg-sky-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-sky-300/35 hover:bg-sky-950/70')}
+                    className={cn("pointer-events-auto touch-none cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-amber-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'shield' ? 'border-amber-300 bg-amber-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-amber-300/35 hover:bg-amber-950/70')}
                   ><Shield className="h-3 w-3 sm:h-4 sm:w-4" />Shield{costHint('shield', 3)}</button>
                 </div>
-              </GameActionRow>
+              </GameActionRow>}
 
               {isMobile && introPhase >= 3 && <div
                 data-mobile-widgets
@@ -2413,29 +2368,23 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         </DialogContent>
       </Dialog>
 
+      <Dialog open={frozenCaptureNoticeOpen} onOpenChange={setFrozenCaptureNoticeOpen}>
+        <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-cyan-300/40 bg-[#0b1520] p-6 text-white">
+          <DialogHeader><DialogTitle className="font-mono text-cyan-100">Não é possível capturar uma peça congelada.</DialogTitle></DialogHeader>
+          <Button onClick={() => setFrozenCaptureNoticeOpen(false)} className="mt-2">Entendi</Button>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={shieldCaptureNoticeOpen} onOpenChange={setShieldCaptureNoticeOpen}>
-        <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-sky-300/40 bg-[#101713] p-6 text-white">
+        <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
           <DialogHeader>
-            <DialogTitle className="font-mono text-sky-100">Nem tente. Essa peça está protegida.</DialogTitle>
+            <DialogTitle className="font-mono text-amber-100">Nem tente. Essa peça está protegida.</DialogTitle>
           </DialogHeader>
           <Button onClick={() => setShieldCaptureNoticeOpen(false)} className="mt-2">Entendi</Button>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={restartConfirmOpen} onOpenChange={setRestartConfirmOpen}>
-        <DialogContent className="z-[140] max-w-md border-white/20 bg-[#101713] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-white">Deseja reiniciar a partida?</DialogTitle>
-            <DialogDescription className="pt-2 text-white/70">
-              O progresso atual da partida será perdido.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setRestartConfirmOpen(false)}>Cancelar</Button>
-            <Button onClick={() => { setRestartConfirmOpen(false); resetGame() }} className="bg-[var(--city-neon)] text-black hover:opacity-90" style={{ "--city-neon": city.color } as React.CSSProperties}>Confirmar</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
 
 
 

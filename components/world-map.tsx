@@ -5,20 +5,20 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { cities, type CityData } from "@/lib/cities-data"
-import { getPlayerProfile, resetCampaign, type PlayerProfile } from "@/lib/game-progression"
+import { getPlayerProfile, type PlayerProfile } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
 import { CampaignCityList } from './campaign-city-list'
 import { VersionChangelog } from './version-changelog'
-import { RELEASE_LABEL } from '@/lib/changelog'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 import { OnlineHub } from './online/online-hub'
+import OPENING_PHRASES from '@/data/ui/opening-phrases.json'
+import { isAdminUser } from '@/lib/admin/access'
 import { useOnline } from './online/online-provider'
-import { LegalLinks } from './legal-links'
-import { onlineErrorMessage } from '@/lib/online/client'
+import { AboutReleaseDialog } from './about-release-dialog'
+import styles from './world-map.module.css'
 
 import { Button } from "@/components/ui/button"
-import { Plus, Minus, Maximize, Minimize, LogOut, Loader2 } from "lucide-react"
+import { Plus, Minus, Maximize, Minimize } from "lucide-react"
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
@@ -26,8 +26,12 @@ interface WorldMapProps {
   inviteCode?: string | null
 }
 
+
+
 export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapProps) {
   const online = useOnline()
+  const [createRoomRequest, setCreateRoomRequest] = useState<{ id: number; cityId: string } | null>(null)
+  const createRoomSequence = useRef(0)
   const [unlockedCities, setUnlockedCities] = useState<string[]>([])
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null)
   useEffect(() => {
@@ -51,20 +55,16 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [showTitle, setShowTitle] = useState(false)
   const [logoPhase, setLogoPhase] = useState<'intro' | 'fading' | 'header'>('intro')
   const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
+  const [openingPhrase, setOpeningPhrase] = useState(OPENING_PHRASES[0])
+  useEffect(() => {
+    setOpeningPhrase(OPENING_PHRASES[Math.floor(Math.random() * OPENING_PHRASES.length)])
+  }, [])
 
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string } | null>(null)
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
   const [showAbout, setShowAbout] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
-  const [profileLogoutBusy, setProfileLogoutBusy] = useState(false)
-  const [profileLogoutError, setProfileLogoutError] = useState<string | null>(null)
-  const logOutFromProfile = async () => {
-    setProfileLogoutBusy(true)
-    setProfileLogoutError(null)
-    try { await online.signOut() }
-    catch (cause) { setProfileLogoutError(onlineErrorMessage(cause)) }
-    finally { setProfileLogoutBusy(false) }
-  }
+  const [aboutTab, setAboutTab] = useState<'about' | 'releases'>('about')
+  const [profileTabRequested, setProfileTabRequested] = useState(false)
   const [eggLabelExpanded, setEggLabelExpanded] = useState(true)
   const eggLabelPointerHoveredRef = useRef(false)
   const eggLabelFocusedRef = useRef(false)
@@ -274,12 +274,12 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     padSoundRef.current = { osc1, osc2, gain, filter }
   }
 
-  const updatePadSound = (x: number, width: number) => {
+  const updatePadSound = (x: number, width: number, pitchMultiplier = 1) => {
     const ctx = audioContextRef.current
     if (!ctx || !padSoundRef.current) return
     
     const ratio = Math.max(0, Math.min(1, x / width))
-    const freq = 200 + ratio * 400 
+    const freq = (200 + ratio * 400) * pitchMultiplier
     const cutoff = 500 + ratio * 4000
 
     const { osc1, osc2, filter } = padSoundRef.current
@@ -307,7 +307,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     padSoundRef.current = null
   }
 
-  const handleSmartPadSound = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleSmartPadSound = (e: React.MouseEvent<HTMLButtonElement>, pitchMultiplier = 1) => {
       if (padSoundTimeoutRef.current) {
         clearTimeout(padSoundTimeoutRef.current)
         padSoundTimeoutRef.current = null
@@ -320,7 +320,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    updatePadSound(x, rect.width)
+    updatePadSound(x, rect.width, pitchMultiplier)
     
     e.currentTarget.style.setProperty("--mouse-x", `${x}px`)
     e.currentTarget.style.setProperty("--mouse-y", `${y}px`)
@@ -882,6 +882,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             stopWhistleLoop={stopWhistleLoop}
             setPressedPopupState={setPressedPopupState}
             onCitySelect={onCitySelect}
+            onCreateRoom={onOnlineMatch ? city => setCreateRoomRequest({ id: ++createRoomSequence.current, cityId: city.id }) : undefined}
             handleSmartPadSound={handleSmartPadSound}
             handleSmartPadLeave={handleSmartPadLeave}
             stopPadSound={stopPadSound}
@@ -941,7 +942,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
                 transition: 'opacity 0.5s ease-out'
               }}
             >
-              Learn chess, compose music.
+              {openingPhrase}
             </div>
         </div>
 
@@ -976,9 +977,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           <button
             onClick={(e) => {
                 e.preventDefault()
+                setAboutTab('about')
                 setShowAbout(true)
             }}
-            className="cursor-pointer rounded-md border border-transparent bg-transparent px-3 py-2 text-muted-foreground transition-colors hover:border-white/10 hover:bg-black/80 hover:text-foreground"
+            className={cn(styles.aboutButton, "cursor-pointer rounded-md border border-transparent bg-transparent px-3 py-2 text-muted-foreground transition-colors hover:border-white/10 hover:bg-black/80 hover:text-foreground")}
           >
             About
           </button>
@@ -996,7 +998,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             variant="outline"
             size="default"
             aria-label={`Abrir perfil do jogador. ${playerProfile?.goldenEggs ?? 0} ovos dourados`}
-            onClick={() => setShowProfile(true)}
+            onClick={() => setProfileTabRequested(true)}
             onMouseEnter={() => { eggLabelPointerHoveredRef.current = true; revealEggLabel() }}
             onMouseLeave={() => { eggLabelPointerHoveredRef.current = false; hideEggLabel() }}
             onFocus={() => { eggLabelFocusedRef.current = true; revealEggLabel() }}
@@ -1035,125 +1037,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
         </div>
       </header>
 
-      {onOnlineMatch ? <div className="pointer-events-auto absolute bottom-32 left-1/2 z-30 w-max max-w-[90vw] -translate-x-1/2"><OnlineHub onMatch={onOnlineMatch} inviteCode={inviteCode} /></div> : null}
-
-      <Dialog open={showProfile} onOpenChange={setShowProfile}>
-        <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]" closeLabel="Fechar perfil">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <span aria-hidden="true" className="text-5xl leading-none">🐔</span>
-              <DialogTitle className="min-w-0 break-words font-mono text-xl">{online.profile?.display_name ?? (online.user ? 'Carregando perfil…' : 'Perfil visitante')}</DialogTitle>
-            </div>
-            <DialogDescription className="sr-only">Seu saldo de golden eggs, pontos históricos, conquistas e conta.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 font-mono">
-            {online.profile?.baptismal_name && <div className="text-xs text-white/60"><p>Baptismal name</p><p className="mt-1 break-words text-[#dfe8df]">{online.profile.baptismal_name}</p><p className="mt-1 text-[10px]">Nome de batismo permanente</p></div>}
-            {!online.user || online.user.is_anonymous ? <button className="text-xs text-amber-200 underline underline-offset-4" onClick={() => { setShowProfile(false); online.openLogin() }}>Sign in to save your profile</button>
-              : online.pendingTransfer ? <Button className="w-full" onClick={() => { setShowProfile(false); online.openLogin() }}>Escolher perfil para a conta</Button>
-                : <div className="space-y-2">
-                  <p className="text-xs text-white/60">Profile saved · {online.profile?.code}</p>
-                  {online.user.email && <p className="break-all text-xs text-white/60">{online.user.email}</p>}
-                  <Button size="sm" variant="outline" className="border-white/20 bg-transparent" disabled={profileLogoutBusy} onClick={() => void logOutFromProfile()}>
-                    {profileLogoutBusy ? <Loader2 className="animate-spin" /> : <LogOut />}{profileLogoutBusy ? 'Saindo…' : 'Sair da conta'}
-                  </Button>
-                </div>}
-            {profileLogoutError && <p role="alert" className="text-xs text-rose-200">{profileLogoutError}</p>}
-            <div className="space-y-3 font-mono">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Golden eggs</span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-bold tracking-wide text-amber-300">
-                  <svg aria-hidden="true" viewBox="0 0 16 20" className="h-4 w-3.5">
-                    <path d="M8 1.5c-3.2 0-6 6.3-6 11.3a6 6 0 0 0 12 0c0-5-2.8-11.3-6-11.3Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.2" />
-                    <path d="M5 6.5c-.9 1.7-1.5 3.8-1.5 5.5" fill="none" stroke="#fef08a" strokeLinecap="round" strokeWidth="1.2" />
-                  </svg>
-                  {(playerProfile?.goldenEggs || 0).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Historical score</span>
-                <span className="tracking-wide text-muted-foreground">{(playerProfile?.points || 0).toLocaleString()} points</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Rank</span>
-                <span className="text-xs text-muted-foreground">🎖️ {playerProfile?.rank || "Novice Beatmaker"}</span>
-              </div>
-            </div>
-            <div className="space-y-2 pt-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏆</span>Cities conquered</span>
-                <span><strong className="text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((playerProfile?.conqueredCityIds?.length || 0) / cities.length) * 100}%` }} />
-              </div>
-            </div>
-            <div className="flex justify-end border-t border-white/10 pt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm("Reset Campaign Progress?")) resetCampaign()
-                }}
-                className="rounded border border-white/10 px-3 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-rose-200"
-              >
-                RESET SAVE
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* About Popup */}
-      {showAbout && (
-        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div 
-                role="dialog" aria-modal="true" aria-labelledby="about-title"
-                className="relative max-h-[90dvh] overflow-y-auto bg-card border border-border p-8 rounded-lg max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <button 
-                    type="button" aria-label="Fechar About"
-                    onClick={() => setShowAbout(false)}
-                    className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                </button>
-
-                <h2 id="about-title" className="mb-1 flex items-center gap-3 font-mono text-2xl font-bold text-primary"><img src="/chickenchess-logo.png" alt="" className="h-16 w-16 object-contain" />chickenchess</h2>
-                
-                <p className="text-xs font-bold text-muted-foreground mb-4">{RELEASE_LABEL}</p>
-
-                <div className="my-4 border-l-2 border-primary/50 pl-4 py-1">
-                    <p className="text-sm text-foreground leading-relaxed">
-                        Our vision is to reimagine the classic chess game by turning the board into a musical instrument. Every piece has a voice, and every move creates a new moment in the music. This is just the beginning.
-                    </p>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed mt-6">
-                    This is an independent project built with love and lots of coffee. The idea emerged after dozens of chess games played while listening to electronic music, by cousins Thiago Atimoda and Rodrigo Zecchinelli. If you enjoy the experience and want to help the development, consider making a donation. Every bit helps us develop more features.
-                </p>
-                
-                <div className="mb-6 space-y-3">
-                    <div>
-                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">General Contact:</p>
-                        <a href="mailto:atimoda@gmail.com" className="text-sm text-primary hover:underline">atimoda@gmail.com</a>
-                    </div>
-                </div>
-
-                <a 
-                    href="https://ko-fi.com/chickenchess" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF5E5B] text-white rounded font-bold hover:bg-[#ff4542] transition-colors"
-                >
-                    <span>☕</span> Buy me a coffee
-                </a>
-                <div className="mt-6 border-t border-border pt-4">
-                  <LegalLinks newTab className="text-muted-foreground" />
-                </div>
-            </div>
-            
-            <div className="absolute inset-0 -z-10" onClick={() => setShowAbout(false)} />
-        </div>
-      )}
+      <AboutReleaseDialog open={showAbout} onOpenChange={setShowAbout} tab={aboutTab} onTabChange={setAboutTab} />
 
       {/* UI OVERLAY LAYER */}
       <div className="absolute inset-0 z-[70] overflow-hidden pointer-events-none">
@@ -1162,8 +1046,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
         <div 
           className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
-          <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Modo Criativo</Link>
-          <VersionChangelog mapButton />
+          {onOnlineMatch && <OnlineHub showMapRooms playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
+          <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Creative</Link>
+          {isAdminUser(online.user) && <Link href="/admin" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Admin</Link>}
+          <VersionChangelog mapButton onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />
         </div>
       </div>
 

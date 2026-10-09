@@ -1,0 +1,22 @@
+[
+  {
+    "minPoints": 0,
+    "title": "Novice Beatmaker"
+  },
+  {
+    "minPoints": 40,
+    "title": "Rhythm Apprentice"
+  },
+  {
+    "minPoints": 80,
+    "title": "Groove Master"
+  },
+  {
+    "minPoints": 120,
+    "title": "Synth Virtuoso"
+  },
+  {
+    "minPoints": 250,
+    "title": "Grandmaster Producer"
+  }
+]

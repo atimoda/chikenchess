@@ -135,3 +135,43 @@ test('Reset Save removes the egg balance and one-time tip flags before reloading
     if (previousStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage = previousStorage
   }
 })
+
+const { matchEggPayout, matchEggSources, basketVisualEggCount } = loadTs('lib/match-eggs.ts')
+const { applyCityDraw } = loadTs('lib/game-progression.ts')
+
+test('winner takes both balances and draws split all eggs, including odd totals', () => {
+  assert.deepEqual(matchEggPayout({ w: 3, b: 8 }, 'w'), { w: 11, b: 0 })
+  assert.deepEqual(matchEggPayout({ w: 3, b: 8 }, 'b'), { w: 0, b: 11 })
+  assert.deepEqual(matchEggPayout({ w: 3, b: 8 }, null), { w: 5, b: 6 })
+  for (let w = 0; w <= 12; w++) for (let b = 0; b <= 12; b++) {
+    const eggs = { w, b }
+    for (const winner of ['w', 'b', null]) {
+      const payout = matchEggPayout(eggs, winner)
+      const white = matchEggSources(eggs, winner, 'w')
+      const black = matchEggSources(eggs, winner, 'b')
+      assert.equal(white.w + white.b, payout.w)
+      assert.equal(black.w + black.b, payout.b)
+      assert.equal(white.w + black.w, w)
+      assert.equal(white.b + black.b, b)
+      assert.ok(Object.values(white).concat(Object.values(black)).every(value => value >= 0 && Number.isInteger(value)))
+    }
+  }
+})
+
+test('campaign draw credits its share and own collected points without conquest or victory', () => {
+  const initial = normalizePlayerProfile(null, 100)
+  const draw = applyCityDraw(initial, 'recife', 200, 4, 9)
+  assert.equal(draw.profile.goldenEggs, initial.goldenEggs + 4)
+  assert.equal(draw.profile.points, initial.points + 13)
+  assert.equal(draw.profile.winsCount, initial.winsCount)
+  assert.deepEqual(draw.profile.conqueredCityIds, initial.conqueredCityIds)
+  assert.equal(draw.isFirstTime, false)
+  assert.equal(draw.earnedEggs, 4)
+})
+
+test('basket shows exact small balances and one extra egg per hundred up to twenty', () => {
+  for (let eggs = 0; eggs <= 10; eggs++) assert.equal(basketVisualEggCount(eggs), eggs)
+  for (const [balance, count] of [[11,10], [99,10], [100,11], [199,11], [200,12], [999,19], [1000,20], [10000,20]]) {
+    assert.equal(basketVisualEggCount(balance), count)
+  }
+})

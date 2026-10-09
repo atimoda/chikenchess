@@ -33,6 +33,14 @@ export interface PublicRoom {
   creator_name: string;
   players: number;
 }
+export interface RunningGame {
+  id: string;
+  context_city_id: string;
+  updated_at: string;
+  color: OnlineColor;
+  turn: OnlineColor;
+  opponent: { id: string; display_name: string };
+}
 export interface OnlineFriend {
   id: string;
   sender_id: string;

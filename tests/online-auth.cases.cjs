@@ -7,7 +7,7 @@ const { readAuthCallback, authCallbackMessage, completeAuthCallback, isAuthCallb
 test('the reported production failure is recognized without authCallback and keeps its machine code', () => {
   const url = new URL('http://localhost:3000/?error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user&sb=')
   const callback = readAuthCallback(url.search, url.hash)
-  assert.deepEqual(callback, { requested: false, error: 'Identity is already linked to another user', errorCode: 'identity_already_exists' })
+  assert.deepEqual(callback, { requested: false, error: 'Identity is already linked to another user', errorCode: 'identity_already_exists', requestId: null })
   const message = authCallbackMessage(callback, null, false)
   assert.equal(message.ok, false)
   assert.equal(message.errorCode, 'identity_already_exists')
@@ -16,14 +16,16 @@ test('the reported production failure is recognized without authCallback and kee
 
 test('fragment-only OAuth rejection is recognized and cancellation does not select an existing account', () => {
   const callback = readAuthCallback('?authCallback=1', '#error=access_denied&error_description=User+cancelled')
-  assert.deepEqual(callback, { requested: true, error: 'User cancelled', errorCode: null })
+  assert.deepEqual(callback, { requested: true, error: 'User cancelled', errorCode: null, requestId: null })
   assert.deepEqual(googleLoginFailure(callback.errorCode, callback.error), { existingAccount: false, message: 'User cancelled' })
 })
 
 test('query failure has priority over a different fragment failure', () => {
-  const callback = readAuthCallback('?error_code=identity_already_exists&error_description=Existing+identity', '#error_code=access_denied&error_description=Cancelled')
+  const callback = readAuthCallback('?error_code=identity_already_exists&error_description=Existing+identity&authCallbackId=login-123', '#error_code=access_denied&error_description=Cancelled')
   assert.equal(callback.errorCode, 'identity_already_exists')
   assert.equal(callback.error, 'Existing identity')
+  assert.equal(callback.requestId, 'login-123')
+  assert.equal(authCallbackMessage(callback, null, false).requestId, 'login-123')
 })
 
 test('an explicit OAuth error takes priority over an older permanent session and SDK error', () => {
@@ -42,7 +44,7 @@ test('successful callback requires a permanent session, and SDK errors are forwa
 })
 
 test('ordinary game URLs are not callbacks and session credentials never enter the popup message', () => {
-  assert.deepEqual(readAuthCallback('?room=ABCD12', '#board'), { requested: false, error: null, errorCode: null })
+  assert.deepEqual(readAuthCallback('?room=ABCD12', '#board'), { requested: false, error: null, errorCode: null, requestId: null })
   const callback = readAuthCallback('?authCallback=1&code=private-authorization-code', '#access_token=private-session-token&refresh_token=private-refresh-token')
   const serialized = JSON.stringify(authCallbackMessage(callback, null, true))
   assert.ok(!serialized.includes('private-'))

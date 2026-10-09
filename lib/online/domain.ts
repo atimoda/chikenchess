@@ -277,7 +277,7 @@ export function applyMatchCommand(
     if (powers.length)
       reject("Best/Worst are unavailable while powers are active");
     if (command.position !== key) reject("The board changed; try again");
-    if (state.suggestions?.position === key && state.suggestions.expiresAt > now)
+    if (state.suggestions?.position === key && state.suggestions.kind === command.group && state.suggestions.expiresAt > now)
       reject("Wait for the visible suggestions to expire");
     validateSuggestions(game, command.moves);
     spend(state, actor, 1);
@@ -301,7 +301,7 @@ export function applyMatchCommand(
       (a) => a.kind === "move" && a.color === actor,
     );
     if (index < 0) reject("No move of yours to undo");
-    spend(state, actor, 1);
+    spend(state, actor, 2);
     state.redo = { actor, actions: state.actions.slice(index) };
     state.actions = state.actions.slice(0, index);
     clearSuggestions(state);

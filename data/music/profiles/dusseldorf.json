@@ -1,0 +1,1127 @@
+{
+  "name": "Rhein · laboratório motorik",
+  "bpm": 118,
+  "root": "E",
+  "scale": "Dórica",
+  "harmony": "ascent",
+  "swing": 0,
+  "sections": [
+    16,
+    16,
+    8,
+    16,
+    16,
+    32
+  ],
+  "parts": [
+    {
+      "role": "rhythm",
+      "name": "Pulso motorik",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "kick",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . . . 0 . . . 0 . 0 . 0 . . .",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . . . 0 . . . 0 . . . 0 . 0 .",
+        "0 . . . . . . . 0 . . . . . . .",
+        "0 . . . 0 . . . 0 . . . 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.48,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Relógio metálico",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "rim",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". 0 . . . 0 . . . 0 . . . 0 . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . 0 . . . 0 . . 0 . . . 0 . .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . 0 . . . 0 . . . 0 . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 5,
+      "gain": 0.12,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "bass",
+      "name": "Baixo de laboratório",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "acid",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . 0 0 4 . 0 3",
+        "0 0 . 4 0 . 6 4",
+        "0 . . . 4 . . .",
+        "0 0 4 0 3 2 0 .",
+        "0 . . . . . . . . . . 4 0 . 6 4",
+        "0 . 0 0 4 . 0 3 0 0 4 0 3 2 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        4,
+        4
+      ],
+      "octave": 2,
+      "gain": 0.3,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 1050,
+      "hpf": 25,
+      "distortion": 0.8,
+      "distortionMix": 0.12,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "lpfRange": {
+        "first": 650,
+        "second": 1600,
+        "frequency": "note"
+      },
+      "reverbRange": {
+        "first": 0.01,
+        "second": 0.025
+      },
+      "effects": {
+        "reverb": 0.02
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Caixa seca",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "snare",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . 0 . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . . 0 . . . . . . . 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.25,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Órgão de transistores",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "keys",
+        "asset": "organ",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . 4 . . .",
+        "0 . 3 . 4 . 6 .",
+        "2 . . . 6 . . .",
+        "0 . 4 . 3 . 2 .",
+        "0 . . . . 0 . . 0 . . . . 0 . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.11,
+      "attack": 0.08,
+      "release": 0.22,
+      "decay": 0.2,
+      "sustain": 0.72,
+      "clip": 0.9,
+      "lpf": 2700,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.08,
+        "second": 0.125
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chimbal mecânico",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 .",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . 0 0 0 . 0 . 0 . 0 0 0 . 0 .",
+        "0 . . . . . . . 0 . . . . . . .",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.11,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 7600,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Flauta processada",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "flute-sustain",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 2 3 4 6 4 3 2",
+        "0 3 4 . 6 7 6 4",
+        "7 . 6 . 4 . 2 .",
+        "0 2 0 3 4 6 4 .",
+        "7 . . . 4 . . . . . 4 . 6 7 6 4",
+        "0 2 3 4 6 4 3 2 0 2 0 3 4 6 4 0"
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.14,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 7000,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "transpose": [
+          0,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "effects": {
+        "delay": 0.11,
+        "reverb": 0.2
+      },
+      "reverbRange": {
+        "first": 0.18000000000000002,
+        "second": 0.225
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tom de bancada",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "tom",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 . . . . . . . 0 .",
+        ". . 0 . . . . . . . 0 . . . . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . 0 . . 0 . . . . 0 . . 0 .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . . . . 0 . . . . . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.18,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 1800,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Faixa magnética",
+      "behavior": "sustain",
+      "source": {
+        "kind": "synth",
+        "sound": "brown"
+      },
+      "patterns": [
+        "0 . . . . . . .",
+        "2 . . . . . . .",
+        "4 . . . . . . .",
+        "0 . . . 6 . . .",
+        "0 . . . . 0 . . 0 . . . . 0 . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        4,
+        4
+      ],
+      "octave": 2,
+      "gain": 0.055,
+      "attack": 0.5,
+      "release": 0.8,
+      "decay": 0.2,
+      "sustain": 0.72,
+      "clip": 0.9,
+      "lpf": 1300,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.28
+      },
+      "reverbRange": {
+        "first": 0.26,
+        "second": 0.30500000000000005
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chimbal aberto",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "open-hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 . . . . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . . . . . 0 . . . . . . . . .",
+        ". . . . . . 0 . . . . . . 0 .",
+        ". . . . . . 0 . . . . . . . . .",
+        ". . . . . . 0 . . . . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.09,
+      "attack": 0.002,
+      "release": 0.16,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "response",
+      "name": "Guitarra tratada",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "guitars",
+        "asset": "nylon",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . 4 . . . 2 .",
+        "6 . . . 4 . . .",
+        ". . . . 7 . 6 .",
+        ". 2 . 4 . . 3 .",
+        ". . . . 7 . . . . . . . 4 . . .",
+        ". . 4 . . . 2 . . 2 . 4 . 4 3 0"
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.11,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 7000,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "delay": 0.18
+      },
+      "reverbRange": {
+        "first": 0.08,
+        "second": 0.125
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Ruído chaveado",
+      "behavior": "pulse",
+      "source": {
+        "kind": "synth",
+        "sound": "white"
+      },
+      "patterns": [
+        ". 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0",
+        ". . 0 . . 0 . . . . 0 . . 0 . .",
+        ". . . 0 . . . 0 . . . 0 . . . 0",
+        ". 0 . . . 0 . . . 0 . . . 0 . .",
+        ". . . 0 . . . . . . . 0 . . . .",
+        ". 0 . 0 . 0 . 0 . 0 . 0 . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 6,
+      "gain": 0.035,
+      "attack": 0.001,
+      "release": 0.018,
+      "lpf": 12000,
+      "hpf": 9500,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "transpose": [
+          0,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Sequência de diodos",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "digital-pluck",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . 2 . 3 . 4 .",
+        "4 . 6 . 4 . 3 .",
+        "7 . . . 4 . . .",
+        "0 2 0 3 4 6 4 .",
+        "7 . . . . . . . . . 6 . 4 . 3 .",
+        "0 . 2 . 3 . 4 . 0 2 0 3 4 6 4 0"
+      ],
+      "bars": [
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.1,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.2,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 1900,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          false,
+          false,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "reverbRange": {
+        "first": 0.08,
+        "second": 0.125
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Sinal de teste",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "fm-bell",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . 0 . . . . . . .",
+        ". . 0 . . . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . . . . 0 . . . . . . . 0 .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . . . . . . 0 . . . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 5,
+      "gain": 0.08,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "transpose": [
+          0,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "effects": {
+        "reverb": 0.18
+      },
+      "reverbRange": {
+        "first": 0.16,
+        "second": 0.205
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Cordas óticas",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "violin-sustain",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . 3 . . .",
+        "4 . . . 6 . . .",
+        "2 . . . 4 . . .",
+        "0 . 4 . 6 . 3 .",
+        "0 . . . . 0 . . 0 . . . . 0 . .",
+        "0 . . . 0 . . . 0 . . . 0 . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.07,
+      "attack": 0.45,
+      "release": 0.7,
+      "decay": 0.2,
+      "sustain": 0.72,
+      "clip": 0.9,
+      "lpf": 2100,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.26
+      },
+      "reverbRange": {
+        "first": 0.24000000000000002,
+        "second": 0.28500000000000003
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Palma eletrônica",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "clap",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . . 0",
+        ". . . . . . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 .",
+        ". . . . . . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "octave": 2,
+      "gain": 0.1,
+      "attack": 0.002,
+      "release": 0.045,
+      "lpf": 12000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "transpose": [
+          0,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "reverbRange": {
+        "first": 0.005000000000000001,
+        "second": 0.05
+      }
+    }
+  ],
+  "reference": "Kraftwerk — Ruckzuck (1970); fase inicial experimental, anterior ao electro-pop",
+  "url": "https://en.wikipedia.org/wiki/Kraftwerk_(album)",
+  "harmonicSequences": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5,
+      3,
+      1,
+      4
+    ],
+    [
+      0,
+      3,
+      4,
+      0
+    ]
+  ]
+}

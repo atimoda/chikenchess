@@ -11,6 +11,8 @@ export interface MatchPower {
   trapUntilPly?: number
   frozenColor?: "w" | "b"
   attachedColor?: "w" | "b"
+  // Used by the shared board to clear the previous move highlight on application.
+  appliedAtPly?: number
   blocksOnPly: number
 }
 
@@ -30,21 +32,25 @@ export function shieldCaptureBlock(move: PowerMove, powers: MatchPower[]): Shiel
   return null
 }
 
+export function frozenCaptureBlock(move: PowerMove, powers: MatchPower[]): boolean {
+  if (!move.captured) return false
+  const capturedSquare = move.flags.includes('e') ? `${move.to[0]}${move.from[1]}` : move.to
+  return powers.some(power => power.kind === 'freeze' && power.frozenColor && power.frozenColor !== move.color && power.square === capturedSquare)
+}
+
 export function createMatchPower(kind: MatchPowerKind, square: Square, game: Chess, id: number): MatchPower {
   const ply = game.history().length
   const occupant = game.get(square)
   const appliedBy = game.turn()
-  if (kind === "shield") return { id, kind, square, appliedBy, attachedColor: occupant?.color, blocksOnPly: ply + 2 }
-  if (!occupant) return { id, kind, square, appliedBy, trapUntilPly: ply + 2, blocksOnPly: ply + 2 }
-  return { id, kind, square, appliedBy, frozenColor: occupant.color, blocksOnPly: ply + (occupant.color === appliedBy ? 3 : 2) }
+  if (kind === "shield") return { id, kind, square, appliedBy, appliedAtPly: ply, attachedColor: occupant?.color, blocksOnPly: ply + 2 }
+  if (!occupant) return { id, kind, square, appliedBy, appliedAtPly: ply, trapUntilPly: ply + 2, blocksOnPly: ply + 2 }
+  return { id, kind, square, appliedBy, appliedAtPly: ply, frozenColor: occupant.color, blocksOnPly: ply + (occupant.color === appliedBy ? 3 : 2) }
 }
 
 export function permitsPowerMove(move: PowerMove, powers: MatchPower[], ply: number): boolean {
-  if (shieldCaptureBlock(move, powers)) return false
+  if (frozenCaptureBlock(move, powers) || shieldCaptureBlock(move, powers)) return false
   for (const power of powers) {
     if (power.kind === "freeze") {
-      const capturedSquare = move.flags.includes("e") ? `${move.to[0]}${move.from[1]}` : move.to
-      if (power.frozenColor && power.frozenColor !== move.color && move.captured && capturedSquare === power.square) return false
       if (power.frozenColor === move.color && power.blocksOnPly === ply) {
         if (move.from === power.square) return false
         if (move.flags.includes("k") && power.square === (move.color === "w" ? "h1" : "h8")) return false

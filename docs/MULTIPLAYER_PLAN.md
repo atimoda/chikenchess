@@ -200,12 +200,12 @@ O servidor garante duas vagas atomicamente. Se duas pessoas disputarem a última
 | Redo | Gratuito e exclusivo de quem fez Undo; restaura a continuação desfeita até o resultado, e nova jogada/poder a descarta |
 | Play/Pause | Transporte musical local; próximo lance confirmado retoma música |
 | Restart | Ausente do menu online |
-| Globo | Popup com Desistir e Oferecer empate; Cancelar retorna à partida |
+| Globo | Volta ao mapa e conserva a partida; Games in progress permite retornar a qualquer jogo ativo |
 | Resultado | Derrota: Pedir revanche. Vitória: Convidar para uma nova partida |
 
 No popup do adversário aparecem nome, **Golden eggs**, **Historical points**, estado da conexão, **Adicionar amigo** e o checkbox **Sincronizar parâmetros musicais**. Esse checkbox decide o que a pessoa local recebe/aplica; não modifica a preferência do adversário. Padrão implementado: ligado. O checkbox Sincronizar movimentos livres fica fora desta versão, junto da prévia remota de arraste. Os números nesse popup pertencem ao perfil; os contadores junto ao tabuleiro pertencem à partida. Não expor email na listagem ou no popup.
 
-Desistência encerra a partida com vitória do adversário. Oferecer empate envia uma oferta; só aceitar produz empate. A saída ao globo fica acessível depois do resultado e libera a vaga. Empate oferece **Nova partida**. Convite de revanche/nova partida precisa de aceitação do outro jogador e cria outro ID; conserva cidades/contexto, inverte cores e reinicia com presets e economia novos.
+Desistência encerra a partida com vitória do adversário. Oferecer empate envia uma oferta; só aceitar produz empate. A saída ao globo fica acessível durante a partida e conserva o jogo; Desistir/Oferecer empate ficam nas ações do popup do adversário. A conta pode manter várias partidas ativas e uma vaga de lobby; criar/entrar em outra sala libera somente a vaga transitória. A raiz do site permanece no globo, com Games in progress acima das salas públicas, sem abrir uma partida recuperada automaticamente. Empate oferece **Nova partida**. Convite de revanche/nova partida precisa de aceitação do outro jogador e cria outro ID; conserva cidades/contexto, inverte cores e reinicia com presets e economia novos.
 
 Jogadas pendentes não devem permitir comandos incompatíveis. Falha/rejeição devolve o tabuleiro à posição confirmada. Estado de conexão informa reconexão, mas uma ausência breve não declara derrota. A estreia não tem relógio nem derrota por desconexão; retorno usa o ID da partida. Um prazo automático de abandono continua futuro.
 

@@ -28,6 +28,17 @@ export function useOnlineMatch(matchId: string) {
   const current = useRef(match);
   current.current = match;
   const activeRequest = useRef(false);
+  const settledProfileScope = useRef<string | null>(null);
+  useEffect(() => {
+    if (!match?.state.result || !user) return;
+    const scope = `${user.id}:${match.id}`;
+    if (settledProfileScope.current === scope) return;
+    settledProfileScope.current = scope;
+    void refreshProfile().catch(cause => {
+      settledProfileScope.current = null;
+      setError(String(cause.message ?? cause));
+    });
+  }, [match?.id, !!match?.state.result, user?.id, refreshProfile]);
   const localKey = user ? `chickenchess:pending:${user.id}:${matchId}` : null;
   const requestScope = useRef(localKey);
   requestScope.current = localKey;
@@ -180,7 +191,6 @@ export function useOnlineMatch(matchId: string) {
         }
         setPending(null);
         void refresh();
-        if (next?.state.result) void refreshProfile();
         return next;
       } catch (e) {
         if (requestScope.current !== localKey) return;
