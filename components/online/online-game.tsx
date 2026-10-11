@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
+import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
 import { replayMatch, matchPosition } from "@/lib/online/domain";
@@ -142,6 +143,9 @@ export function OnlineMatchBoard({
   const color = me.color;
   const ownEggCounterRef = useRef<HTMLDivElement | null>(null);
   const opponentEggCounterRef = useRef<HTMLDivElement | null>(null);
+  const reportedMatchResultRef = useRef(false);
+  const reportedMatchStartRef = useRef(false);
+  const matchStartedAtRef = useRef<number | null>(null);
   const [depositedEggs, setDepositedEggs] = useState({ w: 0, b: 0 });
   const city =
     getCityById(match.context_city_id ?? match.members[0].city_id) ?? cities[0];
@@ -545,6 +549,44 @@ export function OnlineMatchBoard({
   const currentEggs = match.state.eggs[color];
   const hasResult = !!result;
   const payout = result ? matchEggPayout(match.state.eggs, result.winner)[color] : 0;
+  useEffect(() => {
+    if (introPhase !== 3 || color !== "w" || match.state.actions.length !== 0 || result || reportedMatchStartRef.current) return;
+    reportedMatchStartRef.current = true;
+    matchStartedAtRef.current = Date.now();
+    const whiteCity = getCityById(match.members.find((member) => member.color === "w")!.city_id);
+    const blackCity = getCityById(match.members.find((member) => member.color === "b")!.city_id);
+    trackMatchStarted({
+      game_mode: "online",
+      city_name: city.name,
+      white_kit_city: whiteCity?.name ?? "Random",
+      black_kit_city: blackCity?.name ?? "Random",
+    });
+  }, [introPhase, color, match.state.actions.length, match.members, result, city.name]);
+  useEffect(() => {
+    if (!result || color !== "w" || reportedMatchResultRef.current) return;
+    reportedMatchResultRef.current = true;
+    const whiteCity = getCityById(match.members.find((member) => member.color === "w")!.city_id);
+    const blackCity = getCityById(match.members.find((member) => member.color === "b")!.city_id);
+    const saved = matchEggPayout(match.state.eggs, result.winner);
+    trackMatchCompleted({
+      game_mode: "online",
+      result: result.winner === "w" ? "white" : result.winner === "b" ? "black" : "draw",
+      result_reason: result.reason,
+      move_count: replay.game.history().length,
+      golden_eggs_saved: saved.w + saved.b,
+      golden_eggs_collected: match.state.collected.w + match.state.collected.b,
+      freeze_uses: match.state.usage?.freeze ?? 0,
+      shield_uses: match.state.usage?.shield ?? 0,
+      undo_uses: match.state.usage?.undo ?? 0,
+      redo_uses: match.state.usage?.redo ?? 0,
+      best_uses: match.state.usage?.best ?? 0,
+      worst_uses: match.state.usage?.worst ?? 0,
+      ...(matchStartedAtRef.current !== null ? { observed_duration_seconds: Math.max(0, Math.round((Date.now() - matchStartedAtRef.current) / 1000)) } : {}),
+      city_name: city.name,
+      white_kit_city: whiteCity?.name ?? "Random",
+      black_kit_city: blackCity?.name ?? "Random",
+    });
+  }, [result, color, match, replay.game, city.name]);
   const basketSources = useMemo(() => {
     const shares = result ? matchEggSources(match.state.eggs, result.winner, color) : { w: 0, b: 0 };
     return [

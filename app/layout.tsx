@@ -2,8 +2,10 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { SiteAnalytics } from "@/components/site-analytics"
-import { SITE_URL } from "@/lib/site-info"
+import { GoogleAnalytics } from "@/components/google-analytics"
+import { GOOGLE_ANALYTICS_ID, SITE_URL } from "@/lib/site-info"
 import { Toaster } from "sonner"
+import Script from "next/script"
 import "./globals.css"
 
 /* global URL, process */
@@ -58,12 +60,19 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        {process.env.NODE_ENV === 'production' ? <Script id="google-analytics-init" strategy="beforeInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
+window.gtag('js', new Date());
+window.gtag('config', '${GOOGLE_ANALYTICS_ID}', { send_page_view: false });`}
+        </Script> : null}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
+        {process.env.NODE_ENV === 'production' ? <GoogleAnalytics /> : null}
         {process.env.VERCEL === '1' ? <SiteAnalytics /> : null}
         <Toaster duration={3000} />
       </body>

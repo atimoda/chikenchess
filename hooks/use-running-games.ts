@@ -12,7 +12,8 @@ export function useRunningGames() {
   const { user, configured } = useOnline()
   const userId = user?.id ?? null
   const [snapshot, setSnapshot] = useState<{ userId: string; games: RunningGame[]; error: string | null } | null>(null)
-  const retry = useRef<() => void>(() => {})
+  const [retrying, setRetrying] = useState(false)
+  const retry = useRef<() => Promise<void>>(async () => {})
 
   useEffect(() => {
     const client = getOnlineClient()
@@ -23,8 +24,9 @@ export function useRunningGames() {
       const request = ++revision
       try {
         const { data, error } = await client.auth.getSession()
-        if (!active || data.session?.user.id !== userId) return
         if (error) throw error
+        if (!active) return
+        if (data.session?.user.id !== userId) throw new Error('A sessão online mudou. Entre novamente e tente carregar suas partidas.')
         const games = await onlineRpc<RunningGame[]>('online_running_games')
         if (active && request === revision) setSnapshot({ userId, games: games ?? [], error: null })
       } catch (cause) {
@@ -33,9 +35,9 @@ export function useRunningGames() {
         }))
       }
     }
-    const update = () => { void refresh() }
+    const update = () => refresh()
     retry.current = update
-    update()
+    void update()
     const channel = client.channel(`running-games:${userId}:${++channelSequence}`, { config: { postgres_changes_options: { wait: true } } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'online_running_game_updates', filter: `user_id=eq.${userId}` }, update)
       .subscribe(status => { if (active && status === 'SUBSCRIBED') update() })
@@ -45,16 +47,22 @@ export function useRunningGames() {
     return () => {
       active = false
       revision += 1
-      retry.current = () => {}
+      retry.current = async () => {}
       window.removeEventListener('online', update)
       document.removeEventListener('visibilitychange', onVisible)
       void client.removeChannel(channel)
     }
   }, [configured, userId])
 
+  const retryGames = async () => {
+    setRetrying(true)
+    try { await retry.current() } finally { setRetrying(false) }
+  }
+
   return {
     games: snapshot?.userId === userId ? snapshot.games : [],
     error: snapshot?.userId === userId ? snapshot.error : null,
-    refresh: () => retry.current(),
+    refresh: retryGames,
+    retrying,
   }
 }

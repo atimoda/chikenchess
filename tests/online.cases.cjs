@@ -201,6 +201,24 @@ test('Freeze/Shield are guarded by own turn, paid symmetrically, replayed and in
   assert.equal(s.eggs.b, 1)
   assert.equal(replayMatch(s).powers.at(-1).appliedBy, 'b')
 })
+test('Match feature counters separate both powers and keep cumulative usage across Undo/Redo', () => {
+  let s = createMatchState()
+  s.eggs = { w: 30, b: 30 }
+  const suggestions = group => ({ kind: 'suggest', group, position: matchPosition(s), moves: [{ uci: 'e2e4', score: 0 }] })
+  s = command(s, 'w', suggestions('best'), 1000)
+  s = command(s, 'b', suggestions('worst'), 1000)
+  s = move(s, 'w', 'e2', 'e4')
+  s = move(s, 'b', 'e7', 'e5')
+  s = command(s, 'w', { kind: 'power', power: 'shield', square: 'e4' })
+  s = move(s, 'w', 'd2', 'd4')
+  s = command(s, 'b', { kind: 'power', power: 'freeze', square: 'd4' })
+  assert.deepEqual(s.usage, { freeze: 1, shield: 1, undo: 0, redo: 0, best: 1, worst: 1 })
+  s = command(s, 'b', { kind: 'undo' })
+  assert.equal(s.usage.undo, 1)
+  s = command(s, 'b', { kind: 'redo' })
+  assert.equal(s.usage.redo, 1)
+  assert.deepEqual(s.usage, { freeze: 1, shield: 1, undo: 1, redo: 1, best: 1, worst: 1 })
+})
 test('Freeze rejects the last opponent move before charging either actor, including accumulated powers and history', () => {
   for (const actor of ['w', 'b']) {
     let s = actor === 'w' ? createMatchState() : move(createMatchState(), 'w', 'e2', 'e4')

@@ -1199,7 +1199,7 @@ const GlobeContent = ({
             // Base distance (75% zoom) is approx 6.66 (since 5/0.75 = 6.66)
             // Max zoom (150%) distance is 3.33 (since 5/1.5 = 3.33)
             
-            // We want base speed (1.7) at distance 6.66
+            // We want base speed (2.2) at distance 6.66
             // We want speed 0.66 at distance 3.33
             
             // Let's use simpler lerp logic inside component
@@ -1207,9 +1207,11 @@ const GlobeContent = ({
             // Clamp distance between min and base
             const clampedDist = Math.min(Math.max(dist, 3.33), 6.66)
             
-            // Map [3.33, 6.66] to [0.66, 1.7]
+            // Increase the angular speed as the globe appears smaller, so a
+            // finger travels a similar screen distance at every zoom level.
+            // Map [3.33, 6.66] to [0.66, 2.2]
             const t = (clampedDist - 3.33) / (6.66 - 3.33) // 0 to 1
-            const speed = 0.66 + t * (1.7 - 0.66)
+            const speed = 0.66 + t * (2.2 - 0.66)
             
             return speed
         })()}

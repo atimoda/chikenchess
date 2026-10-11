@@ -71,11 +71,21 @@ export type GameAction =
       color: OnlineColor;
       id: number;
     };
+export interface MatchUsageCounts {
+  freeze: number;
+  shield: number;
+  undo: number;
+  redo: number;
+  best: number;
+  worst: number;
+}
 export interface MatchState {
   schema: 1;
   /** Missing settings inherit the host kit's shared musical context. */
   boardMusic?: Partial<BoardMusicSettings>;
   actions: GameAction[];
+  /** Accepted feature uses over the whole match; Undo does not erase usage. */
+  usage?: MatchUsageCounts;
   redo: { actor: OnlineColor; actions: GameAction[] } | null;
   eggs: Record<OnlineColor, number>;
   collected: Record<OnlineColor, number>;

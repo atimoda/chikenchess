@@ -22,6 +22,7 @@ export function DialogContent({ children, className, closeLabel = 'Fechar parâm
       data-dragging={floating && dragging ? 'true' : undefined}
       onPointerDown={floating ? (event) => {
         props.onPointerDown?.(event)
+        event.stopPropagation()
         if (event.defaultPrevented || event.button !== 0 || !(event.target instanceof Element)) return
         if (event.target.closest('button,a,input,textarea,select,option,summary,label,[role="button"],[role="tab"],[contenteditable="true"],[data-no-drag]')) return
         const rect = event.currentTarget.getBoundingClientRect()
@@ -30,6 +31,7 @@ export function DialogContent({ children, className, closeLabel = 'Fechar parâm
       } : props.onPointerDown}
       onPointerMove={floating ? (event) => {
         props.onPointerMove?.(event)
+        event.stopPropagation()
         const activeDrag = drag.current
         if (!activeDrag || activeDrag.pointerId !== event.pointerId) return
         const nextX = activeDrag.offsetX + event.clientX - activeDrag.startX
@@ -43,22 +45,29 @@ export function DialogContent({ children, className, closeLabel = 'Fechar parâm
       } : props.onPointerMove}
       onPointerUp={floating ? (event) => {
         props.onPointerUp?.(event)
+        event.stopPropagation()
         if (drag.current?.pointerId !== event.pointerId) return
         drag.current = null
         setDragging(false)
       } : props.onPointerUp}
       onPointerCancel={floating ? (event) => {
         props.onPointerCancel?.(event)
+        event.stopPropagation()
         if (drag.current?.pointerId !== event.pointerId) return
         drag.current = null
         setDragging(false)
       } : props.onPointerCancel}
       onLostPointerCapture={floating ? (event) => {
         props.onLostPointerCapture?.(event)
+        event.stopPropagation()
         if (drag.current?.pointerId !== event.pointerId) return
         drag.current = null
         setDragging(false)
       } : props.onLostPointerCapture}
+      onTouchStart={floating ? (event) => { props.onTouchStart?.(event); event.stopPropagation() } : props.onTouchStart}
+      onTouchMove={floating ? (event) => { props.onTouchMove?.(event); event.stopPropagation() } : props.onTouchMove}
+      onTouchEnd={floating ? (event) => { props.onTouchEnd?.(event); event.stopPropagation() } : props.onTouchEnd}
+      onTouchCancel={floating ? (event) => { props.onTouchCancel?.(event); event.stopPropagation() } : props.onTouchCancel}
       onInteractOutside={floating ? (event) => {
       onInteractOutside?.(event)
       // Keep a nonmodal panel open while the background receives pointer/focus events.

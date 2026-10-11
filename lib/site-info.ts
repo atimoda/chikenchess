@@ -1,7 +1,8 @@
 /* global URL */
 export const SITE_URL = 'https://chickenchess.com'
 export const SUPPORT_EMAIL = 'hello@chickenchess.com'
-export const LEGAL_UPDATED = '4 October 2026'
+export const GOOGLE_ANALYTICS_ID = 'G-JS8T024M3K'
+export const LEGAL_UPDATED = '10 October 2026'
 export const LEGAL_PATHS = {
   privacy: '/privacy-policy',
   terms: '/terms-of-service',
