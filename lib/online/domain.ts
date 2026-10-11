@@ -97,6 +97,7 @@ export function createMatchState(): MatchState {
   return {
     schema: 1,
     actions: [],
+    usage: { freeze: 0, shield: 0, undo: 0, redo: 0, best: 0, worst: 0 },
     redo: null,
     eggs: { w: 1, b: 1 },
     collected: { w: 0, b: 0 },
@@ -238,6 +239,14 @@ export function applyMatchCommand(
 ): MatchState {
   const command = parseMatchCommand(input);
   const state: MatchState = globalThis.structuredClone(original);
+  state.usage = {
+    freeze: Math.max(0, state.usage?.freeze ?? 0),
+    shield: Math.max(0, state.usage?.shield ?? 0),
+    undo: Math.max(0, state.usage?.undo ?? 0),
+    redo: Math.max(0, state.usage?.redo ?? 0),
+    best: Math.max(0, state.usage?.best ?? 0),
+    worst: Math.max(0, state.usage?.worst ?? 0),
+  };
   const { game, powers } = replayMatch(state);
   if (command.kind === "offer-rematch" || command.kind === "accept-rematch") {
     if (!state.result) reject("The match has not ended");
@@ -281,6 +290,7 @@ export function applyMatchCommand(
       reject("Wait for the visible suggestions to expire");
     validateSuggestions(game, command.moves);
     spend(state, actor, 1);
+    state.usage[command.group]++;
     state.suggestions = {
       kind: command.group,
       moves: command.moves,
@@ -302,6 +312,7 @@ export function applyMatchCommand(
     );
     if (index < 0) reject("No move of yours to undo");
     spend(state, actor, 2);
+    state.usage.undo++;
     state.redo = { actor, actions: state.actions.slice(index) };
     state.actions = state.actions.slice(0, index);
     clearSuggestions(state);
@@ -314,6 +325,7 @@ export function applyMatchCommand(
       reject("No continuation of yours to redo");
     state.actions.push(...state.redo.actions);
     state.redo = null;
+    state.usage.redo++;
     clearSuggestions(state);
     state.drawOffer = null;
   } else if (command.kind === "power") {
@@ -322,6 +334,7 @@ export function applyMatchCommand(
     const freezeError = freezeApplicationError(game, powers, power);
     if (freezeError) reject(freezeError);
     spend(state, actor, 3);
+    state.usage[command.power]++;
     state.actions.push({
       kind: "power",
       power: command.power,

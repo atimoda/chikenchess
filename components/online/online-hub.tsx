@@ -333,11 +333,13 @@ export function OnlineHub({ playerProfile, onMatch, inviteCode, open, onOpenChan
         if (status === 'SUBSCRIBED') update()
       })
     const onVisible = () => { if (document.visibilityState === 'visible') update() }
+    const expiryCheck = window.setInterval(() => { if (document.visibilityState === 'visible') update() }, 60_000)
     window.addEventListener('online', update)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       active = false
       setConnected(false)
+      window.clearInterval(expiryCheck)
       window.removeEventListener('online', update)
       document.removeEventListener('visibilitychange', onVisible)
       void online.removeChannel(channel)
@@ -488,7 +490,7 @@ export function OnlineHub({ playerProfile, onMatch, inviteCode, open, onOpenChan
           </button>
         })}
       </section>}
-      {runningGames.error && <div className="space-y-1 text-xs"><p role="alert" className="text-rose-200">Não foi possível carregar suas partidas.</p><button type="button" className={styles.mapButton} onClick={runningGames.refresh}>Tentar novamente</button></div>}
+      {runningGames.error && <div className="space-y-1 text-xs"><p role="alert" className="text-rose-200">Não foi possível carregar suas partidas.</p><p className="break-words text-white/50">{runningGames.error}</p><button type="button" className={styles.mapButton} aria-busy={runningGames.retrying} disabled={runningGames.retrying} onClick={() => void runningGames.refresh()}>{runningGames.retrying ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-3.5" />}{runningGames.retrying ? 'Atualizando…' : 'Tentar novamente'}</button></div>}
       {rooms.length > 0 && <section aria-labelledby="public-rooms-heading" className={styles.mapRoomList}>
       <h2 id="public-rooms-heading" className="text-right font-mono text-[10px] text-white/50">Public rooms</h2>
       <div className={styles.mapRoomList}>{rooms.slice(0, 5).map(entry => <button key={entry.code} type="button" aria-label={`Entrar na sala de ${entry.creator_name}`} className={cn(styles.mapButton, styles.mapRoom)} disabled={Boolean(busy) || entry.players >= 2} onClick={() => { setTab('rooms'); setOpen(true); setCreateOpen(false); setShowDirectory(false); void roomAction('join', entry.code) }}>

@@ -247,7 +247,7 @@ npm install --prefix /tmp/chicken-online-db-test --no-audit --no-fund @electric-
 ONLINE_TEST_MODULES=/tmp/chicken-online-db-test node --test supabase/tests/database.test.cjs
 ```
 
-Os 25 casos executam todas as migrações em ordem, grants, RLS, importação/CAS/identidade esperada, salas, versões/idempotência, autor musical, liquidação, revanche, amigos, transferência, catálogo/imutabilidade de nomes de batismo, edição/importação Google e políticas de Presence. Auth e Realtime são stubs nesse teste. PGlite usa uma conexão; estes casos não comprovam a corrida de duas conexões Postgres nem entrega WebSocket hospedada.
+Os 43 casos executam todas as migrações em ordem, grants, RLS, importação/CAS/identidade esperada, salas e expiração após 30 minutos sem atividade, versões/idempotência, autor musical, liquidação, revanche, amigos, transferência, catálogo/imutabilidade de nomes de batismo, edição/importação Google e políticas de Presence. Auth e Realtime são stubs nesse teste. PGlite usa uma conexão; estes casos não comprovam a corrida de duas conexões Postgres nem entrega WebSocket hospedada.
 
 Após recompilar os bundles, valide os handlers com Deno e a aplicação com seus checks:
 

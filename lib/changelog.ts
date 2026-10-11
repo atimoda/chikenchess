@@ -1,9 +1,23 @@
-export const RELEASE_LABEL = 'v1.2.0'
+export const RELEASE_LABEL = 'v1.4.0'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '1.2.0',
+    version: '1.4.0',
+    date: '10/10/2026',
+    title: 'Analytics, partidas e salas públicas',
+    groups: [
+      { title: 'Analytics', items: [
+        'O site mede visualizações de páginas, início e conclusão das partidas, duração observada e uso de Freeze, Shield, Undo, Redo, Best e Worst, além de resultado, lances, Golden Eggs, cidade e kits, sem enviar lances individuais ou nomes/IDs de jogadores.',
+      ] },
+      { title: 'Salas e partidas online', items: [
+        'Salas sem interação por 30 minutos são encerradas automaticamente, saem da lista do globo e liberam as vagas; partidas iniciadas continuam salvas.',
+        'Tentar novamente em Games in progress mostra o carregamento e a mensagem retornada quando as partidas não podem ser consultadas.',
+      ] },
+    ],
+  },
+  {
+    version: '1.2.1',
     date: '09/10/2026',
     title: 'Cartas, tabuleiro e partidas simultâneas',
     groups: [
@@ -26,6 +40,7 @@ export const CHANGELOG = [
         'O tabuleiro pode ser redimensionado pelos quatro cantos em tablet e desktop, na campanha, no online e no Criativo; mantém o formato quadrado e acompanha os widgets.',
         'Redimensionar o tabuleiro atualiza as linhas conectoras sem mover os widgets abertos; quatro símbolos nos cantos ficam mais discretos e 5 px mais afastados das quinas.',
         'Salas, Amigos e Perfil abrem centralizados no globo e continuam arrastáveis, com o mapa acessível ao redor.',
+        'Arrastar Salas, Amigos ou Perfil move somente a janela; a rotação do globo acompanha melhor o deslocamento do dedo quando o zoom está reduzido.',
       ] },
       { title: 'Ovos', items: [
         'O vencedor leva os ovos restantes dos dois jogadores; no empate, a soma é dividida entre ambos. Se o total for ímpar, as pretas recebem o ovo restante.',

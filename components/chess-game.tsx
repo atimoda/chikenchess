@@ -29,6 +29,7 @@ import { MusicHarmonyReadout } from './music-transition-view'
 import { VersionChangelog } from './version-changelog'
 import { VictoryBasket } from './victory-basket'
 import { matchEggPayout, matchEggSources } from '@/lib/match-eggs'
+import { trackMatchCompleted, trackMatchStarted } from '@/lib/game-analytics'
 import { useAudio } from "@/hooks/use-audio"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -227,6 +228,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const victoryToastRef = useRef<string | number | null>(null)
   useEffect(() => () => { if (victoryToastRef.current !== null) toast.dismiss(victoryToastRef.current) }, [])
   const victorySettledRef = useRef(false)
+  const reportedMatchResultRef = useRef<string | null>(null)
+  const reportedMatchStartRef = useRef(false)
+  const matchStartedAtRef = useRef<number | null>(null)
+  const matchUsageRef = useRef({ freeze: 0, shield: 0, undo: 0, redo: 0, best: 0, worst: 0 })
   const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
   const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
@@ -801,6 +806,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
   const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
     if (matchPowersRef.current.length || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
+    matchUsageRef.current[kind]++
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
     analysisArrowKindRef.current = kind
@@ -879,6 +885,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       return
     }
     spendEggForAction(button, 3, () => {
+      matchUsageRef.current[kind]++
       matchPowersRef.current = [...matchPowersRef.current, power]
       setMatchPowers(matchPowersRef.current)
       setPoweredChessPowers(gameRef.current, matchPowersRef.current)
@@ -976,6 +983,18 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const playClosedAnalysisHat = (volume = 1) => playDrum('ch', (0.648 + Math.random() * 0.048) * volume, 0.96 + Math.random() * 0.08)
 
   useEffect(() => {
+    if (introPhase !== 3 || reportedMatchStartRef.current || gameRef.current.isGameOver()) return
+    reportedMatchStartRef.current = true
+    matchStartedAtRef.current = Date.now()
+    trackMatchStarted({
+      game_mode: 'campaign',
+      city_name: city.name,
+      white_kit_city: city.name,
+      black_kit_city: city.name,
+    })
+  }, [introPhase, city.name])
+
+  useEffect(() => {
     if (introPhase === 3) {
       const skill = gameRef.current.turn() === 'b' ? (aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20) : undefined
       if (skill !== undefined) setIsThinking(true)
@@ -991,6 +1010,36 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     const pattern = generateStrudelPattern(game, city, activeSquares, squareEffects, globalEffects)
     setCurrentPattern(pattern)
+
+    if (game.isGameOver() && introPhase === 3) {
+      const result = game.isCheckmate()
+        ? game.turn() === 'w' ? 'black' : 'white'
+        : 'draw'
+      const resultKey = `${city.id}:${game.fen()}`
+      if (reportedMatchResultRef.current !== resultKey) {
+        reportedMatchResultRef.current = resultKey
+        const eggs = { w: playerEggBalanceRef.current, b: STARTING_MATCH_GOLDEN_EGGS }
+        const savedEggs = matchEggPayout(eggs, result === 'white' ? 'w' : result === 'black' ? 'b' : null).w
+        trackMatchCompleted({
+          game_mode: 'campaign',
+          result,
+          result_reason: game.isCheckmate() ? 'checkmate' : 'draw',
+          move_count: game.history().length,
+          golden_eggs_saved: savedEggs,
+          golden_eggs_collected: collectedMatchEggsRef.current,
+          freeze_uses: matchUsageRef.current.freeze,
+          shield_uses: matchUsageRef.current.shield,
+          undo_uses: matchUsageRef.current.undo,
+          redo_uses: matchUsageRef.current.redo,
+          best_uses: matchUsageRef.current.best,
+          worst_uses: matchUsageRef.current.worst,
+          ...(matchStartedAtRef.current !== null ? { observed_duration_seconds: Math.max(0, Math.round((Date.now() - matchStartedAtRef.current) / 1000)) } : {}),
+          city_name: city.name,
+          white_kit_city: city.name,
+          black_kit_city: city.name,
+        })
+      }
+    }
 
     // Update game status
     if (game.isCheckmate()) {
@@ -1025,7 +1074,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "Thinking...")
     }
-  }, [game, city, activeSquares, squareEffects, globalEffects, deactivatePlaybackWidgets, settleCityVictory])
+  }, [game, city, activeSquares, squareEffects, globalEffects, deactivatePlaybackWidgets, settleCityVictory, introPhase])
 
   useEffect(() => {
     if (introPhase !== 3 || panelsFollowPlayerTurn) return
@@ -1315,6 +1364,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const removedSnapshots = powerTimelineRef.current.slice(targetPly + 1).reverse()
     const restoredSnapshot = powerTimelineRef.current[targetPly]
     if (!restoredSnapshot) return
+    matchUsageRef.current.undo++
     redoTimelineRef.current = [...redoTimelineRef.current, ...removedSnapshots]
     powerTimelineRef.current = powerTimelineRef.current.slice(0, targetPly + 1)
     const newGame = clonePoweredChess(restoredSnapshot.game, restoredSnapshot.powers)
@@ -1376,6 +1426,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const newRedoStack = pendingRedo.slice(0, -1)
     const gameCopy = clonePoweredChess(restoredSnapshot.game, restoredSnapshot.powers)
     if (gameCopy.history().length === gameRef.current.history().length + 1) {
+        matchUsageRef.current.redo++
         redoTimelineRef.current = redoTimelineRef.current.slice(0, -1)
         powerTimelineRef.current.push({ game: clonePoweredChess(gameCopy, restoredSnapshot.powers), powers: restoredSnapshot.powers.map(power => ({ ...power })) })
         matchPowersRef.current = restoredSnapshot.powers.map(power => ({ ...power }))
