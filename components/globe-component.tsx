@@ -7,7 +7,7 @@ import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
 import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute } from 'three'
 import { CityData, getCityEras } from '@/lib/cities-data'
-import { CityPopup } from './city-popup'
+import { CityPopup, type PopupExitMotion } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
@@ -72,7 +72,7 @@ interface GlobeProps {
   unlockedCities?: string[]
   openPopups: Record<string, any>
   onCityClick: (city: CityData, position?: { x: number; y: number }) => void
-  onPopupClose: (cityId: string) => void
+  onPopupClose: (cityId: string, type?: 'open' | 'closed' | 'held', motion?: PopupExitMotion) => void
   bringToFront: (id: string) => void
   updatePopupPosition: (id: string, x: number, y: number) => void
   playMapSound: (type: string, forceResume?: boolean) => void
@@ -444,11 +444,11 @@ const PopupContainer = ({
                         isPressed={pressedPopupState?.id === city.id}
                         bringToFront={bringToFront}
                         closePopup={onPopupClose}
-                        updatePopupPosition={(id, x, y) => {
+                        updatePopupPosition={(id, x, y, preserveAnchor = false) => {
                             let next = { x, y }
                             const wrapper = wrapperRef.current
                             const panel = wrapper?.querySelector<HTMLElement>('[data-popup-surface]')
-                            if (wrapper && panel && globeCircle.current.radius > 0) {
+                            if (!preserveAnchor && wrapper && panel && globeCircle.current.radius > 0) {
                                 const anchor = wrapper.getBoundingClientRect()
                                 const rect = panel.getBoundingClientRect()
                                 const position = { x: anchor.left + x, y: anchor.top + y }
@@ -522,6 +522,34 @@ const PopupContainer = ({
                             setIsDraggingLocal(false)
                             draggingRef.current = false
                             // Sync to global state on drag end
+                            updatePopupPosition(city.id, localPosRef.current.x, localPosRef.current.y)
+                        }}
+                        onCloseButtonDragStart={(clientX, clientY) => {
+                            hasDragged.current = true
+                            setIsDraggingPopup(true)
+                            setIsDraggingLocal(true)
+                            draggingRef.current = true
+                            if (wrapperRef.current) {
+                                const rect = wrapperRef.current.getBoundingClientRect()
+                                dragAnchor.current = {
+                                    x: clientX - rect.left - localPosRef.current.x,
+                                    y: clientY - rect.top - localPosRef.current.y,
+                                }
+                            }
+                        }}
+                        onCloseButtonDragMove={(clientX, clientY, popupX, popupY) => {
+                            if (wrapperRef.current) {
+                                const rect = wrapperRef.current.getBoundingClientRect()
+                                dragAnchor.current = {
+                                    x: clientX - rect.left - popupX,
+                                    y: clientY - rect.top - popupY,
+                                }
+                            }
+                        }}
+                        onCloseButtonDragEnd={() => {
+                            setIsDraggingPopup(false)
+                            setIsDraggingLocal(false)
+                            draggingRef.current = false
                             updatePopupPosition(city.id, localPosRef.current.x, localPosRef.current.y)
                         }}
                     />

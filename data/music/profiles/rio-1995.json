@@ -1,0 +1,992 @@
+{
+  "name": "Rio de Janeiro 1995 · Funk carioca",
+  "meter": "4/4",
+  "bpm": 128,
+  "root": "F",
+  "scale": "Menor natural",
+  "harmony": "cadence",
+  "swing": 0,
+  "sections": [
+    16,
+    32,
+    16,
+    32,
+    16,
+    32
+  ],
+  "reference": "Estudo original de funk carioca inspirado na era clássica dos bailes de galpão e equipes de som dos anos 90 (Furacão 2000, Cashbox e Funk Brasil). Batidão sincopado estilo Volt Mix / Miami Bass com TR-808, sub-bass potente, stabs de metais sintetizados e refrão melódico.",
+  "url": "https://dicionariompb.com.br/genero/funk-carioca/",
+  "parts": [
+    {
+      "role": "bass",
+      "name": "Sub-Bass 808 · Pulso profundo",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "sub",
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . . . 0 . . . 0 . . . . .",
+        "0 . . . . . 5 . . . 2 . . . 6 .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . 5 . . . 2 . . 0 6 .",
+        "5 . . . . . 2 . . . 3 . . . 4 .",
+        "0 . . . 0 . 2 . . . 5 . . . 6 ."
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.32,
+      "attack": 0.005,
+      "release": 0.25,
+      "decay": 0.2,
+      "sustain": 0.85,
+      "clip": 0.9,
+      "lpf": 3000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.0,
+        "reverb": 0.02
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Kick 808 · Batidão sincopado",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "kick",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . . . 0 . . . 0 . . . . .",
+        "0 . . . . . 0 . . . 0 . . 0 . .",
+        "0 . . . . . . . 0 . . . . . . .",
+        "0 . . . . . 0 . . . 0 . 0 0 . 0",
+        "0 . . . . . 0 . . . 0 . . . . 0",
+        "0 . . . . . 0 . . . 0 . 0 0 0 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.3,
+      "attack": 0.001,
+      "release": 0.06,
+      "lpf": 7000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.0,
+        "reverb": 0.02
+      }
+    },
+    {
+      "role": "bass",
+      "name": "Baixo Synth · Riff de paredão",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "acid",
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . 0 . . 0 . . . 0 . . 0 . .",
+        "0 . . 0 . . 5 . . . 2 . . 6 . .",
+        "0 . . . . . . . . . 0 . . . . .",
+        "0 . . 0 . . 5 . . . 2 . 0 6 . 0",
+        "5 . . 5 . . 2 . . . 3 . . 4 . .",
+        "0 . 0 0 . . 2 . . 2 5 . . 6 . 0"
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.22,
+      "attack": 0.005,
+      "release": 0.1,
+      "decay": 0.18,
+      "sustain": 0.6,
+      "clip": 0.9,
+      "lpf": 4500,
+      "hpf": 40,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": -0.1,
+        "reverb": 0.06
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Snare 808 · Síncopa estalada",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "snare",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . 0 . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . 0 . 0 . 0 .",
+        ". . . . 0 . . 0 . . . . 0 . . .",
+        ". . . . 0 . . . . . 0 . 0 0 0 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.24,
+      "attack": 0.001,
+      "release": 0.05,
+      "lpf": 11000,
+      "hpf": 150,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": -0.15,
+        "reverb": 0.08
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Lead Synth · Gancho melódico",
+      "behavior": "phrase",
+      "source": {
+        "kind": "synth",
+        "sound": "sawtooth"
+      },
+      "patterns": [
+        ". . 0 . . . 2 . . . 4 . . . 3 .",
+        "0 . . 2 . . 3 . 4 . . 2 . 0 . .",
+        ". . 0 . . . . . . . 2 . . . . .",
+        "0 . 2 3 . . 4 . 5 . 4 . 3 . 2 .",
+        "5 . . 4 . . 3 . 2 . . 0 . . . .",
+        "0 . 2 3 . 4 5 . 4 . 3 2 0 . 2 0"
+      ],
+      "bars": 1,
+      "octave": 4,
+      "gain": 0.18,
+      "attack": 0.01,
+      "release": 0.14,
+      "decay": 0.18,
+      "sustain": 0.65,
+      "clip": 0.9,
+      "lpf": 8000,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.25,
+        "reverb": 0.15
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Clap 808 · Palmas de baile",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "clap",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 .",
+        ". . . . . . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . 0 . 0 . 0 .",
+        ". . . . 0 . . . . . . . 0 . . 0",
+        ". . . . 0 . . . . 0 0 . 0 0 0 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.22,
+      "attack": 0.001,
+      "release": 0.06,
+      "lpf": 10000,
+      "hpf": 120,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.15,
+        "reverb": 0.12
+      }
+    },
+    {
+      "role": "response",
+      "name": "Synth Brass · Stabs de metais",
+      "behavior": "phrase",
+      "source": {
+        "kind": "synth",
+        "sound": "supersaw"
+      },
+      "patterns": [
+        ". . . . 0,2,4 . . . . . . . . . . .",
+        ". . . . 0,2,4 . . . . . 5,2,0 . . . .",
+        ". . . . . . . . . . . . 0,2,4 . . . .",
+        ". . . . 0,2,4 . . . . 0 5,2,0 . . 0 .",
+        "5,2,0 . . . . . 2,4,6 . . . . . . .",
+        ". . . . 0,2,4 . . . . 0 5,2,0 0 2 0 ."
+      ],
+      "bars": 1,
+      "octave": 4,
+      "gain": 0.17,
+      "attack": 0.008,
+      "release": 0.12,
+      "decay": 0.15,
+      "sustain": 0.55,
+      "clip": 0.9,
+      "lpf": 7500,
+      "hpf": 120,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": -0.22,
+        "reverb": 0.14
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Hi-Hat fechado · Semicolcheias contínuas",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.16,
+      "attack": 0.001,
+      "release": 0.03,
+      "lpf": 12000,
+      "hpf": 400,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": -0.25,
+        "reverb": 0.03
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Pad Nostálgico · Clima de galpão",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "analog-pad",
+        "pitched": true
+      },
+      "patterns": [
+        "0,2,4 . . . . . . . . . . . . . . .",
+        "0,2,4 . . . . . . . 5,0,2 . . . . . . .",
+        "0,2,4 . . . . . . . . . . . . . . .",
+        "0,2,4 . . . . . . . 5,0,2 . . . . . . .",
+        "5,0,2 . . . . . . . 2,4,6 . . . . . . .",
+        "0,2,4 . . . . . . . 5,0,2 . . 6,1,3 . ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.14,
+      "attack": 0.15,
+      "release": 0.35,
+      "decay": 0.25,
+      "sustain": 0.7,
+      "clip": 0.9,
+      "lpf": 5000,
+      "hpf": 80,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.0,
+        "reverb": 0.25
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Hi-Hat aberto · Contratempo",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "open-hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . . . . . 0 . . . . . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . 0 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . 0 . 0 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.17,
+      "attack": 0.001,
+      "release": 0.08,
+      "lpf": 11000,
+      "hpf": 350,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.28,
+        "reverb": 0.06
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Piano Elétrico · Harmonia dançante",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "keys",
+        "asset": "rhodes",
+        "pitched": true
+      },
+      "patterns": [
+        ". 0,2,4 . . . 0,2,4 . . . 0,2,4 . . . .",
+        ". 0,2,4 . . . 5,0,2 . . . 2,4,6 . . . .",
+        ". 0,2,4 . . . . . . . 0,2,4 . . . . . .",
+        ". 0,2,4 . . . 5,0,2 . . 0 2,4,6 . . . 0",
+        ". 5,0,2 . . . 2,4,6 . . . 3,5,0 . . . .",
+        ". 0,2,4 . 0 5,0,2 . . 0 2,4,6 . . 0,2,4"
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.16,
+      "attack": 0.01,
+      "release": 0.15,
+      "decay": 0.2,
+      "sustain": 0.6,
+      "clip": 0.9,
+      "lpf": 6000,
+      "hpf": 90,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": -0.2,
+        "reverb": 0.12
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tom 808 · Virada eletrônica",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "tom",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . 0 0",
+        ". . . . . . . . . . . 0 . 0 0 0",
+        ". . . . . . . . . . . . . . 0 .",
+        ". . . . . . 0 . . . . 0 . 0 0 0",
+        ". . . . . . . . . . . . 0 . 0 .",
+        ". . . 0 . . 0 . . 0 . 0 0 0 0 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.22,
+      "attack": 0.001,
+      "release": 0.08,
+      "lpf": 8000,
+      "hpf": 60,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.1,
+        "reverb": 0.1
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Cowbell 808 · Clave eletrônica",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "bell",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . 0 . . 0 . . 0 . . 0 . . .",
+        "0 . . 0 . . 0 . . 0 . . 0 . 0 .",
+        "0 . . . . . 0 . . . . . 0 . . .",
+        "0 . . 0 . . 0 . . 0 . 0 0 . 0 .",
+        "0 . . 0 . 0 0 . . 0 . . 0 . . .",
+        "0 . . 0 . . 0 . . 0 . 0 0 0 0 ."
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.18,
+      "attack": 0.001,
+      "release": 0.05,
+      "lpf": 9000,
+      "hpf": 200,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": -0.3,
+        "reverb": 0.08
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Rimshot 808 · Síncopa curta",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "rim",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . 0 . . . . . . . 0 . .",
+        ". . . . . 0 . . . . 0 . . 0 . .",
+        ". . . . . . . . . . . . . 0 . .",
+        ". . . . . 0 . 0 . . 0 . . 0 . 0",
+        ". . . . . 0 . . . . . . 0 . . .",
+        ". . 0 . . 0 . 0 . . 0 . 0 0 . 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.19,
+      "attack": 0.001,
+      "release": 0.03,
+      "lpf": 9500,
+      "hpf": 150,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.2,
+        "reverb": 0.05
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Choir Synth · Hino de torcida",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "synths",
+        "asset": "choir",
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . 2 . . . 0 . . . . . . .",
+        "0 . . . 2 . . . 3 . . 2 0 . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "4 . . . 3 . . 2 0 . . 2 0 . . .",
+        "2 . . . 3 . . . 4 . . . 2 . . .",
+        "0 . . . 2 . . 3 4 . 3 2 0 . 2 0"
+      ],
+      "bars": 1,
+      "octave": 4,
+      "gain": 0.17,
+      "attack": 0.04,
+      "release": 0.2,
+      "decay": 0.22,
+      "sustain": 0.65,
+      "clip": 0.9,
+      "lpf": 6000,
+      "hpf": 100,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.0,
+        "reverb": 0.2
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Shaker eletrônico · Textura de baile",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electro",
+        "asset": "shaker",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 . 0 . 0 0 0 . 0 . 0 . 0 0 0 .",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.15,
+      "attack": 0.001,
+      "release": 0.03,
+      "lpf": 11000,
+      "hpf": 300,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "pan": 0.32,
+        "reverb": 0.05
+      }
+    }
+  ],
+  "harmonicSequences": [
+    [
+      0
+    ],
+    [
+      0,
+      5,
+      2,
+      6
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      0,
+      5,
+      2,
+      6
+    ],
+    [
+      5,
+      2,
+      3,
+      4
+    ],
+    [
+      0,
+      2,
+      5,
+      6
+    ]
+  ]
+}

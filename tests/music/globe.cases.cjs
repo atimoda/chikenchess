@@ -66,7 +66,7 @@ test('nearby locations take separate grid dots while eras keep one pin', () => {
   const { cities } = loadTs('lib/cities-data.ts')
   const locations = new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`))
   const pins = new Set(cities.map(city => `${city.pinCoordinates.lat}:${city.pinCoordinates.lng}`))
-  assert.equal(locations.size, 34)
+  assert.equal(locations.size, 43)
   assert.equal(pins.size, locations.size)
 })
 

@@ -20,6 +20,9 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
   const suppressClick = useRef(false)
   const [expanded, setExpanded] = useState(false)
   const lastHoveredCity = useRef<string | null>(null)
+  const previousOpenCityIds = useRef<string[]>([])
+  const previousExpanded = useRef(expanded)
+  const openCityKey = openCityIds.join('\u0000')
   useEffect(() => {
     const wheelOverList = (event: WheelEvent) => {
       const container = viewport.current
@@ -35,16 +38,32 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
     return () => window.removeEventListener('wheel', wheelOverList, true)
   }, [])
   useEffect(() => {
-    const container = viewport.current
-    if (!container || !pinHoveredCityId || drag.current) return
-    const row = [...container.querySelectorAll<HTMLButtonElement>('button[data-city-id]')]
-      .find(button => button.dataset.cityId === pinHoveredCityId)
-    if (!row || !row.getClientRects().length) return
-    const containerRect = container.getBoundingClientRect()
-    const rowRect = row.getBoundingClientRect()
-    const top = container.scrollTop + rowRect.top - containerRect.top - (containerRect.height - rowRect.height) / 2
-    container.scrollTo({ top, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
-  }, [pinHoveredCityId, expanded])
+    const newlyOpenedCityId = [...openCityIds].reverse().find(cityId => !previousOpenCityIds.current.includes(cityId))
+    previousOpenCityIds.current = [...openCityIds]
+    const justExpanded = expanded && !previousExpanded.current
+    previousExpanded.current = expanded
+
+    const centerCityInList = (cityId: string) => {
+      const container = viewport.current
+      if (!container || drag.current) return
+      const row = [...container.querySelectorAll<HTMLButtonElement>('button[data-city-id]')]
+        .find(button => button.dataset.cityId === cityId)
+      if (!row || !row.getClientRects().length) return
+      const containerRect = container.getBoundingClientRect()
+      const rowRect = row.getBoundingClientRect()
+      const top = container.scrollTop + rowRect.top - containerRect.top - (containerRect.height - rowRect.height) / 2
+      container.scrollTo({ top, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+    }
+
+    const popupCityToCenter = newlyOpenedCityId ?? (justExpanded ? openCityIds.at(-1) : undefined)
+    if (popupCityToCenter) {
+      centerCityInList(popupCityToCenter)
+      return
+    }
+    if (!pinHoveredCityId) return
+    const timeout = window.setTimeout(() => centerCityInList(pinHoveredCityId), 1000)
+    return () => window.clearTimeout(timeout)
+  }, [pinHoveredCityId, openCityKey, expanded])
   const playHover = (cityId: string) => {
     if (lastHoveredCity.current === cityId) return
     lastHoveredCity.current = cityId
@@ -80,17 +99,17 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
     <div ref={viewport} className={`${expanded ? 'block' : 'hidden md:block'} ${styles.viewport} pointer-events-none min-h-0 flex-1 overflow-y-auto overscroll-contain text-[13px] select-none`}
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onPointerLeave={() => onFocus(null)}
       onClickCapture={event => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation() } }}>
-      {CAMPAIGNS.map(campaign => <section key={campaign.id} className="mb-4 last:mb-0">
-        <h2 className="mb-1 text-[12px] font-semibold uppercase leading-4 text-[#b6c9bb]/50">{campaign.name}</h2>
-        <ul className="space-y-1">
+      {CAMPAIGNS.map((campaign, index) => <section key={campaign.id} className={index === 0 ? undefined : 'mt-5'}>
+        <h2 style={{ fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' }} className="m-0 text-[11px] font-semibold uppercase leading-5 tracking-[0.025em] text-[#b6c9bb]/50 sm:text-xs md:text-sm">{campaign.name}</h2>
+        <ul className="space-y-0">
           {citiesInCampaign(cities, campaign.id).map(city => {
             const conquered = getCityEras(city).some(era => conqueredCities.includes(era.id))
             const active = focusedCityId === city.id || pinHoveredCityId === city.id || openCityIds.includes(city.id)
             return <li key={city.id}>
-              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color } as CSSProperties} className={`${styles.cityButton} pointer-events-auto inline-flex w-fit max-w-full items-center gap-1.5 text-left leading-6 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer`}
+              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' } as CSSProperties} className={`${styles.cityButton} pointer-events-auto inline-flex w-full max-w-full items-center gap-1.5 text-left text-[11px] font-semibold uppercase leading-5 tracking-[0.025em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer sm:text-xs md:text-sm`}
                 onPointerEnter={() => { onFocus(city.id); playHover(city.id) }} onFocus={() => { onFocus(city.id); playHover(city.id) }} onPointerLeave={() => { if (lastHoveredCity.current === city.id) lastHoveredCity.current = null; onFocus(null) }} onBlur={() => onFocus(null)}
                 onClick={() => { if (!suppressClick.current) { onFocus(city.id); onOpen(city) } }}>
-                <span className="shrink-0">{city.name} {city.year}</span>
+                <span className="shrink-0">{city.year} {city.name}</span>
                 {active && <span className={styles.genre}>{city.genre}</span>}
                 {conquered && <span className={`${styles.flagIcon} ${active ? styles.flagIconActive : ''}`} style={{ '--flag-color': cityFlagColor(city.color) } as CSSProperties} aria-label="Conquistada" title="Conquistada"><svg viewBox="0 0 16 16" aria-hidden="true"><path className={styles.flagPole} d="M3.2 14V2.2"/><path className={styles.flagCloth} d="M3.7 2.7c3-1.6 5 1.1 9-.4v5.2c-3.8 1.5-6-1.1-9 .4z"/></svg></span>}
               </button>

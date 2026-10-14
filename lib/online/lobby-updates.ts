@@ -25,10 +25,11 @@ export function isAlreadyInRoom(cause: unknown): boolean {
 
 export function roomErrorMessage(cause: unknown): string | null {
   const raw = cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : ''
-  if (isAlreadyInRoom(cause)) return 'Você já tem uma sala. Volte a ela ou entre em outra sala para trocar automaticamente.'
-  if (raw.includes('ACTIVE_MATCH')) return 'Você tem uma partida em andamento. Conclua ou desista dela antes de entrar em outra sala.'
-  if (raw.includes('ROOM_FULL')) return 'Esta sala já tem dois participantes. Escolha outra sala ou aguarde uma vaga.'
-  if (raw.includes('ROOM_CLOSED')) return 'Esta sala já começou uma partida ou foi encerrada.'
-  if (raw.includes('ROOM_NOT_FOUND')) return 'Sala não encontrada. Confira o código ou o convite.'
+  if (isAlreadyInRoom(cause)) return 'You already have a room. Return to it or join another room to switch automatically.'
+  if (raw.includes('ACTIVE_MATCH')) return 'You have a game in progress. Finish or resign before joining another room.'
+  if (raw.includes('ROOM_FULL')) return 'This room already has two players. Choose another room or wait for a spot to open.'
+  if (raw.includes('ROOM_CLOSED')) return 'This room has started a game or has been closed.'
+  if (raw.includes('ROOM_NOT_FOUND')) return 'Room not found. Check the code or invitation.'
+  if (raw.includes('INVALID_KIT')) return 'Selected kit is not available online. Please choose another kit.'
   return null
 }

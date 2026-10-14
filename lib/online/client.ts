@@ -10,7 +10,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
   || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
 
 export const onlineConfigured = Boolean(supabaseUrl && /^https?:\/\//.test(supabaseUrl) && supabaseKey)
-export const ONLINE_CONFIGURATION_MESSAGE = 'O modo online ainda não foi configurado. A campanha e o Criativo continuam disponíveis.'
+export const ONLINE_CONFIGURATION_MESSAGE = 'Online mode has not been configured yet. Campaign and Creative mode are still available.'
 let client: SupabaseClient | null = null
 
 /** A browser-only singleton: no server credentials or extra SSR auth runtime. */

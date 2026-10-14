@@ -1,7 +1,59 @@
-export const RELEASE_LABEL = 'v1.4.0'
+export const RELEASE_LABEL = 'v1.6.1'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    version: '1.6.1',
+    date: '13/10/2026',
+    title: 'Catálogo dinâmico de kits online e criação de salas',
+    groups: [
+      { title: 'Salas e partidas online', items: [
+        'O seletor de kits nas salas online agora sincroniza dinamicamente com o banco de dados do servidor, disponibilizando todas as 60 cidades cadastradas.',
+        'A tela de criação de sala agora inclui a seleção do kit da equipe, permitindo definir o kit inicial antes de abrir a sala pública ou privada.',
+        'Corrigida a rejeição INVALID_KIT ao criar salas ou escolher kits das novas campanhas Brazilian e African Rhythms.',
+      ] },
+    ],
+  },
+  {
+    version: '1.6.0',
+    date: '12/10/2026',
+    title: 'Campanha African Rhythms e novos kits musicais',
+    groups: [
+      { title: 'Kits musicais e campanha', items: [
+        'Inaugurada a nova campanha African Rhythms com 12 estudos de ritmos populares africanos: Luanda 1982 (Kizomba), Luanda 1965 (Semba), Lagos 1975 (Afrobeat), Essaouira 1980 (Gnawa), Maputo 1978 (Marrabenta), Dakar 1985 (Mbalax), Luanda 1996 (Kuduro), Harare 1981 (Chimurenga), Kinshasa 1978 (Soukous), Lagos 1982 (Jùjú), Gaza 1987 (Majika) e Kisumu 1980 (Benga).',
+        'Cada fase traz arranjos dedicados com 16 papéis instrumentais, 6 variações completas por voz, 6 seções compostas (A a F) com contrastes harmônicos autorais e instrumentos fiéis aos gêneros, como guembri, krakebs, mbira, sabar, congas, dikanza e talking drum.',
+        'Adicionadas duas novas cidades à campanha Brazilian: Recife 1975 (Maracatu de baque virado) e Rio de Janeiro 1995 (Funk carioca).',
+        'Recife 1975 traz o cortejo solene e sincopado do Maracatu de baque virado a 108 BPM em 4/4, com alfaias graves (marcador, meador e virador), clave de ferro do gonguê, rufos de tarol, caixa de guerra, xequerê, toadas de sax tenor, respostas de trompete e trombone e harmonia modal em D Mixolídio.',
+        'Rio de Janeiro 1995 recria a era clássica dos bailes de galpão e paredões de som a 128 BPM em 4/4, com batidão sincopado estilo Volt Mix / Miami Bass, sub-bass retumbante de TR-808, caixas e palmas estaladas, cowbell sincopado, baixo synth ácido, stabs de metais, piano elétrico e clima nostálgico de Funk Melody em F Menor Natural.',
+        'Fotografias históricas de reuniões comunitárias e celebrações culturais vinculadas a todas as novas fases, além de frases de abertura em inglês curtas e enigmáticas e botões de início limitados a 4 palavras.',
+      ] },
+    ],
+  },
+  {
+    version: '1.5.0',
+    date: '11/10/2026',
+    title: 'Perfil, salas e bot de campanha',
+    groups: [
+      { title: 'Interface', items: [
+        'Rooms, Friends, Profile e Room mostram abas e conteúdo em inglês; o endereço da conta aparece mascarado e pode ser revelado pelo ícone de olho.',
+        'Profile code identifica o código público, Logout encerra a sessão e o progresso de campanha aparece como Campaign (Cities Conquered).',
+        'Join by ID não tem borda superior; o X para sair fica dentro da aba Room sem cobrir o rótulo; Invite a friend fica sob a espera no lobby, com a confirmação de cópia logo abaixo e hover azul-escuro, e Refresh friends fica à esquerda com rotação lenta.',
+        'A lista de kits do globo mostra o ano antes da cidade e usa a mesma fonte e o mesmo tamanho responsivo do título da partida; o estilo musical continua aparecendo no hover.',
+        'Os títulos das campanhas usam a tipografia das cidades e o mesmo espaçamento de linha; há uma linha vazia antes de cada título, exceto o primeiro. A lista só centraliza um pin após 1 segundo de hover, ou imediatamente ao abrir seu popup. CAMPAIGN ganhou um ícone de montanha com bandeira.',
+        'O som reverso acompanha os 0,5 s de abertura do popup; fechar usa um chimbau aberto gravado, mais suave e sem repetição.',
+        'Public rooms e seus cartões usam a mesma tipografia responsiva das cidades da lista de campanhas.',
+        'A lista de cidades mostra os rótulos em maiúsculas, com linhas mais próximas e áreas de hover/touch contínuas em desktop e mobile.',
+        'Nos popups, o título mostra “cidade, ano” sem etiqueta separada; os botões de kits da mesma cidade exibem apenas o ano.',
+        'O hover dos pins toca um bumbo de bateria gravado, com pequenas variações de afinação e intensidade que favorecem toques mais suaves.',
+        'O botão X fecha somente com clique/toque simples; se o gesto virar arraste, o popup permanece aberto, e o botão e a conexão ao pin acompanham exatamente o ponto pressionado até a soltura. Enquanto pressionado, o popup oscila preso ao botão e o chimbau aberto termina em fade-out no pointer up.',
+        'Arrastar o corpo do popup reduz a escala a 92%, ancorada no ponto pressionado, e o desloca sem rotação; ao soltar, retorna sem balanço. O fundo do seletor de épocas permite arrastar o popup.',
+      ] },
+      { title: 'Salas e campanha', items: [
+        'Insert Bot pode ser usado com kit Random; ao iniciar a campanha, uma cidade é sorteada uma vez e o mesmo kit vale para jogador e bot. Se outra pessoa entrar antes, ocupa a vaga e o bot sai; a mensagem de espera some enquanto o bot estiver inserido ou a sala estiver cheia. Remove fica à esquerda do Ready para retirar o bot; seu estado mostra Choosing a kit e fica pronto em dois segundos. Ao confirmar I’m ready!, a campanha abre com o kit escolhido.',
+        'Public e Private mostram cursor de clique quando habilitados.',
+      ] },
+    ],
+  },
   {
     version: '1.4.0',
     date: '10/10/2026',
@@ -13,6 +65,9 @@ export const CHANGELOG = [
       { title: 'Salas e partidas online', items: [
         'Salas sem interação por 30 minutos são encerradas automaticamente, saem da lista do globo e liberam as vagas; partidas iniciadas continuam salvas.',
         'Tentar novamente em Games in progress mostra o carregamento e a mensagem retornada quando as partidas não podem ser consultadas.',
+      ] },
+      { title: 'Interface', items: [
+        'Estou pronto! e Cancelar pronto têm a mesma largura e ficam alinhados à direita na janela da sala; Cancelar pronto mantém o fundo transparente.',
       ] },
     ],
   },

@@ -1,0 +1,842 @@
+{
+  "name": "Lagos 1982 · Jùjú",
+  "bpm": 110,
+  "meter": "4/4",
+  "root": "G",
+  "scale": "Maior",
+  "harmony": "cadence",
+  "harmonicSequences": [
+    [
+      0
+    ],
+    [
+      0,
+      3,
+      4,
+      0
+    ],
+    [
+      4,
+      0
+    ],
+    [
+      0,
+      4,
+      3,
+      0
+    ],
+    [
+      3,
+      4,
+      1,
+      0
+    ],
+    [
+      0,
+      1,
+      4,
+      0
+    ]
+  ],
+  "swing": 0,
+  "sections": [
+    16,
+    32,
+    16,
+    32,
+    16,
+    32
+  ],
+  "reference": "Electrified Yoruba praise singing study from Lagos pioneered by King Sunny Adé & His African Beats. Centered on pitch-bending dùndún talking drums, soaring pedal steel glides, sekere shakers and interlocking guitars. Reference: King Sunny Adé – Ja Funmi.",
+  "url": "https://en.wikipedia.org/wiki/J%C3%B9j%C3%BA_music",
+  "parts": [
+    {
+      "role": "rhythm",
+      "name": "Acoustic Kick",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "kick",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . . . 0 . . . 0 . . . . .",
+        "0 . . . . . 0 . . . 0 . . . 0 .",
+        "0 . . . . . . . . . 0 . . . . .",
+        "0 . . . 0 . 0 . . . 0 . . . 0 .",
+        "0 . . . . . 0 . . . 0 . 0 . 0 .",
+        "0 . . . . . 0 . . . 0 . . . . ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.3,
+      "attack": 0.002,
+      "decay": 0.2,
+      "sustain": 0.5,
+      "release": 0.09,
+      "clip": 0.9,
+      "lpf": 5000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Snare Backbeat",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "snare",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . 0 . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 0",
+        ". . . . 0 . . . . . . . 0 . . ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.26,
+      "attack": 0.002,
+      "decay": 0.15,
+      "sustain": 0.5,
+      "release": 0.07,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Dùndún Talking Drum Lead",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "conga",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . 2 . . 4 . . 2 . 0 . . . .",
+        "0 . . 2 . 4 5 . . 4 . 2 . 0 . .",
+        "0 . . . . . 2 . . . . . . 0 . .",
+        "0 . 2 4 . 5 4 . . 2 . 0 . . . .",
+        "0 . . 2 . 4 5 . 7 5 . 4 . 2 . 0",
+        "0 . . 2 . . 4 . . 2 . 0 . . . ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.26,
+      "attack": 0.003,
+      "decay": 0.22,
+      "sustain": 0.45,
+      "release": 0.12,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "pitchEnvelope": 3,
+      "pitchAttack": 0.1
+    },
+    {
+      "role": "response",
+      "name": "Dùndún Answering Drum",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "tom",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . 2 . . 4 . . 2 .",
+        ". . . . . . . . 4 . . 5 . . 4 .",
+        ". . . . . . . . 2 . . 0 . . . .",
+        ". . . . . . . . 2 . 4 5 . 4 2 0",
+        ". . . . . . . . 5 . . 7 . . 5 .",
+        ". . . . . . . . 2 . . 4 . . 2 ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.23,
+      "attack": 0.003,
+      "decay": 0.2,
+      "sustain": 0.4,
+      "release": 0.1,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "pitchEnvelope": 2,
+      "pitchAttack": 0.12
+    },
+    {
+      "role": "rhythm",
+      "name": "Sekere Gourd Shaker",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "shaker",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 0 0 0 0 0 . 0 0 0 0 0 0 0 . 0",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        "0 0 0 0 0 0 . 0 0 0 0 0 0 0 0 0",
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.22,
+      "attack": 0.002,
+      "decay": 0.1,
+      "sustain": 0.5,
+      "release": 0.05,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Agogô Iron Bell",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "agogo-agudo",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . 0 . . 0 . . . 0 . 0 . . .",
+        "0 . . 0 . . 0 . . . 0 . 0 . 0 .",
+        "0 . . . . . 0 . . . 0 . . . . .",
+        "0 . . 0 . 0 0 . . . 0 . 0 . . .",
+        "0 . . 0 . . 0 . . . 0 . 0 . 0 0",
+        "0 . . 0 . . 0 . . . 0 . 0 . . ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.21,
+      "attack": 0.002,
+      "decay": 0.12,
+      "sustain": 0.5,
+      "release": 0.06,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Closed Hi-Hat",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 . 0 . 0 . 0 0 0 . 0 . 0 . 0 .",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 0 0 .",
+        "0 . 0 . 0 . 0 0 0 . 0 . 0 . 0 0",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.19,
+      "attack": 0.002,
+      "decay": 0.08,
+      "sustain": 0.5,
+      "release": 0.04,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Hawaiian Pedal Steel",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "strings",
+        "asset": "slide-electric",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . . 2 . . . 4 . . . 2 . . .",
+        "0 . . . 2 . 4 . 5 . . . 4 . 2 .",
+        "0 . . . . . . . 2 . . . . . . .",
+        "0 . 2 . 4 . 5 . 4 . 2 . 0 . . .",
+        "2 . . . 4 . 5 . 7 . . . 5 . 4 .",
+        "0 . . . 2 . . . 4 . . . 2 . . ."
+      ],
+      "bars": 1,
+      "octave": 4,
+      "gain": 0.25,
+      "attack": 0.01,
+      "decay": 0.35,
+      "sustain": 0.7,
+      "release": 0.25,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Interlocking Clean Guitar 1",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "guitars",
+        "asset": "clean",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 2 4 0 2 4 0 2 0 2 4 0 2 4 0 2",
+        "0 2 4 5 4 2 0 2 0 2 4 5 4 2 0 2",
+        "0 . . 4 . . 2 . 0 . . 4 . . 2 .",
+        "0 2 4 5 4 2 4 2 0 2 4 5 4 2 4 2",
+        "0 2 4 5 7 5 4 2 0 2 4 5 7 5 4 2",
+        "0 2 4 0 2 4 0 2 0 2 4 0 2 4 0 2"
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.24,
+      "attack": 0.003,
+      "decay": 0.2,
+      "sustain": 0.45,
+      "release": 0.12,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Interlocking Clean Guitar 2",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "guitars",
+        "asset": "muted",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". 0 . . 2 . . 0 . 0 . . 2 . . 0",
+        ". 0 . . 2 . . 3 . 0 . . 2 . . 3",
+        ". 0 . . . . . 0 . 0 . . . . . 0",
+        ". 0 . 2 . 0 . 2 . 0 . 2 . 0 . 2",
+        ". 2 . . 3 . . 4 . 2 . . 3 . . 4",
+        ". 0 . . 2 . . 0 . 0 . . 2 . . 0"
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.21,
+      "attack": 0.002,
+      "decay": 0.14,
+      "sustain": 0.35,
+      "release": 0.08,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "bass",
+      "name": "Warm Walking Bass",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "guitars",
+        "asset": "bass",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . 0 . . 2 . 4 . . 2 . 0 . .",
+        "0 . . 0 . . 2 . 4 . 5 4 . 2 . 0",
+        "0 . . . . . 2 . . . . . . 0 . .",
+        "0 . 2 0 . . 2 . 4 . . 2 . 0 . .",
+        "0 . . 0 . . 2 . 4 . 5 7 . 5 . 4",
+        "0 . . 0 . . 2 . 4 . . 2 . 0 . ."
+      ],
+      "bars": 1,
+      "octave": 2,
+      "gain": 0.28,
+      "attack": 0.004,
+      "decay": 0.22,
+      "sustain": 0.55,
+      "release": 0.12,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Celesta Shimmer",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "keys",
+        "asset": "celesta",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "4 . . 5 . 7 . 5 . . 4 . 2 . . .",
+        "4 . . 5 . 7 . 8 . . 7 . 5 . . .",
+        "2 . . 4 . . . . 0 . . . . . . .",
+        "4 . 5 7 . 5 . 4 . . 2 . 0 . . .",
+        "5 . . 7 . 8 . 9 . . 7 . 5 . . .",
+        "4 . . 5 . 7 . 5 . . 4 . 2 . . ."
+      ],
+      "bars": 1,
+      "octave": 4,
+      "gain": 0.21,
+      "attack": 0.002,
+      "decay": 0.2,
+      "sustain": 0.35,
+      "release": 0.14,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Acoustic Room Claps",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "drums",
+        "asset": "room-clap",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 .",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . . 0 . . 0 . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 0",
+        ". . . . 0 . . . . . . . 0 . . ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.2,
+      "attack": 0.002,
+      "decay": 0.14,
+      "sustain": 0.5,
+      "release": 0.06,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Conga Mute Slap",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "muted-conga",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 0 . . 0 . . . 0 .",
+        ". . 0 . . . . . . . 0 . . . . .",
+        ". . 0 . . 0 0 . . . 0 . . 0 0 .",
+        ". . 0 . . . 0 0 . . 0 . . . 0 0",
+        ". . 0 . . . 0 . . . 0 . . . 0 ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.22,
+      "attack": 0.002,
+      "decay": 0.12,
+      "sustain": 0.5,
+      "release": 0.05,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "response",
+      "name": "Tenor Sax Breath",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "band",
+        "asset": "tenor-sax",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . 2 . 4 . 5 . 4 .",
+        ". . . . . . . . 4 . 5 . 7 . 5 .",
+        ". . . . . . . . 0 . 2 . 4 . 2 .",
+        ". . . . . . . . 2 . 4 . 5 . 4 .",
+        ". . . . . . . . 5 . 7 . 8 . 7 .",
+        ". . . . . . . . 2 . 4 . 5 . 4 ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.22,
+      "attack": 0.006,
+      "decay": 0.24,
+      "sustain": 0.55,
+      "release": 0.16,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          false
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Crash Cymbal",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "crash",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . 0 . . . . . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . . . . . 0 . . . . . . .",
+        "0 . . . . . . . . . . . . . . ."
+      ],
+      "bars": 1,
+      "octave": 3,
+      "gain": 0.22,
+      "attack": 0.002,
+      "decay": 0.3,
+      "sustain": 0.5,
+      "release": 0.15,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          false,
+          true,
+          false
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    }
+  ]
+}

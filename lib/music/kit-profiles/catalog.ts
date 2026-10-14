@@ -45,6 +45,20 @@ import profile41 from '../../../data/music/profiles/istanbul-1970.json'
 import profile42 from '../../../data/music/profiles/kalamata-1930.json'
 import profile43 from '../../../data/music/profiles/santiago-del-estero-1960.json'
 import profile44 from '../../../data/music/profiles/salvador-1992.json'
+import profile45 from '../../../data/music/profiles/recife-1975.json'
+import profile46 from '../../../data/music/profiles/rio-1995.json'
+import profile47 from '../../../data/music/profiles/luanda-1982.json'
+import profile48 from '../../../data/music/profiles/luanda-1965.json'
+import profile49 from '../../../data/music/profiles/lagos-1975.json'
+import profile50 from '../../../data/music/profiles/essaouira-1980.json'
+import profile51 from '../../../data/music/profiles/maputo-1978.json'
+import profile52 from '../../../data/music/profiles/dakar-1985.json'
+import profile53 from '../../../data/music/profiles/luanda-1996.json'
+import profile54 from '../../../data/music/profiles/harare-1981.json'
+import profile55 from '../../../data/music/profiles/kinshasa-1978.json'
+import profile56 from '../../../data/music/profiles/lagos-1982.json'
+import profile57 from '../../../data/music/profiles/gaza-1987.json'
+import profile58 from '../../../data/music/profiles/kisumu-1980.json'
 
 export const STYLE_PROFILES = {
   'dusseldorf': profile0,
@@ -92,4 +106,19 @@ export const STYLE_PROFILES = {
   'kalamata-1930': profile42,
   'santiago-del-estero-1960': profile43,
   'salvador-1992': profile44,
+  'recife-1975': profile45,
+  'rio-1995': profile46,
+  'luanda-1982': profile47,
+  'luanda-1965': profile48,
+  'lagos-1975': profile49,
+  'essaouira-1980': profile50,
+  'maputo-1978': profile51,
+  'dakar-1985': profile52,
+  'luanda-1996': profile53,
+  'harare-1981': profile54,
+  'kinshasa-1978': profile55,
+  'lagos-1982': profile56,
+  'gaza-1987': profile57,
+  'kisumu-1980': profile58,
 } as unknown as Record<string, StyleProfile>
+
