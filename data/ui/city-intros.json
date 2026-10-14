@@ -2,323 +2,421 @@
   "dusseldorf": [
     "She is an AI.",
     "Can you beat her?",
-    "Unlimited mulligans for you.",
-    "Still, it won't be easy.",
+    "Unlimited mulligans.",
+    "No easy path.",
     "Good luck."
   ],
   "nyc": [
-    "The city that never sleeps.",
-    "The rhythm is in the concrete.",
-    "Can you keep up with the groove?",
-    "Studio 54 is waiting.",
-    "Don't lose the beat."
+    "Night never sleeps.",
+    "Concrete hums below.",
+    "Studio 54 waits.",
+    "Keep the groove.",
+    "Hold the beat."
   ],
   "chicago": [
-    "Jack your body.",
-    "The warehouse is open.",
+    "Jack the body.",
+    "Warehouse doors open.",
     "The 909 is relentless.",
-    "House music all night long.",
+    "Late into darkness.",
     "Move."
   ],
   "detroit": [
-    "Motor City machines.",
-    "Future music from the past.",
-    "Cold steel and warm soul.",
-    "Techno is the logic.",
-    "Calculate your next move."
+    "Cold steel hums.",
+    "Machines remember soul.",
+    "Techno is logic.",
+    "The grid waits.",
+    "Make your move."
   ],
   "ibiza": [
-    "The sun sets on the island.",
-    "A spiritual awakening.",
-    "Relax your mind.",
-    "But keep your eyes open.",
-    "The night is young."
+    "The sun dissolves.",
+    "Salt and shadow.",
+    "Mind clears slowly.",
+    "Eyes stay open.",
+    "Own the night."
   ],
   "manchester": [
-    "Madchester calls.",
-    "The siren sounds.",
-    "Acid in the veins.",
-    "Can you handle the rush?",
+    "Sirens call out.",
+    "Acid in the pulse.",
+    "Sweat and static.",
+    "Feel the rush.",
     "Rave on."
   ],
   "manchester-1999": [
-    "A record remembers another room.",
-    "Brass slips through the break.",
-    "A low pulse keeps its secret.",
-    "Every loop leaves room for an answer.",
-    "Let the night turn."
+    "A needle drops.",
+    "Brass cuts the break.",
+    "A low pulse waits.",
+    "Every loop answers.",
+    "Turn the night."
   ],
   "berlin": [
-    "The wall is down.",
-    "But the darkness remains.",
-    "Concrete and steel.",
-    "The beat is your heartbeat.",
-    "Don't get lost in the bunker."
+    "Concrete and wire.",
+    "Darkness remains.",
+    "The bunker vibrates.",
+    "Pulse meets bone.",
+    "Enter the dark."
   ],
   "tokyo": [
-    "Neon lights and digital dreams.",
-    "Precision is key.",
-    "A glitch in the system.",
-    "Or a calculated move?",
+    "Neon through rain.",
+    "Digital precision.",
+    "A calculated glitch.",
+    "Cold calculation.",
     "Focus."
   ],
   "london": [
-    "The underground is calling.",
-    "Breakneck speed.",
     "Deep bass pressure.",
-    "Keep your head up.",
-    "It's a jungle out there."
+    "Breakneck speed.",
+    "Smoke and concrete.",
+    "Keep your balance.",
+    "Face the rush."
   ],
   "saopaulo": [
-    "Concrete jungle fever.",
-    "The heat is rising.",
+    "Concrete fever.",
+    "Heat rises fast.",
     "Hard and heavy.",
-    "No time to rest.",
+    "No time to pause.",
     "Survive."
   ],
   "johannesburg": [
-    "The bass walks slowly.",
-    "A new freedom finds a voice.",
-    "Piano answers the pavement.",
-    "The groove rises from the township.",
-    "Move when the chorus calls."
+    "Bass walks slowly.",
+    "Dust and chords.",
+    "Piano meets pavement.",
+    "Freedom rises up.",
+    "Answer the call."
   ],
   "paris": [
-    "La vie en rose?",
-    "Not on this board.",
-    "Filtered reality.",
-    "Touch of class.",
+    "Filtered mirrors.",
+    "Not quite romance.",
+    "Sharp clean cuts.",
+    "Late-night polish.",
     "Allez."
   ],
   "vienna": [
-    "A timeless classic.",
-    "The grandmaster watches.",
+    "Ancient symmetry.",
     "Symphony of logic.",
     "Every move a note.",
-    "Compose your victory."
+    "A silent maestro.",
+    "Begin the piece."
   ],
   "buenos-aires-1940": [
-    "An embrace turns in the dark.",
-    "A reed carries a sigh.",
-    "Each step returns changed.",
-    "Old longing keeps the room awake.",
-    "Follow the turning phrase."
+    "Embrace in the dark.",
+    "A bandoneon sighs.",
+    "Steps turn close.",
+    "Longing stays awake.",
+    "Follow the step."
   ],
   "dublin-1990": [
-    "A tune passes hand to hand.",
-    "The fiddle runs ahead of the foot.",
-    "Bright turns lift the room.",
-    "Old steps gather new voices.",
-    "Answer the dancing bow."
+    "A tune passes hand.",
+    "Fiddle sparks ahead.",
+    "Old steps return.",
+    "Voices raise the roof.",
+    "Answer the bow."
   ],
   "new-orleans-1953": [
-    "Blue notes bend the lamplight.",
-    "The piano rolls like a river.",
-    "A trumpet answers the room.",
-    "Sorrow finds its dancing feet.",
-    "Let the backbeat speak."
+    "Blue lamplight bends.",
+    "Keys roll like rivers.",
+    "Brass answers back.",
+    "Feet find sorrow.",
+    "Hear the beat."
   ],
   "san-diego-1999": [
-    "A chord crashes through the garage.",
-    "Three rough chords become a shout.",
-    "Skate wheels answer the snare.",
-    "A private ache turns communal.",
-    "Sing it louder."
+    "Chords crack the door.",
+    "Three rough shapes.",
+    "Skate wheels rattle.",
+    "A private shout.",
+    "Sing it loud."
   ],
   "london-1970": [
-    "One piano fills the room.",
-    "A plain refrain opens outward.",
-    "Every voice finds the same line.",
-    "The quiet verse becomes a window.",
-    "Let the chorus rise."
+    "One piano fills space.",
+    "A plain line opens.",
+    "Quiet verse breathes.",
+    "Voices find unity.",
+    "Let it rise."
   ],
   "berkeley-2004": [
-    "A low note opens the night.",
-    "The guitars leave space for doubt.",
-    "A quiet thought gathers distortion.",
-    "The chorus turns unease into motion.",
-    "Walk into the noise."
+    "A low note opens.",
+    "Distortion gathers.",
+    "Unease turns to motion.",
+    "Doubt finds sound.",
+    "Enter the noise."
   ],
   "new-york-1961": [
-    "A bass line circles the block.",
-    "Voices gather around one promise.",
-    "A street-corner echo finds harmony.",
-    "Longing becomes a shared refrain.",
+    "Bass circles the block.",
+    "Street corner harmonies.",
+    "One shared promise.",
+    "Longing turns to song.",
     "Answer the lead."
   ],
   "san-francisco-1993": [
-    "A wooden string remembers the road.",
-    "A story takes the shape of a song.",
-    "The crowd carries the last line.",
-    "Restless voices travel together.",
-    "Keep the story moving."
+    "Wood remembers road.",
+    "Stories take shape.",
+    "Crowds carry lines.",
+    "Wandering voices meet.",
+    "Keep the tale."
   ],
   "paris-1945": [
-    "A voice leans close to the room.",
-    "The melody leaves space for a reply.",
-    "Nightlife turns confession into song.",
-    "A blue chord opens another door.",
-    "Let the phrase wander."
+    "A voice leans close.",
+    "Blue chords wander.",
+    "Confession turns sweet.",
+    "Night opens slowly.",
+    "Let it stray."
   ],
   "columbus-2013": [
-    "A small room glows after midnight.",
-    "A soft hook travels farther than expected.",
-    "Handmade songs gather strangers.",
-    "The bright refrain outlives the noise.",
+    "Small room glows.",
+    "Soft hook travels far.",
+    "Handmade melodies linger.",
+    "Strangers lean in.",
     "Keep it close."
   ],
   "new-york-1930": [
-    "Brass sparks against the ballroom air.",
-    "The floor answers every riff.",
-    "A solo steps out, then returns.",
-    "The band turns precision into flight.",
-    "Join the turning dance."
+    "Brass sparks aloft.",
+    "Floors answer riffs.",
+    "Solos take flight.",
+    "Precision turns wild.",
+    "Join the dance."
   ],
   "jacksonville-1974": [
-    "A slide guitar draws the long road.",
-    "Blues and country trade their stories.",
-    "The chorus carries regional pride.",
-    "Freedom rides inside rough harmony.",
-    "Take the open road."
+    "Slide draws the highway.",
+    "Guitars trade dirt.",
+    "Rough harmony breathes.",
+    "Open road calls.",
+    "Take the road."
   ],
   "chicago-1958": [
-    "An amplified string cuts through the room.",
-    "A southern memory meets city lights.",
-    "The band answers every bent note.",
-    "Hard times turn into a walking groove.",
-    "Let the guitar talk."
+    "Bent wires cry.",
+    "City lights blaze.",
+    "Hard times walking.",
+    "Amps cut through.",
+    "Hear the string."
   ],
   "rio-1930": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Surdo shakes the ground.",
+    "Strings slip through.",
+    "Tamborim cuts sharp.",
+    "Sway becomes cadence.",
+    "Join the circle."
   ],
   "rio-1910": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Flute darts around.",
+    "Seven strings descend.",
+    "Pandeiro whispers fast.",
+    "Notes chase light.",
+    "Follow the run."
   ],
   "recife-1935": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Brass tears the heat.",
+    "Snare rushes onward.",
+    "Umbrellas leap high.",
+    "Feet barely land.",
+    "Step into fire."
   ],
   "recife-1950": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Zabumba marks two.",
+    "Triangle cuts dry.",
+    "Bellows sigh deep.",
+    "Dust turns to dance.",
+    "Ride the beat."
   ],
   "piracicaba-1940": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Ten strings resonate.",
+    "Paired voices rise.",
+    "Earth keeps count.",
+    "Rural twilight falls.",
+    "Hear the soil."
   ],
   "rio-1960": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Nylon whispers soft.",
+    "Extended chords linger.",
+    "Sea air breathes.",
+    "Quiet voice floats.",
+    "Hold the breeze."
   ],
   "salvador-1992": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Surdos trade fire.",
+    "Repique leads the cut.",
+    "Horns pierce the square.",
+    "A collective roar.",
+    "Join the march."
+  ],
+  "recife-1975": [
+    "Alfaias shake the stone.",
+    "Gonguê strikes iron.",
+    "Tarol rolls tight.",
+    "Loas greet the queen.",
+    "Hold the crown."
+  ],
+  "rio-1995": [
+    "Speakers hum with bass.",
+    "808 snaps hard.",
+    "Acid synth cuts.",
+    "The court ignites.",
+    "Drop the beat."
   ],
   "new-york-1962": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Bass walks in three.",
+    "Brushed skins murmur.",
+    "Smoky reed lingers.",
+    "Midnight turns slow.",
+    "Count the three."
   ],
   "london-1977": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Triplets gather weight.",
+    "Piano chords swell.",
+    "Arena roar builds.",
+    "Heavy pulses fall.",
+    "Face the surge."
   ],
   "memphis-1967": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Organ bleeds slow.",
+    "Patient backbeat hits.",
+    "Horns cry in turn.",
+    "Sorrow turns golden.",
+    "Feel the soul."
   ],
   "kingston-1973": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "One-drop clears space.",
+    "Chop hits the offbeat.",
+    "Sub-bass rolls deep.",
+    "Smoke over stone.",
+    "Catch the drop."
   ],
   "leipzig-1723": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Three ternary pulses.",
+    "Flute courts violin.",
+    "Harpsichord walks light.",
+    "Pastoral light dawns.",
+    "Grace the cadence."
   ],
   "vienna-1825": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Two half-notes drive.",
+    "Strings dash ahead.",
+    "Timpani commands halt.",
+    "Broad chords descend.",
+    "Take the stride."
   ],
   "oakland-1959": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Three plus two.",
+    "Piano vamp circles.",
+    "Alto sax leans out.",
+    "Asymmetry finds calm.",
+    "Ride the five."
   ],
   "canterbury-1972": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Nine eighths roll.",
+    "Organ chords swell.",
+    "Fuzz bass wanders.",
+    "Meadows turn strange.",
+    "Cross the stream."
   ],
   "cambridge-1973": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Four plus three.",
+    "Bass figure locks.",
+    "Synthesizers flare out.",
+    "Uneven steps pound.",
+    "Count the seven."
   ],
   "istanbul-1970": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Three then two.",
+    "Plucked lute dances.",
+    "Dry drum replies.",
+    "Bazaar turns swift.",
+    "Join the spin."
   ],
   "kalamata-1930": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Long short short.",
+    "Handkerchief in hand.",
+    "Seven steps unwind.",
+    "Dust rises light.",
+    "Lead the line."
   ],
   "santiago-del-estero-1960": [
-    "A new pulse draws a circle.",
-    "Listen for the returning accent.",
-    "A melody leaves room for an answer.",
-    "Every piece joins the conversation.",
-    "Find your place in the rhythm."
+    "Two against three.",
+    "Bombo legüero strikes.",
+    "Violin cuts dirt.",
+    "The clearing spins.",
+    "Answer the dust."
+  ],
+  "luanda-1982": [
+    "The embrace never lies.",
+    "A slow pulse beckons.",
+    "Steps trace the earth.",
+    "Night breathes in silence.",
+    "Embrace the cadence."
+  ],
+  "luanda-1965": [
+    "Bamboo rattles the square.",
+    "The circle claims dancers.",
+    "Strings sprint in dust.",
+    "Laughter answers the drum.",
+    "Join the circle."
+  ],
+  "lagos-1975": [
+    "The Shrine never sleeps.",
+    "Two guitars carve air.",
+    "Horns strike the night.",
+    "No foot turns back.",
+    "Enter the Shrine."
+  ],
+  "essaouira-1980": [
+    "Iron castanets awaken spirits.",
+    "Resonant hide hums low.",
+    "Night unveils seven colors.",
+    "Ancestral voices answer prayer.",
+    "Enter the trance."
+  ],
+  "maputo-1978": [
+    "Worn soles catch fire.",
+    "Guitars burst the dusk.",
+    "Quick claps lead footsteps.",
+    "Pavement turns to dance.",
+    "Break the floor."
+  ],
+  "dakar-1985": [
+    "Curved stick strikes hide.",
+    "Talking drums whisper secrets.",
+    "Dusk welcomes the sabar.",
+    "Sand rises with rhythm.",
+    "Hear the sabar."
+  ],
+  "luanda-1996": [
+    "The concrete shivers below.",
+    "Shattered beats spark fire.",
+    "Limbs bend without breaking.",
+    "Pure speed of bone.",
+    "Step with fire."
+  ],
+  "harare-1981": [
+    "Iron prongs ring clear.",
+    "Gourd rattles hiss together.",
+    "Sacred polyphony guides struggle.",
+    "Memory turns into victory.",
+    "Awaken the mbira."
+  ],
+  "kinshasa-1978": [
+    "Wizard guitar sparks flight.",
+    "Sebene sets dance ablaze.",
+    "Dancers spin above ground.",
+    "The voice commands ecstasy.",
+    "Dance the sebene."
+  ],
+  "lagos-1982": [
+    "Talking drum speaks truth.",
+    "Steel strings glide smooth.",
+    "Praise crowns the gathering.",
+    "Gold dust falls softly.",
+    "Hear the drum."
+  ],
+  "gaza-1987": [
+    "Rare lake waters beckon.",
+    "Warrior drums answer rock.",
+    "Wind ignites dry ground.",
+    "Dance defies the heat.",
+    "Strike the ground."
+  ],
+  "kisumu-1980": [
+    "Eight sacred strings sing.",
+    "Ankle bells mark earth.",
+    "Lake waters answer chorus.",
+    "Twin guitars weave prayer.",
+    "Pluck the lyre."
   ]
 }

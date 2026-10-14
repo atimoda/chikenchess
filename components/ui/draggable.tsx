@@ -16,6 +16,7 @@ interface DraggableProps {
   scale?: number
   onMouseDown?: React.MouseEventHandler<HTMLDivElement>
   onTouchStart?: React.TouchEventHandler<HTMLDivElement>
+  onAnimationEnd?: React.AnimationEventHandler<HTMLDivElement>
 }
 
 export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
@@ -43,6 +44,7 @@ export const Draggable = forwardRef<HTMLDivElement, DraggableProps>(({
   useEffect(() => () => cleanupRef.current?.(), [])
   const acceptsDrag = useCallback((target: React.SyntheticEvent['target']) => {
     if (style?.position === 'static' || !(target instanceof Element)) return false
+    if (target.closest('[data-no-drag]')) return false
     const onHandle = handleRef?.current?.contains(target)
     if (!onHandle && target.closest('button, input, select, textarea, a, label, summary, [role="slider"], [data-slot="slider"], [role="button"], [role="combobox"], [contenteditable="true"], [data-no-drag]')) return false
     return dragFromBackground || onHandle || !handleRef?.current || !!target.closest('[data-drag-handle="true"]')

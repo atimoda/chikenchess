@@ -36,17 +36,18 @@ export interface CityData {
 }
 
 const harmonicStageIntros: Record<string, string[]> = {
-  'san-diego-1999': ['A chord crashes through the garage.', 'Three rough chords become a shout.', 'Skate wheels answer the snare.', 'A private ache turns communal.', 'Sing it louder.'],
-  'london-1970': ['One piano fills the room.', 'A plain refrain opens outward.', 'Every voice finds the same line.', 'The quiet verse becomes a window.', 'Let the chorus rise.'],
-  'berkeley-2004': ['A low note opens the night.', 'The guitars leave space for doubt.', 'A quiet thought gathers distortion.', 'The chorus turns unease into motion.', 'Walk into the noise.'],
-  'new-york-1961': ['A bass line circles the block.', 'Voices gather around one promise.', 'A street-corner echo finds harmony.', 'Longing becomes a shared refrain.', 'Answer the lead.'],
-  'san-francisco-1993': ['A wooden string remembers the road.', 'A story takes the shape of a song.', 'The crowd carries the last line.', 'Restless voices travel together.', 'Keep the story moving.'],
-  'paris-1945': ['A voice leans close to the room.', 'The melody leaves space for a reply.', 'Nightlife turns confession into song.', 'A blue chord opens another door.', 'Let the phrase wander.'],
-  'columbus-2013': ['A small room glows after midnight.', 'A soft hook travels farther than expected.', 'Handmade songs gather strangers.', 'The bright refrain outlives the noise.', 'Keep it close.'],
-  'new-york-1930': ['Brass sparks against the ballroom air.', 'The floor answers every riff.', 'A solo steps out, then returns.', 'The band turns precision into flight.', 'Join the turning dance.'],
-  'jacksonville-1974': ['A slide guitar draws the long road.', 'Blues and country trade their stories.', 'The chorus carries regional pride.', 'Freedom rides inside rough harmony.', 'Take the open road.'],
-  'chicago-1958': ['An amplified string cuts through the room.', 'A southern memory meets city lights.', 'The band answers every bent note.', 'Hard times turn into a walking groove.', 'Let the guitar talk.'],
+  'san-diego-1999': ['Chords crack the door.', 'Three rough shapes.', 'Skate wheels rattle.', 'A private shout.', 'Sing it loud.'],
+  'london-1970': ['One piano fills space.', 'A plain line opens.', 'Quiet verse breathes.', 'Voices find unity.', 'Let it rise.'],
+  'berkeley-2004': ['A low note opens.', 'Distortion gathers.', 'Unease turns to motion.', 'Doubt finds sound.', 'Enter the noise.'],
+  'new-york-1961': ['Bass circles the block.', 'Street corner harmonies.', 'One shared promise.', 'Longing turns to song.', 'Answer the lead.'],
+  'san-francisco-1993': ['Wood remembers road.', 'Stories take shape.', 'Crowds carry lines.', 'Wandering voices meet.', 'Keep the tale.'],
+  'paris-1945': ['A voice leans close.', 'Blue chords wander.', 'Confession turns sweet.', 'Night opens slowly.', 'Let it stray.'],
+  'columbus-2013': ['Small room glows.', 'Soft hook travels far.', 'Handmade melodies linger.', 'Strangers lean in.', 'Keep it close.'],
+  'new-york-1930': ['Brass sparks aloft.', 'Floors answer riffs.', 'Solos take flight.', 'Precision turns wild.', 'Join the dance.'],
+  'jacksonville-1974': ['Slide draws the highway.', 'Guitars trade dirt.', 'Rough harmony breathes.', 'Open road calls.', 'Take the road.'],
+  'chicago-1958': ['Bent wires cry.', 'City lights blaze.', 'Hard times walking.', 'Amps cut through.', 'Hear the string.'],
 }
+
 
 const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[] = [
   // 1. Düsseldorf (1970)
@@ -508,6 +509,8 @@ const rhythmCityPhotos: Record<string, string> = {
   'rio-1930': 'https://commons.wikimedia.org/wiki/Special:FilePath/Revolu%C3%A7%C3%A3o_de_1930%3B_populares_e_revolucion%C3%A1rios_na_avenida_Rio_Branco_%28002080RJ3602%29.jpg?width=1600',
   'rio-1960': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_ipanema.jpg?width=1600',
   'salvador-1992': 'https://commons.wikimedia.org/wiki/Special:FilePath/Largo_do_Pelourinho_Salvador_2018-0919.jpg?width=1600',
+  'recife-1975': 'https://commons.wikimedia.org/wiki/Special:FilePath/Maracatu_Na%C3%A7%C3%A3o_-_Recife,_Pernambuco,_Brazil.jpg?width=1600',
+  'rio-1995': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rocinha_rio_de_janeiro_panorama_2010.jpg?width=1600',
   'recife-1935': 'https://commons.wikimedia.org/wiki/Special:FilePath/Frevo_no_Carnaval_do_Recife.jpg?width=1600',
   'recife-1950': 'https://commons.wikimedia.org/wiki/Special:FilePath/Statue_of_Luiz_Gonzaga_in_Recife_-_Brazil.jpg?width=1600',
   'piracicaba-1940': 'https://www.miranteppp.com.br/wp-content/uploads/2024/04/Rio-Piracicaba-e-um-atrativo-turistico-cartao-postal-e-motivo-de-orgulho-para-a-cidade-scaled.jpg',
@@ -523,6 +526,18 @@ const rhythmCityPhotos: Record<string, string> = {
   'london-1977': 'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?q=85&w=1600&auto=format&fit=crop',
   'vienna-1825': 'https://www.beethoven.de/file/download/cGhzOGNrSm5IYzdHUi9zb3VyY2UvMDAwMDQ0NTJfMDAwMV9nYWwuanBnADAA?sig=3b49c61408997ef1b0bb9462a9cf65a9bf52ffb03d1b18d7e396b5f722e4f893cef0c4de890e08f2a93043c4523b52a2',
   'santiago-del-estero-1960': 'https://www.tripin.travel/wp-content/uploads/2016/07/a0583abdeb.jpg',
+  'luanda-1982': 'https://commons.wikimedia.org/wiki/Special:FilePath/Kizomba_dancers_by_Debarshi_Ray_07.jpg?width=1600',
+  'luanda-1965': 'https://commons.wikimedia.org/wiki/Special:FilePath/Traditional_Dancers_(19300973109).jpg?width=1600',
+  'lagos-1975': 'https://commons.wikimedia.org/wiki/Special:FilePath/The_New_Afrika_Shrine.jpg?width=1600',
+  'essaouira-1980': 'https://commons.wikimedia.org/wiki/Special:FilePath/Gnaoua_(Gnawa)_musicians_performing_during_the_2010_Gnaoua_festival_in_the_city_of_Essaouira%2C_Morocco.jpg?width=1600',
+  'maputo-1978': 'https://commons.wikimedia.org/wiki/Special:FilePath/Festival_da_Marrabenta_(5401171284).jpg?width=1600',
+  'dakar-1985': 'https://commons.wikimedia.org/wiki/Special:FilePath/Une_sabar_%C3%A0_la_plage_de_Toubab-dialaw_04.jpg?width=1600',
+  'luanda-1996': 'https://commons.wikimedia.org/wiki/Special:FilePath/Kuduro_Tarian.JPG?width=1600',
+  'harare-1981': 'https://commons.wikimedia.org/wiki/Special:FilePath/AFRO_BREEZE_MBIRA_AND_HOSHO_POSE.jpg?width=1600',
+  'kinshasa-1978': 'https://commons.wikimedia.org/wiki/Special:FilePath/La_danse_dans_les_bars_de_rumba_congolaise.jpg?width=1600',
+  'lagos-1982': 'https://commons.wikimedia.org/wiki/Special:FilePath/Three_Talking_Drummers%2C_One_Dancer.jpg?width=1600',
+  'gaza-1987': 'https://commons.wikimedia.org/wiki/Special:FilePath/Traditional-dance_8701496228_o.jpg?width=1600',
+  'kisumu-1980': 'https://commons.wikimedia.org/wiki/Special:FilePath/Kenyan_music_producer_Brian_Robin_in_studio_with_Nyatiti.jpg?width=1600',
 }
 const rhythmCities: Omit<CityData, 'coordinates' | 'campaigns' | 'pinCoordinates'>[] = RHYTHM_STAGES.map(stage => ({
   id: stage.id, name: stage.name, country: stage.country, year: stage.year, genre: stage.genre,
@@ -532,8 +547,9 @@ const rhythmCities: Omit<CityData, 'coordinates' | 'campaigns' | 'pinCoordinates
     ?? rawCities.find(city => city.name === stage.name && city.country === stage.country)?.image
     ?? `/cities/rhythm/${stage.id}.svg`,
   samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
-  introPhrases: ['A new pulse draws a circle.', 'Listen for the returning accent.', 'A melody leaves room for an answer.', 'Every piece joins the conversation.', 'Find your place in the rhythm.'],
+  introPhrases: ['A new pulse circles.', 'The accent returns.', 'An answer waits.', 'Every piece joins.', 'Find the pulse.'],
 }))
+
 
 const citySources = [...rawCities, ...rhythmCities].map(city => ({
   ...city,

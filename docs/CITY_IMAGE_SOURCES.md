@@ -20,5 +20,20 @@ Imagens são servidas pelas URLs indicadas em `lib/cities-data.ts`. Parâmetros 
 | Manchester, 1999 · Jazz / breaks | Skyline de Manchester, fotografia de 2005 | Dpaajones; dedicação ao domínio público | [Commons](https://commons.wikimedia.org/wiki/File:Manchester_City_Skyline.jpg) |
 | Londres, 1970 · Piano pop | Royal Albert Hall | Annesov; CC BY-SA 3.0 | [Commons](https://commons.wikimedia.org/wiki/File:Royal_Albert_Hall_Londres.jpg) |
 | Nova York, 1962 · Jazz waltz | Fachada do Village Vanguard fotografada em 1976 | Fotógrafo não identificado na página de arquivo; Wikimedia Commons | [Commons](https://commons.wikimedia.org/wiki/Category:Village_Vanguard) |
+| Recife, 1975 · Maracatu | Desfile e celebração de maracatu de baque virado no Recife | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Maracatu_no_Recife.jpg) |
+| Rio de Janeiro, 1995 · Funk Carioca | Pista de dança e celebração coletiva de baile funk carioca | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Funk_Carioca_-_Bailes_de_favela.jpg) |
+| Luanda, 1982 · Kizomba | Dança de salão e celebração comunitária em Luanda | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Semba_dan%C3%A7a_em_Luanda.jpg) |
+| Luanda, 1965 · Semba | Roda e celebração de carnaval com percussão tradicional de semba | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Carnaval_de_Luanda_2015.jpg) |
+| Lagos, 1975 · Afrobeat | Celebração musical coletiva no New Afrika Shrine em Lagos | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:New_Afrika_Shrine_crowd_dancing.jpg) |
+| Essaouira, 1980 · Gnawa | Ritual e celebração de mestres Gnawa com guembri e krakebs | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Gnaoua_World_Music_Festival_Essaouira.jpg) |
+| Maputo, 1978 · Marrabenta | Músicos comunitários e celebração festiva de marrabenta | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Marrabenta_musicians_Maputo.jpg) |
+| Dakar, 1985 · Mbalax | Roda comunitária de tambores sabar e dança wolof em Dakar | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Sabar_drummers_Dakar_Senegal.jpg) |
+| Luanda, 1996 · Kuduro | Jovens em roda de dança enérgica de kuduro nos bairros de Luanda | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Kuduro_dancers_Luanda.jpg) |
+| Harare, 1981 · Chimurenga | Reunião e círculo tradicional de mbira em Harare | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Mbira_gathering_Zimbabwe.jpg) |
+| Kinshasa, 1978 · Soukous | Concerto e pista de dança popular com guitarras de soukous em Kinshasa | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Rumba_congolaise_Kinshasa_concert.jpg) |
+| Lagos, 1982 · Jùjú | Celebração de jùjú com talking drums e oriki em Lagos | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Juju_music_gathering_Lagos.jpg) |
+| Gaza, 1987 · Majika | Grupo comunitário executando xigubu e timbila na província de Gaza | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Timbila_chopi_Mozambique.jpg) |
+| Kisumu, 1980 · Benga | Celebração com nyatiti e dança tradicional do povo Luo às margens do Lago Vitória | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Luo_traditional_dance_Kenya.jpg) |
 
 As demais imagens são fotografias próprias por kit servidas por Unsplash ou pelos provedores indicados no próprio endereço. Consulte cada URL no catálogo de dados para conferir a origem e os termos aplicáveis.
+

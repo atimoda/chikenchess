@@ -8,6 +8,7 @@ import { cities, type CityData } from "@/lib/cities-data"
 import { getPlayerProfile, type PlayerProfile } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
+import type { PopupExitMotion } from "./city-popup"
 import { CampaignCityList } from './campaign-city-list'
 import { VersionChangelog } from './version-changelog'
 import { OnlineHub } from './online/online-hub'
@@ -44,6 +45,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     zIndex: number
     isClosing?: boolean
     isFalling?: boolean
+    exitMotion?: PopupExitMotion
     timestamp: number
     centerOffsetY: number
     enterX: number
@@ -134,6 +136,9 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const audioContextRef = useRef<AudioContext | null>(null)
   const pinKickCompressorRef = useRef<DynamicsCompressorNode | null>(null)
   const popupHatCompressorRef = useRef<DynamicsCompressorNode | null>(null)
+  const heldPopupCloseHatRef = useRef<{ source: AudioBufferSourceNode; gain: GainNode } | null>(null)
+  const pinKickBuffersRef = useRef<AudioBuffer[]>([])
+  const popupOpenHatBuffersRef = useRef<AudioBuffer[]>([])
 
   useEffect(() => {
     const initAudio = async () => {
@@ -158,6 +163,26 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             hatCompressor.release.value = .09
             hatCompressor.connect(ctx.destination)
             popupHatCompressorRef.current = hatCompressor
+            void Promise.all([
+              '/samples/chicken-percussion-v1/kick-0.wav',
+              '/samples/chicken-percussion-v1/kick-1.wav',
+            ].map(async url => {
+              const response = await fetch(url)
+              if (!response.ok) throw new Error(`Failed to load ${url}`)
+              return ctx.decodeAudioData(await response.arrayBuffer())
+            })).then(buffers => {
+              if (audioContextRef.current === ctx) pinKickBuffersRef.current = buffers
+            }).catch(() => {})
+            void Promise.all([
+              '/samples/chicken-percussion-v1/open-hat-0.wav',
+              '/samples/chicken-percussion-v1/open-hat-1.wav',
+            ].map(async url => {
+              const response = await fetch(url)
+              if (!response.ok) throw new Error(`Failed to load ${url}`)
+              return ctx.decodeAudioData(await response.arrayBuffer())
+            })).then(buffers => {
+              if (audioContextRef.current === ctx) popupOpenHatBuffersRef.current = buffers
+            }).catch(() => {})
         } catch (e) {
             console.error("Audio init failed", e)
         }
@@ -165,7 +190,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     initAudio()
     
     return () => {
+        pinKickBuffersRef.current = []
+        popupOpenHatBuffersRef.current = []
         audioContextRef.current?.close()
+        audioContextRef.current = null
     }
   }, [])
 
@@ -361,7 +389,45 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
       const t = ctx.currentTime
       const pitchVar = 0.9 + Math.random() * 0.2
 
-      if (type === 'popup_down' || type === 'popup_up' || type === 'popup_drag') {
+      if (type === 'popup_close_hold_start') {
+          const previous = heldPopupCloseHatRef.current
+          if (previous) {
+              previous.gain.gain.cancelScheduledValues(t)
+              previous.gain.gain.setValueAtTime(previous.gain.gain.value, t)
+              previous.gain.gain.linearRampToValueAtTime(0, t + .01)
+              try { previous.source.stop(t + .015) } catch {}
+          }
+          const buffers = popupOpenHatBuffersRef.current
+          const source = ctx.createBufferSource()
+          if (buffers.length) {
+              source.buffer = buffers[Math.floor(Math.random() * buffers.length)]
+          } else {
+              const duration = .5
+              const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate)
+              const data = buffer.getChannelData(0)
+              for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+              source.buffer = buffer
+          }
+          source.playbackRate.value = 0.98 + Math.random() * 0.04
+          const gain = ctx.createGain()
+          gain.gain.setValueAtTime(0.95, t)
+          source.connect(gain)
+          gain.connect(popupHatCompressorRef.current ?? ctx.destination)
+          source.onended = () => {
+              if (heldPopupCloseHatRef.current?.source === source) heldPopupCloseHatRef.current = null
+          }
+          heldPopupCloseHatRef.current = { source, gain }
+          source.start(t)
+      } else if (type === 'popup_close_hold_end') {
+          const active = heldPopupCloseHatRef.current
+          if (active) {
+              active.gain.gain.cancelScheduledValues(t)
+              active.gain.gain.setValueAtTime(active.gain.gain.value, t)
+              active.gain.gain.linearRampToValueAtTime(0, t + .15)
+              try { active.source.stop(t + .155) } catch {}
+              heldPopupCloseHatRef.current = null
+          }
+      } else if (type === 'popup_down' || type === 'popup_up' || type === 'popup_drag') {
           const osc = ctx.createOscillator()
           const gain = ctx.createGain()
           const filter = ctx.createBiquadFilter()
@@ -381,6 +447,19 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           osc.start(t)
           osc.stop(t + duration)
       } else if (type === "pin_kick_hover") {
+          const velocity = 0.18 + Math.pow(Math.random(), 1.8) * 0.62
+          const buffers = pinKickBuffersRef.current
+          if (buffers.length > 0) {
+              const source = ctx.createBufferSource()
+              const gain = ctx.createGain()
+              source.buffer = buffers[Math.floor(Math.random() * buffers.length)]
+              source.playbackRate.setValueAtTime(0.96 + Math.random() * 0.08, t)
+              gain.gain.setValueAtTime(0.82 * velocity, t)
+              source.connect(gain)
+              gain.connect(pinKickCompressorRef.current ?? ctx.destination)
+              source.start(t)
+              return
+          }
           const body = ctx.createOscillator()
           const bodyGain = ctx.createGain()
           const transient = ctx.createOscillator()
@@ -400,7 +479,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           transientGain.gain.setValueAtTime(.001, t)
           transientGain.gain.linearRampToValueAtTime(.045, t + .003)
           transientGain.gain.exponentialRampToValueAtTime(.001, t + .03)
-          output.gain.value = .82 * .85
+          output.gain.value = .82 * .85 * velocity
           body.connect(bodyGain)
           transient.connect(transientGain)
           bodyGain.connect(output)
@@ -566,16 +645,16 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           noise.buffer = buffer
           const filter = ctx.createBiquadFilter()
           filter.type = "highpass"
-          filter.frequency.value = 6000 * pitchVar
+          filter.frequency.value = 8000 * pitchVar
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.2, t)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05)
+          gain.gain.setValueAtTime(0.14, t)
+          gain.gain.exponentialRampToValueAtTime(0.007, t + 0.05)
           noise.connect(filter)
           filter.connect(gain)
           gain.connect(ctx.destination)
           noise.start(t)
       } else if (type === "gm_reverse_cymbal") {
-          const dur = 1.0
+          const dur = 0.5
           const bufferSize = ctx.sampleRate * dur
           const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
           const data = buffer.getChannelData(0)
@@ -637,22 +716,34 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           noise.start(t)
           noise.stop(t + duration)
       } else if (type === "alesissr16_oh") {
-          const bufferSize = ctx.sampleRate * 0.5
-          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
-          const data = buffer.getChannelData(0)
-          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
-          const noise = ctx.createBufferSource()
-          noise.buffer = buffer
-          const filter = ctx.createBiquadFilter()
-          filter.type = "highpass"
-          filter.frequency.value = 7000 * pitchVar
-          const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.3, t)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3)
-          noise.connect(filter)
-          filter.connect(gain)
-          gain.connect(popupHatCompressorRef.current ?? ctx.destination)
-          noise.start(t)
+          const buffers = popupOpenHatBuffersRef.current
+          if (buffers.length) {
+              const source = ctx.createBufferSource()
+              source.buffer = buffers[Math.floor(Math.random() * buffers.length)]
+              source.playbackRate.value = 0.98 + Math.random() * 0.04
+              const gain = ctx.createGain()
+              gain.gain.setValueAtTime(0.95, t)
+              source.connect(gain)
+              gain.connect(popupHatCompressorRef.current ?? ctx.destination)
+              source.start(t)
+          } else {
+              const bufferSize = ctx.sampleRate * 0.5
+              const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+              const data = buffer.getChannelData(0)
+              for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+              const noise = ctx.createBufferSource()
+              noise.buffer = buffer
+              const filter = ctx.createBiquadFilter()
+              filter.type = "highpass"
+              filter.frequency.value = 7000 * pitchVar
+              const gain = ctx.createGain()
+              gain.gain.setValueAtTime(0.24, t)
+              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3)
+              noise.connect(filter)
+              filter.connect(gain)
+              gain.connect(popupHatCompressorRef.current ?? ctx.destination)
+              noise.start(t)
+          }
       } else {
           const isSd = type === "sd"
           const dur = isSd ? 0.1 : 0.5
@@ -775,15 +866,15 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     }))
   }
 
-  const closePopup = (id: string, hat: 'open' | 'closed' = 'open') => {
+  const closePopup = (id: string, hat: 'open' | 'closed' | 'held' = 'open', exitMotion?: PopupExitMotion) => {
     const active = openPopups[id]
     if (!active || active.isClosing) return
-    playMapSound(hat === 'closed' ? "alesissr16_ch" : "alesissr16_oh", true)
+    if (hat !== 'held') playMapSound(hat === 'closed' ? "alesissr16_ch" : "alesissr16_oh", true)
     setOpenPopups(prev => {
       if (!prev[id] || prev[id].isClosing || prev[id].timestamp !== active.timestamp) return prev
       return {
         ...prev,
-        [id]: { ...prev[id], isClosing: true }
+        [id]: { ...prev[id], isClosing: true, ...(exitMotion ? { exitMotion } : {}) }
       }
     })
 
@@ -845,12 +936,59 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           0% { opacity: 1; transform: translateY(0) rotate(0deg); }
           100% { opacity: 0; transform: translateY(50px) rotate(15deg); }
         }
+        @keyframes popupExitFromButton {
+          0% {
+            opacity: 1;
+            transform: rotate(var(--close-held-rotation, 0deg)) translate(0, 0);
+            transform-origin: var(--close-pivot-x, 6px) var(--close-pivot-y, 8px);
+          }
+          100% {
+            opacity: 0;
+            transform: rotate(var(--exit-rot, 0deg)) translate(var(--exit-x, 0px), var(--exit-y, 0px));
+            transform-origin: var(--exit-origin, 50% 50%);
+          }
+        }
+        .popup-close-held {
+          opacity: 1;
+          transform-origin: var(--close-pivot-x, 6px) var(--close-pivot-y, 8px);
+          will-change: transform;
+          animation: popupCloseHeldPendulum 1.15s cubic-bezier(.2, .7, .25, 1) both;
+        }
+        .popup-close-resting {
+          opacity: 1;
+          transform: rotate(var(--close-rest-rotation, 0deg));
+          transform-origin: var(--close-pivot-x, 6px) var(--close-pivot-y, 8px);
+          transition: transform 420ms ease-out;
+        }
+        @keyframes popupCloseHeldPendulum {
+          0% { transform: rotate(var(--close-held-rotation, 0deg)); }
+          14% { transform: rotate(var(--close-rest-rotation, 0deg)); }
+          30% { transform: rotate(var(--close-rest-minus-9, 0deg)); }
+          46% { transform: rotate(var(--close-rest-plus-5, 0deg)); }
+          60% { transform: rotate(var(--close-rest-minus-2_5, 0deg)); }
+          72% { transform: rotate(var(--close-rest-plus-1, 0deg)); }
+          82% { transform: rotate(var(--close-rest-minus-2_5, 0deg)); }
+          91% { transform: rotate(var(--close-rest-rotation, 0deg)); }
+          100% { transform: rotate(var(--close-rest-rotation, 0deg)); }
+        }
+        .popup-close-restored {
+          opacity: 1;
+          transform: none;
+          transition: transform 120ms ease-out;
+        }
         .animate-popup {
           opacity: 0;
           animation: popupEnter 0.5s ease-out forwards;
         }
+        .popup-entered {
+          opacity: 1;
+          transform: none;
+        }
         .animate-popup-exit {
           animation: popupExit 0.5s ease-in forwards;
+        }
+        .animate-popup-exit-from-button {
+          animation: popupExitFromButton 0.6s ease-out forwards;
         }
         @keyframes contentFade {
           from { opacity: 0; transform: translateY(10px); }
@@ -1046,7 +1184,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
         <div 
           className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
-          {onOnlineMatch && <OnlineHub showMapRooms playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
+          {onOnlineMatch && <OnlineHub showMapRooms playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
           <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Creative</Link>
           {isAdminUser(online.user) && <Link href="/admin" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Admin</Link>}
           <VersionChangelog mapButton onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />

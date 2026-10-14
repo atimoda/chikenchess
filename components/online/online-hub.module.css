@@ -63,6 +63,36 @@
   animation: room-enter 350ms ease-out both;
 }
 
+.mapPublicRoom {
+  font-family: "Bitcount Prop Single", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mapRoomHeading {
+  color: rgb(255 255 255 / 50%);
+  text-align: right;
+  font-family: "Bitcount Prop Single", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+  .mapPublicRoom,
+  .mapRoomHeading { font-size: 12px; }
+}
+
+@media (min-width: 768px) {
+  .mapPublicRoom,
+  .mapRoomHeading { font-size: 14px; }
+}
+
 @keyframes room-enter {
   from { opacity: 0; transform: translateX(calc(100% + 1rem)); }
   to { opacity: 1; transform: translateX(0); }

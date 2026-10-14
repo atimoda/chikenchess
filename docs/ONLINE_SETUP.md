@@ -4,9 +4,9 @@ O frontend continua sendo uma exportação estática do Next.js. Supabase fornec
 
 ## Partidas simultâneas e globo — 09/10/2026, v1.2.0
 
-`202610090002_running_games.sql` permite criar/entrar/sair de salas enquanto há partidas ativas, preservando participantes e estado de cada jogo. `online_running_games()` retorna somente os metadados das partidas não concluídas da conta atual; `online_running_game_updates` usa RLS por identidade e publicação Realtime para atualizar a lista, inclusive após começar ou concluir uma partida. Revanche usa a participação persistente e conserva uma vaga já ocupada em outro lobby. A migração ainda precisa ser aplicada ao projeto remoto, após `202610090001_match_egg_settlement.sql`.
+`202610090002_running_games.sql` permite criar/entrar/sair de salas enquanto há partidas ativas, preservando participantes e estado de cada jogo. `online_running_games()` retorna somente os metadados das partidas não concluídas da conta atual; `online_running_game_updates` usa RLS por identidade e publicação Realtime para atualizar a lista, inclusive após começar ou concluir uma partida. Revanche usa a participação persistente e conserva uma vaga já ocupada em outro lobby. A migração foi aplicada ao projeto remoto ChickenChess em 10/10/2026, após `202610090001_match_egg_settlement.sql`; `202610100001_match_usage_counters.sql` e `202610100002_expire_idle_rooms.sql` também foram aplicadas em sequência na mesma atualização.
 
-O frontend mostra Games in progress acima das salas públicas, com acesso explícito a cada jogo e indicação de turno. A raiz permanece no globo; iniciar um lobby observado ou abrir um link de partida continua navegando. Voltar ao mapa conserva o jogo, e as ações de desistência/empate ficam no popup do adversário. Requer publicação do frontend e aplicação da migração; não acrescenta Edge Functions.
+O frontend mostra Games in progress acima das salas públicas, com acesso explícito a cada jogo e indicação de turno. A raiz permanece no globo; iniciar um lobby observado ou abrir um link de partida continua navegando. Voltar ao mapa conserva o jogo, e as ações de desistência/empate ficam no popup do adversário. A publicação do frontend expõe a lista; as migrações já estão aplicadas no projeto remoto. Não acrescenta Edge Functions.
 
 Validação local: 52 casos online, 42 SQL/PGlite, dois de consistência da versão, TypeScript, lint dos módulos alterados e build estático aprovados. QA do build com Auth/Realtime simulados em origem local confirmou duas partidas acima das salas, acesso aos dois IDs, retorno e recarga no globo sem redirecionamento, início observado levando à nova partida, remoção por evento de resultado e lista presente sem salas públicas. Em 320×568 e 390×844 não há overflow horizontal; a faixa lateral rola quando falta altura. v1.2.0 foi confirmada na interface. Fixtures não usaram contas pessoais nem gravaram no Supabase remoto; PGlite não comprova concorrência entre conexões ou entrega Realtime hospedada.
 
@@ -88,7 +88,7 @@ A migração complementar `202610040003_baptism_names.sql` foi aplicada ao proje
 
 Validação local dos nomes de conta em 04/10: 22 casos SQL/PGlite, 21 casos online, TypeScript, lint dos arquivos alterados e consistência da versão aprovados. A interface com sessão simulada mostrou os dois nomes no mapa/perfil, edição e importação Google preservando o nome de batismo, e `v1.0.0` visível. Essa prévia não valida OAuth real nem aplicação remota da migração; não alterou perfis pessoais.
 
-O catálogo de kits autorizado está em `online_private.kit_catalog`, com os 46 IDs atuais. Acrescentar cidades exige migração complementar; o teste do banco compara esse catálogo com `lib/cities-data.ts`.
+O catálogo de kits autorizado está em `online_private.kit_catalog`, com os 60 IDs atuais. Acrescentar cidades exige migração complementar; o teste do banco compara esse catálogo com `lib/cities-data.ts`.
 
 ## 2. Auth, Google e códigos por email
 

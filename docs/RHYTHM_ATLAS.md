@@ -11,6 +11,8 @@
 | Piracicaba · 1940 | Sertanejo de raiz / cateretê | 2/4 · BPM = semínima | 100 | Brazilian |
 | Rio de Janeiro · 1960 | Bossa nova | 4/4 · BPM = semínima | 116 | Brazilian |
 | Salvador · 1992 | Samba-reggae | 4/4 · BPM = semínima | 104 | Brazilian |
+| Recife · 1975 | Maracatu de baque virado | 4/4 · BPM = semínima | 108 | Brazilian |
+| Rio de Janeiro · 1995 | Funk carioca | 4/4 · BPM = semínima | 128 | Brazilian |
 | New York City · 1962 | Jazz waltz | 3/4 · BPM = semínima | 138 | Harmonic songbook |
 | London · 1977 | Rock ballad in six | 6/8 · BPM = semínima pontuada | 72 | World ballads |
 | Memphis · 1967 | Soul ballad | 12/8 · BPM = semínima pontuada | 68 | World ballads |
@@ -23,6 +25,18 @@
 | Istanbul · 1970 | Turkish dance study | 5/8 · BPM = colcheia · 3+2 | 210 | World rhythms |
 | Kalamata · 1930 | Kalamatianos study | 7/8 · BPM = colcheia · 3+2+2 | 210 | World rhythms |
 | Santiago del Estero · 1960 | Chacarera study | 6/8 · BPM = semínima pontuada | 102 | World rhythms |
+| Luanda · 1982 | Kizomba | 4/4 · BPM = semínima | 94 | African Rhythms |
+| Luanda · 1965 | Semba | 4/4 · BPM = semínima | 108 | African Rhythms |
+| Lagos · 1975 | Afrobeat | 4/4 · BPM = semínima | 115 | African Rhythms |
+| Essaouira · 1980 | Gnawa trance study | 12/8 · BPM = semínima pontuada | 118 | African Rhythms |
+| Maputo · 1978 | Marrabenta | 4/4 · BPM = semínima | 124 | African Rhythms |
+| Dakar · 1985 | Mbalax | 4/4 · BPM = semínima | 112 | African Rhythms |
+| Luanda · 1996 | Kuduro | 4/4 · BPM = semínima | 138 | African Rhythms |
+| Harare · 1981 | Chimurenga | 12/8 · BPM = semínima pontuada | 118 | African Rhythms |
+| Kinshasa · 1978 | Soukous sebene | 4/4 · BPM = semínima | 126 | African Rhythms |
+| Lagos · 1982 | Jùjú study | 4/4 · BPM = semínima | 110 | African Rhythms |
+| Gaza · 1987 | Majika | 4/4 · BPM = semínima | 126 | African Rhythms |
+| Kisumu · 1980 | Benga study | 4/4 · BPM = semínima | 130 | African Rhythms |
 
 ## Decisões musicais
 
@@ -30,9 +44,16 @@ Baião foi escrito em 2/4. O 2/2 conta duas mínimas; não dobra automaticamente
 
 A nova campanha World rhythms evita classificar danças tradicionais e reggae como baladas ou música eletrônica. Brazilian contém os novos estudos brasileiros; a fase eletrônica anterior de São Paulo conserva sua campanha. As fases de jazz e rock progressivo usam planos harmônicos e entram em Harmonic songbook.
 
+A campanha African Rhythms reúne 12 estudos de ritmos populares africanos fundamentais, com fotografias de época e comunitárias em alta resolução: Kizomba (Luanda 1982, 94 BPM, 4/4), Semba (Luanda 1965, 108 BPM, 4/4), Afrobeat (Lagos 1975, 115 BPM, 4/4), Gnawa (Essaouira 1980, 118 BPM, 12/8), Marrabenta (Maputo 1978, 124 BPM, 4/4), Mbalax (Dakar 1985, 112 BPM, 4/4), Kuduro (Luanda 1996, 138 BPM, 4/4), Chimurenga (Harare 1981, 118 BPM, 12/8), Soukous (Kinshasa 1978, 126 BPM, 4/4), Jùjú (Lagos 1982, 110 BPM, 4/4), Majika (Gaza 1987, 126 BPM, 4/4) e Benga (Kisumu 1980, 130 BPM, 4/4). Todos contam com 16 papéis, 6 variações por instrumento, arranjo em 6 seções (A–F) e progressões harmônicas dedicadas.
+
 Salvador 1992 acrescenta 16 papéis por equipe: os cavalos tocam trompetes e as torres, trombones. Surdos fundo e meio alternam a base; a viradeira, repenique, caixa, tarol e timbau ocupam respostas e fechos distintos. Agogôs, chocalho e pandeiro guiam ou preenchem as subdivisões. A seção A estabelece os graves e a guia; B abre as respostas e os metais; C retira parte da massa; D traz viradas mais densas. A composição toma a energia coletiva de “Nossa Gente (Avisa Lá)” como direção, com notas e células novas.
 
+Recife 1975 representa o Maracatu de baque virado a 108 BPM em 4/4: as alfaias distribuem-se entre marcador (surdo fundo marcando o chão), meador (surdo meio nas síncopas) e viradeira (redobles e cortes ágeis). A clave metálica de gonguê conduz o tempo, acompanhada de tarol em semicolcheias constantes, caixa de guerra com acentos sincopados, agbê/xequerê e pandeiro. Os sopros trazem a solenidade do cortejo: sax tenor conduz as toadas do mestre, enquanto trompetes e trombone executam fanfarras e chamadas cerimoniais sobre um contrabaixo acústico em D Mixolídio.
+
+Rio de Janeiro 1995 recria a era clássica do Funk Carioca dos bailes de galpão e paredões de som a 128 BPM em 4/4: o batidão sincopado estilo Volt Mix / Miami Bass combina o kick seco de 808, sub-bass retumbante, caixas e claps cortantes, semicolcheias de chimbau fechado, aberturas no contratempo, cowbell de 808 e viradas de tom. Sobre a máquina rítmica, o baixo synth ácido desenha riffs dançantes, enquanto stabs de metais, piano elétrico, choir e um pad nostálgico de Funk Melody em F Menor Natural constroem a atmosfera comunitária dos bailes de favela.
+
 ## Referências e limites
+
 
 - [Open Music Theory — compassos compostos](https://viva.pressbooks.pub/openmusictheory/chapter/compound-meters-and-time-signatures/): divisão ternária e unidade pontuada.
 - [Open Music Theory — agrupamentos assimétricos](https://viva.pressbooks.pub/openmusictheory/chapter/twentieth-century-rhythmic-techniques/): padrões de agrupamento em cinco e sete.

@@ -1,9 +1,18 @@
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { getCityEras, type CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
 import { Draggable } from "@/components/ui/draggable"
+
+export interface PopupExitMotion {
+  fromRotation: number
+  translateX: number
+  translateY: number
+  rotation: number
+  originX: number
+  originY: number
+}
 
 export interface CityPopupProps {
   city: CityData
@@ -13,6 +22,7 @@ export interface CityPopupProps {
     zIndex: number
     isClosing?: boolean
     isFalling?: boolean
+    exitMotion?: PopupExitMotion
     enterX: number
     enterRot: number
     timestamp: number
@@ -21,8 +31,8 @@ export interface CityPopupProps {
   isUnlocked?: boolean
   isPressed: boolean
   bringToFront: (id: string) => void
-  closePopup: (id: string) => void
-  updatePopupPosition: (id: string, x: number, y: number) => void
+  closePopup: (id: string, type?: 'open' | 'closed' | 'held', motion?: PopupExitMotion) => void
+  updatePopupPosition: (id: string, x: number, y: number, preserveAnchor?: boolean) => void
   playMapSound: (type: string, forceResume?: boolean) => void
   startWhistleLoop: () => void
   stopWhistleLoop: () => void
@@ -36,6 +46,9 @@ export interface CityPopupProps {
   onDragMove?: () => void
   onDragStart?: (e?: React.MouseEvent | React.TouchEvent) => void
   onDragEnd?: () => void
+  onCloseButtonDragStart?: (clientX: number, clientY: number) => void
+  onCloseButtonDragMove?: (clientX: number, clientY: number, popupX: number, popupY: number) => void
+  onCloseButtonDragEnd?: () => void
   transformOrigin?: string
   onEraSelect?: (city: CityData) => void
   onCreateRoom?: (city: CityData) => void
@@ -63,15 +76,165 @@ export const CityPopup = ({
   onDragMove,
   onDragStart,
   onDragEnd,
+  onCloseButtonDragStart,
+  onCloseButtonDragMove,
+  onCloseButtonDragEnd,
   transformOrigin,
   onEraSelect,
   onCreateRoom,
 }: CityPopupProps) => {
   const dragHandleRef = useRef<HTMLButtonElement>(null)
+  const popupWrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const enterButtonRef = useRef<HTMLButtonElement>(null)
   const exitStyleRef = useRef<React.CSSProperties | null>(null)
   const lastDragAccent = useRef(0)
+  const closeGestureRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    startPopupX: number
+    startPopupY: number
+    moved: boolean
+    cleanup: () => void
+  } | null>(null)
+  const [closeHeld, setCloseHeld] = useState(false)
+  const [closeRotation, setCloseRotation] = useState(0)
+  const [closeRestRotation, setCloseRestRotation] = useState(0)
+  const [closePivot, setClosePivot] = useState({ x: 6, y: 8 })
+  const [closeDragResting, setCloseDragResting] = useState(false)
+  const [closeGestureCancelled, setCloseGestureCancelled] = useState(false)
+  const [hasEntered, setHasEntered] = useState(false)
+
+  useEffect(() => () => {
+    closeGestureRef.current?.cleanup()
+  }, [])
+
+  const closeButtonPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.pointerType !== 'touch' && e.button !== 0) return
+    if (popup.isClosing || closeGestureRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
+    bringToFront(city.id)
+    playMapSound('popup_close_hold_start', true)
+    const popupWidth = containerRef.current?.offsetWidth ?? 288
+    const popupHeight = containerRef.current?.offsetHeight ?? 400
+    const restRotation = Math.atan2(Math.max(1, popupWidth), Math.max(1, popupHeight)) * 180 / Math.PI
+    const buttonRect = e.currentTarget.getBoundingClientRect()
+    const pivot = {
+      x: e.currentTarget.offsetLeft + (e.clientX - buttonRect.left) * (e.currentTarget.offsetWidth / buttonRect.width),
+      y: e.currentTarget.offsetTop + (e.clientY - buttonRect.top) * (e.currentTarget.offsetHeight / buttonRect.height),
+    }
+    setCloseHeld(true)
+    setCloseRestRotation(restRotation)
+    setClosePivot(pivot)
+    setCloseDragResting(false)
+    setCloseRotation(readPopupRotation())
+    setCloseGestureCancelled(false)
+
+    const gesture = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startPopupX: popup.x,
+      startPopupY: popup.y,
+      moved: false,
+      cleanup: () => {},
+    }
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerId !== gesture.pointerId) return
+      const dx = (event.clientX - gesture.startX) / (scale || 1)
+      const dy = (event.clientY - gesture.startY) / (scale || 1)
+      if (!gesture.moved && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 4) {
+        gesture.moved = true
+        onCloseButtonDragStart?.(gesture.startX, gesture.startY)
+      }
+      if (gesture.moved) {
+        const popupX = gesture.startPopupX + dx
+        const popupY = gesture.startPopupY + dy
+        onCloseButtonDragMove?.(event.clientX, event.clientY, popupX, popupY)
+        updatePopupPosition(city.id, popupX, popupY, true)
+      }
+    }
+    const detach = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('blur', onBlur)
+    }
+    const onUp = (event: PointerEvent) => {
+      if (event.pointerId !== gesture.pointerId) return
+      if (!gesture.moved && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 4) {
+        gesture.moved = true
+        onCloseButtonDragStart?.(gesture.startX, gesture.startY)
+      }
+      detach()
+      closeGestureRef.current = null
+      const dx = (event.clientX - gesture.startX) / (scale || 1)
+      const dy = (event.clientY - gesture.startY) / (scale || 1)
+      const angle = readPopupRotation()
+      if (gesture.moved) {
+        const popupX = gesture.startPopupX + dx
+        const popupY = gesture.startPopupY + dy
+        onCloseButtonDragMove?.(event.clientX, event.clientY, popupX, popupY)
+        updatePopupPosition(city.id, popupX, popupY, true)
+      }
+      setCloseHeld(false)
+      setCloseRotation(angle)
+      playMapSound('popup_close_hold_end', true)
+
+      if (gesture.moved) {
+        setCloseDragResting(true)
+        setHasEntered(true)
+        onCloseButtonDragEnd?.()
+        return
+      }
+
+      const direction = Math.random() * Math.PI * 2
+      const distance = 100 + Math.random() * 120
+      const spinDirection = Math.random() < 0.5 ? -1 : 1
+      const exitMotion: PopupExitMotion = {
+        fromRotation: angle,
+        translateX: Math.cos(direction) * distance,
+        translateY: Math.sin(direction) * distance,
+        rotation: angle + spinDirection * (35 + Math.random() * 30),
+        originX: 10 + Math.random() * 80,
+        originY: 10 + Math.random() * 80,
+      }
+      closePopup(city.id, 'held', exitMotion)
+    }
+    const onCancel = (event?: PointerEvent) => {
+      if (event && event.pointerId !== gesture.pointerId) return
+      detach()
+      closeGestureRef.current = null
+      setCloseHeld(false)
+      setCloseGestureCancelled(true)
+      if (gesture.moved) onCloseButtonDragEnd?.()
+      playMapSound('popup_close_hold_end', true)
+    }
+    const onBlur = () => onCancel()
+    gesture.cleanup = detach
+    closeGestureRef.current = gesture
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    window.addEventListener('blur', onBlur)
+  }
+
+  const readPopupRotation = () => {
+    const transform = popupWrapperRef.current && window.getComputedStyle(popupWrapperRef.current).transform
+    if (!transform || transform === 'none') return 0
+    try {
+      const matrix = new DOMMatrixReadOnly(transform)
+      return Math.atan2(matrix.b, matrix.a) * 180 / Math.PI
+    } catch {
+      return 0
+    }
+  }
+
+  const closeButtonPointerLeave = () => {
+    playMapSound('kr55_hh_low', true)
+  }
 
   return (
     <Draggable
@@ -87,12 +250,14 @@ export const CityPopup = ({
       }}
       onDragStart={(e) => {
         bringToFront(city.id)
+        setCloseDragResting(false)
         startWhistleLoop()
         playMapSound('popup_down', true)
         setPressedPopupState({ id: city.id })
         if (onDragStart) onDragStart(e)
       }}
       onDragEnd={() => {
+        setCloseDragResting(false)
         stopWhistleLoop()
         playMapSound('popup_up', true)
         setPressedPopupState(null)
@@ -100,9 +265,10 @@ export const CityPopup = ({
         if (onDragEnd) onDragEnd()
       }}
       handleRef={dragHandleRef}
+      ref={popupWrapperRef}
       className={cn(
         "absolute w-72 pointer-events-auto flex flex-col select-none",
-        popup.isClosing ? "animate-popup-exit" : "animate-popup"
+        popup.isClosing ? popup.exitMotion ? "animate-popup-exit-from-button" : "animate-popup-exit" : closeHeld ? "popup-close-held" : closeDragResting ? "popup-close-resting" : closeGestureCancelled ? "popup-close-restored" : hasEntered ? "popup-entered" : "animate-popup"
       )}
       style={{
         zIndex: popup.zIndex,
@@ -110,13 +276,31 @@ export const CityPopup = ({
         contain: 'layout',
         touchAction: 'none',
         '--enter-x': `${popup.enterX || 0}px`,
-        '--enter-rot': `${popup.enterRot || 0}deg`
+        '--enter-rot': `${popup.enterRot || 0}deg`,
+        '--close-held-rotation': `${popup.exitMotion?.fromRotation ?? closeRotation}deg`,
+        '--close-rest-rotation': `${closeRestRotation}deg`,
+        '--close-rest-minus-9': `${closeRestRotation - 9}deg`,
+        '--close-rest-plus-5': `${closeRestRotation + 5}deg`,
+        '--close-rest-minus-2_5': `${closeRestRotation - 2.5}deg`,
+        '--close-rest-plus-1': `${closeRestRotation + 1}deg`,
+        '--close-pivot-x': `${closePivot.x}px`,
+        '--close-pivot-y': `${closePivot.y}px`,
+        '--exit-x': `${popup.exitMotion?.translateX ?? 0}px`,
+        '--exit-y': `${popup.exitMotion?.translateY ?? 0}px`,
+        '--exit-rot': `${popup.exitMotion?.rotation ?? 0}deg`,
+        '--exit-origin': `${popup.exitMotion?.originX ?? 50}% ${popup.exitMotion?.originY ?? 50}%`,
+        transformOrigin: closeHeld || popup.exitMotion ? `${closePivot.x}px ${closePivot.y}px` : undefined,
       } as React.CSSProperties}
-      onMouseDown={() => {
-        bringToFront(city.id)
+      onMouseDown={(e) => {
+        if (e.button === 0 && !(e.target instanceof Element && e.target.closest('[data-popup-close-hold]'))) bringToFront(city.id)
+      }}
+      onAnimationEnd={event => {
+        if (event.animationName === 'popupEnter') setHasEntered(true)
       }}
     >
       <button
+        data-no-drag="true"
+        data-popup-close-hold="true"
         className="absolute w-8 h-8 bg-background border rounded-full flex items-center justify-center text-muted-foreground transition-all z-50 shadow-md group hover:cursor-pointer hover:text-black"
         style={{ borderColor: city.color, top: -8, left: -10 }}
         onMouseEnter={(e) => {
@@ -126,17 +310,12 @@ export const CityPopup = ({
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = '';
         }}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          playMapSound("alesissr16_oh");
-          closePopup(city.id);
+        onPointerDown={closeButtonPointerDown}
+        onPointerLeave={closeButtonPointerLeave}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (e.detail === 0 && !popup.isClosing) closePopup(city.id)
         }}
-        onTouchStart={(e) => {
-          e.stopPropagation();
-          playMapSound("alesissr16_oh");
-          closePopup(city.id);
-        }}
-        onClick={(e) => e.stopPropagation()}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -212,11 +391,10 @@ export const CityPopup = ({
         </div>
 
         <div className="p-5">
-        <div className="flex items-center justify-between mb-3 animate-content-2">
+        <div className="flex items-center mb-3 animate-content-2">
           <h3 className="font-mono font-bold text-xl tracking-wide" style={{ color: city.color }}>
-            {city.name}
+            {city.name}, {city.year}
           </h3>
-          <span className="text-xs text-muted-foreground font-mono border border-border px-1.5 py-0.5 rounded">{city.year}</span>
         </div>
 
         <div className="mb-4 animate-content-3">
@@ -224,10 +402,10 @@ export const CityPopup = ({
           <p className="text-xs text-muted-foreground leading-relaxed">{city.description}</p>
         </div>
 
-        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-end gap-2 mb-3" data-no-drag>
-          {getCityEras(city).map(era => <button key={era.id} type="button" disabled={isEntering} aria-pressed={era.id === city.id}
+        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-end gap-2 mb-3">
+          {getCityEras(city).map(era => <button key={era.id} type="button" disabled={isEntering} aria-label={`${era.name}, ${era.year}: ${era.genre.split('·')[0].trim()}`} aria-pressed={era.id === city.id}
             onClick={() => onEraSelect?.(era)} className={cn('border rounded px-2 py-1 text-xs font-mono cursor-pointer', era.id === city.id ? 'text-white border-white/60' : 'text-white/50 border-white/20')}>
-            {era.year} {era.genre.split('·')[0].trim()}
+            {era.year}
           </button>)}
         </nav>}
 
@@ -303,7 +481,10 @@ export const CityPopup = ({
                   onEnter();
                 }}
               >
-                <span aria-hidden="true" className="relative z-10 size-3.5 shrink-0 rounded-full border-[3px]" style={{ backgroundColor: city.color, borderColor: 'rgb(255 255 255 / 45%)' }} />
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-3.5 shrink-0">
+                  <path d="M12 15v-12M12 3l7 3-7 3M2 21l4.2-4.4 2.4 2.4L12 15l3.4 4 2.4-2.4L22 21" />
+                  <path d="m6.2 16.6 3.3 3.8 2.5-2.1 2.5 2.1 2.9-3.4" />
+                </svg>
                 <div
                     className={cn(
                         "absolute inset-0 transition-opacity duration-300 pointer-events-none mix-blend-screen overflow-hidden rounded-sm",
