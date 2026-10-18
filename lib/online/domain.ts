@@ -283,7 +283,7 @@ export function applyMatchCommand(
   }
   const key = positionFor(game, powers);
   if (command.kind === "suggest") {
-    if (powers.length)
+    if (powers.some(p => (p.appliedBy ?? "w") === actor))
       reject("Best/Worst are unavailable while powers are active");
     if (command.position !== key) reject("The board changed; try again");
     if (state.suggestions?.position === key && state.suggestions.kind === command.group && state.suggestions.expiresAt > now)

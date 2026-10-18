@@ -40,8 +40,9 @@ export function rankedMoveReward(
   analysis: ChessMoveAnalysis | null,
   startingFen: string,
   uci: string,
+  side: EvaluationSide = 'w',
 ): 'best' | 'worst' | null {
-  if (!analysis?.complete || analysis.fen !== startingFen || analysis.side !== 'w') return null
+  if (!analysis?.complete || analysis.fen !== startingFen || analysis.side !== side) return null
   // There is no choice to reward when the only legal move is forced.
   if (analysis.legalMoves === 1) return null
   const bestMove = analysis.best.find(candidate => candidate.uci === uci)
@@ -74,11 +75,12 @@ export function rankedMoveRewardDetails(
   startingFen: string,
   uci: string,
   shown: readonly ShownMoveSuggestions[] = [],
+  side: EvaluationSide = 'w',
 ): { kind: 'best' | 'worst'; comeback: boolean } | null {
-  if (analysis?.complete && analysis.side === 'w' && analysis.fen === startingFen && analysis.legalMoves === 1) return null
+  if (analysis?.complete && analysis.side === side && analysis.fen === startingFen && analysis.legalMoves === 1) return null
   for (const entry of shown) {
     const snapshot = entry.analysis
-    if (!snapshot.complete || snapshot.fen !== startingFen || snapshot.side !== 'w' || snapshot.legalMoves === 1) continue
+    if (!snapshot.complete || snapshot.fen !== startingFen || snapshot.side !== side || snapshot.legalMoves === 1) continue
     // Only the group actually shown counts as remembered, not its unseen counterpart.
     const move = snapshot[entry.kind].find(candidate => candidate.uci === uci)
     if (!move) continue
@@ -87,7 +89,7 @@ export function rankedMoveRewardDetails(
       comeback: entry.kind === 'best' && move.score < -100,
     }
   }
-  const kind = rankedMoveReward(analysis, startingFen, uci)
+  const kind = rankedMoveReward(analysis, startingFen, uci, side)
   return kind ? { kind, comeback: analysis?.best.some(move => move.uci === uci && move.score < -100) ?? false } : null
 }
 

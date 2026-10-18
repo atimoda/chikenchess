@@ -9,7 +9,10 @@
     "Cluck yeah!",
     "Genius!",
     "Flawless!",
-    "Checkmate-worthy!"
+    "Checkmate-worthy!",
+    "Great play.",
+    "Meh.",
+    "not bad."
   ],
   "BEST_MOVES_WITH_WORST_SCORES_MESSAGES": [
     "You've got it!",
@@ -35,7 +38,12 @@
     "Fowl play!",
     "Oh cluck!",
     "Terrible!",
-    "Your \"lucky\" day"
+    "Your \"lucky\" day",
+    "C'est terrible!",
+    "What is bro doing",
+    "Do I exist?",
+    "This is critical.",
+    "\"Not bad\" at all"
   ],
   "BEST_STREAK_MESSAGES": [
     "Unstoppable!",
@@ -78,6 +86,7 @@
   ],
   "SINGLE_LEGAL_MOVE_MESSAGES": [
     "Ok",
-    "Yep"
+    "Yep",
+    "I know."
   ]
 }

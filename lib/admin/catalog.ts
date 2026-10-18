@@ -1,7 +1,7 @@
 import { cities } from '../cities-data'
 import { STYLE_PROFILES } from '../music/kit-profiles/catalog'
 
-export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'names' | 'music-profile' | 'music-preset'
+export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'names' | 'music-profile' | 'music-preset'
 export interface AdminEntry {
   id: string
   title: string
@@ -15,11 +15,13 @@ export interface AdminEntry {
 const ui = (id: string, title: string, description: string, kind: AdminEntryKind): AdminEntry => ({ id, title, description, kind, group: 'Textos e interface', path: `data/ui/${id}.json` })
 export const ADMIN_ENTRIES: AdminEntry[] = [
   ui('opening-phrases', 'Abertura do globo', 'Frase sorteada ao entrar no mapa.', 'strings'),
+  ui('match-tips', 'Tips de abertura', 'Dicas exibidas sequencialmente na abertura das primeiras partidas.', 'strings'),
   ui('city-intros', 'Introduções das fases', 'Frases de abertura por cidade e época.', 'string-groups'),
   ui('move-messages', 'Jogadas e sequências', 'Mensagens de Best, Worst, sequências e jogada única.', 'string-groups'),
   ui('city-descriptions', 'Descrições das fases', 'Textos culturais exibidos nos cartões do globo.', 'text-map'),
   ui('campaigns', 'Campanhas', 'Nomes das campanhas; os IDs são preservados.', 'campaigns'),
   ui('rank-titles', 'Títulos dos ranks', 'Nomes dos níveis; os limites de pontuação são preservados.', 'ranks'),
+  ui('bots', 'Perfis dos bots', 'Configurações de dificuldade, atraso e poderes dos bots Pure Chess e ChickenBot.', 'bots'),
   { ...ui('baptism-names', 'Nomes de batismo', 'Títulos, adjetivos, substantivos e epítetos. Depois de salvar, gere a migração para publicar o catálogo no Supabase.', 'names'), group: 'Contas' },
   ...Object.keys(STYLE_PROFILES).map(cityId => {
     const city = cities.find(item => item.id === cityId)!

@@ -35,11 +35,11 @@ export function usePowerTargetingGesture(options: Options) {
   const cursorRef = useRef<HTMLDivElement | null>(null)
   const cursorPoint = useRef<{ x: number; y: number; visible: boolean } | null>(null)
   const gesture = useRef<Gesture | null>(null)
-  const completedPress = useRef<{ kind: MatchPowerKind; previous: MatchPowerKind | null; suppress: boolean } | null>(null)
+  const completedPress = useRef<{ kind: MatchPowerKind } | null>(null)
   const preview = useRef<{ square: Square; layer: HTMLElement; kind: MatchPowerKind } | null>(null)
 
   const syncTargetCursor = () => {
-    if (armed.current) document.documentElement.dataset.powerTargetingCursor = gesture.current ? 'grabbing' : 'grab'
+    if (armed.current) document.documentElement.dataset.powerTargetingCursor = gesture.current?.origin === 'board' ? 'grabbing' : 'grab'
     else delete document.documentElement.dataset.powerTargetingCursor
   }
 
@@ -90,9 +90,19 @@ export function usePowerTargetingGesture(options: Options) {
     }
   }
 
+  const toggleButtonPower = (kind: MatchPowerKind, point: { x: number; y: number; visible: boolean } | null) => {
+    if (!latest.current.enabled) return
+    if (armed.current === kind) { arm(null); return }
+    if (!latest.current.canArm()) { arm(null); return }
+    latest.current.onBegin()
+    if (point) moveCursor(point.x, point.y, point.visible)
+    else cursorPoint.current = null
+    arm(kind)
+  }
+
   const cancel = () => {
     const current = gesture.current
-    if (current?.origin === 'button') completedPress.current = { ...current, suppress: true }
+    if (current?.origin === 'button') completedPress.current = { kind: current.kind }
     gesture.current = null
     arm(null)
   }
@@ -100,7 +110,7 @@ export function usePowerTargetingGesture(options: Options) {
   useEffect(() => {
     if (!options.enabled) cancel()
     if (!options.armedPower) {
-      gesture.current = null
+      if (gesture.current?.origin === 'board') gesture.current = null
       leaveSquare()
     } else if (cursorPoint.current) {
       const point = cursorPoint.current
@@ -124,10 +134,14 @@ export function usePowerTargetingGesture(options: Options) {
       updatePreview(event.clientX, event.clientY)
     }
     const move = (event: globalThis.PointerEvent) => {
-      if (!event.isPrimary || !armed.current) return
+      if (!event.isPrimary) return
       const current = gesture.current
-      if (current && current.pointerId !== event.pointerId) return
-      if (current && Math.hypot(event.clientX - current.x, event.clientY - current.y) > 5) current.dragged = true
+      if (current) {
+        if (current.pointerId !== event.pointerId) return
+        if (Math.hypot(event.clientX - current.x, event.clientY - current.y) > 5) current.dragged = true
+        if (current.origin === 'button') return
+      }
+      if (!armed.current) return
       const visible = event.pointerType !== 'touch' || !!current
       moveCursor(event.clientX, event.clientY, visible)
       if (visible) updatePreview(event.clientX, event.clientY)
@@ -143,13 +157,23 @@ export function usePowerTargetingGesture(options: Options) {
       current.dragged ||= Math.hypot(event.clientX - current.x, event.clientY - current.y) > 5
       gesture.current = null
       syncTargetCursor()
-      if (current.origin === 'button') completedPress.current = { ...current, suppress: current.dragged }
-      const cell = squareAt(event.clientX, event.clientY)
-      if (current.origin === 'board' || current.dragged) {
-        leaveSquare(false)
-        if (cell && latest.current.enabled && armed.current === current.kind) latest.current.onTarget(cell.dataset.square as Square, current.kind)
-        else arm(null)
+      if (current.origin === 'button') {
+        completedPress.current = { kind: current.kind }
+        if (current.dragged) {
+          if (armed.current) arm(null)
+        } else {
+          toggleButtonPower(current.kind, {
+            x: event.clientX,
+            y: event.clientY,
+            visible: event.pointerType !== 'touch',
+          })
+        }
+        return
       }
+      const cell = squareAt(event.clientX, event.clientY)
+      leaveSquare(false)
+      if (cell && latest.current.enabled && armed.current === current.kind) latest.current.onTarget(cell.dataset.square as Square, current.kind)
+      else arm(null)
       moveCursor(event.clientX, event.clientY, event.pointerType !== 'touch' && !!armed.current)
       if (event.pointerType === 'touch') leaveSquare()
     }
@@ -187,42 +211,24 @@ export function usePowerTargetingGesture(options: Options) {
   const onButtonPointerDown = (kind: MatchPowerKind, event: PointerEvent<HTMLButtonElement>) => {
     if (!event.isPrimary || event.button !== 0 || !latest.current.enabled) return
     completedPress.current = null
-    const previous = armed.current
-    if (previous !== kind && !latest.current.canArm()) {
-      completedPress.current = { kind, previous, suppress: true }
-      arm(null)
-      return
-    }
-    latest.current.onBegin()
     const bounds = event.currentTarget.getBoundingClientRect()
     gesture.current = {
       pointerId: event.pointerId,
       kind,
       origin: 'button',
-      previous,
+      previous: armed.current,
       x: event.clientX,
       y: event.clientY,
       dragged: false,
       buttonBounds: { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom },
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    moveCursor(event.clientX, event.clientY, true)
-    arm(kind)
   }
 
   const onButtonClick = (kind: MatchPowerKind, event: MouseEvent<HTMLButtonElement>) => {
     const completed = completedPress.current
     completedPress.current = null
-    if (completed?.kind === kind && event.detail > 0) {
-      if (!completed.suppress) arm(completed.previous === kind ? null : kind)
-      return
-    }
-    if (!latest.current.enabled) return
-    if (armed.current === kind) { arm(null); return }
-    if (!latest.current.canArm()) { arm(null); return }
-    latest.current.onBegin()
-    cursorPoint.current = null
-    arm(kind)
+    if (completed?.kind === kind && event.detail > 0) return
+    toggleButtonPower(kind, null)
   }
 
   const onLostPointerCapture = (event: PointerEvent<HTMLButtonElement>) => {

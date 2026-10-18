@@ -13,7 +13,7 @@ export const DialogDescription = Primitive.Description
 export function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return <div className={cn('flex flex-col gap-2 pr-6', className)} {...props} />
 }
-export function DialogContent({ children, className, closeLabel = 'Fechar parâmetros musicais', mobileViewportScroll = false, floating = false, onInteractOutside, ...props }: React.ComponentProps<typeof Primitive.Content> & { closeLabel?: string; mobileViewportScroll?: boolean; floating?: boolean }) {
+export function DialogContent({ children, className, closeLabel = 'Fechar parâmetros musicais', mobileViewportScroll = false, floating = false, closeOnInteractOutside = false, onInteractOutside, ...props }: React.ComponentProps<typeof Primitive.Content> & { closeLabel?: string; mobileViewportScroll?: boolean; floating?: boolean; closeOnInteractOutside?: boolean }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
   const drag = useRef<{ pointerId: number; startX: number; startY: number; offsetX: number; offsetY: number; left: number; right: number; top: number; bottom: number } | null>(null)
@@ -69,10 +69,13 @@ export function DialogContent({ children, className, closeLabel = 'Fechar parâm
       onTouchEnd={floating ? (event) => { props.onTouchEnd?.(event); event.stopPropagation() } : props.onTouchEnd}
       onTouchCancel={floating ? (event) => { props.onTouchCancel?.(event); event.stopPropagation() } : props.onTouchCancel}
       onInteractOutside={floating ? (event) => {
-      onInteractOutside?.(event)
-      // Keep a nonmodal panel open while the background receives pointer/focus events.
-      event.preventDefault()
-    } : onInteractOutside}>
+        onInteractOutside?.(event)
+        if (event.defaultPrevented) return
+        if (!closeOnInteractOutside) {
+          // Keep a nonmodal panel open while the background receives pointer/focus events.
+          event.preventDefault()
+        }
+      } : onInteractOutside}>
       {children}
       <Primitive.Close className="absolute right-3 top-3 rounded p-1 text-white/70 hover:text-white focus-visible:outline-2" aria-label={closeLabel}><X className="h-4 w-4" /></Primitive.Close>
     </Primitive.Content>

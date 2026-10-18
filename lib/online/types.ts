@@ -40,6 +40,7 @@ export interface RunningGame {
   color: OnlineColor;
   turn: OnlineColor;
   opponent: { id: string; display_name: string };
+  actions?: GameAction[];
 }
 export interface OnlineFriend {
   id: string;

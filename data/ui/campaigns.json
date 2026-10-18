@@ -1,15 +1,15 @@
 [
   {
     "id": "electronic-history",
-    "name": "Electronic Music"
+    "name": "Electronic World"
   },
   {
     "id": "world-ballads",
-    "name": "World ballads"
+    "name": "Ballads"
   },
   {
     "id": "classical",
-    "name": "Classical music"
+    "name": "Classical"
   },
   {
     "id": "harmonic-songbook",
@@ -21,10 +21,10 @@
   },
   {
     "id": "world-rhythms",
-    "name": "World rhythms"
+    "name": "World"
   },
   {
     "id": "african-rhythms",
-    "name": "African Rhythms"
+    "name": "Africa Cult"
   }
 ]

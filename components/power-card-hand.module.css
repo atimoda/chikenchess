@@ -5,10 +5,12 @@
 .card:last-child { margin-left: -7.5%; }
 .card[data-entry-animating="true"] { animation: card-enter 460ms cubic-bezier(.2,.8,.2,1) var(--entry-delay) both; }
 .card[data-mulligan-animating="true"] { animation: mulligan-spin var(--mulligan-ms, 360ms) ease-in-out both; }
-.card[data-match-power-action] { cursor: grab; touch-action: none; }
+.card[data-match-power-action] { cursor: grab; }
 .card[data-match-power-action]:active { cursor: grabbing; }
-.card:disabled { cursor: not-allowed; filter: saturate(.6); }
+.card:disabled { cursor: not-allowed; filter: grayscale(100%); border-color: #555; box-shadow: 2px 4px 9px #000a; }
 .card:disabled::after { content: ""; position: absolute; inset: 0; background: #0004; pointer-events: none; }
+.card:disabled .cost { border-color: #555; color: #aaa; }
+.card:disabled .egg { filter: grayscale(100%); box-shadow: none; }
 .card:focus-visible { outline: 2px solid white; outline-offset: 3px; }
 .card[aria-pressed="true"] { box-shadow: 0 0 14px var(--card-color); }
 .title { position: absolute; top: 5%; left: 6%; width: 58%; font-size: clamp(9px, 2.8cqw, 15px); font-weight: 750; line-height: 1; text-align: left; z-index: 1; letter-spacing: -.04em; }

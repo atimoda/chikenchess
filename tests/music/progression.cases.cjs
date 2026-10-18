@@ -6,11 +6,15 @@ const {
   STARTING_GOLDEN_EGGS,
   STARTING_MATCH_GOLDEN_EGGS,
   GOLDEN_EGGS_PER_CITY_WIN,
+  MATCH_TIPS,
   normalizePlayerProfile,
   applyCityVictory,
   applyGoldenEggSpend,
   applyRankedMoveReward,
   resetCampaign,
+  getNextMatchTip,
+  markMatchTipSeen,
+  resetSeenMatchTips,
 } = loadTs('lib/game-progression.ts')
 
 test('new and legacy profiles enter the egg economy without converting old point inflation', () => {
@@ -18,6 +22,7 @@ test('new and legacy profiles enter the egg economy without converting old point
   assert.equal(fresh.goldenEggs, STARTING_GOLDEN_EGGS)
   assert.equal(fresh.points, STARTING_GOLDEN_EGGS)
   assert.equal(fresh.gameplayTipSeen, false)
+  assert.equal(fresh.seenMatchTipsCount, 0)
 
   const migrated = normalizePlayerProfile({
     conqueredCityIds: ['detroit', 'chicago'],
@@ -173,5 +178,48 @@ test('basket shows exact small balances and one extra egg per hundred up to twen
   for (let eggs = 0; eggs <= 10; eggs++) assert.equal(basketVisualEggCount(eggs), eggs)
   for (const [balance, count] of [[11,10], [99,10], [100,11], [199,11], [200,12], [999,19], [1000,20], [10000,20]]) {
     assert.equal(basketVisualEggCount(balance), count)
+  }
+})
+
+test('match opening tips progress sequentially until exhausted and reset back to 0', () => {
+  const previousWindow = globalThis.window
+  const previousDocument = globalThis.document
+  const previousStorage = globalThis.localStorage
+  const values = new Map()
+  globalThis.window = { dispatchEvent: () => true }
+  globalThis.document = { cookie: '' }
+  globalThis.localStorage = {
+    getItem: key => values.get(key) || null,
+    setItem: (key, val) => values.set(key, String(val)),
+    removeItem: key => values.delete(key),
+  }
+  try {
+    resetSeenMatchTips()
+    assert.ok(MATCH_TIPS.length > 0)
+    for (let i = 0; i < MATCH_TIPS.length; i++) {
+      assert.equal(getNextMatchTip(), MATCH_TIPS[i])
+      assert.equal(markMatchTipSeen(), true)
+    }
+    // All tips exhausted
+    assert.equal(getNextMatchTip(), null)
+    assert.equal(markMatchTipSeen(), false)
+
+    // When admin adds a new tip after user already saw all existing tips, the new tip is shown next
+    MATCH_TIPS.push('Brand new tip from admin!')
+    try {
+      assert.equal(getNextMatchTip(), 'Brand new tip from admin!')
+      assert.equal(markMatchTipSeen(), true)
+      assert.equal(getNextMatchTip(), null)
+    } finally {
+      MATCH_TIPS.pop()
+    }
+
+    // Reset tips back to 0
+    resetSeenMatchTips()
+    assert.equal(getNextMatchTip(), MATCH_TIPS[0])
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument
+    if (previousStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage = previousStorage
   }
 })

@@ -15,6 +15,7 @@ Trocar de catálogo ou retornar ao globo com alterações abre Salvar/Descartar/
 ## Fontes
 
 - `data/ui/opening-phrases.json`: abertura comum do globo.
+- `data/ui/match-tips.json`: tips exibidas sequencialmente na abertura das primeiras partidas.
 - `data/ui/city-intros.json`: introduções por ID de fase. O online conserva sua entrada diretamente no título.
 - `data/ui/move-messages.json`: mensagens da campanha; o online conserva a apresentação atual sem acrescentar novos avisos.
 - `data/ui/city-descriptions.json`: descrições dos cartões.

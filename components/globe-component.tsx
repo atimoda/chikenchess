@@ -11,38 +11,8 @@ import { CityPopup, type PopupExitMotion } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
-import { clampPopupToGlobe, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
+import { constrainPopupPosition, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
-function clampPopupToViewport(
-  position: { x: number; y: number },
-  popup: { width: number; height: number },
-  viewport: { left: number; top: number; right: number; bottom: number },
-) {
-  const minX = viewport.left - popup.width * 0.8
-  const maxX = viewport.right - popup.width * 0.2
-  const minY = viewport.top - popup.height * 0.8
-  const maxY = viewport.bottom - popup.height * 0.2
-  return {
-    x: Math.max(minX, Math.min(maxX, position.x)),
-    y: Math.max(minY, Math.min(maxY, position.y)),
-  }
-}
-
-function constrainPopupPosition(
-  position: { x: number; y: number },
-  popup: { width: number; height: number },
-  globe: { x: number; y: number; radius: number },
-  viewport: { left: number; top: number; right: number; bottom: number },
-) {
-  const fitsViewport = position.x >= viewport.left + 12
-    && position.y >= viewport.top + 12
-    && position.x + popup.width <= viewport.right - 12
-    && position.y + popup.height <= viewport.bottom - 12
-  const withinGlobeBounds = fitsViewport
-    ? clampPopupToGlobe(position, popup, globe)
-    : position
-  return clampPopupToViewport(withinGlobeBounds, popup, viewport)
-}
 
 function GlobeGeography() {
   const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
@@ -281,6 +251,7 @@ const PopupContainer = ({
     const globeCircle = useRef({ x: 0, y: 0, radius: 0 })
     const lineStartOffset = useRef({ x: 0, y: 0 })
     const slowOffset = useRef({ x: 0, y: 0 })
+    const lastCanvasSize = useRef<{ width: number; height: number } | null>(null)
     const hasDragged = useRef(false)
     useEffect(() => { hasDragged.current = false }, [popup.timestamp])
     const topCurveJitter = useRef((Math.random() - 0.5) * 20)
@@ -300,6 +271,12 @@ const PopupContainer = ({
       if (lineRef.current.style.opacity !== opacity) {
         lineRef.current.style.opacity = opacity
         lineRef.current.dataset.pinHidden = String(behind)
+      }
+
+      const sizeChanged = !lastCanvasSize.current || lastCanvasSize.current.width !== size.width || lastCanvasSize.current.height !== size.height
+      if (sizeChanged) {
+        lastCanvasSize.current = { width: size.width, height: size.height }
+        previousProjectedPin.current = null
       }
 
       projectedPin.copy(worldPin).project(camera)
@@ -362,8 +339,22 @@ const PopupContainer = ({
             const maxX = Math.max(minX, viewportRight - rect.width - 12)
             visible.x = Math.max(minX, Math.min(maxX, visible.x))
           }
-          slowOffset.current.x += visible.x - current.x
-          slowOffset.current.y += visible.y - current.y
+          if (sizeChanged) {
+            const deltaX = visible.x - current.x
+            const deltaY = visible.y - current.y
+            if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+              const next = {
+                x: localPosRef.current.x + deltaX,
+                y: localPosRef.current.y + deltaY,
+              }
+              localPosRef.current = next
+              setLocalPos(next)
+              updatePopupPosition(city.id, next.x, next.y)
+            }
+          } else {
+            slowOffset.current.x += visible.x - current.x
+            slowOffset.current.y += visible.y - current.y
+          }
         }
       }
       if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
@@ -378,6 +369,51 @@ const PopupContainer = ({
       }
       previousProjectedPin.current = screen
     })
+
+    useEffect(() => {
+      const handleWindowResize = () => {
+        previousProjectedPin.current = null
+        if (!popup.isClosing && !draggingRef.current && wrapperRef.current) {
+          const panel = wrapperRef.current.querySelector<HTMLElement>('[data-popup-surface]')
+          if (panel && globeCircle.current.radius > 0) {
+            const rect = panel.getBoundingClientRect()
+            const anchor = wrapperRef.current.getBoundingClientRect()
+            const viewport = window.visualViewport
+            const viewportLeft = viewport?.offsetLeft ?? 0
+            const viewportTop = viewport?.offsetTop ?? 0
+            const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth)
+            const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight)
+            const current = {
+              x: anchor.left + localPosRef.current.x,
+              y: anchor.top + localPosRef.current.y,
+            }
+            const visible = constrainPopupPosition(current, { width: rect.width, height: rect.height }, globeCircle.current, {
+              left: viewportLeft,
+              top: viewportTop,
+              right: viewportRight,
+              bottom: viewportBottom,
+            })
+            const deltaX = visible.x - current.x
+            const deltaY = visible.y - current.y
+            if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+              const next = {
+                x: localPosRef.current.x + deltaX,
+                y: localPosRef.current.y + deltaY,
+              }
+              localPosRef.current = next
+              setLocalPos(next)
+              updatePopupPosition(city.id, next.x, next.y)
+            }
+          }
+        }
+      }
+      window.addEventListener('resize', handleWindowResize)
+      window.visualViewport?.addEventListener('resize', handleWindowResize)
+      return () => {
+        window.removeEventListener('resize', handleWindowResize)
+        window.visualViewport?.removeEventListener('resize', handleWindowResize)
+      }
+    }, [city.id, popup.isClosing, updatePopupPosition])
 
     // Sync local state when global state changes (e.g. from other interactions or init)
     useEffect(() => {
@@ -659,6 +695,18 @@ const GlobeContent = ({
       canvas.removeEventListener('touchcancel', end)
     }
   }, [gl, camera, enteringCityId])
+
+  useEffect(() => {
+    const handleResize = () => {
+      controlsRef.current?.handleResize?.()
+    }
+    window.addEventListener('resize', handleResize)
+    window.visualViewport?.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.visualViewport?.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   useEffect(() => {
     const onListCityHover = (event: Event) => {

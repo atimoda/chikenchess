@@ -4,10 +4,12 @@
 
 import { cities } from "./cities-data"
 import rankTitles from "../data/ui/rank-titles.json"
+import matchTips from "../data/ui/match-tips.json"
 
 const COOKIE_NAME = "chikenchess_player"
 const LEGACY_STORAGE_KEY = "chikenchess_campaign"
 
+export const MATCH_TIPS: string[] = matchTips
 export const PLAYER_PROFILE_VERSION = 1
 export const STARTING_GOLDEN_EGGS = 10
 export const STARTING_MATCH_GOLDEN_EGGS = 1
@@ -32,6 +34,7 @@ export interface PlayerProfile {
     updatedAt: number
     moveRewardNotices: Record<RankedMoveReward, boolean>
     gameplayTipSeen: boolean
+    seenMatchTipsCount: number
 }
 
 export const RANK_TIERS = rankTitles
@@ -61,6 +64,7 @@ function createInitialProfile(now = Date.now()): PlayerProfile {
         updatedAt: now,
         moveRewardNotices: { best: false, worst: false },
         gameplayTipSeen: false,
+        seenMatchTipsCount: 0,
     }
 }
 
@@ -93,6 +97,7 @@ export function normalizePlayerProfile(raw: unknown, now = Date.now()): PlayerPr
             updatedAt: now,
             moveRewardNotices: { best: false, worst: false },
             gameplayTipSeen: false,
+            seenMatchTipsCount: 0,
         }
     }
 
@@ -112,6 +117,7 @@ export function normalizePlayerProfile(raw: unknown, now = Date.now()): PlayerPr
             worst: candidate.moveRewardNotices?.worst === true,
         },
         gameplayTipSeen: candidate.gameplayTipSeen === true,
+        seenMatchTipsCount: integer(candidate.seenMatchTipsCount, 0),
     }
 }
 
@@ -290,6 +296,26 @@ export function markGameplayTipSeen(): boolean {
     if (profile.gameplayTipSeen) return false
     savePlayerProfile({ ...profile, gameplayTipSeen: true, updatedAt: Date.now() })
     return true
+}
+
+export function getNextMatchTip(): string | null {
+    const profile = getPlayerProfile()
+    const count = profile.seenMatchTipsCount ?? 0
+    if (count < 0 || count >= MATCH_TIPS.length) return null
+    return MATCH_TIPS[count] ?? null
+}
+
+export function markMatchTipSeen(): boolean {
+    const profile = getPlayerProfile()
+    const count = profile.seenMatchTipsCount ?? 0
+    if (count >= MATCH_TIPS.length) return false
+    savePlayerProfile({ ...profile, seenMatchTipsCount: count + 1, updatedAt: Date.now() })
+    return true
+}
+
+export function resetSeenMatchTips(): void {
+    const profile = getPlayerProfile()
+    savePlayerProfile({ ...profile, seenMatchTipsCount: 0, updatedAt: Date.now() })
 }
 
 export function applyGoldenEggSpend(source: PlayerProfile, amount: number, now = Date.now()): PlayerProfile | null {

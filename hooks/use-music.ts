@@ -164,9 +164,17 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     setPreview(null)
     runtime.current?.releaseAudition()
   }, [])
-  const select = useCallback((square: Square) => {
+  const select = useCallback((square: Square | null) => {
+    if (!square) {
+      setSelectedId(null)
+      return
+    }
     const piece = pieces.find(p => p.square === square)
-    if (piece) setSelectedId(piece.id)
+    if (piece) {
+      setSelectedId(piece.id)
+    } else {
+      setSelectedId(null)
+    }
   }, [pieces])
   const togglePiece = useCallback((square: Square) => {
     const piece = pieces.find(p => p.square === square)
