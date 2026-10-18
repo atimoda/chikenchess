@@ -57,7 +57,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [showTitle, setShowTitle] = useState(false)
   const [logoPhase, setLogoPhase] = useState<'intro' | 'fading' | 'header'>('intro')
   const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
-  const [openingPhrase, setOpeningPhrase] = useState(OPENING_PHRASES[0])
+  const [openingPhrase, setOpeningPhrase] = useState<string | null>(null)
   useEffect(() => {
     setOpeningPhrase(OPENING_PHRASES[Math.floor(Math.random() * OPENING_PHRASES.length)])
   }, [])
@@ -1073,14 +1073,14 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             <div
               className="text-center text-sm md:text-base font-mono text-white w-full"
               style={{
-                opacity: introHeadlineVisible ? 1 : 0,
+                opacity: (introHeadlineVisible && openingPhrase) ? 1 : 0,
                 textShadow:
                   "2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
                 whiteSpace: isMobile ? "normal" : "nowrap",
                 transition: 'opacity 0.5s ease-out'
               }}
             >
-              {openingPhrase}
+              {openingPhrase ?? '\u00A0'}
             </div>
         </div>
 

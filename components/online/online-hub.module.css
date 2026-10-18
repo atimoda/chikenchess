@@ -63,6 +63,20 @@
   animation: room-enter 350ms ease-out both;
 }
 
+.mapRunningGame {
+  padding: 3px 3px 3px 0.75rem;
+}
+
+.mapRoomWaiting {
+  border-color: rgb(255 255 255 / 25%);
+}
+
+.mapRoomWaiting:hover,
+.mapRoomWaiting:focus-visible {
+  border-color: rgb(255 255 255 / 50%);
+  box-shadow: 0 0 10px rgb(255 255 255 / 15%);
+}
+
 .mapPublicRoom {
   font-family: "Bitcount Prop Single", sans-serif;
   font-size: 11px;

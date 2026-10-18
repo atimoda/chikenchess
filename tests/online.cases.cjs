@@ -200,6 +200,11 @@ test('Freeze/Shield are guarded by own turn, paid symmetrically, replayed and in
   s = command(s, 'b', { kind: 'power', power: 'freeze', square: 'd4' })
   assert.equal(s.eggs.b, 1)
   assert.equal(replayMatch(s).powers.at(-1).appliedBy, 'b')
+  s = move(s, 'b', 'd7', 'd5')
+  assert.equal(replayMatch(s).powers.length, 1)
+  assert.equal(replayMatch(s).powers[0].appliedBy, 'b')
+  s.eggs.w = 5
+  assert.doesNotThrow(() => command(s, 'w', { kind: 'suggest', group: 'best', position: matchPosition(s), moves: [{ uci: 'c1g5', score: 0 }] }))
 })
 test('Match feature counters separate both powers and keep cumulative usage across Undo/Redo', () => {
   let s = createMatchState()

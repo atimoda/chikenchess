@@ -20,6 +20,7 @@ export function PowerCardHand({ visible, actions, undoAnimationKey }: { visible:
   const [mulliganAnimating, setMulliganAnimating] = useState(false)
   const [entryAnimating, setEntryAnimating] = useState(false)
   const previousUndoKey = React.useRef(undoAnimationKey ?? 0)
+  const pointerStartRef = React.useRef<{ pointerId: number; x: number; y: number; dragged: boolean } | null>(null)
   useEffect(() => setAngles([-10, -5, 0, 5, 10].map(angle => angle + Math.random() * 2 - 1)), [])
   useEffect(() => {
     if (!visible) {
@@ -51,7 +52,36 @@ export function PowerCardHand({ visible, actions, undoAnimationKey }: { visible:
           aria-label={`${card.name} · ${card.cost} golden egg${card.cost === 1 ? "" : "s"}`}
           data-power-card={card.kind} data-match-power-action={card.kind === "freeze" || card.kind === "shield" ? card.kind : undefined}
           data-ranked-move-action={card.kind === "best" || card.kind === "worst" ? card.kind : undefined}
+          onPointerDown={event => {
+            if (event.isPrimary && event.button === 0) {
+              pointerStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dragged: false }
+            }
+            action.onPointerDown?.(event)
+          }}
+          onPointerMove={event => {
+            const start = pointerStartRef.current
+            if (start && start.pointerId === event.pointerId && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5) {
+              start.dragged = true
+            }
+            action.onPointerMove?.(event)
+          }}
+          onPointerCancel={event => {
+            if (pointerStartRef.current?.pointerId === event.pointerId) pointerStartRef.current = null
+            action.onPointerCancel?.(event)
+          }}
+          onClick={event => {
+            const start = pointerStartRef.current
+            pointerStartRef.current = null
+            if (start?.dragged && event.detail > 0) {
+              event.preventDefault()
+              return
+            }
+            action.onClick?.(event)
+          }}
           onPointerEnter={event => { setActive(index); action.onPointerEnter?.(event) }}
+          onPointerLeave={event => { action.onPointerLeave?.(event) }}
+          onMouseEnter={event => { action.onMouseEnter?.(event) }}
+          onMouseLeave={event => { action.onMouseLeave?.(event) }}
           onFocus={event => { setActive(index); action.onFocus?.(event) }}
           onBlur={event => { setActive(null); action.onBlur?.(event) }}
           style={{ "--card-color": card.color, "--angle": `${angles[index]}deg`, "--arc-y": `${[14, 4, 0, 4, 14][index]}px`, "--spread": active === null ? "0%" : index < active ? "-22%" : index > active ? "22%" : "0%", "--lift": focused ? "-12px" : "0px", "--entry-delay": `${index * 55}ms`, "--mulligan-ms": `${MULLIGAN_ANIMATION_MS}ms`, zIndex: mulliganAnimating && card.kind === "undo" ? 20 : focused ? 10 : index + 1 } as React.CSSProperties}

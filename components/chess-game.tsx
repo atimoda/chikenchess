@@ -2,8 +2,9 @@
 
 import { GamePreferences } from "./game-preferences"
 import { PowerCardHand } from "./power-card-hand"
-import { animateInsufficientEggs } from "@/lib/power-presentation"
+import { animateInsufficientEggs, getOfflineMulliganPreviewMoves } from "@/lib/power-presentation"
 import { usePowerDisplay } from "@/hooks/use-power-display"
+import { useChancePosition } from "@/hooks/use-chance-position"
 
 import moveMessages from "@/data/ui/move-messages.json"
 
@@ -37,7 +38,7 @@ import type { SquareEffectMap } from "@/lib/types"
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
 import { Code2, Music2, Undo2, Redo2, Pause, Power, Play, Check, Maximize, Minimize, Plus, Minus, Search, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
-import { conquerCity, settleCityDraw, markGameplayTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
+import { conquerCity, settleCityDraw, getNextMatchTip, markMatchTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
 import { GlobalControlPanel } from "./global-control-panel"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
@@ -52,7 +53,11 @@ import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
 import { useBoardResize } from "@/hooks/use-board-resize"
 import { BoardResizeHandles } from "./board-resize-handles"
-import { GameActionCostHint, GameActionRow, GameCityBackground, GameCityTitleIntro, GameFooter, GameWidgetConnections, GameWidgetEntranceStyles } from "./game-presentation"
+import { GameActionCostHint, GameActionRow, GameBoardChanceBar, GameCityBackground, GameCityTitleIntro, GameFooter, GameWidgetConnections, GameWidgetEntranceStyles, GlobeGridIcon } from "./game-presentation"
+import { BotControlWidget } from "./bot-control-widget"
+import { ChessBot, DEFAULT_BOT_ID, DEFAULT_BOT_PROFILES, getBotConfigParams, type BotConfigParams, type BotProfile } from "@/lib/chess-bots"
+import { getOnlineClient } from "@/lib/online/client"
+import { isAdminUser } from "@/lib/admin/access"
 
 import {
   DropdownMenu,
@@ -75,6 +80,7 @@ interface EggFlight {
   id: number
   amount: number
   direction: 'earn' | 'spend'
+  owner?: 'w' | 'b'
   sourceSquare?: Square
   from?: { left: number; top: number; width: number; height: number }
   to?: { left: number; top: number; width: number; height: number }
@@ -158,6 +164,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [game, setGame] = useState(() => makePoweredChess(new Chess()))
   const [currentPattern, setCurrentPattern] = useState("")
   const [powerDisplay, setPowerDisplay] = usePowerDisplay()
+  const [chancePosition, setChancePosition] = useChancePosition()
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false)
   const [tabVisible, setTabVisible] = useState(true)
@@ -169,9 +176,19 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const redoTimelineRef = useRef<Array<{ game: Chess; powers: MatchPower[] }>>([])
   const [undoAnimationKey, setUndoAnimationKey] = useState(0)
   const [gameStatus, setGameStatus] = useState<string>("Your move")
+  const [botProfiles, setBotProfiles] = useState<BotProfile[]>(() => DEFAULT_BOT_PROFILES)
+  const [selectedBotId, setSelectedBotId] = useState<string>(DEFAULT_BOT_ID)
+  const selectedBotProfile = useMemo(
+    () => botProfiles.find(profile => profile.id === selectedBotId) ?? botProfiles[0] ?? DEFAULT_BOT_PROFILES[0],
+    [botProfiles, selectedBotId],
+  )
+  const [botParams, setBotParams] = useState<BotConfigParams>(() => getBotConfigParams(DEFAULT_BOT_PROFILES[0]))
+  const activeBot = useMemo(() => new ChessBot(selectedBotProfile, botParams), [selectedBotProfile, botParams])
+  const activeBotRef = useRef<ChessBot>(activeBot)
+  activeBotRef.current = activeBot
   const [aiDepth, setAiDepth] = useState(5)
-  const [openDropdown, setOpenDropdown] = useState<BoardDropdownId>(null)
   const aiDifficultyLabel = aiDepth === 5 ? "Easy" : aiDepth === 10 ? "Medium" : aiDepth === 15 ? "Hard" : "Expert"
+  const [openDropdown, setOpenDropdown] = useState<BoardDropdownId>(null)
   const [capturedPieces, setCapturedPieces] = useState<{ white: string[]; black: string[] }>({
     white: [],
     black: [],
@@ -179,10 +196,15 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const capturedPiecesViewportRef = useRef<HTMLDivElement | null>(null)
   const capturedPiecesContentRef = useRef<HTMLDivElement | null>(null)
   const [capturedPiecesScale, setCapturedPiecesScale] = useState(1)
+  const opponentCapturedViewportRef = useRef<HTMLDivElement | null>(null)
+  const opponentCapturedContentRef = useRef<HTMLDivElement | null>(null)
+  const [opponentCapturedScale, setOpponentCapturedScale] = useState(1)
   
-  // Every city starts on Easy; the menu can override it for this match.
+  // Every city starts on Easy Pure Chess; the menu can override it for this match.
   useEffect(() => {
-    setAiDepth(5)
+    const initialBot = botProfiles.find(profile => profile.id === DEFAULT_BOT_ID) ?? botProfiles[0] ?? DEFAULT_BOT_PROFILES[0]
+    setSelectedBotId(initialBot.id)
+    setBotParams(getBotConfigParams(initialBot))
   }, [city.id])
 
   useEffect(() => {
@@ -197,7 +219,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
   const [globalEffects, setGlobalEffects] = useState<GlobalEffects>({ ...DEFAULT_GLOBAL_EFFECTS, bpm: city.bpm })
   const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
+  const lastEvalScoreRef = useRef<number | null>(null)
+  lastEvalScoreRef.current = lastEvalScore
   const [lastEvalMate, setLastEvalMate] = useState<number | null>(null)
+  const lastEvalMateRef = useRef<number | null>(null)
+  lastEvalMateRef.current = lastEvalMate
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
   const [stockfishDebugOn, setStockfishDebugOn] = useState(false)
   const [stockfishDebugPosition, setStockfishDebugPosition] = useState<{ x: number; y: number } | null>(null)
@@ -216,6 +242,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [moveAnalysis, setMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
   const [liveMoveAnalysis, setLiveMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
   const currentCompleteAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
+  const botPrePowerAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
   const analysisArrowKindRef = useRef<'best' | 'worst' | null>(null)
   const pendingShownSuggestionsRef = useRef<ShownMoveSuggestions | null>(null)
   const shownSuggestionsRef = useRef<ShownMoveSuggestions[]>([])
@@ -223,6 +250,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const [visibleEggs, setVisibleEggs] = useState(STARTING_MATCH_GOLDEN_EGGS)
   const playerEggBalanceRef = useRef(STARTING_MATCH_GOLDEN_EGGS)
+  const opponentEggBalanceRef = useRef(STARTING_MATCH_GOLDEN_EGGS)
+  const botTurnCountRef = useRef(0)
   const debugEggClicksRef = useRef(0)
   const collectedMatchEggsRef = useRef(0)
   const victoryToastRef = useRef<string | number | null>(null)
@@ -235,23 +264,32 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
   const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
+  const [gameplayTip, setGameplayTip] = useState<string | null>(null)
   const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
+  const tipEvaluatedRef = useRef(false)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
   const [shieldCaptureNoticeOpen, setShieldCaptureNoticeOpen] = useState(false)
-  const [frozenCaptureNoticeOpen, setFrozenCaptureNoticeOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
   const costHintHideTimerRef = useRef<number | null>(null)
+  const [mulliganPreviewActive, setMulliganPreviewActive] = useState(false)
+  const mulliganPreviewMoves = useMemo(() => {
+    if (!mulliganPreviewActive) return null
+    return getOfflineMulliganPreviewMoves(game)
+  }, [mulliganPreviewActive, game])
   const opponentEggCounterRef = useRef<HTMLDivElement | null>(null)
   const [visibleOpponentEggs, setVisibleOpponentEggs] = useState(STARTING_MATCH_GOLDEN_EGGS)
   const eggCounterRef = useRef<HTMLDivElement | null>(null)
   const [armedPower, setArmedPower] = useState<MatchPowerKind | null>(null)
   const [matchPowers, setMatchPowers] = useState<MatchPower[]>([])
   const matchPowersRef = useRef<MatchPower[]>([])
+  const playerHasActivePower = matchPowers.some(p => (p.appliedBy ?? 'w') === 'w')
   const powerButtonRefs = useRef<Record<MatchPowerKind, HTMLButtonElement | null>>({ freeze: null, shield: null })
   const powerSerialRef = useRef(0)
   const rewardedMovesRef = useRef(new Set<string>())
   const rankedMoveKindsRef = useRef(new Map<string, RankedMoveReward | null>())
   const rankedMoveStreakRef = useRef<{ kind: RankedMoveReward | null; count: number }>({ kind: null, count: 0 })
+  const botRewardedMovesRef = useRef(new Set<string>())
+  const botRankedMoveStreakRef = useRef<{ kind: RankedMoveReward | null; count: number }>({ kind: null, count: 0 })
   const rewardSerialRef = useRef(0)
   const rewardMarkTimerRef = useRef<number | null>(null)
   const rewardAnnouncementTimerRef = useRef<number | null>(null)
@@ -280,6 +318,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const liveCodeRef = useRef<HTMLDivElement | null>(null)
   const liveCodeHandleRef = useRef<HTMLDivElement | null>(null)
   const liveCodeToggleRef = useRef<HTMLButtonElement | null>(null)
+  const botControlRef = useRef<HTMLDivElement | null>(null)
+  const botControlHandleRef = useRef<HTMLDivElement | null>(null)
+  const botControlToggleRef = useRef<HTMLButtonElement | null>(null)
   const boardAreaRef = useRef<HTMLDivElement | null>(null)
   const movesTickerRef = useRef<HTMLDivElement>(null)
   const [knobsPosition, setKnobsPosition] = useState<{ x: number; y: number } | null>(null)
@@ -288,6 +329,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [mixerPosition, setMixerPosition] = useState<{ x: number; y: number } | null>(null)
   const [spectrogramPosition, setSpectrogramPosition] = useState<{ x: number; y: number } | null>(null)
   const [liveCodePosition, setLiveCodePosition] = useState<{ x: number; y: number } | null>(null)
+  const [botControlPosition, setBotControlPosition] = useState<{ x: number; y: number } | null>(null)
+  const [botControlOn, setBotControlOn] = useState(false)
+  const [canSaveBot, setCanSaveBot] = useState(false)
+  const [savingBot, setSavingBot] = useState(false)
   
   // Intro State
   // 0 = Intro Text, 1 = City Title, 2 = Board Descend, 3 = Game Active
@@ -483,7 +528,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     if (!next) {
       setLiveCodeOn(false)
       setPieceDebugOn(false)
-      setActiveWidgetOrder(current => current.filter(id => id !== "liveCode" && id !== "pieceDebug"))
+      setBotControlOn(false)
+      setActiveWidgetOrder(current => current.filter(id => id !== "liveCode" && id !== "pieceDebug" && id !== "botControl"))
       stockfishDebugOnRef.current = false
       setStockfishDebugOn(false)
     }
@@ -502,23 +548,36 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, [])
 
   useEffect(() => {
-    const viewport = capturedPiecesViewportRef.current
-    const content = capturedPiecesContentRef.current
-    if (!viewport || !content) return
+    const playerViewport = capturedPiecesViewportRef.current
+    const playerContent = capturedPiecesContentRef.current
+    const opponentViewport = opponentCapturedViewportRef.current
+    const opponentContent = opponentCapturedContentRef.current
 
     const updateScale = () => {
-      const availableWidth = viewport.clientWidth
-      const contentWidth = content.scrollWidth
-      const nextScale = availableWidth > 0 && contentWidth > availableWidth
-        ? availableWidth / contentWidth
-        : 1
-      setCapturedPiecesScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
+      if (playerViewport && playerContent) {
+        const availableWidth = playerViewport.clientWidth
+        const contentWidth = playerContent.scrollWidth
+        const nextScale = availableWidth > 0 && contentWidth > availableWidth
+          ? availableWidth / contentWidth
+          : 1
+        setCapturedPiecesScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
+      }
+      if (opponentViewport && opponentContent) {
+        const availableWidth = opponentViewport.clientWidth
+        const contentWidth = opponentContent.scrollWidth
+        const nextScale = availableWidth > 0 && contentWidth > availableWidth
+          ? availableWidth / contentWidth
+          : 1
+        setOpponentCapturedScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
+      }
     }
 
     updateScale()
     const observer = new ResizeObserver(updateScale)
-    observer.observe(viewport)
-    observer.observe(content)
+    if (playerViewport) observer.observe(playerViewport)
+    if (playerContent) observer.observe(playerContent)
+    if (opponentViewport) observer.observe(opponentViewport)
+    if (opponentContent) observer.observe(opponentContent)
     return () => observer.disconnect()
   }, [capturedPieces.black.length, capturedPieces.white.length])
 
@@ -593,10 +652,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   useEffect(() => {
     if (!eggFlight) return
+    const counterEl = eggFlight.owner === 'b' ? opponentEggCounterRef.current : eggCounterRef.current
     const source = eggFlight.direction === 'earn' && eggFlight.sourceSquare
       ? boardAreaRef.current?.querySelector<HTMLButtonElement>(`[data-square="${eggFlight.sourceSquare}"]`)
-      : eggCounterRef.current
-    const target = eggFlight.direction === 'earn' ? eggCounterRef.current : null
+      : counterEl
+    const target = eggFlight.direction === 'earn' ? counterEl : null
     const rectPoint = (rect: { left: number; top: number; width: number; height: number }) => ({
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,
@@ -604,7 +664,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const fromRect = eggFlight.direction === 'spend' ? eggFlight.from : source?.getBoundingClientRect()
     const toRect = eggFlight.direction === 'spend' ? eggFlight.to : target?.getBoundingClientRect()
     const finishEgg = () => {
-      eggCounterRef.current?.animate([
+      counterEl?.animate([
         { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
         { transform: `scale(${eggFlight.direction === 'earn' ? 1.24 : .88})`, boxShadow: `0 0 22px rgba(${eggFlight.direction === 'earn' ? '251,191,36' : '248,113,113'},.8)` },
         { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
@@ -617,6 +677,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const { x: x0, y: y0 } = rectPoint(fromRect)
     const { x: x1, y: y1 } = rectPoint(toRect)
     const arc = Math.max(70, Math.abs(x1 - x0) * .18)
+    const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
     for (let index = 0; index < eggFlight.amount; index++) {
       const egg = document.createElement('span')
@@ -637,20 +698,71 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         flightCleanupsRef.current.delete(cleanup)
       }
       flightCleanupsRef.current.add(cleanup)
-      const tick = (time: number) => {
-        if (!startTime) startTime = time
-        const progress = Math.min(1, (time - startTime) / 780)
-        const eased = eggFlight.direction === 'spend'
-          ? Math.pow(progress, 3)
-          : 1 - Math.pow(1 - progress, 3)
-        const x = x0 + (x1 - x0) * eased
-        const y = y0 + (y1 - y0) * eased - arc * 4 * eased * (1 - eased)
-        egg.style.transform = `translate3d(${x - 11}px,${y - 14}px,0) scale(${1 - .3 * eased}) rotate(-${rotation * eased}deg)`
-        if (progress < 1) frame = window.requestAnimationFrame(tick)
-        else { cleanup(); finishEgg() }
+
+      if (eggFlight.direction === 'earn') {
+        const floatDuration = 500
+        const pauseDuration = 700
+        const flightDuration = 720
+        const spacing = eggFlight.amount > 1 ? Math.min(18, 70 / (eggFlight.amount - 1)) : 0
+        const spreadX = (index - (eggFlight.amount - 1) / 2) * spacing
+        const xFloat = x0 + spreadX
+        const yFloat = y0 - 50
+        const flightStart = floatDuration + pauseDuration + index * 90
+
+        const tick = (time: number) => {
+          if (!startTime) startTime = time
+          const elapsed = time - startTime
+
+          if (elapsed < floatDuration) {
+            const p = Math.min(1, elapsed / floatDuration)
+            const e = easeInOut(p)
+            const curX = x0 + spreadX * e
+            const curY = y0 - 50 * e
+            egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0)`
+            frame = window.requestAnimationFrame(tick)
+            return
+          }
+
+          if (elapsed < flightStart) {
+            egg.style.transform = `translate3d(${xFloat - 11}px,${yFloat - 14}px,0)`
+            frame = window.requestAnimationFrame(tick)
+            return
+          }
+
+          const flightElapsed = elapsed - flightStart
+          const p = Math.min(1, flightElapsed / flightDuration)
+          const e = easeInOut(p)
+          const targetRect = target?.getBoundingClientRect() ?? toRect
+          const { x: curX1, y: curY1 } = rectPoint(targetRect)
+          const flightArc = Math.max(60, Math.abs(curX1 - xFloat) * 0.16)
+          const curX = xFloat + (curX1 - xFloat) * e
+          const curY = yFloat + (curY1 - yFloat) * e - flightArc * 4 * e * (1 - e)
+          egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0) scale(${1 - 0.3 * e}) rotate(-${rotation * e}deg)`
+
+          if (p < 1) {
+            frame = window.requestAnimationFrame(tick)
+          } else {
+            cleanup()
+            finishEgg()
+          }
+        }
+
+        egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
+        frame = window.requestAnimationFrame(tick)
+      } else {
+        const tick = (time: number) => {
+          if (!startTime) startTime = time
+          const progress = Math.min(1, (time - startTime) / 780)
+          const eased = Math.pow(progress, 3)
+          const x = x0 + (x1 - x0) * eased
+          const y = y0 + (y1 - y0) * eased - arc * 4 * eased * (1 - eased)
+          egg.style.transform = `translate3d(${x - 11}px,${y - 14}px,0) scale(${1 - .3 * eased}) rotate(-${rotation * eased}deg)`
+          if (progress < 1) frame = window.requestAnimationFrame(tick)
+          else { cleanup(); finishEgg() }
+        }
+        egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
+        timer = window.setTimeout(() => { frame = window.requestAnimationFrame(tick) }, index * 110)
       }
-      egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
-      timer = window.setTimeout(() => { frame = window.requestAnimationFrame(tick) }, index * 110)
     }
   }, [eggFlight])
 
@@ -777,16 +889,103 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     } else evaluationQueueRef.current?.request(gameInstance.fen(), gameInstance.turn(), candidates, { position, skill: opponentSkill, searchMoves: permittedMoves.length < allMoves.length ? opponentCandidates : undefined })
     if (gameInstance.turn() === 'b' && opponentSkill !== undefined) {
       const fen = gameInstance.fen()
-      aiMoveTimerRef.current?.schedule(fen, opponentDelayMs ?? (1000 + Math.random() * 4000), () => {
+      const delayMs = opponentDelayMs ?? activeBotRef.current.delayMs
+      aiMoveTimerRef.current?.schedule(fen, delayMs, () => {
         if (gameRef.current.fen() !== fen || gameRef.current.turn() !== 'b') return
+        const currentBot = activeBotRef.current
+        const nextBotTurnCount = botTurnCountRef.current + 1
+        botTurnCountRef.current = nextBotTurnCount
         const suggested = aiMoveCandidateRef.current?.fen === fen ? aiMoveCandidateRef.current.uci
-          : evaluationQueueRef.current?.bestAvailableMove(fen)
-        const uci = suggested && opponentCandidates.includes(suggested) ? suggested : opponentCandidates[0]
-        if (uci) aiMoveCallbackRef.current(uci)
+          : evaluationQueueRef.current?.bestAvailableMove(fen) ?? null
+        const bestAvailable = evaluationQueueRef.current?.bestAvailableMove(fen) ?? null
+        const decision = currentBot.decideTurn({
+          game: gameRef.current,
+          powers: matchPowersRef.current,
+          botTurnNumber: nextBotTurnCount,
+          botEggs: opponentEggBalanceRef.current,
+          whiteScore: lastEvalScoreRef.current,
+          whiteMate: lastEvalMateRef.current,
+          blackAnalysis: currentCompleteAnalysisRef.current,
+          stockfishSuggestedUci: suggested,
+          bestAvailableUci: bestAvailable,
+          permittedMoves,
+        })
+
+        if (decision.insufficientEggs && currentBot.isChickenBot) {
+          void engineRef.current?.playBlockedCue()
+          animateInsufficientEggs(opponentEggCounterRef.current)
+        }
+
+        if (
+          decision.powerAction &&
+          currentBot.isChickenBot &&
+          canUseMatchPower(gameRef.current, 'b') &&
+          (decision.powerAction.kind !== 'freeze' || gameRef.current.get(decision.powerAction.square)?.color !== 'b')
+        ) {
+          const power = createMatchPower(
+            decision.powerAction.kind,
+            decision.powerAction.square,
+            gameRef.current,
+            ++powerSerialRef.current,
+          )
+          const freezeErr = freezeApplicationError(gameRef.current, matchPowersRef.current, power)
+          if (!freezeErr && opponentEggBalanceRef.current >= 3) {
+            botPrePowerAnalysisRef.current = currentCompleteAnalysisRef.current
+            opponentEggBalanceRef.current = Math.max(0, opponentEggBalanceRef.current - 3)
+            setVisibleOpponentEggs(opponentEggBalanceRef.current)
+            const targetSquareEl = boardAreaRef.current?.querySelector<HTMLElement>(`[data-square="${decision.powerAction.square}"]`)
+            const bounds = (rect: DOMRect) => ({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
+            setEggFlight({
+              id: ++rewardSerialRef.current,
+              amount: 3,
+              direction: 'spend',
+              owner: 'b',
+              from: opponentEggCounterRef.current ? bounds(opponentEggCounterRef.current.getBoundingClientRect()) : undefined,
+              to: targetSquareEl ? bounds(targetSquareEl.getBoundingClientRect()) : undefined,
+            })
+            if (decision.powerAction.kind === 'freeze') playDrum('ch', 0.648, 1)
+            else playDrum('oh', 0.696)
+            matchPowersRef.current = [...matchPowersRef.current, power]
+            setMatchPowers(matchPowersRef.current)
+            setPoweredChessPowers(gameRef.current, matchPowersRef.current)
+            powerTimelineRef.current[gameRef.current.history().length] = {
+              game: clonePoweredChess(gameRef.current, matchPowersRef.current),
+              powers: matchPowersRef.current.map(item => ({ ...item })),
+            }
+            const nextGame = clonePoweredChess(gameRef.current, matchPowersRef.current)
+            setGame(nextGame)
+            gameRef.current = nextGame
+            requestEvaluation(nextGame)
+            const nextFen = nextGame.fen()
+            aiMoveTimerRef.current?.schedule(nextFen, 1000, () => {
+              if (gameRef.current.fen() !== nextFen || gameRef.current.turn() !== 'b') return
+              if (decision.moveUci) aiMoveCallbackRef.current(decision.moveUci)
+              setIsThinking(false)
+            })
+            return
+          }
+        }
+
+        if (decision.moveUci) aiMoveCallbackRef.current(decision.moveUci)
         setIsThinking(false)
       })
     } else aiMoveTimerRef.current?.cancel()
-  }, [])
+  }, [engineRef, playDrum])
+
+  const handleBotLevelChange = useCallback((botId: string) => {
+    const nextProfile = botProfiles.find(profile => profile.id === botId) ?? botProfiles[0] ?? DEFAULT_BOT_PROFILES[0]
+    const nextParams = getBotConfigParams(nextProfile)
+    const nextBot = new ChessBot(nextProfile, nextParams)
+    activeBotRef.current = nextBot
+    setSelectedBotId(nextProfile.id)
+    setBotParams(nextParams)
+    if (aiMoveTimerRef.current?.hasPending && gameRef.current.turn() === 'b') {
+      setIsThinking(true)
+      requestEvaluation(gameRef.current, nextBot.skill, nextBot.delayMs)
+    } else {
+      evaluationQueueRef.current?.setSkill(nextBot.skill)
+    }
+  }, [botProfiles, requestEvaluation])
 
   const handleAIDifficultyChange = useCallback((level: number) => {
     setAiDepth(level)
@@ -799,13 +998,109 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }
   }, [requestEvaluation])
 
+  const handleBotParamsChange = useCallback((patch: Partial<BotConfigParams>) => {
+    setBotParams(current => {
+      const next = { ...current, ...patch }
+      activeBotRef.current = new ChessBot(selectedBotProfile, next)
+      return next
+    })
+  }, [selectedBotProfile])
+
+  useEffect(() => {
+    if (!codeBackdropOn || !botControlOn) return
+    let active = true
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    if (!isLocal) {
+      setCanSaveBot(false)
+      return
+    }
+    const client = getOnlineClient()
+    if (!client) {
+      setCanSaveBot(false)
+      return
+    }
+    void client.auth.getSession().then(async ({ data, error }) => {
+      if (!active || error || !data.session || !isAdminUser(data.session.user)) {
+        if (active) setCanSaveBot(false)
+        return
+      }
+      try {
+        const response = await fetch('/__admin-local/file?id=bots', {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        })
+        const result = await response.json().catch(() => null)
+        if (!active) return
+        if (response.ok && result && typeof result.revision === 'string' && Array.isArray(result.value)) {
+          setBotProfiles(result.value as BotProfile[])
+          setCanSaveBot(true)
+        } else {
+          setCanSaveBot(false)
+        }
+      } catch {
+        if (active) setCanSaveBot(false)
+      }
+    }).catch(() => {
+      if (active) setCanSaveBot(false)
+    })
+    return () => { active = false }
+  }, [codeBackdropOn, botControlOn])
+
+  const handleSaveBot = useCallback(async () => {
+    if (savingBot || !canSaveBot) return
+    const client = getOnlineClient()
+    if (!client) return
+    setSavingBot(true)
+    try {
+      const { data, error } = await client.auth.getSession()
+      if (error || !data.session || !isAdminUser(data.session.user)) {
+        throw new Error('Sessão administrativa indisponível.')
+      }
+      const token = data.session.access_token
+      const getRes = await fetch('/__admin-local/file?id=bots', {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const getPayload = await getRes.json().catch(() => null)
+      if (!getRes.ok || !getPayload || !Array.isArray(getPayload.value)) {
+        throw new Error(getPayload?.error || 'Salvamento local indisponível. Execute npm run admin:dev.')
+      }
+      const updatedBot = activeBotRef.current.toUpdatedProfile()
+      const nextProfiles = (getPayload.value as BotProfile[]).map(profile =>
+        profile.id === updatedBot.id ? updatedBot : profile,
+      )
+      const putRes = await fetch('/__admin-local/file?id=bots', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          revision: getPayload.revision,
+          value: nextProfiles,
+        }),
+      })
+      const putPayload = await putRes.json().catch(() => null)
+      if (!putRes.ok || !putPayload) {
+        throw new Error(putPayload?.error || 'Falha ao salvar configuração do bot.')
+      }
+      setBotProfiles(nextProfiles)
+      toast.success(`Configurações de "${updatedBot.name}" salvas no jogo`)
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Falha ao salvar bot.')
+    } finally {
+      setSavingBot(false)
+    }
+  }, [canSaveBot, savingBot])
+
   useEffect(() => () => {
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
   }, [])
 
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
   const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
-    if (matchPowersRef.current.length || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
+    if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w') || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
     matchUsageRef.current[kind]++
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
@@ -822,7 +1117,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   useEffect(() => {
     const kind = analysisArrowKindRef.current
-    if (matchPowersRef.current.length || !kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
+    if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w') || !kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
     pendingShownSuggestionsRef.current = { kind, analysis: displayedAnalysis }
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
   }, [displayedAnalysis])
@@ -906,7 +1201,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     armedPower,
     enabled: introPhase === 3 && canUseMatchPower(game, 'w'),
     boardRef: boardAreaRef,
-    onArm: setArmedPower,
+    onArm: kind => { if (kind) hideCostHint(); setArmedPower(kind) },
     canArm: () => hasEggsForAction(3),
     onBegin: () => { void engineRef.current?.resume() },
     onTarget: targetPower,
@@ -929,7 +1224,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     flightCleanupsRef.current.clear()
     setEggFlight(null)
 
-    const eggs = { w: playerEggBalanceRef.current, b: STARTING_MATCH_GOLDEN_EGGS }
+    const opponentEggs = activeBotRef.current.isPureChess ? 0 : opponentEggBalanceRef.current
+    const eggs = { w: playerEggBalanceRef.current, b: opponentEggs }
     const winner = draw ? null : 'w'
     const earnedEggs = matchEggPayout(eggs, winner).w
     const shares = matchEggSources(eggs, winner, 'w')
@@ -942,6 +1238,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const collected = collectedMatchEggsRef.current
     const result = draw ? settleCityDraw(city.id, earnedEggs, collected) : conquerCity(city.id, earnedEggs, collected)
     playerEggBalanceRef.current = 0
+    opponentEggBalanceRef.current = 0
     victoryToastRef.current = toast.custom(id => <VictoryBasket result={result} collected={collected} sources={sources} draw={draw}
       onLaunch={(amount, source) => {
         if (source === 0) setVisibleEggs(current => Math.max(0, current - amount))
@@ -996,15 +1293,22 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   useEffect(() => {
     if (introPhase === 3) {
-      const skill = gameRef.current.turn() === 'b' ? (aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20) : undefined
+      if (!tipEvaluatedRef.current) {
+        tipEvaluatedRef.current = true
+        const tip = getNextMatchTip()
+        if (tip) {
+          markMatchTipSeen()
+          setGameplayTip(tip)
+          setGameplayTipOpen(true)
+        }
+      }
+      const isBotTurn = gameRef.current.turn() === 'b'
+      const skill = isBotTurn ? activeBotRef.current.skill : undefined
       if (skill !== undefined) setIsThinking(true)
-      requestEvaluation(gameRef.current, skill)
+      requestEvaluation(gameRef.current, skill, isBotTurn ? activeBotRef.current.delayMs : undefined)
     }
   }, [introPhase, requestEvaluation, workerEpoch])
 
-  useEffect(() => {
-    if (introPhase === 3 && markGameplayTipSeen()) setGameplayTipOpen(true)
-  }, [introPhase])
 
   // Update pattern when board changes
   useEffect(() => {
@@ -1018,7 +1322,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       const resultKey = `${city.id}:${game.fen()}`
       if (reportedMatchResultRef.current !== resultKey) {
         reportedMatchResultRef.current = resultKey
-        const eggs = { w: playerEggBalanceRef.current, b: STARTING_MATCH_GOLDEN_EGGS }
+        const opponentEggs = activeBotRef.current.isPureChess ? 0 : opponentEggBalanceRef.current
+        const eggs = { w: playerEggBalanceRef.current, b: opponentEggs }
         const savedEggs = matchEggPayout(eggs, result === 'white' ? 'w' : result === 'black' ? 'b' : null).w
         trackMatchCompleted({
           game_mode: 'campaign',
@@ -1057,6 +1362,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       } else {
         playCheckmate()
         playerEggBalanceRef.current = 0
+        opponentEggBalanceRef.current = 0
         setVisibleEggs(0)
         setVisibleOpponentEggs(0)
         toast.error("DEFEAT!", {
@@ -1072,7 +1378,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     } else if (game.isCheck() && game.turn() === "w") {
       setGameStatus("CHECK!")
     } else {
-      setGameStatus(game.turn() === "w" ? "Your move" : "Thinking...")
+      setGameStatus(game.turn() === "w" ? "Your move" : "Bot thinking...")
     }
   }, [game, city, activeSquares, squareEffects, globalEffects, deactivatePlaybackWidgets, settleCityVictory, introPhase])
 
@@ -1173,6 +1479,38 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         })
 
         if (move) {
+          const uci = `${move.from}${move.to}${move.promotion ?? ''}`
+          const botAnalysis = currentCompleteAnalysisRef.current?.complete && currentCompleteAnalysisRef.current.fen === move.before
+            ? currentCompleteAnalysisRef.current
+            : botPrePowerAnalysisRef.current?.complete && botPrePowerAnalysisRef.current.fen === move.before
+              ? botPrePowerAnalysisRef.current
+              : null
+          botPrePowerAnalysisRef.current = null
+          if (activeBotRef.current.isChickenBot && botAnalysis) {
+            const rewardDetails = rankedMoveRewardDetails(botAnalysis, move.before, uci, [], 'b')
+            const rewardKind = rewardDetails?.kind ?? null
+            const rewardKey = `${move.before}|${uci}`
+            const previousStreak = botRankedMoveStreakRef.current
+            const streakCount = rewardKind ? (previousStreak.kind === rewardKind ? previousStreak.count + 1 : 1) : 0
+            botRankedMoveStreakRef.current = { kind: rewardKind, count: streakCount }
+            if (rewardKind && !botRewardedMovesRef.current.has(rewardKey)) {
+              botRewardedMovesRef.current.add(rewardKey)
+              const streak = streakCount >= 3
+              const earnedEggs = rankedMoveEggReward(rewardKind, streak ? 2 : 1)
+              opponentEggBalanceRef.current += earnedEggs
+              setVisibleOpponentEggs(opponentEggBalanceRef.current)
+              const id = ++rewardSerialRef.current
+              setEggFlight({
+                id,
+                amount: earnedEggs,
+                direction: 'earn',
+                owner: 'b',
+                sourceSquare: move.to,
+              })
+              void engineRef.current?.playRankedMoveWhistle(rewardKind)
+            }
+          }
+
           // A freshly chosen bot reply replaces any remaining historical redo branch.
           redoStackRef.current = []
           setRedoStack([])
@@ -1213,7 +1551,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         console.warn("Failed to apply AI move:", moveStr, e)
       }
     },
-    [updateCapturedPieces, requestEvaluation],
+    [updateCapturedPieces, requestEvaluation, engineRef],
   )
 
   useEffect(() => { aiMoveCallbackRef.current = makeAIMove }, [makeAIMove])
@@ -1340,12 +1678,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         }
         return next
       })
-      requestEvaluation(gameCopy, aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20)
+      requestEvaluation(gameCopy, activeBotRef.current.skill, activeBotRef.current.delayMs)
     },
-    [game, aiDepth, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, engineRef],
+    [game, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, engineRef],
   )
 
   const undoMove = useCallback(() => {
+    setMulliganPreviewActive(false)
     const currentHistory = gameRef.current.history()
     if (currentHistory.length === 0) return
     const undoingCheckmate = gameRef.current.isCheckmate()
@@ -1442,12 +1781,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         setRedoStack(newRedoStack)
         setCapturedPieces(nextCaptured)
         setActiveSquares(nextActiveSquares)
-        const skill = gameCopy.turn() === 'b' && !gameCopy.isGameOver()
-          ? (aiDepth === 5 ? 0 : aiDepth === 10 ? 5 : aiDepth === 15 ? 12 : 20) : undefined
+        const isBotTurn = gameCopy.turn() === 'b' && !gameCopy.isGameOver()
+        const skill = isBotTurn ? activeBotRef.current.skill : undefined
         if (skill !== undefined) setIsThinking(true)
-        requestEvaluation(gameCopy, skill, skill !== undefined ? 5000 : undefined)
+        requestEvaluation(gameCopy, skill, skill !== undefined ? activeBotRef.current.delayMs : undefined)
     }
-  }, [aiDepth, requestEvaluation])
+  }, [requestEvaluation])
 
   const toggleWidget = useCallback((id: string, setIsOn: React.Dispatch<React.SetStateAction<boolean>>) => {
     setIsOn(prev => {
@@ -1498,6 +1837,25 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       ? [...order.filter(id => id !== 'pieceDebug'), 'pieceDebug']
       : order.filter(id => id !== 'pieceDebug'))
   }, [isMobile, knobsPosition, pieceDebugOn, pieceDebugPosition])
+
+  const toggleBotControl = useCallback(() => {
+    const next = !botControlOn
+    if (next && !isMobile && botControlPosition === null) {
+      const root = rootRef.current?.getBoundingClientRect()
+      const debugRect = liveCodeRef.current?.getBoundingClientRect()
+      if (root && debugRect) {
+        const x = Math.max(8, debugRect.left - root.left)
+        const desiredTop = Math.min(Math.max(8, root.height - 340), debugRect.bottom - root.top + 12)
+        setBotControlPosition({ x, y: desiredTop })
+      } else {
+        setBotControlPosition({ x: liveCodePosition?.x ?? 24, y: (liveCodePosition?.y ?? 80) + (liveCodeRef.current?.offsetHeight ?? 360) + 12 })
+      }
+    }
+    setBotControlOn(next)
+    setActiveWidgetOrder(order => next
+      ? [...order.filter(id => id !== 'botControl'), 'botControl']
+      : order.filter(id => id !== 'botControl'))
+  }, [botControlOn, botControlPosition, isMobile, liveCodePosition])
 
   const handleTogglePlay = useCallback(async () => {
     if (gameRef.current.isGameOver() || gameStatus === "DRAW!" || gameStatus.startsWith("CHECKMATE")) {
@@ -1577,6 +1935,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       mixer: { ref: mixerRef, on: mixerOn, position: mixerPosition, setPosition: setMixerPosition },
       spectrogram: { ref: spectrogramHandleRef, on: spectrogramOn, position: spectrogramPosition, setPosition: setSpectrogramPosition },
       liveCode: { ref: liveCodeRef, on: liveCodeOn, position: liveCodePosition, setPosition: setLiveCodePosition },
+      botControl: { ref: botControlRef, on: botControlOn && codeBackdropOn, position: botControlPosition, setPosition: setBotControlPosition },
     },
   })
   const thermometerDimmed = (hasPlaybackStarted && !isPlaying)
@@ -1599,7 +1958,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     { id: 'globalPanel', label: 'Board Params', ref: globalPanelToggleRef, isOn: globalPanelOn, cityColor: city.color, onToggle: () => toggleWidget('globalPanel', setGlobalPanelOn), position: globalPanelPosition ?? { x: 0, y: 0 }, onPositionChange: setGlobalPanelPosition, onDragStart: () => handleWidgetHeaderClick('globalPanel') },
     { id: 'mixer', label: 'Mixer', ref: mixerToggleRef, isOn: mixerOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('mixer', mixerOn, setMixerOn, mixerManuallyClosedRef), position: mixerPosition ?? { x: 0, y: 0 }, onPositionChange: setMixerPosition, onDragStart: () => handleWidgetHeaderClick('mixer') },
     { id: 'liveCode', label: 'Debug', ref: liveCodeToggleRef, isOn: liveCodeOn, cityColor: city.color, onToggle: () => toggleWidget('liveCode', setLiveCodeOn), position: liveCodePosition ?? { x: 0, y: 0 }, onPositionChange: setLiveCodePosition, onDragStart: () => handleWidgetHeaderClick('liveCode') },
-  ], [city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramOn, spectrogramPosition, resizeTick, togglePlayerTurnPanel, toggleWidget])
+    { id: 'botControl', label: 'Bot Control', ref: botControlToggleRef, isOn: botControlOn && codeBackdropOn, cityColor: city.color, onToggle: toggleBotControl, position: botControlPosition ?? { x: 0, y: 0 }, onPositionChange: setBotControlPosition, onDragStart: () => handleWidgetHeaderClick('botControl') },
+  ], [botControlOn, botControlPosition, city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramOn, spectrogramPosition, resizeTick, toggleBotControl, togglePlayerTurnPanel, toggleWidget])
 
   const widgetsContent = (mobileMode: boolean) => {
       const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', zIndex: 10 } : undefined
@@ -1771,6 +2131,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onToggleStockfishDebug={toggleStockfishDebug}
                 pieceDebugOn={pieceDebugOn}
                 onTogglePieceDebug={togglePieceDebug}
+                botControlOn={botControlOn}
+                onToggleBotControl={toggleBotControl}
                 onForceWin={forceWin}
                 onGetEggs={getDebugEggs}
                 playback={liveCodeOn && music.enabled && music.engineActive ? <>
@@ -1795,6 +2157,27 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onToggle={() => toggleWidget('liveCode', setLiveCodeOn)}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('liveCode') + 10 }}
                 onClickCapture={() => handleWidgetHeaderClick('liveCode')}
+            />}
+
+            {codeBackdropOn && botControlOn && <BotControlWidget
+              ref={botControlRef}
+              toggleRef={botControlToggleRef}
+              handleRef={botControlHandleRef}
+              togglePortalized={togglePortalized}
+              isStatic={mobileMode}
+              bot={selectedBotProfile}
+              params={botParams}
+              onParamsChange={handleBotParamsChange}
+              canSaveBot={canSaveBot}
+              savingBot={savingBot}
+              onSaveBot={handleSaveBot}
+              cityColor={city.color}
+              position={mobileMode ? undefined : botControlPosition ?? { x: liveCodePosition?.x ?? 24, y: (liveCodePosition?.y ?? 80) + (liveCodeRef.current?.offsetHeight ?? 360) + 12 }}
+              onPositionChange={setBotControlPosition}
+              onToggle={toggleBotControl}
+              className={mobileMode ? 'w-full' : undefined}
+              style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('botControl') + 10 }}
+              onClickCapture={() => handleWidgetHeaderClick('botControl')}
             />}
           </>
       )
@@ -1922,127 +2305,128 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       {/* Header */}
       <header
         className={cn(
-          "top-0 left-0 w-full flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 md:px-6 py-3 border-b border-transparent bg-transparent transition-opacity duration-1000 pointer-events-none",
+          "top-0 left-0 w-full flex flex-col border-b border-transparent bg-transparent transition-opacity duration-1000 pointer-events-none",
           introPhase < 3 ? "z-[110] opacity-100" : "z-[130] opacity-100",
           isMobile ? "relative shrink-0" : "absolute"
         )}
         style={{ "--city-neon": city.color } as React.CSSProperties}
       >
-        <div
-          className={cn("flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:w-auto md:flex-1 md:text-sm pointer-events-none transition-opacity duration-500", introPhase < 3 ? "opacity-0" : "opacity-100")}
-          style={{ color: city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' }}
-        >
-          <h1 aria-label={`${city.year} ${city.name.toUpperCase()}`} className="max-w-full">
-            {city.year} {city.name.toUpperCase()}
-          </h1>
-          {music.tonality && music.baseTonality && music.harmony ? <BoardMusicSelectors cityColor={city.color} tonality={music.tonality} baseTonality={music.baseTonality} currentScaleLabel={music.currentScaleLabel} onTonalityChange={music.setTonality} harmony={music.harmony} onHarmonyChange={music.setHarmony} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} /> : null}
-        </div>
-
-        <div className={cn("ml-auto flex shrink-0 items-center gap-2 md:gap-3 pointer-events-auto", introPhase < 3 && "relative z-[111]")}>
-
-          <div className={cn("flex items-center gap-2 md:gap-3 transition-opacity duration-500", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
-            {/* Settings */}
-            <DropdownMenu open={openDropdown === "difficulty"} onOpenChange={open => setOpenDropdown(current => open ? "difficulty" : current === "difficulty" ? null : current)}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label="Dificuldade do Bot"
-                  title="Dificuldade do Bot"
-                  className="hidden md:flex min-w-16 justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-black/70 active:border-[var(--hover-color)] active:text-[var(--hover-color)] focus-visible:border-[var(--hover-color)] focus-visible:text-[var(--hover-color)]"
-                  style={{
-                      "--hover-color": city.color
-                  } as React.CSSProperties}
-                >
-                  <span className="px-1 text-xs font-mono">{aiDifficultyLabel}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="z-[135]"
-                align="end"
-                style={{ "--difficulty-hover": `color-mix(in srgb, ${city.color} 50%, black)` } as React.CSSProperties}
-              >
-                <DropdownMenuLabel>Dificulty:</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleAIDifficultyChange(5)} style={aiDepth === 5 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 5 && "font-bold")}>
-                  Easy (Skill 0)
-                  {aiDepth === 5 && <Check className="w-4 h-4 ml-2" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleAIDifficultyChange(10)} style={aiDepth === 10 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 10 && "font-bold")}>
-                  Medium (Skill 5)
-                  {aiDepth === 10 && <Check className="w-4 h-4 ml-2" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleAIDifficultyChange(15)} style={aiDepth === 15 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 15 && "font-bold")}>
-                  Hard (Skill 12)
-                  {aiDepth === 15 && <Check className="w-4 h-4 ml-2" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleAIDifficultyChange(20)} style={aiDepth === 20 ? { backgroundColor: city.color, color: "#000" } : undefined} className={cn("justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]", aiDepth === 20 && "font-bold")}>
-                  Expert (Skill 20)
-                  {aiDepth === 20 && <Check className="w-4 h-4 ml-2" />}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Audio toggle */}
-            <div className="flex gap-3">
-
-              <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={toggleCodeBackdrop}
-                  title="View code / Debug"
-                  aria-label={codeBackdropOn ? "Ocultar código Strudel e widget Debug" : "Mostrar código Strudel e widget Debug"}
-                  aria-pressed={codeBackdropOn}
-                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                  style={{ "--city-neon": city.color } as React.CSSProperties}
-              >
-                  <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
-              </Button>
-              <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
-              <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleToggleMusicEngine}
-                  title={musicEngineOn ? "Desligar música" : "Ligar música"}
-                  aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
-                  aria-pressed={musicEngineOn}
-                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                  style={{ "--city-neon": city.color } as React.CSSProperties}
-              >
-                  <Music2 className={`w-4 h-4 ${musicEngineOn ? '' : 'opacity-35'}`} />
-              </Button>
-              <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={toggleFullscreen}
-                  title={isFullscreen ? "Restaurar" : "Maximizar"}
-                  aria-label={isFullscreen ? "Restaurar janela" : "Maximizar janela"}
-                  className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                  style={{ "--city-neon": city.color } as React.CSSProperties}
-              >
-                  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-              </Button>
-            </div>
-          </div>
+        <div className="w-full grid grid-cols-[auto_1fr] md:flex md:flex-wrap items-center md:justify-between gap-x-3 gap-y-1.5 px-4 md:px-6 py-2.5 md:py-3">
           <Button
             variant="outline"
             size="icon"
             onClick={onBack}
             aria-label="Voltar ao mapa"
             title="Voltar ao mapa"
-            className="text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all"
+            className={cn(
+              "col-start-1 row-start-1 md:col-auto md:row-auto shrink-0 pointer-events-auto text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all",
+              introPhase < 3 && "relative z-[111]"
+            )}
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.4">
-              <circle cx="12" cy="12" r="9" />
-              <g stroke="none">
-                <circle cx="7.3" cy="8" r="1.3" fill="#38bdf8" />
-                <circle cx="15.8" cy="7.2" r="1.3" fill="#f472b6" />
-                <circle cx="11.4" cy="12.5" r="1.3" fill="#fbbf24" />
-                <circle cx="16.4" cy="15.5" r="1.3" fill="#a78bfa" />
-                <circle cx="8.4" cy="17.2" r="1.3" fill="#4ade80" />
-              </g>
-            </svg>
+            <GlobeGridIcon />
           </Button>
+
+          <div
+            className={cn(
+              "col-span-2 row-start-2 md:col-auto md:row-auto flex min-w-0 flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:text-sm pointer-events-auto transition-opacity duration-500",
+              introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100"
+            )}
+            style={{ color: city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' }}
+          >
+            <h1 aria-label={`${city.year} ${city.name.toUpperCase()}`} className="max-w-full">
+              {city.year} {city.name.toUpperCase()}
+            </h1>
+            {music.tonality && music.baseTonality && music.harmony ? <BoardMusicSelectors cityColor={city.color} tonality={music.tonality} baseTonality={music.baseTonality} currentScaleLabel={music.currentScaleLabel} onTonalityChange={music.setTonality} harmony={music.harmony} onHarmonyChange={music.setHarmony} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} /> : null}
+          </div>
+
+          <div className="col-start-2 row-start-1 justify-self-end md:col-auto md:row-auto md:ml-auto flex shrink-0 items-center gap-2 md:gap-3 pointer-events-auto">
+
+            <div className={cn("flex items-center gap-2 md:gap-3 transition-opacity duration-500", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
+              {/* Settings */}
+              <DropdownMenu open={openDropdown === "difficulty"} onOpenChange={open => setOpenDropdown(current => open ? "difficulty" : current === "difficulty" ? null : current)}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="Bot level"
+                    title="Bot level"
+                    className="hidden md:flex min-w-16 justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-black/70 active:border-[var(--hover-color)] active:text-[var(--hover-color)] focus-visible:border-[var(--hover-color)] focus-visible:text-[var(--hover-color)]"
+                    style={{
+                        "--hover-color": city.color
+                    } as React.CSSProperties}
+                  >
+                    <span className="px-1 text-xs font-mono">{activeBot.name}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="z-[135]"
+                  align="end"
+                  style={{ "--difficulty-hover": `color-mix(in srgb, ${city.color} 50%, black)` } as React.CSSProperties}
+                >
+                  <DropdownMenuLabel>Bot level:</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {botProfiles.map(bot => {
+                    const selected = bot.id === activeBot.id
+                    return (
+                      <DropdownMenuItem
+                        key={bot.id}
+                        onClick={() => handleBotLevelChange(bot.id)}
+                        style={selected ? { backgroundColor: city.color, color: "#000" } : undefined}
+                        className={cn(
+                          "justify-between text-white hover:bg-[var(--difficulty-hover)] focus:bg-[var(--difficulty-hover)] data-[highlighted]:bg-[var(--difficulty-hover)]",
+                          selected && "font-bold",
+                        )}
+                      >
+                        {bot.name}
+                        {selected && <Check className="w-4 h-4 ml-2" />}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Audio toggle */}
+              <div className="flex gap-3">
+
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleCodeBackdrop}
+                    title="View code / Debug"
+                    aria-label={codeBackdropOn ? "Ocultar código Strudel e widget Debug" : "Mostrar código Strudel e widget Debug"}
+                    aria-pressed={codeBackdropOn}
+                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                    <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
+                </Button>
+                <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleToggleMusicEngine}
+                    title={musicEngineOn ? "Desligar música" : "Ligar música"}
+                    aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
+                    aria-pressed={musicEngineOn}
+                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                    <Music2 className={`w-4 h-4 ${musicEngineOn ? '' : 'opacity-35'}`} />
+                </Button>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleFullscreen}
+                    title={isFullscreen ? "Restaurar" : "Maximizar"}
+                    aria-label={isFullscreen ? "Restaurar janela" : "Maximizar janela"}
+                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
+                    style={{ "--city-neon": city.color } as React.CSSProperties}
+                >
+                    {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -2055,7 +2439,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             "flex flex-col items-center justify-start w-full mx-auto relative z-10 px-2 pointer-events-none lg:pt-6"
             )}
             style={{
-                marginTop: !isMobile ? 'calc(50vh - 350px)' : '0px'
+                marginTop: !isMobile ? 'max(90px, calc(50vh - 350px))' : '0px'
             }}
         >
           <div
@@ -2063,68 +2447,53 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             ref={centerContainerRef}
           >
 
-            <div className="mb-[30px] grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 pointer-events-none">
-              <div ref={opponentEggCounterRef} role="img" aria-label={`${visibleOpponentEggs} golden eggs for the opponent`} className={cn("flex w-fit items-center gap-1.5 rounded-md border border-zinc-500/20 bg-black/45 px-2 py-1 font-mono text-xs font-bold text-zinc-400/50 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}>
-                <span>{visibleOpponentEggs}</span>
-                <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] opacity-40 grayscale" />
+            <div className="min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none mb-1 flex items-center justify-between gap-1.5">
+              <div ref={opponentCapturedViewportRef} className="flex-1 min-w-0 h-full overflow-hidden flex items-center justify-start">
+                <div
+                  ref={opponentCapturedContentRef}
+                  className="flex w-max items-center justify-start gap-0.5"
+                  style={{ transform: `scale(${opponentCapturedScale})`, transformOrigin: "left center" }}
+                >
+                  {capturedPieces.black.map((p, i) => (
+                    <div
+                      key={i}
+                      className="w-6 h-6 shrink-0 opacity-90 p-0.5"
+                      dangerouslySetInnerHTML={{
+                        __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
+
               <div
-                role="status"
+                ref={opponentEggCounterRef}
+                role={activeBot.isPureChess ? undefined : "img"}
+                aria-hidden={activeBot.isPureChess ? "true" : undefined}
+                aria-label={activeBot.isPureChess ? undefined : `${visibleOpponentEggs} golden egg${visibleOpponentEggs === 1 ? "" : "s"} for the opponent`}
                 className={cn(
-                  "min-w-0 text-center text-[9px] sm:text-xs font-mono transition-opacity duration-1000",
-                  (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse",
+                  "flex h-8 w-fit shrink-0 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold transition-opacity duration-1000",
+                  activeBot.isPureChess
+                    ? "invisible pointer-events-none border-zinc-500/20 text-zinc-400/50"
+                    : "border-zinc-500/50 text-zinc-300",
                   introPhase < 3 ? "opacity-0" : "opacity-100",
                 )}
-                style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
-              >{armedPower ? 'Choose a square' : gameStatus}</div>
-              <div ref={eggCounterRef} role="img" aria-label={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"} for you`} title={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"}`} className={cn("ml-auto flex h-8 w-full max-w-14 min-w-0 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold transition-opacity duration-1000", visibleEggs === 0 ? "border-red-500/80 text-red-400" : "border-amber-400/50 text-amber-200", introPhase < 3 ? "opacity-0" : "opacity-100")}>
-                <span>{visibleEggs.toLocaleString()}</span>
-                <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]" />
-              </div>
-            </div>
-
-            <div className="min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none">
-              <div ref={capturedPiecesViewportRef} className="h-full w-full overflow-hidden">
-                <div
-                  ref={capturedPiecesContentRef}
-                  className="flex h-full w-max min-w-full items-center justify-between gap-0.5"
-                  style={{ transform: `scale(${capturedPiecesScale})`, transformOrigin: "left center" }}
-                >
-                  <div className="flex shrink-0 justify-start gap-0.5">
-                    {capturedPieces.black.map((p, i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                        dangerouslySetInnerHTML={{
-                          __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex shrink-0 justify-end gap-0.5">
-                    {capturedPieces.white.map((p, i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                        style={{
-                          "--city-neon": city.color,
-                          filter:
-                            "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))",
-                        } as React.CSSProperties}
-                        dangerouslySetInnerHTML={{
-                          __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
+              >
+                <span>{visibleOpponentEggs.toLocaleString()}</span>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#f4f4f5_0%,#a1a1aa_43%,#52525b_100%)] shadow-[0_0_6px_#a1a1aa33]",
+                    activeBot.isPureChess && "opacity-40",
+                  )}
+                />
               </div>
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20 pointer-events-none">
               {/* Board Area - Moved to Top */}
               <div
-                className="w-[var(--game-board-width)] aspect-square relative z-20 mb-2 sm:mb-4 pointer-events-auto"
+                className="w-[var(--game-board-width)] aspect-square relative z-20 mb-2 sm:mb-3 pointer-events-auto"
                 ref={boardAreaRef}
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -2133,17 +2502,29 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     visibility: introPhase < 2 ? 'hidden' : 'visible',
                 }}
               >
+                  {chancePosition === "board" && (
+                    <GameBoardChanceBar
+                      visible={introPhase >= 3}
+                      score={lastEvalScore}
+                      mate={lastEvalMate}
+                      evaluationError={evaluationError}
+                      evaluating={isEvaluating}
+                      dimmed={thermometerDimmed}
+                      orientation={boardOrientation}
+                    />
+                  )}
                   <BoardResizeHandles enabled={boardResize.enabled && introPhase >= 3} onStart={boardResize.startResize} onResizeBy={boardResize.resizeBy} onCancel={boardResize.cancelResize} />
                   <ChessgroundBoard 
                   game={game} 
                   entranceActive={introPhase === 2}
                   undoAnimationKey={undoAnimationKey}
+                  mulliganPreviewMoves={mulliganPreviewMoves}
                   orientation={boardOrientation}
                   onMove={handlePlayerMove} 
                   armedPower={armedPower}
                   onPowerTarget={targetPower}
                   matchPowers={matchPowers}
-                  onFrozenCaptureBlocked={() => setFrozenCaptureNoticeOpen(true)}
+                  onFrozenCaptureBlocked={() => toast('Não é possível capturar uma peça congelada.', { id: 'frozen-capture-blocked', duration: 3000 })}
                   onShieldCaptureBlocked={reason => {
                     if (reason === 'protected-target') setShieldCaptureNoticeOpen(true)
                     else toast('Peças protegidas não podem comer outras peças.', { id: 'shield-capture-blocked', duration: 3000 })
@@ -2164,11 +2545,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   rankedMoveAnnouncement={rankedMoveAnnouncement}
                   onBoardClick={(square) => {
                     if (music.enabled) { music.select(square); return }
-                    setSynthSelectedSquare(square)
                     const piece = game.get(square as Square)
                     if (piece) {
+                      setSynthSelectedSquare(square)
                       playSquareSample(square, piece.type, piece.color)
                     } else {
+                      setSynthSelectedSquare(null)
                       playSquareSample(square)
                     }
                   }}
@@ -2226,21 +2608,89 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 />}
               </div>
 
+              <div className="mb-1 sm:mb-2 flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none">
+                <div
+                  ref={capturedPiecesViewportRef}
+                  className={cn(
+                    "flex-1 min-w-0 h-8 overflow-hidden flex items-start justify-start transition-opacity duration-1000",
+                    introPhase < 3 ? "opacity-0" : "opacity-100",
+                  )}
+                >
+                  <div
+                    ref={capturedPiecesContentRef}
+                    className="flex w-max items-start justify-start gap-0.5"
+                    style={{ transform: `scale(${capturedPiecesScale})`, transformOrigin: "left top" }}
+                  >
+                    {capturedPieces.white.map((p, i) => (
+                      <div
+                        key={i}
+                        className="w-6 h-6 shrink-0 opacity-90 p-0.5"
+                        style={{
+                          "--city-neon": city.color,
+                          filter:
+                            "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))",
+                        } as React.CSSProperties}
+                        dangerouslySetInnerHTML={{
+                          __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG],
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1.5 self-center">
+                  <div
+                    role="status"
+                    className={cn(
+                      "min-w-0 text-right text-[9px] sm:text-xs font-mono transition-opacity duration-1000",
+                      (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse",
+                      introPhase < 3 ? "opacity-0" : "opacity-100",
+                    )}
+                    style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
+                  >{armedPower ? 'Choose a square' : gameStatus}</div>
+                  <div
+                    ref={eggCounterRef}
+                    role="img"
+                    aria-label={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"} for you`}
+                    title={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"}`}
+                    className={cn(
+                      "flex h-8 w-fit min-w-14 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold transition-opacity duration-1000",
+                      visibleEggs === 0 ? "border-red-500/80 text-red-400" : "border-amber-400/50 text-amber-200",
+                      introPhase < 3 ? "opacity-0" : "opacity-100",
+                    )}
+                  >
+                    <span>{visibleEggs.toLocaleString()}</span>
+                    <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]" />
+                  </div>
+                </div>
+              </div>
+
               {powerDisplay === "cards" ? <PowerCardHand visible={introPhase === 3} undoAnimationKey={undoAnimationKey} actions={{
                 best: {
-                  disabled: matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best'),
-                  onClick: event => { if (!matchPowersRef.current.length) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best")) },
+                  disabled: playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best'),
+                  onClick: event => { if (!matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best")) },
                   onMouseEnter: () => playClosedAnalysisHat(), onMouseLeave: () => playDrum('oh', 0.63, 1, 0.9),
                 },
                 worst: {
-                  disabled: matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst'),
-                  onClick: event => { if (!matchPowersRef.current.length) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst")) },
+                  disabled: playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst'),
+                  onClick: event => { if (!matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst")) },
                   onMouseEnter: () => playClosedAnalysisHat(0.85), onMouseLeave: () => playClosedAnalysisHat(0.6),
                 },
                 undo: {
                   disabled: moveHistory.length === 0,
-                  onClick: event => { playDrum("sd", 0.48); spendEggForAction(event.currentTarget, 2, undoMove) },
-                  onMouseEnter: () => playControlHoverKick(0.536), title: "Volta 1 jogada · 2 golden eggs",
+                  onClick: event => {
+                    setMulliganPreviewActive(false)
+                    playDrum("sd", 0.48)
+                    spendEggForAction(event.currentTarget, 2, undoMove)
+                  },
+                  onMouseEnter: () => {
+                    setMulliganPreviewActive(true)
+                    playControlHoverKick(0.536)
+                  },
+                  onMouseLeave: () => setMulliganPreviewActive(false),
+                  onPointerLeave: () => setMulliganPreviewActive(false),
+                  onBlur: () => setMulliganPreviewActive(false),
+                  title: "Volta 1 jogada · 2 golden eggs",
                 },
                 freeze: {
                   ref: element => { powerButtonRefs.current.freeze = element },
@@ -2264,10 +2714,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     data-ranked-move-action="best"
                     type="button"
                     aria-label="Veja as 3 melhores jogadas"
-                    title={matchPowers.length ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 melhores jogadas"}
-                    disabled={matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
+                    title={playerHasActivePower ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 melhores jogadas"}
+                    disabled={playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
                     onClick={event => {
-                      if (matchPowersRef.current.length) return
+                      if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) return
                       spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best"))
                     }}
                     onMouseEnter={() => { showCostHint('best'); playClosedAnalysisHat() }}
@@ -2284,10 +2734,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     data-ranked-move-action="worst"
                     type="button"
                     aria-label="Veja as 3 piores jogadas"
-                    title={matchPowers.length ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 piores jogadas"}
-                    disabled={matchPowers.length > 0 || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
+                    title={playerHasActivePower ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 piores jogadas"}
+                    disabled={playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
                     onClick={event => {
-                      if (matchPowersRef.current.length) return
+                      if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) return
                       spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("worst"))
                     }}
                     onMouseEnter={() => { showCostHint('worst'); playClosedAnalysisHat(0.85) }}
@@ -2307,14 +2757,26 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     variant="ghost"
                     size="icon"
                     onClick={event => {
+                      setMulliganPreviewActive(false)
                       playDrum("sd", 0.48)
                       spendEggForAction(event.currentTarget, 2, undoMove)
                     }}
                     aria-label="Undo · costs 2 golden eggs"
-                    onMouseEnter={() => { showCostHint('undo'); playControlHoverKick(0.536) }}
-                    onPointerLeave={hideCostHint}
+                    onMouseEnter={() => {
+                      setMulliganPreviewActive(true)
+                      showCostHint('undo')
+                      playControlHoverKick(0.536)
+                    }}
+                    onMouseLeave={() => setMulliganPreviewActive(false)}
+                    onPointerLeave={() => {
+                      setMulliganPreviewActive(false)
+                      hideCostHint()
+                    }}
                     onFocus={() => showCostHint('undo')}
-                    onBlur={hideCostHint}
+                    onBlur={() => {
+                      setMulliganPreviewActive(false)
+                      hideCostHint()
+                    }}
                     disabled={moveHistory.length === 0}
                     className="relative size-[38px] p-0 sm:size-[51px] overflow-visible rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
                     style={{
@@ -2354,7 +2816,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     aria-label="Congele uma casa por uma rodada"
                     aria-pressed={armedPower === 'freeze'}
                     title="Congele uma casa por uma rodada"
-                    onPointerDown={event => { hideCostHint(); powerTargeting.onButtonPointerDown('freeze', event) }}
+                    onPointerDown={event => powerTargeting.onButtonPointerDown('freeze', event)}
                     onLostPointerCapture={powerTargeting.onLostPointerCapture}
                     onClick={event => { hideCostHint(); powerTargeting.onButtonClick('freeze', event) }}
                     onMouseEnter={() => { showCostHint('freeze'); playClosedAnalysisHat() }}
@@ -2362,7 +2824,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     onPointerLeave={hideCostHint}
                     onFocus={() => showCostHint('freeze')}
                     onBlur={hideCostHint}
-                    className={cn("pointer-events-auto touch-none cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-cyan-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'freeze' ? 'border-cyan-300 bg-cyan-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-cyan-300/35 hover:bg-cyan-950/70')}
+                    className={cn("pointer-events-auto touch-manipulation cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-cyan-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'freeze' ? 'border-cyan-300 bg-cyan-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-cyan-300/35 hover:bg-cyan-950/70')}
                   ><Snowflake className="h-3 w-3 sm:h-4 sm:w-4" />Freeze{costHint('freeze', 3)}</button>
                   <button
                     ref={element => { powerButtonRefs.current.shield = element }}
@@ -2372,14 +2834,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     aria-label="Proteja uma casa por uma rodada"
                     aria-pressed={armedPower === 'shield'}
                     title="Proteja uma casa por uma rodada"
-                    onPointerDown={event => { hideCostHint(); powerTargeting.onButtonPointerDown('shield', event) }}
+                    onPointerDown={event => powerTargeting.onButtonPointerDown('shield', event)}
                     onLostPointerCapture={powerTargeting.onLostPointerCapture}
                     onClick={event => { hideCostHint(); powerTargeting.onButtonClick('shield', event) }}
                     onMouseEnter={() => { showCostHint('shield'); playDrum('oh', 0.696) }}
                     onPointerLeave={hideCostHint}
                     onFocus={() => showCostHint('shield')}
                     onBlur={hideCostHint}
-                    className={cn("pointer-events-auto touch-none cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-amber-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'shield' ? 'border-amber-300 bg-amber-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-amber-300/35 hover:bg-amber-950/70')}
+                    className={cn("pointer-events-auto touch-manipulation cursor-grab active:cursor-grabbing relative flex h-8 w-fit items-center gap-0.5 sm:gap-1 rounded-md border bg-black/55 px-1 sm:px-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-wide text-amber-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed", armedPower === 'shield' ? 'border-amber-300 bg-amber-900/70 shadow-[0_0_12px_#bcecff88]' : 'border-amber-300/35 hover:bg-amber-950/70')}
                   ><Shield className="h-3 w-3 sm:h-4 sm:w-4" />Shield{costHint('shield', 3)}</button>
                 </div>
               </GameActionRow>}
@@ -2405,26 +2867,18 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       </div>
       {!isMobile && introPhase >= 2 && <WidgetToggleLayer items={widgetToggleItems} onReady={markWidgetToggleLayerReady} />}
 
-      <GameFooter visible={introPhase >= 3} moves={moveHistory} tickerRef={movesTickerRef} score={lastEvalScore} mate={lastEvalMate} evaluationError={evaluationError} evaluating={isEvaluating} dimmed={thermometerDimmed} />
+      <GameFooter
+        visible={introPhase >= 3}
+        moves={moveHistory}
+        tickerRef={movesTickerRef}
+        score={lastEvalScore}
+        mate={lastEvalMate}
+        evaluationError={evaluationError}
+        evaluating={isEvaluating}
+        dimmed={thermometerDimmed}
+        chancePosition={chancePosition}
+      />
 
-      <Dialog open={gameplayTipOpen} onOpenChange={setGameplayTipOpen}>
-        <DialogContent className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-amber-200">Tip</DialogTitle>
-            <DialogDescription className="whitespace-pre-line pt-2 text-base leading-relaxed text-white/80">
-              Chickens likes to do shit.{"\n"}Make one of the worst plays for any moment, and earn 3 golden eggs to play with.
-            </DialogDescription>
-          </DialogHeader>
-          <Button autoFocus onClick={() => setGameplayTipOpen(false)} className="mt-2 w-full bg-amber-400 text-black hover:bg-amber-300">Ok!</Button>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={frozenCaptureNoticeOpen} onOpenChange={setFrozenCaptureNoticeOpen}>
-        <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-cyan-300/40 bg-[#0b1520] p-6 text-white">
-          <DialogHeader><DialogTitle className="font-mono text-cyan-100">Não é possível capturar uma peça congelada.</DialogTitle></DialogHeader>
-          <Button onClick={() => setFrozenCaptureNoticeOpen(false)} className="mt-2">Entendi</Button>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={shieldCaptureNoticeOpen} onOpenChange={setShieldCaptureNoticeOpen}>
         <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
@@ -2435,23 +2889,39 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         </DialogContent>
       </Dialog>
 
+      <Dialog open={gameplayTipOpen} onOpenChange={setGameplayTipOpen}>
+        <DialogContent className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-amber-200">Tip</DialogTitle>
+            <DialogDescription className="whitespace-pre-line pt-2 text-base leading-relaxed text-white/80">
+              {gameplayTip}
+            </DialogDescription>
+          </DialogHeader>
+          <Button autoFocus onClick={() => setGameplayTipOpen(false)} className="mt-2 w-full bg-amber-400 text-black hover:bg-amber-300">Ok!</Button>
+        </DialogContent>
+      </Dialog>
+
 
 
 
 
       {/* Bottom Right Info & Version */}
-      <div 
-        className="hidden sm:flex fixed bottom-3 right-3 z-[50] pointer-events-auto items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
-      >
-        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-        <VersionChangelog />
-      </div>
-      <div 
-        className="flex sm:hidden fixed bottom-3 right-3 z-[50] pointer-events-auto items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
-      >
-        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-        <VersionChangelog />
-      </div>
+      {codeBackdropOn && (
+        <>
+          <div 
+            className="hidden sm:flex fixed bottom-3 right-3 z-[50] pointer-events-auto items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 px-2.5 rounded-lg border border-border shadow-sm"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <VersionChangelog />
+          </div>
+          <div 
+            className="flex sm:hidden fixed bottom-3 right-3 z-[50] pointer-events-auto items-center gap-1.5 bg-background/80 backdrop-blur-sm py-0.5 px-2 rounded border border-border/60 shadow-sm"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <VersionChangelog />
+          </div>
+        </>
+      )}
 
       {armedPower && createPortal(
         <div ref={powerTargeting.cursorRef} data-power-cursor={armedPower} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 z-[9999] flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/60 bg-black/75 text-cyan-100 opacity-0 shadow-[0_0_12px_rgba(165,243,252,.55)]" style={{ transform: 'translate3d(-100px, -100px, 0)' }}>

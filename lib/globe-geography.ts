@@ -55,6 +55,32 @@ export function clampPopupToGlobe(
   return { x: position.x - dx * correction, y: position.y - dy * correction }
 }
 
+export function clampPopupToViewport(
+  position: { x: number; y: number },
+  popup: { width: number; height: number },
+  viewport: { left: number; top: number; right: number; bottom: number },
+  padding = 12,
+) {
+  const minX = viewport.left + padding
+  const maxX = Math.max(minX, viewport.right - popup.width - padding)
+  const minY = viewport.top + padding
+  const maxY = Math.max(minY, viewport.bottom - popup.height - padding)
+  return {
+    x: Math.max(minX, Math.min(maxX, position.x)),
+    y: Math.max(minY, Math.min(maxY, position.y)),
+  }
+}
+
+export function constrainPopupPosition(
+  position: { x: number; y: number },
+  popup: { width: number; height: number },
+  _globe: { x: number; y: number; radius: number },
+  viewport: { left: number; top: number; right: number; bottom: number },
+  padding = 12,
+) {
+  return clampPopupToViewport(position, popup, viewport, padding)
+}
+
 /** Returns the sphere's silhouette point closest to a pin's projected direction. */
 export function nearestGlobeSilhouettePoint(
   center: Vector3,

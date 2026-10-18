@@ -2,10 +2,10 @@
 
 /* global URL, Blob, HTMLInputElement */
 import { useEffect, useRef, useState } from 'react'
-import { Check, Eye, EyeOff, Loader2, LogOut, Pencil } from 'lucide-react'
+import { Check, Eye, EyeOff, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cities } from '@/lib/cities-data'
-import { resetCampaign, type PlayerProfile } from '@/lib/game-progression'
+import { resetCampaign, resetSeenMatchTips, type PlayerProfile } from '@/lib/game-progression'
 import { onlineErrorMessage, readProfileBackups } from '@/lib/online/client'
 import { useOnline } from './online-provider'
 
@@ -17,6 +17,7 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
   const [showEmail, setShowEmail] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [tipsReset, setTipsReset] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const identityRef = useRef(online.user?.id)
   identityRef.current = online.user?.id
@@ -66,12 +67,15 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
             {online.profile && <p className="break-words text-xs text-white/60">{online.profile.baptismal_name && online.profile.display_name !== online.profile.baptismal_name && <>Baptismal name: {online.profile.baptismal_name}<br /></>}Profile code: <span className="select-all break-all">{online.profile.code}</span></p>}
             {!online.user || online.user.is_anonymous ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Sign in to save your profile</Button>
               : online.pendingTransfer ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Choose account profile</Button>
-                : <div className="space-y-2">
-                  {online.user.email && <div className="flex items-center gap-1.5 text-xs text-white/60"><span>Mail:</span><button type="button" className="inline-flex size-5 shrink-0 items-center justify-center rounded text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" aria-label={showEmail ? 'Hide email address' : 'Show email address'} title={showEmail ? 'Hide email address' : 'Show email address'} onClick={() => setShowEmail(value => !value)}>{showEmail ? <EyeOff aria-hidden="true" className="size-3.5" /> : <Eye aria-hidden="true" className="size-3.5" />}</button><span className="break-all">{showEmail ? online.user.email : maskEmail(online.user.email)}</span></div>}
-                  <Button size="sm" variant="outline" className="border-white/20 bg-transparent" disabled={busy} onClick={() => void logOut()}>
-                    {busy ? <Loader2 className="animate-spin" /> : <LogOut />}{busy ? 'Logging out…' : 'Logout'}
-                  </Button>
-                </div>}
+                : online.user.email ? (
+                  <div className="flex items-center gap-1.5 text-xs text-white/60">
+                    <span>Mail:</span>
+                    <button type="button" className="inline-flex size-5 shrink-0 items-center justify-center rounded text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" aria-label={showEmail ? 'Hide email address' : 'Show email address'} title={showEmail ? 'Hide email address' : 'Show email address'} onClick={() => setShowEmail(value => !value)}>
+                      {showEmail ? <EyeOff aria-hidden="true" className="size-3.5" /> : <Eye aria-hidden="true" className="size-3.5" />}
+                    </button>
+                    <span className="break-all">{showEmail ? online.user.email : maskEmail(online.user.email)}</span>
+                  </div>
+                ) : null}
             {(error || online.error) && <p role="alert" className="text-xs text-rose-200">{error || online.error}</p>}
             {message && <p role="status" className="text-xs text-primary">{message}</p>}
             <div className="space-y-3 font-mono">
@@ -105,15 +109,38 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
             </div>
             <div className="flex items-center justify-between gap-3 pt-3">
               {readProfileBackups().length > 0 ? <button className="min-w-0 text-left text-[10px] text-white/50 underline underline-offset-4 hover:text-white" type="button" onClick={downloadBackup}>Download guest profile backups</button> : <span />}
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm("Reset campaign progress?")) resetCampaign()
-                }}
-                className="rounded border border-white/10 px-3 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-rose-200"
-              >
-                RESET SAVE
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetSeenMatchTips()
+                    setTipsReset(true)
+                    setTimeout(() => setTipsReset(false), 2000)
+                  }}
+                  className="rounded border border-white/10 px-3 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-amber-400/30 hover:bg-amber-500/10 hover:text-amber-200"
+                >
+                  {tipsReset ? 'TIPS RESET (0)' : 'RESET TIPS'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm("Reset campaign progress?")) resetCampaign()
+                  }}
+                  className="rounded border border-white/10 px-3 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-rose-200"
+                >
+                  RESET SAVE
+                </button>
+                {online.user && !online.user.is_anonymous && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void logOut()}
+                    className="rounded border border-white/10 px-3 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-rose-200 disabled:opacity-50"
+                  >
+                    {busy ? 'LOGGING OUT…' : 'LOGOUT'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
       </div>

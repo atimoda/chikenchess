@@ -1,7 +1,69 @@
-export const RELEASE_LABEL = 'v1.6.1'
+export const RELEASE_LABEL = 'v1.6.3'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    version: '1.6.3',
+    date: '17/10/2026',
+    title: 'Correção no Freeze do ChickenBot e layout de peças capturadas',
+    groups: [
+      { title: 'Interface e layout', items: [
+        'O contador cinza de ovos do adversário foi reposicionado para o canto superior direito acima do tabuleiro, e as peças capturadas pelo jogador passaram para a linha abaixo do tabuleiro, alinhadas ao topo e à esquerda e se estendendo continuamente em direção ao contador de golden eggs.',
+      ] },
+      { title: 'Inteligência artificial', items: [
+        'O ChickenBot não congela mais as próprias peças ao sortear o congelamento da casa de destino de jogadas de captura adversárias, priorizando a peça atacante.',
+      ] },
+    ],
+  },
+  {
+    version: '1.6.2',
+    date: '16/10/2026',
+    title: 'Lobby desacoplado, convite a amigos e ajustes de perfil',
+    groups: [
+      { title: 'Interface e popups', items: [
+        'Rooms, Friends e Profile agora fecham automaticamente ao clicar fora da janela flutuante.',
+        'O ambiente de preparação de partida foi desacoplado e agora opera em um popup dedicado de Lobby, com título Lobby e acesso direto pelo novo botão Lobby no mapa ou em Return to lobby na lista de salas.',
+        'No painel de Profile, o botão Logout foi reposicionado ao lado direito de Reset Save com a mesma identidade visual compacta.',
+        'No painel de Profile, adicionado o botão RESET TIPS para reiniciar a contagem de tips visualizadas para 0, permitindo vê-las novamente desde o início nas partidas seguintes.',
+        'No painel de Friends, cada amigo aceito agora exibe o botão Create game para criar imediatamente uma partida casual privada.',
+        'A opção de remover amizade foi movida para um menu de três pontinhos no canto superior direito do cartão do amigo, que também inclui a nova opção Hide.',
+        'Amigos ocultados podem ser restaurados informando seu Profile Code ou Email na busca de amigos, reexibindo o perfil sem gerar notificações duplicadas para o outro jogador.',
+        'As partidas (campanha e online) passam a exibir tips sequenciais configuradas no Admin em um popup modal sobre o tabuleiro, uma por partida, até que todas tenham sido visualizadas.',
+        'No Admin, adicionada a personalização do catálogo de Tips de abertura de partida (data/ui/match-tips.json), permitindo cadastrar e reordenar as dicas do jogo.',
+        'A tela de abertura de partidas personalizadas (online e vs bot de lobby) exibe o título da cidade e o ano na mesma linha (TITULO ANO), seguidos da linha com os estilos musicais entre parênteses e, abaixo dela, a linha com o confronto entre os jogadores.',
+        'A linha com os contadores de ovos e o indicador de turno ("Your turn" / "Your move") foi reposicionada para baixo do tabuleiro, logo acima das cartas de super-poderes.',
+        'Adicionado o botão Create lobby no globo, posicionado abaixo da lista de Games in progress, com atalho direto para a criação de uma nova sala.',
+        'Nos botões de Games in progress no globo, o ícone de entrar foi substituído por uma miniatura simplificada em tempo real do tabuleiro sob a perspectiva do jogador, com 3 px de padding para a borda do botão.',
+        'Partidas em andamento com status Waiting for opponent agora recebem borda cinza no botão do globo.',
+        'O título Games in progress no globo foi padronizado na mesma fonte e tipografia de Public rooms.',
+        'A frase de abertura do globo agora exibe diretamente uma única opção sorteada aleatoriamente, sem piscar previamente a primeira frase do catálogo durante o carregamento.',
+        'Nas telas de partida (campanha e online), o botão de voltar ao mapa foi movido para o canto superior esquerdo ao lado do ano da cidade, e seu ícone foi substituído pelo globo com grade segmentada de latitudes e longitudes.',
+        'Ao ganhar golden eggs em uma jogada, os ovos agora flutuam cerca de 50 px acima da peça com ease-in-out, pausam por 0,7 s e depois voam em direção ao contador de ovos também com ease-in-out.',
+        'Clicar em uma casa vazia do tabuleiro agora de-seleciona a peça selecionada, limpando a indicação de jogadas e os painéis de parâmetros.',
+        'No mobile, clicar e arrastar a partir de casas vazias agora rola a tela verticalmente, permitindo scrollar a página através das casas desocupadas do tabuleiro.',
+        'O cálculo dos limites de posicionamento dos popups no globo agora atualiza imediatamente no resize da tela, reancorando popups abertos e evitando que travem em posições ou limites antigos durante o arraste.',
+        'Em telas widescreen e desktop, os popups do globo agora se movem livremente por toda a tela durante o arraste, sem agarre próximo à circunferência e contidos apenas pelas bordas da janela.',
+        'Tentar capturar uma peça congelada agora exibe o aviso em formato de balão (toast), aplica uma leve trepidação na peça atacante e toca um efeito sonoro de recusa.',
+        'Freeze e Shield agora só são armados ou verificam saldo ao confirmar o clique na soltura sobre a carta ou botão, cancelando a ação se o usuário arrastar a carta (assim como no Mulligan).',
+        'Nos modos de partida (campanha e online), o botão de versão no canto inferior direito agora só é exibido quando o modo View code / Debug está ativado.',
+        'Em mobile, o botão do globo (Home) foi posicionado na mesma linha dos botões de ação do cabeçalho, enquanto o título da cidade e os seletores de tom, escala e harmonia ocupam a linha imediatamente abaixo.',
+        'O seletor Difficulty foi renomeado para Bot level e ampliado para 8 perfis divididos entre PureChess Bot (Easy, Medium, Hard, Expert e Jedi Pure Chess) e ChickenBot (Easy, Expert e Jedi ChickenBot).',
+        'Os bots PureChess jogam apenas xadrez clássico (com Jedi Pure Chess escolhendo sempre a melhor jogada possível em 3 segundos) e ocultam o contador e as animações de golden eggs do bot.',
+        'Os bots ChickenBot ganham e exibem animações de golden eggs em suas jogadas, usam Freeze e Shield conforme a barra de chance e a contagem de turnos (com 1 segundo de intervalo antes da jogada normal), sacodem o contador de ovos quando falta saldo para um poder e buscam jogadas Worst controladas para coletar 3 golden eggs.',
+        'Adicionado o widget Bot control no modo Debug para ajustar os parâmetros do bot em tempo real durante a partida, incluindo o botão Salvar bot quando executado no modo Admin local para gravar no catálogo do jogo.',
+        'A legenda de turno durante a vez adversária agora exibe "Bot thinking..." contra o bot e "Opponent thinking..." no modo multiplayer online.',
+        'Adicionada a preferência "Chance position" no menu Preferências da partida com as opções "Board\'s side" (padrão) e "Footer": em Board\'s side, a barra de chance fica posicionada verticalmente no lado esquerdo do tabuleiro, com opacidade normal (100%), espessura de 2 px e distância de 8 px em relação ao tabuleiro, mantendo o histórico de lances no rodapé; em Footer, a barra volta à base da tela abaixo do histórico.',
+        'As cartas e botões de Freeze e Shield agora usam touch-action manipulation (igual às demais cartas), permitindo arrastar e rolar a tela em mobile sobre qualquer uma delas.',
+        'Easy ChickenBot passa a ser o bot padrão selecionado ao iniciar uma partida contra o computador.',
+        'O bloqueio dos atalhos Best moves e Worst moves após o uso de super-poderes agora se aplica exclusivamente ao jogador que utilizou o poder, mantendo as opções disponíveis para o adversário.',
+        'As cartas de super-poderes em cooldown ou indisponíveis agora são renderizadas em estilo totalmente preto e branco (monocromático).',
+        'O Freeze executado pelo ChickenBot sorteia com 50% de probabilidade entre congelar a casa de origem da peça ou a casa de destino da jogada.',
+        'O contador de golden eggs do adversário (online) e do Bot (contra IA) passa a ser renderizado na cor cinza, tanto na borda quanto no ícone de ovo metálico.',
+        'No widget Bot control, foram removidas as bordas das linhas internas de parâmetros e da base do título, e o redimensionamento vertical foi destravado com alça de resize dedicada.',
+        'No hover da carta e do botão de Mulligan, exibe os movimentos que seriam desfeitos criando cópias fantasma com 50% de transparência que retornam às casas anteriores com aceleração e desaceleração suaves (ease-in-out) na metade da velocidade normal, sem mover as peças reais do tabuleiro e sendo excluídas no mouse leave ou na execução do Mulligan.',
+      ] },
+    ],
+  },
   {
     version: '1.6.1',
     date: '13/10/2026',

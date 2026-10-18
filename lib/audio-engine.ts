@@ -380,6 +380,7 @@ export class AudioEngine {
     envelope.gain.exponentialRampToValueAtTime(0.12, time + 0.012)
     envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.2)
     oscillator.connect(envelope).connect(this.masterGain)
+    oscillator.onended = () => { oscillator.disconnect(); envelope.disconnect() }
     oscillator.start(time)
     oscillator.stop(time + 0.2)
   }

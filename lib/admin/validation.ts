@@ -54,6 +54,26 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       if (result.some((item, index) => item.minPoints !== RANK_TIERS[index].minPoints)) throw new Error('Edite os títulos mantendo a ordem e os limites de pontuação.')
       break
     }
+    case 'bots': {
+      const botSchema = z.object({
+        id: text,
+        name: text,
+        kind: z.enum(['pure', 'chicken']),
+        skill: finite.int().min(0).max(20),
+        alwaysBestMove: z.boolean(),
+        delaySeconds: finite.min(0.5).max(30),
+        freezeTopMoves: finite.int().min(1).max(20),
+        freezeChanceBelowPercent: finite.min(0).max(100),
+        freezeEveryMoves: finite.int().min(1).max(100),
+        shieldEveryMoves: finite.int().min(1).max(100),
+        shieldChanceAbovePercent: finite.min(0).max(100),
+        worstChanceAbovePercent: finite.min(0).max(100),
+        worstMinScorePawns: finite.min(-100).max(100),
+      }).strict()
+      const result = z.array(botSchema).min(1).max(32).parse(value)
+      if (new Set(result.map(item => item.id)).size !== result.length) throw new Error('IDs dos bots não podem repetir.')
+      break
+    }
     case 'names': {
       const words = z.array(z.string().min(1).max(12).refine(word => word === word.trim() && !hasControl(word), 'Termo inválido ou com espaços nas extremidades.')).min(1).max(5000).superRefine((items, ctx) => {
         if (new Set(items).size !== items.length) ctx.addIssue({ code: 'custom', message: 'Remova os termos repetidos nesta categoria.' })

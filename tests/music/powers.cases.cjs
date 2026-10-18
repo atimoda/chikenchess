@@ -6,7 +6,7 @@ const { loadTs } = require('../helpers/music.cjs')
 const { canUseMatchPower, createMatchPower, permitsPowerMove, permittedPowerMoves, advanceMatchPowers, shieldCaptureBlock, frozenCaptureBlock } = loadTs('lib/chess-powers.ts')
 const { makePoweredChess, clonePoweredChess, freezeApplicationError, setPoweredChessPowers, syncPoweredMoveSan, poweredChessSnapshot, restorePoweredChess } = loadTs('lib/powered-chess.ts')
 const { analyzePoweredMoves } = loadTs('lib/powered-analysis.ts')
-const { releasedPowers } = loadTs('lib/power-presentation.ts')
+const { releasedPowers, MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, mulliganGhostEaseInOut, getOfflineMulliganPreviewMoves, getOnlineMulliganPreviewMoves } = loadTs('lib/power-presentation.ts')
 
 test('frozen capture feedback agrees with legality for both teams and en passant', () => {
   for (const [color, targetColor, from, to] of [['w', 'b', 'e4', 'd5'], ['b', 'w', 'e5', 'd4']]) {
@@ -101,6 +101,38 @@ test('frozen-piece auxiliary cue stays short and cancels active or still-unlocki
   cancelPlaying()
   assert.ok(oscillators.every(oscillator => oscillator.disconnected && oscillator.stopTimes.length === 2))
   assert.ok(gains.every(gain => gain.disconnected), 'cancellation disconnects every auxiliary envelope')
+})
+
+test('blocked negative cue starts bounded sweep and disconnects nodes', async () => {
+  const { AudioEngine } = loadTs('lib/audio-engine.ts')
+  const engine = new AudioEngine()
+  const oscillators = [], gains = []
+  const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} })
+  const node = extra => ({ ...extra, disconnected: false, connect() { return this }, disconnect() { this.disconnected = true } })
+  const context = {
+    state: 'running', currentTime: 5,
+    resume: async () => {},
+    createOscillator: () => {
+      const osc = node({ type: 'square', frequency: param(), starts: [], stops: [], start(t) { this.starts.push(t) }, stop(t) { this.stops.push(t) } })
+      oscillators.push(osc)
+      return osc
+    },
+    createGain: () => {
+      const g = node({ gain: param() })
+      gains.push(g)
+      return g
+    },
+  }
+  engine.audioContext = context
+  engine.masterGain = node({})
+  await engine.playBlockedCue()
+  assert.equal(oscillators.length, 1)
+  assert.equal(oscillators[0].starts[0], 5)
+  assert.equal(oscillators[0].stops[0], 5.2)
+  assert.equal(typeof oscillators[0].onended, 'function')
+  oscillators[0].onended()
+  assert.ok(oscillators[0].disconnected)
+  assert.ok(gains[0].disconnected)
 })
 
 test('shipped powered Worker is bundled JavaScript and preserves the analysis protocol', async () => {
@@ -569,3 +601,50 @@ test('Recorded music history preserves ordinary captures, en passant, castling a
     assert.equal(piecesFromMoves(game.history({ verbose: true })).length, game.board().flat().filter(Boolean).length)
   }
 })
+
+test('Mulligan hover preview generates ghost moves at half speed for offline and online', () => {
+  assert.equal(MULLIGAN_PREVIEW_DURATION_MS, MULLIGAN_ANIMATION_MS * 2)
+
+  // Ease-in-out verification
+  assert.equal(mulliganGhostEaseInOut(0), 0)
+  assert.equal(mulliganGhostEaseInOut(0.5), 0.5)
+  assert.equal(mulliganGhostEaseInOut(1), 1)
+  assert.ok(mulliganGhostEaseInOut(0.1) < 0.01, 'gentle ease-in start')
+  assert.ok(mulliganGhostEaseInOut(0.9) > 0.99, 'gentle ease-out finish')
+
+  // Offline: initial empty
+  const game = new Chess()
+  assert.deepEqual(getOfflineMulliganPreviewMoves(game), [])
+
+  // Offline: 1 move (AI thinking) -> 1 move undone
+  game.move('e4')
+  const oneMovePreview = getOfflineMulliganPreviewMoves(game)
+  assert.equal(oneMovePreview.length, 1)
+  assert.deepEqual(oneMovePreview[0], { piece: 'wP', currentSquare: 'e4', targetSquare: 'e2' })
+
+  // Offline: 2 moves (Black replies, White's turn) -> 2 moves undone
+  game.move('e5')
+  const twoMovesPreview = getOfflineMulliganPreviewMoves(game)
+  assert.equal(twoMovesPreview.length, 2)
+  assert.deepEqual(twoMovesPreview[0], { piece: 'wP', currentSquare: 'e4', targetSquare: 'e2' })
+  assert.deepEqual(twoMovesPreview[1], { piece: 'bP', currentSquare: 'e5', targetSquare: 'e7' })
+
+  // Online: White perspective
+  const onlineActions = [
+    { kind: 'move', color: 'w' },
+    { kind: 'move', color: 'b' },
+  ]
+  const onlineWhitePreview = getOnlineMulliganPreviewMoves(game, onlineActions, 'w')
+  assert.equal(onlineWhitePreview.length, 2)
+  assert.deepEqual(onlineWhitePreview[0], { piece: 'wP', currentSquare: 'e4', targetSquare: 'e2' })
+  assert.deepEqual(onlineWhitePreview[1], { piece: 'bP', currentSquare: 'e5', targetSquare: 'e7' })
+
+  // Online: Black perspective when Black just moved (only Black's move undone)
+  const onlineBlackPreview = getOnlineMulliganPreviewMoves(game, onlineActions, 'b')
+  assert.equal(onlineBlackPreview.length, 1)
+  assert.deepEqual(onlineBlackPreview[0], { piece: 'bP', currentSquare: 'e5', targetSquare: 'e7' })
+
+  // Online: Black perspective before Black has made any moves
+  assert.deepEqual(getOnlineMulliganPreviewMoves(game, [{ kind: 'move', color: 'w' }], 'b'), [])
+})
+

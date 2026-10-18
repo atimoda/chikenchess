@@ -25,6 +25,8 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   playback?: React.ReactNode
   stockfishDebugOn: boolean
   onToggleStockfishDebug?: () => void
+  botControlOn?: boolean
+  onToggleBotControl?: () => void
   onForceWin?: () => void
   onGetEggs?: () => void
   pieceDebugOn: boolean
@@ -46,6 +48,8 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   playback,
   stockfishDebugOn,
   onToggleStockfishDebug,
+  botControlOn = false,
+  onToggleBotControl,
   onForceWin,
   onGetEggs,
   pieceDebugOn,
@@ -218,6 +222,12 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               onClick={event => { event.stopPropagation(); onToggleStockfishDebug() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", stockfishDebugOn ? "border-emerald-400/70 bg-emerald-400/20 text-emerald-300" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
             >Debug SF</button>}
+            {onToggleBotControl && <button
+              type="button"
+              aria-pressed={botControlOn}
+              onClick={event => { event.stopPropagation(); onToggleBotControl() }}
+              className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", botControlOn ? "border-amber-300/70 bg-amber-300/15 text-amber-200" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
+            >Bot control</button>}
             {onForceWin && <button
               type="button"
               onClick={event => { event.stopPropagation(); onForceWin() }}

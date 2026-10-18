@@ -1,13 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, Globe2, Loader2, LogIn, Plus, RefreshCw, UserPlus, Users, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Plus, RefreshCw, Trash2, UserPlus, Users, UserRound, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cities, getCityById, type CityData } from '@/lib/cities-data'
 import type { PlayerProfile } from '@/lib/game-progression'
 import { getOnlineClient, ONLINE_CONFIGURATION_MESSAGE, onlineErrorMessage, onlineRpc, requireOnlineClient } from '@/lib/online/client'
-import type { OnlineFriend, OnlineRoom, PublicRoom, RoomMember } from '@/lib/online/types'
+import type { OnlineFriend, OnlineRoom, PublicRoom, RoomMember, RunningGame } from '@/lib/online/types'
+import { replayMatch } from '@/lib/online/domain'
+import { Chess } from 'chess.js'
 import { cn } from '@/lib/utils'
 import { useOnline } from './online-provider'
 import { disposeLobbyAudio, playLobbyJoinSound, prepareLobbyAudio } from './lobby-audio'
@@ -16,7 +19,129 @@ import { isAlreadyInRoom, roomArrivalNames, roomErrorMessage, startedRoomMatch }
 import { ProfilePane } from './profile-pane'
 import { useRunningGames } from '@/hooks/use-running-games'
 
-export type OnlineHubTab = 'room' | 'rooms' | 'friends' | 'profile'
+const LIGHT_SQUARES = Array.from({ length: 8 }, (_, r) =>
+  Array.from({ length: 8 }, (_, c) => ((r + c) % 2 === 0 ? [c, r] : null)).filter(Boolean) as [number, number][]
+).flat()
+
+function RunningGameMiniature({ game }: { game: RunningGame }) {
+  const board = useMemo(() => {
+    try {
+      return replayMatch({ actions: game.actions || [] }).game.board()
+    } catch {
+      return new Chess().board()
+    }
+  }, [game.actions])
+
+  const isFlipped = game.color === 'b'
+
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      aria-hidden="true"
+      className="size-12 shrink-0 rounded-[3px] overflow-hidden select-none"
+    >
+      <defs>
+        <symbol id="cc-mini-wp" viewBox="0 0 8 8">
+          <circle cx="4" cy="2.6" r="1.2" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" />
+          <path d="M2.6 6.6 h2.8 L4.5 4.1 H3.5 Z" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" strokeLinejoin="round" />
+          <line x1="2.2" y1="6.8" x2="5.8" y2="6.8" stroke="#121813" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+        <symbol id="cc-mini-bp" viewBox="0 0 8 8">
+          <circle cx="4" cy="2.6" r="1.2" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" />
+          <path d="M2.6 6.6 h2.8 L4.5 4.1 H3.5 Z" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" strokeLinejoin="round" />
+          <line x1="2.2" y1="6.8" x2="5.8" y2="6.8" stroke="#9cb5a0" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+
+        <symbol id="cc-mini-wn" viewBox="0 0 8 8">
+          <path d="M2.3 6.8 h3.4 l-.3-2.2 c.7-.3 1.3-1 1.1-1.8 -.6-.1-1.1.2-1.4.5 l-.2-.7 -1 .3 c-.4.6-.7 1.5-.7 2.1 z" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" strokeLinejoin="round" />
+          <circle cx="3.3" cy="3.6" r="0.3" fill="#121813" />
+        </symbol>
+        <symbol id="cc-mini-bn" viewBox="0 0 8 8">
+          <path d="M2.3 6.8 h3.4 l-.3-2.2 c.7-.3 1.3-1 1.1-1.8 -.6-.1-1.1.2-1.4.5 l-.2-.7 -1 .3 c-.4.6-.7 1.5-.7 2.1 z" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" strokeLinejoin="round" />
+          <circle cx="3.3" cy="3.6" r="0.3" fill="#9cb5a0" />
+        </symbol>
+
+        <symbol id="cc-mini-wb" viewBox="0 0 8 8">
+          <circle cx="4" cy="1.7" r="0.5" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" />
+          <path d="M4 2.4 c-1.2 0-1.8 1.4-1.4 3.2 h2.8 c.4-1.8-.2-3.2-1.4-3.2 z" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" strokeLinejoin="round" />
+          <line x1="3.4" y1="3.7" x2="4.6" y2="4.7" stroke="#121813" strokeWidth="0.6" />
+          <path d="M2.3 6.8 h3.4" stroke="#121813" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+        <symbol id="cc-mini-bb" viewBox="0 0 8 8">
+          <circle cx="4" cy="1.7" r="0.5" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" />
+          <path d="M4 2.4 c-1.2 0-1.8 1.4-1.4 3.2 h2.8 c.4-1.8-.2-3.2-1.4-3.2 z" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" strokeLinejoin="round" />
+          <line x1="3.4" y1="3.7" x2="4.6" y2="4.7" stroke="#9cb5a0" strokeWidth="0.6" />
+          <path d="M2.3 6.8 h3.4" stroke="#9cb5a0" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+
+        <symbol id="cc-mini-wr" viewBox="0 0 8 8">
+          <path d="M2.3 2.5 h3.4 v1.1 h-.5 v-.5 h-.7 v.5 h-.6 v-.5 h-.7 v.5 h-.5 v-1.1 z" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.7 3.6 h2.6 l.2 2.2 H2.5 Z" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.2 6.8 h3.6" stroke="#121813" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+        <symbol id="cc-mini-br" viewBox="0 0 8 8">
+          <path d="M2.3 2.5 h3.4 v1.1 h-.5 v-.5 h-.7 v.5 h-.6 v-.5 h-.7 v.5 h-.5 v-1.1 z" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.7 3.6 h2.6 l.2 2.2 H2.5 Z" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.2 6.8 h3.6" stroke="#9cb5a0" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+
+        <symbol id="cc-mini-wq" viewBox="0 0 8 8">
+          <circle cx="2.4" cy="2.5" r="0.4" fill="#f5f8f5" stroke="#121813" strokeWidth="0.5" />
+          <circle cx="4.0" cy="2.1" r="0.4" fill="#f5f8f5" stroke="#121813" strokeWidth="0.5" />
+          <circle cx="5.6" cy="2.5" r="0.4" fill="#f5f8f5" stroke="#121813" strokeWidth="0.5" />
+          <path d="M2.4 3.1 L2.8 5.8 H5.2 L5.6 3.1 L4.7 4.2 L4 2.9 L3.3 4.2 Z" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.2 6.8 h3.6" stroke="#121813" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+        <symbol id="cc-mini-bq" viewBox="0 0 8 8">
+          <circle cx="2.4" cy="2.5" r="0.4" fill="#121813" stroke="#9cb5a0" strokeWidth="0.5" />
+          <circle cx="4.0" cy="2.1" r="0.4" fill="#121813" stroke="#9cb5a0" strokeWidth="0.5" />
+          <circle cx="5.6" cy="2.5" r="0.4" fill="#121813" stroke="#9cb5a0" strokeWidth="0.5" />
+          <path d="M2.4 3.1 L2.8 5.8 H5.2 L5.6 3.1 L4.7 4.2 L4 2.9 L3.3 4.2 Z" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.2 6.8 h3.6" stroke="#9cb5a0" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+
+        <symbol id="cc-mini-wk" viewBox="0 0 8 8">
+          <line x1="4" y1="1.3" x2="4" y2="2.9" stroke="#121813" strokeWidth="0.6" strokeLinecap="round" />
+          <line x1="3.2" y1="1.9" x2="4.8" y2="1.9" stroke="#121813" strokeWidth="0.6" strokeLinecap="round" />
+          <path d="M2.4 5.8 h3.2 c.5-1.1 0-2.2-1.6-2.2 -1.6 0-2.1 1.1-1.6 2.2 z" fill="#f5f8f5" stroke="#121813" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.2 6.8 h3.6" stroke="#121813" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+        <symbol id="cc-mini-bk" viewBox="0 0 8 8">
+          <line x1="4" y1="1.3" x2="4" y2="2.9" stroke="#9cb5a0" strokeWidth="0.6" strokeLinecap="round" />
+          <line x1="3.2" y1="1.9" x2="4.8" y2="1.9" stroke="#9cb5a0" strokeWidth="0.6" strokeLinecap="round" />
+          <path d="M2.4 5.8 h3.2 c.5-1.1 0-2.2-1.6-2.2 -1.6 0-2.1 1.1-1.6 2.2 z" fill="#121813" stroke="#9cb5a0" strokeWidth="0.6" strokeLinejoin="round" />
+          <path d="M2.2 6.8 h3.6" stroke="#9cb5a0" strokeWidth="0.6" strokeLinecap="round" />
+        </symbol>
+      </defs>
+
+      <rect width="64" height="64" fill="#18231a" />
+
+      {LIGHT_SQUARES.map(([c, r]) => (
+        <rect key={`sq-${c}-${r}`} x={c * 8} y={r * 8} width={8} height={8} fill="#394b3d" />
+      ))}
+
+      {board.map((row, r) =>
+        row.map((piece, c) => {
+          if (!piece) return null
+          const displayR = isFlipped ? 7 - r : r
+          const displayC = isFlipped ? 7 - c : c
+          return (
+            <use
+              key={`p-${r}-${c}`}
+              href={`#cc-mini-${piece.color}${piece.type}`}
+              x={displayC * 8}
+              y={displayR * 8}
+              width={8}
+              height={8}
+            />
+          )
+        })
+      )}
+    </svg>
+  )
+}
+
+export type OnlineHubTab = 'rooms' | 'friends' | 'profile' | 'room'
 export interface OnlineHubProps {
   onMatch: (matchId: string) => void
   playerProfile: PlayerProfile | null
@@ -37,7 +162,7 @@ export interface OnlineHubProps {
 const inputClass = 'h-10 min-w-0 rounded-md border border-white/20 bg-black/30 px-3 text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary'
 const DEFAULT_CITY_ID = 'random'
 const shortRoomCode = (code: string) => code.replace(/\D/g, '').slice(0, 5).padEnd(5, '0')
-type FriendAction = 'request' | 'accept' | 'reject' | 'cancel' | 'remove'
+type FriendAction = 'request' | 'accept' | 'reject' | 'cancel' | 'remove' | 'hide'
 let friendChannelSequence = 0
 let roomChannelSequence = 0
 
@@ -96,7 +221,7 @@ function useFriendList(active: boolean) {
 
   const act = useCallback(async (action: FriendAction, targetCode?: string, friendId?: string) => {
     await ensureGuest()
-    const next = await onlineRpc<OnlineFriend[]>('online_friends', { p_action: action, p_target_code: targetCode?.trim().toUpperCase() || null, p_friend_id: friendId || null })
+    const next = await onlineRpc<OnlineFriend[]>('online_friends', { p_action: action, p_target_code: targetCode?.trim() || null, p_friend_id: friendId || null })
     revision.current += 1
     setFriends(next || [])
     setError(null)
@@ -179,7 +304,24 @@ function ExitRoomIcon() {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-4"><path d="M15 20.5H10M15 20.5V3H2.5v16l7.8 3.5V7L2.5 3" /><path d="M7.9 13v2" /><path d="M22 10h-6.7l2-3.3h-2.1L12.5 11l2.7 4.4h2.1l-2-3.4H22z" /></svg>
 }
 
-function FriendsPane() {
+const HIDDEN_FRIENDS_PREFIX = 'chickenchess:hidden_friends:'
+function getHiddenFriendCodes(userId: string | undefined): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = localStorage.getItem(`${HIDDEN_FRIENDS_PREFIX}${userId || 'guest'}`)
+    return raw ? new Set(JSON.parse(raw)) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+function saveHiddenFriendCodes(userId: string | undefined, hidden: Set<string>) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(`${HIDDEN_FRIENDS_PREFIX}${userId || 'guest'}`, JSON.stringify(Array.from(hidden)))
+  } catch {}
+}
+
+function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) => void }) {
   const { user } = useOnline()
   const { friends, loading, error, act, refresh } = useFriendList(true)
   const [targetCode, setTargetCode] = useState('')
@@ -187,6 +329,34 @@ function FriendsPane() {
   const [refreshing, setRefreshing] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [hiddenCodes, setHiddenCodes] = useState<Set<string>>(() => getHiddenFriendCodes(user?.id))
+
+  useEffect(() => {
+    setHiddenCodes(getHiddenFriendCodes(user?.id))
+  }, [user?.id])
+
+  const hideFriend = (friend: OnlineFriend) => {
+    const code = friend.profile.code.toUpperCase()
+    setHiddenCodes(prev => {
+      const next = new Set(prev)
+      next.add(code)
+      saveHiddenFriendCodes(user?.id, next)
+      return next
+    })
+    setNotice(`${friend.profile.display_name} is now hidden from your friends list.`)
+  }
+
+  const unhideCode = (code: string) => {
+    const upper = code.toUpperCase()
+    setHiddenCodes(prev => {
+      if (!prev.has(upper)) return prev
+      const next = new Set(prev)
+      next.delete(upper)
+      saveHiddenFriendCodes(user?.id, next)
+      return next
+    })
+  }
+
   const action = async (kind: FriendAction, friend?: OnlineFriend) => {
     setBusy(friend?.id || 'request')
     setActionError(null)
@@ -194,24 +364,179 @@ function FriendsPane() {
     try {
       const next = await act(kind, targetCode, friend?.id)
       if (kind === 'request') {
-        const relation = next?.find((entry) => entry.profile.code.toUpperCase() === targetCode.trim().toUpperCase())
-        setNotice(relation?.status === 'accepted' ? 'Friend request accepted.' : relation?.sender_id !== user?.id ? 'Request received. Accept it in the list below.' : 'Friend request sent.')
+        const query = targetCode.trim()
+        const unhidden = next?.find((entry) =>
+          entry.status === 'accepted' && (
+            hiddenCodes.has(entry.profile.code.toUpperCase()) ||
+            entry.profile.code.toUpperCase() === query.toUpperCase()
+          )
+        )
+        if (unhidden && hiddenCodes.has(unhidden.profile.code.toUpperCase())) {
+          unhideCode(unhidden.profile.code)
+          setNotice(`${unhidden.profile.display_name} is visible again in your friends list.`)
+        } else {
+          const relation = next?.find((entry) => entry.profile.code.toUpperCase() === query.toUpperCase())
+          setNotice(
+            relation?.status === 'accepted'
+              ? 'Friend request accepted.'
+              : relation?.sender_id !== user?.id
+                ? 'Request received. Accept it in the list below.'
+                : 'Friend request sent.'
+          )
+        }
         setTargetCode('')
       }
-    } catch (cause) { setActionError(onlineErrorMessage(cause)) } finally { setBusy(null) }
+    } catch (cause) {
+      setActionError(onlineErrorMessage(cause))
+    } finally {
+      setBusy(null)
+    }
   }
+
+  const submitAdd = (event: React.FormEvent) => {
+    event.preventDefault()
+    const query = targetCode.trim()
+    if (!query) return
+    const existingHidden = friends.find(
+      (f) => f.status === 'accepted' && hiddenCodes.has(f.profile.code.toUpperCase()) && f.profile.code.toUpperCase() === query.toUpperCase()
+    )
+    if (existingHidden) {
+      unhideCode(existingHidden.profile.code)
+      setNotice(`${existingHidden.profile.display_name} is visible again in your friends list.`)
+      setTargetCode('')
+      return
+    }
+    void action('request')
+  }
+
+  const visibleAccepted = friends.filter(
+    (friend) => friend.status === 'accepted' && !hiddenCodes.has(friend.profile.code.toUpperCase())
+  )
+
   const groups = [
-    { title: 'Friends', entries: friends.filter((friend) => friend.status === 'accepted') },
-    { title: 'Received requests', entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id !== user?.id) },
-    { title: 'Sent requests', entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id === user?.id) },
+    { title: 'Friends', entries: visibleAccepted, isAccepted: true },
+    { title: 'Received requests', entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id !== user?.id), isAccepted: false },
+    { title: 'Sent requests', entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id === user?.id), isAccepted: false },
   ]
-  return <div className="space-y-5">
-    <form className="flex flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); void action('request') }}><label className="sr-only" htmlFor="friend-code">Public profile code</label><input id="friend-code" className={`${inputClass} flex-1 font-mono uppercase`} value={targetCode} onChange={(event) => setTargetCode(event.target.value.toUpperCase())} placeholder="Profile code" maxLength={20} required /><Button type="submit" disabled={Boolean(busy) || !targetCode.trim()}><UserPlus />Add</Button></form>
-    <div className="flex justify-start text-white/45"><button type="button" aria-label="Refresh friends" aria-busy={refreshing} disabled={refreshing} onClick={() => { setRefreshing(true); void refresh().catch((cause) => setActionError(onlineErrorMessage(cause))).finally(() => setRefreshing(false)) }}><RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} style={refreshing ? { animationDuration: '2.5s' } : undefined} /></button></div>
-    {groups.map((group) => <section key={group.title} className="space-y-2"><h3 className="text-sm font-medium text-white/80">{group.title} <span className="text-white/40">{group.entries.length}</span></h3>{group.entries.length ? group.entries.map((friend) => <div key={friend.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{friend.profile.display_name}</p><p className="font-mono text-[11px] text-white/45">{friend.profile.code}</p></div><div className="flex flex-wrap gap-2">{friend.status === 'accepted' ? <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('remove', friend)}>Remove</Button> : friend.sender_id === user?.id ? <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('cancel', friend)}>Cancel</Button> : <><Button size="sm" disabled={Boolean(busy)} onClick={() => void action('accept', friend)}>Accept</Button><Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('reject', friend)}>Decline</Button></>}</div></div>) : loading ? <p role="status" className="text-xs text-white/40">Loading…</p> : null}</section>)}
-    {(error || actionError) && <p role="alert" className="text-sm text-rose-200">{actionError || error}</p>}
-    {notice && <p role="status" className="text-xs text-primary">{notice}</p>}
-  </div>
+
+  return (
+    <div className="space-y-5">
+      <form className="flex flex-wrap gap-2" onSubmit={submitAdd}>
+        <label className="sr-only" htmlFor="friend-code">Profile code or email</label>
+        <input
+          id="friend-code"
+          className={`${inputClass} flex-1 font-mono`}
+          value={targetCode}
+          onChange={(event) => setTargetCode(event.target.value)}
+          placeholder="Profile code or email"
+          maxLength={120}
+          required
+        />
+        <Button type="submit" disabled={Boolean(busy) || !targetCode.trim()}><UserPlus />Add</Button>
+      </form>
+      <div className="flex justify-start text-white/45">
+        <button
+          type="button"
+          aria-label="Refresh friends"
+          aria-busy={refreshing}
+          disabled={refreshing}
+          onClick={() => {
+            setRefreshing(true)
+            void refresh().catch((cause) => setActionError(onlineErrorMessage(cause))).finally(() => setRefreshing(false))
+          }}
+        >
+          <RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} style={refreshing ? { animationDuration: '2.5s' } : undefined} />
+        </button>
+      </div>
+      {groups.map((group) => (
+        <section key={group.title} className="space-y-2">
+          <h3 className="text-sm font-medium text-white/80">
+            {group.title} <span className="text-white/40">{group.entries.length}</span>
+          </h3>
+          {group.entries.length ? (
+            group.entries.map((friend) => (
+              <div
+                key={friend.id}
+                className="relative flex flex-wrap items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3 pr-10"
+              >
+                <div>
+                  <p className="break-words text-sm font-medium">{friend.profile.display_name}</p>
+                  <p className="font-mono text-[11px] text-white/45">{friend.profile.code}</p>
+                </div>
+                {group.isAccepted ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-primary/40 bg-transparent text-primary hover:border-primary hover:bg-black/80 hover:text-white"
+                        disabled={Boolean(busy)}
+                        onClick={() => onCreateGame?.(friend)}
+                      >
+                        <Gamepad2 className="size-3.5" />
+                        Create game
+                      </Button>
+                    </div>
+                    <div className="absolute right-2 top-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="Friend options"
+                            className="inline-flex size-6 items-center justify-center rounded text-white/50 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          >
+                            <MoreVertical className="size-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="border-white/20 bg-[#101713] text-[#dfe8df]">
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2 text-xs text-white/70 hover:bg-white/10 hover:text-white"
+                            onClick={() => hideFriend(friend)}
+                          >
+                            <EyeOff className="size-3.5" />
+                            Hide
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2 text-xs text-rose-300 hover:bg-rose-500/20 hover:text-rose-200"
+                            disabled={Boolean(busy)}
+                            onClick={() => void action('remove', friend)}
+                          >
+                            <Trash2 className="size-3.5" />
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {friend.sender_id === user?.id ? (
+                      <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('cancel', friend)}>
+                        Cancel
+                      </Button>
+                    ) : (
+                      <>
+                        <Button size="sm" disabled={Boolean(busy)} onClick={() => void action('accept', friend)}>
+                          Accept
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('reject', friend)}>
+                          Decline
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : loading ? (
+            <p role="status" className="text-xs text-white/40">Loading…</p>
+          ) : null}
+        </section>
+      ))}
+      {(error || actionError) && <p role="alert" className="text-sm text-rose-200">{actionError || error}</p>}
+      {notice && <p role="status" className="text-xs text-primary">{notice}</p>}
+    </div>
+  )
 }
 
 export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, open, onOpenChange, initialTab, showLaunchers = true, showMapRooms = false, createRequest, onCreateRequestHandled }: OnlineHubProps) {
@@ -219,7 +544,8 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
   const runningGames = useRunningGames()
   const [internalOpen, setInternalOpen] = useState(Boolean(inviteCode))
   const isOpen = open ?? internalOpen
-  const [tab, setTab] = useState<OnlineHubTab>(initialTab || 'rooms')
+  const [lobbyOpen, setLobbyOpen] = useState(false)
+  const [tab, setTab] = useState<OnlineHubTab>(initialTab === 'profile' ? 'profile' : initialTab === 'friends' ? 'friends' : 'rooms')
   const [showDirectory, setShowDirectory] = useState(false)
   const [directoryError, setDirectoryError] = useState<string | null>(null)
   const roomsRefreshRevision = useRef(0)
@@ -288,8 +614,34 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
   const isRoomMember = Boolean(room?.members.some((member) => member.user_id === user?.id))
 
   const setOpen = useCallback((next: boolean) => { setInternalOpen(next); onOpenChange?.(next) }, [onOpenChange])
-  const launch = (nextTab: OnlineHubTab) => { setTab(nextTab); if (nextTab === 'rooms') { setShowDirectory(true); setCreateOpen(false) }; setOpen(true) }
-  useEffect(() => { if (initialTab && isOpen) { setTab(initialTab); if (initialTab === 'rooms') { setShowDirectory(true); setCreateOpen(false) } } }, [initialTab, isOpen])
+  const launch = (nextTab: OnlineHubTab) => {
+    if (nextTab === 'room') {
+      setOpen(false)
+      setLobbyOpen(true)
+      return
+    }
+    setLobbyOpen(false)
+    setTab(nextTab)
+    if (nextTab === 'rooms') {
+      setShowDirectory(true)
+      setCreateOpen(false)
+    }
+    setOpen(true)
+  }
+  useEffect(() => {
+    if (initialTab && isOpen) {
+      if (initialTab === 'room') {
+        setOpen(false)
+        setLobbyOpen(true)
+      } else {
+        setTab(initialTab)
+        if (initialTab === 'rooms') {
+          setShowDirectory(true)
+          setCreateOpen(false)
+        }
+      }
+    }
+  }, [initialTab, isOpen])
 
   const applyRoom = useCallback((next: OnlineRoom | null) => {
     const newMatch = startedRoomMatch(roomRef.current, next, identityRef.current)
@@ -298,7 +650,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     if (arrivals.length) {
       playLobbyJoinSound()
       setFlash(true)
-      for (const name of arrivals) notify(`${name} joined your room.`)
+      for (const name of arrivals) notify(`${name} joined your lobby.`)
       if (flashTimer.current) clearTimeout(flashTimer.current)
       flashTimer.current = setTimeout(() => setFlash(false), 1400)
     }
@@ -411,13 +763,12 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     if (!startedMatch || matched.current === startedMatch) return
     matched.current = startedMatch
     setOpen(false)
+    setLobbyOpen(false)
     onMatch(startedMatch)
   }, [startedMatch, onMatch, setOpen])
 
   useEffect(() => {
     if (!inviteCode) return
-    setOpen(true)
-    setTab('rooms')
     setCode(inviteCode.trim().toUpperCase())
     if (!configured) return
     let active = true
@@ -430,10 +781,12 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       if (active && identityRef.current === current.id && generation === roomGeneration.current) {
         roomGeneration.current += 1
         applyRoom(next)
+        setOpen(false)
+        setLobbyOpen(true)
       }
     })().catch((cause) => { if (active) setError(roomErrorMessage(cause) || onlineErrorMessage(cause)) }).finally(() => { if (active) setBusy(null) })
     return () => { active = false }
-  }, [inviteCode, configured, user?.id, ensureGuest, applyRoom, setOpen])
+  }, [inviteCode, configured, user?.id, ensureGuest, applyRoom])
 
   const roomAction = useCallback(async (action: 'create' | 'join' | 'leave' | 'kit' | 'ready' | 'cancel-ready' | 'visibility', roomCode?: string, cityId = DEFAULT_CITY_ID, isPublic = true) => {
     if (roomActionPending.current || busy) return false
@@ -471,10 +824,13 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       applyRoom(action === 'leave' ? null : next)
       setCreateOpen(false)
       if (action === 'leave') {
+        setLobbyOpen(false)
         setTab('rooms')
         setShowDirectory(true)
+        setOpen(true)
       } else if (next?.members.some((member) => member.user_id === actor)) {
-        setTab('room')
+        setOpen(false)
+        setLobbyOpen(true)
         setShowDirectory(false)
       }
       return true
@@ -501,15 +857,24 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     if (!createRequest || consumedCreateRequests.current.has(createRequest.id) || busy || roomActionPending.current) return
     const request = createRequest
     consumedCreateRequests.current.add(request.id)
-    setOpen(true)
-    setTab('rooms')
     setCreateOpen(false)
     setShowDirectory(false)
-    void roomAction('create', undefined, request.cityId, true).finally(() => onCreateRequestHandled?.(request.id))
-  }, [createRequest, busy, roomAction, setOpen, onCreateRequestHandled])
+    void roomAction('create', undefined, request.cityId, true).then((ok) => {
+      if (ok) {
+        setOpen(false)
+        setLobbyOpen(true)
+      }
+    }).finally(() => onCreateRequestHandled?.(request.id))
+  }, [createRequest, busy, roomAction, onCreateRequestHandled])
 
+  const handleCreateGameWithFriend = async (_friend: OnlineFriend) => {
+    const success = await roomAction('create', undefined, DEFAULT_CITY_ID, false)
+    if (success) {
+      setOpen(false)
+      setLobbyOpen(true)
+    }
+  }
   const actionError = error && <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>
-
   const ownMember = room?.members.find((member) => member.user_id === user?.id)
   const activeBot = Boolean(botInserted && room?.status === 'open' && room.members.length === 1 && ownMember && ownMember.user_id === room.host_id)
   const canInsertBot = Boolean(onCampaignCity && room?.status === 'open' && room.members.length === 1 && ownMember && ownMember.user_id === room.host_id && !activeBot)
@@ -522,10 +887,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     const timer = window.setTimeout(() => setBotReady(true), 2000)
     return () => window.clearTimeout(timer)
   }, [activeBot, room?.id])
-  useEffect(() => {
-    if (isRoomMember && !showDirectory && !createOpen && tab === 'rooms') setTab('room')
-    else if (!isRoomMember && tab === 'room') { setTab('rooms'); setShowDirectory(true) }
-  }, [isRoomMember, showDirectory, createOpen, tab])
+
   const inviteLink = room && typeof window !== 'undefined' ? `${window.location.origin}/?room=${encodeURIComponent(room.code)}` : ''
   const copyInvite = async () => {
     try { await navigator.clipboard.writeText(inviteLink); setNotice('Invitation link copied.') }
@@ -560,32 +922,84 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     if (await roomAction('leave')) {
       setBotInserted(false)
       setBotReady(false)
+      setLobbyOpen(false)
       setOpen(false)
       onCampaignCity(city)
     }
   }
-  const tabs: Array<{ id: OnlineHubTab; label: string; icon: typeof DoorOpen }> = [
-    ...(ownMember && room ? [{ id: 'room' as const, label: `Room ${shortRoomCode(room.code)}`, icon: DoorOpen }] : []),
-    { id: 'rooms', label: 'Rooms', icon: DoorOpen },
+  const tabs: Array<{ id: OnlineHubTab; label: string; icon: typeof Globe2 }> = [
+    { id: 'rooms', label: 'Rooms', icon: Globe2 },
     { id: 'friends', label: 'Friends', icon: Users },
     { id: 'profile', label: 'Profile', icon: UserRound },
   ]
   const selectTab = (id: OnlineHubTab) => {
-    if (id === 'profile' || id === 'room') { setTab(id); setShowDirectory(false); setCreateOpen(false) }
-    else { setTab(id); if (id === 'rooms') { setShowDirectory(true); setCreateOpen(false) } }
+    if (id === 'room') {
+      setOpen(false)
+      setLobbyOpen(true)
+      return
+    }
+    setTab(id)
+    if (id === 'rooms') {
+      setShowDirectory(true)
+      setCreateOpen(false)
+    } else {
+      setShowDirectory(false)
+      setCreateOpen(false)
+    }
   }
 
   return <>
-    {showLaunchers && <div className="flex gap-2"><Button variant="outline" className={styles.mapButton} onClick={() => launch('rooms')}><Globe2 className="size-3.5" />Rooms</Button><Button variant="outline" className={styles.mapButton} onClick={() => launch('friends')}><Users className="size-3.5" />Friends</Button></div>}
+    {showLaunchers && (
+      <div className="flex gap-2">
+        {ownMember && room && (
+          <Button variant="outline" className={styles.mapButton} onClick={() => { setOpen(false); setLobbyOpen(true) }}>
+            <DoorOpen className="size-3.5" />Lobby
+          </Button>
+        )}
+        <Button variant="outline" className={styles.mapButton} onClick={() => launch('rooms')}>
+          <Globe2 className="size-3.5" />Rooms
+        </Button>
+        <Button variant="outline" className={styles.mapButton} onClick={() => launch('friends')}>
+          <Users className="size-3.5" />Friends
+        </Button>
+      </div>
+    )}
     {showMapRooms && (runningGames.games.length > 0 || rooms.length > 0 || runningGames.error) && <aside aria-label="Games and public rooms" className={styles.mapRooms}>
       {runningGames.games.length > 0 && <section aria-labelledby="running-games-heading" className={styles.mapRoomList}>
-        <h2 id="running-games-heading" className="text-right font-mono text-[10px] text-white/50">Games in progress</h2>
+        <h2 id="running-games-heading" className={styles.mapRoomHeading}>Games in progress</h2>
         {runningGames.games.map(game => {
           const city = getCityById(game.context_city_id)
-          return <button key={game.id} type="button" aria-label={`Return to game against ${game.opponent.display_name}`} className={cn(styles.mapButton, styles.mapRoom)} onClick={() => { setOpen(false); onMatch(game.id) }}>
-            <span className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 flex-1"><span className="block break-words text-xs">{game.opponent.display_name}</span>{city && <span className="mt-1 block text-[10px] text-white/50">{city.year} {city.name}</span>}<span className={cn('mt-1 block text-[10px]', game.turn === game.color ? 'text-primary' : 'text-white/50')}>{game.turn === game.color ? 'Your turn' : 'Waiting for opponent'}</span></span><LogIn aria-hidden="true" className="size-4 shrink-0" /></span>
+          const isWaiting = game.turn !== game.color
+          return <button key={game.id} type="button" aria-label={`Return to game against ${game.opponent.display_name}`} className={cn(styles.mapButton, styles.mapRoom, styles.mapRunningGame, isWaiting && styles.mapRoomWaiting)} onClick={() => { setOpen(false); onMatch(game.id) }}>
+            <span className="flex min-w-0 items-center justify-between gap-2">
+              <span className="min-w-0 flex-1 py-1">
+                <span className="block break-words text-xs">{game.opponent.display_name}</span>
+                {city && <span className="mt-0.5 block text-[10px] text-white/50">{city.year} {city.name}</span>}
+                <span className={cn('mt-0.5 block text-[10px]', game.turn === game.color ? 'text-primary' : 'text-white/50')}>
+                  {game.turn === game.color ? 'Your turn' : 'Waiting for opponent'}
+                </span>
+              </span>
+              <RunningGameMiniature game={game} />
+            </span>
           </button>
         })}
+        <button
+          type="button"
+          aria-label="Create lobby"
+          className={cn(styles.mapButton, 'w-full cursor-pointer')}
+          disabled={Boolean(busy)}
+          onClick={() => {
+            setTab('rooms')
+            setShowDirectory(false)
+            setCreateKitId(DEFAULT_CITY_ID)
+            setError(null)
+            setCreateOpen(true)
+            setLobbyOpen(false)
+            setOpen(true)
+          }}
+        >
+          <Plus aria-hidden="true" className="size-3.5" />Create lobby
+        </button>
       </section>}
       {runningGames.error && <div className="space-y-1 text-xs"><p role="alert" className="text-rose-200">Não foi possível carregar suas partidas.</p><p className="break-words text-white/50">{runningGames.error}</p><button type="button" className={styles.mapButton} aria-busy={runningGames.retrying} disabled={runningGames.retrying} onClick={() => void runningGames.refresh()}>{runningGames.retrying ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-3.5" />}{runningGames.retrying ? 'Atualizando…' : 'Tentar novamente'}</button></div>}
       {rooms.length > 0 && <section aria-labelledby="public-rooms-heading" className={styles.mapRoomList}>
@@ -597,46 +1011,35 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       </section>}
     </aside>}
     <Dialog modal={false} open={isOpen} onOpenChange={setOpen}>
-      {isOpen && <DialogContent floating className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent, flash && styles.joinFlash)} closeLabel="Close online panel">
-        <DialogHeader className="sr-only"><DialogTitle>{tab === 'rooms' ? '1v1 casual online' : tab === 'friends' ? 'Friends' : tab === 'room' ? `Room ${room ? shortRoomCode(room.code) : ''}` : 'Your profile'}</DialogTitle><DialogDescription>{tab === 'rooms' ? 'Play ChickenChess online with another player, powers, and each team’s kits.' : tab === 'friends' ? 'Add friends with their profile code and manage received requests.' : tab === 'room' ? 'Choose a kit, invite another player, and get ready to play.' : 'Your name, progress, and online account.'}</DialogDescription></DialogHeader>
-        <nav aria-label="Online area" className={cn('grid gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2', ownMember ? 'grid-cols-2' : 'grid-cols-3')}>{tabs.map(({ id, label, icon: Icon }) => id === 'room' ? <div key={id} className={cn('flex w-full min-w-0 max-w-full items-center overflow-hidden rounded-md border transition-colors sm:w-40', tab === id ? 'border-transparent bg-primary/15 text-primary' : 'border-transparent text-white/60 hover:border-primary hover:text-white focus-within:border-primary')}>
-          <Button variant="ghost" size="sm" aria-pressed={tab === id} className="h-8 min-w-0 flex-1 justify-start gap-2 border-0 bg-transparent pl-2 pr-1 text-xs text-inherit hover:!bg-transparent hover:text-inherit focus-visible:!bg-transparent focus-visible:text-inherit dark:hover:!bg-transparent dark:focus-visible:!bg-transparent" onClick={() => selectTab(id)}><Icon className="size-3.5 shrink-0" /><span className="min-w-0 truncate">{label}</span></Button>
-          <button type="button" aria-label="Leave room" title="Leave room" disabled={Boolean(busy)} className="mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded text-white/45 hover:bg-blue-950/60 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-40" onClick={() => void roomAction('leave')}><X aria-hidden="true" className="size-3.5" /></button>
-        </div> : <div key={id} className="min-w-0"><Button variant="ghost" size="sm" aria-pressed={tab === id} className={cn(
-          'w-full min-w-0 gap-1 border border-transparent px-1 text-xs hover:border-primary hover:text-white focus-visible:border-primary focus-visible:text-white sm:gap-2 sm:px-3 sm:text-sm',
-          tab === id
-            ? 'bg-primary/15 text-primary hover:!bg-primary/15 focus-visible:!bg-primary/15 dark:hover:!bg-primary/15 dark:focus-visible:!bg-primary/15'
-            : 'text-white/60 hover:!bg-transparent focus-visible:!bg-transparent dark:hover:!bg-transparent dark:focus-visible:!bg-transparent',
-        )} onClick={() => selectTab(id)}><Icon className="size-3.5 shrink-0 sm:size-4" />{label}</Button></div>)}</nav>
+      {isOpen && <DialogContent floating closeOnInteractOutside className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent)} closeLabel="Close online panel">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{tab === 'rooms' ? '1v1 casual online' : tab === 'friends' ? 'Friends' : 'Your profile'}</DialogTitle>
+          <DialogDescription>{tab === 'rooms' ? 'Play ChickenChess online with another player, powers, and each team’s kits.' : tab === 'friends' ? 'Add friends with their profile code or email and manage received requests.' : 'Your name, progress, and online account.'}</DialogDescription>
+        </DialogHeader>
+        <nav aria-label="Online area" className="grid grid-cols-3 gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <div key={id} className="min-w-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-pressed={tab === id}
+                className={cn(
+                  'w-full min-w-0 gap-1 border border-transparent px-1 text-xs hover:border-primary hover:text-white focus-visible:border-primary focus-visible:text-white sm:gap-2 sm:px-3 sm:text-sm',
+                  tab === id
+                    ? 'bg-primary/15 text-primary hover:!bg-primary/15 focus-visible:!bg-primary/15 dark:hover:!bg-primary/15 dark:focus-visible:!bg-primary/15'
+                    : 'text-white/60 hover:!bg-transparent focus-visible:!bg-transparent dark:hover:!bg-transparent dark:focus-visible:!bg-transparent',
+                )}
+                onClick={() => selectTab(id)}
+              >
+                <Icon className="size-3.5 shrink-0 sm:size-4" />{label}
+              </Button>
+            </div>
+          ))}
+        </nav>
         {tab === 'profile' ? <ProfilePane playerProfile={playerProfile} onSignIn={() => { setOpen(false); openLogin() }} />
           : !configured ? <p className="rounded-md border border-white/15 p-4 text-sm leading-relaxed text-white/65">{ONLINE_CONFIGURATION_MESSAGE}</p>
-          : tab === 'friends' ? <FriendsPane /> : room && !showDirectory && (tab === 'room' || !ownMember) ? <div className="space-y-4">
-            <div className="flex min-w-0 items-center"><p className="min-w-0 truncate text-sm text-white/70">{room.is_public ? 'Public room' : 'Private room'}: <span className="font-mono tracking-wider text-primary">{shortRoomCode(room.code)}</span></p></div>
-            {room.status === 'open' && room.host_id === user?.id && <div className="space-y-2"><RoomVisibility value={room.is_public} disabled={Boolean(busy)} onChoose={(isPublic) => void roomAction('visibility', room.code, DEFAULT_CITY_ID, isPublic)} /></div>}
-            <div className="space-y-3">
-              {room.members.map((member) => <div key={member.user_id} className={cn('space-y-3 rounded-md border p-3', member.ready ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
-                <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (you)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'White' : 'Black'} · {member.profile.code}</p></div></div><span className={cn('inline-flex items-center gap-1 text-xs', member.ready ? 'text-primary' : 'text-white/40')}>{member.ready && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{member.ready ? 'Ready' : 'Choosing a kit'}</span></div>
-                {member.user_id === user?.id && room.status === 'open' && <select aria-label="Your team kit" className={`${inputClass} w-full`} value={member.city_id} disabled={Boolean(busy)} onChange={(event) => void roomAction('kit', room.code, event.target.value)}><option className="bg-[#101713]" value={DEFAULT_CITY_ID}>Random</option>{availableCities.map((city) => <option className="bg-[#101713]" key={city.id} value={city.id}>{city.year} {city.name} · {city.genre}</option>)}</select>}
-                <KitPreview member={member} />
-              </div>)}
-              {activeBot && <div className={cn('space-y-3 rounded-md border p-3', botReady ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
-                <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2"><Bot aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">Campaign bot</p><p className="text-[11px] text-white/45">Uses your kit in the campaign</p></div></div><div className="flex items-center gap-2"><button type="button" className="cursor-pointer text-xs text-white/55 underline decoration-white/25 underline-offset-2 hover:text-white disabled:cursor-default disabled:opacity-50" disabled={Boolean(busy)} onClick={removeBot}>Remove</button><span role="status" aria-live="polite" className={cn('inline-flex items-center gap-1 text-xs', botReady ? 'text-primary' : 'text-white/40')}>{botReady && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{botReady ? 'Ready' : 'Choosing a kit'}</span></div></div>
-              </div>}
-              <div className="space-y-2 rounded-md border border-dashed border-white/15 p-4 text-center">
-                {!activeBot && room.members.length < 2 && <p className="text-sm text-white/40">Waiting for another player · {room.members.length}/2</p>}
-                <div className="flex flex-wrap items-start justify-center gap-2">
-                  <div className="flex flex-col items-center gap-1"><Button size="sm" variant="ghost" className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={() => void copyInvite()}><Copy aria-hidden="true" />Invite a friend</Button>{notice && <p role="status" className="text-xs text-primary">{notice}</p>}</div>
-                  <Button size="sm" variant="ghost" disabled={!canInsertBot} className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={insertBot}><Bot aria-hidden="true" />{activeBot ? 'Bot inserted' : 'Insert Bot'}</Button>
-                </div>
-                {activeBot && ownMember?.city_id === DEFAULT_CITY_ID && <p className="text-xs text-white/40">Random selects the same kit for you and the bot when the campaign starts.</p>}
-              </div>
-            </div>
-            {actionError}
-            {room.status !== 'open' && <p className="text-sm text-white/60">{room.status === 'playing' ? 'This room is already in a game.' : 'This room has been closed.'}</p>}
-            {ownMember && room.status === 'playing' && room.match_id && <Button className="w-full" onClick={() => { setOpen(false); onMatch(room.match_id!) }}><LogIn />Return to game</Button>}
-            {ownMember ? <div className="flex items-center justify-between gap-3"><Button size="sm" variant="ghost" className="shrink-0 text-white hover:bg-transparent hover:text-white focus-visible:bg-transparent focus-visible:text-white" disabled={Boolean(busy)} onClick={() => void roomAction('leave')}><ExitRoomIcon />Leave room</Button>{room.status === 'open' && <Button variant={ownMember.ready ? 'outline' : 'default'} className={cn('h-11 w-40 shrink-0 justify-center px-2', ownMember.ready && 'border-primary/45 bg-transparent text-primary/75 hover:bg-transparent hover:text-primary')} disabled={Boolean(busy) || (activeBot ? !botReady : room.members.length !== 2)} onClick={() => void readyAction()}>{busy === 'ready' || busy === 'cancel-ready' || busy === 'leave' ? <Loader2 className="animate-spin" /> : <Check />}{ownMember.ready ? 'Cancel ready' : 'I’m ready!'}</Button>}</div> : <div className="flex items-center justify-between gap-3">{room.status === 'open' && <Button className="h-11 flex-1" disabled={Boolean(busy) || room.members.length >= 2} onClick={() => void roomAction('join', room.code)}><DoorOpen />Join room</Button>}<Button size="sm" variant="ghost" className="text-white/55" onClick={() => { roomGeneration.current += 1; applyRoom(null) }}><ArrowLeft />Back to rooms</Button></div>}
-            <div className="flex justify-end"><button type="button" className="text-white/45" aria-label="Refresh room from server" title="Load the latest room details" onClick={() => void refreshRoom().catch((cause) => setError(onlineErrorMessage(cause)))}><RefreshCw className="size-4" /></button></div>
-          </div> : createOpen ? <div className="space-y-5">
+          : tab === 'friends' ? <FriendsPane onCreateGame={handleCreateGameWithFriend} />
+          : createOpen ? <div className="space-y-5">
             <div className="space-y-1.5">
               <label htmlFor="online-create-kit" className="text-xs text-white/55">Your team kit</label>
               <select
@@ -658,7 +1061,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
           </div> : <div className="space-y-4">
             <div className="space-y-2">
               <Button className="h-11 w-full" disabled={Boolean(busy)} onClick={() => { setCreateOpen(true); setCreateKitId(DEFAULT_CITY_ID); setError(null) }}><Plus />Create room</Button>
-              {room && <Button variant="ghost" className="h-11 w-full border border-white/20 bg-transparent text-white/65 hover:border-primary hover:!bg-transparent hover:text-primary dark:hover:!bg-transparent" onClick={() => setShowDirectory(false)}>Return to your room</Button>}
+              {room && <Button variant="ghost" className="h-11 w-full border border-white/20 bg-transparent text-white/65 hover:border-primary hover:!bg-transparent hover:text-primary dark:hover:!bg-transparent" onClick={() => { setOpen(false); setLobbyOpen(true) }}>Return to lobby</Button>}
             </div>
             <div className="flex items-center justify-between text-xs text-white/45"><span>{connected ? 'Live public rooms' : loading ? 'Loading rooms…' : 'Reconnecting…'}</span><button type="button" aria-label="Refresh rooms" aria-busy={refreshingRooms} disabled={refreshingRooms} onClick={refreshRoomsManually}><RefreshCw className={cn('size-3.5', refreshingRooms && 'animate-spin')} /></button></div>
             <div className="space-y-2 ">{loading && !rooms.length ? <p role="status" className="py-6 text-center text-sm text-white/45">Loading rooms…</p> : rooms.length ? rooms.map((entry) => <div key={entry.code} className="flex items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{entry.creator_name}</p><p className="text-xs text-white/45">1v1 casual · {entry.players}/2 · <span className="font-mono">{shortRoomCode(entry.code)}</span></p></div><Button size="sm" disabled={Boolean(busy) || entry.players >= 2} onClick={() => void roomAction('join', entry.code)}>Join<LogIn aria-hidden="true" className="size-4" /></Button></div>) : <p className="rounded-md border border-dashed border-white/15 py-6 text-center text-sm text-white/45">No public rooms are open. Create the first one.</p>}</div>
@@ -667,6 +1070,46 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
           </div>}
         {(!configured || (tab === 'rooms' && createOpen && !room)) && actionError}
         {busy === 'invite' && <p role="status" className="text-sm text-white/55">Opening invitation…</p>}
+      </DialogContent>}
+    </Dialog>
+    <Dialog modal={false} open={lobbyOpen && Boolean(room)} onOpenChange={setLobbyOpen}>
+      {lobbyOpen && room && <DialogContent floating closeOnInteractOutside className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent, flash && styles.joinFlash)} closeLabel="Close lobby">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <DoorOpen className="size-4 text-primary" />
+            Lobby <span className="font-mono tracking-wider text-primary">{shortRoomCode(room.code)}</span>
+          </DialogTitle>
+          <DialogDescription className="sr-only">Choose a kit, invite another player, and get ready to play.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex min-w-0 items-center justify-between">
+            <p className="min-w-0 truncate text-sm text-white/70">{room.is_public ? 'Public lobby' : 'Private lobby'}</p>
+            <button type="button" className="text-white/45 hover:text-white" aria-label="Refresh lobby from server" title="Load the latest lobby details" onClick={() => void refreshRoom().catch((cause) => setError(onlineErrorMessage(cause)))}><RefreshCw className="size-4" /></button>
+          </div>
+          {room.status === 'open' && room.host_id === user?.id && <div className="space-y-2"><RoomVisibility value={room.is_public} disabled={Boolean(busy)} onChoose={(isPublic) => void roomAction('visibility', room.code, DEFAULT_CITY_ID, isPublic)} /></div>}
+          <div className="space-y-3">
+            {room.members.map((member) => <div key={member.user_id} className={cn('space-y-3 rounded-md border p-3', member.ready ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (you)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'White' : 'Black'} · {member.profile.code}</p></div></div><span className={cn('inline-flex items-center gap-1 text-xs', member.ready ? 'text-primary' : 'text-white/40')}>{member.ready && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{member.ready ? 'Ready' : 'Choosing a kit'}</span></div>
+              {member.user_id === user?.id && room.status === 'open' && <select aria-label="Your team kit" className={`${inputClass} w-full`} value={member.city_id} disabled={Boolean(busy)} onChange={(event) => void roomAction('kit', room.code, event.target.value)}><option className="bg-[#101713]" value={DEFAULT_CITY_ID}>Random</option>{availableCities.map((city) => <option className="bg-[#101713]" key={city.id} value={city.id}>{city.year} {city.name} · {city.genre}</option>)}</select>}
+              <KitPreview member={member} />
+            </div>)}
+            {activeBot && <div className={cn('space-y-3 rounded-md border p-3', botReady ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2"><Bot aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">Campaign bot</p><p className="text-[11px] text-white/45">Uses your kit in the campaign</p></div></div><div className="flex items-center gap-2"><button type="button" className="cursor-pointer text-xs text-white/55 underline decoration-white/25 underline-offset-2 hover:text-white disabled:cursor-default disabled:opacity-50" disabled={Boolean(busy)} onClick={removeBot}>Remove</button><span role="status" aria-live="polite" className={cn('inline-flex items-center gap-1 text-xs', botReady ? 'text-primary' : 'text-white/40')}>{botReady && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{botReady ? 'Ready' : 'Choosing a kit'}</span></div></div>
+            </div>}
+            <div className="space-y-2 rounded-md border border-dashed border-white/15 p-4 text-center">
+              {!activeBot && room.members.length < 2 && <p className="text-sm text-white/40">Waiting for another player · {room.members.length}/2</p>}
+              <div className="flex flex-wrap items-start justify-center gap-2">
+                <div className="flex flex-col items-center gap-1"><Button size="sm" variant="ghost" className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={() => void copyInvite()}><Copy aria-hidden="true" />Invite a friend</Button>{notice && <p role="status" className="text-xs text-primary">{notice}</p>}</div>
+                <Button size="sm" variant="ghost" disabled={!canInsertBot} className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={insertBot}><Bot aria-hidden="true" />{activeBot ? 'Bot inserted' : 'Insert Bot'}</Button>
+              </div>
+              {activeBot && ownMember?.city_id === DEFAULT_CITY_ID && <p className="text-xs text-white/40">Random selects the same kit for you and the bot when the campaign starts.</p>}
+            </div>
+          </div>
+          {actionError}
+          {room.status !== 'open' && <p className="text-sm text-white/60">{room.status === 'playing' ? 'This lobby is already in a game.' : 'This lobby has been closed.'}</p>}
+          {ownMember && room.status === 'playing' && room.match_id && <Button className="w-full" onClick={() => { setLobbyOpen(false); onMatch(room.match_id!) }}><LogIn />Return to game</Button>}
+          {ownMember ? <div className="flex items-center justify-between gap-3"><Button size="sm" variant="ghost" className="shrink-0 text-white hover:bg-transparent hover:text-white focus-visible:bg-transparent focus-visible:text-white" disabled={Boolean(busy)} onClick={() => void roomAction('leave')}><ExitRoomIcon />Leave lobby</Button>{room.status === 'open' && <Button variant={ownMember.ready ? 'outline' : 'default'} className={cn('h-11 w-40 shrink-0 justify-center px-2', ownMember.ready && 'border-primary/45 bg-transparent text-primary/75 hover:bg-transparent hover:text-primary')} disabled={Boolean(busy) || (activeBot ? !botReady : room.members.length !== 2)} onClick={() => void readyAction()}>{busy === 'ready' || busy === 'cancel-ready' || busy === 'leave' ? <Loader2 className="animate-spin" /> : <Check />}{ownMember.ready ? 'Cancel ready' : 'I’m ready!'}</Button>}</div> : <div className="flex items-center justify-between gap-3">{room.status === 'open' && <Button className="h-11 flex-1" disabled={Boolean(busy) || room.members.length >= 2} onClick={() => void roomAction('join', room.code)}><DoorOpen />Join lobby</Button>}<Button size="sm" variant="ghost" className="text-white/55" onClick={() => { roomGeneration.current += 1; applyRoom(null); setLobbyOpen(false); setTab('rooms'); setOpen(true) }}><ArrowLeft />Back to rooms</Button></div>}
+        </div>
       </DialogContent>}
     </Dialog>
   </>

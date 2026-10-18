@@ -147,6 +147,7 @@ test('profile comparison ignores timestamp and property order while detecting re
   assert.equal(samePlayerProfileContent(source, { ...reordered, conqueredCityIds: ['dusseldorf', 'nyc'] }), false)
   assert.equal(samePlayerProfileContent(source, { ...reordered, winsCount: 2 }), false)
   assert.equal(samePlayerProfileContent(source, { ...reordered, gameplayTipSeen: true }), false)
+  assert.equal(samePlayerProfileContent(source, { ...reordered, seenMatchTipsCount: 1 }), false)
 })
 
 test('blocked browser storage keeps the campaign readable and backup/cache writes fail gracefully', () => {

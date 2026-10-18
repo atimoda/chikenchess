@@ -32,7 +32,7 @@ export interface GameWidgetLayoutOptions {
   orientation?: 'white' | 'black'
   introPhase: number
   activeWidgetOrder: readonly string[]
-  widgets: Partial<Record<'knobs' | 'pieceDebug' | 'globalPanel' | 'mixer' | 'spectrogram' | 'liveCode', GameWidgetLayoutItem>>
+  widgets: Partial<Record<'knobs' | 'pieceDebug' | 'globalPanel' | 'mixer' | 'spectrogram' | 'liveCode' | 'botControl', GameWidgetLayoutItem>>
 }
 
 const ignorePosition: Dispatch<SetStateAction<GameWidgetPosition | null>> = () => {}
@@ -78,6 +78,10 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
   const liveCodeOn = liveCode.on
   const liveCodePosition = liveCode.position
   const setLiveCodePosition = liveCode.setPosition
+  const botControl = options.widgets.botControl ?? fallback
+  const botControlRef = botControl.ref
+  const botControlOn = botControl.on
+  const botControlPosition = botControl.position
 
   useEffect(() => {
     const { rootRef, boardAreaRef } = latest.current
@@ -182,10 +186,11 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
       if (liveCodeRef.current) observer.observe(liveCodeRef.current)
       if (knobsRef.current) observer.observe(knobsRef.current)
       if (pieceDebugRef.current) observer.observe(pieceDebugRef.current)
+      if (botControlRef.current) observer.observe(botControlRef.current)
       if (boardAreaRef.current) observer.observe(boardAreaRef.current)
       
       return () => observer.disconnect()
-  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, pieceDebugOn, introPhase, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, boardAreaRef])
+  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, pieceDebugOn, botControlOn, introPhase, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef, boardAreaRef])
 
 
   useEffect(() => {
@@ -205,7 +210,8 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
         'globalPanel': { ref: globalPanelRef, on: globalPanelOn },
         'mixer': { ref: mixerRef, on: mixerOn },
         'spectrogram': { ref: spectrogramHandleRef, on: spectrogramOn },
-        'liveCode': { ref: liveCodeRef, on: liveCodeOn }
+        'liveCode': { ref: liveCodeRef, on: liveCodeOn },
+        'botControl': { ref: botControlRef, on: botControlOn }
     }
 
     const activeWidgetIds = Object.keys(widgets).filter(id => widgets[id as keyof typeof widgets]?.on)
@@ -462,7 +468,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
     }
     setPieceWidgetConnections(directConnections)
 
-  }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef])
+  }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
 
   return { pieceConnections: pieceWidgetConnections, chainConnections, resizeTick }
 }
