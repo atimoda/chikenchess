@@ -69,6 +69,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
   const mixerPosition = mixer.position
   const setMixerPosition = mixer.setPosition
   const spectrogram = options.widgets.spectrogram ?? fallback
+  const hasSpectrogramWidget = Boolean(options.widgets.spectrogram)
   const spectrogramHandleRef = spectrogram.ref
   const spectrogramOn = spectrogram.on
   const spectrogramPosition = spectrogram.position
@@ -168,7 +169,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', scheduleLayout)
     }
-  }, [globalPanelRef, knobsRef, liveCodeRef, mixerRef, spectrogramHandleRef, setGlobalPanelPosition, setKnobsPosition, setLiveCodePosition, setMixerPosition, setSpectrogramPosition])
+  }, [globalPanelRef, hasSpectrogramWidget, knobsRef, liveCodeRef, mixerRef, spectrogramHandleRef, setGlobalPanelPosition, setKnobsPosition, setLiveCodePosition, setMixerPosition, setSpectrogramPosition])
 
   const [pieceWidgetConnections, setPieceWidgetConnections] = useState<WidgetConnection[]>([])
   const [chainConnections, setChainConnections] = useState<WidgetConnection[]>([])
@@ -190,7 +191,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
       if (boardAreaRef.current) observer.observe(boardAreaRef.current)
       
       return () => observer.disconnect()
-  }, [globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, knobsOn, pieceDebugOn, botControlOn, introPhase, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef, boardAreaRef])
+  }, [globalPanelOn, hasSpectrogramWidget, mixerOn, spectrogramOn, liveCodeOn, knobsOn, pieceDebugOn, botControlOn, introPhase, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef, boardAreaRef])
 
 
   useEffect(() => {
@@ -468,7 +469,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
     }
     setPieceWidgetConnections(directConnections)
 
-  }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
+  }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, hasSpectrogramWidget, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
 
   return { pieceConnections: pieceWidgetConnections, chainConnections, resizeTick }
 }

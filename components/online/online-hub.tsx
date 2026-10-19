@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Plus, RefreshCw, Trash2, UserPlus, Users, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Plus, RefreshCw, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -166,8 +166,21 @@ type FriendAction = 'request' | 'accept' | 'reject' | 'cancel' | 'remove' | 'hid
 let friendChannelSequence = 0
 let roomChannelSequence = 0
 
+function useDocumentVisible() {
+  const [visible, setVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible')
+  useEffect(() => {
+    const onVisible = () => setVisible(document.visibilityState === 'visible')
+    onVisible()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+  return visible
+}
+
 function useFriendList(active: boolean) {
   const { user, configured, ensureGuest } = useOnline()
+  const documentVisible = useDocumentVisible()
+  const watchFriends = active && documentVisible
   const [friends, setFriends] = useState<OnlineFriend[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -188,36 +201,37 @@ function useFriendList(active: boolean) {
   }, [user?.id])
 
   useEffect(() => {
-    if (!active || !configured) return
+    if (!watchFriends || !configured) return
     let mounted = true
     setLoading(true)
     void refresh().catch((cause) => { if (mounted) setError(onlineErrorMessage(cause)) }).finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false; revision.current += 1 }
-  }, [active, configured, refresh, user?.id])
+  }, [watchFriends, configured, refresh, user?.id])
 
   useEffect(() => {
     const online = getOnlineClient()
-    if (!active || !user || !online) return
+    if (!watchFriends || !user || !online) return
     let mounted = true
+    let hasSubscribedOnce = false
     const update = () => { void refresh().catch((cause) => { if (mounted) setError(onlineErrorMessage(cause)) }) }
     const channel = online.channel(`friends:${user.id}:${++friendChannelSequence}`, { config: { postgres_changes_options: { wait: true } } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'online_social_updates', filter: `user_id=eq.${user.id}` }, update)
       .subscribe((status) => {
         if (!mounted) return
         setConnected(status === 'SUBSCRIBED')
-        if (status === 'SUBSCRIBED') update()
+        if (status === 'SUBSCRIBED') {
+          if (hasSubscribedOnce) update()
+          hasSubscribedOnce = true
+        }
       })
-    const onVisible = () => { if (document.visibilityState === 'visible') update() }
     window.addEventListener('online', update)
-    document.addEventListener('visibilitychange', onVisible)
     return () => {
       mounted = false
       setConnected(false)
       window.removeEventListener('online', update)
-      document.removeEventListener('visibilitychange', onVisible)
       void online.removeChannel(channel)
     }
-  }, [active, user?.id, refresh])
+  }, [watchFriends, user?.id, refresh])
 
   const act = useCallback(async (action: FriendAction, targetCode?: string, friendId?: string) => {
     await ensureGuest()
@@ -318,7 +332,9 @@ function saveHiddenFriendCodes(userId: string | undefined, hidden: Set<string>) 
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(`${HIDDEN_FRIENDS_PREFIX}${userId || 'guest'}`, JSON.stringify(Array.from(hidden)))
-  } catch {}
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) => void }) {
@@ -541,12 +557,13 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
 
 export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, open, onOpenChange, initialTab, showLaunchers = true, showMapRooms = false, createRequest, onCreateRequestHandled }: OnlineHubProps) {
   const { configured, user, ensureGuest, refreshProfile, openLogin, notify } = useOnline()
+  const documentVisible = useDocumentVisible()
   const runningGames = useRunningGames()
   const [internalOpen, setInternalOpen] = useState(Boolean(inviteCode))
   const isOpen = open ?? internalOpen
   const [lobbyOpen, setLobbyOpen] = useState(false)
   const [tab, setTab] = useState<OnlineHubTab>(initialTab === 'profile' ? 'profile' : initialTab === 'friends' ? 'friends' : 'rooms')
-  const [showDirectory, setShowDirectory] = useState(false)
+  const [_showDirectory, setShowDirectory] = useState(false)
   const [directoryError, setDirectoryError] = useState<string | null>(null)
   const roomsRefreshRevision = useRef(0)
   const [rooms, setRooms] = useState<PublicRoom[]>([])
@@ -559,7 +576,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
   const [serverKitCatalog, setServerKitCatalog] = useState<string[] | null>(null)
 
   useEffect(() => {
-    if (!configured || !isOpen) return
+    if (!configured || !isOpen || serverKitCatalog) return
     let active = true
     void onlineRpc<string[]>('online_kit_catalog')
       .then((catalog) => {
@@ -569,7 +586,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       })
       .catch(() => {})
     return () => { active = false }
-  }, [configured, isOpen])
+  }, [configured, isOpen, serverKitCatalog])
 
   const availableCities = useMemo(() => {
     if (!serverKitCatalog || !serverKitCatalog.length) return cities
@@ -707,7 +724,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       if (active && generation === roomGeneration.current && !roomRef.current && next?.status === 'open') applyRoom(next)
     }).catch((cause) => { if (active) setError(onlineErrorMessage(cause)) })
     return () => { active = false }
-  }, [configured, user?.id, inviteCode, isOpen, applyRoom])
+  }, [configured, user?.id, inviteCode, applyRoom])
 
   useEffect(() => {
     if (!isOpen || !configured) return
@@ -716,10 +733,11 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     return () => { active = false }
   }, [isOpen, configured, ensureGuest, refreshProfile])
 
-  const watchDirectory = showMapRooms || (isOpen && tab === 'rooms' && (!room || showDirectory) && !createOpen)
+  const watchDirectory = documentVisible && (showMapRooms || isOpen)
   useEffect(() => {
     if (!configured || !watchDirectory) return
     let active = true
+    let hasSubscribedOnce = false
     setLoading(true)
     void refreshRooms(() => active).catch((cause) => { if (active) setDirectoryError(onlineErrorMessage(cause)) }).finally(() => { if (active) setLoading(false) })
     const online = requireOnlineClient()
@@ -729,18 +747,16 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       .subscribe((status) => {
         if (!active) return
         setConnected(status === 'SUBSCRIBED')
-        if (status === 'SUBSCRIBED') update()
+        if (status === 'SUBSCRIBED') {
+          if (hasSubscribedOnce) update()
+          hasSubscribedOnce = true
+        }
       })
-    const onVisible = () => { if (document.visibilityState === 'visible') update() }
-    const expiryCheck = window.setInterval(() => { if (document.visibilityState === 'visible') update() }, 60_000)
     window.addEventListener('online', update)
-    document.addEventListener('visibilitychange', onVisible)
     return () => {
       active = false
       setConnected(false)
-      window.clearInterval(expiryCheck)
       window.removeEventListener('online', update)
-      document.removeEventListener('visibilitychange', onVisible)
       void online.removeChannel(channel)
     }
   }, [watchDirectory, configured, user?.id, refreshRooms])
@@ -749,11 +765,20 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     const online = getOnlineClient()
     if (!room?.id || !online || !isRoomMember) return
     let active = true
+    let isSubscribed = false
     const update = () => { if (active) void refreshRoom(() => active).catch((cause) => { if (active) setError(onlineErrorMessage(cause)) }) }
     const channel = online.channel(`lobby:${room.id}:${user?.id}:${++roomChannelSequence}`, { config: { postgres_changes_options: { wait: true } } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'online_rooms', filter: `id=eq.${room.id}` }, update)
-      .subscribe((status) => { if (active && status === 'SUBSCRIBED') update() })
-    const onVisible = () => { if (document.visibilityState === 'visible') update() }
+      .subscribe((status) => {
+        if (!active) return
+        if (status === 'SUBSCRIBED') {
+          isSubscribed = true
+          update()
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          isSubscribed = false
+        }
+      })
+    const onVisible = () => { if (document.visibilityState === 'visible' && !isSubscribed) update() }
     window.addEventListener('online', update)
     document.addEventListener('visibilitychange', onVisible)
     return () => { active = false; window.removeEventListener('online', update); document.removeEventListener('visibilitychange', onVisible); void online.removeChannel(channel) }

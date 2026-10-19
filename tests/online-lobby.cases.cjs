@@ -1,11 +1,12 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { acceptedFriendNames, roomArrivalNames, roomErrorMessage, isAlreadyInRoom, startedRoomMatch } = loadTs('lib/online/lobby-updates.ts')
+const { acceptedFriendNames, roomArrivalNames, roomErrorMessage, isAlreadyInRoom, startedRoomMatch, yourTurnGameOpponents } = loadTs('lib/online/lobby-updates.ts')
 
 const member = (id, name) => ({ user_id: id, profile: { display_name: name } })
 const room = (members, id = 'room-a') => ({ id, host_id: 'host', members })
 const friend = (status, sender = 'me', id = 'friend-a') => ({ id, sender_id: sender, status, profile: { display_name: 'Fulana' } })
+const game = (id, turn, color = 'w', name = 'Rival') => ({ id, turn, color, opponent: { display_name: name } })
 
 test('recovering a playing room never opens a game; only an observed lobby start does', () => {
   const lobby = { ...room([member('host', 'Anfitrião'), member('guest', 'Fulano')]), status: 'open', match_id: null }
@@ -55,6 +56,14 @@ test('only acceptance of the current sender pending request announces; a new req
   assert.deepEqual(acceptedFriendNames([], [friend('pending')], 'me'), [])
   assert.deepEqual(acceptedFriendNames([friend('pending')], [], 'me'), [])
   assert.deepEqual(acceptedFriendNames([friend('pending')], [friend('accepted', 'me', 'different-request')], 'me'), [])
+})
+
+test('yourTurnGameOpponents announces only when a game transitions to the player turn and is not currently visible', () => {
+  assert.deepEqual(yourTurnGameOpponents(null, [game('m1', 'w', 'w', 'Cicлана')]), [])
+  assert.deepEqual(yourTurnGameOpponents([game('m1', 'w', 'w', 'Cicлана')], [game('m1', 'w', 'w', 'Cicлана')]), [])
+  assert.deepEqual(yourTurnGameOpponents([game('m1', 'b', 'w', 'Cicлана')], [game('m1', 'w', 'w', 'Cicлана')]), ['Cicлана'])
+  assert.deepEqual(yourTurnGameOpponents([game('m1', 'b', 'w', 'Cicлана')], [game('m1', 'w', 'w', 'Cicлана')], 'm1'), [])
+  assert.deepEqual(yourTurnGameOpponents([], [game('m2', 'b', 'b', 'Beltrano')]), ['Beltrano'])
 })
 
 test('different-room conflicts receive visible guidance without hiding other errors', () => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { bindLobbyAudioUnlock, playLobbyJoinSound } from '@/components/online/lobby-audio'
 import { getOnlineClient, onlineRpc } from '@/lib/online/client'
 import { acceptedFriendNames } from '@/lib/online/lobby-updates'
 import type { OnlineFriend } from '@/lib/online/types'
@@ -23,6 +24,10 @@ export function useOnlineNotifications(userId: string | null) {
   }, [dismiss])
 
   useEffect(() => {
+    bindLobbyAudioUnlock()
+  }, [])
+
+  useEffect(() => {
     setNotices([])
     const pendingTimers = timers.current
     for (const timer of pendingTimers.values()) clearTimeout(timer)
@@ -35,6 +40,8 @@ export function useOnlineNotifications(userId: string | null) {
     if (!userId || !online) return
     let active = true
     let revision = 0
+    let hasSubscribedOnce = false
+    let isSubscribed = false
     let previous: OnlineFriend[] | null = null
     const refresh = async () => {
       const request = ++revision
@@ -42,7 +49,9 @@ export function useOnlineNotifications(userId: string | null) {
       if (!active || data.session?.user.id !== userId) return
       const next = await onlineRpc<OnlineFriend[]>('online_friends', { p_action: 'list' })
       if (!active || request !== revision) return
-      for (const name of acceptedFriendNames(previous, next || [], userId)) notify(`${name} aceitou seu pedido de amizade.`)
+      const accepted = acceptedFriendNames(previous, next || [], userId)
+      if (accepted.length) playLobbyJoinSound()
+      for (const name of accepted) notify(`${name} aceitou seu pedido de amizade.`)
       previous = next || []
     }
     // Reconnects compare the same baseline; an initial list never announces old friends.
@@ -50,8 +59,17 @@ export function useOnlineNotifications(userId: string | null) {
     update()
     const channel = online.channel(`social-notices:${userId}:${++notificationChannelSequence}`, { config: { postgres_changes_options: { wait: true } } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'online_social_updates', filter: `user_id=eq.${userId}` }, update)
-      .subscribe((status) => { if (active && status === 'SUBSCRIBED') update() })
-    const onVisible = () => { if (document.visibilityState === 'visible') update() }
+      .subscribe((status) => {
+        if (!active) return
+        if (status === 'SUBSCRIBED') {
+          isSubscribed = true
+          if (hasSubscribedOnce) update()
+          hasSubscribedOnce = true
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          isSubscribed = false
+        }
+      })
+    const onVisible = () => { if (document.visibilityState === 'visible' && !isSubscribed) update() }
     window.addEventListener('online', update)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
