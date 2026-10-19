@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { SiteAnalytics } from "@/components/site-analytics"
 import { GoogleAnalytics } from "@/components/google-analytics"
+import { VersionUpdateNotice } from "@/components/version-update-notice"
 import { GOOGLE_ANALYTICS_ID, SITE_URL } from "@/lib/site-info"
 import { Toaster } from "sonner"
 import Script from "next/script"
@@ -72,6 +73,7 @@ window.gtag('config', '${GOOGLE_ANALYTICS_ID}', { send_page_view: false });`}
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
+        <VersionUpdateNotice />
         {process.env.NODE_ENV === 'production' ? <GoogleAnalytics /> : null}
         {process.env.VERCEL === '1' ? <SiteAnalytics /> : null}
         <Toaster duration={3000} />

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { normalizePlayerProfile, savePlayerProfile, type PlayerProfile } from '@/lib/game-progression'
+import { calculateRank, normalizePlayerProfile, savePlayerProfile, type PlayerProfile } from '@/lib/game-progression'
 import type { OnlineProfile } from '@/lib/online/types'
 import { cacheLocalProfile, cacheOnlineProfile, getOnlineClient, onlineConfigured, onlineErrorMessage, onlineRpc, preserveProfileBackup, readCachedLocalProfile, readCachedOnlineProfile, readLocalProfile, readLocalProfileOwner, requireOnlineClient, samePlayerProfileContent, setLocalProfileOwner } from '@/lib/online/client'
 import { AUTH_CALLBACK_CHANNEL, authCallbackMessage, completeAuthCallback, readAuthCallback } from '@/lib/online/auth-callback'
@@ -12,10 +12,22 @@ import { X } from 'lucide-react'
 
 /* global Response, CustomEvent, Event, BroadcastChannel */
 
+export interface MigrationSummary {
+  eggs: number
+  points: number
+  friends: number
+}
+
+export interface PendingTransferData {
+  sourceProfile: PlayerProfile
+  sourceFriendsCount: number
+}
+
 interface GuestTransfer {
   sourceUserId: string
   sourceAccessToken: string
   sourceProfile: PlayerProfile
+  sourceFriendsCount: number
 }
 
 interface OwnedProfile { userId: string; profile: PlayerProfile }
@@ -33,8 +45,8 @@ export interface OnlineContextValue {
   notify: (message: string) => void
   /** Capture the source session only in memory before any identity change. */
   prepareSignIn: () => Promise<void>
-  pendingTransfer: { sourceProfile: PlayerProfile } | null
-  resolveProfileTransfer: (choice: 'source' | 'target') => Promise<OnlineProfile | null>
+  pendingTransfer: PendingTransferData | null
+  resolveProfileTransfer: (choice?: 'source' | 'target' | 'merge') => Promise<MigrationSummary | null>
 }
 
 const OnlineContext = createContext<OnlineContextValue | null>(null)
@@ -52,7 +64,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(onlineConfigured)
   const [error, setError] = useState<string | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
-  const [pendingTransfer, setPendingTransfer] = useState<{ sourceProfile: PlayerProfile } | null>(null)
+  const [pendingTransfer, setPendingTransfer] = useState<PendingTransferData | null>(null)
   const userRef = useRef<User | null>(null)
   const guestRequest = useRef<Promise<User> | null>(null)
   const transferRef = useRef<GuestTransfer | null>(null)
@@ -103,15 +115,29 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
       setProfile(null)
     }
     if (!next && ownerRef.current) mirrorProfile(readCachedLocalProfile(null) || normalizePlayerProfile(null), null)
+    const prev = userRef.current
     userRef.current = next
-    setUser(next)
+    if (
+      prev !== next &&
+      (prev?.id !== next?.id ||
+        prev?.is_anonymous !== next?.is_anonymous ||
+        prev?.email !== next?.email ||
+        prev?.app_metadata?.access_level !== next?.app_metadata?.access_level ||
+        prev?.user_metadata?.full_name !== next?.user_metadata?.full_name ||
+        prev?.user_metadata?.name !== next?.user_metadata?.name)
+    ) {
+      setUser(next)
+    }
     const source = transferRef.current
     if (source && next && !next.is_anonymous) {
       if (source.sourceUserId === next.id) {
         transferRef.current = null
         setPendingTransfer(null)
       } else {
-        setPendingTransfer({ sourceProfile: source.sourceProfile })
+        setPendingTransfer({
+          sourceProfile: source.sourceProfile,
+          sourceFriendsCount: source.sourceFriendsCount ?? 0,
+        })
       }
     }
   }, [mirrorProfile])
@@ -250,23 +276,36 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
   // Refresh server-owned application permissions without changing profile ownership.
   useEffect(() => {
     const online = getOnlineClient()
-    if (!online || !user?.id) return
+    if (!online || !user?.id || user.is_anonymous) return
     const id = user.id
     let active = true
     let revision = 0
+    let lastCheckedAt = 0
     const refreshIdentity = () => {
+      const now = Date.now()
+      if (now - lastCheckedAt < 120_000) return
+      lastCheckedAt = now
       const request = ++revision
       void online.auth.getUser().then(({ data, error: identityError }) => {
         if (!active || request !== revision || identityError || !data.user || data.user.id !== id || userRef.current?.id !== id) return
+        const prev = userRef.current
         userRef.current = data.user
-        setUser(data.user)
+        if (
+          prev?.is_anonymous !== data.user.is_anonymous ||
+          prev?.email !== data.user.email ||
+          prev?.app_metadata?.access_level !== data.user.app_metadata?.access_level ||
+          prev?.user_metadata?.full_name !== data.user.user_metadata?.full_name ||
+          prev?.user_metadata?.name !== data.user.user_metadata?.name
+        ) {
+          setUser(data.user)
+        }
       }).catch(() => { /* Offline sessions retain ordinary profile access; admin writes are rechecked remotely. */ })
     }
     const onVisible = () => { if (document.visibilityState === 'visible') refreshIdentity() }
     refreshIdentity()
     document.addEventListener('visibilitychange', onVisible)
     return () => { active = false; document.removeEventListener('visibilitychange', onVisible) }
-  }, [user?.id])
+  }, [user?.id, user?.is_anonymous])
 
   useEffect(() => {
     if (!user?.id) return
@@ -330,15 +369,25 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     if (!data.session || data.session.user.id !== current.id) return
     const sourceProfile = source?.profile || readLocalProfile()
     preserveProfileBackup(current.id, sourceProfile)
-    transferRef.current = { sourceUserId: current.id, sourceAccessToken: data.session.access_token, sourceProfile }
+    let sourceFriendsCount = 0
+    try {
+      const friends = await onlineRpc<unknown[]>('online_friends', { p_action: 'list' })
+      if (Array.isArray(friends)) sourceFriendsCount = friends.length
+    } catch {
+      /* offline or no friends */
+    }
+    transferRef.current = { sourceUserId: current.id, sourceAccessToken: data.session.access_token, sourceProfile, sourceFriendsCount }
   }, [ensureGuest, refreshProfile, flushLocalProfile])
 
-  const resolveProfileTransfer = useCallback(async (choice: 'source' | 'target') => {
+  const resolveProfileTransfer = useCallback(async (_choice?: 'source' | 'target' | 'merge'): Promise<MigrationSummary | null> => {
     const source = transferRef.current
-    if (!source) return refreshProfile()
+    if (!source) {
+      await refreshProfile()
+      return null
+    }
     const { data, error: transferError } = await requireOnlineClient().functions.invoke<OnlineProfile>('profile-transfer', {
       timeout: 20000,
-      body: { sourceAccessToken: source.sourceAccessToken, choice },
+      body: { sourceAccessToken: source.sourceAccessToken, choice: 'target' },
     })
     if (transferError) {
       let message = 'Não foi possível transferir o perfil. Sua cópia de visitante continua guardada.'
@@ -351,11 +400,50 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
       }
       throw new Error(message)
     }
+
+    const migratedEggs = source.sourceProfile.goldenEggs || 0
+    const migratedPoints = source.sourceProfile.points || 0
+    const migratedFriends = source.sourceFriendsCount || 0
+    const addedHistorical = migratedEggs + migratedPoints
+
+    const baseProfile = data?.profile || profileRef.current?.profile || readLocalProfile()
+    const targetUserId = userRef.current?.id
+
+    if (targetUserId) {
+      const mergedPoints = (baseProfile.points || 0) + addedHistorical
+      const mergedProfile: PlayerProfile = {
+        ...baseProfile,
+        points: mergedPoints,
+        rank: calculateRank(mergedPoints),
+        conqueredCityIds: Array.from(new Set([...(baseProfile.conqueredCityIds || []), ...(source.sourceProfile.conqueredCityIds || [])])),
+        winsCount: (baseProfile.winsCount || 0) + (source.sourceProfile.winsCount || 0),
+        updatedAt: Math.max(Date.now(), (baseProfile.updatedAt || 0) + 1),
+      }
+
+      try {
+        const updated = await onlineRpc<OnlineProfile>('online_sync_profile', {
+          p_expected_updated_at: baseProfile.updatedAt,
+          p_profile: mergedProfile,
+          p_expected_user_id: targetUserId,
+        })
+        applyProfile(updated)
+      } catch {
+        mirrorProfile(mergedProfile, targetUserId)
+        if (data) applyProfile({ ...data, profile: mergedProfile })
+        void flushLocalProfile().catch(() => {})
+      }
+    } else if (data) {
+      applyProfile(data)
+    }
+
     transferRef.current = null
     setPendingTransfer(null)
-    if (data && data.id === userRef.current?.id) applyProfile(data)
-    return refreshProfile()
-  }, [refreshProfile, applyProfile])
+    return {
+      eggs: migratedEggs,
+      points: migratedPoints,
+      friends: migratedFriends,
+    }
+  }, [refreshProfile, applyProfile, mirrorProfile, flushLocalProfile])
 
   const signOut = useCallback(async () => {
     preserveProfileBackup(ownerRef.current)

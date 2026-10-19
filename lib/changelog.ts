@@ -1,7 +1,24 @@
-export const RELEASE_LABEL = 'v1.6.3'
+export const RELEASE_LABEL = 'v1.6.4'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    version: '1.6.4',
+    date: '18/10/2026',
+    title: 'Aviso de nova versão, espectrograma no Play/Pause, alerta sonoro e migração integrada de perfil visitante',
+    groups: [
+      { title: 'Interface e atualização', items: [
+        'Quando uma nova versão é publicada com a aba já aberta, um popup branco aparece no canto inferior esquerdo com a mensagem "There is a new version available!" e um link para atualizar a tela.',
+        'Adicionada a preferência "Spectrogram" nas Preferências da partida, permitindo alternar entre o modo "Widget" e o modo "as Play/Pause button background" (com o espectrograma exibido no fundo do botão Play/Pause dentro do Mixer).',
+      ] },
+      { title: 'Online e notificações', items: [
+        'Ao entrar em uma conta registrada, o perfil visitante local é migrado automaticamente para a conta: golden eggs viram pontos históricos, amigos e pontos são unificados e uma tela de resumo informa os itens transferidos com botão "Ok!".',
+        'Quando passa a ser a vez do jogador em uma partida online ativa (com o jogador no globo ou com a aba em segundo plano), o jogo toca um aviso sonoro e exibe a notificação "Your turn against [oponente].".',
+        'Avisos sonoros de entrada de jogador no lobby e aceite de pedido de amizade agora tocam mesmo quando a aba do navegador está em segundo plano.',
+        'A escuta em tempo real de salas públicas no globo agora fica ativa somente enquanto o jogador está no globo com a aba visível, reduzindo o consumo de rede em segundo plano.',
+      ] },
+    ],
+  },
   {
     version: '1.6.3',
     date: '17/10/2026',

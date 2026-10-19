@@ -22,6 +22,111 @@ interface SpectrogramWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   getFrequencyData?: (data: Uint8Array<ArrayBuffer>) => void
 }
 
+export interface SpectrogramCanvasProps extends React.CanvasHTMLAttributes<HTMLCanvasElement> {
+  cityColor: string
+  isOn: boolean
+  isPlaying: boolean
+  getFrequencyData?: (data: Uint8Array<ArrayBuffer>) => void
+}
+
+export function SpectrogramCanvas({
+  cityColor,
+  isOn,
+  isPlaying,
+  getFrequencyData,
+  className,
+  ...props
+}: SpectrogramCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const animationRef = useRef<number>(0)
+  const lastFrameRef = useRef(0)
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(128))
+
+  useEffect(() => {
+    if (!isOn) {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+      const canvas = canvasRef.current
+      const ctx = canvas?.getContext("2d")
+      if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+      return
+    }
+
+    const animate = (timestamp: number) => {
+      animationRef.current = requestAnimationFrame(animate)
+      // Canvas analysis is intentionally capped. Audio scheduling is unaffected.
+      if (timestamp - lastFrameRef.current < 1000 / 24) return
+      lastFrameRef.current = timestamp
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return
+
+      const width = canvas.offsetWidth
+      const height = canvas.offsetHeight
+      if (!width || !height) return
+
+      // Ensure canvas internal size matches display size
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width
+        canvas.height = height
+      }
+
+      // Fade existing bars without painting an opaque black canvas over the widget.
+      ctx.globalCompositeOperation = "destination-out"
+      ctx.fillStyle = "rgba(0, 0, 0, 0.2)"
+      ctx.fillRect(0, 0, width, height)
+      ctx.globalCompositeOperation = "source-over"
+
+      if (isPlaying) {
+        if (getFrequencyData) getFrequencyData(dataArrayRef.current)
+        else getAudioEngine().getFrequencyData(dataArrayRef.current)
+
+        const bars = 32
+        const barWidth = width / bars
+
+        for (let i = 0; i < bars; i++) {
+          const firstBin = Math.floor(i * (dataArrayRef.current.length / bars))
+          const lastBin = Math.floor((i + 1) * (dataArrayRef.current.length / bars))
+          let value = 0
+          for (let bin = firstBin; bin < lastBin; bin++) {
+            value = Math.max(value, dataArrayRef.current[bin] || 0)
+          }
+          const percent = value / 255
+          const barHeight = percent * height
+
+          ctx.fillStyle = cityColor
+          ctx.fillRect(
+            i * barWidth,
+            height - barHeight,
+            Math.max(1, barWidth - 1),
+            barHeight
+          )
+        }
+      } else {
+        // Flat line
+        ctx.fillStyle = cityColor
+        ctx.fillRect(0, height - 1, width, 1)
+      }
+    }
+
+    animationRef.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+    }
+  }, [isOn, isPlaying, cityColor, getFrequencyData])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className={cn("w-full h-full", className)}
+      {...props}
+    />
+  )
+}
+
 export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetProps>(({
   cityColor,
   position,
@@ -44,88 +149,10 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
 
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
-  
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>(0)
-  const lastFrameRef = useRef(0)
-  const dataArrayRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(128))
 
   const widgetBorderColor = !isOn 
     ? "rgba(255,255,255,0.1)" 
     : "rgba(255,255,255,0.3)"
-
-  // Animation Loop
-  useEffect(() => {
-    if (!isOn) {
-        if (animationRef.current) cancelAnimationFrame(animationRef.current)
-        return
-    }
-
-    const animate = (timestamp: number) => {
-        animationRef.current = requestAnimationFrame(animate)
-        // Canvas analysis is intentionally capped. Audio scheduling is unaffected.
-        if (timestamp - lastFrameRef.current < 1000 / 24) return
-        lastFrameRef.current = timestamp
-        const canvas = canvasRef.current
-        if (!canvas) return
-    
-        const ctx = canvas.getContext("2d")
-        if (!ctx) return
-    
-        const width = canvas.offsetWidth
-        const height = canvas.offsetHeight
-        
-        // Ensure canvas internal size matches display size
-        if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width
-            canvas.height = height
-        }
-    
-        // Fade existing bars without painting an opaque black canvas over the widget.
-        ctx.globalCompositeOperation = "destination-out"
-        ctx.fillStyle = "rgba(0, 0, 0, 0.2)"
-        ctx.fillRect(0, 0, width, height)
-        ctx.globalCompositeOperation = "source-over"
-    
-        if (isPlaying) {
-            if (getFrequencyData) getFrequencyData(dataArrayRef.current)
-            else getAudioEngine().getFrequencyData(dataArrayRef.current)
-        
-            const bars = 32
-            const barWidth = width / bars
-        
-            for (let i = 0; i < bars; i++) {
-                const firstBin = Math.floor(i * (dataArrayRef.current.length / bars))
-                const lastBin = Math.floor((i + 1) * (dataArrayRef.current.length / bars))
-                let value = 0
-                for (let bin = firstBin; bin < lastBin; bin++) {
-                    value = Math.max(value, dataArrayRef.current[bin] || 0)
-                }
-                const percent = value / 255
-                const barHeight = percent * height
-        
-                ctx.fillStyle = cityColor
-                ctx.fillRect(
-                    i * barWidth,
-                    height - barHeight,
-                    barWidth - 1,
-                    barHeight
-                )
-            }
-        } else {
-             // Flat line
-             ctx.fillStyle = cityColor
-             ctx.fillRect(0, height - 1, width, 1)
-        }
-    
-    }
-
-    animationRef.current = requestAnimationFrame(animate)
-
-    return () => {
-        if (animationRef.current) cancelAnimationFrame(animationRef.current)
-    }
-  }, [isOn, isPlaying, cityColor, getFrequencyData])
 
   const initialPosRef = useRef<{x: number, y: number} | null>(null)
 
@@ -231,9 +258,11 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
           </div>
           
           <div className="flex-1 w-full overflow-hidden relative min-h-0">
-            <canvas 
-                ref={canvasRef}
-                className="w-full h-full"
+            <SpectrogramCanvas
+              cityColor={cityColor}
+              isOn={isOn}
+              isPlaying={isPlaying}
+              getFrequencyData={getFrequencyData}
             />
           </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { playLobbyJoinSound } from "@/components/online/lobby-audio";
 import { getOnlineClient } from "@/lib/online/client";
 import type { MatchCommand, OnlineMatch } from "@/lib/online/types";
 import { useOnline } from "@/components/online/online-provider";
@@ -17,7 +18,8 @@ export interface SharedPiece {
 }
 
 export function useOnlineMatch(matchId: string) {
-  const { user, ensureGuest, refreshProfile } = useOnline();
+  const { user, ensureGuest, refreshProfile, notify } = useOnline();
+  const userId = user?.id ?? null;
   const [match, setMatch] = useState<OnlineMatch | null>(null);
   const [pieces, setPieces] = useState<SharedPiece[]>([]);
   const [connected, setConnected] = useState(false);
@@ -27,47 +29,80 @@ export function useOnlineMatch(matchId: string) {
   const [error, setError] = useState<string | null>(null);
   const current = useRef(match);
   current.current = match;
+  const paramsRevision = useRef<number | null>(null);
   const activeRequest = useRef(false);
   const settledProfileScope = useRef<string | null>(null);
   useEffect(() => {
-    if (!match?.state.result || !user) return;
-    const scope = `${user.id}:${match.id}`;
+    if (!match?.state.result || !userId) return;
+    const scope = `${userId}:${match.id}`;
     if (settledProfileScope.current === scope) return;
     settledProfileScope.current = scope;
     void refreshProfile().catch(cause => {
       settledProfileScope.current = null;
       setError(String(cause.message ?? cause));
     });
-  }, [match?.id, !!match?.state.result, user?.id, refreshProfile]);
-  const localKey = user ? `chickenchess:pending:${user.id}:${matchId}` : null;
+  }, [match?.id, !!match?.state.result, userId, refreshProfile]);
+  const localKey = userId ? `chickenchess:pending:${userId}:${matchId}` : null;
   const requestScope = useRef(localKey);
   requestScope.current = localKey;
   const loadSequence = useRef(0);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { match?: boolean; pieces?: boolean }) => {
     const client = getOnlineClient();
     if (!client) return;
+    const loadMatch = options?.match ?? true;
+    const loadPieces = options?.pieces ?? true;
+    if (!loadMatch && !loadPieces) return;
     const sequence = ++loadSequence.current;
     const [gameResult, pieceResult] = await Promise.all([
-      client.rpc("get_online_match", { p_match_id: matchId }),
-      client.rpc("online_piece_params", { p_match_id: matchId }),
+      loadMatch ? client.rpc("get_online_match", { p_match_id: matchId }) : Promise.resolve(null),
+      loadPieces ? client.rpc("online_piece_params", { p_match_id: matchId }) : Promise.resolve(null),
     ]);
     if (sequence !== loadSequence.current) return;
-    if (gameResult.error) {
+    if (gameResult?.error) {
       setError(gameResult.error.message);
       return;
     }
-    const next = gameResult.data as OnlineMatch;
-    if (next && (!current.current || next.id !== current.current.id || next.version >= current.current.version)) {
-      current.current = next;
-      setMatch(next);
+    if (gameResult?.data) {
+      const next = gameResult.data as OnlineMatch;
+      const prev = current.current;
+      if (!prev || next.id !== prev.id || next.version >= prev.version) {
+        if (
+          prev &&
+          prev.id === next.id &&
+          next.version > prev.version &&
+          !next.state.result &&
+          userId &&
+          typeof document !== "undefined" &&
+          document.visibilityState === "hidden"
+        ) {
+          const ownColor = next.members.find((m) => m.user_id === userId)?.color;
+          const opponent = next.members.find((m) => m.user_id !== userId);
+          const prevTurn = prev.state.actions.filter((a) => a.kind === "move").length % 2 === 0 ? "w" : "b";
+          const nextTurn = next.state.actions.filter((a) => a.kind === "move").length % 2 === 0 ? "w" : "b";
+          if (ownColor && prevTurn !== ownColor && nextTurn === ownColor) {
+            playLobbyJoinSound();
+            if (opponent?.profile.display_name) {
+              notify(`Your turn against ${opponent.profile.display_name}.`);
+            }
+          }
+        }
+        current.current = next;
+        setMatch(next);
+      }
     }
-    if (!pieceResult.error) setPieces(pieceResult.data ?? []);
+    if (pieceResult && !pieceResult.error) {
+      const nextPieces = (pieceResult.data ?? []) as SharedPiece[];
+      setPieces(nextPieces);
+      if (paramsRevision.current === null && nextPieces.length === 0) {
+        paramsRevision.current = 0;
+      }
+    }
     setError(null);
-  }, [matchId]);
+  }, [matchId, userId, notify]);
 
   useEffect(() => {
     let disposed = false;
-    if (!user) {
+    if (!userId) {
       void ensureGuest().catch((e) => {
         if (!disposed) setError(String(e.message ?? e));
       });
@@ -77,15 +112,26 @@ export function useOnlineMatch(matchId: string) {
     }
     const client = getOnlineClient();
     if (!client) return;
+    let hasSubscribedOnce = false;
+    let isSubscribed = false;
     void refresh();
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefresh = () => {
+    let pendingOptions = { match: false, pieces: false };
+    const scheduleRefresh = (options: { match?: boolean; pieces?: boolean } = { match: true, pieces: true }) => {
+      pendingOptions = {
+        match: pendingOptions.match || (options.match ?? true),
+        pieces: pendingOptions.pieces || (options.pieces ?? true),
+      };
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void refresh(), 80);
+      timer = setTimeout(() => {
+        const target = pendingOptions;
+        pendingOptions = { match: false, pieces: false };
+        void refresh(target);
+      }, 80);
     };
     const channel = client
       .channel(`match:${matchId}`, {
-        config: { private: true, presence: { key: user.id }, postgres_changes_options: { wait: true } },
+        config: { private: true, presence: { key: userId }, postgres_changes_options: { wait: true } },
       })
       .on(
         "postgres_changes",
@@ -95,11 +141,20 @@ export function useOnlineMatch(matchId: string) {
           table: "online_match_updates",
           filter: `match_id=eq.${matchId}`,
         },
-        scheduleRefresh,
+        (payload) => {
+          const record = (payload as { new?: { version?: number; params_revision?: number } } | undefined)?.new;
+          const nextVersion = typeof record?.version === "number" ? record.version : null;
+          const nextParamsRev = typeof record?.params_revision === "number" ? record.params_revision : null;
+          const needMatch = nextVersion === null || !current.current || nextVersion > current.current.version;
+          const needPieces = nextParamsRev === null || paramsRevision.current === null || nextParamsRev !== paramsRevision.current;
+          if (nextParamsRev !== null) paramsRevision.current = nextParamsRev;
+          if (!needMatch && !needPieces) return;
+          scheduleRefresh({ match: needMatch, pieces: needPieces });
+        },
       )
       .on("presence", { event: "sync" }, () => {
         const opponent = current.current?.members.find(
-          (m) => m.user_id !== user.id,
+          (m) => m.user_id !== userId,
         );
         setOpponentConnected(
           !!opponent && !!channel.presenceState()[opponent.user_id]?.length,
@@ -109,28 +164,36 @@ export function useOnlineMatch(matchId: string) {
         if (disposed) return;
         setConnected(status === "SUBSCRIBED");
         if (status === "SUBSCRIBED") {
+          isSubscribed = true;
           void channel.track({ online: true });
-          void refresh();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT")
+          if (hasSubscribedOnce) void refresh();
+          hasSubscribedOnce = true;
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          isSubscribed = false;
           setError("Connection lost. Reconnecting…");
+        } else if (status === "CLOSED") {
+          isSubscribed = false;
+        }
       });
     const onReturn = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible" && !isSubscribed) void refresh();
     };
+    const onOnline = () => void refresh();
     document.addEventListener("visibilitychange", onReturn);
-    window.addEventListener("online", refresh);
+    window.addEventListener("online", onOnline);
     return () => {
       disposed = true;
       loadSequence.current++;
       if (timer) clearTimeout(timer);
       void client.removeChannel(channel);
       document.removeEventListener("visibilitychange", onReturn);
-      window.removeEventListener("online", refresh);
+      window.removeEventListener("online", onOnline);
     };
-  }, [user, ensureGuest, matchId, refresh]);
+  }, [userId, ensureGuest, matchId, refresh]);
 
   useEffect(() => {
     current.current = null;
+    paramsRevision.current = null;
     setMatch(null);
     setPieces([]);
     setPending(null);
@@ -190,21 +253,20 @@ export function useOnlineMatch(matchId: string) {
           setMatch(next);
         }
         setPending(null);
-        void refresh();
         return next;
       } catch (e) {
         if (requestScope.current !== localKey) return;
         setError(
           e instanceof Error ? e.message : "Could not confirm this action",
         );
-        void refresh();
+        void refresh({ match: true, pieces: false });
         throw e;
       } finally {
         activeRequest.current = false;
         if (requestScope.current === localKey) setBusy(false);
       }
     },
-    [localKey, refresh, refreshProfile],
+    [localKey, refresh],
   );
 
   const send = useCallback(

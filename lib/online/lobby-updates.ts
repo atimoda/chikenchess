@@ -1,4 +1,4 @@
-import type { OnlineFriend, OnlineRoom } from './types'
+import type { OnlineFriend, OnlineRoom, RunningGame } from './types'
 
 /** Only a lobby observed before its start can open a new game automatically. */
 export function startedRoomMatch(previous: OnlineRoom | null, next: OnlineRoom | null, userId: string | null): string | null {
@@ -17,6 +17,19 @@ export function acceptedFriendNames(previous: OnlineFriend[] | null, next: Onlin
   if (!previous) return []
   const pending = new Set(previous.filter((friend) => friend.sender_id === userId && friend.status === 'pending').map((friend) => friend.id))
   return next.filter((friend) => friend.status === 'accepted' && pending.has(friend.id)).map((friend) => friend.profile.display_name)
+}
+
+export function yourTurnGameOpponents(previous: RunningGame[] | null, next: RunningGame[], visibleMatchId?: string | null): string[] {
+  if (!previous) return []
+  const prevById = new Map(previous.map((game) => [game.id, game]))
+  return next
+    .filter((game) => {
+      if (game.turn !== game.color) return false
+      if (visibleMatchId && game.id === visibleMatchId) return false
+      const before = prevById.get(game.id)
+      return !before || before.turn !== before.color
+    })
+    .map((game) => game.opponent.display_name)
 }
 
 export function isAlreadyInRoom(cause: unknown): boolean {

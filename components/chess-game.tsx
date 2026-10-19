@@ -5,6 +5,7 @@ import { PowerCardHand } from "./power-card-hand"
 import { animateInsufficientEggs, getOfflineMulliganPreviewMoves } from "@/lib/power-presentation"
 import { usePowerDisplay } from "@/hooks/use-power-display"
 import { useChancePosition } from "@/hooks/use-chance-position"
+import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode"
 
 import moveMessages from "@/data/ui/move-messages.json"
 
@@ -42,7 +43,7 @@ import { conquerCity, settleCityDraw, getNextMatchTip, markMatchTipSeen, markRan
 import { GlobalControlPanel } from "./global-control-panel"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
-import { SpectrogramWidget } from "./spectrogram-widget"
+import { SpectrogramCanvas, SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
 import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveLabelTone, rankedMoveRewardDetails, rememberMoveSuggestions, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 import { WidgetToggleLayer } from "./widget-toggle-layer"
@@ -165,6 +166,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [currentPattern, setCurrentPattern] = useState("")
   const [powerDisplay, setPowerDisplay] = usePowerDisplay()
   const [chancePosition, setChancePosition] = useChancePosition()
+  const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode()
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false)
   const [tabVisible, setTabVisible] = useState(true)
@@ -1933,7 +1935,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       pieceDebug: { ref: pieceDebugRef, on: pieceDebugOn, position: pieceDebugPosition, setPosition: setPieceDebugPosition },
       globalPanel: { ref: globalPanelRef, on: globalPanelOn, position: globalPanelPosition, setPosition: setGlobalPanelPosition },
       mixer: { ref: mixerRef, on: mixerOn, position: mixerPosition, setPosition: setMixerPosition },
-      spectrogram: { ref: spectrogramHandleRef, on: spectrogramOn, position: spectrogramPosition, setPosition: setSpectrogramPosition },
+      spectrogram: spectrogramMode === 'widget' ? { ref: spectrogramHandleRef, on: spectrogramOn, position: spectrogramPosition, setPosition: setSpectrogramPosition } : undefined,
       liveCode: { ref: liveCodeRef, on: liveCodeOn, position: liveCodePosition, setPosition: setLiveCodePosition },
       botControl: { ref: botControlRef, on: botControlOn && codeBackdropOn, position: botControlPosition, setPosition: setBotControlPosition },
     },
@@ -1952,34 +1954,34 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const markWidgetToggleLayerReady = useCallback(() => setWidgetTogglesReady(true), [])
   const widgetToggleItems = useMemo(() => [
-    { id: 'spectrogram', label: 'Spectrogram', ref: spectrogramToggleRef, isOn: spectrogramOn, cityColor: city.color, onToggle: () => toggleWidget('spectrogram', setSpectrogramOn), position: spectrogramPosition ?? { x: 0, y: 0 }, onPositionChange: setSpectrogramPosition, onDragStart: () => handleWidgetHeaderClick('spectrogram') },
+    ...(spectrogramMode === 'widget' ? [{ id: 'spectrogram', label: 'Spectrogram', ref: spectrogramToggleRef, isOn: spectrogramOn, cityColor: city.color, onToggle: () => toggleWidget('spectrogram', setSpectrogramOn), position: spectrogramPosition ?? { x: 0, y: 0 }, onPositionChange: setSpectrogramPosition, onDragStart: () => handleWidgetHeaderClick('spectrogram') }] : []),
     { id: 'knobs', label: 'Piece Params', ref: knobsToggleRef, isOn: knobsOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('knobs', knobsOn, setKnobsOn, knobsManuallyClosedRef), position: knobsPosition ?? { x: 0, y: 0 }, onPositionChange: setKnobsPosition, onDragStart: () => handleWidgetHeaderClick('knobs') },
     { id: 'pieceDebug', label: 'Piece Debug', ref: pieceDebugToggleRef, isOn: pieceDebugOn, cityColor: city.color, onToggle: () => toggleWidget('pieceDebug', setPieceDebugOn), position: pieceDebugPosition ?? { x: 0, y: 0 }, onPositionChange: setPieceDebugPosition, onDragStart: () => handleWidgetHeaderClick('pieceDebug') },
     { id: 'globalPanel', label: 'Board Params', ref: globalPanelToggleRef, isOn: globalPanelOn, cityColor: city.color, onToggle: () => toggleWidget('globalPanel', setGlobalPanelOn), position: globalPanelPosition ?? { x: 0, y: 0 }, onPositionChange: setGlobalPanelPosition, onDragStart: () => handleWidgetHeaderClick('globalPanel') },
     { id: 'mixer', label: 'Mixer', ref: mixerToggleRef, isOn: mixerOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('mixer', mixerOn, setMixerOn, mixerManuallyClosedRef), position: mixerPosition ?? { x: 0, y: 0 }, onPositionChange: setMixerPosition, onDragStart: () => handleWidgetHeaderClick('mixer') },
     { id: 'liveCode', label: 'Debug', ref: liveCodeToggleRef, isOn: liveCodeOn, cityColor: city.color, onToggle: () => toggleWidget('liveCode', setLiveCodeOn), position: liveCodePosition ?? { x: 0, y: 0 }, onPositionChange: setLiveCodePosition, onDragStart: () => handleWidgetHeaderClick('liveCode') },
     { id: 'botControl', label: 'Bot Control', ref: botControlToggleRef, isOn: botControlOn && codeBackdropOn, cityColor: city.color, onToggle: toggleBotControl, position: botControlPosition ?? { x: 0, y: 0 }, onPositionChange: setBotControlPosition, onDragStart: () => handleWidgetHeaderClick('botControl') },
-  ], [botControlOn, botControlPosition, city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramOn, spectrogramPosition, resizeTick, toggleBotControl, togglePlayerTurnPanel, toggleWidget])
+  ], [botControlOn, botControlPosition, city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramMode, spectrogramOn, spectrogramPosition, resizeTick, toggleBotControl, togglePlayerTurnPanel, toggleWidget])
 
   const widgetsContent = (mobileMode: boolean) => {
       const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', zIndex: 10 } : undefined
       const togglePortalized = !mobileMode && widgetTogglesReady
       return (
           <>
-            <SpectrogramWidget
+            {spectrogramMode === 'widget' && <SpectrogramWidget
                 getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
                 ref={spectrogramHandleRef}
                 toggleRef={spectrogramToggleRef}
                 togglePortalized={togglePortalized}
                 isOn={spectrogramOn}
                 onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
-                isPlaying={music.engineActive && (isPlaying || !!music.preview)}
+                isPlaying={music.enabled ? (music.engineActive && (isPlaying || !!music.preview)) : (musicEngineOn && isPlaying)}
                 cityColor={city.color}
                 position={mobileMode ? undefined : (spectrogramPosition || undefined)}
                 onPositionChange={(pos) => setSpectrogramPosition(pos)}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('spectrogram') + 10 }}
                 onClickCapture={() => handleWidgetHeaderClick('spectrogram')}
-            />
+            />}
 
             <SynthControlPanel
                 instrument={music.enabled ? music.instrument : undefined}
@@ -2098,13 +2100,28 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     onPointerEnter={event => {
                       if (event.pointerType === "mouse") playControlHoverKick(0.85)
                     }}
-                    className="h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer"
+                    className={cn(
+                      "relative overflow-hidden h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer",
+                      spectrogramMode === "play-pause"
+                        ? "hover:bg-[color-mix(in_srgb,var(--city-neon)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--city-neon)_40%,transparent)]"
+                        : "hover:bg-[var(--city-neon)] active:bg-[var(--city-neon)] active:text-black"
+                    )}
                     style={{
                         "--city-neon": city.color,
                         backgroundColor: "var(--city-neon)20"
                     } as React.CSSProperties}
                   >
-                    {isPlaying ? <Pause className="w-7 h-7 sm:w-10 sm:h-10" /> : <Play className="w-7 h-7 sm:w-10 sm:h-10" />}
+                    {spectrogramMode === "play-pause" && (
+                      <SpectrogramCanvas
+                        data-mixer-playback-spectrogram
+                        cityColor={city.color}
+                        isOn={musicEngineOn}
+                        isPlaying={music.enabled ? (music.engineActive && (isPlaying || !!music.preview)) : (musicEngineOn && isPlaying)}
+                        getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
+                        className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-70"
+                      />
+                    )}
+                    {isPlaying ? <Pause className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" /> : <Play className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
                   </Button>}
               teamMixes={music.teamMixes}
               sessionId={city.id}
@@ -2400,7 +2417,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 >
                     <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
                 </Button>
-                <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
+                <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
                 <Button
                     variant="outline"
                     size="icon"

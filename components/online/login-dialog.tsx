@@ -8,7 +8,7 @@ import { ONLINE_CONFIGURATION_MESSAGE, onlineErrorMessage, onlineRpc, requireOnl
 import type { PlayerProfile } from '@/lib/game-progression'
 import type { OnlineRoom } from '@/lib/online/types'
 import { AUTH_CALLBACK_CHANNEL, googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
-import { useOnline } from './online-provider'
+import { useOnline, type MigrationSummary } from './online-provider'
 import { LegalLinks } from '@/components/legal-links'
 
 /* global Window, URL, MessageEvent, BroadcastChannel, crypto */
@@ -45,10 +45,34 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const [resendAt, setResendAt] = useState(0)
   const [savePending, setSavePending] = useState(false)
   const [now, setNow] = useState(0)
+  const [migratedSummary, setMigratedSummary] = useState<MigrationSummary | null>(null)
   const sourceId = useRef<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const popupWaiting = useRef(false)
   const popupRequestId = useRef<string | null>(null)
+
+  const executeMerge = useCallback(async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const summary = await resolveProfileTransfer()
+      if (summary) {
+        setMigratedSummary(summary)
+      } else if (pendingTransfer) {
+        setMigratedSummary({
+          eggs: pendingTransfer.sourceProfile.goldenEggs || 0,
+          points: pendingTransfer.sourceProfile.points || 0,
+          friends: pendingTransfer.sourceFriendsCount || 0,
+        })
+      }
+      sourceId.current = null
+      setStep('conflict')
+    } catch (cause) {
+      setError(onlineErrorMessage(cause))
+    } finally {
+      setBusy(false)
+    }
+  }, [resolveProfileTransfer, pendingTransfer])
 
   useEffect(() => {
     if (!open) return
@@ -58,8 +82,11 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     setCode('')
     setBusy(false)
     setSavePending(false)
-    // Opening the dialog preserves an unresolved transfer held by the provider.
-  }, [open])
+    setMigratedSummary(null)
+    if (pendingTransfer) {
+      void executeMerge()
+    }
+  }, [open, pendingTransfer, user, profile, executeMerge])
 
   useEffect(() => {
     if (step !== 'code' || !open) return
@@ -76,9 +103,14 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     try { saved = await refreshProfile() } catch (cause) { setSavePending(true); throw cause }
     if (!saved) throw new Error('Conta conectada. O perfil ainda precisa ser salvo; tente novamente.')
     setSavePending(false)
-    setStep(sourceId.current && sourceId.current !== data.session.user.id ? 'conflict' : 'saved')
+    if (sourceId.current && sourceId.current !== data.session.user.id) {
+      setStep('conflict')
+      void executeMerge()
+    } else {
+      setStep('saved')
+    }
     setNotice(null)
-  }, [refreshProfile])
+  }, [refreshProfile, executeMerge])
 
   useEffect(() => {
     if (!popupWaiting.current || !user || user.is_anonymous) return
@@ -219,16 +251,6 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     }
   }
 
-  const chooseProfile = async (choice: 'source' | 'target') => {
-    setBusy(true)
-    setError(null)
-    try {
-      await resolveProfileTransfer(choice)
-      sourceId.current = null
-      setStep('saved')
-    } catch (cause) { setError(onlineErrorMessage(cause)) } finally { setBusy(false) }
-  }
-
   const changeOpen = (next: boolean) => {
     if (!next && popupWaiting.current) {
       popupWaiting.current = false
@@ -236,6 +258,9 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       popupRef.current?.close()
       popupRef.current = null
       setBusy(false)
+    }
+    if (!next) {
+      setMigratedSummary(null)
     }
     onOpenChange(next)
   }
@@ -249,9 +274,9 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   return <Dialog open={open} onOpenChange={changeOpen}>
     <DialogContent className="max-h-[90dvh] max-w-sm overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]" closeLabel="Fechar login">
       <DialogHeader>
-        <DialogTitle className="text-xl font-semibold">{step === 'conflict' ? 'Escolha o perfil' : step === 'saved' ? 'Perfil salvo' : 'Sign in to save your profile'}</DialogTitle>
+        <DialogTitle className="text-xl font-semibold">{step === 'conflict' ? 'Perfil visitante migrado' : step === 'saved' ? 'Perfil salvo' : 'Sign in to save your profile'}</DialogTitle>
         {(step === 'conflict' || step === 'saved') && <DialogDescription className="text-sm leading-relaxed text-white/60">
-          {step === 'conflict' ? 'A conta já tem um perfil. Escolha qual progresso usar; os saldos não serão somados e as duas cópias ficam guardadas.' : 'Seu perfil foi confirmado pelo servidor e pode ser recuperado nesta conta.'}
+          {step === 'conflict' ? 'Os dados do perfil visitante foram integrados à sua conta.' : 'Seu perfil foi confirmado pelo servidor e pode ser recuperado nesta conta.'}
         </DialogDescription>}
       </DialogHeader>
       {!configured ? <p className="rounded border border-white/15 p-3 text-sm text-white/70">{ONLINE_CONFIGURATION_MESSAGE}</p>
@@ -259,12 +284,43 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           <div className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/10 p-3"><Check className="text-primary" /><div><strong>{profile?.display_name}</strong><p className="text-xs text-white/60">{user?.email || 'Conta Google conectada'}</p></div></div>
           <Button className="w-full" onClick={() => onOpenChange(false)}>Continuar</Button>
         </div>
-          : step === 'conflict' ? <div className="space-y-3">
-            <ProfileSummary label="Perfil visitante" profile={pendingTransfer?.sourceProfile} />
-            <Button className="w-full" disabled={busy || !pendingTransfer} onClick={() => void chooseProfile('source')}>Usar perfil visitante</Button>
-            <ProfileSummary label="Perfil da conta" profile={profile?.profile} />
-            <Button variant="outline" className="w-full border-white/20 bg-transparent" disabled={busy || !pendingTransfer || !profile} onClick={() => void chooseProfile('target')}>Usar perfil da conta</Button>
-            <p className="text-xs leading-relaxed text-white/50">As amizades são transferidas sem aceitar pedidos automaticamente. Uma partida ativa precisa terminar antes da transferência.</p>
+          : step === 'conflict' ? <div className="space-y-4">
+            {busy ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+                <Loader2 className="size-8 animate-spin text-primary" />
+                <p className="text-sm text-white/70">Integrando perfil visitante…</p>
+              </div>
+            ) : error ? (
+              <div className="space-y-4">
+                <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>
+                <Button className="w-full" disabled={busy} onClick={() => void executeMerge()}>Tentar integrar novamente</Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-primary/30 bg-[#14231b] p-4 text-center">
+                  <p className="text-sm leading-relaxed text-white">
+                    <strong>{migratedSummary?.eggs ?? pendingTransfer?.sourceProfile.goldenEggs ?? 0}</strong> golden eggs and <strong>{migratedSummary?.points ?? pendingTransfer?.sourceProfile.points ?? 0}</strong> historical points and <strong>{migratedSummary?.friends ?? pendingTransfer?.sourceFriendsCount ?? 0}</strong> friends were migrated from the &ldquo;Perfil visitante&rdquo; para o seu perfil.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="rounded-md border border-white/10 bg-black/20 p-2.5">
+                    <span className="block text-lg font-bold text-amber-300">+{migratedSummary?.eggs ?? pendingTransfer?.sourceProfile.goldenEggs ?? 0}</span>
+                    <span className="text-white/60">Eggs &rarr; Pontos</span>
+                  </div>
+                  <div className="rounded-md border border-white/10 bg-black/20 p-2.5">
+                    <span className="block text-lg font-bold text-primary">+{migratedSummary?.points ?? pendingTransfer?.sourceProfile.points ?? 0}</span>
+                    <span className="text-white/60">Pontos hist.</span>
+                  </div>
+                  <div className="rounded-md border border-white/10 bg-black/20 p-2.5">
+                    <span className="block text-lg font-bold text-sky-400">+{migratedSummary?.friends ?? pendingTransfer?.sourceFriendsCount ?? 0}</span>
+                    <span className="text-white/60">Amizades</span>
+                  </div>
+                </div>
+                <Button className="h-11 w-full text-base font-medium" onClick={() => changeOpen(false)}>
+                  Ok!
+                </Button>
+              </div>
+            )}
           </div>
             : step === 'code' ? <form className="space-y-4" onSubmit={(event) => void verifyCode(event)}>
               <p className="text-sm text-white/70">Enviamos um código para <strong className="break-all text-white">{email}</strong>.</p>
@@ -293,7 +349,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         <p className="text-xs leading-relaxed text-white/50">By signing in, you agree to our Terms of Service. Our Privacy Policy explains how we handle your information.</p>
         <LegalLinks newTab className="text-white/65" />
       </div>
-      {step !== 'saved' && <Button variant="ghost" className="text-white/60" onClick={() => changeOpen(false)}>Cancel</Button>}
+      {step !== 'saved' && step !== 'conflict' && <Button variant="ghost" className="text-white/60" onClick={() => changeOpen(false)}>Cancel</Button>}
     </DialogContent>
   </Dialog>
 }

@@ -66,7 +66,7 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
             </form>}
             {online.profile && <p className="break-words text-xs text-white/60">{online.profile.baptismal_name && online.profile.display_name !== online.profile.baptismal_name && <>Baptismal name: {online.profile.baptismal_name}<br /></>}Profile code: <span className="select-all break-all">{online.profile.code}</span></p>}
             {!online.user || online.user.is_anonymous ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Sign in to save your profile</Button>
-              : online.pendingTransfer ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Choose account profile</Button>
+              : online.pendingTransfer ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Integrar perfil visitante</Button>
                 : online.user.email ? (
                   <div className="flex items-center gap-1.5 text-xs text-white/60">
                     <span>Mail:</span>

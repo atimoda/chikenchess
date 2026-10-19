@@ -6,24 +6,30 @@ import { Settings2 } from "lucide-react"
 import { Button } from "./ui/button"
 import type { PowerDisplay } from "@/hooks/use-power-display"
 import type { ChancePosition } from "@/hooks/use-chance-position"
+import type { SpectrogramMode } from "@/hooks/use-spectrogram-mode"
 
 export function GamePreferences({
   display,
   onDisplayChange,
   chancePosition = "board",
   onChancePositionChange,
+  spectrogramMode = "play-pause",
+  onSpectrogramModeChange,
   className,
 }: {
   display: PowerDisplay
   onDisplayChange: (value: PowerDisplay) => void
   chancePosition?: ChancePosition
   onChancePositionChange?: (value: ChancePosition) => void
+  spectrogramMode?: SpectrogramMode
+  onSpectrogramModeChange?: (value: SpectrogramMode) => void
   className?: string
 }) {
   const [open, setOpen] = useState(false)
   const titleId = useId()
   const switchLabelId = useId()
   const chanceLabelId = useId()
+  const spectrogramLabelId = useId()
   return <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
     <Popover.Trigger asChild>
       <Button variant="outline" size="icon" aria-label="Preferências" title="Preferências" className={className}>
@@ -54,6 +60,17 @@ export function GamePreferences({
             className="relative h-6 w-11 shrink-0 cursor-pointer rounded-full border border-white/25 transition-colors data-[checked=true]:bg-green-600 bg-zinc-700"
             data-checked={chancePosition === "board"}>
             <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: chancePosition === "board" ? "translateX(20px)" : undefined }} />
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
+          <div><div className="text-sm font-medium" id={spectrogramLabelId}>Spectrogram</div>
+            <div className="text-xs text-muted-foreground">{spectrogramMode === "widget" ? "Widget" : "as Play/Pause button background"}</div>
+          </div>
+          <button type="button" role="switch" aria-checked={spectrogramMode === "play-pause"} aria-labelledby={spectrogramLabelId}
+            onClick={() => onSpectrogramModeChange?.(spectrogramMode === "widget" ? "play-pause" : "widget")}
+            className="relative h-6 w-11 shrink-0 cursor-pointer rounded-full border border-white/25 transition-colors data-[checked=true]:bg-green-600 bg-zinc-700"
+            data-checked={spectrogramMode === "play-pause"}>
+            <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: spectrogramMode === "play-pause" ? "translateX(20px)" : undefined }} />
           </button>
         </div>
       </Popover.Content>

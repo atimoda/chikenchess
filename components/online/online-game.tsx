@@ -55,6 +55,7 @@ import { PowerCardHand } from "../power-card-hand";
 import { animateInsufficientEggs, getOnlineMulliganPreviewMoves } from "@/lib/power-presentation";
 import { usePowerDisplay } from "@/hooks/use-power-display";
 import { useChancePosition } from "@/hooks/use-chance-position";
+import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode";
 import { getNextMatchTip, markMatchTipSeen } from "@/lib/game-progression";
 import { MixerWidget } from "../mixer-widget";
 import { SynthControlPanel } from "../synth-control-panel";
@@ -74,7 +75,7 @@ import {
   BoardMusicSelectors,
   type BoardDropdownId,
 } from "../board-music-selectors";
-import { SpectrogramWidget } from "../spectrogram-widget";
+import { SpectrogramCanvas, SpectrogramWidget } from "../spectrogram-widget";
 import { LiveCodeWidget } from "../live-code-widget";
 import { PieceDebugWidget } from "../piece-debug-widget";
 import { WidgetToggleLayer } from "../widget-toggle-layer";
@@ -239,6 +240,7 @@ export function OnlineMatchBoard({
   }, [me.city_id, opponent.city_id, match.context_city_id]);
   const [powerDisplay, setPowerDisplay] = usePowerDisplay();
   const [chancePosition, setChancePosition] = useChancePosition();
+  const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode();
   const [playing, setPlaying] = useState(false);
   const [engineOn, setEngineOn] = useState(true);
   const [mixerOn, setMixerOn] = useState(false);
@@ -769,12 +771,15 @@ export function OnlineMatchBoard({
         position: mixerPosition,
         setPosition: setMixerPosition,
       },
-      spectrogram: {
-        ref: spectrogramRef,
-        on: spectrogramOn,
-        position: spectrogramPosition,
-        setPosition: setSpectrogramPosition,
-      },
+      spectrogram:
+        spectrogramMode === "widget"
+          ? {
+              ref: spectrogramRef,
+              on: spectrogramOn,
+              position: spectrogramPosition,
+              setPosition: setSpectrogramPosition,
+            }
+          : undefined,
       liveCode: {
         ref: liveCodeRef,
         on: liveCodeOn && codeBackdropOn,
@@ -793,6 +798,7 @@ export function OnlineMatchBoard({
       knobsPosition,
       mixerOn,
       mixerPosition,
+      spectrogramMode,
       spectrogramOn,
       spectrogramPosition,
       liveCodeOn,
@@ -814,15 +820,19 @@ export function OnlineMatchBoard({
     widgets: widgetDescriptors,
   });
   const toggles = [
-    {
-      id: "spectrogram",
-      label: "Spectrogram",
-      ref: spectrogramToggleRef,
-      isOn: spectrogramOn,
-      onToggle: () => toggleWidget("spectrogram", setSpectrogramOn),
-      position: spectrogramPosition ?? { x: 0, y: 0 },
-      onPositionChange: setSpectrogramPosition,
-    },
+    ...(spectrogramMode === "widget"
+      ? [
+          {
+            id: "spectrogram",
+            label: "Spectrogram",
+            ref: spectrogramToggleRef,
+            isOn: spectrogramOn,
+            onToggle: () => toggleWidget("spectrogram", setSpectrogramOn),
+            position: spectrogramPosition ?? { x: 0, y: 0 },
+            onPositionChange: setSpectrogramPosition,
+          },
+        ]
+      : []),
     {
       id: "knobs",
       label: "Piece Params",
@@ -886,23 +896,25 @@ export function OnlineMatchBoard({
     const portalized = !mobile && widgetTogglesReady;
     return (
       <>
-        <SpectrogramWidget
-          ref={spectrogramRef}
-          handleRef={spectrogramHandleRef}
-          toggleRef={spectrogramToggleRef}
-          togglePortalized={portalized}
-          cityColor={city.color}
-          isOn={spectrogramOn}
-          onToggle={() => toggleWidget("spectrogram", setSpectrogramOn)}
-          isPlaying={engineOn && (playing || !!music.preview)}
-          getFrequencyData={music.getFrequencyData}
-          position={
-            mobile ? undefined : (spectrogramPosition ?? { x: 0, y: 0 })
-          }
-          onPositionChange={setSpectrogramPosition}
-          style={panelStyle("spectrogram")}
-          onClickCapture={() => bringToFront("spectrogram")}
-        />
+        {spectrogramMode === "widget" && (
+          <SpectrogramWidget
+            ref={spectrogramRef}
+            handleRef={spectrogramHandleRef}
+            toggleRef={spectrogramToggleRef}
+            togglePortalized={portalized}
+            cityColor={city.color}
+            isOn={spectrogramOn}
+            onToggle={() => toggleWidget("spectrogram", setSpectrogramOn)}
+            isPlaying={engineOn && (playing || !!music.preview)}
+            getFrequencyData={music.getFrequencyData}
+            position={
+              mobile ? undefined : (spectrogramPosition ?? { x: 0, y: 0 })
+            }
+            onPositionChange={setSpectrogramPosition}
+            style={panelStyle("spectrogram")}
+            onClickCapture={() => bringToFront("spectrogram")}
+          />
+        )}
         <SynthControlPanel
           ref={knobsRef}
           handleRef={knobsHandleRef}
@@ -1009,17 +1021,35 @@ export function OnlineMatchBoard({
           playback={<Button
                 variant="ghost"
                 size="icon"
-                className="h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:bg-[var(--city-neon)] hover:text-white pointer-events-auto cursor-pointer"
-                style={{ backgroundColor: "var(--city-neon)20" }}
+                className={cn(
+                  "relative overflow-hidden h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer",
+                  spectrogramMode === "play-pause"
+                    ? "hover:bg-[color-mix(in_srgb,var(--city-neon)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--city-neon)_40%,transparent)]"
+                    : "hover:bg-[var(--city-neon)] active:bg-[var(--city-neon)] active:text-black",
+                )}
+                style={{
+                  "--city-neon": city.color,
+                  backgroundColor: "var(--city-neon)20",
+                } as React.CSSProperties}
                 aria-label={playing ? "Pause" : "Play"}
                 title={playing ? "Pause music" : "Play music"}
                 disabled={!engineOn || !!result}
                 onClick={() => setPlaying((p) => !p)}
               >
+                {spectrogramMode === "play-pause" && (
+                  <SpectrogramCanvas
+                    data-mixer-playback-spectrogram
+                    cityColor={city.color}
+                    isOn={engineOn && !result}
+                    isPlaying={engineOn && (playing || !!music.preview)}
+                    getFrequencyData={music.getFrequencyData}
+                    className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-70"
+                  />
+                )}
                 {playing ? (
-                  <Pause className="w-7 h-7 sm:w-10 sm:h-10" />
+                  <Pause className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
                 ) : (
-                  <Play className="w-7 h-7 sm:w-10 sm:h-10" />
+                  <Play className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
                 )}
               </Button>}
           ref={mixerRef}
@@ -1325,7 +1355,7 @@ export function OnlineMatchBoard({
                   className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")}
                 />
               </Button>
-              <GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} className={headerButtonClass} />
+              <GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} className={headerButtonClass} />
               <Button
                 variant="outline"
                 size="icon"
