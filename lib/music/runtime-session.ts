@@ -570,6 +570,12 @@ export class MusicRuntime {
     else data.fill(0)
   }
 
+  getTeamFrequencyData(color: 'w' | 'b', data: Uint8Array<ArrayBuffer>) {
+    if (this.teamMixer) this.teamMixer.getTeamFrequencyData(color, data)
+    else if (this.analyser) this.analyser.getByteFrequencyData(data)
+    else data.fill(0)
+  }
+
   private clearVisuals() {
     this.generation++
     this.visualTimers.forEach(clearTimeout)

@@ -1,26 +1,43 @@
+.crossfader [data-slot="slider"] > span:not([data-slot="slider-track"]),
+.crossfader span:has(> [data-slot="slider-thumb"]) {
+  transition: left 0.3s ease-in-out !important;
+}
+
 .crossfader [data-slot="slider-thumb"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   width: 30px !important;
   height: 50px !important;
   border: 1px solid rgba(255, 255, 255, 0.38) !important;
   border-radius: 4px !important;
-  background: linear-gradient(90deg, #171717 0%, #3f3f46 35%, #18181b 72%, #09090b 100%) !important;
+  background: linear-gradient(90deg, rgba(23, 23, 23, 0.85) 0%, rgba(63, 63, 70, 0.85) 35%, rgba(24, 24, 27, 0.85) 72%, rgba(9, 9, 11, 0.85) 100%) !important;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(2px) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
+  transition: transform 0.3s ease-in-out, border-color 150ms ease, box-shadow 150ms ease !important;
 }
 
-.crossfader [data-slot="slider-thumb"]::after {
-  position: absolute;
-  top: 7px;
-  bottom: 7px;
-  left: 50%;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.25);
-  content: "";
-  transform: translateX(-50%);
+.crossfader [data-slot="slider-thumb"]:hover {
+  border-color: var(--city-neon) !important;
+  box-shadow: 0 0 10px var(--city-neon), 0 3px 12px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.28) !important;
 }
 
-.crossfader [data-slot="slider-thumb"]:hover,
-.crossfader [data-slot="slider-thumb"]:active {
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.28) !important;
+.crossfader [data-slot="slider"] > span:not([data-slot="slider-track"]):active,
+.crossfader span:has(> [data-slot="slider-thumb"]):active,
+.crossfader:global(.is-dragging) [data-slot="slider"] > span:not([data-slot="slider-track"]),
+.crossfader:global(.is-dragging) span:has(> [data-slot="slider-thumb"]),
+.isDragging [data-slot="slider"] > span:not([data-slot="slider-track"]),
+.isDragging span:has(> [data-slot="slider-thumb"]) {
+  transition: none !important;
+}
+
+.crossfader [data-slot="slider-thumb"]:active,
+.crossfader:global(.is-dragging) [data-slot="slider-thumb"],
+.isDragging [data-slot="slider-thumb"] {
+  border-color: var(--city-neon) !important;
+  transition: box-shadow 150ms ease, border-color 150ms ease !important;
+  box-shadow: 0 0 12px var(--city-neon), 0 3px 12px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.28) !important;
 }
 
 .crossfader [data-slot="slider-track"] {

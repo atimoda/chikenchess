@@ -20,12 +20,16 @@ interface SpectrogramWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   onToggle: () => void
   isPlaying: boolean
   getFrequencyData?: (data: Uint8Array<ArrayBuffer>) => void
+  topColor?: 'w' | 'b'
+  getTeamFrequencyData?: (color: 'w' | 'b', data: Uint8Array<ArrayBuffer>) => void
 }
 
 export interface SpectrogramCanvasProps extends React.CanvasHTMLAttributes<HTMLCanvasElement> {
   cityColor: string
   isOn: boolean
   isPlaying: boolean
+  origin?: 'bottom' | 'center'
+  mirrored?: boolean
   getFrequencyData?: (data: Uint8Array<ArrayBuffer>) => void
 }
 
@@ -33,6 +37,8 @@ export function SpectrogramCanvas({
   cityColor,
   isOn,
   isPlaying,
+  origin = 'bottom',
+  mirrored = false,
   getFrequencyData,
   className,
   ...props
@@ -78,35 +84,54 @@ export function SpectrogramCanvas({
       ctx.fillRect(0, 0, width, height)
       ctx.globalCompositeOperation = "source-over"
 
+      const isCenter = origin === 'center'
+      const centerY = Math.floor(height / 2)
+
       if (isPlaying) {
         if (getFrequencyData) getFrequencyData(dataArrayRef.current)
         else getAudioEngine().getFrequencyData(dataArrayRef.current)
 
-        const bars = 32
+        const bars = 16
         const barWidth = width / bars
 
         for (let i = 0; i < bars; i++) {
-          const firstBin = Math.floor(i * (dataArrayRef.current.length / bars))
-          const lastBin = Math.floor((i + 1) * (dataArrayRef.current.length / bars))
+          const binIdx = mirrored ? (bars - 1 - i) : i
+          const firstBin = Math.floor(binIdx * (dataArrayRef.current.length / bars))
+          const lastBin = Math.floor((binIdx + 1) * (dataArrayRef.current.length / bars))
           let value = 0
           for (let bin = firstBin; bin < lastBin; bin++) {
             value = Math.max(value, dataArrayRef.current[bin] || 0)
           }
           const percent = value / 255
-          const barHeight = percent * height
 
           ctx.fillStyle = cityColor
-          ctx.fillRect(
-            i * barWidth,
-            height - barHeight,
-            Math.max(1, barWidth - 1),
-            barHeight
-          )
+          if (isCenter) {
+            const barHeight = Math.max(1, percent * (height - 2))
+            const y = Math.floor(centerY - barHeight / 2)
+            ctx.fillRect(
+              i * barWidth,
+              y,
+              Math.max(1, barWidth - 1),
+              barHeight
+            )
+          } else {
+            const barHeight = percent * height
+            ctx.fillRect(
+              i * barWidth,
+              height - barHeight,
+              Math.max(1, barWidth - 1),
+              barHeight
+            )
+          }
         }
       } else {
         // Flat line
         ctx.fillStyle = cityColor
-        ctx.fillRect(0, height - 1, width, 1)
+        if (isCenter) {
+          ctx.fillRect(0, centerY, width, 1)
+        } else {
+          ctx.fillRect(0, height - 1, width, 1)
+        }
       }
     }
 
@@ -115,7 +140,7 @@ export function SpectrogramCanvas({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current)
     }
-  }, [isOn, isPlaying, cityColor, getFrequencyData])
+  }, [isOn, isPlaying, cityColor, origin, mirrored, getFrequencyData])
 
   return (
     <canvas
@@ -138,6 +163,8 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   onToggle,
   isPlaying,
   getFrequencyData,
+  topColor = 'b',
+  getTeamFrequencyData,
   ...props
 }, ref) => {
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
@@ -257,13 +284,26 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
              </span>
           </div>
           
-          <div className="flex-1 w-full overflow-hidden relative min-h-0">
-            <SpectrogramCanvas
-              cityColor={cityColor}
-              isOn={isOn}
-              isPlaying={isPlaying}
-              getFrequencyData={getFrequencyData}
-            />
+          <div className="flex-1 w-full overflow-hidden relative min-h-0 flex gap-0.5">
+            <div className="relative h-full w-1/2 overflow-hidden">
+              <SpectrogramCanvas
+                cityColor={cityColor}
+                isOn={isOn}
+                isPlaying={isPlaying}
+                origin="center"
+                getFrequencyData={getTeamFrequencyData ? (data) => getTeamFrequencyData(topColor, data) : getFrequencyData}
+              />
+            </div>
+            <div className="relative h-full w-1/2 overflow-hidden">
+              <SpectrogramCanvas
+                cityColor={cityColor}
+                isOn={isOn}
+                isPlaying={isPlaying}
+                origin="center"
+                mirrored
+                getFrequencyData={getTeamFrequencyData ? (data) => getTeamFrequencyData(topColor === 'w' ? 'b' : 'w', data) : getFrequencyData}
+              />
+            </div>
           </div>
 
         </div>

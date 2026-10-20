@@ -46,6 +46,7 @@ interface ChessgroundBoardProps {
   pendingSquares?: readonly Square[]
   synthSelectedSquare?: Square | null
   activeSquares?: Set<string>
+  teamMixes?: Record<'w' | 'b', { gain: number }>
   analysisArrows?: AnalysisArrow[]
   rankedMoveMark?: { square: Square; kind: 'best' | 'worst'; id: number } | null
   showRankedMoveMarks?: boolean
@@ -154,6 +155,7 @@ export function ChessgroundBoard({
   onPieceDoubleTap,
   synthSelectedSquare,
   activeSquares,
+  teamMixes,
   onDragOverSquare,
   onPieceHold,
   onPieceRelease,
@@ -908,6 +910,9 @@ export function ChessgroundBoard({
             const isAnimatingTo = animatingPieces.some(animation => animation.to === square)
             const isSynthSelected = synthSelectedSquare === square
             const isActive = musicEffectsEnabled && activeSquares?.has(square)
+            const pieceColor = piece?.color ?? 'w'
+            const pieceTeamGain = teamMixes ? (teamMixes[pieceColor]?.gain ?? 1) : 1
+            const activeGlowFactor = Math.max(0, Math.min(1, pieceTeamGain))
             const isPressedPiece = pressedPieceSquare === square
             const frozen = matchPowers.some(power => power.kind === 'freeze' && power.square === square)
             const shielded = matchPowers.some(power => power.kind === 'shield' && power.square === square)
@@ -941,6 +946,7 @@ export function ChessgroundBoard({
                 style={{
                   backgroundColor: displayedSquareBackgroundColor,
                   touchAction: canDragFromSquare ? 'none' : 'pan-y',
+                  zIndex: isKingInCheck ? 5 : isSynthSelected ? 4 : isSelected ? 3 : isActive ? 2 : undefined,
                   '--power-frost-angle': `${125 + (frostRotations[square] ?? 0)}deg`,
                   '--power-frost-x': `${50 - 25 * Math.cos((frostRotations[square] ?? 0) * Math.PI / 180) + 30 * Math.sin((frostRotations[square] ?? 0) * Math.PI / 180)}%`,
                   '--power-frost-y': `${50 - 25 * Math.sin((frostRotations[square] ?? 0) * Math.PI / 180) - 30 * Math.cos((frostRotations[square] ?? 0) * Math.PI / 180)}%`,
@@ -1055,22 +1061,23 @@ export function ChessgroundBoard({
                   </>
                 )}
                 {isActive && (
-                  <>
+                  <div
+                    className="pointer-events-none absolute inset-0 isolate transition-opacity duration-1000 ease-in-out"
+                    style={{ opacity: activeGlowFactor, zIndex: 1 }}
+                  >
                     <div
                       className="absolute inset-0 pointer-events-none rounded-none active-border-fade"
                       style={{
                         boxShadow: `0 0 16px ${cityColor}`,
-                        zIndex: 13,
                       }}
                     />
                     <div
                       className="absolute inset-0 pointer-events-none rounded-none animate-pulse"
                       style={{
                         boxShadow: `0 0 18px ${cityColor}90`,
-                        zIndex: 12,
                       }}
                     />
-                  </>
+                  </div>
                 )}
                 {/* Legal move indicator */}
                 {isLegalMove && (
@@ -1128,7 +1135,12 @@ export function ChessgroundBoard({
                     )}
                     style={{
                       opacity: pendingSquares.includes(square) ? 0.45 : undefined,
-                      filter: frozen ? 'url(#frozen-piece-texture) drop-shadow(0 0 5px #36dcff) drop-shadow(0 0 12px #7ae9ff)'  : isActive || (musicEffectsEnabled && isPressedPiece) ? `drop-shadow(0 0 8px ${cityColor})` : undefined,
+                      filter: frozen
+                        ? 'url(#frozen-piece-texture) drop-shadow(0 0 5px #36dcff) drop-shadow(0 0 12px #7ae9ff)'
+                        : isActive || (musicEffectsEnabled && isPressedPiece)
+                          ? `drop-shadow(0 0 8px ${cityColor})`
+                          : undefined,
+                      transition: "transform 150ms",
                     }}
                     dangerouslySetInnerHTML={{
                       __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "",

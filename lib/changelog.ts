@@ -1,7 +1,30 @@
-export const RELEASE_LABEL = 'v1.6.4'
+export const RELEASE_LABEL = 'v1.6.5'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
+  {
+    version: '1.6.5',
+    date: '19/10/2026',
+    title: 'Criação de lobby no globo, crossfader dinâmico por chance e iluminação de peças ativas por ganho',
+    groups: [
+      { title: 'Globo e salas online', items: [
+        'No popup das cidades no globo, o botão "Create room" foi renomeado para "Create lobby", com cursor crosshair e timbre grave multi-oscilador no sintetizador ao passar o mouse.',
+        'Ao clicar em "Create lobby", o botão fica desabilitado e exibe o rótulo "Waiting response" com um ícone animado de espera enquanto aguarda a resposta do servidor, mantendo a resposta sonora ao ponteiro.',
+        'No globo, o botão inferior "Rooms" foi removido e o título "Public rooms" tornou-se clicável para abrir diretamente o popup de salas.',
+        'Os títulos "Games in progress" e "Public rooms" no globo agora são exibidos na cor branca.',
+      ] },
+      { title: 'Mixer e dinâmica visual', items: [
+        'O Crossfader possui recuo de 10px de cada lado em relação à largura do painel do Mixer.',
+        'O Crossfader alterna suavemente de lado a cada jogada com transição de 0,3s (ease-in-out) a cada movimento e atualização da barra de Chance, movendo-se com profundidade proporcional à chance atual da equipe da vez (-1 a 0 para o time de cima e 0 a +1 para o time de baixo).',
+        'O botão do slider do crossfader passa a funcionar também como botão de Play/Pause em cliques simples (sem arraste), exibindo o ícone centralizado de Play/Pause no lugar do antigo traço vertical; durante o arraste do slider, o ícone de Play/Pause fica oculto. O botão possui fundo com 15% de transparência para revelar sutilmente o Spectrogram e borda com efeito de hover que acende com brilho na cor do kit da fase.',
+        'O antigo botão separado de Play/Pause abaixo do Crossfader foi removido, integrando o controle de reprodução diretamente ao botão do Crossfader.',
+        'O fundo com espectrograma foi migrado para o fundo do Crossfader (opção "as Crossfader background" nas Preferências), com dois espectrogramas simultâneos que crescem a partir do centro vertical para cima e para baixo, com o lado direito invertido horizontalmente.',
+        'O widget individual do Spectrogram agora exibe dois espectrogramas por equipe lado a lado, com o time de cima na esquerda e o time de baixo na direita invertido horizontalmente.',
+        'Adicionada a configuração "Crossfader" no submenu Preferências ("Sync with player\'s chance" / "Manual only") para habilitar ou desabilitar a sincronização automática com a barra de Chance.',
+        'A iluminação das casas ativas no tabuleiro passa a acompanhar o Gain do seu kit no Mixer (com ganho 0 o brilho da casa é zerado; a partir de 1 atinge intensidade máxima), enquanto o dropshadow da própria peça ativa permanece aceso com intensidade fixa enquanto a peça estiver ativada musicalmente.',
+      ] },
+    ],
+  },
   {
     version: '1.6.4',
     date: '18/10/2026',

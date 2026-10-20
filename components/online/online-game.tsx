@@ -5,7 +5,6 @@ import type { Move, Square } from "chess.js";
 import {
   Code2,
   Eye,
-  Pause,
   Play,
   Shield,
   Snowflake,
@@ -56,6 +55,7 @@ import { animateInsufficientEggs, getOnlineMulliganPreviewMoves } from "@/lib/po
 import { usePowerDisplay } from "@/hooks/use-power-display";
 import { useChancePosition } from "@/hooks/use-chance-position";
 import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode";
+import { useCrossfaderSync } from "@/hooks/use-crossfader-sync";
 import { getNextMatchTip, markMatchTipSeen } from "@/lib/game-progression";
 import { MixerWidget } from "../mixer-widget";
 import { SynthControlPanel } from "../synth-control-panel";
@@ -241,6 +241,7 @@ export function OnlineMatchBoard({
   const [powerDisplay, setPowerDisplay] = usePowerDisplay();
   const [chancePosition, setChancePosition] = useChancePosition();
   const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode();
+  const [crossfaderSync, setCrossfaderSync] = useCrossfaderSync();
   const [playing, setPlaying] = useState(false);
   const [engineOn, setEngineOn] = useState(true);
   const [mixerOn, setMixerOn] = useState(false);
@@ -906,6 +907,8 @@ export function OnlineMatchBoard({
             isOn={spectrogramOn}
             onToggle={() => toggleWidget("spectrogram", setSpectrogramOn)}
             isPlaying={engineOn && (playing || !!music.preview)}
+            topColor={opponent.color}
+            getTeamFrequencyData={music.getTeamFrequencyData}
             getFrequencyData={music.getFrequencyData}
             position={
               mobile ? undefined : (spectrogramPosition ?? { x: 0, y: 0 })
@@ -1018,40 +1021,6 @@ export function OnlineMatchBoard({
           />
         )}
         <MixerWidget
-          playback={<Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "relative overflow-hidden h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer",
-                  spectrogramMode === "play-pause"
-                    ? "hover:bg-[color-mix(in_srgb,var(--city-neon)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--city-neon)_40%,transparent)]"
-                    : "hover:bg-[var(--city-neon)] active:bg-[var(--city-neon)] active:text-black",
-                )}
-                style={{
-                  "--city-neon": city.color,
-                  backgroundColor: "var(--city-neon)20",
-                } as React.CSSProperties}
-                aria-label={playing ? "Pause" : "Play"}
-                title={playing ? "Pause music" : "Play music"}
-                disabled={!engineOn || !!result}
-                onClick={() => setPlaying((p) => !p)}
-              >
-                {spectrogramMode === "play-pause" && (
-                  <SpectrogramCanvas
-                    data-mixer-playback-spectrogram
-                    cityColor={city.color}
-                    isOn={engineOn && !result}
-                    isPlaying={engineOn && (playing || !!music.preview)}
-                    getFrequencyData={music.getFrequencyData}
-                    className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-70"
-                  />
-                )}
-                {playing ? (
-                  <Pause className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
-                ) : (
-                  <Play className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
-                )}
-              </Button>}
           ref={mixerRef}
           handleRef={mixerHandleRef}
           toggleRef={mixerToggleRef}
@@ -1072,10 +1041,19 @@ export function OnlineMatchBoard({
           sessionId={match.id}
           isOn={mixerOn}
           onToggle={() => toggleWidget("mixer", setMixerOn)}
+          crossfaderSync={crossfaderSync}
+          isPlaying={engineOn && (playing || !!music.preview)}
+          onTogglePlay={() => { if (engineOn && !result) setPlaying((p) => !p) }}
+          spectrogramMode={spectrogramMode}
+          getTeamFrequencyData={music.getTeamFrequencyData}
+          getFrequencyData={music.getFrequencyData}
           position={mobile ? undefined : (mixerPosition ?? { x: 0, y: 0 })}
           onPositionChange={setMixerPosition}
           style={panelStyle("mixer")}
           onClickCapture={() => bringToFront("mixer")}
+          evalScore={analysis.score}
+          evalMate={analysis.mate}
+          turn={(movePreview?.game ?? replay.game).turn()}
         />
         {codeBackdropOn && (
           <LiveCodeWidget
@@ -1355,7 +1333,7 @@ export function OnlineMatchBoard({
                   className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")}
                 />
               </Button>
-              <GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} className={headerButtonClass} />
+              <GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className={headerButtonClass} />
               <Button
                 variant="outline"
                 size="icon"
@@ -1527,6 +1505,7 @@ export function OnlineMatchBoard({
               musicPulseMonitor={music.pulseMonitor}
               synthSelectedSquare={selected?.square as Square | undefined}
               activeSquares={music.activeSquares}
+              teamMixes={music.teamMixes}
               analysisArrows={movePreview ? [] : arrows}
               showRankedMoveMarks={false}
             />
