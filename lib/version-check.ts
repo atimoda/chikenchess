@@ -1,4 +1,4 @@
-import { RELEASE_LABEL } from './changelog'
+import { RELEASE_LABEL } from './release'
 
 /* global fetch */
 

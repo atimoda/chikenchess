@@ -4,7 +4,7 @@ import { useRef } from 'react'
 import type React from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 import { LegalLinks } from './legal-links'
-import { RELEASE_LABEL } from '@/lib/changelog'
+import { RELEASE_LABEL } from '@/lib/release'
 import { ReleaseNotesContent } from './version-changelog'
 
 export function AboutReleaseDialog({ open, onOpenChange, tab, onTabChange }: { open: boolean; onOpenChange: (open: boolean) => void; tab: 'about' | 'releases'; onTabChange: (tab: 'about' | 'releases') => void }) {

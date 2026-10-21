@@ -1,4 +1,4 @@
-import { RELEASE_LABEL } from '@/lib/changelog'
+import { RELEASE_LABEL } from '@/lib/release'
 
 /* global Response */
 

@@ -1,8 +1,7 @@
 import { Chess, type Square } from "chess.js";
 import { z } from "zod";
-import { ROOTS } from "../music/creative";
 import { HARMONY_PLAN_IDS } from "../music/harmony";
-import { SCALE_NAMES } from "../music/scales";
+import { ROOTS, SCALE_NAMES } from "../music/scales";
 import {
   advanceMatchPowers,
   createMatchPower,

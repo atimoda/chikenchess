@@ -2,20 +2,14 @@
 
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog'
-import { CHANGELOG, RELEASE_LABEL } from '@/lib/changelog'
+import dynamic from 'next/dynamic'
+import { RELEASE_LABEL } from '@/lib/release'
 
-export function ReleaseNotesContent() {
-  return <div tabIndex={0} aria-label="Histórico de versões" className="h-full overflow-y-auto overscroll-contain min-h-0 pr-3 space-y-8 text-xs">
-    {CHANGELOG.map(release => <article key={release.version}>
-      <h2 className="text-base font-mono text-primary">v{release.version} · {release.title}</h2>
-      {release.date && <p className="text-[11px] text-[#a7b6a9] mt-1">{release.date}</p>}
-      {release.groups.map(group => <section key={group.title} className="mt-5">
-        <h3 className="text-xs font-semibold mb-2">{group.title}</h3>
-        <ul className="list-disc pl-5 space-y-2 text-xs text-[#bdcabc]">{group.items.map(item => <li key={item}>{item}</li>)}</ul>
-      </section>)}
-    </article>)}
-  </div>
-}
+// The full history loads only when a dialog that shows it opens.
+export const ReleaseNotesContent = dynamic(() => import('./release-notes-content').then(module => module.ReleaseNotesContent), {
+  ssr: false,
+  loading: () => <div aria-busy="true" className="h-full min-h-0 text-xs text-[#a7b6a9]">Carregando…</div>,
+})
 
 export function VersionChangelog({ mapButton = false, onOpen }: { mapButton?: boolean; onOpen?: () => void }) {
   const [open, setOpen] = useState(false)

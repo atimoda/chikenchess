@@ -1,4 +1,4 @@
-export const RELEASE_LABEL = 'v1.6.5'
+export { RELEASE_LABEL } from './release'
 
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [

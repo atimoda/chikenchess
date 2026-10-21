@@ -21,6 +21,14 @@ export const SCALE_INTERVALS = {
   'Chromatic': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
 } as const
 export type ScaleName = keyof typeof SCALE_INTERVALS
+export const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
+export type RootName = typeof ROOTS[number]
+
+/** Fourth-octave note names of a root and scale (the map and the music share it). */
+export function scaleForCreativeSession(session: { root: RootName; scale: ScaleName }) {
+  const rootIndex = ROOTS.indexOf(session.root)
+  return SCALE_INTERVALS[session.scale].map(interval => `${ROOTS[(rootIndex + interval) % 12]}4`)
+}
 export const SCALE_NAMES = Object.keys(SCALE_INTERVALS) as [ScaleName, ...ScaleName[]]
 
 const PITCH_CLASSES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
