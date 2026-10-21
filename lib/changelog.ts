@@ -17,6 +17,9 @@ export const CHANGELOG = [
         'A aba "Rooms" passou a se chamar "Lobbies" e traz os botões "Create Public Room" e "Create Private Room", que criam o lobby direto, sem a tela de configuração.',
         'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
       ] },
+      { title: 'Tips', items: [
+        'As tips do início da partida voltam a avançar: cada nova partida mostra a próxima tip, até acabarem, em vez de repetir sempre a primeira para quem está conectado ao modo online (inclusive como convidado).',
+      ] },
     ],
   },
   {

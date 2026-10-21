@@ -127,6 +127,15 @@ test('profile imports once, preserves exact eggs and cities, calculates rank and
   assert.equal(p.profile.goldenEggs,42); assert.equal(p.profile.points,80); assert.equal(p.profile.rank,'Groove Master'); assert.deepEqual(p.profile.conqueredCityIds,['dusseldorf'])
   assert.deepEqual((await rpc(id,'online_profile',[{...profile,goldenEggs:999},null])).profile,p.profile)
 })
+test('profile sync keeps the match-tip progress',async()=>{
+  const p=await rpc(ids[3],'online_profile')
+  assert.equal(p.profile.seenMatchTipsCount,0)
+  const saved=await rpc(ids[3],'online_sync_profile',[p.profile.updatedAt,{...p.profile,seenMatchTipsCount:2},ids[3]])
+  assert.equal(saved.profile.seenMatchTipsCount,2)
+  assert.equal((await rpc(ids[3],'online_profile')).profile.seenMatchTipsCount,2)
+  const reset=await rpc(ids[3],'online_sync_profile',[saved.profile.updatedAt,{...saved.profile,seenMatchTipsCount:0},ids[3]])
+  assert.equal(reset.profile.seenMatchTipsCount,0)
+})
 test('offline campaign sync uses CAS, recovers exact retries and preserves conflicting cloud progress',async()=>{
   const p=await rpc(ids[3],'online_profile')
   const proposal={...p.profile,goldenEggs:20,points:21,winsCount:1,conqueredCityIds:['dusseldorf']}
