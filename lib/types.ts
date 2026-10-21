@@ -12,8 +12,6 @@ export interface SquareEffects {
   division?: number // Subdivision (e.g. 4, 8, 16)
 }
 
-export type SquareEffectMap = Record<string, SquareEffects>
-
 export const DEFAULT_EFFECTS: SquareEffects = {
   delay: 0,
   reverb: 0,
@@ -31,22 +29,9 @@ export const DEFAULT_EFFECTS: SquareEffects = {
 export interface GlobalEffects {
   volume: number // 0 to 2
   bpm: number // 3 to 333
-  ambiencePitch: number // 0.5 to 2
-  ambienceLpf: number // 20 to 20000
-  ambienceLfoSpeed: number // 0.1 to 10
 }
 
 export const DEFAULT_GLOBAL_EFFECTS: GlobalEffects = {
   volume: 0.8,
   bpm: 120,
-  ambiencePitch: 1,
-  ambienceLpf: 20000,
-  ambienceLfoSpeed: 1,
 }
-
-// Map of common samples for the "Pad Kontrol" mode
-export const PAD_SAMPLES = [
-  "bd", "sd", "hh", "cp", "mt", "ht", "lt", "cy", 
-  "rs", "cb", "oh", "ch", "lc", "mc", "hc", "cl",
-  "vibe", "bass", "sax", "gtr", "sitar", "tabla"
-]

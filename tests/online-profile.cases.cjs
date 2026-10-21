@@ -1,3 +1,4 @@
+/* global document, localStorage */
 const { test, beforeEach, afterEach } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs, memoryStorage } = require('./helpers/music.cjs')

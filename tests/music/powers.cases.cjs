@@ -35,8 +35,8 @@ test('power release follows forward expiration without firing on Undo, initial r
 })
 
 test('release cues have bounded lifetimes, disconnect on cancel, and never unlock a suspended context', () => {
-  const { AudioEngine } = loadTs('lib/audio-engine.ts')
-  const engine = new AudioEngine(), sources = [], envelopes = [], filters = []
+  const { SfxEngine } = loadTs('lib/sfx-engine.ts')
+  const engine = new SfxEngine(), sources = [], envelopes = [], filters = []
   const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} })
   const node = extra => ({ ...extra, disconnected: false, connect() { return this }, disconnect() { this.disconnected = true } })
   const source = () => {
@@ -63,8 +63,8 @@ test('release cues have bounded lifetimes, disconnect on cancel, and never unloc
 })
 
 test('frozen-piece auxiliary cue stays short and cancels active or still-unlocking audio', async () => {
-  const { AudioEngine } = loadTs('lib/audio-engine.ts')
-  const engine = new AudioEngine()
+  const { SfxEngine } = loadTs('lib/sfx-engine.ts')
+  const engine = new SfxEngine()
   let finishResume
   const oscillators = [], gains = []
   const parameter = () => ({ setValueAtTime() {}, exponentialRampToValueAtTime() {} })
@@ -104,8 +104,8 @@ test('frozen-piece auxiliary cue stays short and cancels active or still-unlocki
 })
 
 test('blocked negative cue starts bounded sweep and disconnects nodes', async () => {
-  const { AudioEngine } = loadTs('lib/audio-engine.ts')
-  const engine = new AudioEngine()
+  const { SfxEngine } = loadTs('lib/sfx-engine.ts')
+  const engine = new SfxEngine()
   const oscillators = [], gains = []
   const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} })
   const node = extra => ({ ...extra, disconnected: false, connect() { return this }, disconnect() { this.disconnected = true } })

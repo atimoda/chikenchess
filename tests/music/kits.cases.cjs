@@ -15,7 +15,7 @@ test('sample registry points to small valid local WAV files with explicit tuning
   let total = 0
   for (const bank of SAMPLE_BANKS) {
     let bankBytes = 0
-    for (const asset of bank.assets) for (const [variant, data] of asset.variants.entries()) {
+    for (const asset of bank.assets) for (const variant of asset.variants.keys()) {
     const registration = sampleRegistration({ kind: 'sample', bank: bank.id, asset: asset.id, variant, pitched: true })
     for (const sampleFile of registration.files) {
       const file = fs.readFileSync(path.resolve(fixtureDirectory, '../public', sampleFile.slice(1)))

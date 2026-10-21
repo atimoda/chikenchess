@@ -5,7 +5,7 @@ import { useRef, forwardRef, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
-import { getAudioEngine } from "@/lib/audio-engine"
+import { getSfxEngine } from "@/lib/sfx-engine"
 
 import { Resizable } from "re-resizable"
 
@@ -89,7 +89,7 @@ export function SpectrogramCanvas({
 
       if (isPlaying) {
         if (getFrequencyData) getFrequencyData(dataArrayRef.current)
-        else getAudioEngine().getFrequencyData(dataArrayRef.current)
+        else getSfxEngine().getFrequencyData(dataArrayRef.current)
 
         const bars = 16
         const barWidth = width / bars

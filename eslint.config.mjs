@@ -1,18 +1,30 @@
 import js from "@eslint/js"
 import tsParser from "@typescript-eslint/parser"
 import tsPlugin from "@typescript-eslint/eslint-plugin"
+import globals from "globals"
 
 export default [
   {
     ignores: [
       "node_modules/**",
       ".next/**",
+      "out/**",
+      ".artifacts/**",
       "dist/**",
-      "public/engine/stockfish-19-lite-single.js",
+      "public/engine/**",
       "scripts/**",
     ],
   },
   js.configs.recommended,
+  {
+    files: ["**/*.cjs", "**/*.mjs", "**/*.js"],
+    languageOptions: { globals: { ...globals.node } },
+    // Test files declare the globals they use in `/* global */` comments.
+    rules: {
+      "no-redeclare": ["error", { builtinGlobals: false }],
+      "no-unused-vars": ["error", { ignoreRestSiblings: true }],
+    },
+  },
   {
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
@@ -21,57 +33,18 @@ export default [
         ecmaVersion: "latest",
         sourceType: "module",
       },
-      globals: {
-        React: "readonly",
-        window: "readonly",
-        document: "readonly",
-        console: "readonly",
-        localStorage: "readonly",
-        AudioContext: "readonly",
-        AudioBuffer: "readonly",
-        ConvolverNode: "readonly",
-        TextEncoder: "readonly",
-        HTMLSpanElement: "readonly",
-        AudioScheduledSourceNode: "readonly",
-        AnalyserNode: "readonly",
-        OscillatorNode: "readonly",
-        GainNode: "readonly",
-        StereoPannerNode: "readonly",
-        BiquadFilterNode: "readonly",
-        OscillatorType: "readonly",
-        AudioNode: "readonly",
-        HTMLDivElement: "readonly",
-        HTMLButtonElement: "readonly",
-        HTMLElement: "readonly",
-        Element: "readonly",
-        Node: "readonly",
-        Worker: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly",
-        setInterval: "readonly",
-        clearInterval: "readonly",
-        requestAnimationFrame: "readonly",
-        cancelAnimationFrame: "readonly",
-        MouseEvent: "readonly",
-        TouchEvent: "readonly",
-        NodeJS: "readonly",
-        confirm: "readonly",
-        navigator: "readonly",
-        alert: "readonly",
-        KeyboardEvent: "readonly",
-        HTMLCanvasElement: "readonly",
-        SVGSVGElement: "readonly",
-      },
     },
     plugins: {
       "@typescript-eslint": tsPlugin,
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
+      // TypeScript already resolves identifiers (DOM, Deno, Node) more precisely than this rule.
+      "no-undef": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
       ],
     },
   },

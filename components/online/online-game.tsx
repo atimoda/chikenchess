@@ -5,7 +5,6 @@ import type { Move, Square } from "chess.js";
 import {
   Code2,
   Eye,
-  Play,
   Shield,
   Snowflake,
   Undo2,
@@ -33,7 +32,7 @@ import {
   type GlobalEffects,
   type SquareEffects,
 } from "@/lib/types";
-import { getAudioEngine } from "@/lib/audio-engine";
+import { getSfxEngine } from "@/lib/sfx-engine";
 import { useMusic } from "@/hooks/use-music";
 import { useOnlineMatch } from "@/hooks/use-online-match";
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout";
@@ -75,7 +74,7 @@ import {
   BoardMusicSelectors,
   type BoardDropdownId,
 } from "../board-music-selectors";
-import { SpectrogramCanvas, SpectrogramWidget } from "../spectrogram-widget";
+import { SpectrogramWidget } from "../spectrogram-widget";
 import { LiveCodeWidget } from "../live-code-widget";
 import { PieceDebugWidget } from "../piece-debug-widget";
 import { WidgetToggleLayer } from "../widget-toggle-layer";
@@ -446,7 +445,7 @@ export function OnlineMatchBoard({
   const beginIntroExit = useCallback(() => {
     if (introRequested.current) return;
     introRequested.current = true;
-    getAudioEngine().playSeatbelt();
+    getSfxEngine().playSeatbelt();
     setIntroExitStarted(true);
   }, []);
   useEffect(() => {
@@ -505,7 +504,7 @@ export function OnlineMatchBoard({
     const balance = match.state.eggs[color];
     if (balance >= amount) return true;
     animateInsufficientEggs(ownEggCounterRef.current);
-    void getAudioEngine().playBlockedCue();
+    void getSfxEngine().playBlockedCue();
     const shortfall = amount - balance;
     toast.error(`You need ${shortfall} more golden egg${shortfall === 1 ? "" : "s"} to use this`);
     return false;
@@ -543,12 +542,12 @@ export function OnlineMatchBoard({
     boardRef,
     onArm: (kind) => { if (kind) hideCostHint(); setArmedPower(kind); },
     canArm: () => ownTurn && !disabled && hasEggsForAction(3),
-    onBegin: () => { music.endAudition(); void getAudioEngine().resume() },
+    onBegin: () => { music.endAudition(); void getSfxEngine().resume() },
     onTarget: (square, power) => {
       perform({ kind: "power", power, square });
       setArmedPower(null);
     },
-    onHover: (power) => getAudioEngine().playPowerHover(power),
+    onHover: (power) => getSfxEngine().playPowerHover(power),
   });
   useEffect(() => {
     const shared = match.state.suggestions;
@@ -612,7 +611,7 @@ export function OnlineMatchBoard({
       .slice(0, 3)
       .map(({ uci, score, mate }) => ({ uci, score, mate }));
     perform({ kind: "suggest", group, moves, position });
-    void getAudioEngine().playAnalysisWhistle(group === "best" ? "up" : "down");
+    void getSfxEngine().playAnalysisWhistle(group === "best" ? "up" : "down");
   };
   const changeSync = (enabled: boolean) => {
     setSyncParams(enabled);
@@ -1951,7 +1950,7 @@ export function OnlineMatchBoard({
               const sourceColor = source === 0 ? color : opponent.color;
               setDepositedEggs(current => ({ ...current, [sourceColor]: current[sourceColor] + amount }));
             }}
-            onLand={amount => { if (!document.hidden && amount > 0) getAudioEngine().playEggLanding() }}
+            onLand={amount => { if (!document.hidden && amount > 0) getSfxEngine().playEggLanding() }}
             onComplete={() => setDepositedEggs({ ...match.state.eggs })}
           />}
           {match.state.rematchOffer && match.state.rematchOffer !== color ? (
