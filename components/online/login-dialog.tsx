@@ -5,7 +5,6 @@ import { Check, Loader2, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ONLINE_CONFIGURATION_MESSAGE, onlineErrorMessage, onlineRpc, requireOnlineClient } from '@/lib/online/client'
-import type { PlayerProfile } from '@/lib/game-progression'
 import type { OnlineRoom } from '@/lib/online/types'
 import { AUTH_CALLBACK_CHANNEL, googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
 import { useOnline, type MigrationSummary } from './online-provider'
@@ -14,14 +13,6 @@ import { LegalLinks } from '@/components/legal-links'
 /* global Window, URL, MessageEvent, BroadcastChannel, crypto */
 type LoginStep = 'email' | 'code' | 'conflict' | 'saved'
 const inputClass = 'h-11 w-full rounded-md border border-white/20 bg-black/30 px-3 text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary'
-
-function ProfileSummary({ label, profile }: { label: string; profile: PlayerProfile | undefined }) {
-  return <div className="space-y-1 rounded-md border border-white/15 bg-black/20 p-3 text-sm">
-    <strong className="block text-white">{label}</strong>
-    <p className="text-white/70">{profile?.goldenEggs ?? 0} golden eggs · {profile?.points ?? 0} pontos</p>
-    <p className="text-xs text-white/55">{profile?.conqueredCityIds.length ?? 0} cidades · {profile?.winsCount ?? 0} vitórias</p>
-  </div>
-}
 
 function GoogleIcon() {
   return <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5">

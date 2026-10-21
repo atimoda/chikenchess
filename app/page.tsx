@@ -1,12 +1,17 @@
 "use client"
 
 import { Suspense, useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { useSearchParams, useRouter } from "next/navigation"
 import { WorldMap } from "@/components/world-map"
-import { DusseldorfGame } from "@/components/modes/dusseldorf-game"
 import { type CityData, getCityById } from "@/lib/cities-data"
 import { OnlineProvider } from '@/components/online/online-provider'
-import { OnlineGame } from '@/components/online/online-game'
+
+// Matches carry the board, Stockfish and the music engine; the map loads them
+// only when a player enters one.
+const matchFallback = () => <div aria-hidden="true" className="min-h-dvh bg-black" />
+const DusseldorfGame = dynamic(() => import("@/components/modes/dusseldorf-game").then(module => module.DusseldorfGame), { ssr: false, loading: matchFallback })
+const OnlineGame = dynamic(() => import('@/components/online/online-game').then(module => module.OnlineGame), { ssr: false, loading: matchFallback })
 
 function GameContent() {
   const searchParams = useSearchParams()

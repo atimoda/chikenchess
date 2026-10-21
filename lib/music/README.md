@@ -17,7 +17,7 @@ For immediate experiments, open `/creative`, choose a factory or saved kit and p
 - Select a piece to inspect its instrument and adjust gain, pitch, pan, decay, filters, reverb, and delay. The inspector follows its identity after moves and stays selected when the AI moves.
 - Piece Params contains note/rest feedback, a play-chance knob, and envelope/octave/gate controls. Board Params changes the shared root/scale. Strudel contains transport/status above the code. In-game edits stay local to that match; save city kits through Creative.
 
-See `GAME_MECHANICS.md` for the maintained behavior inventory, gesture limitations and state priorities.
+See `GAME_MECHANICS.md` (index of `docs/mechanics/`) for the maintained behavior inventory, gesture limitations and state priorities.
 - The code widget is generated from the same voice specifications used to build the Strudel patterns. The spectrogram reads the new audio output.
 
 ## Modules

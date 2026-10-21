@@ -1,9 +1,10 @@
+// Archived one-off generator: the African profiles it produced live in data/music/profiles/. Run from the repo root.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { styleProfileSchema } = require('../tests/helpers/music.cjs').loadTs('lib/admin/validation.ts');
+const { styleProfileSchema } = require('../../tests/helpers/music.cjs').loadTs('lib/admin/validation.ts');
 
 function makePart({
   role, name, behavior, bank, asset, variant = 0, pitched = true,

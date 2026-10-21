@@ -1,5 +1,5 @@
 import { RHYTHM_STAGES } from './rhythm-stages'
-import { scaleForCreativeSession } from './music/creative'
+import { scaleForCreativeSession } from './music/scales'
 import { cityCoordinates } from "./city-coordinates"
 import { placePinsOnGrid } from './globe-pin-grid'
 import type { Meter } from './music/meter'

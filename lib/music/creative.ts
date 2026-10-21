@@ -10,9 +10,8 @@ import { defaultReactions, isLegacyReactionPreset, REACTION_PRESET_REVISION, rea
 import { HARMONY_PLAN_IDS } from './harmony'
 
 export const SOUNDS = ['sbd', 'sine', 'triangle', 'square', 'sawtooth', 'supersaw', 'white', 'pink', 'brown'] as const
-export const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
-export { SCALE_INTERVALS as SCALES } from './scales'
-import { SCALE_INTERVALS as SCALES, SCALE_NAMES } from './scales'
+export { ROOTS, scaleForCreativeSession, SCALE_INTERVALS as SCALES } from './scales'
+import { ROOTS, SCALE_NAMES, scaleForCreativeSession } from './scales'
 
 const finite = (min: number, max: number) => z.number().finite().min(min).max(max)
 const sourceSchema = z.discriminatedUnion('kind', [
@@ -113,11 +112,6 @@ export function creativeSnapshot(session: CreativeSession, playing: boolean, sol
     pieces: session.pieces.map(p => ({ ...p, origin: p.origin as MusicSnapshot['pieces'][number]['origin'], square: p.square as MusicSnapshot['pieces'][number]['square'], active: p.active && (!soloIds.length || soloIds.includes(p.id)) })),
     instruments: session.instruments, effects: session.effects, mappings: session.mappings,
   }
-}
-
-export function scaleForCreativeSession(session: Pick<CreativeSession, 'root' | 'scale'>) {
-  const rootIndex = ROOTS.indexOf(session.root)
-  return SCALES[session.scale].map(interval => `${ROOTS[(rootIndex + interval) % 12]}4`)
 }
 
 export function moveCreativePiece(session: CreativeSession, id: string, square: string): CreativeSession {

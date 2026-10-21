@@ -11,7 +11,7 @@ import { MusicPulseOverlay } from "./music-pulse-overlay"
 import { cn } from "@/lib/utils"
 import rewardStyles from "./chessground-board.module.css"
 import { frozenCaptureBlock, shieldCaptureBlock, type ShieldCaptureBlock, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
-import { getAudioEngine } from "@/lib/audio-engine"
+import { getSfxEngine } from "@/lib/sfx-engine"
 import { MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, POWER_RELEASE_MS, mulliganProgress, mulliganGhostEaseInOut, releasedPowers, type MulliganPreviewMove } from "@/lib/power-presentation"
 
 interface ChessgroundBoardProps {
@@ -241,7 +241,7 @@ export function ChessgroundBoard({
       if (frozenAttempt?.pointerId === event.pointerId) {
         // Touch grants audio activation on release; resume only the cue already waiting in its feedback window.
         if (event.isTrusted && frozenAttempt.notified && frozenFeedbackTimeoutRef.current !== null) {
-          void getAudioEngine().resume().catch(() => {})
+          void getSfxEngine().resume().catch(() => {})
         }
         frozenAttemptRef.current = null
       }
@@ -479,7 +479,7 @@ export function ChessgroundBoard({
     })
     setFadingPowers(effects)
     if (!effects.length) return
-    const cancels = [...new Set(effects.map(power => power.kind))].map(kind => getAudioEngine().playPowerRelease(kind))
+    const cancels = [...new Set(effects.map(power => power.kind))].map(kind => getSfxEngine().playPowerRelease(kind))
     const timer = window.setTimeout(() => setFadingPowers([]), POWER_RELEASE_MS)
     return () => { window.clearTimeout(timer); cancels.forEach(cancel => cancel()) }
   }, [game, effectPowers, effectPly, freeMode])
@@ -508,7 +508,7 @@ export function ChessgroundBoard({
     const capture = { from, to, color: attacker.color, flags: enPassant ? 'e' : 'c', captured: enPassant ? 'p' : target?.type }
     if (frozenCaptureBlock(capture, matchPowers)) {
       triggerAttackerShake(from)
-      void getAudioEngine().playBlockedCue()
+      void getSfxEngine().playBlockedCue()
       onFrozenCaptureBlocked?.()
       return true
     }
@@ -651,7 +651,7 @@ export function ChessgroundBoard({
             if (frozenFeedbackTimeoutRef.current !== null) window.clearTimeout(frozenFeedbackTimeoutRef.current)
             cancelFrozenSoundRef.current?.()
             setFrozenFeedbackSquare(frozenAttempt.square)
-            cancelFrozenSoundRef.current = getAudioEngine().playFrozenPieceClink()
+            cancelFrozenSoundRef.current = getSfxEngine().playFrozenPieceClink()
             frozenFeedbackTimeoutRef.current = window.setTimeout(() => {
               frozenFeedbackTimeoutRef.current = null
               setFrozenFeedbackSquare(null)
@@ -987,7 +987,7 @@ export function ChessgroundBoard({
                     frozenAttemptRef.current = { square, pointerId: e.pointerId, notified: false }
                     setSelectedSquare(square)
                     setLegalMoves([])
-                    void getAudioEngine().resume()
+                    void getSfxEngine().resume()
                     return
                   }
 

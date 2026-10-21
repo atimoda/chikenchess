@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { RELEASE_LABEL } from '@/lib/changelog'
+import { RELEASE_LABEL } from '@/lib/release'
 import { VERSION_CHECK_INTERVAL_MS, checkForNewReleaseVersion } from '@/lib/version-check'
 
 export function VersionUpdateNotice() {

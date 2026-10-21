@@ -474,7 +474,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               previous.gain.gain.cancelScheduledValues(t)
               previous.gain.gain.setValueAtTime(previous.gain.gain.value, t)
               previous.gain.gain.linearRampToValueAtTime(0, t + .01)
-              try { previous.source.stop(t + .015) } catch {}
+              try { previous.source.stop(t + .015) } catch { /* Already stopped. */ }
           }
           const buffers = popupOpenHatBuffersRef.current
           const source = ctx.createBufferSource()
@@ -503,7 +503,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               active.gain.gain.cancelScheduledValues(t)
               active.gain.gain.setValueAtTime(active.gain.gain.value, t)
               active.gain.gain.linearRampToValueAtTime(0, t + .15)
-              try { active.source.stop(t + .155) } catch {}
+              try { active.source.stop(t + .155) } catch { /* Already stopped. */ }
               heldPopupCloseHatRef.current = null
           }
       } else if (type === 'popup_down' || type === 'popup_up' || type === 'popup_drag') {

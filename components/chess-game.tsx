@@ -17,15 +17,10 @@ import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
 import { ChessgroundBoard, PiecesSVG, type AnalysisArrow } from "./chessground-board"
 import { usePowerTargetingGesture } from '@/hooks/use-power-targeting-gesture'
-import { LiveCodeOverlay } from "./live-code-overlay"
 import { LiveCodeWidget } from "./live-code-widget"
 import { StockfishDebugOverlay } from "./stockfish-debug-overlay"
-import { AudioVisualizer } from "./audio-visualizer"
-import { GameControls } from "./game-controls"
-import { GameInfo } from "./game-info"
 import { SynthControlPanel } from "./synth-control-panel"
 import { PieceDebugWidget } from "./piece-debug-widget"
-import { generateStrudelPattern } from "@/lib/strudel-engine"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './music-playback'
 import { MusicHarmonyReadout } from './music-transition-view'
@@ -33,18 +28,16 @@ import { VersionChangelog } from './version-changelog'
 import { VictoryBasket } from './victory-basket'
 import { matchEggPayout, matchEggSources } from '@/lib/match-eggs'
 import { trackMatchCompleted, trackMatchStarted } from '@/lib/game-analytics'
-import { useAudio } from "@/hooks/use-audio"
+import { useSfx } from "@/hooks/use-sfx"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import type { SquareEffectMap } from "@/lib/types"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { Code2, Music2, Undo2, Redo2, Pause, Power, Play, Check, Maximize, Minimize, Plus, Minus, Search, Snowflake, Shield, Eye } from "lucide-react"
+import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
-import { conquerCity, settleCityDraw, getNextMatchTip, markMatchTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, unlockNextCity, type RankedMoveReward } from "@/lib/game-progression"
-import { GlobalControlPanel } from "./global-control-panel"
+import { conquerCity, settleCityDraw, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
-import { SpectrogramCanvas, SpectrogramWidget } from "./spectrogram-widget"
+import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
 import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveLabelTone, rankedMoveRewardDetails, rememberMoveSuggestions, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 import { WidgetToggleLayer } from "./widget-toggle-layer"
@@ -53,13 +46,17 @@ import { advanceMatchPowers, canUseMatchPower, createMatchPower, permittedPowerM
 import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, syncPoweredMoveSan } from "@/lib/powered-chess"
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
+import { launchEggFlight, type EggFlight } from "@/lib/egg-flight"
+import { useCapturedPiecesScale, useMatchViewport } from "@/hooks/use-match-layout"
+import { CapturedPieces } from "./match/captured-pieces"
+import { GameplayTipDialog, useGameplayTip } from "./match/gameplay-tip"
+import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "./match/match-view-controls"
 import { useBoardResize } from "@/hooks/use-board-resize"
 import { BoardResizeHandles } from "./board-resize-handles"
 import { GameActionCostHint, GameActionRow, GameBoardChanceBar, GameCityBackground, GameCityTitleIntro, GameFooter, GameWidgetConnections, GameWidgetEntranceStyles, GlobeGridIcon } from "./game-presentation"
 import { BotControlWidget } from "./bot-control-widget"
 import { ChessBot, DEFAULT_BOT_ID, DEFAULT_BOT_PROFILES, getBotConfigParams, type BotConfigParams, type BotProfile } from "@/lib/chess-bots"
-import { getOnlineClient } from "@/lib/online/client"
-import { isAdminUser } from "@/lib/admin/access"
+import { loadEditableBotProfiles, saveBotProfile } from "@/lib/admin/bot-profiles-client"
 
 import {
   DropdownMenu,
@@ -76,16 +73,6 @@ interface ChessGameProps {
   panelsFollowPlayerTurn: boolean
   /** Other game modes can show the Best/Worst glyph behind the destination piece. */
   showRankedMoveMarks?: boolean
-}
-
-interface EggFlight {
-  id: number
-  amount: number
-  direction: 'earn' | 'spend'
-  owner?: 'w' | 'b'
-  sourceSquare?: Square
-  from?: { left: number; top: number; width: number; height: number }
-  to?: { left: number; top: number; width: number; height: number }
 }
 
 const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
@@ -112,21 +99,12 @@ function rankedStreakFromHistory(history: Move[], classifications: Map<string, R
   return { kind, count }
 }
 
-function rebuildChessEffects(history: Move[]) {
+function capturedPiecesFromHistory(history: Move[]) {
   const captured: { white: string[]; black: string[] } = { white: [], black: [] }
-  const active = new Set<string>()
   for (const move of history) {
     if (move.captured) captured[move.color === 'w' ? 'white' : 'black'].push(move.captured)
-    active.delete(move.from)
-    active.add(move.to)
-    if (move.flags.includes('k') || move.flags.includes('q')) {
-      if (move.to === 'g1') { active.delete('h1'); active.add('f1') }
-      if (move.to === 'c1') { active.delete('a1'); active.add('d1') }
-      if (move.to === 'g8') { active.delete('h8'); active.add('f8') }
-      if (move.to === 'c8') { active.delete('a8'); active.add('d8') }
-    }
   }
-  return { captured, active }
+  return captured
 }
 
 function stockfishPosition(game: Chess): string {
@@ -164,7 +142,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   // The board starts with White at the bottom; keep mixer rows tied to that orientation.
   const boardOrientation: "white" | "black" = "white"
   const [game, setGame] = useState(() => makePoweredChess(new Chess()))
-  const [currentPattern, setCurrentPattern] = useState("")
   const [powerDisplay, setPowerDisplay] = usePowerDisplay()
   const [chancePosition, setChancePosition] = useChancePosition()
   const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode()
@@ -190,19 +167,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const activeBot = useMemo(() => new ChessBot(selectedBotProfile, botParams), [selectedBotProfile, botParams])
   const activeBotRef = useRef<ChessBot>(activeBot)
   activeBotRef.current = activeBot
-  const [aiDepth, setAiDepth] = useState(5)
-  const aiDifficultyLabel = aiDepth === 5 ? "Easy" : aiDepth === 10 ? "Medium" : aiDepth === 15 ? "Hard" : "Expert"
   const [openDropdown, setOpenDropdown] = useState<BoardDropdownId>(null)
   const [capturedPieces, setCapturedPieces] = useState<{ white: string[]; black: string[] }>({
     white: [],
     black: [],
   })
-  const capturedPiecesViewportRef = useRef<HTMLDivElement | null>(null)
-  const capturedPiecesContentRef = useRef<HTMLDivElement | null>(null)
-  const [capturedPiecesScale, setCapturedPiecesScale] = useState(1)
-  const opponentCapturedViewportRef = useRef<HTMLDivElement | null>(null)
-  const opponentCapturedContentRef = useRef<HTMLDivElement | null>(null)
-  const [opponentCapturedScale, setOpponentCapturedScale] = useState(1)
+  const capturedScale = useCapturedPiecesScale(capturedPieces.white.length, capturedPieces.black.length)
   
   // Every city starts on Easy Pure Chess; the menu can override it for this match.
   useEffect(() => {
@@ -218,9 +188,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     return () => document.removeEventListener('visibilitychange', updateVisibility)
   }, [])
 
-  const [activeSquares, setActiveSquares] = useState<Set<string>>(new Set())
-  const [synthSelectedSquare, setSynthSelectedSquare] = useState<string | null>(null)
-  const [squareEffects, setSquareEffects] = useState<SquareEffectMap>({})
   const [globalEffects, setGlobalEffects] = useState<GlobalEffects>({ ...DEFAULT_GLOBAL_EFFECTS, bpm: city.bpm })
   const [lastEvalScore, setLastEvalScore] = useState<number | null>(null)
   const lastEvalScoreRef = useRef<number | null>(null)
@@ -268,9 +235,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
   const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
-  const [gameplayTip, setGameplayTip] = useState<string | null>(null)
-  const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
-  const tipEvaluatedRef = useRef(false)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
   const [shieldCaptureNoticeOpen, setShieldCaptureNoticeOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
@@ -314,7 +278,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const pieceDebugHandleRef = useRef<HTMLDivElement | null>(null)
   const pieceDebugToggleRef = useRef<HTMLButtonElement | null>(null)
   const globalPanelRef = useRef<HTMLDivElement | null>(null)
-  const globalPanelHandleRef = useRef<HTMLDivElement | null>(null)
   const globalPanelToggleRef = useRef<HTMLButtonElement | null>(null)
   const mixerRef = useRef<HTMLDivElement | null>(null)
   const mixerHandleRef = useRef<HTMLDivElement | null>(null)
@@ -346,6 +309,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
   const [showIntroGlow, setShowIntroGlow] = useState(true)
   const [introExitStarted, setIntroExitStarted] = useState(false)
+  const gameplayTip = useGameplayTip(introPhase === 3)
   const introStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introVolumeFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introStartRequestedRef = useRef(false)
@@ -362,39 +326,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const [isBackgroundDark, setIsBackgroundDark] = useState(false)
 
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        setIsFullscreen(true)
-      }).catch((err) => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`)
-      })
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-        setIsFullscreen(false)
-      }
-    }
-  }, [])
-
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [boardScale, setBoardScale] = useState(1)
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-    document.addEventListener("fullscreenchange", handleFullscreenChange)
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
-  }, [])
-
-  const handleZoom = (direction: 'in' | 'out' | 'reset') => {
-      setBoardScale(prev => {
-          if (direction === 'reset') return 1
-          if (direction === 'in') return Math.min(prev + 0.1, 2)
-          return Math.max(prev - 0.1, 0.5)
-      })
-  }
+  const boardScale = 1
 
   
     // Auto-scroll to end (right) when history changes
@@ -491,22 +423,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       beginGameTransition()
   }
 
-  const [isMobile, setIsMobile] = useState(false)
-  const [isPortraitMobile, setIsPortraitMobile] = useState(false)
+  const { isMobile, isPortraitMobile } = useMatchViewport(boardScale)
   const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, controlHeightRatio: powerDisplay === "cards" ? 0.32 : 0 })
-
-  useEffect(() => {
-    const checkMobile = () => {
-      const { innerWidth: width, innerHeight: height } = window
-      const boardWidth = Math.min(Math.max(0, height - 270), 512) * boardScale
-      const mobile = width <= boardWidth + 16 || (width <= 528 && height > width)
-      setIsMobile(mobile)
-      setIsPortraitMobile(mobile && height > width)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [boardScale])
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
@@ -551,40 +469,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     setWorkerEpoch(epoch => epoch + 1)
   }, [])
 
-  useEffect(() => {
-    const playerViewport = capturedPiecesViewportRef.current
-    const playerContent = capturedPiecesContentRef.current
-    const opponentViewport = opponentCapturedViewportRef.current
-    const opponentContent = opponentCapturedContentRef.current
-
-    const updateScale = () => {
-      if (playerViewport && playerContent) {
-        const availableWidth = playerViewport.clientWidth
-        const contentWidth = playerContent.scrollWidth
-        const nextScale = availableWidth > 0 && contentWidth > availableWidth
-          ? availableWidth / contentWidth
-          : 1
-        setCapturedPiecesScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
-      }
-      if (opponentViewport && opponentContent) {
-        const availableWidth = opponentViewport.clientWidth
-        const contentWidth = opponentContent.scrollWidth
-        const nextScale = availableWidth > 0 && contentWidth > availableWidth
-          ? availableWidth / contentWidth
-          : 1
-        setOpponentCapturedScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
-      }
-    }
-
-    updateScale()
-    const observer = new ResizeObserver(updateScale)
-    if (playerViewport) observer.observe(playerViewport)
-    if (playerContent) observer.observe(playerContent)
-    if (opponentViewport) observer.observe(opponentViewport)
-    if (opponentContent) observer.observe(opponentContent)
-    return () => observer.disconnect()
-  }, [capturedPieces.black.length, capturedPieces.white.length])
-
   const deactivatePlaybackWidgets = useCallback(() => {
     setGlobalPanelOn(false)
     setMixerOn(false)
@@ -599,7 +483,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn, musicPositions)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
-  const { togglePlayback, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playIllegalMoveGlitch, playDrum, engineRef } = useAudio(game, city, isPlaying && tabVisible, activeSquares, squareEffects, !music.enabled)
+  const { resumeAudio, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playDrum, engineRef } = useSfx()
 
   // A city kit owns its initial tempo. The global control can still change it
   // freely after the kit has been loaded for this match.
@@ -615,25 +499,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     setGlobalEffects(prev => {
         const next = { ...prev, [effect]: value }
         
-        if (engineRef.current) {
-            switch(effect) {
-                case "volume":
-                    engineRef.current.setGlobalVolume(value)
-                    break
-                case "bpm":
-                    engineRef.current.setGlobalBpm(value)
-                    break
-                case "ambiencePitch":
-                    engineRef.current.setAmbiencePitch(value)
-                    break
-                case "ambienceLpf":
-                    engineRef.current.setAmbienceFilter(value)
-                    break
-                case "ambienceLfoSpeed":
-                    engineRef.current.setAmbienceLFO(value)
-                    break
-            }
-        }
+        if (effect === "volume") engineRef.current?.setGlobalVolume(value)
         
         return next
     })
@@ -657,117 +523,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     if (!eggFlight) return
     const counterEl = eggFlight.owner === 'b' ? opponentEggCounterRef.current : eggCounterRef.current
-    const source = eggFlight.direction === 'earn' && eggFlight.sourceSquare
-      ? boardAreaRef.current?.querySelector<HTMLButtonElement>(`[data-square="${eggFlight.sourceSquare}"]`)
-      : counterEl
-    const target = eggFlight.direction === 'earn' ? counterEl : null
-    const rectPoint = (rect: { left: number; top: number; width: number; height: number }) => ({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
-    })
-    const fromRect = eggFlight.direction === 'spend' ? eggFlight.from : source?.getBoundingClientRect()
-    const toRect = eggFlight.direction === 'spend' ? eggFlight.to : target?.getBoundingClientRect()
-    const finishEgg = () => {
-      counterEl?.animate([
-        { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
-        { transform: `scale(${eggFlight.direction === 'earn' ? 1.24 : .88})`, boxShadow: `0 0 22px rgba(${eggFlight.direction === 'earn' ? '251,191,36' : '248,113,113'},.8)` },
-        { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
-      ], { duration: 370, easing: 'ease-out' })
-    }
-    if ((!source && eggFlight.direction === 'earn') || !fromRect || !toRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      for (let i = 0; i < eggFlight.amount; i++) finishEgg()
-      return
-    }
-    const { x: x0, y: y0 } = rectPoint(fromRect)
-    const { x: x1, y: y1 } = rectPoint(toRect)
-    const arc = Math.max(70, Math.abs(x1 - x0) * .18)
-    const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
-
-    for (let index = 0; index < eggFlight.amount; index++) {
-      const egg = document.createElement('span')
-      egg.setAttribute('aria-hidden', 'true')
-      egg.style.cssText = 'position:fixed;left:0;top:0;width:22px;height:28px;border-radius:50% 50% 45% 45% / 60% 60% 40% 40%;background:radial-gradient(circle at 32% 25%,#fff8c4 0%,#facc15 43%,#b45309 100%);box-shadow:0 0 14px #fbbf24;pointer-events:none;z-index:100;will-change:transform;'
-      document.body.appendChild(egg)
-      let frame = 0
-      let timer = 0
-      let startTime = 0
-      let done = false
-      const rotation = Math.random() * 720
-      const cleanup = () => {
-        if (done) return
-        done = true
-        window.clearTimeout(timer)
-        window.cancelAnimationFrame(frame)
-        egg.remove()
-        flightCleanupsRef.current.delete(cleanup)
-      }
-      flightCleanupsRef.current.add(cleanup)
-
-      if (eggFlight.direction === 'earn') {
-        const floatDuration = 500
-        const pauseDuration = 700
-        const flightDuration = 720
-        const spacing = eggFlight.amount > 1 ? Math.min(18, 70 / (eggFlight.amount - 1)) : 0
-        const spreadX = (index - (eggFlight.amount - 1) / 2) * spacing
-        const xFloat = x0 + spreadX
-        const yFloat = y0 - 50
-        const flightStart = floatDuration + pauseDuration + index * 90
-
-        const tick = (time: number) => {
-          if (!startTime) startTime = time
-          const elapsed = time - startTime
-
-          if (elapsed < floatDuration) {
-            const p = Math.min(1, elapsed / floatDuration)
-            const e = easeInOut(p)
-            const curX = x0 + spreadX * e
-            const curY = y0 - 50 * e
-            egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0)`
-            frame = window.requestAnimationFrame(tick)
-            return
-          }
-
-          if (elapsed < flightStart) {
-            egg.style.transform = `translate3d(${xFloat - 11}px,${yFloat - 14}px,0)`
-            frame = window.requestAnimationFrame(tick)
-            return
-          }
-
-          const flightElapsed = elapsed - flightStart
-          const p = Math.min(1, flightElapsed / flightDuration)
-          const e = easeInOut(p)
-          const targetRect = target?.getBoundingClientRect() ?? toRect
-          const { x: curX1, y: curY1 } = rectPoint(targetRect)
-          const flightArc = Math.max(60, Math.abs(curX1 - xFloat) * 0.16)
-          const curX = xFloat + (curX1 - xFloat) * e
-          const curY = yFloat + (curY1 - yFloat) * e - flightArc * 4 * e * (1 - e)
-          egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0) scale(${1 - 0.3 * e}) rotate(-${rotation * e}deg)`
-
-          if (p < 1) {
-            frame = window.requestAnimationFrame(tick)
-          } else {
-            cleanup()
-            finishEgg()
-          }
-        }
-
-        egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
-        frame = window.requestAnimationFrame(tick)
-      } else {
-        const tick = (time: number) => {
-          if (!startTime) startTime = time
-          const progress = Math.min(1, (time - startTime) / 780)
-          const eased = Math.pow(progress, 3)
-          const x = x0 + (x1 - x0) * eased
-          const y = y0 + (y1 - y0) * eased - arc * 4 * eased * (1 - eased)
-          egg.style.transform = `translate3d(${x - 11}px,${y - 14}px,0) scale(${1 - .3 * eased}) rotate(-${rotation * eased}deg)`
-          if (progress < 1) frame = window.requestAnimationFrame(tick)
-          else { cleanup(); finishEgg() }
-        }
-        egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
-        timer = window.setTimeout(() => { frame = window.requestAnimationFrame(tick) }, index * 110)
-      }
-    }
+    launchEggFlight(eggFlight, counterEl, boardAreaRef.current, flightCleanupsRef.current)
   }, [eggFlight])
 
   // One single-thread engine, shared by evaluation and opponent play.
@@ -991,17 +747,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }
   }, [botProfiles, requestEvaluation])
 
-  const handleAIDifficultyChange = useCallback((level: number) => {
-    setAiDepth(level)
-    const skill = level === 5 ? 0 : level === 10 ? 5 : level === 15 ? 12 : 20
-    if (aiMoveTimerRef.current?.hasPending && gameRef.current.turn() === 'b') {
-      setIsThinking(true)
-      requestEvaluation(gameRef.current, skill)
-    } else {
-      evaluationQueueRef.current?.setSkill(skill)
-    }
-  }, [requestEvaluation])
-
   const handleBotParamsChange = useCallback((patch: Partial<BotConfigParams>) => {
     setBotParams(current => {
       const next = { ...current, ...patch }
@@ -1013,83 +758,20 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     if (!codeBackdropOn || !botControlOn) return
     let active = true
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    if (!isLocal) {
-      setCanSaveBot(false)
-      return
-    }
-    const client = getOnlineClient()
-    if (!client) {
-      setCanSaveBot(false)
-      return
-    }
-    void client.auth.getSession().then(async ({ data, error }) => {
-      if (!active || error || !data.session || !isAdminUser(data.session.user)) {
-        if (active) setCanSaveBot(false)
-        return
-      }
-      try {
-        const response = await fetch('/__admin-local/file?id=bots', {
-          cache: 'no-store',
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-        })
-        const result = await response.json().catch(() => null)
-        if (!active) return
-        if (response.ok && result && typeof result.revision === 'string' && Array.isArray(result.value)) {
-          setBotProfiles(result.value as BotProfile[])
-          setCanSaveBot(true)
-        } else {
-          setCanSaveBot(false)
-        }
-      } catch {
-        if (active) setCanSaveBot(false)
-      }
-    }).catch(() => {
-      if (active) setCanSaveBot(false)
+    void loadEditableBotProfiles().then(profiles => {
+      if (!active) return
+      if (profiles) setBotProfiles(profiles)
+      setCanSaveBot(!!profiles)
     })
     return () => { active = false }
   }, [codeBackdropOn, botControlOn])
 
   const handleSaveBot = useCallback(async () => {
     if (savingBot || !canSaveBot) return
-    const client = getOnlineClient()
-    if (!client) return
     setSavingBot(true)
     try {
-      const { data, error } = await client.auth.getSession()
-      if (error || !data.session || !isAdminUser(data.session.user)) {
-        throw new Error('Sessão administrativa indisponível.')
-      }
-      const token = data.session.access_token
-      const getRes = await fetch('/__admin-local/file?id=bots', {
-        cache: 'no-store',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const getPayload = await getRes.json().catch(() => null)
-      if (!getRes.ok || !getPayload || !Array.isArray(getPayload.value)) {
-        throw new Error(getPayload?.error || 'Salvamento local indisponível. Execute npm run admin:dev.')
-      }
       const updatedBot = activeBotRef.current.toUpdatedProfile()
-      const nextProfiles = (getPayload.value as BotProfile[]).map(profile =>
-        profile.id === updatedBot.id ? updatedBot : profile,
-      )
-      const putRes = await fetch('/__admin-local/file?id=bots', {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          revision: getPayload.revision,
-          value: nextProfiles,
-        }),
-      })
-      const putPayload = await putRes.json().catch(() => null)
-      if (!putRes.ok || !putPayload) {
-        throw new Error(putPayload?.error || 'Falha ao salvar configuração do bot.')
-      }
-      setBotProfiles(nextProfiles)
+      setBotProfiles(await saveBotProfile(updatedBot))
       toast.success(`Configurações de "${updatedBot.name}" salvas no jogo`)
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Falha ao salvar bot.')
@@ -1297,15 +979,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   useEffect(() => {
     if (introPhase === 3) {
-      if (!tipEvaluatedRef.current) {
-        tipEvaluatedRef.current = true
-        const tip = getNextMatchTip()
-        if (tip) {
-          markMatchTipSeen()
-          setGameplayTip(tip)
-          setGameplayTipOpen(true)
-        }
-      }
       const isBotTurn = gameRef.current.turn() === 'b'
       const skill = isBotTurn ? activeBotRef.current.skill : undefined
       if (skill !== undefined) setIsThinking(true)
@@ -1314,11 +987,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, [introPhase, requestEvaluation, workerEpoch])
 
 
-  // Update pattern when board changes
+  // Report the result and update the status line when the board changes.
   useEffect(() => {
-    const pattern = generateStrudelPattern(game, city, activeSquares, squareEffects, globalEffects)
-    setCurrentPattern(pattern)
-
     if (game.isGameOver() && introPhase === 3) {
       const result = game.isCheckmate()
         ? game.turn() === 'w' ? 'black' : 'white'
@@ -1384,7 +1054,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "Bot thinking...")
     }
-  }, [game, city, activeSquares, squareEffects, globalEffects, deactivatePlaybackWidgets, settleCityVictory, introPhase])
+  }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase])
 
   useEffect(() => {
     if (introPhase !== 3 || panelsFollowPlayerTurn) return
@@ -1531,20 +1201,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           requestEvaluation(gameCopy)
           setMoveHistory((prev) => [...prev, move.san])
           updateCapturedPieces(move)
-          setSynthSelectedSquare(null) // Clear selection on AI move
-
-          // Update active squares for AI
-          setActiveSquares(prev => {
-            const next = new Set(prev)
-            next.delete(move.from)
-            next.add(move.to)
-            // Handle castling
-            if (move.flags.includes('k') || move.flags.includes('q')) {
-              if (move.to === "g8") { next.delete("h8"); next.add("f8"); } // Black Kingside
-              if (move.to === "c8") { next.delete("a8"); next.add("d8"); } // Black Queenside
-            }
-            return next
-          })
           // A short touch-device cue only after a real, legal opponent reply.
           if (navigator.maxTouchPoints > 0 && typeof navigator.vibrate === 'function') {
             try { navigator.vibrate(50) } catch { /* Device restrictions must not interrupt the move. */ }
@@ -1634,25 +1290,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       setRedoStack([]) // Clear redo stack on new move
       
       updateCapturedPieces(move)
-      setSquareEffects((prev) => {
-        const next = { ...prev }
-        if (next[move.from]) {
-          next[move.to] = next[move.from]
-          delete next[move.from]
-        }
-        return next
-      })
-      setSynthSelectedSquare((prev) => {
-        if (!prev) return prev
-        if (prev === (move.from as string)) return move.to as string
-        return prev
-      })
 
       // Auto-start music on first move
       if (!isPlaying) {
         setHasPlaybackStarted(true)
         setIsPlaying(true)
-        togglePlayback()
+        void resumeAudio()
       }
 
       // Preserve repetition history when copying the updated game.
@@ -1672,19 +1315,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
       if (!gameCopy.isGameOver()) setIsThinking(true)
 
-      setActiveSquares(prev => {
-        const next = new Set(prev)
-        next.delete(move.from)
-        next.add(move.to)
-        if (move.flags.includes('k') || move.flags.includes('q')) {
-          if (move.to === "g1") { next.delete("h1"); next.add("f1"); }
-          if (move.to === "c1") { next.delete("a1"); next.add("d1"); }
-        }
-        return next
-      })
       requestEvaluation(gameCopy, activeBotRef.current.skill, activeBotRef.current.delayMs)
     },
-    [game, updateCapturedPieces, isPlaying, togglePlayback, requestEvaluation, engineRef],
+    [game, updateCapturedPieces, isPlaying, resumeAudio, requestEvaluation, engineRef],
   )
 
   const undoMove = useCallback(() => {
@@ -1718,7 +1351,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     setRankedMoveAnnouncement(null)
     if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
     
-    const { captured: newCapturedPieces, active: newActiveSquares } = rebuildChessEffects(newGame.history({ verbose: true }))
+    const newCapturedPieces = capturedPiecesFromHistory(newGame.history({ verbose: true }))
 
     // requestEvaluation cancels any pending opponent result before switching position.
     setIsThinking(false)
@@ -1731,8 +1364,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     setUndoAnimationKey(key => key + 1)
     setGame(newGame)
     setMoveHistory(newHistory)
-    setCapturedPieces(newCapturedPieces as { white: string[], black: string[] })
-    setActiveSquares(newActiveSquares)
+    setCapturedPieces(newCapturedPieces)
     if (undoingCheckmate && !newGame.isGameOver()) {
       setHasPlaybackStarted(true)
       setIsPlaying(true)
@@ -1750,13 +1382,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         })
       }
       setActiveWidgetOrder(current => [...current.filter(id => id !== 'globalPanel'), 'globalPanel'])
-      void togglePlayback()
+      void resumeAudio()
     }
 
     // Re-evaluate the reconstructed position with its repetition history.
     console.log("Undo to FEN:", newGame.fen())
     requestEvaluation(newGame)
-  }, [panelsFollowPlayerTurn, requestEvaluation, togglePlayback])
+  }, [panelsFollowPlayerTurn, requestEvaluation, resumeAudio])
 
   const redoMove = useCallback(() => {
     const pendingRedo = redoStackRef.current
@@ -1775,7 +1407,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         matchPowersRef.current = restoredSnapshot.powers.map(power => ({ ...power }))
         setMatchPowers(matchPowersRef.current)
         const nextHistory = gameCopy.history()
-        const { captured: nextCaptured, active: nextActiveSquares } = rebuildChessEffects(gameCopy.history({ verbose: true }))
+        const nextCaptured = capturedPiecesFromHistory(gameCopy.history({ verbose: true }))
         redoStackRef.current = newRedoStack
         setGame(gameCopy)
         setMoveHistory(nextHistory)
@@ -1784,7 +1416,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
         setRedoStack(newRedoStack)
         setCapturedPieces(nextCaptured)
-        setActiveSquares(nextActiveSquares)
         const isBotTurn = gameCopy.turn() === 'b' && !gameCopy.isGameOver()
         const skill = isBotTurn ? activeBotRef.current.skill : undefined
         if (skill !== undefined) setIsThinking(true)
@@ -1880,9 +1511,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         setGlobalPanelOn(false)
         setActiveWidgetOrder(current => current.filter(id => id !== "globalPanel"))
     }
-    await togglePlayback()
+    await resumeAudio()
     setIsPlaying((prev) => !prev)
-  }, [togglePlayback, isPlaying, gameStatus, deactivatePlaybackWidgets, playDrum])
+  }, [resumeAudio, isPlaying, gameStatus, deactivatePlaybackWidgets, playDrum])
 
   const handleToggleMusicEngine = useCallback(() => {
     const next = !musicEngineOn
@@ -1926,11 +1557,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }
   }, [activeWidgetOrder, knobsOn, mixerOn, musicEngineOn, panelsFollowPlayerTurn, pieceDebugOn, spectrogramOn])
 
-  const hasStarted = moveHistory.length > 0
-
   const { pieceConnections, chainConnections, resizeTick } = useGameWidgetLayout({
     rootRef, boardAreaRef, boardScale, musicEngineOn,
-    selectedSquare: music.enabled ? music.selected?.square ?? null : synthSelectedSquare,
+    selectedSquare: music.selected?.square ?? null,
     introPhase, activeWidgetOrder,
     widgets: {
       knobs: { ref: knobsRef, on: knobsOn, position: knobsPosition, setPosition: setKnobsPosition },
@@ -1963,7 +1592,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     { id: 'mixer', label: 'Mixer', ref: mixerToggleRef, isOn: mixerOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('mixer', mixerOn, setMixerOn, mixerManuallyClosedRef), position: mixerPosition ?? { x: 0, y: 0 }, onPositionChange: setMixerPosition, onDragStart: () => handleWidgetHeaderClick('mixer') },
     { id: 'liveCode', label: 'Debug', ref: liveCodeToggleRef, isOn: liveCodeOn, cityColor: city.color, onToggle: () => toggleWidget('liveCode', setLiveCodeOn), position: liveCodePosition ?? { x: 0, y: 0 }, onPositionChange: setLiveCodePosition, onDragStart: () => handleWidgetHeaderClick('liveCode') },
     { id: 'botControl', label: 'Bot Control', ref: botControlToggleRef, isOn: botControlOn && codeBackdropOn, cityColor: city.color, onToggle: toggleBotControl, position: botControlPosition ?? { x: 0, y: 0 }, onPositionChange: setBotControlPosition, onDragStart: () => handleWidgetHeaderClick('botControl') },
-  ], [botControlOn, botControlPosition, city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, music.enabled, spectrogramMode, spectrogramOn, spectrogramPosition, resizeTick, toggleBotControl, togglePlayerTurnPanel, toggleWidget])
+  ], [botControlOn, botControlPosition, city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, spectrogramMode, spectrogramOn, spectrogramPosition, resizeTick, toggleBotControl, togglePlayerTurnPanel, toggleWidget])
 
   const widgetsContent = (mobileMode: boolean) => {
       const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', zIndex: 10 } : undefined
@@ -1972,14 +1601,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           <>
             {spectrogramMode === 'widget' && <SpectrogramWidget
                 topColor={boardOrientation === "white" ? "b" : "w"}
-                getTeamFrequencyData={music.enabled && music.engineActive ? music.getTeamFrequencyData : undefined}
-                getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
+                getTeamFrequencyData={music.engineActive ? music.getTeamFrequencyData : undefined}
+                getFrequencyData={music.engineActive ? music.getFrequencyData : undefined}
                 ref={spectrogramHandleRef}
                 toggleRef={spectrogramToggleRef}
                 togglePortalized={togglePortalized}
                 isOn={spectrogramOn}
                 onToggle={() => toggleWidget('spectrogram', setSpectrogramOn)}
-                isPlaying={music.enabled ? (music.engineActive && (isPlaying || !!music.preview)) : (musicEngineOn && isPlaying)}
+                isPlaying={music.engineActive && (isPlaying || !!music.preview)}
                 cityColor={city.color}
                 position={mobileMode ? undefined : (spectrogramPosition || undefined)}
                 onPositionChange={(pos) => setSpectrogramPosition(pos)}
@@ -1988,63 +1617,37 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             />}
 
             <SynthControlPanel
-                instrument={music.enabled ? music.instrument : undefined}
-                selectedPiece={music.enabled ? music.selected : null}
+                instrument={music.instrument}
+                selectedPiece={music.selected}
                 onInstrumentChange={music.updateInstrument}
                 isSolo={!!music.selected && music.soloIds.has(music.selected.id)}
-                onSoloToggle={music.enabled && music.selected ? () => {
+                onSoloToggle={music.selected ? () => {
                   const selectedId = music.selected?.id
                   if (!selectedId) return
                   const turnedOn = music.toggleSolo(selectedId)
                   if (turnedOn && !isPlaying && music.engineActive) {
                     setHasPlaybackStarted(true)
                     setIsPlaying(true)
-                    void togglePlayback()
+                    void resumeAudio()
                   }
                 } : undefined}
-                playback={knobsOn && music.enabled && music.selected ? <>
+                playback={knobsOn && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
                   <MusicVoiceReadout variationTabs showStatus={false} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
                 </> : undefined}
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
                 togglePortalized={togglePortalized}
-                monitor={knobsOn && music.enabled ? music.monitor : undefined}
-                monitorId={knobsOn && music.enabled ? music.selected?.id : undefined}
-                selectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
-                selectedStatus={music.enabled && music.selected ? <MusicVoiceBadge monitor={music.monitor} id={music.selected.id} /> : undefined}
-                selectedPieceInfo={(() => {
-                    if (music.enabled) return music.instrument?.name ?? null
-                    if (!synthSelectedSquare) return null
-                    // @ts-ignore
-                    const piece = game.get(synthSelectedSquare as Square)
-                    if (!piece) return "Empty"
-                    const instrumentMap: Record<string, string> = {
-                        p: "Drums", n: "Bass", b: "Piano", r: "Pad", q: "Lead", k: "Lead",
-                    }
-                    const pieceNameMap: Record<string, string> = {
-                        p: "Pawn", n: "Knight", b: "Bishop", r: "Rook", q: "Queen", k: "King",
-                    }
-                    return `${piece.color === "w" ? "White" : "Black"} ${pieceNameMap[piece.type]} - ${instrumentMap[piece.type]}`
-                })()}
-                pieceSvg={(() => {
-                    if (music.enabled && music.selected) return PiecesSVG[`${music.selected.color}${music.selected.type.toUpperCase()}` as keyof typeof PiecesSVG]
-                    if (!synthSelectedSquare) return null
-                    const piece = game.get(synthSelectedSquare as Square)
-                    return piece ? PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG] : null
-                })()}
-                effects={music.enabled ? (music.selected ? music.effects[music.selected.id] ?? { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 } : DEFAULT_EFFECTS) : synthSelectedSquare ? squareEffects[synthSelectedSquare] || DEFAULT_EFFECTS : DEFAULT_EFFECTS}
+                monitor={knobsOn ? music.monitor : undefined}
+                monitorId={knobsOn ? music.selected?.id : undefined}
+                selectedSquare={music.selected?.square ?? null}
+                selectedStatus={music.selected ? <MusicVoiceBadge monitor={music.monitor} id={music.selected.id} /> : undefined}
+                selectedPieceInfo={music.instrument?.name ?? null}
+                pieceSvg={music.selected ? PiecesSVG[`${music.selected.color}${music.selected.type.toUpperCase()}` as keyof typeof PiecesSVG] : null}
+                effects={music.selected ? music.effects[music.selected.id] ?? { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 } : DEFAULT_EFFECTS}
                 onEffectChange={(key, value) => {
-                    if (music.enabled) {
-                      if (!music.selected) return
-                      music.setPieceEffect(key, value)
-                      return
-                    }
-                    if (!synthSelectedSquare) return
-                    setSquareEffects((prev) => ({
-                        ...prev,
-                        [synthSelectedSquare]: { ...(prev[synthSelectedSquare] || DEFAULT_EFFECTS), [key]: value },
-                    }))
+                    if (!music.selected) return
+                    music.setPieceEffect(key, value)
                 }}
                 cityColor={city.color}
                 position={mobileMode ? undefined : (knobsPosition ?? { x: 0, y: 0 })}
@@ -2063,12 +1666,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               handleRef={pieceDebugHandleRef}
               togglePortalized={togglePortalized}
               isStatic={mobileMode}
-              selectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
-              instrument={music.enabled ? music.instrument ?? null : null}
-              selectedPiece={music.enabled ? music.selected ?? null : null}
-              movementMapping={music.enabled && music.selected ? music.snapshot.mappings?.[music.selected.id] : undefined}
-              arrangement={music.enabled ? music.snapshot.arrangement : undefined}
-              sectionOverride={music.enabled && music.selected ? music.snapshot.sectionOverrides?.[music.selected.id] : undefined}
+              selectedSquare={music.selected?.square ?? null}
+              instrument={music.instrument ?? null}
+              selectedPiece={music.selected ?? null}
+              movementMapping={music.selected ? music.snapshot.mappings?.[music.selected.id] : undefined}
+              arrangement={music.snapshot.arrangement}
+              sectionOverride={music.selected ? music.snapshot.sectionOverrides?.[music.selected.id] : undefined}
               cityColor={city.color}
               position={mobileMode ? undefined : pieceDebugPosition ?? { x: knobsPosition?.x ?? 0, y: (knobsPosition?.y ?? 0) + (knobsRef.current?.offsetHeight ?? 520) + 12 }}
               onPositionChange={setPieceDebugPosition}
@@ -2076,23 +1679,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               className={mobileMode ? 'w-full' : undefined}
               style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('pieceDebug') + 10 }}
               onClickCapture={() => handleWidgetHeaderClick('pieceDebug')}
-            />}
-
-            {!music.enabled && <GlobalControlPanel
-                showAmbience={!music.enabled}
-                ref={globalPanelRef}
-                toggleRef={globalPanelToggleRef}
-                togglePortalized={togglePortalized}
-                effects={globalEffects}
-                onEffectChange={handleGlobalEffectChange}
-                cityColor={city.color}
-                position={mobileMode ? undefined : (globalPanelPosition || undefined)}
-                onPositionChange={(pos) => setGlobalPanelPosition(pos)}
-                handleRef={globalPanelHandleRef}
-                isOn={globalPanelOn}
-                onToggle={() => toggleWidget('globalPanel', setGlobalPanelOn)}
-                style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('globalPanel') + 10 }}
-                onClickCapture={() => handleWidgetHeaderClick('globalPanel')}
             />}
 
             <MixerWidget
@@ -2116,11 +1702,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 isOn={mixerOn}
                 onToggle={() => togglePlayerTurnPanel("mixer", mixerOn, setMixerOn, mixerManuallyClosedRef)}
                 crossfaderSync={crossfaderSync}
-                isPlaying={music.enabled ? (music.engineActive && (isPlaying || !!music.preview)) : (musicEngineOn && isPlaying)}
+                isPlaying={music.engineActive && (isPlaying || !!music.preview)}
                 onTogglePlay={handleTogglePlay}
                 spectrogramMode={spectrogramMode}
-                getTeamFrequencyData={music.enabled && music.engineActive ? music.getTeamFrequencyData : undefined}
-                getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
+                getTeamFrequencyData={music.engineActive ? music.getTeamFrequencyData : undefined}
+                getFrequencyData={music.engineActive ? music.getFrequencyData : undefined}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('mixer') + 10 }}
                 onClickCapture={() => handleWidgetHeaderClick('mixer')}
             />
@@ -2134,7 +1720,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onToggleBotControl={toggleBotControl}
                 onForceWin={forceWin}
                 onGetEggs={getDebugEggs}
-                playback={liveCodeOn && music.enabled && music.engineActive ? <>
+                playback={liveCodeOn && music.engineActive ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
                   {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
                   {music.reactionDescriptions.map((description, i) => <div key={i}>{description}</div>)}
@@ -2146,7 +1732,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 toggleRef={liveCodeToggleRef}
                 togglePortalized={togglePortalized}
                 handleRef={liveCodeHandleRef}
-                pattern={music.enabled ? music.code : currentPattern}
+                pattern={music.code}
                 city={city}
                 cityColor={city.color}
                 isPlaying={music.engineActive && isPlaying}
@@ -2186,9 +1772,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     <div
       ref={rootRef}
       className={cn("relative w-full h-[100dvh] max-h-[100dvh] max-w-[100vw] bg-background select-none flex flex-col", isMobile ? "overflow-x-hidden overflow-y-auto [scrollbar-width:none]" : "overflow-hidden")}
-      onClick={() => {
-        setSynthSelectedSquare(null)
-      }}
       style={{
         backgroundImage: `
           radial-gradient(circle at 20% 20%, ${city.color}08 0%, transparent 40%),
@@ -2224,7 +1807,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       {codeBackdropOn && introPhase === 3 && (
         <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-75" aria-hidden="true">
           <pre className="h-full w-full overflow-hidden whitespace-pre-wrap break-all px-6 pb-6 pt-14 font-mono text-[10px] leading-4 text-[#78ff93] [text-shadow:0_0_6px_rgba(57,255,20,0.55)]">
-            {music.enabled ? music.code : currentPattern}
+            {music.code}
           </pre>
         </div>
       )}
@@ -2387,42 +1970,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               {/* Audio toggle */}
               <div className="flex gap-3">
 
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleCodeBackdrop}
-                    title="View code / Debug"
-                    aria-label={codeBackdropOn ? "Ocultar código Strudel e widget Debug" : "Mostrar código Strudel e widget Debug"}
-                    aria-pressed={codeBackdropOn}
-                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
-                </Button>
-                <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleToggleMusicEngine}
-                    title={musicEngineOn ? "Desligar música" : "Ligar música"}
-                    aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
-                    aria-pressed={musicEngineOn}
-                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    <Music2 className={`w-4 h-4 ${musicEngineOn ? '' : 'opacity-35'}`} />
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleFullscreen}
-                    title={isFullscreen ? "Restaurar" : "Maximizar"}
-                    aria-label={isFullscreen ? "Restaurar janela" : "Maximizar janela"}
-                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                </Button>
+                <MatchViewControls
+                  codeOn={codeBackdropOn}
+                  onToggleCode={toggleCodeBackdrop}
+                  musicOn={musicEngineOn}
+                  onToggleMusic={handleToggleMusicEngine}
+                  preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className={MATCH_HEADER_BUTTON_CLASS} />}
+                />
               </div>
             </div>
           </div>
@@ -2447,23 +2001,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           >
 
             <div className="min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none mb-1 flex items-center justify-between gap-1.5">
-              <div ref={opponentCapturedViewportRef} className="flex-1 min-w-0 h-full overflow-hidden flex items-center justify-start">
-                <div
-                  ref={opponentCapturedContentRef}
-                  className="flex w-max items-center justify-start gap-0.5"
-                  style={{ transform: `scale(${opponentCapturedScale})`, transformOrigin: "left center" }}
-                >
-                  {capturedPieces.black.map((p, i) => (
-                    <div
-                      key={i}
-                      className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                      dangerouslySetInnerHTML={{
-                        __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
+              <CapturedPieces pieces={capturedPieces.black} color="w" align="center" {...capturedScale.opponent} />
 
               <div
                 ref={opponentEggCounterRef}
@@ -2531,49 +2069,28 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   isMoveAllowed={move => permitsPowerMove(move, matchPowersRef.current, game.history().length + 1)}
                   cityColor={city.color} 
                   isThinking={isThinking} 
-                  synthSelectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
+                  synthSelectedSquare={music.selected?.square ?? null}
                   musicEffectsEnabled={musicEngineOn}
-                  activeSquares={music.enabled ? music.activeSquares : activeSquares}
+                  activeSquares={music.activeSquares}
                   teamMixes={music.teamMixes}
-                  onPieceHold={music.enabled && music.engineActive ? music.audition : undefined}
-                  onPieceRelease={music.enabled && music.engineActive ? music.releaseAudition : undefined}
-                  onPieceCancel={music.enabled && music.engineActive ? music.endAudition : undefined}
-                  musicPulseMonitor={music.enabled && music.engineActive ? music.pulseMonitor : undefined}
+                  onPieceHold={music.engineActive ? music.audition : undefined}
+                  onPieceRelease={music.engineActive ? music.releaseAudition : undefined}
+                  onPieceCancel={music.engineActive ? music.endAudition : undefined}
+                  musicPulseMonitor={music.engineActive ? music.pulseMonitor : undefined}
                   analysisArrows={analysisArrows}
                   rankedMoveMark={rankedMoveMark}
                   showRankedMoveMarks={showRankedMoveMarks}
                   rankedMoveAnnouncement={rankedMoveAnnouncement}
-                  onBoardClick={(square) => {
-                    if (music.enabled) { music.select(square); return }
-                    const piece = game.get(square as Square)
-                    if (piece) {
-                      setSynthSelectedSquare(square)
-                      playSquareSample(square, piece.type, piece.color)
-                    } else {
-                      setSynthSelectedSquare(null)
-                      playSquareSample(square)
-                    }
-                  }}
+                  onBoardClick={square => music.select(square)}
                   onPieceDoubleTap={(square) => {
                     if (introPhase !== 3 || game.turn() !== "w" || game.isGameOver()) return
                     const piece = game.get(square)
                     if (!piece) return
-                    let turnedOn = false
-                    if (music.enabled) {
-                      turnedOn = music.togglePiece(square)
-                    } else {
-                      turnedOn = !activeSquares.has(square)
-                      setActiveSquares(current => {
-                        const next = new Set(current)
-                        if (turnedOn) next.add(square)
-                        else next.delete(square)
-                        return next
-                      })
-                    }
-                    if (turnedOn && !isPlaying && (!music.enabled || music.engineActive)) {
+                    const turnedOn = music.togglePiece(square)
+                    if (turnedOn && !isPlaying && music.engineActive) {
                       setHasPlaybackStarted(true)
                       setIsPlaying(true)
-                      void togglePlayback()
+                      void resumeAudio()
                     }
                     if (panelsFollowPlayerTurn && !knobsOn && !knobsManuallyClosedRef.current) {
                       setKnobsOn(true)
@@ -2581,20 +2098,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                                   }
                   }}
                   onDragOverSquare={(from, to) => {
-                    if (music.enabled) {
-                      if (music.engineActive) music.audition(from, to)
-                      return
-                    }
-                    if (from === to) return
-                    const piece = game.get(from as Square)
-                    if (!piece) return
-                    const legalTargets = game.moves({ square: from as Square, verbose: true }).map(m => m.to)
-                    const isLegal = legalTargets.includes(to)
-                    if (isLegal) {
-                      playSquareSample(to, piece.type, piece.color)
-                    } else {
-                      playIllegalMoveGlitch(piece.type, to)
-                    }
+                    if (music.engineActive) music.audition(from, to)
                   }}
                 />
                 {stockfishDebugOn && codeBackdropOn && introPhase === 3 && <StockfishDebugOverlay
@@ -2609,34 +2113,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               </div>
 
               <div className="mb-1 sm:mb-2 flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none">
-                <div
-                  ref={capturedPiecesViewportRef}
-                  className={cn(
-                    "flex-1 min-w-0 h-8 overflow-hidden flex items-start justify-start transition-opacity duration-1000",
-                    introPhase < 3 ? "opacity-0" : "opacity-100",
-                  )}
-                >
-                  <div
-                    ref={capturedPiecesContentRef}
-                    className="flex w-max items-start justify-start gap-0.5"
-                    style={{ transform: `scale(${capturedPiecesScale})`, transformOrigin: "left top" }}
-                  >
-                    {capturedPieces.white.map((p, i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                        style={{
-                          "--city-neon": city.color,
-                          filter:
-                            "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))",
-                        } as React.CSSProperties}
-                        dangerouslySetInnerHTML={{
-                          __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <CapturedPieces
+                  pieces={capturedPieces.white}
+                  color="b"
+                  align="top"
+                  outlineColor={city.color}
+                  className={cn("transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}
+                  {...capturedScale.player}
+                />
 
                 <div className="flex shrink-0 items-center gap-1.5 self-center">
                   <div
@@ -2889,17 +2373,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         </DialogContent>
       </Dialog>
 
-      <Dialog open={gameplayTipOpen} onOpenChange={setGameplayTipOpen}>
-        <DialogContent className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-amber-200">Tip</DialogTitle>
-            <DialogDescription className="whitespace-pre-line pt-2 text-base leading-relaxed text-white/80">
-              {gameplayTip}
-            </DialogDescription>
-          </DialogHeader>
-          <Button autoFocus onClick={() => setGameplayTipOpen(false)} className="mt-2 w-full bg-amber-400 text-black hover:bg-amber-300">Ok!</Button>
-        </DialogContent>
-      </Dialog>
+      <GameplayTipDialog tip={gameplayTip.tip} open={gameplayTip.open} onOpenChange={gameplayTip.setOpen} />
 
 
 

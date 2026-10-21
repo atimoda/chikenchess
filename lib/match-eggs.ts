@@ -8,7 +8,6 @@ export function matchEggPayout(eggs: { w: number; b: number }, winner: 'w' | 'b'
 
 /** Attribute each recipient's share to the two counters without inventing eggs. */
 export function matchEggSources(eggs: { w: number; b: number }, winner: 'w' | 'b' | null, recipient: 'w' | 'b') {
-  const payout = matchEggPayout(eggs, winner)[recipient]
   if (winner) return winner === recipient ? { ...eggs } : { w: 0, b: 0 }
   const blackPayout = matchEggPayout(eggs, null).b
   const blackFromBlack = Math.min(Math.ceil(eggs.b / 2), blackPayout)
