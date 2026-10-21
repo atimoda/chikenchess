@@ -132,7 +132,7 @@ ChickenChess é um instrumento musical coletivo jogado em um tabuleiro e uma bib
 
 A prioridade é uma engine musical configurável, validada com um kit eletrônico em Düsseldorf. Loja, multiplayer, vestiário, expansão do mapa e novos modos aguardam essa validação. Generalidade será comprovada com configurações contrastantes no laboratório, sem produzir antecipadamente todo o catálogo.
 
-Este plano substitui as prioridades anteriores do ROADMAP.md. Chicago como fase inicial, preços, plataforma de banco e modelo comercial do roadmap antigo são ideias históricas, não decisões vigentes.
+Este plano substitui as prioridades anteriores do `docs/archive/ROADMAP.md`. Chicago como fase inicial, preços, plataforma de banco e modelo comercial do roadmap antigo são ideias históricas, não decisões vigentes.
 
 Invariantes:
 - Uma peça possui identidade estável, independente da casa, aparência, instrumento e tipo de movimento de xadrez.

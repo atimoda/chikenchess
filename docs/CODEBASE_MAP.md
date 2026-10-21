@@ -1,6 +1,6 @@
 # Mapa de trabalho do ChickenChess
 
-Leia esta página para localizar a mudança; depois abra apenas os módulos necessários. Mecânica atual: `GAME_MECHANICS.md` (índice + seção aplicável). Agenda futura: `MUSIC_ENGINE_PLAN.md`. Referências musicais: `MUSIC_STYLE_REFERENCES.md` e `STRUDEL_REFERENCE_CATALOG.md`, somente quando o assunto exigir.
+Leia esta página para localizar a mudança; depois abra apenas os módulos necessários. Mecânica atual: índice `GAME_MECHANICS.md` + o arquivo do assunto em `docs/mechanics/`. Agenda futura: `MUSIC_ENGINE_PLAN.md`. Referências musicais: `MUSIC_STYLE_REFERENCES.md` e `STRUDEL_REFERENCE_CATALOG.md`, somente quando o assunto exigir.
 
 ## Onde alterar
 
@@ -49,7 +49,11 @@ Leia esta página para localizar a mudança; depois abra apenas os módulos nece
 | Backend online | `supabase/functions/`, `supabase/migrations/` | `scripts/build-online.mjs` empacota domínio/schema; handlers verificam sessão; commit/RLS no Postgres; testes em `tests/online.cases.cjs`, `supabase/tests/database.test.cjs` |
 | Perfil, ovos, pontuação e ranks | `lib/game-progression.ts`, `components/world-map.tsx`, `components/chess-game.tsx` | Persistência local, saldos, migração e recompensas; `lib/match-eggs.ts` divide o pote e resolve origens/quantidade visual; `victory-basket.tsx` compartilha `EggBasketTransfer` entre campanha/online, anima os contadores até a cesta da conta após crédito; `202610090001_match_egg_settlement.sql` liquida vitória/empate atomicamente, com som auxiliar em `lib/audio-engine.ts` |
 
-**Nomes legados:** `lib/strudel-engine.ts` gera/analisa a notação antiga; não é o compilador Strudel atual. `lib/audio-engine.ts` e `hooks/use-audio.ts` pertencem ao caminho nativo/legado, ainda usado para áudio auxiliar. Para os loops atuais, comece em `lib/music/`. Não remova esses módulos sem verificar seus consumidores.
+**Efeitos sonoros:** `lib/sfx-engine.ts` (`getSfxEngine()`) e `hooks/use-sfx.ts` tocam só os sons curtos de interface (bumbo de hover, poderes, ovos, xeque-mate, vitória, empate). Não há mais sequenciador de loops fora de `lib/music/`: toda cidade tem kit, e os loops começam em `lib/music/`.
+
+**Peças comuns de partida:** `hooks/use-match-layout.ts` (viewport mobile, tela cheia, escala das peças capturadas) e `components/match/` (`CapturedPieces`, dica da partida, botões de visualização do cabeçalho) servem campanha e online; mudanças nessas peças valem para os dois modos. `lib/egg-flight.ts` anima os ovos da campanha; `lib/admin/bot-profiles-client.ts` lê/salva o catálogo de bots pelo serviço admin local.
+
+**Carregamento:** `app/page.tsx` carrega `DusseldorfGame` e `OnlineGame` com `next/dynamic`; o mapa não deve importar módulos de partida diretamente. `RELEASE_LABEL` fica em `lib/release.ts` e o histórico (`lib/changelog.ts`) só carrega em `components/release-notes-content.tsx`, quando o diálogo abre. `lib/cities-data.ts` usa `lib/music/scales.ts`, não `creative.ts`.
 
 `lib/music/runtime.ts` é uma fachada compatível para os consumidores existentes. Não coloque implementações novas nela. Os módulos internos importam contratos de `runtime-types.ts`, não a fachada. O compilador não abre AudioContext; o loader concentra os caches. A sessão continua sendo a única dona do transporte e do ciclo de vida.
 
