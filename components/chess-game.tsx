@@ -30,11 +30,11 @@ import { matchEggPayout, matchEggSources } from '@/lib/match-eggs'
 import { trackMatchCompleted, trackMatchStarted } from '@/lib/game-analytics'
 import { useSfx } from "@/hooks/use-sfx"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
-import { Code2, Music2, Undo2, Redo2, Check, Maximize, Minimize, Snowflake, Shield, Eye } from "lucide-react"
+import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
-import { conquerCity, settleCityDraw, getNextMatchTip, markMatchTipSeen, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
+import { conquerCity, settleCityDraw, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
 import { SpectrogramWidget } from "./spectrogram-widget"
@@ -46,13 +46,17 @@ import { advanceMatchPowers, canUseMatchPower, createMatchPower, permittedPowerM
 import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, syncPoweredMoveSan } from "@/lib/powered-chess"
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
+import { launchEggFlight, type EggFlight } from "@/lib/egg-flight"
+import { useCapturedPiecesScale, useMatchViewport } from "@/hooks/use-match-layout"
+import { CapturedPieces } from "./match/captured-pieces"
+import { GameplayTipDialog, useGameplayTip } from "./match/gameplay-tip"
+import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "./match/match-view-controls"
 import { useBoardResize } from "@/hooks/use-board-resize"
 import { BoardResizeHandles } from "./board-resize-handles"
 import { GameActionCostHint, GameActionRow, GameBoardChanceBar, GameCityBackground, GameCityTitleIntro, GameFooter, GameWidgetConnections, GameWidgetEntranceStyles, GlobeGridIcon } from "./game-presentation"
 import { BotControlWidget } from "./bot-control-widget"
 import { ChessBot, DEFAULT_BOT_ID, DEFAULT_BOT_PROFILES, getBotConfigParams, type BotConfigParams, type BotProfile } from "@/lib/chess-bots"
-import { getOnlineClient } from "@/lib/online/client"
-import { isAdminUser } from "@/lib/admin/access"
+import { loadEditableBotProfiles, saveBotProfile } from "@/lib/admin/bot-profiles-client"
 
 import {
   DropdownMenu,
@@ -69,16 +73,6 @@ interface ChessGameProps {
   panelsFollowPlayerTurn: boolean
   /** Other game modes can show the Best/Worst glyph behind the destination piece. */
   showRankedMoveMarks?: boolean
-}
-
-interface EggFlight {
-  id: number
-  amount: number
-  direction: 'earn' | 'spend'
-  owner?: 'w' | 'b'
-  sourceSquare?: Square
-  from?: { left: number; top: number; width: number; height: number }
-  to?: { left: number; top: number; width: number; height: number }
 }
 
 const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
@@ -178,12 +172,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     white: [],
     black: [],
   })
-  const capturedPiecesViewportRef = useRef<HTMLDivElement | null>(null)
-  const capturedPiecesContentRef = useRef<HTMLDivElement | null>(null)
-  const [capturedPiecesScale, setCapturedPiecesScale] = useState(1)
-  const opponentCapturedViewportRef = useRef<HTMLDivElement | null>(null)
-  const opponentCapturedContentRef = useRef<HTMLDivElement | null>(null)
-  const [opponentCapturedScale, setOpponentCapturedScale] = useState(1)
+  const capturedScale = useCapturedPiecesScale(capturedPieces.white.length, capturedPieces.black.length)
   
   // Every city starts on Easy Pure Chess; the menu can override it for this match.
   useEffect(() => {
@@ -246,9 +235,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [rankedMoveMark, setRankedMoveMark] = useState<{ square: Square; kind: RankedMoveReward; id: number } | null>(null)
   const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
-  const [gameplayTip, setGameplayTip] = useState<string | null>(null)
-  const [gameplayTipOpen, setGameplayTipOpen] = useState(false)
-  const tipEvaluatedRef = useRef(false)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
   const [shieldCaptureNoticeOpen, setShieldCaptureNoticeOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
@@ -323,6 +309,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
   const [showIntroGlow, setShowIntroGlow] = useState(true)
   const [introExitStarted, setIntroExitStarted] = useState(false)
+  const gameplayTip = useGameplayTip(introPhase === 3)
   const introStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introVolumeFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const introStartRequestedRef = useRef(false)
@@ -339,31 +326,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const [isBackgroundDark, setIsBackgroundDark] = useState(false)
 
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        setIsFullscreen(true)
-      }).catch((err) => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`)
-      })
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-        setIsFullscreen(false)
-      }
-    }
-  }, [])
-
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const boardScale = 1
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-    document.addEventListener("fullscreenchange", handleFullscreenChange)
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
-  }, [])
 
   
     // Auto-scroll to end (right) when history changes
@@ -460,22 +423,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       beginGameTransition()
   }
 
-  const [isMobile, setIsMobile] = useState(false)
-  const [isPortraitMobile, setIsPortraitMobile] = useState(false)
+  const { isMobile, isPortraitMobile } = useMatchViewport(boardScale)
   const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, controlHeightRatio: powerDisplay === "cards" ? 0.32 : 0 })
-
-  useEffect(() => {
-    const checkMobile = () => {
-      const { innerWidth: width, innerHeight: height } = window
-      const boardWidth = Math.min(Math.max(0, height - 270), 512) * boardScale
-      const mobile = width <= boardWidth + 16 || (width <= 528 && height > width)
-      setIsMobile(mobile)
-      setIsPortraitMobile(mobile && height > width)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [boardScale])
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
@@ -519,40 +468,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     workerRetriesRef.current = 0
     setWorkerEpoch(epoch => epoch + 1)
   }, [])
-
-  useEffect(() => {
-    const playerViewport = capturedPiecesViewportRef.current
-    const playerContent = capturedPiecesContentRef.current
-    const opponentViewport = opponentCapturedViewportRef.current
-    const opponentContent = opponentCapturedContentRef.current
-
-    const updateScale = () => {
-      if (playerViewport && playerContent) {
-        const availableWidth = playerViewport.clientWidth
-        const contentWidth = playerContent.scrollWidth
-        const nextScale = availableWidth > 0 && contentWidth > availableWidth
-          ? availableWidth / contentWidth
-          : 1
-        setCapturedPiecesScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
-      }
-      if (opponentViewport && opponentContent) {
-        const availableWidth = opponentViewport.clientWidth
-        const contentWidth = opponentContent.scrollWidth
-        const nextScale = availableWidth > 0 && contentWidth > availableWidth
-          ? availableWidth / contentWidth
-          : 1
-        setOpponentCapturedScale(current => Math.abs(current - nextScale) < 0.001 ? current : nextScale)
-      }
-    }
-
-    updateScale()
-    const observer = new ResizeObserver(updateScale)
-    if (playerViewport) observer.observe(playerViewport)
-    if (playerContent) observer.observe(playerContent)
-    if (opponentViewport) observer.observe(opponentViewport)
-    if (opponentContent) observer.observe(opponentContent)
-    return () => observer.disconnect()
-  }, [capturedPieces.black.length, capturedPieces.white.length])
 
   const deactivatePlaybackWidgets = useCallback(() => {
     setGlobalPanelOn(false)
@@ -608,117 +523,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     if (!eggFlight) return
     const counterEl = eggFlight.owner === 'b' ? opponentEggCounterRef.current : eggCounterRef.current
-    const source = eggFlight.direction === 'earn' && eggFlight.sourceSquare
-      ? boardAreaRef.current?.querySelector<HTMLButtonElement>(`[data-square="${eggFlight.sourceSquare}"]`)
-      : counterEl
-    const target = eggFlight.direction === 'earn' ? counterEl : null
-    const rectPoint = (rect: { left: number; top: number; width: number; height: number }) => ({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
-    })
-    const fromRect = eggFlight.direction === 'spend' ? eggFlight.from : source?.getBoundingClientRect()
-    const toRect = eggFlight.direction === 'spend' ? eggFlight.to : target?.getBoundingClientRect()
-    const finishEgg = () => {
-      counterEl?.animate([
-        { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
-        { transform: `scale(${eggFlight.direction === 'earn' ? 1.24 : .88})`, boxShadow: `0 0 22px rgba(${eggFlight.direction === 'earn' ? '251,191,36' : '248,113,113'},.8)` },
-        { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
-      ], { duration: 370, easing: 'ease-out' })
-    }
-    if ((!source && eggFlight.direction === 'earn') || !fromRect || !toRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      for (let i = 0; i < eggFlight.amount; i++) finishEgg()
-      return
-    }
-    const { x: x0, y: y0 } = rectPoint(fromRect)
-    const { x: x1, y: y1 } = rectPoint(toRect)
-    const arc = Math.max(70, Math.abs(x1 - x0) * .18)
-    const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
-
-    for (let index = 0; index < eggFlight.amount; index++) {
-      const egg = document.createElement('span')
-      egg.setAttribute('aria-hidden', 'true')
-      egg.style.cssText = 'position:fixed;left:0;top:0;width:22px;height:28px;border-radius:50% 50% 45% 45% / 60% 60% 40% 40%;background:radial-gradient(circle at 32% 25%,#fff8c4 0%,#facc15 43%,#b45309 100%);box-shadow:0 0 14px #fbbf24;pointer-events:none;z-index:100;will-change:transform;'
-      document.body.appendChild(egg)
-      let frame = 0
-      let timer = 0
-      let startTime = 0
-      let done = false
-      const rotation = Math.random() * 720
-      const cleanup = () => {
-        if (done) return
-        done = true
-        window.clearTimeout(timer)
-        window.cancelAnimationFrame(frame)
-        egg.remove()
-        flightCleanupsRef.current.delete(cleanup)
-      }
-      flightCleanupsRef.current.add(cleanup)
-
-      if (eggFlight.direction === 'earn') {
-        const floatDuration = 500
-        const pauseDuration = 700
-        const flightDuration = 720
-        const spacing = eggFlight.amount > 1 ? Math.min(18, 70 / (eggFlight.amount - 1)) : 0
-        const spreadX = (index - (eggFlight.amount - 1) / 2) * spacing
-        const xFloat = x0 + spreadX
-        const yFloat = y0 - 50
-        const flightStart = floatDuration + pauseDuration + index * 90
-
-        const tick = (time: number) => {
-          if (!startTime) startTime = time
-          const elapsed = time - startTime
-
-          if (elapsed < floatDuration) {
-            const p = Math.min(1, elapsed / floatDuration)
-            const e = easeInOut(p)
-            const curX = x0 + spreadX * e
-            const curY = y0 - 50 * e
-            egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0)`
-            frame = window.requestAnimationFrame(tick)
-            return
-          }
-
-          if (elapsed < flightStart) {
-            egg.style.transform = `translate3d(${xFloat - 11}px,${yFloat - 14}px,0)`
-            frame = window.requestAnimationFrame(tick)
-            return
-          }
-
-          const flightElapsed = elapsed - flightStart
-          const p = Math.min(1, flightElapsed / flightDuration)
-          const e = easeInOut(p)
-          const targetRect = target?.getBoundingClientRect() ?? toRect
-          const { x: curX1, y: curY1 } = rectPoint(targetRect)
-          const flightArc = Math.max(60, Math.abs(curX1 - xFloat) * 0.16)
-          const curX = xFloat + (curX1 - xFloat) * e
-          const curY = yFloat + (curY1 - yFloat) * e - flightArc * 4 * e * (1 - e)
-          egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0) scale(${1 - 0.3 * e}) rotate(-${rotation * e}deg)`
-
-          if (p < 1) {
-            frame = window.requestAnimationFrame(tick)
-          } else {
-            cleanup()
-            finishEgg()
-          }
-        }
-
-        egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
-        frame = window.requestAnimationFrame(tick)
-      } else {
-        const tick = (time: number) => {
-          if (!startTime) startTime = time
-          const progress = Math.min(1, (time - startTime) / 780)
-          const eased = Math.pow(progress, 3)
-          const x = x0 + (x1 - x0) * eased
-          const y = y0 + (y1 - y0) * eased - arc * 4 * eased * (1 - eased)
-          egg.style.transform = `translate3d(${x - 11}px,${y - 14}px,0) scale(${1 - .3 * eased}) rotate(-${rotation * eased}deg)`
-          if (progress < 1) frame = window.requestAnimationFrame(tick)
-          else { cleanup(); finishEgg() }
-        }
-        egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
-        timer = window.setTimeout(() => { frame = window.requestAnimationFrame(tick) }, index * 110)
-      }
-    }
+    launchEggFlight(eggFlight, counterEl, boardAreaRef.current, flightCleanupsRef.current)
   }, [eggFlight])
 
   // One single-thread engine, shared by evaluation and opponent play.
@@ -953,83 +758,20 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     if (!codeBackdropOn || !botControlOn) return
     let active = true
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    if (!isLocal) {
-      setCanSaveBot(false)
-      return
-    }
-    const client = getOnlineClient()
-    if (!client) {
-      setCanSaveBot(false)
-      return
-    }
-    void client.auth.getSession().then(async ({ data, error }) => {
-      if (!active || error || !data.session || !isAdminUser(data.session.user)) {
-        if (active) setCanSaveBot(false)
-        return
-      }
-      try {
-        const response = await fetch('/__admin-local/file?id=bots', {
-          cache: 'no-store',
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-        })
-        const result = await response.json().catch(() => null)
-        if (!active) return
-        if (response.ok && result && typeof result.revision === 'string' && Array.isArray(result.value)) {
-          setBotProfiles(result.value as BotProfile[])
-          setCanSaveBot(true)
-        } else {
-          setCanSaveBot(false)
-        }
-      } catch {
-        if (active) setCanSaveBot(false)
-      }
-    }).catch(() => {
-      if (active) setCanSaveBot(false)
+    void loadEditableBotProfiles().then(profiles => {
+      if (!active) return
+      if (profiles) setBotProfiles(profiles)
+      setCanSaveBot(!!profiles)
     })
     return () => { active = false }
   }, [codeBackdropOn, botControlOn])
 
   const handleSaveBot = useCallback(async () => {
     if (savingBot || !canSaveBot) return
-    const client = getOnlineClient()
-    if (!client) return
     setSavingBot(true)
     try {
-      const { data, error } = await client.auth.getSession()
-      if (error || !data.session || !isAdminUser(data.session.user)) {
-        throw new Error('Sessão administrativa indisponível.')
-      }
-      const token = data.session.access_token
-      const getRes = await fetch('/__admin-local/file?id=bots', {
-        cache: 'no-store',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const getPayload = await getRes.json().catch(() => null)
-      if (!getRes.ok || !getPayload || !Array.isArray(getPayload.value)) {
-        throw new Error(getPayload?.error || 'Salvamento local indisponível. Execute npm run admin:dev.')
-      }
       const updatedBot = activeBotRef.current.toUpdatedProfile()
-      const nextProfiles = (getPayload.value as BotProfile[]).map(profile =>
-        profile.id === updatedBot.id ? updatedBot : profile,
-      )
-      const putRes = await fetch('/__admin-local/file?id=bots', {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          revision: getPayload.revision,
-          value: nextProfiles,
-        }),
-      })
-      const putPayload = await putRes.json().catch(() => null)
-      if (!putRes.ok || !putPayload) {
-        throw new Error(putPayload?.error || 'Falha ao salvar configuração do bot.')
-      }
-      setBotProfiles(nextProfiles)
+      setBotProfiles(await saveBotProfile(updatedBot))
       toast.success(`Configurações de "${updatedBot.name}" salvas no jogo`)
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Falha ao salvar bot.')
@@ -1237,15 +979,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   useEffect(() => {
     if (introPhase === 3) {
-      if (!tipEvaluatedRef.current) {
-        tipEvaluatedRef.current = true
-        const tip = getNextMatchTip()
-        if (tip) {
-          markMatchTipSeen()
-          setGameplayTip(tip)
-          setGameplayTipOpen(true)
-        }
-      }
       const isBotTurn = gameRef.current.turn() === 'b'
       const skill = isBotTurn ? activeBotRef.current.skill : undefined
       if (skill !== undefined) setIsThinking(true)
@@ -2237,42 +1970,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               {/* Audio toggle */}
               <div className="flex gap-3">
 
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleCodeBackdrop}
-                    title="View code / Debug"
-                    aria-label={codeBackdropOn ? "Ocultar código Strudel e widget Debug" : "Mostrar código Strudel e widget Debug"}
-                    aria-pressed={codeBackdropOn}
-                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
-                </Button>
-                <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleToggleMusicEngine}
-                    title={musicEngineOn ? "Desligar música" : "Ligar música"}
-                    aria-label={musicEngineOn ? "Desligar música generativa" : "Ligar música generativa"}
-                    aria-pressed={musicEngineOn}
-                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    <Music2 className={`w-4 h-4 ${musicEngineOn ? '' : 'opacity-35'}`} />
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleFullscreen}
-                    title={isFullscreen ? "Restaurar" : "Maximizar"}
-                    aria-label={isFullscreen ? "Restaurar janela" : "Maximizar janela"}
-                    className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all"
-                    style={{ "--city-neon": city.color } as React.CSSProperties}
-                >
-                    {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                </Button>
+                <MatchViewControls
+                  codeOn={codeBackdropOn}
+                  onToggleCode={toggleCodeBackdrop}
+                  musicOn={musicEngineOn}
+                  onToggleMusic={handleToggleMusicEngine}
+                  preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className={MATCH_HEADER_BUTTON_CLASS} />}
+                />
               </div>
             </div>
           </div>
@@ -2297,23 +2001,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           >
 
             <div className="min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none mb-1 flex items-center justify-between gap-1.5">
-              <div ref={opponentCapturedViewportRef} className="flex-1 min-w-0 h-full overflow-hidden flex items-center justify-start">
-                <div
-                  ref={opponentCapturedContentRef}
-                  className="flex w-max items-center justify-start gap-0.5"
-                  style={{ transform: `scale(${opponentCapturedScale})`, transformOrigin: "left center" }}
-                >
-                  {capturedPieces.black.map((p, i) => (
-                    <div
-                      key={i}
-                      className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                      dangerouslySetInnerHTML={{
-                        __html: PiecesSVG[`w${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
+              <CapturedPieces pieces={capturedPieces.black} color="w" align="center" {...capturedScale.opponent} />
 
               <div
                 ref={opponentEggCounterRef}
@@ -2425,34 +2113,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               </div>
 
               <div className="mb-1 sm:mb-2 flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none">
-                <div
-                  ref={capturedPiecesViewportRef}
-                  className={cn(
-                    "flex-1 min-w-0 h-8 overflow-hidden flex items-start justify-start transition-opacity duration-1000",
-                    introPhase < 3 ? "opacity-0" : "opacity-100",
-                  )}
-                >
-                  <div
-                    ref={capturedPiecesContentRef}
-                    className="flex w-max items-start justify-start gap-0.5"
-                    style={{ transform: `scale(${capturedPiecesScale})`, transformOrigin: "left top" }}
-                  >
-                    {capturedPieces.white.map((p, i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                        style={{
-                          "--city-neon": city.color,
-                          filter:
-                            "drop-shadow(1px 0 0 var(--city-neon)) drop-shadow(-1px 0 0 var(--city-neon)) drop-shadow(0 1px 0 var(--city-neon)) drop-shadow(0 -1px 0 var(--city-neon))",
-                        } as React.CSSProperties}
-                        dangerouslySetInnerHTML={{
-                          __html: PiecesSVG[`b${p.toUpperCase()}` as keyof typeof PiecesSVG],
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <CapturedPieces
+                  pieces={capturedPieces.white}
+                  color="b"
+                  align="top"
+                  outlineColor={city.color}
+                  className={cn("transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}
+                  {...capturedScale.player}
+                />
 
                 <div className="flex shrink-0 items-center gap-1.5 self-center">
                   <div
@@ -2705,17 +2373,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         </DialogContent>
       </Dialog>
 
-      <Dialog open={gameplayTipOpen} onOpenChange={setGameplayTipOpen}>
-        <DialogContent className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-amber-200">Tip</DialogTitle>
-            <DialogDescription className="whitespace-pre-line pt-2 text-base leading-relaxed text-white/80">
-              {gameplayTip}
-            </DialogDescription>
-          </DialogHeader>
-          <Button autoFocus onClick={() => setGameplayTipOpen(false)} className="mt-2 w-full bg-amber-400 text-black hover:bg-amber-300">Ok!</Button>
-        </DialogContent>
-      </Dialog>
+      <GameplayTipDialog tip={gameplayTip.tip} open={gameplayTip.open} onOpenChange={gameplayTip.setOpen} />
 
 
 

@@ -3,14 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Move, Square } from "chess.js";
 import {
-  Code2,
   Eye,
   Shield,
   Snowflake,
   Undo2,
   Redo2,
-  Maximize,
-  Minimize,
   Music2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -55,7 +52,10 @@ import { usePowerDisplay } from "@/hooks/use-power-display";
 import { useChancePosition } from "@/hooks/use-chance-position";
 import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode";
 import { useCrossfaderSync } from "@/hooks/use-crossfader-sync";
-import { getNextMatchTip, markMatchTipSeen } from "@/lib/game-progression";
+import { useCapturedPiecesScale, useMatchViewport } from "@/hooks/use-match-layout";
+import { CapturedPieces } from "../match/captured-pieces";
+import { GameplayTipDialog, useGameplayTip } from "../match/gameplay-tip";
+import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "../match/match-view-controls";
 import { MixerWidget } from "../mixer-widget";
 import { SynthControlPanel } from "../synth-control-panel";
 import { MusicVoiceReadout, MusicTransportReadout } from "../music-playback";
@@ -171,12 +171,6 @@ export function OnlineMatchBoard({
   const color = me.color;
   const ownEggCounterRef = useRef<HTMLDivElement | null>(null);
   const opponentEggCounterRef = useRef<HTMLDivElement | null>(null);
-  const playerCapturedViewportRef = useRef<HTMLDivElement | null>(null);
-  const playerCapturedContentRef = useRef<HTMLDivElement | null>(null);
-  const [playerCapturedScale, setPlayerCapturedScale] = useState(1);
-  const opponentCapturedViewportRef = useRef<HTMLDivElement | null>(null);
-  const opponentCapturedContentRef = useRef<HTMLDivElement | null>(null);
-  const [opponentCapturedScale, setOpponentCapturedScale] = useState(1);
   const reportedMatchResultRef = useRef(false);
   const reportedMatchStartRef = useRef(false);
   const matchStartedAtRef = useRef<number | null>(null);
@@ -250,26 +244,12 @@ export function OnlineMatchBoard({
   const [exitOpen, setExitOpen] = useState(false);
   const [introPhase, setIntroPhase] = useState(1);
   const intro = introPhase < 3;
-  const [gameplayTip, setGameplayTip] = useState<string | null>(null);
-  const [gameplayTipOpen, setGameplayTipOpen] = useState(false);
-  const tipEvaluatedRef = useRef(false);
-  useEffect(() => {
-    if (introPhase === 3 && !tipEvaluatedRef.current) {
-      tipEvaluatedRef.current = true;
-      const tip = getNextMatchTip();
-      if (tip) {
-        markMatchTipSeen();
-        setGameplayTip(tip);
-        setGameplayTipOpen(true);
-      }
-    }
-  }, [introPhase]);
+  const gameplayTip = useGameplayTip(introPhase === 3);
   const [introExitStarted, setIntroExitStarted] = useState(false);
   const [showIntroBoxes, setShowIntroBoxes] = useState(true);
   const introRequested = useRef(false);
   const [openDropdown, setOpenDropdown] = useState<BoardDropdownId>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+  const { isMobile, isPortraitMobile } = useMatchViewport();
   const [spectrogramOn, setSpectrogramOn] = useState(false);
   const [codeBackdropOn, setCodeBackdropOn] = useState(false);
   const [liveCodeOn, setLiveCodeOn] = useState(false);
@@ -320,7 +300,6 @@ export function OnlineMatchBoard({
     pieceDebug: boolean;
     order: string[];
   } | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
   const [armedPower, setArmedPower] = useState<MatchPowerKind | null>(null);
   const [global, setGlobal] = useState<GlobalEffects>(() => ({
     ...DEFAULT_GLOBAL_EFFECTS,
@@ -464,30 +443,11 @@ export function OnlineMatchBoard({
     };
   }, [introExitStarted]);
   useEffect(() => {
-    const resize = () => {
-      const width = window.innerWidth,
-        height = window.innerHeight;
-      const mobile =
-        width <= Math.min(Math.max(0, height - 270), 512) + 16 ||
-        (width <= 528 && height > width);
-      setIsMobile(mobile);
-      setIsPortraitMobile(mobile && height > width);
-    };
-    resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
-  }, []);
-  useEffect(() => {
     const count = replay.game.history().length;
     if (count > previousMoves.current) setPlaying(true);
     previousMoves.current = count;
     setArmedPower(null);
   }, [actionsKey]);
-  useEffect(() => {
-    const update = () => setFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", update);
-    return () => document.removeEventListener("fullscreenchange", update);
-  }, []);
   const analysis = useOnlineAnalysis(
     replay.game,
     replay.powers,
@@ -1092,8 +1052,6 @@ export function OnlineMatchBoard({
       </>
     );
   };
-  const headerButtonClass =
-    "hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black transition-all";
   const centerButtonClass =
     "relative size-[38px] p-0 sm:size-[51px] overflow-visible rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer";
   const status =
@@ -1117,46 +1075,10 @@ export function OnlineMatchBoard({
   const captured = replay.game
     .history({ verbose: true })
     .filter((move) => move.captured);
+  const opponentCaptures = captured.filter((move) => move.color === opponent.color).map((move) => move.captured!);
+  const playerCaptures = captured.filter((move) => move.color === color).map((move) => move.captured!);
+  const capturedScale = useCapturedPiecesScale(playerCaptures.length, opponentCaptures.length);
 
-  useEffect(() => {
-    const playerViewport = playerCapturedViewportRef.current;
-    const playerContent = playerCapturedContentRef.current;
-    const opponentViewport = opponentCapturedViewportRef.current;
-    const opponentContent = opponentCapturedContentRef.current;
-
-    const updateScale = () => {
-      if (playerViewport && playerContent) {
-        const availableWidth = playerViewport.clientWidth;
-        const contentWidth = playerContent.scrollWidth;
-        const nextScale =
-          availableWidth > 0 && contentWidth > availableWidth
-            ? availableWidth / contentWidth
-            : 1;
-        setPlayerCapturedScale((current) =>
-          Math.abs(current - nextScale) < 0.001 ? current : nextScale,
-        );
-      }
-      if (opponentViewport && opponentContent) {
-        const availableWidth = opponentViewport.clientWidth;
-        const contentWidth = opponentContent.scrollWidth;
-        const nextScale =
-          availableWidth > 0 && contentWidth > availableWidth
-            ? availableWidth / contentWidth
-            : 1;
-        setOpponentCapturedScale((current) =>
-          Math.abs(current - nextScale) < 0.001 ? current : nextScale,
-        );
-      }
-    };
-
-    updateScale();
-    const observer = new ResizeObserver(updateScale);
-    if (playerViewport) observer.observe(playerViewport);
-    if (playerContent) observer.observe(playerContent);
-    if (opponentViewport) observer.observe(opponentViewport);
-    if (opponentContent) observer.observe(opponentContent);
-    return () => observer.disconnect();
-  }, [captured.length]);
 
   return (
     <main
@@ -1233,7 +1155,7 @@ export function OnlineMatchBoard({
           size="icon"
           className={cn(
             "col-start-1 row-start-1 md:col-auto md:row-auto shrink-0 pointer-events-auto text-[var(--city-neon)]",
-            headerButtonClass,
+            MATCH_HEADER_BUTTON_CLASS,
             intro && "relative z-[111]",
           )}
           aria-label="Voltar ao mapa"
@@ -1293,7 +1215,7 @@ export function OnlineMatchBoard({
               onClick={() => setOpponentOpen(true)}
               className={cn(
                 "min-w-0 max-w-[calc(100vw-250px)] sm:max-w-60 bg-transparent",
-                headerButtonClass,
+                MATCH_HEADER_BUTTON_CLASS,
               )}
               title={`${opponent.profile.display_name} · ${online.opponentConnected ? "Online" : "Disconnected"}`}
             >
@@ -1309,67 +1231,19 @@ export function OnlineMatchBoard({
               </span>
             </Button>
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className={headerButtonClass}
-                title="View code / Debug"
-                aria-label={
-                  codeBackdropOn
-                    ? "Ocultar código Strudel e widget Debug"
-                    : "Mostrar código Strudel e widget Debug"
-                }
-                aria-pressed={codeBackdropOn}
-                onClick={() => {
+              <MatchViewControls
+                codeOn={codeBackdropOn}
+                onToggleCode={() => {
                   setCodeBackdropOn(!codeBackdropOn);
                   if (codeBackdropOn) {
                     setLiveCodeOn(false);
                     setPieceDebugOn(false);
                   }
                 }}
-              >
-                <Code2
-                  className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")}
-                />
-              </Button>
-              <GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className={headerButtonClass} />
-              <Button
-                variant="outline"
-                size="icon"
-                className={headerButtonClass}
-                title={engineOn ? "Desligar música" : "Ligar música"}
-                aria-label={
-                  engineOn
-                    ? "Desligar música generativa"
-                    : "Ligar música generativa"
-                }
-                aria-pressed={engineOn}
-                onClick={toggleEngine}
-              >
-                <Music2 className={cn("w-4 h-4", !engineOn && "opacity-35")} />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className={headerButtonClass}
-                title={fullscreen ? "Restaurar" : "Maximizar"}
-                aria-label={
-                  fullscreen ? "Restaurar janela" : "Maximizar janela"
-                }
-                onClick={() => {
-                  void (
-                    fullscreen
-                      ? document.exitFullscreen()
-                      : document.documentElement.requestFullscreen()
-                  ).catch(() => toast.error("Fullscreen unavailable"));
-                }}
-              >
-                {fullscreen ? (
-                  <Minimize className="w-4 h-4" />
-                ) : (
-                  <Maximize className="w-4 h-4" />
-                )}
-              </Button>
+                musicOn={engineOn}
+                onToggleMusic={toggleEngine}
+                preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className={MATCH_HEADER_BUTTON_CLASS} />}
+              />
             </div>
           </div>
         </div>
@@ -1396,31 +1270,7 @@ export function OnlineMatchBoard({
             className="min-h-[2rem] h-8 w-[var(--game-board-width)] flex justify-between items-center overflow-hidden mb-1 gap-1.5"
             aria-label="Peças capturadas do adversário e ovos"
           >
-            <div
-              ref={opponentCapturedViewportRef}
-              className="flex-1 min-w-0 h-full overflow-hidden flex items-center justify-start"
-            >
-              <div
-                ref={opponentCapturedContentRef}
-                className="flex w-max items-center justify-start gap-0.5"
-                style={{ transform: `scale(${opponentCapturedScale})`, transformOrigin: "left center" }}
-              >
-                {captured
-                  .filter((move) => move.color === opponent.color)
-                  .map((move, i) => (
-                    <div
-                      key={i}
-                      className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          PiecesSVG[
-                            `${opponent.color === "w" ? "b" : "w"}${move.captured!.toUpperCase()}` as keyof typeof PiecesSVG
-                          ],
-                      }}
-                    />
-                  ))}
-              </div>
-            </div>
+            <CapturedPieces pieces={opponentCaptures} color={opponent.color === "w" ? "b" : "w"} align="center" {...capturedScale.opponent} />
             <div
               role="img"
               ref={opponentEggCounterRef}
@@ -1515,35 +1365,14 @@ export function OnlineMatchBoard({
               intro ? "opacity-0" : "opacity-100",
             )}
           >
-            <div
-              ref={playerCapturedViewportRef}
-              className="flex-1 min-w-0 h-8 overflow-hidden flex items-start justify-start"
+            <CapturedPieces
+              pieces={playerCaptures}
+              color={color === "w" ? "b" : "w"}
+              align="top"
+              outlineColor={city.color}
               aria-label="Peças capturadas por você"
-            >
-              <div
-                ref={playerCapturedContentRef}
-                className="flex w-max items-start justify-start gap-0.5"
-                style={{ transform: `scale(${playerCapturedScale})`, transformOrigin: "left top" }}
-              >
-                {captured
-                  .filter((move) => move.color === color)
-                  .map((move, i) => (
-                    <div
-                      key={i}
-                      className="w-6 h-6 shrink-0 opacity-90 p-0.5"
-                      style={{
-                        filter: `drop-shadow(1px 0 0 ${city.color}) drop-shadow(-1px 0 0 ${city.color}) drop-shadow(0 1px 0 ${city.color}) drop-shadow(0 -1px 0 ${city.color})`,
-                      }}
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          PiecesSVG[
-                            `${color === "w" ? "b" : "w"}${move.captured!.toUpperCase()}` as keyof typeof PiecesSVG
-                          ],
-                      }}
-                    />
-                  ))}
-              </div>
-            </div>
+              {...capturedScale.player}
+            />
 
             <div className="flex shrink-0 items-center gap-1.5 self-center">
               <div
@@ -1984,17 +1813,7 @@ export function OnlineMatchBoard({
           </Button>
         </DialogContent>
       </Dialog>
-      <Dialog open={gameplayTipOpen} onOpenChange={setGameplayTipOpen}>
-        <DialogContent className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-amber-200">Tip</DialogTitle>
-            <DialogDescription className="whitespace-pre-line pt-2 text-base leading-relaxed text-white/80">
-              {gameplayTip}
-            </DialogDescription>
-          </DialogHeader>
-          <Button autoFocus onClick={() => setGameplayTipOpen(false)} className="mt-2 w-full bg-amber-400 text-black hover:bg-amber-300">Ok!</Button>
-        </DialogContent>
-      </Dialog>
+      <GameplayTipDialog tip={gameplayTip.tip} open={gameplayTip.open} onOpenChange={gameplayTip.setOpen} />
     </main>
   );
 }
