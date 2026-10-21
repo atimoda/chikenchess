@@ -1,14 +1,17 @@
 export interface TeamMix { gain: number; bass: number; mids: number; highs: number; filter: number }
 export type TeamMixes = Record<'w' | 'b', TeamMix>
 export const TEAM_GAIN_MAX = 1.5
+/** Lowest gain the crossfader leaves on either side, so the trailing team stays audible. */
+export const CROSSFADER_GAIN_MIN = 0.25
 export const createTeamMixes = (gain = 1): TeamMixes => ({ w: { gain, bass: 0, mids: 0, highs: 0, filter: 0 }, b: { gain, bass: 0, mids: 0, highs: 0, filter: 0 } })
 
-/** Crossfader position -1..1 maps to the team's left/right gain knobs. */
+/** Crossfader position -1..1 maps to the team's left/right gain knobs, within CROSSFADER_GAIN_MIN..TEAM_GAIN_MAX. */
 export function teamGainsForCrossfader(position: number) {
   const crossfader = Math.max(-1, Math.min(1, position))
+  const span = TEAM_GAIN_MAX - CROSSFADER_GAIN_MIN
   return {
-    left: TEAM_GAIN_MAX * (1 - crossfader) / 2,
-    right: TEAM_GAIN_MAX * (1 + crossfader) / 2,
+    left: CROSSFADER_GAIN_MIN + span * (1 - crossfader) / 2,
+    right: CROSSFADER_GAIN_MIN + span * (1 + crossfader) / 2,
   }
 }
 
