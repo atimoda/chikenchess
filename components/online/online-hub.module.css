@@ -32,6 +32,21 @@
   cursor: default;
 }
 
+.mapCreateLobby {
+  width: 100%;
+  cursor: pointer;
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+
+.mapCreateLobby:hover,
+.mapCreateLobby:focus-visible {
+  background: color-mix(in srgb, var(--primary) 85%, white);
+  color: var(--primary-foreground);
+}
+
 .mapRooms {
   position: fixed;
   top: 6rem;
