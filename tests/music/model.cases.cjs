@@ -97,39 +97,41 @@ test('pause silences accompaniment but still allows temporary audition', () => {
 })
 
 test('crossfader position alternates per turn and reflects player chance depth', () => {
-  // 50% chance: top turn is -0.5, bottom turn is +0.5
-  assert.equal(calculateCrossfaderPosition({ score: 0, mate: null, turn: 'b', topColor: 'b' }), -0.5)
-  assert.equal(calculateCrossfaderPosition({ score: 0, mate: null, turn: 'w', topColor: 'b' }), 0.5)
-  assert.equal(calculateCrossfaderPosition({ score: null, mate: null, turn: 'b', topColor: 'b' }), -0.5)
-  assert.equal(calculateCrossfaderPosition({ score: null, mate: null, turn: 'w', topColor: 'b' }), 0.5)
+  // automatic reach is 2/3 of the track, so gains stay within 0.25..1.25
+  // 50% chance: top turn is -1/3, bottom turn is +1/3
+  assert.equal(calculateCrossfaderPosition({ score: 0, mate: null, turn: 'b', topColor: 'b' }), -0.3333)
+  assert.equal(calculateCrossfaderPosition({ score: 0, mate: null, turn: 'w', topColor: 'b' }), 0.3333)
+  assert.equal(calculateCrossfaderPosition({ score: null, mate: null, turn: 'b', topColor: 'b' }), -0.3333)
+  assert.equal(calculateCrossfaderPosition({ score: null, mate: null, turn: 'w', topColor: 'b' }), 0.3333)
 
-  // 100% chance for top team (mate for black, topColor 'b'): top turn is -1.0, bottom turn is 0.0
-  assert.equal(calculateCrossfaderPosition({ score: -1000, mate: -1, turn: 'b', topColor: 'b' }), -1.0)
+  // 100% chance for top team (mate for black, topColor 'b'): top turn is -2/3, bottom turn is 0.0
+  assert.equal(calculateCrossfaderPosition({ score: -1000, mate: -1, turn: 'b', topColor: 'b' }), -0.6666)
   assert.equal(calculateCrossfaderPosition({ score: -1000, mate: -1, turn: 'w', topColor: 'b' }), 0.0)
 
-  // 100% chance for bottom team (mate for white, topColor 'b'): bottom turn is +1.0, top turn is 0.0
-  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'w', topColor: 'b' }), 1.0)
+  // 100% chance for bottom team (mate for white, topColor 'b'): bottom turn is +2/3, top turn is 0.0
+  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'w', topColor: 'b' }), 0.6666)
   assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'b', topColor: 'b' }), 0.0)
 
   // Inverted orientation (topColor 'w'): white is top, black is bottom
-  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'w', topColor: 'w' }), -1.0)
+  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'w', topColor: 'w' }), -0.6666)
   assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'b', topColor: 'w' }), 0.0)
 
-  // teamGainsForCrossfader matches end gains
+  // the automatic extreme keeps the trailing side at 0.25 or more and the leader at 1.25 or less
+  const autoGains = teamGainsForCrossfader(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'w', topColor: 'b' }))
+  assert.ok(autoGains.left >= 0.25 && autoGains.left < 0.251)
+  assert.ok(autoGains.right <= 1.25 && autoGains.right > 1.249)
+
+  // manual crossfader keeps the full 0..1.5 range
   const centerGains = teamGainsForCrossfader(0)
-  assert.equal(centerGains.left, 0.875)
-  assert.equal(centerGains.right, 0.875)
+  assert.equal(centerGains.left, 0.75)
+  assert.equal(centerGains.right, 0.75)
 
   const topGains = teamGainsForCrossfader(-1)
   assert.equal(topGains.left, 1.5)
-  assert.equal(topGains.right, 0.25)
+  assert.equal(topGains.right, 0)
 
   const bottomGains = teamGainsForCrossfader(1)
-  assert.equal(bottomGains.left, 0.25)
+  assert.equal(bottomGains.left, 0)
   assert.equal(bottomGains.right, 1.5)
-
-  // the trailing side never drops below 0.25, even past the ends
-  assert.equal(teamGainsForCrossfader(-2).right, 0.25)
-  assert.equal(teamGainsForCrossfader(0.5).left, 0.5625)
 })
 

@@ -5,10 +5,10 @@ export const CHANGELOG = [
   {
     version: '1.6.6',
     date: '21/10/2026',
-    title: 'Crossfader nunca silencia um time',
+    title: 'Movimento automático do crossfader nunca silencia um time',
     groups: [
       { title: 'Mixer', items: [
-        'O Crossfader agora leva o Gain de cada time no máximo até 0,25 e 1,5, em vez de 0 e 1,5: o time com menos chance continua sempre com um pouco de volume. Com o crossfader no centro, os dois times ficam em 0,875.',
+        'O movimento automático do Crossfader a cada jogada agora mantém o Gain de cada time entre 0,25 e 1,25: o time com menos chance continua sempre com um pouco de volume. Arrastando o Crossfader manualmente, ele continua indo de 0 a 1,5, com o centro em 0,75.',
       ] },
     ],
   },
