@@ -1,17 +1,21 @@
 export interface TeamMix { gain: number; bass: number; mids: number; highs: number; filter: number }
 export type TeamMixes = Record<'w' | 'b', TeamMix>
 export const TEAM_GAIN_MAX = 1.5
-/** Lowest gain the crossfader leaves on either side, so the trailing team stays audible. */
-export const CROSSFADER_GAIN_MIN = 0.25
+/** Gain range the score-driven crossfader stays within, so the trailing team stays audible. */
+export const AUTO_CROSSFADER_GAIN_MIN = 0.25
+export const AUTO_CROSSFADER_GAIN_MAX = 1.25
+const AUTO_CROSSFADER_REACH = Math.min(
+  1 - 2 * AUTO_CROSSFADER_GAIN_MIN / TEAM_GAIN_MAX,
+  2 * AUTO_CROSSFADER_GAIN_MAX / TEAM_GAIN_MAX - 1,
+)
 export const createTeamMixes = (gain = 1): TeamMixes => ({ w: { gain, bass: 0, mids: 0, highs: 0, filter: 0 }, b: { gain, bass: 0, mids: 0, highs: 0, filter: 0 } })
 
-/** Crossfader position -1..1 maps to the team's left/right gain knobs, within CROSSFADER_GAIN_MIN..TEAM_GAIN_MAX. */
+/** Crossfader position -1..1 maps to the team's left/right gain knobs. */
 export function teamGainsForCrossfader(position: number) {
   const crossfader = Math.max(-1, Math.min(1, position))
-  const span = TEAM_GAIN_MAX - CROSSFADER_GAIN_MIN
   return {
-    left: CROSSFADER_GAIN_MIN + span * (1 - crossfader) / 2,
-    right: CROSSFADER_GAIN_MIN + span * (1 + crossfader) / 2,
+    left: TEAM_GAIN_MAX * (1 - crossfader) / 2,
+    right: TEAM_GAIN_MAX * (1 + crossfader) / 2,
   }
 }
 
@@ -22,6 +26,7 @@ export function teamGainsForCrossfader(position: number) {
  * Depth is proportional to the player's current chance on their turn:
  * - On top team's turn: -topChance (from -1 when 100% chance, to 0 when 0% chance).
  * - On bottom team's turn: +bottomChance (from +1 when 100% chance, to 0 when 0% chance).
+ * The result is scaled so the gains stay within AUTO_CROSSFADER_GAIN_MIN..AUTO_CROSSFADER_GAIN_MAX.
  */
 export function calculateCrossfaderPosition({
   score,
@@ -43,8 +48,8 @@ export function calculateCrossfaderPosition({
   const bottomChance = 1 - topChance
 
   const isTopTurn = turn === topColor
-  const pos = isTopTurn ? -topChance : bottomChance
-  return Math.max(-1, Math.min(1, Number(pos.toFixed(4))))
+  const pos = (isTopTurn ? -topChance : bottomChance) * AUTO_CROSSFADER_REACH
+  return Math.max(-1, Math.min(1, Math.trunc(pos * 1e4) / 1e4 || 0))
 }
 
 const FILTER_RANGE = Math.log(1000)
