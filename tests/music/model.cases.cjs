@@ -2,6 +2,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs, strudel } = require('../helpers/music.cjs')
 const model = loadTs('lib/music/model.ts')
+const { calculateCrossfaderPosition, teamGainsForCrossfader } = loadTs('lib/music/team-mixer.ts')
 const { voiceSpecs, renderMusicCode, compileVoice } = loadTs('lib/music/runtime.ts')
 const state = (history = []) => ({ pieces: model.piecesFromHistory(history), scale: ['C4','Eb4','F4','G4','Bb4'], bpm: 118, volume: 0.8, playing: true, effects: {} })
 
@@ -94,3 +95,37 @@ test('pause silences accompaniment but still allows temporary audition', () => {
   assert.equal(voiceSpecs(s, null).length, 0)
   assert.equal(voiceSpecs(s, {id:'w:e2', square:'e4'}).length, 1)
 })
+
+test('crossfader position alternates per turn and reflects player chance depth', () => {
+  // 50% chance: top turn is -0.5, bottom turn is +0.5
+  assert.equal(calculateCrossfaderPosition({ score: 0, mate: null, turn: 'b', topColor: 'b' }), -0.5)
+  assert.equal(calculateCrossfaderPosition({ score: 0, mate: null, turn: 'w', topColor: 'b' }), 0.5)
+  assert.equal(calculateCrossfaderPosition({ score: null, mate: null, turn: 'b', topColor: 'b' }), -0.5)
+  assert.equal(calculateCrossfaderPosition({ score: null, mate: null, turn: 'w', topColor: 'b' }), 0.5)
+
+  // 100% chance for top team (mate for black, topColor 'b'): top turn is -1.0, bottom turn is 0.0
+  assert.equal(calculateCrossfaderPosition({ score: -1000, mate: -1, turn: 'b', topColor: 'b' }), -1.0)
+  assert.equal(calculateCrossfaderPosition({ score: -1000, mate: -1, turn: 'w', topColor: 'b' }), 0.0)
+
+  // 100% chance for bottom team (mate for white, topColor 'b'): bottom turn is +1.0, top turn is 0.0
+  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'w', topColor: 'b' }), 1.0)
+  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'b', topColor: 'b' }), 0.0)
+
+  // Inverted orientation (topColor 'w'): white is top, black is bottom
+  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'w', topColor: 'w' }), -1.0)
+  assert.equal(calculateCrossfaderPosition({ score: 1000, mate: 1, turn: 'b', topColor: 'w' }), 0.0)
+
+  // teamGainsForCrossfader matches end gains
+  const centerGains = teamGainsForCrossfader(0)
+  assert.equal(centerGains.left, 0.75)
+  assert.equal(centerGains.right, 0.75)
+
+  const topGains = teamGainsForCrossfader(-1)
+  assert.equal(topGains.left, 1.5)
+  assert.equal(topGains.right, 0)
+
+  const bottomGains = teamGainsForCrossfader(1)
+  assert.equal(bottomGains.left, 0)
+  assert.equal(bottomGains.right, 1.5)
+})
+

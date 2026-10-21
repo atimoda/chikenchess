@@ -302,9 +302,13 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     if (runtime.current) runtime.current.getFrequencyData(data)
     else data.fill(0)
   }, [])
+  const getTeamFrequencyData = useCallback((color: 'w' | 'b', data: Uint8Array<ArrayBuffer>) => {
+    if (runtime.current) runtime.current.getTeamFrequencyData(color, data)
+    else data.fill(0)
+  }, [])
   return {
     enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects, setEffects, snapshot, teamMixes, updateTeamMix, kit, applySharedPiece,
-    code, preview, pulseMonitor, error, getFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
+    code, preview, pulseMonitor, error, getFrequencyData, getTeamFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,
     kitVolume: kit?.volume ?? null,

@@ -6,6 +6,7 @@ import { animateInsufficientEggs, getOfflineMulliganPreviewMoves } from "@/lib/p
 import { usePowerDisplay } from "@/hooks/use-power-display"
 import { useChancePosition } from "@/hooks/use-chance-position"
 import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode"
+import { useCrossfaderSync } from "@/hooks/use-crossfader-sync"
 
 import moveMessages from "@/data/ui/move-messages.json"
 
@@ -167,6 +168,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [powerDisplay, setPowerDisplay] = usePowerDisplay()
   const [chancePosition, setChancePosition] = useChancePosition()
   const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode()
+  const [crossfaderSync, setCrossfaderSync] = useCrossfaderSync()
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false)
   const [tabVisible, setTabVisible] = useState(true)
@@ -1969,6 +1971,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       return (
           <>
             {spectrogramMode === 'widget' && <SpectrogramWidget
+                topColor={boardOrientation === "white" ? "b" : "w"}
+                getTeamFrequencyData={music.enabled && music.engineActive ? music.getTeamFrequencyData : undefined}
                 getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
                 ref={spectrogramHandleRef}
                 toggleRef={spectrogramToggleRef}
@@ -2092,37 +2096,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             />}
 
             <MixerWidget
-              playback={<Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleTogglePlay}
-                    aria-label={isPlaying ? "Pause" : "Play"}
-                    onPointerEnter={event => {
-                      if (event.pointerType === "mouse") playControlHoverKick(0.85)
-                    }}
-                    className={cn(
-                      "relative overflow-hidden h-[38px] w-full p-0 sm:h-[51px] rounded-md transition-all border border-white/15 hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] pointer-events-auto cursor-pointer",
-                      spectrogramMode === "play-pause"
-                        ? "hover:bg-[color-mix(in_srgb,var(--city-neon)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--city-neon)_40%,transparent)]"
-                        : "hover:bg-[var(--city-neon)] active:bg-[var(--city-neon)] active:text-black"
-                    )}
-                    style={{
-                        "--city-neon": city.color,
-                        backgroundColor: "var(--city-neon)20"
-                    } as React.CSSProperties}
-                  >
-                    {spectrogramMode === "play-pause" && (
-                      <SpectrogramCanvas
-                        data-mixer-playback-spectrogram
-                        cityColor={city.color}
-                        isOn={musicEngineOn}
-                        isPlaying={music.enabled ? (music.engineActive && (isPlaying || !!music.preview)) : (musicEngineOn && isPlaying)}
-                        getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
-                        className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-70"
-                      />
-                    )}
-                    {isPlaying ? <Pause className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" /> : <Play className="relative z-10 w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
-                  </Button>}
               teamMixes={music.teamMixes}
               sessionId={city.id}
               effects={{ ...globalEffects, bpm: music.snapshot.bpm, volume: music.snapshot.volume }}
@@ -2130,6 +2103,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onEffectChange={handleGlobalEffectChange}
                 topColor={boardOrientation === "white" ? "b" : "w"}
                 onTeamMixChange={music.updateTeamMix}
+                evalScore={lastEvalScore}
+                evalMate={lastEvalMate}
+                turn={game.turn()}
                 ref={mixerRef}
                 handleRef={mixerHandleRef}
                 toggleRef={mixerToggleRef}
@@ -2139,6 +2115,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onPositionChange={setMixerPosition}
                 isOn={mixerOn}
                 onToggle={() => togglePlayerTurnPanel("mixer", mixerOn, setMixerOn, mixerManuallyClosedRef)}
+                crossfaderSync={crossfaderSync}
+                isPlaying={music.enabled ? (music.engineActive && (isPlaying || !!music.preview)) : (musicEngineOn && isPlaying)}
+                onTogglePlay={handleTogglePlay}
+                spectrogramMode={spectrogramMode}
+                getTeamFrequencyData={music.enabled && music.engineActive ? music.getTeamFrequencyData : undefined}
+                getFrequencyData={music.enabled && music.engineActive ? music.getFrequencyData : undefined}
                 style={mobileMode ? commonStyle : { zIndex: activeWidgetOrder.indexOf('mixer') + 10 }}
                 onClickCapture={() => handleWidgetHeaderClick('mixer')}
             />
@@ -2417,7 +2399,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 >
                     <Code2 className={cn("w-4 h-4", !codeBackdropOn && "opacity-60")} />
                 </Button>
-                <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
+                <GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className="hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] transition-all" />
                 <Button
                     variant="outline"
                     size="icon"
@@ -2552,6 +2534,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   synthSelectedSquare={music.enabled ? music.selected?.square ?? null : synthSelectedSquare as Square | null}
                   musicEffectsEnabled={musicEngineOn}
                   activeSquares={music.enabled ? music.activeSquares : activeSquares}
+                  teamMixes={music.teamMixes}
                   onPieceHold={music.enabled && music.engineActive ? music.audition : undefined}
                   onPieceRelease={music.enabled && music.engineActive ? music.releaseAudition : undefined}
                   onPieceCancel={music.enabled && music.engineActive ? music.endAudition : undefined}

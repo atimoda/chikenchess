@@ -87,7 +87,7 @@
 }
 
 .mapRoomHeading {
-  color: rgb(255 255 255 / 50%);
+  color: #ffffff;
   text-align: right;
   font-family: "Bitcount Prop Single", sans-serif;
   font-size: 11px;
@@ -95,6 +95,24 @@
   line-height: 24px;
   letter-spacing: 0.025em;
   font-variant-numeric: tabular-nums;
+}
+
+.mapRoomHeadingButton {
+  all: unset;
+  display: inline-block;
+  cursor: pointer;
+  color: #ffffff;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: right;
+  transition: opacity 150ms ease, text-shadow 150ms ease;
+}
+
+.mapRoomHeadingButton:hover,
+.mapRoomHeadingButton:focus-visible {
+  opacity: 0.8;
+  text-shadow: 0 0 8px rgb(255 255 255 / 60%);
+  outline: none;
 }
 
 @media (min-width: 640px) {

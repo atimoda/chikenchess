@@ -1,21 +1,21 @@
 "use client"
 
-import type React from "react"
-import { forwardRef, useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { Power } from "lucide-react"
+import { forwardRef, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { Power, Play, Pause } from "lucide-react"
 import { Draggable } from "./ui/draggable"
 import { Resizable } from "re-resizable"
 import { Knob } from "./knob"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
 import type { TeamMix, TeamMixes } from "@/lib/music/team-mixer"
-import { filterDialLabel, teamGainsForCrossfader, TEAM_GAIN_MAX } from "@/lib/music/team-mixer"
+import { filterDialLabel, teamGainsForCrossfader, calculateCrossfaderPosition, TEAM_GAIN_MAX } from "@/lib/music/team-mixer"
 import type { GlobalEffects } from "@/lib/types"
 import type { MusicMonitor } from "@/lib/music/monitor"
+import { SpectrogramCanvas } from "./spectrogram-widget"
+import type { SpectrogramMode } from "@/hooks/use-spectrogram-mode"
 import styles from "./mixer-widget.module.css"
 
 interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
-  playback?: React.ReactNode
   teamMixes: TeamMixes
   effects: GlobalEffects
   monitor: MusicMonitor
@@ -31,6 +31,15 @@ interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "o
   togglePortalized?: boolean
   isOn: boolean
   onToggle: () => void
+  evalScore?: number | null
+  evalMate?: number | null
+  turn?: 'w' | 'b'
+  crossfaderSync?: boolean
+  isPlaying?: boolean
+  onTogglePlay?: () => void
+  spectrogramMode?: SpectrogramMode
+  getTeamFrequencyData?: (color: 'w' | 'b', data: Uint8Array<ArrayBuffer>) => void
+  getFrequencyData?: (data: Uint8Array<ArrayBuffer>) => void
 }
 
 type BpmHoverPreview = { x: number; y: number; percent: number }
@@ -178,25 +187,105 @@ function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityCo
 
 export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
   teamMixes, effects, monitor, onEffectChange, topColor, onTeamMixChange, cityColor, position, onPositionChange,
-  playback, sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle, ...props
+  sessionId, handleRef, toggleRef, togglePortalized = false, isOn, onToggle,
+  evalScore, evalMate, turn, crossfaderSync = true,
+  isPlaying = false, onTogglePlay, spectrogramMode = "crossfader", getTeamFrequencyData, getFrequencyData, ...props
 }, ref) => {
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
   const initialPositionRef = useRef<{ x: number; y: number } | null>(null)
   const [compactLayout, setCompactLayout] = useState(true)
   const [crossfader, setCrossfader] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isThumbDragging, setIsThumbDragging] = useState(false)
+  const isDraggingRef = useRef(false)
+  const thumbPointerDownRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const thumbMovedRef = useRef(false)
   const borderColor = isOn ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)"
   const leftTeamColor = topColor
   const rightTeamColor = topColor === 'w' ? 'b' : 'w'
 
-  useEffect(() => setCrossfader(0), [sessionId])
+  const handleCrossfaderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingRef.current = true
+    setIsDragging(true)
+    const onThumb = !!(event.target instanceof Element && event.target.closest('[data-slot="slider-thumb"]'))
+    if (onThumb) {
+      thumbPointerDownRef.current = { x: event.clientX, y: event.clientY, time: performance.now() }
+      thumbMovedRef.current = false
+    } else {
+      thumbPointerDownRef.current = null
+      thumbMovedRef.current = true
+      setIsThumbDragging(true)
+    }
+  }
 
-  const updateCrossfader = (position: number) => {
-    const gains = teamGainsForCrossfader(position)
-    setCrossfader(position)
+  const handleCrossfaderPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (thumbPointerDownRef.current && !thumbMovedRef.current) {
+      const dist = Math.hypot(event.clientX - thumbPointerDownRef.current.x, event.clientY - thumbPointerDownRef.current.y)
+      if (dist > 3) {
+        thumbMovedRef.current = true
+        setIsThumbDragging(true)
+      }
+    }
+  }
+
+  const handleCrossfaderPointerUp = () => {
+    if (thumbPointerDownRef.current && !thumbMovedRef.current) {
+      onTogglePlay?.()
+    }
+    thumbPointerDownRef.current = null
+    thumbMovedRef.current = false
+    isDraggingRef.current = false
+    setIsDragging(false)
+    setIsThumbDragging(false)
+  }
+
+  const handleCrossfaderPointerCancel = () => {
+    thumbPointerDownRef.current = null
+    thumbMovedRef.current = false
+    isDraggingRef.current = false
+    setIsDragging(false)
+    setIsThumbDragging(false)
+  }
+
+  useEffect(() => {
+    if (!isDragging) return
+    const handleGlobalPointerUp = () => {
+      thumbPointerDownRef.current = null
+      thumbMovedRef.current = false
+      isDraggingRef.current = false
+      setIsDragging(false)
+      setIsThumbDragging(false)
+    }
+    window.addEventListener('pointerup', handleGlobalPointerUp)
+    window.addEventListener('pointercancel', handleGlobalPointerUp)
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp)
+      window.removeEventListener('pointercancel', handleGlobalPointerUp)
+    }
+  }, [isDragging])
+
+  const updateCrossfader = useCallback((pos: number) => {
+    const gains = teamGainsForCrossfader(pos)
+    setCrossfader(pos)
     onTeamMixChange(leftTeamColor, { gain: gains.left })
     onTeamMixChange(rightTeamColor, { gain: gains.right })
-  }
+  }, [leftTeamColor, rightTeamColor, onTeamMixChange])
+
+  useEffect(() => {
+    if (!crossfaderSync) return
+    if (turn === undefined) {
+      updateCrossfader(0)
+      return
+    }
+    const target = calculateCrossfaderPosition({
+      score: evalScore ?? null,
+      mate: evalMate ?? null,
+      turn,
+      topColor,
+    })
+    updateCrossfader(target)
+  }, [sessionId, evalScore, evalMate, turn, topColor, updateCrossfader, crossfaderSync])
 
   return <Draggable
     data-widget="mixer"
@@ -210,10 +299,10 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
     {...props}
   >
     <Resizable
-      defaultSize={{ width: 180, height: playback ? 500 : 450 }}
-      size={props.style?.position === 'static' ? { width: '100%', height: playback ? 500 : 450 } : undefined}
+      defaultSize={{ width: 180, height: 450 }}
+      size={props.style?.position === 'static' ? { width: '100%', height: 450 } : undefined}
       minWidth={156}
-      minHeight={playback ? 500 : 450}
+      minHeight={420}
       enable={props.style?.position === 'static' ? false : { top: false, right: true, bottom: true, left: true, topRight: false, bottomRight: true, bottomLeft: true, topLeft: false }}
       handleStyles={{
         right: { zIndex: 80 },
@@ -249,7 +338,7 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
       <Power className="w-4 h-4" />
     </button>
     <div ref={effectiveHandleRef} className="absolute inset-x-0 top-0 h-8 z-60" />
-    <div className={cn("relative z-50 w-full h-full min-h-0 overflow-hidden px-2.5 pt-2.5", !isOn && "opacity-50 grayscale")}
+    <div className={cn("relative z-50 w-full h-full min-h-0 overflow-hidden px-2.5 pt-2.5 pb-3", !isOn && "opacity-50 grayscale")}
       style={{ "--city-neon": cityColor } as React.CSSProperties}>
       <div className="h-4 text-center text-xs font-mono font-bold tracking-wider text-white">MIXER</div>
       <div className="mt-3">
@@ -267,15 +356,47 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
           {['LPF/HPF', 'HI', 'MID', 'LOW', 'GAIN'].map(label => <span key={label} className="flex h-10 w-full items-center justify-center whitespace-nowrap">{label}</span>)}
         </div>
       </fieldset>
-      <fieldset disabled={!isOn} aria-label="Crossfader de equipe" className="mt-4 min-w-0 px-1">
+      <fieldset disabled={!isOn} aria-label="Crossfader de equipe" className="mt-4 min-w-0 px-0.5">
         <legend className="sr-only">Crossfader de equipe</legend>
-        <div className={cn("relative mx-auto mb-1 h-3 w-[58%] font-mono font-bold tracking-wide text-muted-foreground", compactLayout ? "text-[8px]" : "text-[9px]")}>
+        <div className={cn("relative mx-auto mb-1 h-3 w-full font-mono font-bold tracking-wide text-muted-foreground", compactLayout ? "text-[8px]" : "text-[9px]")}>
           <span className="absolute top-0 left-1/2 -translate-x-1/2 text-foreground/70">CROSSFADER</span>
         </div>
-        <div className={cn("relative mx-auto h-14 w-[58%]", styles.crossfader)} onDoubleClick={event => {
-          if (event.target instanceof Element && event.target.closest('[data-slot="slider-thumb"]')) updateCrossfader(0)
-        }}>
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 z-0 flex h-10 -translate-y-1/2 items-center justify-between">
+        <div
+          className={cn("relative mx-auto h-14 w-[calc(100%-20px)]", styles.crossfader, isDragging && styles.isDragging, isDragging && "is-dragging")}
+          onDoubleClick={event => {
+            if (event.target instanceof Element && event.target.closest('[data-slot="slider-thumb"]')) updateCrossfader(0)
+          }}
+          onPointerDownCapture={handleCrossfaderPointerDown}
+          onPointerMoveCapture={handleCrossfaderPointerMove}
+          onPointerUpCapture={handleCrossfaderPointerUp}
+          onPointerCancelCapture={handleCrossfaderPointerCancel}
+        >
+          {spectrogramMode === "crossfader" && (
+            <div className="pointer-events-none absolute inset-0 z-0 flex overflow-hidden rounded opacity-75">
+              <div className="relative h-full w-1/2 overflow-hidden">
+                <SpectrogramCanvas
+                  cityColor={cityColor}
+                  isOn={isOn}
+                  isPlaying={!!isPlaying}
+                  origin="center"
+                  getFrequencyData={getTeamFrequencyData ? (data) => getTeamFrequencyData(leftTeamColor, data) : getFrequencyData}
+                  className="h-full w-full"
+                />
+              </div>
+              <div className="relative h-full w-1/2 overflow-hidden">
+                <SpectrogramCanvas
+                  cityColor={cityColor}
+                  isOn={isOn}
+                  isPlaying={!!isPlaying}
+                  origin="center"
+                  mirrored
+                  getFrequencyData={getTeamFrequencyData ? (data) => getTeamFrequencyData(rightTeamColor, data) : getFrequencyData}
+                  className="h-full w-full"
+                />
+              </div>
+            </div>
+          )}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex h-10 -translate-y-1/2 items-center justify-between">
             {Array.from({ length: 9 }, (_, index) => <span key={index} className={cn("w-px bg-white/35", index === 4 ? "h-9" : index % 2 === 0 ? "h-6" : "h-4")} />)}
           </div>
           <Slider
@@ -286,15 +407,27 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
             min={-1}
             max={1}
             step={0.01}
-            onValueChange={([value]) => updateCrossfader(Math.abs(value) < 0.04 ? 0 : value)}
+            onValueChange={([value]) => {
+              thumbMovedRef.current = true
+              if (!isThumbDragging) setIsThumbDragging(true)
+              updateCrossfader(Math.abs(value) < 0.04 ? 0 : value)
+            }}
             thumbOffset={15}
-            className="absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 py-2 [&_[data-slot=slider-track]]:cursor-ew-resize [&_[data-slot=slider-range]]:bg-transparent [&_[data-slot=slider-thumb]]:border-[var(--city-neon)] [&_[data-slot=slider-thumb]]:hover:ring-0"
+            thumbChildren={
+              !isThumbDragging && (
+                isPlaying ? (
+                  <Pause className="w-3.5 h-3.5 fill-white text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] pointer-events-none" />
+                ) : (
+                  <Play className="w-3.5 h-3.5 fill-white text-white translate-x-[0.5px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] pointer-events-none" />
+                )
+              )
+            }
+            className="absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 py-2 [&_[data-slot=slider-track]]:cursor-ew-resize [&_[data-slot=slider-range]]:bg-transparent [&_[data-slot=slider-thumb]]:hover:ring-0"
             style={{ "--city-neon": cityColor } as React.CSSProperties}
           />
         </div>
       </fieldset>
     </div>
-    {playback && <div className="absolute inset-x-2 bottom-3 z-[70] flex w-[calc(100%-1rem)] justify-center rounded-md px-1 py-0.5" data-mixer-playback>{playback}</div>}
     {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
     </Resizable>
   </Draggable>

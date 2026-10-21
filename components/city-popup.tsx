@@ -37,8 +37,8 @@ export interface CityPopupProps {
   startWhistleLoop: () => void
   stopWhistleLoop: () => void
   setPressedPopupState: (state: { id: string } | null) => void
-  handleSmartPadSound: (e: React.MouseEvent<HTMLButtonElement>, pitchMultiplier?: number) => void
-  handleSmartPadLeave: (e: React.MouseEvent<HTMLButtonElement>) => void
+  handleSmartPadSound: (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>, pitchMultiplier?: number) => void
+  handleSmartPadLeave: (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>) => void
   stopPadSound: () => void
   isEntering: boolean
   onEnter: () => void
@@ -52,6 +52,7 @@ export interface CityPopupProps {
   transformOrigin?: string
   onEraSelect?: (city: CityData) => void
   onCreateRoom?: (city: CityData) => void
+  isCreatingRoom?: boolean
 }
 
 export const CityPopup = ({
@@ -82,6 +83,7 @@ export const CityPopup = ({
   transformOrigin,
   onEraSelect,
   onCreateRoom,
+  isCreatingRoom = false,
 }: CityPopupProps) => {
   const dragHandleRef = useRef<HTMLButtonElement>(null)
   const popupWrapperRef = useRef<HTMLDivElement>(null)
@@ -508,16 +510,44 @@ export const CityPopup = ({
                     CAMPAIGN
                 </span>
               </button>
-              {onCreateRoom && <button type="button" data-no-drag disabled={isEntering}
-                className="group order-2 relative inline-flex items-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 text-primary transition-all hover:border-primary hover:shadow-[0_0_14px_rgba(16,185,129,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-50"
-                onPointerEnter={(e) => { if (!isEntering) handleSmartPadSound(e, 0.7) }}
-                onPointerMove={(e) => { if (!isEntering) handleSmartPadSound(e, 0.7) }}
-                onPointerLeave={(e) => { if (!isEntering) handleSmartPadLeave(e) }}
-                onClick={() => { stopPadSound(); onCreateRoom(city) }}>
-                <span aria-hidden="true" className="absolute inset-0 rounded-sm opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-active:opacity-100" style={{ background: 'linear-gradient(115deg, rgb(16 185 129 / 22%), rgb(167 139 250 / 25%), rgb(16 185 129 / 22%)), radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgb(167 139 250 / 45%), transparent 68%)' }} />
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-4 shrink-0"><path d="M4 21V4a1 1 0 0 1 1-1h9" /><path d="M14 3l6 3v14l-6-3V3Z" /><path d="M4 21h16" /></svg>
-                <span className="relative z-10">CREATE ROOM</span>
-              </button>}
+              {onCreateRoom && (
+                <div
+                  data-no-drag
+                  className="order-2 inline-flex"
+                  onPointerEnter={(e) => { if (!isEntering) handleSmartPadSound(e, 0.45) }}
+                  onPointerMove={(e) => { if (!isEntering) handleSmartPadSound(e, 0.45) }}
+                  onPointerLeave={(e) => { if (!isEntering) handleSmartPadLeave(e) }}
+                >
+                  <button
+                    type="button"
+                    disabled={isEntering || isCreatingRoom}
+                    className={cn(
+                      "group relative inline-flex items-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 uppercase font-mono text-xs text-primary transition-all",
+                      "hover:border-primary hover:shadow-[0_0_14px_rgba(16,185,129,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+                      "cursor-crosshair disabled:cursor-not-allowed disabled:opacity-50"
+                    )}
+                    onClick={() => {
+                      if (!isEntering && !isCreatingRoom) onCreateRoom(city)
+                    }}
+                  >
+                    <span aria-hidden="true" className="absolute inset-0 rounded-sm opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-active:opacity-100" style={{ background: 'linear-gradient(115deg, rgb(16 185 129 / 22%), rgb(167 139 250 / 25%), rgb(16 185 129 / 22%)), radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgb(167 139 250 / 45%), transparent 68%)' }} />
+                    {isCreatingRoom ? (
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="relative z-10 size-4 shrink-0 text-primary">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 4" className="origin-center animate-spin" style={{ animationDuration: '3s' }} />
+                        <path d="M12 6a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="origin-center animate-spin" style={{ animationDuration: '1.1s' }} />
+                        <circle cx="12" cy="12" r="2.2" fill="currentColor" className="animate-pulse" />
+                      </svg>
+                    ) : (
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-4 shrink-0">
+                        <path d="M4 21V4a1 1 0 0 1 1-1h9" />
+                        <path d="M14 3l6 3v14l-6-3V3Z" />
+                        <path d="M4 21h16" />
+                      </svg>
+                    )}
+                    <span className="relative z-10">{isCreatingRoom ? 'Waiting response' : 'Create lobby'}</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

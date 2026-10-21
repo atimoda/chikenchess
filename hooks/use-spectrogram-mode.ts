@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from "react"
 
-export type SpectrogramMode = "widget" | "play-pause"
+export type SpectrogramMode = "widget" | "crossfader"
 const KEY = "chickenchess:spectrogram-mode:v1"
 const EVENT = "chickenchess:spectrogram-mode"
 
 export function useSpectrogramMode() {
-  const [mode, setMode] = useState<SpectrogramMode>("play-pause")
+  const [mode, setMode] = useState<SpectrogramMode>("crossfader")
   useEffect(() => {
     const read = () => {
       try {
         const stored = localStorage.getItem(KEY)
-        setMode(stored === "widget" ? "widget" : "play-pause")
+        setMode(stored === "widget" ? "widget" : "crossfader")
       } catch {
         /* Keep the session default when storage is unavailable. */
       }

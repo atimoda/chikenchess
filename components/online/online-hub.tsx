@@ -981,15 +981,12 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
             <DoorOpen className="size-3.5" />Lobby
           </Button>
         )}
-        <Button variant="outline" className={styles.mapButton} onClick={() => launch('rooms')}>
-          <Globe2 className="size-3.5" />Rooms
-        </Button>
         <Button variant="outline" className={styles.mapButton} onClick={() => launch('friends')}>
           <Users className="size-3.5" />Friends
         </Button>
       </div>
     )}
-    {showMapRooms && (runningGames.games.length > 0 || rooms.length > 0 || runningGames.error) && <aside aria-label="Games and public rooms" className={styles.mapRooms}>
+    {showMapRooms && <aside aria-label="Games and public rooms" className={styles.mapRooms}>
       {runningGames.games.length > 0 && <section aria-labelledby="running-games-heading" className={styles.mapRoomList}>
         <h2 id="running-games-heading" className={styles.mapRoomHeading}>Games in progress</h2>
         {runningGames.games.map(game => {
@@ -1027,13 +1024,17 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
         </button>
       </section>}
       {runningGames.error && <div className="space-y-1 text-xs"><p role="alert" className="text-rose-200">Não foi possível carregar suas partidas.</p><p className="break-words text-white/50">{runningGames.error}</p><button type="button" className={styles.mapButton} aria-busy={runningGames.retrying} disabled={runningGames.retrying} onClick={() => void runningGames.refresh()}>{runningGames.retrying ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-3.5" />}{runningGames.retrying ? 'Atualizando…' : 'Tentar novamente'}</button></div>}
-      {rooms.length > 0 && <section aria-labelledby="public-rooms-heading" className={styles.mapRoomList}>
-      <h2 id="public-rooms-heading" className={styles.mapRoomHeading}>Public rooms</h2>
-      <div className={styles.mapRoomList}>{rooms.slice(0, 5).map(entry => <button key={entry.code} type="button" aria-label={`Entrar na sala de ${entry.creator_name}`} className={cn(styles.mapButton, styles.mapRoom, styles.mapPublicRoom)} disabled={Boolean(busy) || entry.players >= 2} onClick={() => { setTab('rooms'); setOpen(true); setCreateOpen(false); setShowDirectory(false); void roomAction('join', entry.code) }}>
-        <span className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 flex-1"><span className="block break-words">{entry.creator_name}</span><span className="block text-white/50">1v1 casual · {entry.players}/2</span></span><LogIn aria-hidden="true" className="size-4 shrink-0" /></span>
-      </button>)}</div>
-      {rooms.length > 5 && <button type="button" className={styles.mapButton} onClick={() => launch('rooms')}>Ver todas</button>}
-      </section>}
+      <section aria-labelledby="public-rooms-heading" className={styles.mapRoomList}>
+        <h2 id="public-rooms-heading" className={styles.mapRoomHeading}>
+          <button type="button" className={styles.mapRoomHeadingButton} onClick={() => launch('rooms')}>
+            Public rooms
+          </button>
+        </h2>
+        {rooms.length > 0 && <div className={styles.mapRoomList}>{rooms.slice(0, 5).map(entry => <button key={entry.code} type="button" aria-label={`Entrar na sala de ${entry.creator_name}`} className={cn(styles.mapButton, styles.mapRoom, styles.mapPublicRoom)} disabled={Boolean(busy) || entry.players >= 2} onClick={() => { setTab('rooms'); setOpen(true); setCreateOpen(false); setShowDirectory(false); void roomAction('join', entry.code) }}>
+          <span className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 flex-1"><span className="block break-words">{entry.creator_name}</span><span className="block text-white/50">1v1 casual · {entry.players}/2</span></span><LogIn aria-hidden="true" className="size-4 shrink-0" /></span>
+        </button>)}</div>}
+        {rooms.length > 5 && <button type="button" className={styles.mapButton} onClick={() => launch('rooms')}>Ver todas</button>}
+      </section>
     </aside>}
     <Dialog modal={false} open={isOpen} onOpenChange={setOpen}>
       {isOpen && <DialogContent floating closeOnInteractOutside className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent)} closeLabel="Close online panel">

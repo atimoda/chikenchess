@@ -198,7 +198,15 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   }, [])
 
   const whistleLoopRef = useRef<{ osc: OscillatorNode, gain: GainNode, panner: StereoPannerNode, lfo: OscillatorNode } | null>(null)
-  const padSoundRef = useRef<{ osc1: OscillatorNode, osc2: OscillatorNode, gain: GainNode, filter: BiquadFilterNode } | null>(null)
+  const padSoundRef = useRef<{
+    mode: 'campaign' | 'lobby'
+    osc1: OscillatorNode
+    osc2: OscillatorNode
+    osc3?: OscillatorNode
+    lfo?: OscillatorNode
+    gain: GainNode
+    filter: BiquadFilterNode
+  } | null>(null)
   const whistleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const startWhistleLoop = () => {
@@ -265,9 +273,13 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     }
   }
 
-  const startPadSound = () => {
+  const startPadSound = (mode: 'campaign' | 'lobby' = 'campaign') => {
     const ctx = audioContextRef.current
-    if (!ctx || padSoundRef.current) return
+    if (!ctx) return
+    if (padSoundRef.current) {
+      if (padSoundRef.current.mode === mode) return
+      stopPadSound()
+    }
     if (ctx.state === "suspended") ctx.resume()
 
     const t = ctx.currentTime
@@ -275,6 +287,61 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     const osc2 = ctx.createOscillator()
     const gain = ctx.createGain()
     const filter = ctx.createBiquadFilter()
+
+    if (mode === 'lobby') {
+      const osc3 = ctx.createOscillator()
+      const subGain = ctx.createGain()
+      const fifthGain = ctx.createGain()
+      const lfo = ctx.createOscillator()
+      const lfoFilterGain = ctx.createGain()
+      const lfoDetuneGain = ctx.createGain()
+
+      osc1.type = "sawtooth"
+      osc2.type = "triangle"
+      osc3.type = "sawtooth"
+      osc2.detune.value = -6
+      osc3.detune.value = 12
+
+      subGain.gain.value = 1.35
+      fifthGain.gain.value = 0.55
+
+      filter.type = "lowpass"
+      filter.Q.value = 6.5
+      filter.frequency.value = 600
+
+      osc1.frequency.value = 95
+      osc2.frequency.value = 47.5
+      osc3.frequency.value = 142.3
+
+      lfo.type = "sine"
+      lfo.frequency.value = 4.2
+      lfoFilterGain.gain.value = 210
+      lfoDetuneGain.gain.value = 9
+
+      lfo.connect(lfoFilterGain)
+      lfoFilterGain.connect(filter.frequency)
+      lfo.connect(lfoDetuneGain)
+      lfoDetuneGain.connect(osc3.detune)
+
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.0055, t + 0.1)
+
+      osc1.connect(filter)
+      osc2.connect(subGain)
+      subGain.connect(filter)
+      osc3.connect(fifthGain)
+      fifthGain.connect(filter)
+      filter.connect(gain)
+      gain.connect(ctx.destination)
+
+      osc1.start(t)
+      osc2.start(t)
+      osc3.start(t)
+      lfo.start(t)
+
+      padSoundRef.current = { mode, osc1, osc2, osc3, lfo, gain, filter }
+      return
+    }
 
     osc1.type = "sawtooth"
     osc2.type = "square"
@@ -299,19 +366,30 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     osc1.start(t)
     osc2.start(t)
 
-    padSoundRef.current = { osc1, osc2, gain, filter }
+    padSoundRef.current = { mode, osc1, osc2, gain, filter }
   }
 
   const updatePadSound = (x: number, width: number, pitchMultiplier = 1) => {
     const ctx = audioContextRef.current
     if (!ctx || !padSoundRef.current) return
     
-    const ratio = Math.max(0, Math.min(1, x / width))
+    const ratio = Math.max(0, Math.min(1, x / Math.max(1, width)))
+    const { mode, osc1, osc2, osc3, lfo, filter } = padSoundRef.current
+    const t = ctx.currentTime
+
+    if (mode === 'lobby') {
+      const freq = (72 + ratio * 118) * (pitchMultiplier / 0.7)
+      const cutoff = 240 + ratio * 1650
+      osc1.frequency.setTargetAtTime(freq, t, 0.09)
+      osc2.frequency.setTargetAtTime(freq * 0.5, t, 0.09)
+      osc3?.frequency.setTargetAtTime(freq * 1.498, t, 0.09)
+      lfo?.frequency.setTargetAtTime(3.2 + ratio * 4.5, t, 0.1)
+      filter.frequency.setTargetAtTime(cutoff, t, 0.09)
+      return
+    }
+
     const freq = (200 + ratio * 400) * pitchMultiplier
     const cutoff = 500 + ratio * 4000
-
-    const { osc1, osc2, filter } = padSoundRef.current
-    const t = ctx.currentTime
     
     osc1.frequency.setTargetAtTime(freq, t, 0.1)
     osc2.frequency.setTargetAtTime(freq * 1.01, t, 0.1)
@@ -322,7 +400,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     const ctx = audioContextRef.current
     if (!ctx || !padSoundRef.current) return
 
-    const { osc1, osc2, gain } = padSoundRef.current
+    const { osc1, osc2, osc3, lfo, gain } = padSoundRef.current
     const t = ctx.currentTime
 
     gain.gain.cancelScheduledValues(t)
@@ -331,19 +409,20 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
 
     osc1.stop(t + 0.2)
     osc2.stop(t + 0.2)
+    osc3?.stop(t + 0.2)
+    lfo?.stop(t + 0.2)
     
     padSoundRef.current = null
   }
 
-  const handleSmartPadSound = (e: React.MouseEvent<HTMLButtonElement>, pitchMultiplier = 1) => {
+  const handleSmartPadSound = (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>, pitchMultiplier = 1) => {
       if (padSoundTimeoutRef.current) {
         clearTimeout(padSoundTimeoutRef.current)
         padSoundTimeoutRef.current = null
     }
 
-    if (!padSoundRef.current) {
-        startPadSound()
-    }
+    const mode = pitchMultiplier < 1 ? 'lobby' : 'campaign'
+    startPadSound(mode)
 
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
@@ -363,7 +442,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     }, 100)
 }
 
-  const handleSmartPadLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleSmartPadLeave = (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>) => {
       if (padSoundTimeoutRef.current) {
           clearTimeout(padSoundTimeoutRef.current)
           padSoundTimeoutRef.current = null
@@ -1020,7 +1099,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             stopWhistleLoop={stopWhistleLoop}
             setPressedPopupState={setPressedPopupState}
             onCitySelect={onCitySelect}
-            onCreateRoom={onOnlineMatch ? city => setCreateRoomRequest({ id: ++createRoomSequence.current, cityId: city.id }) : undefined}
+            onCreateRoom={onOnlineMatch ? city => { if (!createRoomRequest) setCreateRoomRequest({ id: ++createRoomSequence.current, cityId: city.id }) } : undefined}
+            creatingRoomCityId={createRoomRequest?.cityId ?? null}
             handleSmartPadSound={handleSmartPadSound}
             handleSmartPadLeave={handleSmartPadLeave}
             stopPadSound={stopPadSound}

@@ -13,8 +13,10 @@ export function GamePreferences({
   onDisplayChange,
   chancePosition = "board",
   onChancePositionChange,
-  spectrogramMode = "play-pause",
+  spectrogramMode = "crossfader",
   onSpectrogramModeChange,
+  crossfaderSync = true,
+  onCrossfaderSyncChange,
   className,
 }: {
   display: PowerDisplay
@@ -23,6 +25,8 @@ export function GamePreferences({
   onChancePositionChange?: (value: ChancePosition) => void
   spectrogramMode?: SpectrogramMode
   onSpectrogramModeChange?: (value: SpectrogramMode) => void
+  crossfaderSync?: boolean
+  onCrossfaderSyncChange?: (value: boolean) => void
   className?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -30,6 +34,7 @@ export function GamePreferences({
   const switchLabelId = useId()
   const chanceLabelId = useId()
   const spectrogramLabelId = useId()
+  const crossfaderLabelId = useId()
   return <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
     <Popover.Trigger asChild>
       <Button variant="outline" size="icon" aria-label="Preferências" title="Preferências" className={className}>
@@ -64,13 +69,24 @@ export function GamePreferences({
         </div>
         <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
           <div><div className="text-sm font-medium" id={spectrogramLabelId}>Spectrogram</div>
-            <div className="text-xs text-muted-foreground">{spectrogramMode === "widget" ? "Widget" : "as Play/Pause button background"}</div>
+            <div className="text-xs text-muted-foreground">{spectrogramMode === "widget" ? "Widget" : "as Crossfader background"}</div>
           </div>
-          <button type="button" role="switch" aria-checked={spectrogramMode === "play-pause"} aria-labelledby={spectrogramLabelId}
-            onClick={() => onSpectrogramModeChange?.(spectrogramMode === "widget" ? "play-pause" : "widget")}
+          <button type="button" role="switch" aria-checked={spectrogramMode === "crossfader"} aria-labelledby={spectrogramLabelId}
+            onClick={() => onSpectrogramModeChange?.(spectrogramMode === "widget" ? "crossfader" : "widget")}
             className="relative h-6 w-11 shrink-0 cursor-pointer rounded-full border border-white/25 transition-colors data-[checked=true]:bg-green-600 bg-zinc-700"
-            data-checked={spectrogramMode === "play-pause"}>
-            <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: spectrogramMode === "play-pause" ? "translateX(20px)" : undefined }} />
+            data-checked={spectrogramMode === "crossfader"}>
+            <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: spectrogramMode === "crossfader" ? "translateX(20px)" : undefined }} />
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
+          <div><div className="text-sm font-medium" id={crossfaderLabelId}>Crossfader</div>
+            <div className="text-xs text-muted-foreground">{crossfaderSync ? "Sync with player's chance" : "Manual only"}</div>
+          </div>
+          <button type="button" role="switch" aria-checked={crossfaderSync} aria-labelledby={crossfaderLabelId}
+            onClick={() => onCrossfaderSyncChange?.(!crossfaderSync)}
+            className="relative h-6 w-11 shrink-0 cursor-pointer rounded-full border border-white/25 transition-colors data-[checked=true]:bg-green-600 bg-zinc-700"
+            data-checked={crossfaderSync}>
+            <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: crossfaderSync ? "translateX(20px)" : undefined }} />
           </button>
         </div>
       </Popover.Content>

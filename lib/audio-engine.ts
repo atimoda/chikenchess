@@ -83,6 +83,12 @@ export class AudioEngine {
     }
   }
 
+  getTeamFrequencyData(_color: 'w' | 'b', dataArray: any) {
+    if (this.analyser) {
+      this.analyser.getByteFrequencyData(dataArray)
+    }
+  }
+
   async resume() {
     if (this.audioContext?.state === "suspended") {
       await this.audioContext.resume()
