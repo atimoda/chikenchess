@@ -7,10 +7,17 @@ Deno.serve(async (request: Request) => {
     const { user, userClient, admin } = await authenticate(request)
     const input = await body(request, 131072)
     if (!uuid(input.matchId)) throw new HttpError(400, 'INVALID_REQUEST')
-    const { data: match, error: membershipError } = await userClient.rpc('get_online_match', { p_match_id: input.matchId })
+    // Membership plus the musical context; the full match is only read until
+    // the lighter RPC has been migrated.
+    let { data: contextCityId, error: membershipError } = await userClient.rpc('online_match_context', { p_match_id: input.matchId })
+    if (membershipError?.code === 'PGRST202') {
+      const legacy = await userClient.rpc('get_online_match', { p_match_id: input.matchId })
+      contextCityId = legacy.data?.context_city_id
+      membershipError = legacy.error
+    }
     if (membershipError) databaseError(membershipError)
     let params
-    try { params = parsePieceParams({ pieceId: input.pieceId, instrument: input.instrument, effects: input.effects }, match.context_city_id) }
+    try { params = parsePieceParams({ pieceId: input.pieceId, instrument: input.instrument, effects: input.effects }, contextCityId) }
     catch { throw new HttpError(400, 'INVALID_PARAMS') }
     const { data, error } = await admin.rpc('online_commit_piece', { p_match_id: input.matchId, p_actor: user.id, p_piece_id: params.pieceId, p_instrument: params.instrument, p_effects: params.effects ?? null })
     if (error) databaseError(error)

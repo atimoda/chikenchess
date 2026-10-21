@@ -424,7 +424,12 @@ test('musical params only accept owner identity and do not advance game version'
   await service('online_commit_piece',[match.id,ids[0],piece,{name:'test'},{gain:1}])
   await assert.rejects(service('online_commit_piece',[match.id,ids[1],piece,{name:'test'},{gain:1}]),/FORBIDDEN/)
   await assert.rejects(service('online_commit_piece',[match.id,ids[0],`${own}:a4`,{},{}]),/FORBIDDEN/)
-  assert.equal((await rpc(ids[1],'online_piece_params',[match.id])).length,1)
+  const [shared]=await rpc(ids[1],'online_piece_params',[match.id])
+  assert.equal(shared.piece_id,piece)
+  assert.deepEqual(await rpc(ids[1],'online_piece_params',[match.id,{[piece]:shared.revision}]),[])
+  assert.equal((await rpc(ids[1],'online_piece_params',[match.id,{[piece]:shared.revision-1}])).length,1)
+  assert.equal(await rpc(ids[1],'online_match_context',[match.id]),match.context_city_id)
+  await assert.rejects(rpc(ids[2],'online_match_context',[match.id]),/FORBIDDEN/)
   assert.equal((await rpc(ids[0],'get_online_match',[match.id])).version,1)
   const updates=(await asUser(ids[0],'select * from public.online_match_updates')).rows[0]; assert.equal(updates.params_revision,1)
 })
@@ -669,7 +674,7 @@ test('running games exposes caller metadata only, derives turn from moves, order
   let list=await rpc(players[0],'online_running_games')
   assert.deepEqual(list.map(g=>g.id),[first.initial.id,second.initial.id].sort())
   for(const row of list) {
-    assert.deepEqual(Object.keys(row).sort(),['color','context_city_id','id','opponent','turn','updated_at'])
+    assert.deepEqual(Object.keys(row).sort(),['actions','color','context_city_id','id','opponent','turn','updated_at'])
     assert.deepEqual(Object.keys(row.opponent).sort(),['display_name','id'])
     const initial=row.id===first.initial.id?first.initial:second.initial
     assert.equal(row.color,initial.members.find(m=>m.user_id===players[0]).color)
@@ -678,6 +683,10 @@ test('running games exposes caller metadata only, derives turn from moves, order
     assert.equal(row.opponent.id,initial.members.find(m=>m.user_id!==players[0]).user_id)
     assert.equal(row.opponent.display_name,(await rpc(row.opponent.id,'online_profile')).display_name)
   }
+  const delta=await rpc(players[0],'online_running_games',[{[list[0].id]:list[0].updated_at,[list[1].id]:'2000-01-01T00:00:00+00:00'}])
+  assert.deepEqual(delta.map(g=>g.id),list.map(g=>g.id))
+  assert.equal('actions' in delta[0],false)
+  assert.deepEqual(delta[1].actions,list[1].actions)
   assert.deepEqual((await rpc(players[1],'online_running_games')).map(g=>g.id),[first.initial.id])
   assert.deepEqual((await rpc(players[2],'online_running_games')).map(g=>g.id),[second.initial.id])
   assert.deepEqual(await rpc(players[3],'online_running_games'),[])

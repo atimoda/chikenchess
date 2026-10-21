@@ -17,11 +17,26 @@ export interface SharedPiece {
   revision: number;
 }
 
+// Set once the database rejects the revision-aware call (not yet migrated).
+let fullPieceListOnly = false;
+
+/** Ask only for pieces whose revision differs from the ones already held. */
+async function loadPieceParams(client: NonNullable<ReturnType<typeof getOnlineClient>>, matchId: string, held: SharedPiece[]) {
+  if (!fullPieceListOnly) {
+    const known = Object.fromEntries(held.map((piece) => [piece.piece_id, piece.revision]));
+    const result = await client.rpc("online_piece_params", { p_match_id: matchId, p_known: known });
+    if (result.error?.code !== "PGRST202") return { ...result, delta: true };
+    fullPieceListOnly = true;
+  }
+  return { ...(await client.rpc("online_piece_params", { p_match_id: matchId })), delta: false };
+}
+
 export function useOnlineMatch(matchId: string) {
   const { user, ensureGuest, refreshProfile, notify } = useOnline();
   const userId = user?.id ?? null;
   const [match, setMatch] = useState<OnlineMatch | null>(null);
   const [pieces, setPieces] = useState<SharedPiece[]>([]);
+  const piecesRef = useRef<{ matchId: string; pieces: SharedPiece[] } | null>(null);
   const [connected, setConnected] = useState(false);
   const [opponentConnected, setOpponentConnected] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -53,9 +68,11 @@ export function useOnlineMatch(matchId: string) {
     const loadPieces = options?.pieces ?? true;
     if (!loadMatch && !loadPieces) return;
     const sequence = ++loadSequence.current;
+    // A delta is merged into the same snapshot whose revisions were sent.
+    const held = piecesRef.current?.matchId === matchId ? piecesRef.current.pieces : [];
     const [gameResult, pieceResult] = await Promise.all([
       loadMatch ? client.rpc("get_online_match", { p_match_id: matchId }) : Promise.resolve(null),
-      loadPieces ? client.rpc("online_piece_params", { p_match_id: matchId }) : Promise.resolve(null),
+      loadPieces ? loadPieceParams(client, matchId, held) : Promise.resolve(null),
     ]);
     if (sequence !== loadSequence.current) return;
     if (gameResult?.error) {
@@ -91,8 +108,17 @@ export function useOnlineMatch(matchId: string) {
       }
     }
     if (pieceResult && !pieceResult.error) {
-      const nextPieces = (pieceResult.data ?? []) as SharedPiece[];
-      setPieces(nextPieces);
+      const changed = (pieceResult.data ?? []) as SharedPiece[];
+      let nextPieces = changed;
+      if (pieceResult.delta) {
+        const merged = new Map(held.map((piece) => [piece.piece_id, piece]));
+        for (const piece of changed) merged.set(piece.piece_id, piece);
+        nextPieces = [...merged.values()].sort((a, b) => a.piece_id.localeCompare(b.piece_id));
+      }
+      if (!pieceResult.delta || changed.length || piecesRef.current?.matchId !== matchId) {
+        piecesRef.current = { matchId, pieces: nextPieces };
+        setPieces(nextPieces);
+      }
       if (paramsRevision.current === null && nextPieces.length === 0) {
         paramsRevision.current = 0;
       }
@@ -195,6 +221,7 @@ export function useOnlineMatch(matchId: string) {
     current.current = null;
     paramsRevision.current = null;
     setMatch(null);
+    piecesRef.current = null;
     setPieces([]);
     setPending(null);
     setBusy(false);
