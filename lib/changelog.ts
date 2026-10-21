@@ -10,6 +10,13 @@ export const CHANGELOG = [
       { title: 'Mixer', items: [
         'O movimento automático do Crossfader a cada jogada agora mantém o Gain de cada time entre 0,25 e 1,25: o time com menos chance continua sempre com um pouco de volume. Arrastando o Crossfader manualmente, ele continua indo de 0 a 1,5, com o centro em 0,75.',
       ] },
+      { title: 'Online', items: [
+        'Voltar a uma partida online já iniciada pula a tela de abertura e entra direto na montagem do tabuleiro.',
+        'No globo, a miniatura de cada partida em andamento mostra a posição atual, incluindo casas congeladas (azul-gelo) e com Shield (contorno dourado).',
+        'O botão "Create lobby" agora fica sempre visível ao final de "Public rooms", com fundo verde, e cria na hora um lobby público com o kit Random.',
+        'A aba "Rooms" passou a se chamar "Lobbies" e traz os botões "Create Public Room" e "Create Private Room", que criam o lobby direto, sem a tela de configuração.',
+        'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
+      ] },
     ],
   },
   {

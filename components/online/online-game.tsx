@@ -131,6 +131,26 @@ export function OnlineGame({
   );
 }
 
+const SEEN_INTRO_KEY = "chickenchess:online:seen-intro";
+
+/** A match already shown once, or already under way, resumes from the board entrance. */
+function hasSeenMatchIntro(matchId: string) {
+  try {
+    return (JSON.parse(localStorage.getItem(SEEN_INTRO_KEY) ?? "[]") as string[]).includes(matchId);
+  } catch {
+    return false;
+  }
+}
+
+function rememberMatchIntro(matchId: string) {
+  try {
+    const seen = (JSON.parse(localStorage.getItem(SEEN_INTRO_KEY) ?? "[]") as string[]).filter((id) => id !== matchId);
+    localStorage.setItem(SEEN_INTRO_KEY, JSON.stringify([...seen, matchId].slice(-50)));
+  } catch {
+    // Storage is optional; the intro simply plays again.
+  }
+}
+
 function getBotDifficultyLabel(depth?: number): string {
   if (depth === 10) return "Medium";
   if (depth === 15) return "Hard";
@@ -242,12 +262,15 @@ export function OnlineMatchBoard({
   const [syncParams, setSyncParams] = useState(true);
   const [opponentOpen, setOpponentOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
-  const [introPhase, setIntroPhase] = useState(1);
+  const [resumedMatch] = useState(
+    () => match.state.actions.length > 0 || hasSeenMatchIntro(match.id),
+  );
+  const [introPhase, setIntroPhase] = useState(resumedMatch ? 2 : 1);
   const intro = introPhase < 3;
   const gameplayTip = useGameplayTip(introPhase === 3);
-  const [introExitStarted, setIntroExitStarted] = useState(false);
-  const [showIntroBoxes, setShowIntroBoxes] = useState(true);
-  const introRequested = useRef(false);
+  const [introExitStarted, setIntroExitStarted] = useState(resumedMatch);
+  const [showIntroBoxes, setShowIntroBoxes] = useState(!resumedMatch);
+  const introRequested = useRef(resumedMatch);
   const [openDropdown, setOpenDropdown] = useState<BoardDropdownId>(null);
   const { isMobile, isPortraitMobile } = useMatchViewport();
   const [spectrogramOn, setSpectrogramOn] = useState(false);
@@ -428,20 +451,24 @@ export function OnlineMatchBoard({
     setIntroExitStarted(true);
   }, []);
   useEffect(() => {
+    rememberMatchIntro(match.id);
+    if (resumedMatch) return;
     const timer = setTimeout(beginIntroExit, 5000);
     return () => clearTimeout(timer);
-  }, [beginIntroExit]);
+  }, [beginIntroExit, match.id, resumedMatch]);
   useEffect(() => {
     if (!introExitStarted) return;
-    const boardTimer = setTimeout(() => setIntroPhase(2), 1000);
-    const titleTimer = setTimeout(() => setShowIntroBoxes(false), 1500);
-    const activeTimer = setTimeout(() => setIntroPhase(3), 4500);
+    // Resumed matches skip the title and start at the board entrance.
+    const entranceDelay = resumedMatch ? 0 : 1000;
+    const boardTimer = setTimeout(() => setIntroPhase(2), entranceDelay);
+    const titleTimer = setTimeout(() => setShowIntroBoxes(false), entranceDelay + 500);
+    const activeTimer = setTimeout(() => setIntroPhase(3), entranceDelay + 3500);
     return () => {
       clearTimeout(boardTimer);
       clearTimeout(titleTimer);
       clearTimeout(activeTimer);
     };
-  }, [introExitStarted]);
+  }, [introExitStarted, resumedMatch]);
   useEffect(() => {
     const count = replay.game.history().length;
     if (count > previousMoves.current) setPlaying(true);
@@ -1757,8 +1784,12 @@ export function OnlineMatchBoard({
           </Button>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!result}>
-        <DialogContent className="z-[140] border-white/20 bg-[#101713] text-white">
+      <Dialog open={!!result} onOpenChange={(open) => { if (!open) onBack(); }}>
+        <DialogContent
+          className="z-[140] border-white/20 bg-[#101713] text-white"
+          closeLabel="Return to globe"
+          onInteractOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>
               {won ? "You won!" : result?.winner ? "You lost" : "Draw"}
