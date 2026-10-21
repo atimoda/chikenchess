@@ -10,6 +10,9 @@ export const CHANGELOG = [
       { title: 'Mixer', items: [
         'O Crossfader agora leva o Gain de cada time no máximo até 0,25 e 1,5, em vez de 0 e 1,5: o time com menos chance continua sempre com um pouco de volume. Com o crossfader no centro, os dois times ficam em 0,875.',
       ] },
+      { title: 'Tips', items: [
+        'As tips do início da partida voltam a avançar: cada nova partida mostra a próxima tip, até acabarem, em vez de repetir sempre a primeira para quem está conectado ao modo online (inclusive como convidado).',
+      ] },
     ],
   },
   {
