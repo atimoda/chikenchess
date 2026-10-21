@@ -16,6 +16,10 @@ export const CHANGELOG = [
         'O botão "Create lobby" agora fica sempre visível ao final de "Public rooms", com fundo verde, e cria na hora um lobby público com o kit Random.',
         'A aba "Rooms" passou a se chamar "Lobbies" e traz os botões "Create Public Room" e "Create Private Room", que criam o lobby direto, sem a tela de configuração.',
         'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
+        'No globo, os títulos "PUBLIC ROOMS" e "GAMES IN PROGRESS" agora aparecem em caixa alta.',
+      ] },
+      { title: 'Globo', items: [
+        'Na lista de cidades das campanhas, o nome do estilo musical que aparece no hover não recebe mais o mouse nem o toque: passar por cima dele não ativa a cidade e não atrapalha arrastar o globo por trás.',
       ] },
       { title: 'Tips', items: [
         'As tips do início da partida voltam a avançar: cada nova partida mostra a próxima tip, até acabarem, em vez de repetir sempre a primeira para quem está conectado ao modo online (inclusive como convidado).',

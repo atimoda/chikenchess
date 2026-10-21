@@ -106,12 +106,12 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
             const conquered = getCityEras(city).some(era => conqueredCities.includes(era.id))
             const active = focusedCityId === city.id || pinHoveredCityId === city.id || openCityIds.includes(city.id)
             return <li key={city.id}>
-              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' } as CSSProperties} className={`${styles.cityButton} pointer-events-auto inline-flex w-full max-w-full items-center gap-1.5 text-left text-[11px] font-semibold uppercase leading-5 tracking-[0.025em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer sm:text-xs md:text-sm`}
+              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' } as CSSProperties} className={`${styles.cityButton} pointer-events-none inline-flex w-full max-w-full items-center gap-1.5 text-left text-[11px] font-semibold uppercase leading-5 tracking-[0.025em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer sm:text-xs md:text-sm`}
                 onPointerEnter={() => { onFocus(city.id); playHover(city.id) }} onFocus={() => { onFocus(city.id); playHover(city.id) }} onPointerLeave={() => { if (lastHoveredCity.current === city.id) lastHoveredCity.current = null; onFocus(null) }} onBlur={() => onFocus(null)}
                 onClick={() => { if (!suppressClick.current) { onFocus(city.id); onOpen(city) } }}>
-                <span className="shrink-0">{city.year} {city.name}</span>
+                <span className="pointer-events-auto shrink-0">{city.year} {city.name}</span>
                 {active && <span className={styles.genre}>{city.genre}</span>}
-                {conquered && <span className={`${styles.flagIcon} ${active ? styles.flagIconActive : ''}`} style={{ '--flag-color': cityFlagColor(city.color) } as CSSProperties} aria-label="Conquistada" title="Conquistada"><svg viewBox="0 0 16 16" aria-hidden="true"><path className={styles.flagPole} d="M3.2 14V2.2"/><path className={styles.flagCloth} d="M3.7 2.7c3-1.6 5 1.1 9-.4v5.2c-3.8 1.5-6-1.1-9 .4z"/></svg></span>}
+                {conquered && <span className={`${styles.flagIcon} pointer-events-auto ${active ? styles.flagIconActive : ''}`} style={{ '--flag-color': cityFlagColor(city.color) } as CSSProperties} aria-label="Conquistada" title="Conquistada"><svg viewBox="0 0 16 16" aria-hidden="true"><path className={styles.flagPole} d="M3.2 14V2.2"/><path className={styles.flagCloth} d="M3.7 2.7c3-1.6 5 1.1 9-.4v5.2c-3.8 1.5-6-1.1-9 .4z"/></svg></span>}
               </button>
             </li>
           })}

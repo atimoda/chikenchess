@@ -33,6 +33,9 @@
 }
 
 .genre {
+  /* Only the city name and flag take pointer input; the style label must not
+     extend the hover area or block dragging the globe behind it. */
+  pointer-events: none;
   color: rgb(255 255 255 / 70%);
   min-width: 0;
   overflow: hidden;
