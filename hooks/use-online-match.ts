@@ -155,6 +155,29 @@ export function useOnlineMatch(matchId: string) {
         void refresh(target);
       }, 80);
     };
+    type MatchUpdateRecord = { version?: number; params_revision?: number };
+    const applyUpdate = (record: MatchUpdateRecord | null | undefined) => {
+      const nextVersion = typeof record?.version === "number" ? record.version : null;
+      const nextParamsRev = typeof record?.params_revision === "number" ? record.params_revision : null;
+      const needMatch = nextVersion === null || !current.current || nextVersion > current.current.version;
+      const needPieces = nextParamsRev === null || paramsRevision.current === null || nextParamsRev !== paramsRevision.current;
+      if (nextParamsRev !== null) paramsRevision.current = nextParamsRev;
+      if (!needMatch && !needPieces) return;
+      scheduleRefresh({ match: needMatch, pieces: needPieces });
+    };
+    // Reconnects happen often in background tabs. Read the two counters
+    // first and download the match or pieces only when one of them moved.
+    const catchUp = async () => {
+      const { data, error: counterError } = await client
+        .from("online_match_updates")
+        .select("version,params_revision")
+        .eq("match_id", matchId)
+        .maybeSingle()
+        .then((result) => result, () => ({ data: null, error: true }));
+      if (disposed) return;
+      if (counterError || !data) void refresh();
+      else applyUpdate(data);
+    };
     const channel = client
       .channel(`match:${matchId}`, {
         config: { private: true, presence: { key: userId }, postgres_changes_options: { wait: true } },
@@ -167,16 +190,7 @@ export function useOnlineMatch(matchId: string) {
           table: "online_match_updates",
           filter: `match_id=eq.${matchId}`,
         },
-        (payload) => {
-          const record = (payload as { new?: { version?: number; params_revision?: number } } | undefined)?.new;
-          const nextVersion = typeof record?.version === "number" ? record.version : null;
-          const nextParamsRev = typeof record?.params_revision === "number" ? record.params_revision : null;
-          const needMatch = nextVersion === null || !current.current || nextVersion > current.current.version;
-          const needPieces = nextParamsRev === null || paramsRevision.current === null || nextParamsRev !== paramsRevision.current;
-          if (nextParamsRev !== null) paramsRevision.current = nextParamsRev;
-          if (!needMatch && !needPieces) return;
-          scheduleRefresh({ match: needMatch, pieces: needPieces });
-        },
+        (payload) => applyUpdate((payload as { new?: MatchUpdateRecord } | undefined)?.new),
       )
       .on("presence", { event: "sync" }, () => {
         const opponent = current.current?.members.find(
@@ -192,7 +206,7 @@ export function useOnlineMatch(matchId: string) {
         if (status === "SUBSCRIBED") {
           isSubscribed = true;
           void channel.track({ online: true });
-          if (hasSubscribedOnce) void refresh();
+          if (hasSubscribedOnce) void catchUp();
           hasSubscribedOnce = true;
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           isSubscribed = false;
@@ -202,9 +216,9 @@ export function useOnlineMatch(matchId: string) {
         }
       });
     const onReturn = () => {
-      if (document.visibilityState === "visible" && !isSubscribed) void refresh();
+      if (document.visibilityState === "visible" && !isSubscribed) void catchUp();
     };
-    const onOnline = () => void refresh();
+    const onOnline = () => void catchUp();
     document.addEventListener("visibilitychange", onReturn);
     window.addEventListener("online", onOnline);
     return () => {
