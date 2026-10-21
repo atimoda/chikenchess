@@ -15,6 +15,8 @@ export interface ChessMoveAnalysis {
   final: boolean
   best: EvaluatedMove[]
   worst: EvaluatedMove[]
+  /** Up to ten best moves, shown by the Debug Moves shortcut. */
+  top?: EvaluatedMove[]
   complete: boolean
   depth: number
   nodes: number
@@ -345,7 +347,7 @@ export class ChessEvaluationQueue {
     }))
     return {
       fen: active.request.fen, side: active.request.side, legalMoves: active.request.candidates.length, final,
-      best: ranked.slice(0, 3), worst: ranked.slice(-3).reverse(),
+      best: ranked.slice(0, 3), worst: ranked.slice(-3).reverse(), top: ranked.slice(0, 10),
       complete: ranked.length === active.request.candidates.length, depth: active.completeLines[0]?.depth ?? 0,
       quickMs: active.quickMs, quickNodes: active.quickNodes, quickDepth: active.score?.depth ?? 0,
       nodes: active.nodes, elapsedMs: Math.round(globalThis.performance.now() - active.started), engineMs: active.engineMs,

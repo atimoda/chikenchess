@@ -128,12 +128,16 @@ function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis
   </div>
 }
 
-function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: 'best' | 'worst'): AnalysisArrow[] {
-  return analysis[kind].map(move => ({
+/** `top` is the Debug Moves shortcut: the ten best moves drawn like Best. */
+type AnalysisArrowKind = 'best' | 'worst' | 'top'
+
+function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: AnalysisArrowKind): AnalysisArrow[] {
+  const moves = kind === 'top' ? analysis.top ?? analysis.best : analysis[kind]
+  return moves.map(move => ({
     from: move.uci.slice(0, 2) as Square,
     to: move.uci.slice(2, 4) as Square,
     label: formatEvaluation(move.score, move.mate),
-    tone: kind,
+    tone: kind === 'worst' ? 'worst' : 'best',
     labelTone: rankedMoveLabelTone(move.score, move.mate),
   }))
 }
@@ -214,7 +218,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [liveMoveAnalysis, setLiveMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
   const currentCompleteAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
   const botPrePowerAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
-  const analysisArrowKindRef = useRef<'best' | 'worst' | null>(null)
+  const analysisArrowKindRef = useRef<AnalysisArrowKind | null>(null)
   const pendingShownSuggestionsRef = useRef<ShownMoveSuggestions | null>(null)
   const shownSuggestionsRef = useRef<ShownMoveSuggestions[]>([])
   const suggestionPositionKeyRef = useRef<string | null>(null)
@@ -444,6 +448,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [pieceDebugOn, setPieceDebugOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
   const [codeBackdropOn, setCodeBackdropOn] = useState(false)
+  const [codeTextOn, setCodeTextOn] = useState(true)
   const toggleCodeBackdrop = () => {
     const next = !codeBackdropOn
     setCodeBackdropOn(next)
@@ -785,13 +790,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, [])
 
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
-  const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
+  const showAnalysisArrows = useCallback((kind: AnalysisArrowKind) => {
     if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w') || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
-    matchUsageRef.current[kind]++
+    // The Debug top-ten view is a testing aid: it does not count as a Best use or a shown suggestion.
+    if (kind !== 'top') matchUsageRef.current[kind]++
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
-    void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
+    void engineRef.current?.playAnalysisWhistle(kind === 'worst' ? 'down' : 'up')
     analysisArrowKindRef.current = kind
-    pendingShownSuggestionsRef.current = { kind, analysis: displayedAnalysis }
+    pendingShownSuggestionsRef.current = kind === 'top' ? null : { kind, analysis: displayedAnalysis }
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
     analysisArrowTimeoutRef.current = window.setTimeout(() => {
       setAnalysisArrows([])
@@ -804,7 +810,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     const kind = analysisArrowKindRef.current
     if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w') || !kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
-    pendingShownSuggestionsRef.current = { kind, analysis: displayedAnalysis }
+    pendingShownSuggestionsRef.current = kind === 'top' ? null : { kind, analysis: displayedAnalysis }
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
   }, [displayedAnalysis])
 
@@ -1720,6 +1726,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onToggleBotControl={toggleBotControl}
                 onForceWin={forceWin}
                 onGetEggs={getDebugEggs}
+                onShowTopMoves={button => {
+                  if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) return
+                  spendEggForAction(button, 2, () => showAnalysisArrows("top"))
+                }}
+                topMovesDisabled={introPhase !== 3 || playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.length > 0}
+                codeVisible={codeTextOn}
+                onToggleCodeVisible={() => setCodeTextOn(on => !on)}
                 playback={liveCodeOn && music.engineActive ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
                   {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
@@ -1804,7 +1817,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       <GameWidgetEntranceStyles />
       <GameCityBackground city={city} isBackgroundDark={isBackgroundDark} introPhase={introPhase} />
 
-      {codeBackdropOn && introPhase === 3 && (
+      {codeBackdropOn && codeTextOn && introPhase === 3 && (
         <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-75" aria-hidden="true">
           <pre className="h-full w-full overflow-hidden whitespace-pre-wrap break-all px-6 pb-6 pt-14 font-mono text-[10px] leading-4 text-[#78ff93] [text-shadow:0_0_6px_rgba(57,255,20,0.55)]">
             {music.code}
@@ -2102,6 +2115,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   }}
                 />
                 {stockfishDebugOn && codeBackdropOn && introPhase === 3 && <StockfishDebugOverlay
+                  cityColor={city.color}
                   trace={stockfishTrace}
                   analysis={displayedAnalysis}
                   onClose={toggleStockfishDebug}
