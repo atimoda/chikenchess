@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 19/10/2026 — v1.6.5 (salas online, criação de lobby com feedback e timbre grave, e acesso direto no globo). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 21/10/2026 — v1.6.6 (crossfader com Gain mínimo de 0,25). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 

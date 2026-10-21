@@ -3,6 +3,16 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.6.6',
+    date: '21/10/2026',
+    title: 'Crossfader nunca silencia um time',
+    groups: [
+      { title: 'Mixer', items: [
+        'O Crossfader agora leva o Gain de cada time no máximo até 0,25 e 1,5, em vez de 0 e 1,5: o time com menos chance continua sempre com um pouco de volume. Com o crossfader no centro, os dois times ficam em 0,875.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.5',
     date: '19/10/2026',
     title: 'Criação de lobby no globo, crossfader dinâmico por chance e iluminação de peças ativas por ganho',

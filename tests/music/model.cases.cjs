@@ -117,15 +117,19 @@ test('crossfader position alternates per turn and reflects player chance depth',
 
   // teamGainsForCrossfader matches end gains
   const centerGains = teamGainsForCrossfader(0)
-  assert.equal(centerGains.left, 0.75)
-  assert.equal(centerGains.right, 0.75)
+  assert.equal(centerGains.left, 0.875)
+  assert.equal(centerGains.right, 0.875)
 
   const topGains = teamGainsForCrossfader(-1)
   assert.equal(topGains.left, 1.5)
-  assert.equal(topGains.right, 0)
+  assert.equal(topGains.right, 0.25)
 
   const bottomGains = teamGainsForCrossfader(1)
-  assert.equal(bottomGains.left, 0)
+  assert.equal(bottomGains.left, 0.25)
   assert.equal(bottomGains.right, 1.5)
+
+  // the trailing side never drops below 0.25, even past the ends
+  assert.equal(teamGainsForCrossfader(-2).right, 0.25)
+  assert.equal(teamGainsForCrossfader(0.5).left, 0.5625)
 })
 
