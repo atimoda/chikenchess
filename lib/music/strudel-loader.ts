@@ -1,10 +1,17 @@
 // Shared bundle/sample caches. Keep lazy loading here so importing data stays inert.
 import { sampleRegistration, sampleUrl, type SampleSource } from './sample-banks'
 import type { Strudel } from './runtime-types'
+import { isConstrainedDevice } from '../performance'
 
 let library: Promise<Strudel> | undefined
 export function loadLibrary() {
   return library ??= import('@strudel/web').then(s => {
+    // Phones render audio in small blocks with 'interactive' latency; under load
+    // a late block is heard as a crackle. 'playback' asks for a larger output
+    // buffer before Strudel lazily creates its own context.
+    if (isConstrainedDevice() && typeof AudioContext !== 'undefined') {
+      try { s.setAudioContext(new AudioContext({ latencyHint: 'playback' })) } catch { /* Strudel creates its default context. */ }
+    }
     s.miniAllStrings()
     s.registerSynthSounds()
     return s

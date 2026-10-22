@@ -4,15 +4,15 @@
 
 import type React from "react"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react"
 import type { Chess, Square, Move } from "chess.js"
 import type { MusicPulseMonitor } from "@/lib/music/monitor"
 import { MusicPulseOverlay } from "./music-pulse-overlay"
-import { cn } from "@/lib/utils"
+import { cn, stableHtml } from "@/lib/utils"
 import rewardStyles from "./chessground-board.module.css"
 import { frozenCaptureBlock, shieldCaptureBlock, type ShieldCaptureBlock, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
 import { getSfxEngine } from "@/lib/sfx-engine"
-import { MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, POWER_RELEASE_MS, mulliganProgress, mulliganGhostEaseInOut, releasedPowers, type MulliganPreviewMove } from "@/lib/power-presentation"
+import { MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, POWER_RELEASE_MS, releasedPowers, type MulliganPreviewMove } from "@/lib/power-presentation"
 
 interface ChessgroundBoardProps {
   game: Chess
@@ -70,7 +70,7 @@ export interface AnalysisArrow {
   labelTone: "best" | "warning" | "worst"
 }
 
-interface PieceAnimation {
+interface PieceAnimationInput {
   piece: string
   from: Square
   to: Square
@@ -78,10 +78,12 @@ interface PieceAnimation {
   startY: number
   targetX: number
   targetY: number
-  progress: number
 }
 
-type PieceAnimationInput = Omit<PieceAnimation, "progress">
+interface PieceAnimation extends PieceAnimationInput {
+  duration: number
+  easing: string
+}
 
 interface MulliganGhostPiece {
   piece: string
@@ -91,7 +93,34 @@ interface MulliganGhostPiece {
   startY: number
   targetX: number
   targetY: number
-  progress: number
+}
+
+// mulliganProgress and mulliganGhostEaseInOut expressed as CSS timing functions.
+const MULLIGAN_EASING = "cubic-bezier(.42, 0, .58, 1)"
+const MULLIGAN_GHOST_EASING = "cubic-bezier(.65, 0, .35, 1)"
+
+// Pieces glide with a compositor transform: the board is rendered once per move
+// instead of once per frame, so a busy main thread (music scheduling, analysis)
+// no longer makes the movement stutter on phones.
+function GlidingSquare({ startX, startY, targetX, targetY, duration, easing, className, children, ...props }: React.HTMLAttributes<HTMLDivElement> & { startX: number; startY: number; targetX: number; targetY: number; duration: number; easing: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const element = ref.current
+    if (!element) return
+    // Percent translations are relative to the square itself (12.5% of the board).
+    const end = `translate(${(targetX - startX) * 8}%, ${(targetY - startY) * 8}%)`
+    if (typeof element.animate !== "function") {
+      element.style.transform = end
+      return
+    }
+    const animation = element.animate([{ transform: "translate(0, 0)" }, { transform: end }], { duration, easing, fill: "forwards" })
+    return () => animation.cancel()
+  }, [startX, startY, targetX, targetY, duration, easing])
+  return (
+    <div ref={ref} className={className} {...props} style={{ ...props.style, left: `${startX}%`, top: `${startY}%`, willChange: "transform" }}>
+      {children}
+    </div>
+  )
 }
 
 const COLUMNS = ["a", "b", "c", "d", "e", "f", "g", "h"]
@@ -307,9 +336,8 @@ export function ChessgroundBoard({
   const lastMoveHighlightKey = lastMove ? `${gameHistory.length}-${lastMove.from}-${lastMove.to}` : undefined
 
   const [animatingPieces, setAnimatingPieces] = useState<PieceAnimation[]>([])
-  const animationFrameRef = useRef<number | null>(null)
+  const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mulliganGhostPieces, setMulliganGhostPieces] = useState<MulliganGhostPiece[]>([])
-  const ghostAnimationFrameRef = useRef<number | null>(null)
 
   const justDraggedRef = useRef(false)
 
@@ -320,43 +348,30 @@ export function ChessgroundBoard({
   }
 
   const animatePieces = useCallback((pieces: PieceAnimationInput[], duration: number, easing = false) => {
-    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current)
+    if (animationTimerRef.current !== null) clearTimeout(animationTimerRef.current)
+    animationTimerRef.current = null
     if (pieces.length === 0) {
       setAnimatingPieces([])
       return
     }
-
-    const startTime = globalThis.performance.now()
-    const animate = () => {
-      const progress = Math.min((globalThis.performance.now() - startTime) / duration, 1)
-      setAnimatingPieces(pieces.map(piece => ({ ...piece, progress: easing ? mulliganProgress(progress) : progress })))
-      if (progress < 1) animationFrameRef.current = requestAnimationFrame(animate)
-      else {
-        animationFrameRef.current = null
-        setAnimatingPieces([])
-      }
-    }
-    setAnimatingPieces(pieces.map(piece => ({ ...piece, progress: 0 })))
-    animationFrameRef.current = requestAnimationFrame(animate)
+    setAnimatingPieces(pieces.map(piece => ({ ...piece, duration, easing: easing ? MULLIGAN_EASING : "linear" })))
+    animationTimerRef.current = setTimeout(() => {
+      animationTimerRef.current = null
+      setAnimatingPieces([])
+    }, duration)
   }, [])
 
   useEffect(() => () => {
-    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current)
-    if (ghostAnimationFrameRef.current !== null) cancelAnimationFrame(ghostAnimationFrameRef.current)
+    if (animationTimerRef.current !== null) clearTimeout(animationTimerRef.current)
   }, [])
 
   useEffect(() => {
-    if (ghostAnimationFrameRef.current !== null) {
-      cancelAnimationFrame(ghostAnimationFrameRef.current)
-      ghostAnimationFrameRef.current = null
-    }
-
     if (!mulliganPreviewMoves || mulliganPreviewMoves.length === 0) {
       setMulliganGhostPieces([])
       return
     }
 
-    const ghosts: MulliganGhostPiece[] = mulliganPreviewMoves.map(move => {
+    setMulliganGhostPieces(mulliganPreviewMoves.map(move => {
       const start = getCoords(move.currentSquare)
       const target = getCoords(move.targetSquare)
       return {
@@ -367,56 +382,20 @@ export function ChessgroundBoard({
         startY: start.y,
         targetX: target.x,
         targetY: target.y,
-        progress: 0,
       }
-    })
-
-    setMulliganGhostPieces(ghosts)
-
-    let startTimestamp: number | null = null
-    const duration = MULLIGAN_PREVIEW_DURATION_MS
-
-    const animate = (timestamp: number) => {
-      if (startTimestamp === null) {
-        startTimestamp = timestamp
-      }
-      const elapsed = timestamp - startTimestamp
-      const rawProgress = Math.min(elapsed / duration, 1)
-      const easedProgress = mulliganGhostEaseInOut(rawProgress)
-
-      setMulliganGhostPieces(prev =>
-        prev.map(ghost => ({ ...ghost, progress: easedProgress }))
-      )
-
-      if (rawProgress < 1) {
-        ghostAnimationFrameRef.current = requestAnimationFrame(animate)
-      } else {
-        ghostAnimationFrameRef.current = null
-        setMulliganGhostPieces(prev =>
-          prev.map(ghost => ({ ...ghost, progress: 1 }))
-        )
-      }
-    }
-
-    ghostAnimationFrameRef.current = requestAnimationFrame(animate)
-
-    return () => {
-      if (ghostAnimationFrameRef.current !== null) {
-        cancelAnimationFrame(ghostAnimationFrameRef.current)
-        ghostAnimationFrameRef.current = null
-      }
-    }
+    }))
   }, [mulliganPreviewMoves, orientation])
 
   // We need to intercept the game update to set up animation
   // Since 'game' prop changes instantly, we can use a ref to track previous FEN or history length
-  const prevHistory = useRef(game.history({ verbose: true }))
+  const prevHistory = useRef<Move[] | null>(null)
+  if (prevHistory.current === null) prevHistory.current = game.history({ verbose: true })
   const prevUndoAnimationKey = useRef(undoAnimationKey)
   
   useEffect(() => {
       if (freeMode) return
       const history = game.history({ verbose: true })
-      const previousHistory = prevHistory.current
+      const previousHistory = prevHistory.current ?? []
       if (history.length > previousHistory.length) {
           const lastMove = history[history.length - 1]
           
@@ -435,10 +414,6 @@ export function ChessgroundBoard({
              }], 200)
           }
       } else if (history.length < previousHistory.length && undoAnimationKey !== prevUndoAnimationKey.current) {
-          if (ghostAnimationFrameRef.current !== null) {
-            cancelAnimationFrame(ghostAnimationFrameRef.current)
-            ghostAnimationFrameRef.current = null
-          }
           setMulliganGhostPieces([])
           const undoneMoves = previousHistory.slice(history.length).reverse()
           const reverseAnimations = undoneMoves.map(move => {
@@ -1142,9 +1117,7 @@ export function ChessgroundBoard({
                           : undefined,
                       transition: "transform 150ms",
                     }}
-                    dangerouslySetInnerHTML={{
-                      __html: PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "",
-                    }}
+                    dangerouslySetInnerHTML={stableHtml(PiecesSVG[`${piece.color}${piece.type.toUpperCase()}` as PieceKey] || "")}
                   />
                 )}
                 {frozen && <IceCrystal />}
@@ -1292,14 +1265,15 @@ export function ChessgroundBoard({
 
       {/* Animating piece */}
       {animatingPieces.map((animation, index) => (
-        <div
+        <GlidingSquare
           key={`${animation.piece}-${animation.from}-${animation.to}-${index}`}
           className="absolute pointer-events-none z-40 w-[12.5%] h-[12.5%] flex items-center justify-center"
-          style={{
-            left: `${animation.startX + (animation.targetX - animation.startX) * animation.progress}%`,
-            top: `${animation.startY + (animation.targetY - animation.startY) * animation.progress}%`,
-            transition: 'none',
-          }}
+          startX={animation.startX}
+          startY={animation.startY}
+          targetX={animation.targetX}
+          targetY={animation.targetY}
+          duration={animation.duration}
+          easing={animation.easing}
         >
              <div
                 data-pending-move={pendingSquares.includes(animation.to) ? animation.to : undefined}
@@ -1308,24 +1282,23 @@ export function ChessgroundBoard({
                   opacity: pendingSquares.includes(animation.to) ? 0.45 : undefined,
                   filter: musicEffectsEnabled ? `drop-shadow(0 0 12px ${cityColor})` : undefined,
                 }}
-                dangerouslySetInnerHTML={{
-                  __html: PiecesSVG[animation.piece as PieceKey] || "",
-                }}
+                dangerouslySetInnerHTML={stableHtml(PiecesSVG[animation.piece as PieceKey] || "")}
               />
-        </div>
+        </GlidingSquare>
       ))}
 
       {/* Mulligan Ghost Preview Pieces */}
       {mulliganGhostPieces.map((ghost, index) => (
-        <div
+        <GlidingSquare
           key={`mulligan-ghost-${ghost.piece}-${ghost.currentSquare}-${ghost.targetSquare}-${index}`}
           data-mulligan-ghost="true"
           className="absolute pointer-events-none z-30 w-[12.5%] h-[12.5%] flex items-center justify-center"
-          style={{
-            left: `${ghost.startX + (ghost.targetX - ghost.startX) * ghost.progress}%`,
-            top: `${ghost.startY + (ghost.targetY - ghost.startY) * ghost.progress}%`,
-            transition: 'none',
-          }}
+          startX={ghost.startX}
+          startY={ghost.startY}
+          targetX={ghost.targetX}
+          targetY={ghost.targetY}
+          duration={MULLIGAN_PREVIEW_DURATION_MS}
+          easing={MULLIGAN_GHOST_EASING}
         >
           <div
             className={cn("w-[85%] h-[85%]", ghost.piece.startsWith('b') && "black-piece-outline")}
@@ -1333,11 +1306,9 @@ export function ChessgroundBoard({
               opacity: 0.5,
               filter: musicEffectsEnabled ? `drop-shadow(0 0 12px ${cityColor})` : undefined,
             }}
-            dangerouslySetInnerHTML={{
-              __html: PiecesSVG[ghost.piece as PieceKey] || "",
-            }}
+            dangerouslySetInnerHTML={stableHtml(PiecesSVG[ghost.piece as PieceKey] || "")}
           />
-        </div>
+        </GlidingSquare>
       ))}
 
       {/* Dragged piece */}
@@ -1353,9 +1324,7 @@ export function ChessgroundBoard({
             willChange: 'transform',
             filter: musicEffectsEnabled ? `drop-shadow(0 0 12px ${cityColor})` : undefined,
           }}
-          dangerouslySetInnerHTML={{
-            __html: PiecesSVG[dragPiece.piece as PieceKey] || "",
-          }}
+          dangerouslySetInnerHTML={stableHtml(PiecesSVG[dragPiece.piece as PieceKey] || "")}
         />
       )}
 

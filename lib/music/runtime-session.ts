@@ -135,9 +135,13 @@ export class MusicRuntime {
         const transition = this.reactionQueue.advance(cycle)
         if (transition.changed) { this.rampBars = transition.bars; this.resolveState(); this.refresh() }
       },
-      // More scheduling headroom on touch devices; manual notes keep their
-      // independent 30 ms response and the monitor follows this latency.
-      latency: constrained ? .18 : .1,
+      // More scheduling headroom on touch devices: a phone main thread can stall
+      // for 150–250 ms (layout, GC, analysis) and an attack queued too late is
+      // dropped or crackles. Fewer, larger queries also cut Strudel's per-query
+      // cost. Manual notes keep their independent 30 ms response and the
+      // monitor follows this latency.
+      latency: constrained ? .3 : .1,
+      interval: constrained ? 100 : 50,
       getTime: () => context.currentTime,
       onError: this.error,
       onTrigger: (hap: any, deadline: number, duration: number, cps: number, time: number) => {

@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 21/10/2026 — v1.6.6 (movimento automático do crossfader com Gain entre 0,25 e 1,25). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 22/10/2026 — v1.6.7 (desempenho da música e das animações no celular). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 

@@ -3,6 +3,20 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.6.7',
+    date: '22/10/2026',
+    title: 'Música e animações mais leves no celular',
+    groups: [
+      { title: 'Desempenho no celular', items: [
+        'As peças deslizam pelo tabuleiro sem engasgar mesmo com a música tocando: a animação do lance não depende mais do processamento da página.',
+        'Cada lance ficou bem mais leve: o tabuleiro não redesenha mais todas as peças a cada atualização, e as linhas de conexão dos widgets, que ficam ocultas no celular em pé, não são mais calculadas.',
+        'Com a música tocando, Piece Params, o piano roll e o Mixer só se atualizam quando algo visível muda; o cursor do piano roll continua andando sem refazer o editor inteiro.',
+        'No celular, a engine musical agenda as notas com mais antecedência e usa um buffer de áudio maior, para reduzir os "rasgos" no som quando o aparelho fica ocupado. As ativações de loop podem entrar até cerca de um décimo de segundo mais tarde que antes.',
+        'No celular, o Spectrogram atualiza a 15 quadros por segundo, deixando mais folga para a música e os gestos.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.6',
     date: '21/10/2026',
     title: 'Movimento automático do crossfader nunca silencia um time',

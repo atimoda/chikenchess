@@ -4,7 +4,8 @@ import {arrangementPosition} from '@/lib/music/arrangement'
 import { beatsPerBar, subdivisionsPerBeat, beatUnit } from '@/lib/music/meter'
 import type { Meter } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
-import { memo, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useMonitorSelector } from '@/hooks/use-monitor-selector'
 import { MusicNoteParams } from './music-note-params'
 import type { KnobUpdateMode } from './knob'
 import { addVariation, removeLastVariation } from '@/lib/music/variation-edit'
@@ -20,8 +21,6 @@ export const MUSIC_GRID_DIVISIONS = [
  {value:5,label:'5 partes · quintinas'}, {value:6,label:'6 partes · sextinas'},
  {value:7,label:'7 partes · septinas'}, {value:8,label:'8 partes · fusas'},
 ] as const
-
-const subscribeNothing = () => () => {}
 
 export function gridDivisionLabel(value:number,meter:Meter='4/4') {
  if(subdivisionsPerBeat(meter)===3){
@@ -43,10 +42,19 @@ export function defaultGridDivision(meter:Meter='4/4') {
  return subdivisionsPerBeat(meter)===3?3:meter==='3/4'||beatUnit(meter)==='eighth'?2:4
 }
 
+function PianoRollPlayhead({monitor,snapshot,instrument,id,roll,high,rowHeight,enabled}:{monitor:MusicMonitor;snapshot:MusicSnapshot;instrument:Instrument;id:string;roll:PianoRoll;high:number;rowHeight:number;enabled:boolean}){
+ const pulses=beatsPerBar(snapshot.meter), bars=roll.bars
+ const cursor=useMonitorSelector(monitor,frame=>{
+  const globalPosition=snapshot.arrangement?arrangementPosition(snapshot.arrangement,frame.cycle,pulses):undefined
+  return variationPosition(instrument,globalPosition?.index??frame.section,frame.cycle,pulses,snapshot.sectionOverrides?.[id],snapshot.arrangement).phase%bars
+ },enabled)
+ return <g pointerEvents="none">
+  {roll.notes.map((n,j)=>cursor>=n.start&&cursor<n.start+n.duration?<rect key={j} x={n.start/bars*480} y={(high-n.degree)*rowHeight+1} width={Math.max(2,n.duration/bars*480-1)} height={Math.max(2,rowHeight-2)} rx={2} fill="#f4e8a5"/>:null)}
+  <line data-playhead x1={cursor/bars*480} x2={cursor/bars*480} y1={0} y2={264} stroke="#fff1b7" strokeWidth={2}/>
+ </g>
+}
+
 export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate',visualUpdatesEnabled=true}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode;division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode;visualUpdatesEnabled?:boolean}){
- const subscribe=visualUpdatesEnabled?monitor.subscribe:subscribeNothing
- const getSnapshot=visualUpdatesEnabled?monitor.getSnapshot:monitor.getServerSnapshot
- const frame=useSyncExternalStore(subscribe,getSnapshot,monitor.getServerSnapshot)
  const [error,setError]=useState('')
  const [selectedNote,setSelectedNote]=useState<{index:number;note:number}|null>(null)
  const [draft,setDraft]=useState<{index:number;roll:PianoRoll}|null>(null),[localDivision,setLocalDivision]=useState(defaultGridDivision(snapshot.meter))
@@ -59,8 +67,13 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
  const bankCount=instrument.pianoRolls.length
  const visibleVariations=instrument.pianoRolls.map((roll,index)=>({roll,index})).filter(({index})=>onlyVariation===undefined||index===onlyVariation)
  useEffect(()=>{setDraft(null);setSelectedNote(null);setError('');drag.current=null;lastNoteClick.current=null},[id])
- const globalPosition=snapshot.arrangement?arrangementPosition(snapshot.arrangement,frame.cycle,pulses):undefined
- const playback=variationPosition(instrument,globalPosition?.index??frame.section,frame.cycle,pulses,snapshot.sectionOverrides?.[id],snapshot.arrangement)
+ // The grid and notes only follow which variation/section is current; the
+ // moving playhead lives in PianoRollPlayhead so clock ticks redraw two SVG nodes.
+ const playback=useMonitorSelector(monitor,frame=>{
+  const globalPosition=snapshot.arrangement?arrangementPosition(snapshot.arrangement,frame.cycle,pulses):undefined
+  const position=variationPosition(instrument,globalPosition?.index??frame.section,frame.cycle,pulses,snapshot.sectionOverrides?.[id],snapshot.arrangement)
+  return {sectionLabel:globalPosition?.section.label,variation:position.variation,present:position.present,running:isLoopRunning(frame,id,instrument.loopEnabled!==false)}
+ },visualUpdatesEnabled)
  function save(index:number,roll:PianoRoll){onChange({pianoRolls:instrument.pianoRolls.map((current,i)=>i===index?roll:current)})}
  function removeNote(index:number,roll:PianoRoll,note:number){
   save(index,{...roll,notes:roll.notes.filter((_,i)=>i!==note)})
@@ -74,13 +87,13 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
   {snapshot.sectionOverrides?.[id]!==undefined&&<p>Regra do jogo força somente a variação {String.fromCharCode(65+playback.variation)} e tem prioridade sobre a aba fixa. Tempo, presença e transposição continuam seguindo a seção global.</p>}
   {error&&<p role="alert">{error}</p>}
   {visibleVariations.map(({roll:savedRoll,index})=>{
-   const roll=draft?.index===index?draft.roll:savedRoll, active=playback.variation===index, sounding=active&&isLoopRunning(frame,id,instrument.loopEnabled!==false)
+   const roll=draft?.index===index?draft.roll:savedRoll, active=playback.variation===index, sounding=active&&playback.running
    const low=Math.min(-7,...roll.notes.map(n=>n.degree)),high=Math.max(14,...roll.notes.map(n=>n.degree)),rowHeight=264/(high-low+1)
    const present=playback.present
-   const bars=roll.bars, quantum=1/(pulses*division), cursor=playback.phase%bars
+   const bars=roll.bars, quantum=1/(pulses*division)
    const fixed=instrument.selectedVariation===index
    return <div key={index} style={{border:compact?'none':`1px solid ${active?'#bedb90':'#3a4b40'}`,padding:compact?0:6,marginTop:8,borderRadius:5}}>
-    {compact?<div style={{minHeight:14,textAlign:'right',fontSize:9,color:'#9eafa2'}}>{globalPosition&&`Seção ${globalPosition.section.label} · `}{bars} compassos / {bars*pulses} tempos</div>:<div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
+    {compact?<div style={{minHeight:14,textAlign:'right',fontSize:9,color:'#9eafa2'}}>{playback.sectionLabel!==undefined&&`Seção ${playback.sectionLabel} · `}{bars} compassos / {bars*pulses} tempos</div>:<div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
      <div style={{display:'grid',gap:4}}><button style={{minWidth:98,whiteSpace:'nowrap',color:fixed?'#fff':undefined}} aria-pressed={fixed} onClick={()=>onChange({selectedVariation:fixed?undefined:index})}>Variação {String.fromCharCode(65+index)}</button>{sounding&&<span style={{fontSize:9}}>{present?'Tocando':'Pausa da seção'}</span>}</div>
      <div style={{width:156,marginLeft:'auto'}}><div style={{position:'relative'}}><input aria-label={`Compassos da variação ${index+1}`} inputMode="decimal" value={bars} readOnly style={{paddingRight:64}}/><button type="button" aria-label={`Diminuir duração da variação ${index+1}`} disabled={bars<=1/pulses} onClick={()=>save(index,resizeRoll(roll,Math.max(1/pulses,bars-1/pulses)))} style={{position:'absolute',right:32,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>−</button><button type="button" aria-label={`Aumentar duração da variação ${index+1}`} disabled={bars>=8} onClick={()=>save(index,resizeRoll(roll,Math.min(8,bars+1/pulses)))} style={{position:'absolute',right:3,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>+</button></div><span style={{display:'block',marginTop:3,fontSize:9,color:'#9eafa2'}}>{bars} compassos / {bars*pulses} tempos</span></div>
     </div>}
@@ -109,10 +122,10 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       {Array.from({length:Math.ceil(bars/quantum)+1},(_,i)=><line key={`v${i}`} x1={i*quantum/bars*480} x2={i*quantum/bars*480} y1={0} y2={264} stroke={i%(division*pulses)===0?'#617652':i%division===0?'#3a503e':'#213329'}/>)}
       {Array.from({length:high-low+1},(_,i)=>high-i).filter(degree=>degree%7===0).map(degree=><text key={`degree${degree}`} x={2} y={(high-degree)*rowHeight+rowHeight-2} fill="#a6b7a7" fontSize={8} pointerEvents="none">{degree===0?'0 · tônica':degree}</text>)}
       {roll.notes.map((n,j)=>{const x=n.start/bars*480,width=Math.max(2,n.duration/bars*480-1),handle=Math.min(10,width);return <g key={j}>
-       <rect data-note={j} x={x} y={(high-n.degree)*rowHeight+1} width={width} height={Math.max(2,rowHeight-2)} rx={2} fill={sounding&&present&&cursor>=n.start&&cursor<n.start+n.duration?'#f4e8a5':n.slide?'#dfa67a':'#8fb987'} stroke={selectedNote?.index===index&&selectedNote.note===j?'#fff':'none'} strokeWidth={selectedNote?.index===index&&selectedNote.note===j?2:0} style={{cursor:'grab'}}><title>{`Grau ${n.degree} · tempo ${(n.start*pulses+1).toFixed(2)} · duração ${(n.duration*pulses).toFixed(2)} tempos · duplo clique apaga · Alt+arrastar duplica`}</title></rect>
+       <rect data-note={j} x={x} y={(high-n.degree)*rowHeight+1} width={width} height={Math.max(2,rowHeight-2)} rx={2} fill={n.slide?'#dfa67a':'#8fb987'} stroke={selectedNote?.index===index&&selectedNote.note===j?'#fff':'none'} strokeWidth={selectedNote?.index===index&&selectedNote.note===j?2:0} style={{cursor:'grab'}}><title>{`Grau ${n.degree} · tempo ${(n.start*pulses+1).toFixed(2)} · duração ${(n.duration*pulses).toFixed(2)} tempos · duplo clique apaga · Alt+arrastar duplica`}</title></rect>
        <rect data-note={j} data-mode="resize" x={x+width-handle} y={(high-n.degree)*rowHeight+1} width={handle} height={Math.max(2,rowHeight-2)} fill="transparent" style={{cursor:'ew-resize'}} />
       </g>})}
-      {sounding&&present&&<line data-playhead x1={cursor/bars*480} x2={cursor/bars*480} y1={0} y2={264} stroke="#fff1b7" strokeWidth={2}/>}
+      {sounding&&present&&<PianoRollPlayhead monitor={monitor} snapshot={snapshot} instrument={instrument} id={id} roll={roll} high={high} rowHeight={rowHeight} enabled={visualUpdatesEnabled}/>}
      </svg>
      {actions}
      {selectedNote?.index===index&&roll.notes[selectedNote.note]&&<MusicNoteParams note={roll.notes[selectedNote.note]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selectedNote.note?{...note,...patch}:note)})} onDelete={()=>removeNote(index,roll,selectedNote.note)}/>}

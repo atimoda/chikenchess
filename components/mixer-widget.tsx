@@ -1,6 +1,7 @@
 "use client"
 
-import { forwardRef, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react"
+import { useMonitorSelector } from "@/hooks/use-monitor-selector"
 import { Power, Play, Pause } from "lucide-react"
 import { Draggable } from "./ui/draggable"
 import { Resizable } from "re-resizable"
@@ -58,8 +59,8 @@ function calculateBpmHoverPreview(wrapper: HTMLDivElement, x: number, y: number,
 
 function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityColor }: Pick<MixerWidgetProps, "effects" | "monitor" | "onEffectChange" | "isOn" | "cityColor">) {
   const panelStyle = { "--city-neon": cityColor } as React.CSSProperties
-  const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
-  const bpm = frame.transport?.bpm ?? effects.bpm
+  const liveBpm = useMonitorSelector(monitor, frame => frame.transport?.bpm)
+  const bpm = liveBpm ?? effects.bpm
   const bpmHoverBaseRef = useRef(bpm)
   const bpmHoverWrapperRef = useRef<HTMLDivElement | null>(null)
   const bpmHoverPointerRef = useRef<{ x: number; y: number; onSlider: boolean } | null>(null)
