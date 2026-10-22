@@ -29,9 +29,12 @@ export interface OnlineRoom {
   members: RoomMember[];
 }
 export interface PublicRoom {
+  /** Missing from older backends, which then only refresh the whole list. */
+  room_id?: string;
   code: string;
   creator_name: string;
   players: number;
+  created_at?: string;
 }
 export interface RunningGame {
   id: string;

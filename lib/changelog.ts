@@ -17,9 +17,22 @@ export const CHANGELOG = [
         'A aba "Rooms" passou a se chamar "Lobbies" e traz os botões "Create Public Room" e "Create Private Room", que criam o lobby direto, sem a tela de configuração.',
         'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
         'No globo, os títulos "PUBLIC ROOMS" e "GAMES IN PROGRESS" agora aparecem em caixa alta.',
+        'O online baixa bem menos dados: editar peças numa partida e atualizar a lista de partidas em andamento no globo agora trazem só o que mudou, em vez de tudo de novo. Uma aba de partida esquecida aberta também deixa de baixar a partida a cada reconexão, e cada ajuste de peça chega ao outro jogador só com o parâmetro alterado. A lista de salas públicas do globo se atualiza sala a sala, sem recarregar a lista inteira.',
       ] },
       { title: 'Globo', items: [
         'Na lista de cidades das campanhas, o nome do estilo musical que aparece no hover não recebe mais o mouse nem o toque: passar por cima dele não ativa a cidade e não atrapalha arrastar o globo por trás.',
+      ] },
+      { title: 'Partida', items: [
+        'Na campanha e no online, o contador de golden eggs do adversário passou para o lado esquerdo, acima do tabuleiro, com a mesma largura e o mesmo espaçamento do contador do jogador; as peças capturadas pelo adversário ficam à direita, alinhadas pela direita.',
+        'O status "Your move" fica centralizado logo abaixo da linha de peças capturadas; no turno do adversário, a mensagem aparece centralizada acima do tabuleiro, sobre a linha de capturas de cima.',
+        'No tablet/desktop, o resize do tabuleiro permite crescer mais: até as cartas de super-poderes ficarem cerca de 33% visíveis.',
+      ] },
+      { title: 'Debug', items: [
+        'No widget Debug, os botões passaram a se chamar Piece, Stockfish, Bot e Eggs.',
+        'Novo botão Moves no Debug: por 2 golden eggs, mostra no tabuleiro as 10 melhores jogadas da posição, em vez das 3 do Best moves.',
+        'Novo switch Code no Debug, ligado por padrão, para mostrar ou esconder o código no fundo da partida.',
+        'O widget Bot Control ficou mais compacto, e os campos numéricos ganharam botões − e + que continuam ajustando o valor enquanto ficam pressionados. Os mesmos botões do modo Criativo também passaram a repetir ao segurar.',
+        'O widget Debug Stockfish ganhou a mesma aparência dos demais widgets, com o botão de energia que o fecha.',
       ] },
       { title: 'Tips', items: [
         'As tips do início da partida voltam a avançar: cada nova partida mostra a próxima tip, até acabarem, em vez de repetir sempre a primeira para quem está conectado ao modo online (inclusive como convidado).',

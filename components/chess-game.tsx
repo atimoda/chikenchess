@@ -49,9 +49,10 @@ import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
 import { launchEggFlight, type EggFlight } from "@/lib/egg-flight"
 import { useCapturedPiecesScale, useMatchViewport } from "@/hooks/use-match-layout"
 import { CapturedPieces } from "./match/captured-pieces"
+import { EggCounter, MatchStatus } from "./match/egg-counter"
 import { GameplayTipDialog, useGameplayTip } from "./match/gameplay-tip"
 import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "./match/match-view-controls"
-import { useBoardResize } from "@/hooks/use-board-resize"
+import { BOARD_CARDS_RESIZE_RATIO, useBoardResize } from "@/hooks/use-board-resize"
 import { BoardResizeHandles } from "./board-resize-handles"
 import { GameActionCostHint, GameActionRow, GameBoardChanceBar, GameCityBackground, GameCityTitleIntro, GameFooter, GameWidgetConnections, GameWidgetEntranceStyles, GlobeGridIcon } from "./game-presentation"
 import { BotControlWidget } from "./bot-control-widget"
@@ -128,12 +129,16 @@ function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis
   </div>
 }
 
-function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: 'best' | 'worst'): AnalysisArrow[] {
-  return analysis[kind].map(move => ({
+/** `top` is the Debug Moves shortcut: the ten best moves drawn like Best. */
+type AnalysisArrowKind = 'best' | 'worst' | 'top'
+
+function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: AnalysisArrowKind): AnalysisArrow[] {
+  const moves = kind === 'top' ? analysis.top ?? analysis.best : analysis[kind]
+  return moves.map(move => ({
     from: move.uci.slice(0, 2) as Square,
     to: move.uci.slice(2, 4) as Square,
     label: formatEvaluation(move.score, move.mate),
-    tone: kind,
+    tone: kind === 'worst' ? 'worst' : 'best',
     labelTone: rankedMoveLabelTone(move.score, move.mate),
   }))
 }
@@ -214,7 +219,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [liveMoveAnalysis, setLiveMoveAnalysis] = useState<ChessMoveAnalysis | null>(null)
   const currentCompleteAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
   const botPrePowerAnalysisRef = useRef<ChessMoveAnalysis | null>(null)
-  const analysisArrowKindRef = useRef<'best' | 'worst' | null>(null)
+  const analysisArrowKindRef = useRef<AnalysisArrowKind | null>(null)
   const pendingShownSuggestionsRef = useRef<ShownMoveSuggestions | null>(null)
   const shownSuggestionsRef = useRef<ShownMoveSuggestions[]>([])
   const suggestionPositionKeyRef = useRef<string | null>(null)
@@ -424,7 +429,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }
 
   const { isMobile, isPortraitMobile } = useMatchViewport(boardScale)
-  const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, controlHeightRatio: powerDisplay === "cards" ? 0.32 : 0 })
+  const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, controlHeightRatio: powerDisplay === "cards" ? BOARD_CARDS_RESIZE_RATIO : 0 })
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
@@ -444,6 +449,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [pieceDebugOn, setPieceDebugOn] = useState(false)
   const [liveCodeOn, setLiveCodeOn] = useState(false)
   const [codeBackdropOn, setCodeBackdropOn] = useState(false)
+  const [codeTextOn, setCodeTextOn] = useState(true)
   const toggleCodeBackdrop = () => {
     const next = !codeBackdropOn
     setCodeBackdropOn(next)
@@ -785,13 +791,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, [])
 
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
-  const showAnalysisArrows = useCallback((kind: "best" | "worst") => {
+  const showAnalysisArrows = useCallback((kind: AnalysisArrowKind) => {
     if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w') || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
-    matchUsageRef.current[kind]++
+    // The Debug top-ten view is a testing aid: it does not count as a Best use or a shown suggestion.
+    if (kind !== 'top') matchUsageRef.current[kind]++
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
-    void engineRef.current?.playAnalysisWhistle(kind === 'best' ? 'up' : 'down')
+    void engineRef.current?.playAnalysisWhistle(kind === 'worst' ? 'down' : 'up')
     analysisArrowKindRef.current = kind
-    pendingShownSuggestionsRef.current = { kind, analysis: displayedAnalysis }
+    pendingShownSuggestionsRef.current = kind === 'top' ? null : { kind, analysis: displayedAnalysis }
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
     analysisArrowTimeoutRef.current = window.setTimeout(() => {
       setAnalysisArrows([])
@@ -804,7 +811,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     const kind = analysisArrowKindRef.current
     if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w') || !kind || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
-    pendingShownSuggestionsRef.current = { kind, analysis: displayedAnalysis }
+    pendingShownSuggestionsRef.current = kind === 'top' ? null : { kind, analysis: displayedAnalysis }
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
   }, [displayedAnalysis])
 
@@ -1575,6 +1582,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     || game.isGameOver()
     || gameStatus === "DRAW!"
     || gameStatus.startsWith("CHECKMATE")
+  const statusText = armedPower ? 'Choose a square' : gameStatus
+  const statusAlert = gameStatus.includes("CHECK") || gameStatus.includes("MATE")
+  const statusColor = statusAlert ? "#ef4444" : city.color
+  const statusPlacement = !armedPower && gameStatus === "Bot thinking..." ? "top" : "bottom"
 
   const handleWidgetHeaderClick = useCallback((id: string) => {
     setActiveWidgetOrder(prev => {
@@ -1720,6 +1731,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onToggleBotControl={toggleBotControl}
                 onForceWin={forceWin}
                 onGetEggs={getDebugEggs}
+                onShowTopMoves={button => {
+                  if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) return
+                  spendEggForAction(button, 2, () => showAnalysisArrows("top"))
+                }}
+                topMovesDisabled={introPhase !== 3 || playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.length > 0}
+                codeVisible={codeTextOn}
+                onToggleCodeVisible={() => setCodeTextOn(on => !on)}
                 playback={liveCodeOn && music.engineActive ? <>
                   <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
                   {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
@@ -1804,7 +1822,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       <GameWidgetEntranceStyles />
       <GameCityBackground city={city} isBackgroundDark={isBackgroundDark} introPhase={introPhase} />
 
-      {codeBackdropOn && introPhase === 3 && (
+      {codeBackdropOn && codeTextOn && introPhase === 3 && (
         <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-75" aria-hidden="true">
           <pre className="h-full w-full overflow-hidden whitespace-pre-wrap break-all px-6 pb-6 pt-14 font-mono text-[10px] leading-4 text-[#78ff93] [text-shadow:0_0_6px_rgba(57,255,20,0.55)]">
             {music.code}
@@ -2000,31 +2018,24 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             ref={centerContainerRef}
           >
 
-            <div className="min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none mb-1 flex items-center justify-between gap-1.5">
-              <CapturedPieces pieces={capturedPieces.black} color="w" align="center" {...capturedScale.opponent} />
-
-              <div
+            <div className="relative min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none mb-2 sm:mb-3 flex items-center justify-between gap-1.5">
+              {statusPlacement === "top" && <MatchStatus placement="top" text={statusText} color={statusColor} pulse={statusAlert} className={cn("transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")} />}
+              <EggCounter
                 ref={opponentEggCounterRef}
+                tone="opponent"
+                value={visibleOpponentEggs}
+                widthFor={[visibleEggs, visibleOpponentEggs]}
                 role={activeBot.isPureChess ? undefined : "img"}
                 aria-hidden={activeBot.isPureChess ? "true" : undefined}
                 aria-label={activeBot.isPureChess ? undefined : `${visibleOpponentEggs} golden egg${visibleOpponentEggs === 1 ? "" : "s"} for the opponent`}
                 className={cn(
-                  "flex h-8 w-fit shrink-0 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold transition-opacity duration-1000",
-                  activeBot.isPureChess
-                    ? "invisible pointer-events-none border-zinc-500/20 text-zinc-400/50"
-                    : "border-zinc-500/50 text-zinc-300",
+                  "transition-opacity duration-1000",
+                  activeBot.isPureChess && "invisible pointer-events-none",
                   introPhase < 3 ? "opacity-0" : "opacity-100",
                 )}
-              >
-                <span>{visibleOpponentEggs.toLocaleString()}</span>
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#f4f4f5_0%,#a1a1aa_43%,#52525b_100%)] shadow-[0_0_6px_#a1a1aa33]",
-                    activeBot.isPureChess && "opacity-40",
-                  )}
-                />
-              </div>
+              />
+
+              <CapturedPieces pieces={capturedPieces.black} color="w" align="center" justify="end" {...capturedScale.opponent} />
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center w-full relative z-20 pointer-events-none">
@@ -2102,6 +2113,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   }}
                 />
                 {stockfishDebugOn && codeBackdropOn && introPhase === 3 && <StockfishDebugOverlay
+                  cityColor={city.color}
                   trace={stockfishTrace}
                   analysis={displayedAnalysis}
                   onClose={toggleStockfishDebug}
@@ -2112,7 +2124,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 />}
               </div>
 
-              <div className="mb-1 sm:mb-2 flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none">
+              <div className="flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none">
                 <CapturedPieces
                   pieces={capturedPieces.white}
                   color="b"
@@ -2122,32 +2134,20 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   {...capturedScale.player}
                 />
 
-                <div className="flex shrink-0 items-center gap-1.5 self-center">
-                  <div
-                    role="status"
-                    className={cn(
-                      "min-w-0 text-right text-[9px] sm:text-xs font-mono transition-opacity duration-1000",
-                      (gameStatus.includes("CHECK") || gameStatus.includes("MATE")) && "animate-pulse",
-                      introPhase < 3 ? "opacity-0" : "opacity-100",
-                    )}
-                    style={{ color: gameStatus.includes("CHECK") || gameStatus.includes("MATE") ? "#ef4444" : city.color }}
-                  >{armedPower ? 'Choose a square' : gameStatus}</div>
-                  <div
-                    ref={eggCounterRef}
-                    role="img"
-                    aria-label={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"} for you`}
-                    title={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"}`}
-                    className={cn(
-                      "flex h-8 w-fit min-w-14 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold transition-opacity duration-1000",
-                      visibleEggs === 0 ? "border-red-500/80 text-red-400" : "border-amber-400/50 text-amber-200",
-                      introPhase < 3 ? "opacity-0" : "opacity-100",
-                    )}
-                  >
-                    <span>{visibleEggs.toLocaleString()}</span>
-                    <span aria-hidden="true" className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]" />
-                  </div>
-                </div>
+                <EggCounter
+                  ref={eggCounterRef}
+                  tone="player"
+                  value={visibleEggs}
+                  widthFor={[visibleEggs, visibleOpponentEggs]}
+                  empty={visibleEggs === 0}
+                  role="img"
+                  aria-label={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"} for you`}
+                  title={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"}`}
+                  className={cn("self-center transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}
+                />
               </div>
+
+              <MatchStatus placement="bottom" text={statusPlacement === "bottom" ? statusText : ""} color={statusColor} pulse={statusAlert} className={cn("mb-1 sm:mb-2 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")} />
 
               {powerDisplay === "cards" ? <PowerCardHand visible={introPhase === 3} undoAnimationKey={undoAnimationKey} actions={{
                 best: {

@@ -33,7 +33,7 @@ import { getSfxEngine } from "@/lib/sfx-engine";
 import { useMusic } from "@/hooks/use-music";
 import { useOnlineMatch } from "@/hooks/use-online-match";
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout";
-import { useBoardResize } from "@/hooks/use-board-resize";
+import { BOARD_CARDS_RESIZE_RATIO, useBoardResize } from "@/hooks/use-board-resize";
 import { BoardResizeHandles } from "@/components/board-resize-handles";
 import { useOnlineAnalysis } from "@/hooks/use-online-analysis";
 import { usePowerTargetingGesture } from "@/hooks/use-power-targeting-gesture";
@@ -54,6 +54,7 @@ import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode";
 import { useCrossfaderSync } from "@/hooks/use-crossfader-sync";
 import { useCapturedPiecesScale, useMatchViewport } from "@/hooks/use-match-layout";
 import { CapturedPieces } from "../match/captured-pieces";
+import { EggCounter, MatchStatus } from "../match/egg-counter";
 import { GameplayTipDialog, useGameplayTip } from "../match/gameplay-tip";
 import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "../match/match-view-controls";
 import { MixerWidget } from "../mixer-widget";
@@ -275,6 +276,7 @@ export function OnlineMatchBoard({
   const { isMobile, isPortraitMobile } = useMatchViewport();
   const [spectrogramOn, setSpectrogramOn] = useState(false);
   const [codeBackdropOn, setCodeBackdropOn] = useState(false);
+  const [codeTextOn, setCodeTextOn] = useState(true);
   const [liveCodeOn, setLiveCodeOn] = useState(false);
   const [pieceDebugOn, setPieceDebugOn] = useState(false);
   const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([]);
@@ -334,7 +336,7 @@ export function OnlineMatchBoard({
   const [arrows, setArrows] = useState<AnalysisArrow[]>([]);
   const [pieceSaveError, setPieceSaveError] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
-  const boardResize = useBoardResize({ boardRef, enabled: !isPortraitMobile, controlHeightRatio: powerDisplay === "cards" ? 0.32 : 0 });
+  const boardResize = useBoardResize({ boardRef, enabled: !isPortraitMobile, controlHeightRatio: powerDisplay === "cards" ? BOARD_CARDS_RESIZE_RATIO : 0 });
   const queuedPieces = useRef(
     new Map<string, { instrument: Instrument; effects?: SquareEffects }>(),
   );
@@ -346,6 +348,7 @@ export function OnlineMatchBoard({
   const previousMoves = useRef(replay.game.history().length);
   const [mulliganAnimationKey, setMulliganAnimationKey] = useState(0);
   const animateMulligan = useCallback(() => setMulliganAnimationKey(key => key + 1), []);
+  const { publishPiece } = online;
   const flushPieces = useCallback(async () => {
     const client = getOnlineClient();
     if (!client || savingPieces.current || !queuedPieces.current.size) return;
@@ -358,11 +361,13 @@ export function OnlineMatchBoard({
         const batch = [...queuedPieces.current];
         for (const [pieceId, values] of batch) {
           if (!alive.current) break;
-          const { error } = await client.functions.invoke("piece-params", {
+          const { data, error } = await client.functions.invoke<{ revision?: number }>("piece-params", {
             timeout: 20000,
             body: { matchId: match.id, pieceId, ...values },
           });
           if (error) throw error;
+          if (typeof data?.revision === "number")
+            publishPiece(pieceId, data.revision, values.instrument, values.effects);
           if (queuedPieces.current.get(pieceId) === values)
             queuedPieces.current.delete(pieceId);
         }
@@ -376,7 +381,7 @@ export function OnlineMatchBoard({
       savingPieces.current = false;
       if (alive.current) setSaveEpoch((n) => n + 1);
     }
-  }, [match.id]);
+  }, [match.id, publishPiece]);
   const onPieceChange = useCallback(
     (id: string, instrument: Instrument, effects?: SquareEffects) => {
       if (!id.startsWith(`${color}:`)) return;
@@ -1058,6 +1063,8 @@ export function OnlineMatchBoard({
             style={panelStyle("liveCode")}
             onClickCapture={() => bringToFront("liveCode")}
             stockfishDebugOn={false}
+            codeVisible={codeTextOn}
+            onToggleCodeVisible={() => setCodeTextOn((on) => !on)}
             pieceDebugOn={pieceDebugOn}
             onTogglePieceDebug={() =>
               toggleWidget("pieceDebug", setPieceDebugOn)
@@ -1099,6 +1106,8 @@ export function OnlineMatchBoard({
                 ? "Your move · Check!"
                 : "Your move"
               : "Opponent thinking...";
+  const statusPlacement = !online.busy && !movePreview && online.connected && !result && !armedPower && !ownTurn ? "top" : "bottom";
+  const statusColor = replay.game.isCheck() ? "#ef4444" : city.color;
   const captured = replay.game
     .history({ verbose: true })
     .filter((move) => move.captured);
@@ -1129,7 +1138,7 @@ export function OnlineMatchBoard({
         isBackgroundDark={introExitStarted}
         introPhase={introPhase}
       />
-      {codeBackdropOn && introPhase === 3 && (
+      {codeBackdropOn && codeTextOn && introPhase === 3 && (
         <div
           className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-75"
           aria-hidden="true"
@@ -1294,22 +1303,19 @@ export function OnlineMatchBoard({
           style={{ marginTop: !isMobile ? "max(90px, calc(50vh - 350px))" : "0px" }}
         >
           <div
-            className="min-h-[2rem] h-8 w-[var(--game-board-width)] flex justify-between items-center overflow-hidden mb-1 gap-1.5"
+            className="relative min-h-[2rem] h-8 w-[var(--game-board-width)] flex justify-between items-center mb-2 sm:mb-3 gap-1.5"
             aria-label="Peças capturadas do adversário e ovos"
           >
-            <CapturedPieces pieces={opponentCaptures} color={opponent.color === "w" ? "b" : "w"} align="center" {...capturedScale.opponent} />
-            <div
-              role="img"
+            {statusPlacement === "top" && <MatchStatus placement="top" text={status} color={statusColor} className={cn("transition-opacity duration-1000", intro ? "opacity-0" : "opacity-100")} />}
+            <EggCounter
               ref={opponentEggCounterRef}
+              tone="opponent"
+              value={visibleOpponentEggs}
+              widthFor={[visibleOwnEggs, visibleOpponentEggs]}
+              role="img"
               aria-label={`${visibleOpponentEggs} golden eggs for the opponent`}
-              className="flex h-8 w-fit shrink-0 items-center justify-center gap-1.5 rounded-md border border-zinc-500/50 bg-black/45 px-2 font-mono text-xs font-bold text-zinc-300"
-            >
-              <span>{visibleOpponentEggs}</span>
-              <span
-                aria-hidden="true"
-                className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#f4f4f5_0%,#a1a1aa_43%,#52525b_100%)] shadow-[0_0_6px_#a1a1aa33]"
-              />
-            </div>
+            />
+            <CapturedPieces pieces={opponentCaptures} color={opponent.color === "w" ? "b" : "w"} align="center" justify="end" {...capturedScale.opponent} />
           </div>
           <div
             ref={boardRef}
@@ -1388,7 +1394,7 @@ export function OnlineMatchBoard({
           </div>
           <div
             className={cn(
-              "mb-1 sm:mb-2 flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none transition-opacity duration-1000",
+              "flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none transition-opacity duration-1000",
               intro ? "opacity-0" : "opacity-100",
             )}
           >
@@ -1401,33 +1407,23 @@ export function OnlineMatchBoard({
               {...capturedScale.player}
             />
 
-            <div className="flex shrink-0 items-center gap-1.5 self-center">
-              <div
-                role="status"
-                className="min-w-0 text-right text-[9px] sm:text-xs font-mono"
-                style={{ color: replay.game.isCheck() ? "#ef4444" : city.color }}
-              >
-                {status}
-              </div>
-              <div
-                role="img"
-                ref={ownEggCounterRef}
-                aria-label={`${visibleOwnEggs} golden eggs for you`}
-                className={cn(
-                  "flex h-8 w-fit min-w-14 items-center justify-center gap-1.5 rounded-md border bg-black/45 px-2 font-mono text-xs font-bold",
-                  currentEggs === 0
-                    ? "border-red-500/80 text-red-400"
-                    : "border-amber-400/50 text-amber-200",
-                )}
-              >
-                <span>{visibleOwnEggs}</span>
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-[19px] w-[15px] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)] shadow-[0_0_8px_#fbbf24]"
-                />
-              </div>
-            </div>
+            <EggCounter
+              ref={ownEggCounterRef}
+              tone="player"
+              value={visibleOwnEggs}
+              widthFor={[visibleOwnEggs, visibleOpponentEggs]}
+              empty={currentEggs === 0}
+              role="img"
+              aria-label={`${visibleOwnEggs} golden eggs for you`}
+              className="self-center"
+            />
           </div>
+          <MatchStatus
+            placement="bottom"
+            text={statusPlacement === "bottom" ? status : ""}
+            color={statusColor}
+            className={cn("mb-1 sm:mb-2 transition-opacity duration-1000", intro ? "opacity-0" : "opacity-100")}
+          />
           {powerDisplay === "cards" ? <PowerCardHand visible={!intro} undoAnimationKey={mulliganAnimationKey} actions={{
             best: { disabled: !canShowSuggestions("best"), onClick: () => show("best") },
             worst: { disabled: !canShowSuggestions("worst"), onClick: () => show("worst") },

@@ -25,6 +25,9 @@ export function getOnlineClient(): SupabaseClient | null {
         detectSessionInUrl: true,
         storageKey: 'chickenchess:online:auth',
       },
+      // Background tabs throttle timers; a worker keeps the heartbeat alive so
+      // a forgotten match tab does not reconnect (and resync) over and over.
+      realtime: { worker: true },
     })
   }
   return client

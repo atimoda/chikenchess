@@ -8,6 +8,28 @@ import { yourTurnGameOpponents } from '@/lib/online/lobby-updates'
 import type { RunningGame } from '@/lib/online/types'
 
 let channelSequence = 0
+// Set once the database rejects the delta call (not yet migrated).
+let fullListOnly = false
+
+/** The server omits actions for games whose updated_at the client already holds. */
+async function loadRunningGames(cache: Map<string, RunningGame>): Promise<RunningGame[]> {
+  let games: RunningGame[] | null = null
+  if (!fullListOnly) {
+    const known = Object.fromEntries([...cache.values()].filter(game => game.actions).map(game => [game.id, game.updated_at]))
+    try {
+      games = await onlineRpc<RunningGame[]>('online_running_games', { p_known: known })
+    } catch (cause) {
+      if ((cause as { code?: string })?.code !== 'PGRST202') throw cause
+      fullListOnly = true
+    }
+  }
+  if (fullListOnly) games = await onlineRpc<RunningGame[]>('online_running_games')
+  return (games ?? []).map(game => {
+    if (game.actions) return game
+    const held = cache.get(game.id)
+    return held?.updated_at === game.updated_at && held.actions ? { ...game, actions: held.actions } : game
+  })
+}
 
 /** Match membership survives lobby changes; recovering this list never navigates. */
 export function useRunningGames() {
@@ -25,6 +47,7 @@ export function useRunningGames() {
     let hasSubscribedOnce = false
     let isSubscribed = false
     let previous: RunningGame[] | null = null
+    const cache = new Map<string, RunningGame>()
     const refresh = async () => {
       const request = ++revision
       try {
@@ -32,9 +55,10 @@ export function useRunningGames() {
         if (error) throw error
         if (!active) return
         if (data.session?.user.id !== userId) throw new Error('A sessão online mudou. Entre novamente e tente carregar suas partidas.')
-        const games = await onlineRpc<RunningGame[]>('online_running_games')
+        const list = await loadRunningGames(cache)
         if (active && request === revision) {
-          const list = games ?? []
+          cache.clear()
+          for (const game of list) cache.set(game.id, game)
           const opponents = yourTurnGameOpponents(previous, list)
           if (opponents.length) {
             playLobbyJoinSound()

@@ -1,12 +1,15 @@
 "use client"
 
+import type React from "react"
 import { useEffect, useRef, useState, type RefObject } from "react"
 import { createPortal } from "react-dom"
+import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import type { ChessMoveAnalysis, StockfishTrace } from "@/lib/chess-evaluation"
 import { formatEvaluation } from "@/lib/chess-evaluation"
 
 interface Props {
+  cityColor: string
   trace: StockfishTrace | null
   analysis: ChessMoveAnalysis | null
   onClose: () => void
@@ -16,7 +19,7 @@ interface Props {
   onPositionChange: (position: { x: number; y: number }) => void
 }
 
-export function StockfishDebugOverlay({ trace, analysis, onClose, onRetry, boardRef, position, onPositionChange }: Props) {
+export function StockfishDebugOverlay({ cityColor, trace, analysis, onClose, onRetry, boardRef, position, onPositionChange }: Props) {
   const [mounted, setMounted] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const dragHandleRef = useRef<HTMLDivElement>(null)
@@ -66,21 +69,31 @@ export function StockfishDebugOverlay({ trace, analysis, onClose, onRetry, board
     style={{ position: 'fixed', zIndex: 1000 }}
   ><section
     aria-label="Debug stockfish"
-    className="flex h-full w-full flex-col overflow-hidden rounded border border-emerald-400/60 bg-black/90 font-mono text-[10px] text-white shadow-xl backdrop-blur-sm"
+    className="relative flex h-full w-full flex-col font-mono text-[10px] text-white"
+    style={{ "--city-neon": cityColor } as React.CSSProperties}
     onClick={event => event.stopPropagation()}
   >
-    <div className="flex shrink-0 items-center justify-between border-b border-white/20 px-2 py-1.5">
-      <div ref={dragHandleRef} className="min-w-0 flex-1 cursor-move touch-none select-none text-emerald-300" title="Arraste para mover o Debug stockfish">
-        <strong>DEBUG STOCKFISH</strong>
-      </div>
-      <div className="flex gap-2">
-        {trace?.phase === 'error' && <button type="button" onClick={onRetry} className="text-amber-300 hover:text-amber-100">Retry</button>}
-        <button type="button" aria-label="Fechar Debug stockfish" onClick={onClose} className="rounded px-1 text-white/70 hover:bg-white/15 hover:text-white">×</button>
-      </div>
+    <div
+      className="absolute inset-0 rounded-md border bg-black/85 backdrop-blur-md"
+      style={{ borderColor: "rgba(255,255,255,0.3)", boxShadow: `0 0 20px ${cityColor}40` }}
+    />
+    <button
+      type="button"
+      aria-label="Desligar Debug stockfish"
+      className="absolute z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border bg-background text-[var(--city-neon)] shadow-md transition-all hover:text-[#60a5fa]"
+      style={{ borderColor: "rgba(255,255,255,0.3)", top: -5, left: -8, boxShadow: `0 0 10px ${cityColor}40` }}
+      onPointerDown={event => event.stopPropagation()}
+      onClick={event => { event.stopPropagation(); onClose() }}
+    >
+      <Power className="h-4 w-4 drop-shadow-[0_0_8px_currentColor]" />
+    </button>
+    <div ref={dragHandleRef} className="relative z-10 flex h-9 shrink-0 cursor-move touch-none select-none items-center justify-center px-8" title="Arraste para mover o Debug stockfish">
+      <span className="truncate text-center text-xs font-bold uppercase tracking-wider text-white">DEBUG STOCKFISH</span>
+      {trace?.phase === 'error' && <button type="button" data-no-drag="true" onPointerDown={event => event.stopPropagation()} onClick={onRetry} className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-300 hover:text-amber-100">Retry</button>}
     </div>
-    <div className="debug-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
+    <div className="debug-scroll relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2.5 pb-2.5">
       {!current ? <p className="py-2 text-white/55">Aguardando a posição…</p> : <>
-        <div className="sticky top-0 z-10 bg-black/95 py-1 text-white/70">
+        <div className="sticky top-0 z-10 bg-black/90 py-1 text-white/70">
           <div>{current.phase.toUpperCase()} · {current.side === 'w' ? 'White' : 'Black'} to move · {current.legalMoves} legal</div>
           <div>depth {current.depth} · complete {current.completeDepth || '—'} · {current.nodes.toLocaleString()} nodes · {current.engineMs} ms · {current.nps.toLocaleString()} nps</div>
         </div>

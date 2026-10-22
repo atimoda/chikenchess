@@ -99,7 +99,7 @@ export async function analyzePoweredMoves(
   const elapsed = Math.round(globalThis.performance.now() - started)
   return {
     fen: game.fen(), side, legalMoves: rootMoves.length, final: true,
-    best: scored.slice(0, 3), worst: scored.slice(-3).reverse(), complete: scored.length === rootMoves.length,
+    best: scored.slice(0, 3), worst: scored.slice(-3).reverse(), top: scored.slice(0, 10), complete: scored.length === rootMoves.length,
     depth: 3, nodes, elapsedMs: elapsed, engineMs: elapsed, quickMs: 0, quickNodes: 0, quickDepth: 0,
     source: 'powers',
   }

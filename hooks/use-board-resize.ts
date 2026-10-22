@@ -6,6 +6,13 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 
 export type BoardResizeCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
+/**
+ * Power cards are 30% of the board width tall (hand at 80%, card at 25%, 2:3). Reserving 10% lets
+ * a manual resize grow the board until only a third of the cards stays in view; the fixed rows
+ * between board and cards fit inside the 100 px bottom margin used by `limits`.
+ */
+export const BOARD_CARDS_RESIZE_RATIO = 0.1
+
 interface BoardResizeOptions {
   boardRef: RefObject<HTMLDivElement | null>
   enabled: boolean
