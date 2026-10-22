@@ -29,6 +29,10 @@ interface LiveCodeWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   onToggleBotControl?: () => void
   onForceWin?: () => void
   onGetEggs?: () => void
+  onShowTopMoves?: (button: HTMLButtonElement) => void
+  topMovesDisabled?: boolean
+  codeVisible?: boolean
+  onToggleCodeVisible?: () => void
   pieceDebugOn: boolean
   onTogglePieceDebug: () => void
 }
@@ -52,6 +56,10 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   onToggleBotControl,
   onForceWin,
   onGetEggs,
+  onShowTopMoves,
+  topMovesDisabled = false,
+  codeVisible = true,
+  onToggleCodeVisible,
   pieceDebugOn,
   onTogglePieceDebug,
   ...props
@@ -215,19 +223,39 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               aria-pressed={pieceDebugOn}
               onClick={event => { event.stopPropagation(); onTogglePieceDebug() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", pieceDebugOn ? "border-sky-300/70 bg-sky-300/15 text-sky-200" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >Piece debug</button>
+            >Piece</button>
             {onToggleStockfishDebug && <button
               type="button"
               aria-pressed={stockfishDebugOn}
               onClick={event => { event.stopPropagation(); onToggleStockfishDebug() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", stockfishDebugOn ? "border-emerald-400/70 bg-emerald-400/20 text-emerald-300" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >Debug SF</button>}
+            >Stockfish</button>}
             {onToggleBotControl && <button
               type="button"
               aria-pressed={botControlOn}
               onClick={event => { event.stopPropagation(); onToggleBotControl() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", botControlOn ? "border-amber-300/70 bg-amber-300/15 text-amber-200" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >Bot control</button>}
+            >Bot</button>}
+            {onShowTopMoves && <button
+              type="button"
+              disabled={topMovesDisabled}
+              title="Veja as 10 melhores jogadas · 2 golden eggs"
+              onClick={event => { event.stopPropagation(); onShowTopMoves(event.currentTarget) }}
+              className="rounded border border-green-300/35 px-2 py-1 font-mono text-[10px] text-green-100/80 transition-colors hover:border-green-200/70 hover:text-green-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >Moves</button>}
+            {onToggleCodeVisible && <button
+              type="button"
+              role="switch"
+              aria-checked={codeVisible}
+              title={codeVisible ? "Esconder o código no fundo" : "Mostrar o código no fundo"}
+              onClick={event => { event.stopPropagation(); onToggleCodeVisible() }}
+              className={cn("flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] transition-colors", codeVisible ? "border-[#78ff93]/60 bg-[#78ff93]/10 text-[#b6ffc4]" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
+            >
+              <span aria-hidden="true" className={cn("relative h-2.5 w-[18px] shrink-0 rounded-full transition-colors", codeVisible ? "bg-[#78ff93]/70" : "bg-white/25")}>
+                <span className={cn("absolute top-[1px] h-2 w-2 rounded-full bg-white transition-[left]", codeVisible ? "left-[9px]" : "left-[1px]")} />
+              </span>
+              Code
+            </button>}
             {onForceWin && <button
               type="button"
               onClick={event => { event.stopPropagation(); onForceWin() }}
@@ -237,7 +265,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               type="button"
               onClick={event => { event.stopPropagation(); onGetEggs() }}
               className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white"
-            >Get eggs</button>}
+            >Eggs</button>}
           </div>
           {playback && <div className="debug-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden space-y-1 pr-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
 

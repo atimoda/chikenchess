@@ -7,6 +7,7 @@ import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { cn } from "@/lib/utils"
 import type { BotConfigParams, BotProfile } from "@/lib/chess-bots"
+import { StepperButton, stepValue } from "@/components/compact-number-input"
 
 interface BotControlWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   cityColor: string
@@ -38,30 +39,44 @@ interface NumberFieldProps {
 }
 
 function ParamField({ label, code, value, min, max, step = 1, suffix, disabled, onChange }: NumberFieldProps) {
+  // Held +/- buttons repeat faster than the parent re-renders, so step from the latest value.
+  const valueRef = useRef(value)
+  valueRef.current = value
+  const adjust = (direction: -1 | 1) => {
+    const next = stepValue(valueRef.current, direction, min, max, step)
+    if (next === valueRef.current) return
+    valueRef.current = next
+    onChange(next)
+  }
+  const stepperClass = "absolute top-1/2 flex h-3.5 w-3.5 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-full border border-white/25 bg-white/10 p-0 text-[10px] leading-none text-white/80 transition-colors hover:border-white/60 hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
   return (
-    <label className={cn("flex items-center justify-between gap-2 rounded bg-white/[0.03] px-2 py-1", disabled && "opacity-45")}>
+    <label className={cn("flex items-center justify-between gap-2 rounded bg-white/[0.03] px-2 py-0.5", disabled && "opacity-45")}>
       <span className="min-w-0 flex-1 truncate text-[10px] text-white/80" title={`${code}: ${label}`}>
         <b className="text-white">{code}</b> · {label}
       </span>
       <span className="flex shrink-0 items-center gap-1">
-        <input
-          type="number"
-          aria-label={`${code} ${label}`}
-          value={value}
-          min={min}
-          max={max}
-          step={step}
-          disabled={disabled}
-          onClick={event => event.stopPropagation()}
-          onPointerDown={event => event.stopPropagation()}
-          onChange={event => {
-            const parsed = Number(event.target.value)
-            if (!Number.isFinite(parsed)) return
-            const clamped = Math.max(min, Math.min(max, parsed))
-            onChange(clamped)
-          }}
-          className="w-14 rounded border border-white/20 bg-black/70 px-1.5 py-0.5 text-right font-mono text-[10px] text-white focus:border-white/60 focus:outline-none disabled:cursor-not-allowed"
-        />
+        <span className="relative w-[4.5rem]">
+          <input
+            type="number"
+            aria-label={`${code} ${label}`}
+            value={value}
+            min={min}
+            max={max}
+            step={step}
+            disabled={disabled}
+            onClick={event => event.stopPropagation()}
+            onPointerDown={event => event.stopPropagation()}
+            onChange={event => {
+              const parsed = Number(event.target.value)
+              if (!Number.isFinite(parsed)) return
+              const clamped = Math.max(min, Math.min(max, parsed))
+              onChange(clamped)
+            }}
+            className="w-full rounded border border-white/20 bg-black/70 py-0.5 pl-1.5 pr-9 text-right font-mono text-[10px] text-white [appearance:textfield] focus:border-white/60 focus:outline-none disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <StepperButton aria-label={`Diminuir ${code} ${label}`} disabled={disabled || value <= min} onStep={() => adjust(-1)} className={cn(stepperClass, "right-[19px]")}>−</StepperButton>
+          <StepperButton aria-label={`Aumentar ${code} ${label}`} disabled={disabled || value >= max} onStep={() => adjust(1)} className={cn(stepperClass, "right-[2px]")}>+</StepperButton>
+        </span>
         {suffix && <span className="w-3 font-mono text-[10px] text-white/55">{suffix}</span>}
       </span>
     </label>
@@ -103,7 +118,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
       {...props}
     >
       <Resizable
-        defaultSize={{ width: 256, height: 350 }}
+        defaultSize={{ width: 256, height: 310 }}
         size={isStatic ? { width: "100%", height: "auto" } : undefined}
         minWidth={210}
         minHeight={isStatic ? undefined : 160}
@@ -181,8 +196,8 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           </span>
         </div>
 
-        <div className="debug-scroll relative z-10 min-h-0 flex-1 space-y-2 overflow-y-auto px-2.5 py-2 font-mono text-[10px] leading-relaxed text-white/80">
-          <div className="flex items-center justify-between gap-2 rounded bg-white/[0.04] px-2 py-1">
+        <div className="debug-scroll relative z-10 min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2.5 py-1.5 font-mono text-[10px] leading-tight text-white/80">
+          <div className="mb-1 flex items-center justify-between gap-2 rounded bg-white/[0.04] px-2 py-1">
             <span className="truncate font-bold text-white">{bot.name}</span>
             <span className={cn(
               "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase",
@@ -203,7 +218,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
             onChange={delaySeconds => onParamsChange({ delaySeconds })}
           />
 
-          <div className="pt-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-300/85">
+          <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-300/85">
             Freeze {!isChicken && "(inativo em PureChess)"}
           </div>
           <ParamField
@@ -238,7 +253,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
             onChange={freezeEveryMoves => onParamsChange({ freezeEveryMoves: Math.round(freezeEveryMoves) })}
           />
 
-          <div className="pt-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300/85">
+          <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300/85">
             Shield {!isChicken && "(inativo em PureChess)"}
           </div>
           <ParamField
@@ -263,7 +278,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
             onChange={shieldChanceAbovePercent => onParamsChange({ shieldChanceAbovePercent })}
           />
 
-          <div className="pt-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300/85">
+          <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300/85">
             Buscar 3 Ovos (Worst) {!isChicken && "(inativo em PureChess)"}
           </div>
           <ParamField
@@ -289,7 +304,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
 
           {canSaveBot && onSaveBot && (
-            <div className="pt-1">
+            <div className="pt-1.5">
               <button
                 type="button"
                 disabled={savingBot}

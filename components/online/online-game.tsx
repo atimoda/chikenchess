@@ -276,6 +276,7 @@ export function OnlineMatchBoard({
   const { isMobile, isPortraitMobile } = useMatchViewport();
   const [spectrogramOn, setSpectrogramOn] = useState(false);
   const [codeBackdropOn, setCodeBackdropOn] = useState(false);
+  const [codeTextOn, setCodeTextOn] = useState(true);
   const [liveCodeOn, setLiveCodeOn] = useState(false);
   const [pieceDebugOn, setPieceDebugOn] = useState(false);
   const [activeWidgetOrder, setActiveWidgetOrder] = useState<string[]>([]);
@@ -1062,6 +1063,8 @@ export function OnlineMatchBoard({
             style={panelStyle("liveCode")}
             onClickCapture={() => bringToFront("liveCode")}
             stockfishDebugOn={false}
+            codeVisible={codeTextOn}
+            onToggleCodeVisible={() => setCodeTextOn((on) => !on)}
             pieceDebugOn={pieceDebugOn}
             onTogglePieceDebug={() =>
               toggleWidget("pieceDebug", setPieceDebugOn)
@@ -1135,7 +1138,7 @@ export function OnlineMatchBoard({
         isBackgroundDark={introExitStarted}
         introPhase={introPhase}
       />
-      {codeBackdropOn && introPhase === 3 && (
+      {codeBackdropOn && codeTextOn && introPhase === 3 && (
         <div
           className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-75"
           aria-hidden="true"
