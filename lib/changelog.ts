@@ -18,6 +18,11 @@ export const CHANGELOG = [
         'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
         'O online baixa bem menos dados: editar peças numa partida e atualizar a lista de partidas em andamento no globo agora trazem só o que mudou, em vez de tudo de novo. Uma aba de partida esquecida aberta também deixa de baixar a partida a cada reconexão, e cada ajuste de peça chega ao outro jogador só com o parâmetro alterado. A lista de salas públicas do globo se atualiza sala a sala, sem recarregar a lista inteira.',
       ] },
+      { title: 'Partida', items: [
+        'Na campanha e no online, o contador de golden eggs do adversário passou para o lado esquerdo, acima do tabuleiro, com a mesma largura e o mesmo espaçamento do contador do jogador; as peças capturadas pelo adversário ficam à direita, alinhadas pela direita.',
+        'O status "Your move" fica centralizado logo abaixo da linha de peças capturadas; no turno do adversário, a mensagem aparece centralizada acima do tabuleiro, sobre a linha de capturas de cima.',
+        'No tablet/desktop, o resize do tabuleiro permite crescer mais: até as cartas de super-poderes ficarem cerca de 33% visíveis.',
+      ] },
       { title: 'Tips', items: [
         'As tips do início da partida voltam a avançar: cada nova partida mostra a próxima tip, até acabarem, em vez de repetir sempre a primeira para quem está conectado ao modo online (inclusive como convidado).',
       ] },
