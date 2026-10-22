@@ -111,7 +111,7 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
                 onClick={() => { if (!suppressClick.current) { onFocus(city.id); onOpen(city) } }}>
                 <span className="pointer-events-auto shrink-0">{city.year} {city.name}</span>
                 {active && <span className={styles.genre}>{city.genre}</span>}
-                {conquered && <span className={`${styles.flagIcon} pointer-events-auto ${active ? styles.flagIconActive : ''}`} style={{ '--flag-color': cityFlagColor(city.color) } as CSSProperties} aria-label="Conquistada" title="Conquistada"><svg viewBox="0 0 16 16" aria-hidden="true"><path className={styles.flagPole} d="M3.2 14V2.2"/><path className={styles.flagCloth} d="M3.7 2.7c3-1.6 5 1.1 9-.4v5.2c-3.8 1.5-6-1.1-9 .4z"/></svg></span>}
+                {conquered && <span className={`${styles.flagIcon} ${active ? styles.flagIconActive : ''}`} style={{ '--flag-color': cityFlagColor(city.color) } as CSSProperties} aria-label="Conquistada" title="Conquistada"><svg viewBox="0 0 16 16" aria-hidden="true"><path className={styles.flagPole} d="M3.2 14V2.2"/><path className={styles.flagCloth} d="M3.7 2.7c3-1.6 5 1.1 9-.4v5.2c-3.8 1.5-6-1.1-9 .4z"/></svg></span>}
               </button>
             </li>
           })}
