@@ -163,6 +163,8 @@ export class ChessEvaluationQueue {
     this.budget = ANALYSIS_BUDGETS[constrained ? 'constrained' : 'desktop']
   }
   initialize() { this.worker.postMessage('uci') }
+  /** A failed queue ignores every later request until its worker is replaced. */
+  get hasFailed() { return this.failed }
   bestAvailableMove(fen: string): string | null {
     const active = this.active
     if (!active || active.cancelled || active.request.fen !== fen || active.request.key !== this.requestedKey) return null

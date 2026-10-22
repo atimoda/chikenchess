@@ -43,7 +43,7 @@ import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMov
 import { WidgetToggleLayer } from "./widget-toggle-layer"
 import { OpponentMoveTimer } from "@/lib/opponent-move-timer"
 import { advanceMatchPowers, canUseMatchPower, createMatchPower, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
-import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, syncPoweredMoveSan } from "@/lib/powered-chess"
+import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, stockfishSupportsPosition, syncPoweredMoveSan } from "@/lib/powered-chess"
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
 import { launchEggFlight, type EggFlight } from "@/lib/egg-flight"
@@ -537,7 +537,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const worker = new Worker(STOCKFISH_WORKER_URL)
     const queue = new ChessEvaluationQueue(worker, {
       onBusy: setIsEvaluating,
-      onScore: (score, mate) => { setLastEvalScore(score); setLastEvalMate(mate); setEvaluationError(null) },
+      onScore: (score, mate) => { workerRetriesRef.current = 0; setLastEvalScore(score); setLastEvalMate(mate); setEvaluationError(null) },
       onAnalysis: analysis => {
         setMoveAnalysis(analysis)
         if (!analysis || analysis.complete) currentCompleteAnalysisRef.current = analysis
@@ -632,7 +632,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }))
     const opponentCandidates = permittedMoves.map(move => `${move.from}${move.to}${move.promotion ?? ''}`)
     const position = stockfishPosition(gameInstance)
-    if (matchPowersRef.current.length) {
+    if (matchPowersRef.current.length || !stockfishSupportsPosition(gameInstance)) {
       evaluationQueueRef.current?.reset()
       setIsEvaluating(true)
       const currentPowers = matchPowersRef.current.map(power => ({ ...power }))
@@ -652,6 +652,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         setIsEvaluating(false)
         setEvaluationError(error instanceof Error ? error.message : 'Não foi possível avaliar os poderes.')
       })
+    } else if (evaluationQueueRef.current?.hasFailed && workerRetryTimerRef.current === null) {
+      // The retries for an earlier position ran out: a new position gets a fresh
+      // engine, and the restart evaluates the current position again.
+      workerRetriesRef.current = 0
+      setWorkerEpoch(epoch => epoch + 1)
     } else evaluationQueueRef.current?.request(gameInstance.fen(), gameInstance.turn(), candidates, { position, skill: opponentSkill, searchMoves: permittedMoves.length < allMoves.length ? opponentCandidates : undefined })
     if (gameInstance.turn() === 'b' && opponentSkill !== undefined) {
       const fen = gameInstance.fen()

@@ -9,6 +9,7 @@ import {
   type ChessMoveAnalysis,
 } from "@/lib/chess-evaluation";
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client";
+import { stockfishSupportsPosition } from "@/lib/powered-chess";
 import { isConstrainedDevice } from "@/lib/performance";
 import type { MatchState } from "@/lib/online/types";
 
@@ -113,7 +114,7 @@ export function useOnlineAnalysis(
       setBusy(false);
       return;
     }
-    if (powers.length) {
+    if (powers.length || !stockfishSupportsPosition(game)) {
       queue.current?.reset();
       setBusy(true);
       void analyzePoweredMovesInWorker(

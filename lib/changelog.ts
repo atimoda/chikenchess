@@ -3,6 +3,16 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.6.7',
+    date: '22/10/2026',
+    title: 'Best/Worst e barra de Chance não travam mais',
+    groups: [
+      { title: 'Partida', items: [
+        'Corrigido: as cartas e botões Best/Worst moves podiam ficar desativados até o fim da partida, mesmo com golden eggs, e a barra de Chance parava de se mexer. Acontecia quando um rei entrava na linha de uma peça com Shield ou congelada e, ao fim do poder, ficava em cheque fora da sua vez: o Stockfish não aceita essa posição. Agora ela é analisada pela busca com poderes, e se a análise falhar por outro motivo ela volta sozinha na jogada seguinte. Vale na campanha e no online.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.6',
     date: '21/10/2026',
     title: 'Movimento automático do crossfader nunca silencia um time',
