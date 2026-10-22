@@ -1,4 +1,4 @@
-import type { OnlineFriend, OnlineRoom, RunningGame } from './types'
+import type { OnlineFriend, OnlineRoom, PublicRoom, RunningGame } from './types'
 
 /** Only a lobby observed before its start can open a new game automatically. */
 export function startedRoomMatch(previous: OnlineRoom | null, next: OnlineRoom | null, userId: string | null): string | null {
@@ -45,4 +45,16 @@ export function roomErrorMessage(cause: unknown): string | null {
   if (raw.includes('ROOM_NOT_FOUND')) return 'Room not found. Check the code or invitation.'
   if (raw.includes('INVALID_KIT')) return 'Selected kit is not available online. Please choose another kit.'
   return null
+}
+
+export type DirectoryChange = { kind: 'upsert'; room: PublicRoom } | { kind: 'delete'; room_id?: string }
+const DIRECTORY_LIMIT = 50
+
+/** New rooms go on top (newest first); updates keep their place. */
+export function applyDirectoryChange(rooms: PublicRoom[], change: DirectoryChange): PublicRoom[] {
+  if (change.kind === 'delete') return rooms.filter(room => room.room_id !== change.room_id)
+  const { room_id, code, creator_name, players } = change.room
+  const index = rooms.findIndex(room => room.room_id === room_id)
+  if (index >= 0) return rooms.map((room, i) => i === index ? { ...room, code, creator_name, players } : room)
+  return [{ room_id, code, creator_name, players, created_at: new Date().toISOString() }, ...rooms].slice(0, DIRECTORY_LIMIT)
 }

@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { useOnline } from './online-provider'
 import { disposeLobbyAudio, playLobbyJoinSound, prepareLobbyAudio } from './lobby-audio'
 import styles from './online-hub.module.css'
-import { isAlreadyInRoom, roomArrivalNames, roomErrorMessage, startedRoomMatch } from '@/lib/online/lobby-updates'
+import { applyDirectoryChange, isAlreadyInRoom, roomArrivalNames, roomErrorMessage, startedRoomMatch, type DirectoryChange } from '@/lib/online/lobby-updates'
 import { ProfilePane } from './profile-pane'
 import { useRunningGames } from '@/hooks/use-running-games'
 
@@ -720,10 +720,23 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     disposeLobbyAudio()
   }, [])
 
+  // Realtime changes that arrive while a full read is in flight are replayed
+  // on top of its snapshot so none is lost.
+  const directoryChanges = useRef<DirectoryChange[] | null>(null)
+  const legacyDirectory = useRef(false)
   const refreshRooms = useCallback(async (isCurrent: () => boolean = () => true) => {
     const revision = ++roomsRefreshRevision.current
-    const next = await onlineRpc<PublicRoom[]>('online_rooms')
-    if (isCurrent() && revision === roomsRefreshRevision.current) { setRooms(next || []); setDirectoryError(null) }
+    directoryChanges.current = []
+    try {
+      const next = await onlineRpc<PublicRoom[]>('online_rooms')
+      if (isCurrent() && revision === roomsRefreshRevision.current) {
+        legacyDirectory.current = (next || []).some(room => !room.room_id)
+        setRooms((directoryChanges.current ?? []).reduce(applyDirectoryChange, next || []))
+        setDirectoryError(null)
+      }
+    } finally {
+      if (revision === roomsRefreshRevision.current) directoryChanges.current = null
+    }
   }, [])
 
   const refreshRoomsManually = () => {
@@ -766,8 +779,19 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     void refreshRooms(() => active).catch((cause) => { if (active) setDirectoryError(onlineErrorMessage(cause)) }).finally(() => { if (active) setLoading(false) })
     const online = requireOnlineClient()
     const update = () => { if (active) void refreshRooms(() => active).catch((cause) => { if (active) setDirectoryError(onlineErrorMessage(cause)) }) }
+    // Each change carries the row itself; with many viewers on the globe a
+    // re-read per change would multiply every lobby update by every viewer.
+    const change = (payload: { eventType: string; new?: Partial<PublicRoom>; old?: Partial<PublicRoom> }) => {
+      if (!active) return
+      const entry: DirectoryChange = payload.eventType === 'DELETE'
+        ? { kind: 'delete', room_id: payload.old?.room_id }
+        : { kind: 'upsert', room: payload.new as PublicRoom }
+      if (legacyDirectory.current || (entry.kind === 'delete' ? !entry.room_id : !entry.room?.room_id)) { update(); return }
+      if (directoryChanges.current) directoryChanges.current.push(entry)
+      setRooms(current => applyDirectoryChange(current, entry))
+    }
     const channel = online.channel(`public-room-directory:${++roomChannelSequence}`, { config: { postgres_changes_options: { wait: true } } })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'online_public_rooms' }, update)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'online_public_rooms' }, change)
       .subscribe((status) => {
         if (!active) return
         setConnected(status === 'SUBSCRIBED')

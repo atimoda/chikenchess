@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { acceptedFriendNames, roomArrivalNames, roomErrorMessage, isAlreadyInRoom, startedRoomMatch, yourTurnGameOpponents } = loadTs('lib/online/lobby-updates.ts')
+const { acceptedFriendNames, applyDirectoryChange, roomArrivalNames, roomErrorMessage, isAlreadyInRoom, startedRoomMatch, yourTurnGameOpponents } = loadTs('lib/online/lobby-updates.ts')
 
 const member = (id, name) => ({ user_id: id, profile: { display_name: name } })
 const room = (members, id = 'room-a') => ({ id, host_id: 'host', members })
@@ -77,4 +77,19 @@ test('different-room conflicts receive visible guidance without hiding other err
   assert.match(roomErrorMessage({ message: 'INVALID_KIT' }), /kit is not available/)
   assert.equal(roomErrorMessage({ message: 'Network failure' }), null)
   assert.equal(isAlreadyInRoom(null), false)
+})
+
+test('public directory applies Realtime rows in place without re-reading the list', () => {
+  const a = { room_id: 'a', code: 'A', creator_name: 'Ana', players: 0, created_at: '2026-10-21T10:00:00Z' }
+  const b = { room_id: 'b', code: 'B', creator_name: 'Bia', players: 1, created_at: '2026-10-21T09:00:00Z' }
+  let rooms = [a, b]
+  rooms = applyDirectoryChange(rooms, { kind: 'upsert', room: { room_id: 'c', code: 'C', creator_name: 'Caio', players: 0 } })
+  assert.deepEqual(rooms.map(r => r.code), ['C', 'A', 'B'])
+  rooms = applyDirectoryChange(rooms, { kind: 'upsert', room: { room_id: 'b', code: 'B', creator_name: 'Bia', players: 0 } })
+  assert.deepEqual(rooms.map(r => [r.code, r.players]), [['C', 0], ['A', 0], ['B', 0]])
+  assert.equal(rooms[2].created_at, b.created_at)
+  rooms = applyDirectoryChange(rooms, { kind: 'delete', room_id: 'a' })
+  assert.deepEqual(rooms.map(r => r.code), ['C', 'B'])
+  const many = Array.from({ length: 50 }, (_, i) => ({ room_id: `r${i}`, code: `R${i}`, creator_name: 'x', players: 0 }))
+  assert.equal(applyDirectoryChange(many, { kind: 'upsert', room: { room_id: 'new', code: 'N', creator_name: 'y', players: 0 } }).length, 50)
 })

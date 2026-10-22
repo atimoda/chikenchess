@@ -272,7 +272,7 @@ test('unrelated profiles are hidden; public directory contains only open vacanci
   assert.equal((await asUser(ids[2],'select * from public.online_profiles')).rows.length,1)
   room=await rpc(ids[0],'online_room',['create',null,true,'dusseldorf'])
   assert.equal((await rpc(ids[2],'online_rooms')).length,1)
-  assert.deepEqual(Object.keys((await rpc(ids[2],'online_rooms'))[0]).sort(),['code','creator_name','players'])
+  assert.deepEqual(Object.keys((await rpc(ids[2],'online_rooms'))[0]).sort(),['code','created_at','creator_name','players','room_id'])
   assert.equal((await asUser(ids[2],'select * from public.online_rooms')).rows.length,0)
 })
 test('public directory orders by room creation and remains thin for anon readers',async()=>{
@@ -396,6 +396,10 @@ test('kit changes preserve Ready, explicit cancellation clears it, and both read
 test('directory reads expire idle lobbies, free their seats and preserve playing rooms',async()=>{
   const idle=await rpc(randomRoomIds[0],'online_room',['create',null,true,'dusseldorf'])
   await admin("update public.online_rooms set updated_at=clock_timestamp()-interval '31 minutes' where id=$1",[idle.id])
+  // Cleanup is throttled to once a minute; a read within the minute leaves it.
+  await admin("update online_private.maintenance_runs set ran_at=clock_timestamp()")
+  assert.equal((await rpc(ids[4],'online_rooms')).some(entry=>entry.code===idle.code),true)
+  await admin("update online_private.maintenance_runs set ran_at=clock_timestamp()-interval '2 minutes'")
   const directory=await rpc(ids[4],'online_rooms')
   assert.equal(directory.some(entry=>entry.code===idle.code),false)
   const expired=await rpc(randomRoomIds[0],'online_room',['get',idle.code])
