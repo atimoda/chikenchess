@@ -20,6 +20,7 @@ import styles from './world-map.module.css'
 
 import { Button } from "@/components/ui/button"
 import { Plus, Minus, Maximize, Minimize } from "lucide-react"
+import { useOnlineAvailability } from "@/hooks/use-online-availability"
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
@@ -31,6 +32,8 @@ interface WorldMapProps {
 
 export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapProps) {
   const online = useOnline()
+  // Create lobby only appears in city popups while Supabase answers.
+  const onlineAvailable = useOnlineAvailability() === "available"
   const [createRoomRequest, setCreateRoomRequest] = useState<{ id: number; cityId: string } | null>(null)
   const createRoomSequence = useRef(0)
   const [unlockedCities, setUnlockedCities] = useState<string[]>([])
@@ -1099,7 +1102,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             stopWhistleLoop={stopWhistleLoop}
             setPressedPopupState={setPressedPopupState}
             onCitySelect={onCitySelect}
-            onCreateRoom={onOnlineMatch ? city => { if (!createRoomRequest) setCreateRoomRequest({ id: ++createRoomSequence.current, cityId: city.id }) } : undefined}
+            onCreateRoom={onOnlineMatch && onlineAvailable ? city => { if (!createRoomRequest) setCreateRoomRequest({ id: ++createRoomSequence.current, cityId: city.id }) } : undefined}
             creatingRoomCityId={createRoomRequest?.cityId ?? null}
             handleSmartPadSound={handleSmartPadSound}
             handleSmartPadLeave={handleSmartPadLeave}

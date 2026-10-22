@@ -93,3 +93,31 @@ test('public directory applies Realtime rows in place without re-reading the lis
   const many = Array.from({ length: 50 }, (_, i) => ({ room_id: `r${i}`, code: `R${i}`, creator_name: 'x', players: 0 }))
   assert.equal(applyDirectoryChange(many, { kind: 'upsert', room: { room_id: 'new', code: 'N', creator_name: 'y', players: 0 } }).length, 50)
 })
+
+test('online availability hides online entry points when Supabase refuses the probe', async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co'
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'public-key'
+  const previousWindow = globalThis.window, previousFetch = globalThis.fetch
+  globalThis.window = {}
+  const requests = []
+  try {
+    globalThis.fetch = async (url, init) => { requests.push([url, init.headers.apikey]); return { ok: false, status: 402 } }
+    const availability = loadTs('lib/online/availability.ts')
+    assert.equal(availability.getOnlineAvailability(), 'checking')
+    const seen = []
+    const unsubscribe = availability.subscribeOnlineAvailability(next => seen.push(next))
+    assert.equal(await availability.checkOnlineAvailability(), 'unavailable')
+    assert.deepEqual(requests, [['https://example.supabase.co/rest/v1/online_public_rooms?select=room_id&limit=1', 'public-key']])
+    assert.equal(await availability.checkOnlineAvailability(), 'unavailable', 'a fresh result is reused')
+    assert.equal(requests.length, 1)
+    globalThis.fetch = async () => ({ ok: true, status: 200 })
+    assert.equal(await availability.checkOnlineAvailability(true), 'available')
+    globalThis.fetch = async () => { throw new TypeError('network down') }
+    assert.equal(await availability.checkOnlineAvailability(true), 'unavailable')
+    assert.deepEqual(seen, ['unavailable', 'available', 'unavailable'])
+    unsubscribe()
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow
+    globalThis.fetch = previousFetch
+  }
+})
