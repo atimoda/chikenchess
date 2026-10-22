@@ -138,6 +138,15 @@ export function freezeApplicationError(game: Chess, powers: MatchPower[], power:
   return opponent.moves().length ? null : 'Você não pode deixar seu oponente sem jogadas.'
 }
 
+/** Powers can leave the side that just moved in check once they expire. Stockfish
+ * refuses such a position ("King can be captured"), so it goes to the powered analysis. */
+export function stockfishSupportsPosition(game: Chess): boolean {
+  const fen = game.fen().split(' ')
+  fen[1] = fen[1] === 'w' ? 'b' : 'w'
+  fen[3] = '-'
+  try { return !new Chess(fen.join(' ')).isCheck() } catch { return false }
+}
+
 export function syncPoweredMoveSan(game: Chess, move: Move): void {
   const base = move.san.replace(/[+#]$/, '')
   move.san = `${base}${game.isCheckmate() ? '#' : game.isCheck() ? '+' : ''}`

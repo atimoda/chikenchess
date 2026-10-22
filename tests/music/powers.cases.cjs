@@ -4,7 +4,7 @@ const assert = require('node:assert/strict')
 const { Chess } = require('chess.js')
 const { loadTs } = require('../helpers/music.cjs')
 const { canUseMatchPower, createMatchPower, permitsPowerMove, permittedPowerMoves, advanceMatchPowers, shieldCaptureBlock, frozenCaptureBlock } = loadTs('lib/chess-powers.ts')
-const { makePoweredChess, clonePoweredChess, freezeApplicationError, setPoweredChessPowers, syncPoweredMoveSan, poweredChessSnapshot, restorePoweredChess } = loadTs('lib/powered-chess.ts')
+const { makePoweredChess, clonePoweredChess, freezeApplicationError, setPoweredChessPowers, syncPoweredMoveSan, poweredChessSnapshot, restorePoweredChess, stockfishSupportsPosition } = loadTs('lib/powered-chess.ts')
 const { analyzePoweredMoves } = loadTs('lib/powered-analysis.ts')
 const { releasedPowers, MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, mulliganGhostEaseInOut, getOfflineMulliganPreviewMoves, getOnlineMulliganPreviewMoves } = loadTs('lib/power-presentation.ts')
 
@@ -648,3 +648,25 @@ test('Mulligan hover preview generates ghost moves at half speed for offline and
   assert.deepEqual(getOnlineMulliganPreviewMoves(game, [{ kind: 'move', color: 'w' }], 'b'), [])
 })
 
+
+test('A king left in check by an expired Shield stays out of Stockfish and keeps a powered ranking', async () => {
+  const game = makePoweredChess(new Chess('3k4/8/8/8/8/8/8/K3R3 w - - 0 1'))
+  let powers = [createMatchPower('shield', 'e1', game, 1)]
+  setPoweredChessPowers(game, powers)
+  for (const san of ['Ka2', 'Ke8']) {
+    const move = game.move(san)
+    powers = advanceMatchPowers(powers, move, game, game.history().length)
+    setPoweredChessPowers(game, powers)
+  }
+  assert.deepEqual(powers, [], 'the Shield expired after the reply')
+  assert.equal(game.fen(), '4k3/8/8/8/8/8/K7/4R3 w - - 2 2')
+  // Stockfish answers this position with "Unsupported position. King can be captured."
+  assert.equal(stockfishSupportsPosition(game), false)
+  assert.equal(stockfishSupportsPosition(makePoweredChess(new Chess('8/8/8/3kK3/8/8/8/8 w - - 0 1'))), false, 'adjacent kings')
+  assert.equal(stockfishSupportsPosition(makePoweredChess(new Chess())), true)
+  assert.equal(stockfishSupportsPosition(makePoweredChess(new Chess('4k3/8/8/8/8/8/K7/4R3 b - - 2 2'))), true, 'the side to move may be in check')
+  const analysis = await analyzePoweredMoves(game, [])
+  assert.equal(analysis.complete, true)
+  assert.ok(analysis.best.length > 0)
+  assert.ok(analysis.best.every(move => move.uci.slice(2, 4) !== 'e8'), 'no king capture is offered')
+})
