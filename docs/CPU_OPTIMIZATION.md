@@ -121,3 +121,15 @@ Média de três execuções alternadas, antes (v1.6.6) → depois:
 | 5 s da resposta do bot | 35,5 → 38,7 | 79% → 80% | 546 → 275 | 633 → 605 ms |
 
 Mudanças em `docs/mechanics/performance.md`. Persistem no headless travadas isoladas de 0,5–1,5 s (o tick do agendador também atrasa nelas); a antecipação de 300 ms não cobre essas, e a resposta do bot/análise ainda ocupa a thread. Próximos passos, se o aparelho ainda engasgar: medir no Redmi com o Performance do Chrome remoto, separar o custo de GPU (brilho pulsante das casas ativas, drop-shadows das peças, `backdrop-filter` do último lance) e avaliar mover o agendador para um Worker.
+
+### Thread de áudio — mesmo dia, depois do segundo teste no Redmi
+
+Com o preview acima, o usuário relatou que o áudio ainda “quebra”, distorce e atrasa no Xiaomi. Medimos a thread de renderização de áudio (trace `audio`, 10 s, Detroit, 14 peças ativas, perfil restrito). Pico da saída somada das equipes: 0,26, sem amostras acima de 1. Logo, a distorção relatada não veio de clipping nesse cenário, e sim de underruns.
+
+| Variante (mesma sessão) | Thread de áudio em tempo real | Convolução em segundo plano |
+| --- | ---: | ---: |
+| Original, dois convolvers (um por bus) | ~1,1–1,4 s / 10 s | ~0,3–0,5 s |
+| Sem reverb | ~0,5 s | 0 |
+| Impulso truncado (1–1,5 s) ou mono | sem melhora consistente | um pouco menor |
+
+O reverb é a maior parcela do áudio; drive, filtros e quantidade de nós por nota pesam pouco. Encurtar ou tornar mono o impulso não reduziu o custo em tempo real, porque o que pesa é cada convolver ativo. A implementação passou a usar um único convolver para os dois buses no celular. Em três execuções alternadas contra a v1.6.6: thread de áudio 1,44 s → 0,93 s por 10 s (−35%) e convolução em segundo plano 0,44 s → 0,18 s (−59%), com o mesmo pico de saída. Se ainda não bastar, o próximo passo é desligar o reverb no celular (cerca de −45% adicional), o que muda o timbre e por isso fica para decisão do usuário.

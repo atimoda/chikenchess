@@ -13,6 +13,7 @@ export const CHANGELOG = [
         'Com a música tocando, Piece Params, o piano roll e o Mixer só se atualizam quando algo visível muda; o cursor do piano roll continua andando sem refazer o editor inteiro.',
         'No celular, a engine musical agenda as notas com mais antecedência e usa um buffer de áudio maior, para reduzir os "rasgos" no som quando o aparelho fica ocupado. As ativações de loop podem entrar até cerca de um décimo de segundo mais tarde que antes.',
         'No celular, o Spectrogram atualiza a 15 quadros por segundo, deixando mais folga para a música e os gestos.',
+        'No celular, as duas equipes passam a dividir um único reverb em vez de um para cada, o que corta cerca de um terço do processamento de áudio e reduz os cortes no som. A quantidade de reverb de cada peça não muda; a cauda do reverb agora acompanha os dois lados do crossfader por igual.',
       ] },
     ],
   },

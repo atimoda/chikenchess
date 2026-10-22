@@ -1,6 +1,7 @@
 // Own the audio session: scheduler, mixer, gestures, cancellation and monitor lifecycle.
 import type { Square } from 'chess.js'
 import { ManualReverbCache } from './manual-reverb-cache'
+import { SharedLoopReverb } from './shared-reverb'
 import { instrumentFor } from './model'
 import { MusicTransport } from './transport'
 import { beatsPerBar } from './meter'
@@ -43,6 +44,8 @@ export class MusicRuntime {
   private analyser?: AnalyserNode
   private teamMixer?: TeamMixer
   private manualReverbs = new ManualReverbCache()
+  private sharedReverb?: SharedLoopReverb
+  private readonly sharedReverbOrbits = new WeakSet<object>()
   private preparedManualOrbits = new WeakSet<object>()
   private connectedOrbits = new Set<number>()
   private visualInterval = 1 / 15
@@ -130,6 +133,8 @@ export class MusicRuntime {
     this.analyser = context.createAnalyser()
     this.analyser.fftSize = 256
     this.teamMixer = new TeamMixer(context, this.analyser)
+    // Phones: one convolver for every loop bus (see shared-reverb.ts).
+    if (constrained) this.sharedReverb = new SharedLoopReverb(context, [this.teamMixer.sides.w.bass, this.teamMixer.sides.b.bass])
     this.scheduler = new MusicTransport({
       onBoundary: (cycle: number) => {
         const transition = this.reactionQueue.advance(cycle)
@@ -502,6 +507,10 @@ export class MusicRuntime {
   private connectVoice(voice: VoiceSpec, loopCount = [...this.voices.values()].filter(v => !v.preview).length) {
     if (!this.api || !this.state) return
     const orbit = this.api.getSuperdoughAudioController().getOrbit(voice.orbit, [0, 1])
+    if (!voice.manual && this.sharedReverb && orbit.getReverb && !this.sharedReverbOrbits.has(orbit)) {
+      this.sharedReverb.attach(orbit)
+      this.sharedReverbOrbits.add(orbit)
+    }
     if (voice.manual && orbit.getReverb && !this.preparedManualOrbits.has(orbit)) {
       this.manualReverbs.attach(orbit, this.api.getAudioContext())
       this.preparedManualOrbits.add(orbit)
@@ -513,6 +522,7 @@ export class MusicRuntime {
     }
     const attenuation = Math.min(1, Math.sqrt(10 / Math.max(1, loopCount)))
     orbit.output.gain.setTargetAtTime(this.state.volume * attenuation, this.api.getAudioContext().currentTime, .015)
+    if (!voice.manual) this.sharedReverb?.setLevel(this.state.volume * attenuation)
   }
 
   private refresh() {
@@ -598,6 +608,8 @@ export class MusicRuntime {
     for (const orbit of new Set([...this.voices.values()].map(voice => voice.orbit))) this.removeOrbit(orbit)
     this.voices.clear()
     this.manualReverbs.clear()
+    this.sharedReverb?.dispose()
+    this.sharedReverb = undefined
     this.compiled.clear()
     this.displayCache.clear()
     this.analyser?.disconnect()
