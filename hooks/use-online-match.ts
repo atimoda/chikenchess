@@ -8,6 +8,7 @@ import { useOnline } from "@/components/online/online-provider";
 import type { Instrument } from "@/lib/music/model";
 import type { SquareEffects } from "@/lib/types";
 import type { PendingMatchCommand } from "@/lib/online/pending-move";
+import { diffObject, mergeObject } from "@/lib/online/piece-patch";
 /* global Response, crypto */
 
 export interface SharedPiece {
@@ -31,12 +32,31 @@ async function loadPieceParams(client: NonNullable<ReturnType<typeof getOnlineCl
   return { ...(await client.rpc("online_piece_params", { p_match_id: matchId })), delta: false };
 }
 
+/** What the server stores when a first save omits effects. */
+const SERVER_DEFAULT_EFFECTS = { gain: 1, pitch: 1, pan: 0, delay: 0, reverb: 0.12, decay: 0.15 } as SquareEffects;
+
+/** A broadcast piece edit: only parameters that changed since revision - 1. */
+interface PiecePatch {
+  piece_id: string;
+  revision: number;
+  full: boolean;
+  instrument: Record<string, unknown>;
+  effects?: Record<string, unknown>;
+}
+
+const byPieceId = (a: SharedPiece, b: SharedPiece) => a.piece_id.localeCompare(b.piece_id);
+
 export function useOnlineMatch(matchId: string) {
   const { user, ensureGuest, refreshProfile, notify } = useOnline();
   const userId = user?.id ?? null;
   const [match, setMatch] = useState<OnlineMatch | null>(null);
   const [pieces, setPieces] = useState<SharedPiece[]>([]);
   const piecesRef = useRef<{ matchId: string; pieces: SharedPiece[] } | null>(null);
+  const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getOnlineClient>>["channel"]> | null>(null);
+  const storePieces = useCallback((pieces: SharedPiece[]) => {
+    piecesRef.current = { matchId, pieces };
+    setPieces(pieces);
+  }, [matchId]);
   const [connected, setConnected] = useState(false);
   const [opponentConnected, setOpponentConnected] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -113,18 +133,15 @@ export function useOnlineMatch(matchId: string) {
       if (pieceResult.delta) {
         const merged = new Map(held.map((piece) => [piece.piece_id, piece]));
         for (const piece of changed) merged.set(piece.piece_id, piece);
-        nextPieces = [...merged.values()].sort((a, b) => a.piece_id.localeCompare(b.piece_id));
+        nextPieces = [...merged.values()].sort(byPieceId);
       }
-      if (!pieceResult.delta || changed.length || piecesRef.current?.matchId !== matchId) {
-        piecesRef.current = { matchId, pieces: nextPieces };
-        setPieces(nextPieces);
-      }
+      if (!pieceResult.delta || changed.length || piecesRef.current?.matchId !== matchId) storePieces(nextPieces);
       if (paramsRevision.current === null && nextPieces.length === 0) {
         paramsRevision.current = 0;
       }
     }
     setError(null);
-  }, [matchId, userId, notify]);
+  }, [matchId, userId, notify, storePieces]);
 
   useEffect(() => {
     let disposed = false;
@@ -143,7 +160,7 @@ export function useOnlineMatch(matchId: string) {
     void refresh();
     let timer: ReturnType<typeof setTimeout> | null = null;
     let pendingOptions = { match: false, pieces: false };
-    const scheduleRefresh = (options: { match?: boolean; pieces?: boolean } = { match: true, pieces: true }) => {
+    const scheduleRefresh = (options: { match?: boolean; pieces?: boolean } = { match: true, pieces: true }, delay = 80) => {
       pendingOptions = {
         match: pendingOptions.match || (options.match ?? true),
         pieces: pendingOptions.pieces || (options.pieces ?? true),
@@ -153,7 +170,7 @@ export function useOnlineMatch(matchId: string) {
         const target = pendingOptions;
         pendingOptions = { match: false, pieces: false };
         void refresh(target);
-      }, 80);
+      }, delay);
     };
     type MatchUpdateRecord = { version?: number; params_revision?: number };
     const applyUpdate = (record: MatchUpdateRecord | null | undefined) => {
@@ -163,7 +180,30 @@ export function useOnlineMatch(matchId: string) {
       const needPieces = nextParamsRev === null || paramsRevision.current === null || nextParamsRev !== paramsRevision.current;
       if (nextParamsRev !== null) paramsRevision.current = nextParamsRev;
       if (!needMatch && !needPieces) return;
-      scheduleRefresh({ match: needMatch, pieces: needPieces });
+      // A piece edit normally arrives as a broadcast right after its commit.
+      // The delayed delta read then finds nothing new and returns [].
+      scheduleRefresh({ match: needMatch, pieces: needPieces }, needMatch ? 80 : 1500);
+    };
+    const applyPatch = (patch: PiecePatch) => {
+      const held = piecesRef.current?.matchId === matchId ? piecesRef.current.pieces : [];
+      const base = held.find((piece) => piece.piece_id === patch.piece_id);
+      if (base && base.revision >= patch.revision) return;
+      let next: SharedPiece;
+      if (patch.full) {
+        next = { piece_id: patch.piece_id, revision: patch.revision, instrument: patch.instrument as unknown as Instrument, effects: patch.effects as SquareEffects | undefined };
+      } else if (base && base.revision === patch.revision - 1) {
+        next = {
+          piece_id: patch.piece_id,
+          revision: patch.revision,
+          instrument: mergeObject(base.instrument, patch.instrument),
+          effects: patch.effects ? mergeObject(base.effects ?? SERVER_DEFAULT_EFFECTS, patch.effects) : base.effects,
+        };
+      } else {
+        // A missed edit: read the stored piece instead.
+        scheduleRefresh({ match: false, pieces: true });
+        return;
+      }
+      storePieces([...held.filter((piece) => piece.piece_id !== patch.piece_id), next].sort(byPieceId));
     };
     // Reconnects happen often in background tabs. Read the two counters
     // first and download the match or pieces only when one of them moved.
@@ -192,6 +232,14 @@ export function useOnlineMatch(matchId: string) {
         },
         (payload) => applyUpdate((payload as { new?: MatchUpdateRecord } | undefined)?.new),
       )
+      .on("broadcast", { event: "piece" }, ({ payload }) => {
+        const patch = payload as PiecePatch | undefined;
+        if (!patch || typeof patch.piece_id !== "string" || typeof patch.revision !== "number" || !patch.instrument || typeof patch.instrument !== "object") return;
+        // Each side only broadcasts its own team; ignore anything else.
+        const ownColor = current.current?.members.find((m) => m.user_id === userId)?.color;
+        if (!ownColor || patch.piece_id.startsWith(`${ownColor}:`)) return;
+        applyPatch(patch);
+      })
       .on("presence", { event: "sync" }, () => {
         const opponent = current.current?.members.find(
           (m) => m.user_id !== userId,
@@ -215,6 +263,7 @@ export function useOnlineMatch(matchId: string) {
           isSubscribed = false;
         }
       });
+    channelRef.current = channel;
     const onReturn = () => {
       if (document.visibilityState === "visible" && !isSubscribed) void catchUp();
     };
@@ -225,11 +274,12 @@ export function useOnlineMatch(matchId: string) {
       disposed = true;
       loadSequence.current++;
       if (timer) clearTimeout(timer);
+      if (channelRef.current === channel) channelRef.current = null;
       void client.removeChannel(channel);
       document.removeEventListener("visibilitychange", onReturn);
       window.removeEventListener("online", onOnline);
     };
-  }, [userId, ensureGuest, matchId, refresh]);
+  }, [userId, ensureGuest, matchId, refresh, storePieces]);
 
   useEffect(() => {
     current.current = null;
@@ -310,6 +360,30 @@ export function useOnlineMatch(matchId: string) {
     [localKey, refresh],
   );
 
+  /** After a confirmed save: keep the stored copy and send only the changes. */
+  const publishPiece = useCallback(
+    (pieceId: string, revision: number, instrument: Instrument, effects: SquareEffects | undefined) => {
+      if (typeof revision !== "number") return;
+      const held = piecesRef.current?.matchId === matchId ? piecesRef.current.pieces : [];
+      const base = held.find((piece) => piece.piece_id === pieceId);
+      if (base && base.revision >= revision) return;
+      const sequential = !!base && base.revision === revision - 1;
+      const storedEffects = effects ?? (sequential ? base?.effects : SERVER_DEFAULT_EFFECTS);
+      const patch: PiecePatch = sequential && base
+        ? {
+            piece_id: pieceId,
+            revision,
+            full: false,
+            instrument: diffObject(base.instrument, instrument),
+            ...(effects ? { effects: diffObject(base.effects ?? SERVER_DEFAULT_EFFECTS, effects) } : {}),
+          }
+        : { piece_id: pieceId, revision, full: true, instrument: instrument as unknown as Record<string, unknown>, effects: storedEffects as Record<string, unknown> | undefined };
+      storePieces([...held.filter((piece) => piece.piece_id !== pieceId), { piece_id: pieceId, revision, instrument, effects: storedEffects }].sort(byPieceId));
+      void channelRef.current?.send({ type: "broadcast", event: "piece", payload: patch });
+    },
+    [matchId, storePieces],
+  );
+
   const send = useCallback(
     (command: MatchCommand) => {
       if (pending)
@@ -335,6 +409,7 @@ export function useOnlineMatch(matchId: string) {
     error,
     refresh,
     send,
+    publishPiece,
     retry: () => (pending ? execute(pending) : Promise.resolve(undefined)),
   };
 }

@@ -346,6 +346,7 @@ export function OnlineMatchBoard({
   const previousMoves = useRef(replay.game.history().length);
   const [mulliganAnimationKey, setMulliganAnimationKey] = useState(0);
   const animateMulligan = useCallback(() => setMulliganAnimationKey(key => key + 1), []);
+  const { publishPiece } = online;
   const flushPieces = useCallback(async () => {
     const client = getOnlineClient();
     if (!client || savingPieces.current || !queuedPieces.current.size) return;
@@ -358,11 +359,13 @@ export function OnlineMatchBoard({
         const batch = [...queuedPieces.current];
         for (const [pieceId, values] of batch) {
           if (!alive.current) break;
-          const { error } = await client.functions.invoke("piece-params", {
+          const { data, error } = await client.functions.invoke<{ revision?: number }>("piece-params", {
             timeout: 20000,
             body: { matchId: match.id, pieceId, ...values },
           });
           if (error) throw error;
+          if (typeof data?.revision === "number")
+            publishPiece(pieceId, data.revision, values.instrument, values.effects);
           if (queuedPieces.current.get(pieceId) === values)
             queuedPieces.current.delete(pieceId);
         }
@@ -376,7 +379,7 @@ export function OnlineMatchBoard({
       savingPieces.current = false;
       if (alive.current) setSaveEpoch((n) => n + 1);
     }
-  }, [match.id]);
+  }, [match.id, publishPiece]);
   const onPieceChange = useCallback(
     (id: string, instrument: Instrument, effects?: SquareEffects) => {
       if (!id.startsWith(`${color}:`)) return;

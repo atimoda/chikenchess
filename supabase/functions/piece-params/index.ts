@@ -21,6 +21,7 @@ Deno.serve(async (request: Request) => {
     catch { throw new HttpError(400, 'INVALID_PARAMS') }
     const { data, error } = await admin.rpc('online_commit_piece', { p_match_id: input.matchId, p_actor: user.id, p_piece_id: params.pieceId, p_instrument: params.instrument, p_effects: params.effects ?? null })
     if (error) databaseError(error)
-    return respond(request, data)
+    // The author already has the piece; echoing it back would only cost egress.
+    return respond(request, { piece_id: data.piece_id, revision: data.revision })
   } catch (error) { return failure(request, error) }
 })

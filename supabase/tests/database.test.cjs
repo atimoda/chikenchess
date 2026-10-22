@@ -478,11 +478,13 @@ test('transfer retains selected save without summing, migrates social relations 
   await assert.rejects(rpc(ids[2],'online_profile'),/TRANSFERRED/)
   assert.equal((await admin('select count(*)::int as total from online_private.profile_transfers')).rows[0].total,1)
 })
-test('private presence accepts only match members and rejects broadcast and other users',async()=>{
+test('private presence and piece broadcasts accept only match members',async()=>{
   await admin("select set_config('realtime.topic',$1,false)",[`match:${match.id}`])
   await asUser(ids[0],"insert into realtime.messages(extension) values('presence')")
-  await assert.rejects(asUser(ids[0],"insert into realtime.messages(extension) values('broadcast')"),/row-level security/)
+  await asUser(ids[0],"insert into realtime.messages(extension) values('broadcast')")
+  await assert.rejects(asUser(ids[0],"insert into realtime.messages(extension) values('postgres_changes')"),/row-level security/)
   await assert.rejects(asUser(ids[3],"insert into realtime.messages(extension) values('presence')"),/row-level security/)
+  await assert.rejects(asUser(ids[3],"insert into realtime.messages(extension) values('broadcast')"),/row-level security/)
 })
 
 async function settlementFixture() {
