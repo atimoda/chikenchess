@@ -18,6 +18,7 @@ export const CHANGELOG = [
         'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
         'No globo, os títulos "PUBLIC ROOMS" e "GAMES IN PROGRESS" agora aparecem em caixa alta.',
         'O online baixa bem menos dados: editar peças numa partida e atualizar a lista de partidas em andamento no globo agora trazem só o que mudou, em vez de tudo de novo. Uma aba de partida esquecida aberta também deixa de baixar a partida a cada reconexão, e cada ajuste de peça chega ao outro jogador só com o parâmetro alterado. A lista de salas públicas do globo se atualiza sala a sala, sem recarregar a lista inteira.',
+        'Quando o servidor online está fora do ar ou bloqueado, o globo esconde "Public rooms", "Games in progress" e "Create lobby" (também nos popups das cidades), deixando só o modo campanha; tudo volta sozinho quando o servidor responde de novo.',
       ] },
       { title: 'Globo', items: [
         'Na lista de cidades das campanhas, o nome do estilo musical que aparece no hover e a bandeirinha de cidade conquistada não recebem mais o mouse nem o toque: passar por cima deles não ativa a cidade e não atrapalha arrastar o globo por trás.',

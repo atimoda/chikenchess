@@ -19,6 +19,7 @@ import styles from './online-hub.module.css'
 import { applyDirectoryChange, isAlreadyInRoom, roomArrivalNames, roomErrorMessage, startedRoomMatch, type DirectoryChange } from '@/lib/online/lobby-updates'
 import { ProfilePane } from './profile-pane'
 import { useRunningGames } from '@/hooks/use-running-games'
+import { useOnlineAvailability } from '@/hooks/use-online-availability'
 
 const LIGHT_SQUARES = Array.from({ length: 8 }, (_, r) =>
   Array.from({ length: 8 }, (_, c) => ((r + c) % 2 === 0 ? [c, r] : null)).filter(Boolean) as [number, number][]
@@ -770,7 +771,10 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     return () => { active = false }
   }, [isOpen, configured, ensureGuest, refreshProfile])
 
-  const watchDirectory = documentVisible && (showMapRooms || isOpen)
+  // With Supabase unreachable or restricted, the globe hides online entry
+  // points and stops watching the directory, keeping the campaign in focus.
+  const onlineAvailable = useOnlineAvailability() === 'available'
+  const watchDirectory = documentVisible && onlineAvailable && (showMapRooms || isOpen)
   useEffect(() => {
     if (!configured || !watchDirectory) return
     let active = true
@@ -1034,7 +1038,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
         </Button>
       </div>
     )}
-    {showMapRooms && <aside aria-label="Games and public rooms" className={styles.mapRooms}>
+    {showMapRooms && onlineAvailable && <aside aria-label="Games and public rooms" className={styles.mapRooms}>
       {runningGames.games.length > 0 && <section aria-labelledby="running-games-heading" className={styles.mapRoomList}>
         <h2 id="running-games-heading" className={styles.mapRoomHeading}>Games in progress</h2>
         {runningGames.games.map(game => {
