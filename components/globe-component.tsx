@@ -143,48 +143,96 @@ const ConqueredFlag = ({ city, idleRotationRef }: { city: CityData; idleRotation
   const flagRef = useRef<Group>(null)
   const clothRef = useRef<Group>(null)
   const clothMeshRef = useRef<Mesh>(null)
-  const originalX = useRef<Float32Array | null>(null)
-  const cycle = useRef({ elapsed: 0, duration: 12.6 + Math.random() * 3.6, ease: 1.5 + Math.random() * .6 })
+  // Rest X/Y of every cloth vertex, interleaved.
+  const restXY = useRef<Float32Array | null>(null)
+  // Each flag gets its own wind: phases, gust rhythm and pole stiffness differ,
+  // so neighbouring pins never move in sync.
+  const wind = useRef({
+    time: Math.random() * 100,
+    seeds: Array.from({ length: 6 }, () => Math.random() * Math.PI * 2),
+    gustRate: .8 + Math.random() * .5,
+    stiffness: (2 * Math.PI * (.55 + Math.random() * .2)) ** 2,
+    nextImpulse: 1 + Math.random() * 3,
+    wavePhase: Math.random() * Math.PI * 2,
+  })
+  // Pole lean (z: along the cloth, x: across it) driven by a damped spring.
+  const pole = useRef({ x: 0, z: 0, vx: 0, vz: 0 })
   const motionScale = useRef({ pole: 1, cloth: 1 })
   const reduceMotion = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
   const texture = useMemo(() => typeof document === 'undefined' ? null : createCityFlagTexture(city), [city])
   useEffect(() => () => texture?.dispose(), [texture])
   const normal = cityDirection(city.pinCoordinates.lat, city.pinCoordinates.lng, 1).normalize()
   const orientation = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), normal)
-  useFrame((_, delta) => {
+  useFrame((_, frameDelta) => {
     if (!flagRef.current || !clothRef.current || reduceMotion) return
-    const motion = cycle.current
-    motion.elapsed += delta
-    if (motion.elapsed >= motion.duration) {
-      motion.elapsed %= motion.duration
-      motion.duration = 12.6 + Math.random() * 3.6
-      motion.ease = 1.5 + Math.random() * .6
-    }
-    const progress = motion.elapsed / motion.duration
-    const leading = progress ** motion.ease
-    const trailing = (1 - progress) ** motion.ease
-    const phase = 2 * Math.PI * leading / (leading + trailing)
+    const delta = Math.min(frameDelta, 1 / 20)
+    const air = wind.current
+    air.time += delta
+    const t = air.time * air.gustRate
+    const [s0, s1, s2, s3, s4, s5] = air.seeds
+    // Layered, incommensurate sines read as an irregular breeze: slow swells
+    // carry quicker gusts, and strength stays within 0..1.
+    const swell = Math.sin(t * .23 + s0) * .5 + Math.sin(t * .61 + s1) * .3 + Math.sin(t * 1.37 + s2) * .2
+    const strength = MathUtils.clamp(.55 + swell * .45, 0, 1)
+    const crossGust = Math.sin(t * .47 + s3) * .6 + Math.sin(t * 1.13 + s4) * .4
+
     const blend = 1 - Math.exp(-delta * 4)
     motionScale.current.pole = MathUtils.lerp(motionScale.current.pole, idleRotationRef.current ? 1.5 : 1, blend)
     motionScale.current.cloth = MathUtils.lerp(motionScale.current.cloth, idleRotationRef.current ? .56 : 1, blend)
-    // The whole flag pivots at the pin; the upper end traces a small figure eight.
-    flagRef.current.rotation.set(Math.sin(phase) * .17 * motionScale.current.pole, 0, Math.sin(phase * 2) * .12 * motionScale.current.pole)
-    clothRef.current.rotation.y = Math.sin(phase * 2 + .5) * .11 * motionScale.current.cloth
+    const poleScale = motionScale.current.pole
+    const clothScale = motionScale.current.cloth
+
+    // The pole leans with the wind and springs back, with an occasional random
+    // knock, so the tip wanders instead of tracing a fixed loop.
+    const spring = pole.current
+    air.nextImpulse -= delta
+    if (air.nextImpulse <= 0) {
+      air.nextImpulse = 1.2 + Math.random() * 3.5
+      spring.vz -= (.12 + Math.random() * .22) * strength
+      spring.vx += (Math.random() - .5) * .3
+    }
+    const damping = 2 * .22 * Math.sqrt(air.stiffness)
+    const leanTarget = -.07 * strength
+    spring.vz += (air.stiffness * (leanTarget - spring.z) - damping * spring.vz) * delta
+    spring.vx += (air.stiffness * (crossGust * .05 - spring.x) - damping * spring.vx) * delta
+    spring.z += spring.vz * delta
+    spring.x += spring.vx * delta
+    flagRef.current.rotation.set(spring.x * poleScale, 0, spring.z * poleScale)
+    // The cloth yaws a little around the pole as gusts change direction.
+    clothRef.current.rotation.y = (crossGust * .07 + spring.vx * .04) * clothScale
+
     const geometry = clothMeshRef.current?.geometry
     if (geometry) {
       const positions = geometry.getAttribute('position') as BufferAttribute
-      if (!originalX.current) originalX.current = Float32Array.from({ length: positions.count }, (_, i) => positions.getX(i))
+      if (!restXY.current) {
+        restXY.current = Float32Array.from({ length: positions.count * 2 }, (_, i) => i % 2 ? positions.getY(i >> 1) : positions.getX(i >> 1))
+      }
       let shades = geometry.getAttribute('color') as BufferAttribute | undefined
       if (!shades) {
         shades = new Float32BufferAttribute(new Float32Array(positions.count * 3).fill(1), 3)
         geometry.setAttribute('color', shades)
       }
+      // Waves travel from the pole to the free edge, faster and larger in
+      // stronger wind; in a lull the cloth slackens and the free end droops.
+      air.wavePhase += delta * (3.2 + strength * 5.5)
+      const wave = air.wavePhase
+      const amplitude = (.012 + strength * .022) * clothScale
+      const slack = (1 - strength) ** 1.6
       for (let i = 0; i < positions.count; i++) {
-        const distanceFromPole = (originalX.current[i] + .06) / .12
-        const ripple = phase * 2 + distanceFromPole * Math.PI * 2.4
-        positions.setX(i, originalX.current[i] - distanceFromPole * .012 * motionScale.current.cloth * (1 - Math.cos(ripple)))
-        positions.setZ(i, distanceFromPole ** 1.1 * .032 * motionScale.current.cloth * Math.sin(ripple))
-        const light = .76 + .24 * (.5 + .5 * Math.cos(ripple + .7))
+        const baseX = restXY.current[i * 2]
+        const baseY = restXY.current[i * 2 + 1]
+        const u = (baseX + .06) / .12
+        const v = baseY / .07
+        // Wave fronts run slightly diagonal, like real cloth catching the air.
+        const a = u * Math.PI * 2.3 - wave + v * .9
+        const b = u * Math.PI * 4.1 - wave * 1.7 + s5 - v * .6
+        const reach = u ** 1.25
+        const z = amplitude * reach * (Math.sin(a) * .75 + Math.sin(b) * .25)
+        const slope = Math.cos(a) * .75 + Math.cos(b) * .45
+        positions.setX(i, baseX - u * (.003 + amplitude * .25 + slack * .01) - Math.abs(z) * .2)
+        positions.setY(i, baseY - slack * u * u * .022 * clothScale + amplitude * reach * Math.sin(b + .8) * .12)
+        positions.setZ(i, z)
+        const light = .74 + .26 * MathUtils.clamp(.5 + slope * .4 * reach, 0, 1)
         shades.setXYZ(i, light, light, light)
       }
       positions.needsUpdate = true
@@ -199,7 +247,7 @@ const ConqueredFlag = ({ city, idleRotationRef }: { city: CityData; idleRotation
       </mesh>
       <group ref={clothRef} position={[0, .27, .004]}>
         <mesh ref={clothMeshRef} position={[.06, -.05, 0]}>
-          <planeGeometry args={[.12, .07, 8, 3]} />
+          <planeGeometry args={[.12, .07, 16, 5]} />
           <meshBasicMaterial color={texture ? '#ffffff' : cityFlagColor(city.color)} map={texture ?? undefined} side={DoubleSide} vertexColors toneMapped={false} />
         </mesh>
       </group>

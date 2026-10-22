@@ -20,7 +20,8 @@ export const CHANGELOG = [
         'O online baixa bem menos dados: editar peças numa partida e atualizar a lista de partidas em andamento no globo agora trazem só o que mudou, em vez de tudo de novo. Uma aba de partida esquecida aberta também deixa de baixar a partida a cada reconexão, e cada ajuste de peça chega ao outro jogador só com o parâmetro alterado. A lista de salas públicas do globo se atualiza sala a sala, sem recarregar a lista inteira.',
       ] },
       { title: 'Globo', items: [
-        'Na lista de cidades das campanhas, o nome do estilo musical que aparece no hover não recebe mais o mouse nem o toque: passar por cima dele não ativa a cidade e não atrapalha arrastar o globo por trás.',
+        'Na lista de cidades das campanhas, o nome do estilo musical que aparece no hover e a bandeirinha de cidade conquistada não recebem mais o mouse nem o toque: passar por cima deles não ativa a cidade e não atrapalha arrastar o globo por trás.',
+        'As bandeiras das cidades conquistadas no globo balançam de forma mais natural: cada uma tem seu próprio vento, com rajadas irregulares, o mastro se inclina e volta como uma mola, e o tecido ondula do mastro para a ponta, ficando mais solto e caído quando o vento diminui.',
       ] },
       { title: 'Partida', items: [
         'Na campanha e no online, o contador de golden eggs do adversário passou para o lado esquerdo, acima do tabuleiro, com a mesma largura e o mesmo espaçamento do contador do jogador; as peças capturadas pelo adversário ficam à direita, alinhadas pela direita.',
