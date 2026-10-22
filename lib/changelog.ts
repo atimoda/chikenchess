@@ -16,7 +16,11 @@ export const CHANGELOG = [
         'O botão "Create lobby" agora fica sempre visível ao final de "Public rooms", com fundo verde, e cria na hora um lobby público com o kit Random.',
         'A aba "Rooms" passou a se chamar "Lobbies" e traz os botões "Create Public Room" e "Create Private Room", que criam o lobby direto, sem a tela de configuração.',
         'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
+        'No globo, os títulos "PUBLIC ROOMS" e "GAMES IN PROGRESS" agora aparecem em caixa alta.',
         'O online baixa bem menos dados: editar peças numa partida e atualizar a lista de partidas em andamento no globo agora trazem só o que mudou, em vez de tudo de novo. Uma aba de partida esquecida aberta também deixa de baixar a partida a cada reconexão, e cada ajuste de peça chega ao outro jogador só com o parâmetro alterado. A lista de salas públicas do globo se atualiza sala a sala, sem recarregar a lista inteira.',
+      ] },
+      { title: 'Globo', items: [
+        'Na lista de cidades das campanhas, o nome do estilo musical que aparece no hover não recebe mais o mouse nem o toque: passar por cima dele não ativa a cidade e não atrapalha arrastar o globo por trás.',
       ] },
       { title: 'Partida', items: [
         'Na campanha e no online, o contador de golden eggs do adversário passou para o lado esquerdo, acima do tabuleiro, com a mesma largura e o mesmo espaçamento do contador do jogador; as peças capturadas pelo adversário ficam à direita, alinhadas pela direita.',
