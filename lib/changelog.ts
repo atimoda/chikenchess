@@ -16,6 +16,7 @@ export const CHANGELOG = [
         'O botão "Create lobby" agora fica sempre visível ao final de "Public rooms", com fundo verde, e cria na hora um lobby público com o kit Random.',
         'A aba "Rooms" passou a se chamar "Lobbies" e traz os botões "Create Public Room" e "Create Private Room", que criam o lobby direto, sem a tela de configuração.',
         'O botão de fechar dos popups "You won!", "You lost" e "Draw" agora leva de volta ao globo.',
+        'O online baixa bem menos dados: editar peças numa partida e atualizar a lista de partidas em andamento no globo agora trazem só o que mudou, em vez de tudo de novo. Uma aba de partida esquecida aberta também deixa de baixar a partida a cada reconexão, e cada ajuste de peça chega ao outro jogador só com o parâmetro alterado. A lista de salas públicas do globo se atualiza sala a sala, sem recarregar a lista inteira.',
       ] },
       { title: 'Tips', items: [
         'As tips do início da partida voltam a avançar: cada nova partida mostra a próxima tip, até acabarem, em vez de repetir sempre a primeira para quem está conectado ao modo online (inclusive como convidado).',

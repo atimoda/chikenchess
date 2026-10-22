@@ -42,3 +42,13 @@ test('remote assignments and variation pins must reference existing MIDI banks',
   source.instrument.selectedVariation = 1
   assert.throws(() => parsePieceParams(source), /Unknown MIDI variation/)
 })
+
+test('piece patches carry only changed keys and rebuild the saved piece', () => {
+  const { diffObject, mergeObject } = loadTs('lib/online/piece-patch.ts')
+  const base = params().instrument
+  const next = { ...base, gain: 0.3, lpfRange: undefined, pianoRolls: base.pianoRolls.slice(0, 1) }
+  const patch = diffObject(base, next)
+  assert.deepEqual(Object.keys(patch).sort(), ['gain', 'pianoRolls', ...(base.lpfRange !== undefined ? ['lpfRange'] : [])].sort())
+  assert.ok(JSON.stringify(patch).length < JSON.stringify(next).length)
+  assert.deepEqual(JSON.parse(JSON.stringify(mergeObject(base, JSON.parse(JSON.stringify(patch))))), JSON.parse(JSON.stringify(next)))
+})
