@@ -58,6 +58,8 @@ import { GameActionCostHint, GameActionRow, GameBoardChanceBar, GameCityBackgrou
 import { BotControlWidget } from "./bot-control-widget"
 import { ChessBot, DEFAULT_BOT_ID, DEFAULT_BOT_PROFILES, getBotConfigParams, type BotConfigParams, type BotProfile } from "@/lib/chess-bots"
 import { loadEditableBotProfiles, saveBotProfile } from "@/lib/admin/bot-profiles-client"
+import { isAdminUser } from "@/lib/admin/access"
+import { useOnline } from "./online/online-provider"
 
 import {
   DropdownMenu,
@@ -148,6 +150,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const boardOrientation: "white" | "black" = "white"
   const [game, setGame] = useState(() => makePoweredChess(new Chess()))
   const [powerDisplay, setPowerDisplay] = usePowerDisplay()
+  const online = useOnline()
+  const isAdmin = isAdminUser(online.user)
   const [chancePosition, setChancePosition] = useChancePosition()
   const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode()
   const [crossfaderSync, setCrossfaderSync] = useCrossfaderSync()
@@ -1729,7 +1733,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onTogglePieceDebug={togglePieceDebug}
                 botControlOn={botControlOn}
                 onToggleBotControl={toggleBotControl}
-                onForceWin={forceWin}
+                onForceWin={isAdmin ? forceWin : undefined}
                 onGetEggs={getDebugEggs}
                 onShowTopMoves={button => {
                   if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) return

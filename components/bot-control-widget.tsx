@@ -48,6 +48,8 @@ function ParamField({ label, code, value, min, max, step = 1, suffix, disabled, 
     valueRef.current = next
     onChange(next)
   }
+  // Percent fields show the "%" before the number, inside the text field.
+  const inField = suffix === "%"
   const stepperClass = "absolute top-1/2 flex h-3.5 w-3.5 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-full border border-white/25 bg-white/10 p-0 text-[10px] leading-none text-white/80 transition-colors hover:border-white/60 hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
   return (
     <label className={cn("flex items-center justify-between gap-2 rounded bg-white/[0.03] px-2 py-0.5", disabled && "opacity-45")}>
@@ -56,6 +58,7 @@ function ParamField({ label, code, value, min, max, step = 1, suffix, disabled, 
       </span>
       <span className="flex shrink-0 items-center gap-1">
         <span className="relative w-[4.5rem]">
+          {inField && <span aria-hidden="true" className={cn("pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 font-mono text-[10px] text-white/55", disabled && "opacity-60")}>%</span>}
           <input
             type="number"
             aria-label={`${code} ${label}`}
@@ -72,12 +75,12 @@ function ParamField({ label, code, value, min, max, step = 1, suffix, disabled, 
               const clamped = Math.max(min, Math.min(max, parsed))
               onChange(clamped)
             }}
-            className="w-full rounded border border-white/20 bg-black/70 py-0.5 pl-1.5 pr-9 text-right font-mono text-[10px] text-white [appearance:textfield] focus:border-white/60 focus:outline-none disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className={cn("w-full rounded border border-white/20 bg-black/70 py-0.5 pr-9 font-mono text-[10px] text-white [appearance:textfield] focus:border-white/60 focus:outline-none disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none", inField ? "pl-5 text-left" : "pl-1.5 text-right")}
           />
           <StepperButton aria-label={`Diminuir ${code} ${label}`} disabled={disabled || value <= min} onStep={() => adjust(-1)} className={cn(stepperClass, "right-[19px]")}>−</StepperButton>
           <StepperButton aria-label={`Aumentar ${code} ${label}`} disabled={disabled || value >= max} onStep={() => adjust(1)} className={cn(stepperClass, "right-[2px]")}>+</StepperButton>
         </span>
-        {suffix && <span className="w-3 font-mono text-[10px] text-white/55">{suffix}</span>}
+        {suffix && !inField && <span className="w-3 font-mono text-[10px] text-white/55">{suffix}</span>}
       </span>
     </label>
   )
