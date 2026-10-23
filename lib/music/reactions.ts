@@ -30,7 +30,7 @@ export type Occurrence = { trigger: Trigger; color: 'w' | 'b'; ply: number }
 export interface ReactionContext { ply: number; states: Occurrence[]; events: Occurrence[] }
 export const ACTIONS = { transpose: 'Transpose', bpm: 'Tempo', scale: 'Fixed scale', scaleShift: 'Scale change', relative: 'Relative major/minor', mode: 'Modal rotation', harmony: 'Harmony plan', invert: 'Invert melody', variation: 'Force variation', gain: 'Gain', lpf: 'Low-pass filter', activate: 'Activate band' } as const
 export { SCALE_INTERVALS, SCALE_LABELS } from './scales'
-import { SCALE_INTERVALS, identifyPitchCollection } from './scales'
+import { SCALE_INTERVALS, SCALE_LABELS, identifyPitchCollection } from './scales'
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
 export const actionSchema = z.object({ type: z.enum(keys(ACTIONS)), rampBars: z.number().int().min(0).max(16).optional(), value: z.number().finite().min(-100).max(20000).default(0), scale: z.enum(keys(SCALE_INTERVALS)).default('Maior'), harmony: z.enum([...HARMONY_PLAN_IDS, 'random'] as [HarmonyPlanId | 'random', ...(HarmonyPlanId | 'random')[]]).default('static'), shift: z.enum(SCALE_SHIFT_IDS).optional() }).superRefine((a, ctx) => {
   const limits: Record<keyof typeof ACTIONS, [number, number]> = { transpose: [-12,12], bpm: [-30,30], scale: [0,0], scaleShift: [0,0], relative:[0,0], mode:[0,11], harmony:[0,0], invert:[0,0], variation:[0,7], gain:[-100,100], lpf:[20,20000], activate:[0,0] }
