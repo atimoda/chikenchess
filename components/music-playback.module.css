@@ -8,6 +8,8 @@
 .pieceParamsVoice { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 42px; height: 100%; padding: 0; overflow: hidden; }
 .pieceParamsVariationViewer { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 42px; overflow: hidden; }
 .pieceParamsVoice .variationTabs { flex: 0 0 auto; margin-bottom: 0; }
+/* Piece Params clips its viewer, so the tab strip keeps the pin's headroom inside it. */
+.pieceParamsVoice .variationTabList { margin-top: 0; }
 .pieceParamsVoice .pieceParamsVariationViewer > section[aria-label='Editor de variações'] { flex: 1 1 0%; min-height: 0; overflow: hidden; }
 .variations { height: 174px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; font: 10px monospace; }
 .variations[data-tabbed='true'] { height: 124px; overflow: hidden; }
