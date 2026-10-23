@@ -13,8 +13,10 @@ export interface BotConfigParams {
   freezeEveryMoves: number // Z
   shieldEveryMoves: number // R
   shieldChanceAbovePercent: number // T%
-  worstChanceAbovePercent: number // W%
-  worstMinScorePawns: number // V
+  worstFloorPawns: number // W: the bot's score must stay at or above W pawns after the Worst move
+  worstMaxLossPawns: number // V: the Worst move may lose at most V pawns against the best move
+  eggTarget: number // O: farm Worst moves only while holding fewer eggs than this
+  worstCooldownMoves: number // K: minimum bot turns between two Worst moves
 }
 
 export interface BotProfile extends BotConfigParams {
@@ -39,6 +41,9 @@ export interface BotTurnDecision {
 }
 
 const MATERIAL: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 }
+
+// A best move that gains this much over the current evaluation is a conversion, not a moment to farm eggs.
+const WORST_SKIP_BEST_GAIN_CP = 150
 
 /** Visual balance formula shared by the match evaluation bar (0% = Black mate, 50% = 0.00, 100% = White mate). */
 export function evaluationWhitePercent(score: number | null, mate: number | null = null): number {
@@ -141,15 +146,17 @@ function canApplyBotFreezeOnSquare(game: Chess, powers: MatchPower[], square: Sq
 }
 
 /**
- * Pick a Freeze target square from the opponent's top X available moves at random,
- * with a 50% chance of freezing the origin square (`from`) and 50% chance of freezing
- * the destination square (`to`).
+ * Pick a Freeze target among the opponent pieces that play its top X available moves, at random.
+ * Only the moving piece (`from`) is frozen: an empty destination would just become a trap the
+ * opponent can avoid. A piece that the bot's planned move captures is never frozen, since a
+ * frozen piece cannot be captured.
  */
 export function selectBotFreezeSquare(
   game: Chess,
   powers: MatchPower[],
   topX: number,
   random: () => number = Math.random,
+  plannedMove?: Move,
 ): Square | null {
   const opponentMoves = rankOpponentMovesForBot(game, powers)
   if (!opponentMoves.length) return null
@@ -166,12 +173,8 @@ export function selectBotFreezeSquare(
   }
 
   for (const idx of indices) {
-    const move = topCandidates[idx]!
-    const pickOrigin = random() < 0.5
-    const primary = pickOrigin ? move.from : move.to
-    const secondary = pickOrigin ? move.to : move.from
-    if (canApplyBotFreezeOnSquare(game, powers, primary)) return primary
-    if (canApplyBotFreezeOnSquare(game, powers, secondary)) return secondary
+    const square = topCandidates[idx]!.from
+    if (canApplyBotFreezeOnSquare(game, powers, square, plannedMove)) return square
   }
   return null
 }
@@ -226,8 +229,10 @@ export function getBotConfigParams(profile: BotConfigParams): BotConfigParams {
     freezeEveryMoves: profile.freezeEveryMoves,
     shieldEveryMoves: profile.shieldEveryMoves,
     shieldChanceAbovePercent: profile.shieldChanceAbovePercent,
-    worstChanceAbovePercent: profile.worstChanceAbovePercent,
-    worstMinScorePawns: profile.worstMinScorePawns,
+    worstFloorPawns: profile.worstFloorPawns,
+    worstMaxLossPawns: profile.worstMaxLossPawns,
+    eggTarget: profile.eggTarget,
+    worstCooldownMoves: profile.worstCooldownMoves,
   }
 }
 
@@ -243,8 +248,10 @@ export class ChessBot {
   freezeEveryMoves: number
   shieldEveryMoves: number
   shieldChanceAbovePercent: number
-  worstChanceAbovePercent: number
-  worstMinScorePawns: number
+  worstFloorPawns: number
+  worstMaxLossPawns: number
+  eggTarget: number
+  worstCooldownMoves: number
 
   constructor(profile: BotProfile, overrides?: Partial<BotConfigParams>) {
     this.id = profile.id
@@ -258,8 +265,10 @@ export class ChessBot {
     this.freezeEveryMoves = overrides?.freezeEveryMoves ?? profile.freezeEveryMoves
     this.shieldEveryMoves = overrides?.shieldEveryMoves ?? profile.shieldEveryMoves
     this.shieldChanceAbovePercent = overrides?.shieldChanceAbovePercent ?? profile.shieldChanceAbovePercent
-    this.worstChanceAbovePercent = overrides?.worstChanceAbovePercent ?? profile.worstChanceAbovePercent
-    this.worstMinScorePawns = overrides?.worstMinScorePawns ?? profile.worstMinScorePawns
+    this.worstFloorPawns = overrides?.worstFloorPawns ?? profile.worstFloorPawns
+    this.worstMaxLossPawns = overrides?.worstMaxLossPawns ?? profile.worstMaxLossPawns
+    this.eggTarget = overrides?.eggTarget ?? profile.eggTarget
+    this.worstCooldownMoves = overrides?.worstCooldownMoves ?? profile.worstCooldownMoves
   }
 
   get isPureChess(): boolean {
@@ -287,8 +296,10 @@ export class ChessBot {
       freezeEveryMoves: this.freezeEveryMoves,
       shieldEveryMoves: this.shieldEveryMoves,
       shieldChanceAbovePercent: this.shieldChanceAbovePercent,
-      worstChanceAbovePercent: this.worstChanceAbovePercent,
-      worstMinScorePawns: this.worstMinScorePawns,
+      worstFloorPawns: this.worstFloorPawns,
+      worstMaxLossPawns: this.worstMaxLossPawns,
+      eggTarget: this.eggTarget,
+      worstCooldownMoves: this.worstCooldownMoves,
     }
   }
 
@@ -327,6 +338,8 @@ export class ChessBot {
     matchPowers?: MatchPower[]
     botTurnNumber?: number
     botTurnCount?: number
+    /** Bot turn number of the last Worst move played for eggs, if any. */
+    lastWorstMoveTurn?: number | null
     botEggs: number
     whiteScore?: number | null
     whiteEvalScore?: number | null
@@ -343,6 +356,7 @@ export class ChessBot {
       game,
       powers = options.matchPowers ?? [],
       botTurnNumber = options.botTurnCount ?? 0,
+      lastWorstMoveTurn = null,
       botEggs,
       whiteScore = options.whiteEvalScore ?? null,
       whiteMate = null,
@@ -382,8 +396,12 @@ export class ChessBot {
     let desiredPower: BotSpecialPowerAction | null = null
     let shieldAdvanceMoveUci: string | null = null
 
+    // Freeze must not take away the capture the bot is about to play.
+    const plannedUci = this.selectStandardMove(permittedUcis, blackAnalysis, stockfishSuggestedUci, bestAvailableUci)
+    const plannedMove = plannedUci ? game.moves({ verbose: true }).find(move => moveToUci(move) === plannedUci) : undefined
+
     const tryResolveFreeze = (): BotSpecialPowerAction | null => {
-      const targetSquare = selectBotFreezeSquare(game, powers, this.freezeTopMoves, random)
+      const targetSquare = selectBotFreezeSquare(game, powers, this.freezeTopMoves, random, plannedMove)
       if (!targetSquare) return null
       return { kind: 'freeze', square: targetSquare }
     }
@@ -450,22 +468,37 @@ export class ChessBot {
       }
     }
 
-    // When bot's chance bar is above W%, try one of the 3 worst available moves with score >= V (in pawns) to earn 3 golden eggs.
+    // Worst move for 3 eggs: only on a turn without a power, while short of eggs, after the cooldown,
+    // and only when the move gives up at most V pawns and keeps the bot at W pawns or better.
+    const worstCooldownOver = lastWorstMoveTurn === null || botTurnNumber - lastWorstMoveTurn >= this.worstCooldownMoves
+    const bestCandidate = blackAnalysis?.best.find(candidate => effectivePermittedUcis.includes(candidate.uci))
+    const botScore = whiteScore === null ? null : -whiteScore
     if (
-      botPercent > this.worstChanceAbovePercent &&
+      !powerAction &&
+      botEggs < this.eggTarget &&
+      worstCooldownOver &&
+      whiteMate === null &&
       blackAnalysis?.complete &&
       blackAnalysis.legalMoves > 1 &&
-      blackAnalysis.worst.length > 0
+      blackAnalysis.worst.length > 0 &&
+      bestCandidate &&
+      bestCandidate.mate === null &&
+      (botScore === null || bestCandidate.score - botScore <= WORST_SKIP_BEST_GAIN_CP)
     ) {
-      const minScoreCp = this.worstMinScorePawns * 100
-      const eligibleWorst = blackAnalysis.worst.filter(
-        candidate =>
-          effectivePermittedUcis.includes(candidate.uci) &&
-          candidate.mate === null &&
-          candidate.score >= minScoreCp,
-      )
-      if (eligibleWorst.length > 0) {
-        const chosenWorst = eligibleWorst[Math.floor(random() * eligibleWorst.length)] ?? eligibleWorst[0]!
+      const floorCp = this.worstFloorPawns * 100
+      const maxLossCp = this.worstMaxLossPawns * 100
+      const eligibleWorst = blackAnalysis.worst
+        .filter(
+          candidate =>
+            effectivePermittedUcis.includes(candidate.uci) &&
+            !blackAnalysis.best.some(best => best.uci === candidate.uci) &&
+            candidate.mate === null &&
+            candidate.score >= floorCp &&
+            bestCandidate.score - candidate.score <= maxLossCp,
+        )
+        .sort((a, b) => b.score - a.score)
+      const chosenWorst = eligibleWorst[0]
+      if (chosenWorst) {
         return {
           powerAction,
           insufficientEggs,

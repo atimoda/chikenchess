@@ -283,24 +283,43 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           </div>
           <ParamField
             code="W"
-            label="Barra acima de"
-            value={params.worstChanceAbovePercent}
-            min={0}
-            max={100}
-            step={1}
-            suffix="%"
+            label="Score mínimo depois"
+            value={params.worstFloorPawns}
+            min={-50}
+            max={50}
+            step={0.25}
             disabled={!isChicken}
-            onChange={worstChanceAbovePercent => onParamsChange({ worstChanceAbovePercent })}
+            onChange={worstFloorPawns => onParamsChange({ worstFloorPawns })}
           />
           <ParamField
             code="V"
-            label="Score mínimo"
-            value={params.worstMinScorePawns}
-            min={-50}
+            label="Perda máxima"
+            value={params.worstMaxLossPawns}
+            min={0}
             max={50}
-            step={0.5}
+            step={0.1}
             disabled={!isChicken}
-            onChange={worstMinScorePawns => onParamsChange({ worstMinScorePawns })}
+            onChange={worstMaxLossPawns => onParamsChange({ worstMaxLossPawns })}
+          />
+          <ParamField
+            code="O"
+            label="Só com ovos abaixo de"
+            value={params.eggTarget}
+            min={0}
+            max={100}
+            step={1}
+            disabled={!isChicken}
+            onChange={eggTarget => onParamsChange({ eggTarget: Math.round(eggTarget) })}
+          />
+          <ParamField
+            code="K"
+            label="Intervalo mínimo"
+            value={params.worstCooldownMoves}
+            min={0}
+            max={100}
+            step={1}
+            disabled={!isChicken}
+            onChange={worstCooldownMoves => onParamsChange({ worstCooldownMoves: Math.round(worstCooldownMoves) })}
           />
 
           {canSaveBot && onSaveBot && (

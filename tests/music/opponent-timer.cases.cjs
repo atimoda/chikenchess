@@ -112,8 +112,10 @@ test('Bot catalog defines the 5 PureChess bots and 3 ChickenBots with expected p
   assert.equal(easyChicken.freezeTopMoves, 3)
   assert.equal(easyChicken.freezeChanceBelowPercent, 10)
   assert.equal(easyChicken.freezeEveryMoves, 8)
-  assert.equal(easyChicken.worstChanceAbovePercent, 70)
-  assert.equal(easyChicken.worstMinScorePawns, -4)
+  assert.equal(easyChicken.worstFloorPawns, 1)
+  assert.equal(easyChicken.worstMaxLossPawns, 1.5)
+  assert.equal(easyChicken.eggTarget, 6)
+  assert.equal(easyChicken.worstCooldownMoves, 2)
   assert.equal(easyChicken.shieldEveryMoves, 9)
   assert.equal(easyChicken.shieldChanceAbovePercent, 50)
 })
@@ -239,38 +241,87 @@ test('ChickenBot triggers Shield on an own piece and advances to a square under 
   assert.ok(Number(decision.moveUci[3]) <= Number(decision.moveUci[1]))
 })
 
-test('ChickenBot farms 3 golden eggs with a Worst move above V when chance is above W%', () => {
-  const game = makePoweredChess(new Chess('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
-  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
-  const analysis = {
+function worstFarmAnalysis(game) {
+  return {
     fen: game.fen(),
     side: 'b',
     legalMoves: 20,
     depth: 12,
     complete: true,
     final: true,
-    best: [{ uci: 'c7c5', san: 'c5', score: 25, mate: null, change: 0 }],
+    best: [{ uci: 'c7c5', san: 'c5', score: 250, mate: null, change: 0 }],
     worst: [
-      { uci: 'a7a6', san: 'a6', score: -150, mate: null, change: -175 },
-      { uci: 'h7h5', san: 'h5', score: -250, mate: null, change: -275 },
-      { uci: 'g7g5', san: 'g5', score: -450, mate: null, change: -475 },
+      { uci: 'a7a6', san: 'a6', score: 180, mate: null, change: -70 },
+      { uci: 'h7h5', san: 'h5', score: 90, mate: null, change: -160 },
+      { uci: 'g7g5', san: 'g5', score: -150, mate: null, change: -400 },
     ],
   }
-  // whiteScore = -500 => botPercent = 81.25% > W (60%); Expert V = -3 (-300 cp), so a7a6 (-150) and h7h5 (-250) qualify, g7g5 (-450) does not
-  const decision = bot.decideTurn({
+}
+
+test('ChickenBot farms 3 golden eggs with the Worst move that loses least, within V pawns and above W pawns', () => {
+  const game = makePoweredChess(new Chess('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
+  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
+  const analysis = worstFarmAnalysis(game)
+  // Expert: V = 1.0 pawn of loss, W = +0.75 after the move. a7a6 (+1.8, loses 0.7) qualifies;
+  // h7h5 (+0.9) loses 1.6 and g7g5 (-1.5) drops below the floor.
+  const base = {
     game,
     stockfishSuggestedUci: 'c7c5',
     bestAvailableUci: 'c7c5',
     blackAnalysis: analysis,
-    whiteScore: -500,
+    whiteScore: -250,
     botTurnNumber: 1,
     botEggs: 0,
-    random: () => 0.99, // picks second qualifying worst move ('h7h5')
-  })
+    random: () => 0.99,
+  }
+  const decision = bot.decideTurn(base)
   assert.equal(decision.powerAction, null)
   assert.equal(decision.usedWorstMoveForEggs, true)
-  assert.equal(decision.moveUci, 'h7h5')
+  assert.equal(decision.moveUci, 'a7a6')
   assert.equal(rankedMoveReward(analysis, game.fen(), decision.moveUci, 'b'), 'worst')
+
+  const looseBot = bot.withParams({ worstMaxLossPawns: 2 })
+  assert.equal(looseBot.decideTurn(base).moveUci, 'a7a6', 'Picks the smallest loss, not a random eligible move')
+  assert.equal(bot.withParams({ worstMaxLossPawns: 0.5 }).decideTurn(base).usedWorstMoveForEggs, false)
+  assert.equal(bot.withParams({ worstFloorPawns: 2 }).decideTurn(base).usedWorstMoveForEggs, false)
+})
+
+test('ChickenBot skips Worst moves with enough eggs, during the cooldown or when the best move wins material', () => {
+  const game = makePoweredChess(new Chess('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
+  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
+  const base = {
+    game,
+    stockfishSuggestedUci: 'c7c5',
+    bestAvailableUci: 'c7c5',
+    blackAnalysis: worstFarmAnalysis(game),
+    whiteScore: -250,
+    botTurnNumber: 5,
+    botEggs: 0,
+  }
+  assert.equal(bot.decideTurn({ ...base, botEggs: 6 }).usedWorstMoveForEggs, false, 'Holds eggTarget eggs already')
+  assert.equal(bot.decideTurn({ ...base, lastWorstMoveTurn: 3 }).usedWorstMoveForEggs, false, 'Cooldown of 3 turns')
+  assert.equal(bot.decideTurn({ ...base, lastWorstMoveTurn: 2 }).usedWorstMoveForEggs, true)
+  const conversion = bot.decideTurn({ ...base, whiteScore: -50 })
+  assert.equal(conversion.usedWorstMoveForEggs, false, 'Best move gains 2 pawns over the current evaluation')
+  assert.equal(conversion.moveUci, 'c7c5')
+})
+
+test('ChickenBot never plays a Worst move on the same turn it pays for a power', () => {
+  const game = makePoweredChess(new Chess('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
+  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
+  // botTurnNumber = 6 is a multiple of Z and R for Expert.
+  const decision = bot.decideTurn({
+    game,
+    stockfishSuggestedUci: 'c7c5',
+    bestAvailableUci: 'c7c5',
+    blackAnalysis: worstFarmAnalysis(game),
+    whiteScore: -250,
+    botTurnNumber: 6,
+    botEggs: 3,
+    random: () => 0,
+  })
+  assert.ok(decision.powerAction)
+  assert.equal(decision.usedWorstMoveForEggs, false)
 })
 
 test('ChickenBot never freezes its own pieces, even when the opponent top move is a capture', () => {
@@ -288,5 +339,27 @@ test('ChickenBot never freezes its own pieces, even when the opponent top move i
   })
   assert.equal(decision.powerAction?.kind, 'freeze')
   assert.notEqual(game.get(decision.powerAction.square)?.color, 'b', 'Bot must never freeze its own piece')
+})
+
+test('ChickenBot Freeze targets only opponent pieces and never the piece its planned move captures', () => {
+  // White's top replies include exd5; Black plans dxe4, so the e4 pawn must stay capturable.
+  const game = makePoweredChess(new Chess('rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
+  const bot = new ChessBot(findBotProfile('easy-chickenbot')).withParams({ freezeTopMoves: 20 })
+  for (const value of [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 0.99]) {
+    const decision = bot.decideTurn({
+      game,
+      stockfishSuggestedUci: 'd5e4',
+      bestAvailableUci: 'd5e4',
+      blackAnalysis: null,
+      whiteScore: 3000,
+      botTurnNumber: 1,
+      botEggs: 3,
+      random: () => value,
+    })
+    assert.equal(decision.powerAction?.kind, 'freeze')
+    assert.equal(game.get(decision.powerAction.square)?.color, 'w', 'Freezes a White piece, never an empty square')
+    assert.notEqual(decision.powerAction.square, 'e4')
+    assert.equal(decision.moveUci, 'd5e4')
+  }
 })
 

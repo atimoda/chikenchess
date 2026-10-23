@@ -11,8 +11,10 @@
     "freezeEveryMoves": 8,
     "shieldEveryMoves": 9,
     "shieldChanceAbovePercent": 50,
-    "worstChanceAbovePercent": 70,
-    "worstMinScorePawns": -4
+    "worstFloorPawns": 1,
+    "worstMaxLossPawns": 1.5,
+    "eggTarget": 6,
+    "worstCooldownMoves": 2
   },
   {
     "id": "medium-pure-chess",
@@ -26,8 +28,10 @@
     "freezeEveryMoves": 8,
     "shieldEveryMoves": 9,
     "shieldChanceAbovePercent": 50,
-    "worstChanceAbovePercent": 70,
-    "worstMinScorePawns": -4
+    "worstFloorPawns": 1,
+    "worstMaxLossPawns": 1.5,
+    "eggTarget": 6,
+    "worstCooldownMoves": 2
   },
   {
     "id": "hard-pure-chess",
@@ -41,8 +45,10 @@
     "freezeEveryMoves": 8,
     "shieldEveryMoves": 9,
     "shieldChanceAbovePercent": 50,
-    "worstChanceAbovePercent": 70,
-    "worstMinScorePawns": -4
+    "worstFloorPawns": 1,
+    "worstMaxLossPawns": 1.5,
+    "eggTarget": 6,
+    "worstCooldownMoves": 2
   },
   {
     "id": "expert-pure-chess",
@@ -56,8 +62,10 @@
     "freezeEveryMoves": 6,
     "shieldEveryMoves": 6,
     "shieldChanceAbovePercent": 30,
-    "worstChanceAbovePercent": 60,
-    "worstMinScorePawns": -3
+    "worstFloorPawns": 0.75,
+    "worstMaxLossPawns": 1,
+    "eggTarget": 6,
+    "worstCooldownMoves": 3
   },
   {
     "id": "jedi-pure-chess",
@@ -71,8 +79,10 @@
     "freezeEveryMoves": 4,
     "shieldEveryMoves": 3,
     "shieldChanceAbovePercent": 20,
-    "worstChanceAbovePercent": 50,
-    "worstMinScorePawns": -2
+    "worstFloorPawns": 0.5,
+    "worstMaxLossPawns": 0.6,
+    "eggTarget": 9,
+    "worstCooldownMoves": 3
   },
   {
     "id": "easy-chickenbot",
@@ -86,8 +96,10 @@
     "freezeEveryMoves": 8,
     "shieldEveryMoves": 9,
     "shieldChanceAbovePercent": 50,
-    "worstChanceAbovePercent": 70,
-    "worstMinScorePawns": -4
+    "worstFloorPawns": 1,
+    "worstMaxLossPawns": 1.5,
+    "eggTarget": 6,
+    "worstCooldownMoves": 2
   },
   {
     "id": "expert-chickenbot",
@@ -101,8 +113,10 @@
     "freezeEveryMoves": 6,
     "shieldEveryMoves": 6,
     "shieldChanceAbovePercent": 30,
-    "worstChanceAbovePercent": 60,
-    "worstMinScorePawns": -3
+    "worstFloorPawns": 0.75,
+    "worstMaxLossPawns": 1,
+    "eggTarget": 6,
+    "worstCooldownMoves": 3
   },
   {
     "id": "jedi-chickenbot",
@@ -116,7 +130,9 @@
     "freezeEveryMoves": 4,
     "shieldEveryMoves": 3,
     "shieldChanceAbovePercent": 20,
-    "worstChanceAbovePercent": 50,
-    "worstMinScorePawns": -2
+    "worstFloorPawns": 0.5,
+    "worstMaxLossPawns": 0.6,
+    "eggTarget": 9,
+    "worstCooldownMoves": 3
   }
 ]

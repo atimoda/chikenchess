@@ -228,6 +228,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const playerEggBalanceRef = useRef(STARTING_MATCH_GOLDEN_EGGS)
   const opponentEggBalanceRef = useRef(STARTING_MATCH_GOLDEN_EGGS)
   const botTurnCountRef = useRef(0)
+  const botLastWorstTurnRef = useRef<number | null>(null)
   const debugEggClicksRef = useRef(0)
   const collectedMatchEggsRef = useRef(0)
   const victoryToastRef = useRef<string | number | null>(null)
@@ -673,6 +674,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           game: gameRef.current,
           powers: matchPowersRef.current,
           botTurnNumber: nextBotTurnCount,
+          lastWorstMoveTurn: botLastWorstTurnRef.current,
           botEggs: opponentEggBalanceRef.current,
           whiteScore: lastEvalScoreRef.current,
           whiteMate: lastEvalMateRef.current,
@@ -681,6 +683,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           bestAvailableUci: bestAvailable,
           permittedMoves,
         })
+
+        if (decision.usedWorstMoveForEggs) botLastWorstTurnRef.current = nextBotTurnCount
 
         if (decision.insufficientEggs && currentBot.isChickenBot) {
           void engineRef.current?.playBlockedCue()
@@ -730,7 +734,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             const nextFen = nextGame.fen()
             aiMoveTimerRef.current?.schedule(nextFen, 1000, () => {
               if (gameRef.current.fen() !== nextFen || gameRef.current.turn() !== 'b') return
-              if (decision.moveUci) aiMoveCallbackRef.current(decision.moveUci)
+              // After a Freeze, prefer the best move of the analysis that already counts the new power.
+              // A Shield keeps its planned advance, which is the reason it was applied.
+              const reanalyzedUci = decision.powerAction?.kind === 'freeze' && aiMoveCandidateRef.current?.fen === nextFen
+                ? aiMoveCandidateRef.current.uci
+                : null
+              const moveUci = reanalyzedUci ?? decision.moveUci
+              if (moveUci) aiMoveCallbackRef.current(moveUci)
               setIsThinking(false)
             })
             return

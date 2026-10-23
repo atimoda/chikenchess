@@ -3,6 +3,21 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.6.8',
+    date: '23/10/2026',
+    title: 'ChickenBots jogam Worst e Freeze com mais critério',
+    groups: [
+      { title: 'ChickenBots', items: [
+        'Os ChickenBots não entregam mais a partida para ganhar golden eggs: o Worst move agora só é jogado quando perde pouco em relação ao melhor lance, mantém o bot em vantagem e o bot ainda precisa de ovos. Ele espera alguns turnos entre um Worst e outro e não faz isso quando tem um lance que ganha material.',
+        'O Freeze dos ChickenBots agora sempre congela a peça adversária que faz uma das melhores jogadas, nunca uma casa vazia, e nunca a peça que o próprio bot ia capturar. Depois do Freeze, o bot joga o melhor lance já considerando o gelo.',
+        'O bot não paga mais um Freeze ou Shield e joga um Worst move no mesmo turno.',
+      ] },
+      { title: 'Debug', items: [
+        'No Bot Control, a seção Worst ganhou os campos W (score mínimo depois), V (perda máxima), O (só com ovos abaixo de) e K (intervalo mínimo entre Worst moves).',
+      ] },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '22/10/2026',
     title: 'Best/Worst e barra de Chance não travam mais',

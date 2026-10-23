@@ -67,8 +67,10 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
         freezeEveryMoves: finite.int().min(1).max(100),
         shieldEveryMoves: finite.int().min(1).max(100),
         shieldChanceAbovePercent: finite.min(0).max(100),
-        worstChanceAbovePercent: finite.min(0).max(100),
-        worstMinScorePawns: finite.min(-100).max(100),
+        worstFloorPawns: finite.min(-100).max(100),
+        worstMaxLossPawns: finite.min(0).max(100),
+        eggTarget: finite.int().min(0).max(100),
+        worstCooldownMoves: finite.int().min(0).max(100),
       }).strict()
       const result = z.array(botSchema).min(1).max(32).parse(value)
       if (new Set(result.map(item => item.id)).size !== result.length) throw new Error('IDs dos bots não podem repetir.')
