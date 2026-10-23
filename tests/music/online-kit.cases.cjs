@@ -26,8 +26,8 @@ function kit(name, sound, degree) {
     value.mappings[piece.id] = { fileDegrees: degree, rankDegrees: 0, panWidth: .2, previewFilter: true }
   }
   value.arrangement = { sections: [
-    { id: `${name}-a`, label: 'Source A', beats: 3 },
-    { id: `${name}-b`, label: 'Source B', beats: 5 },
+    { id: `${name}-a`, label: 'Verse', beats: 3 },
+    { id: `${name}-b`, label: 'Chorus', beats: 5 },
   ] }
   return value
 }
@@ -42,8 +42,8 @@ test('online kit keeps the host context and maps both team voices onto its secti
   host.meter = '7/8'
   host.arrangement = { sections: [
     { id: 'host-intro', label: 'Intro', beats: 7, harmony: [0, 3] },
-    { id: 'host-main', label: 'Main', beats: 14, harmony: [4] },
-    { id: 'host-return', label: 'Return', beats: 7, harmony: [-2] },
+    { id: 'host-main', label: 'Chorus', beats: 14, harmony: [4] },
+    { id: 'host-return', label: 'Outro', beats: 7, harmony: [-2] },
   ] }
   white.instruments['w:b1'].pianoRolls = white.instruments['w:b1'].pianoRolls.slice(0, 1)
 

@@ -8,6 +8,7 @@ import { creativeSchema, SOUNDS, ROOTS, parseCreativeSession } from '../music/cr
 import { SCALE_NAMES } from '../music/scales'
 import { HARMONY_PLAN_IDS } from '../music/harmony'
 import { METER_IDS } from '../music/meter'
+import { SECTION_TYPES } from '../music/arrangement'
 import { createStyledCityKit } from '../music/styled-kits'
 import type { StyleProfile } from '../music/kit-profiles/types'
 
@@ -36,8 +37,8 @@ const partSchema = z.object({
 export const styleProfileSchema = z.object({
   name: text, bpm: finite.min(30).max(240), meter: z.enum(METER_IDS).optional(), root: z.enum(ROOTS), scale: z.enum(SCALE_NAMES), harmony: z.enum(HARMONY_PLAN_IDS),
   harmonicSequences: z.array(z.array(finite).min(1).max(64)).max(24).optional(), swing: finite.min(0).max(.5),
-  sections: z.array(finite.min(.25).max(64)).min(1).max(24), parts: z.array(partSchema).length(16), reference: text, url: z.string().url(),
-}).strict()
+  sections: z.array(finite.min(.25).max(64)).min(1).max(24), sectionLabels: z.array(z.enum(SECTION_TYPES)).min(1).max(24), parts: z.array(partSchema).length(16), reference: text, url: z.string().url(),
+}).strict().refine(profile => profile.sectionLabels.length === profile.sections.length, 'Informe um tipo de seção para cada duração.')
 
 export function validateAdminValue(entry: AdminEntry, value: unknown): void {
   switch (entry.kind) {

@@ -47,6 +47,14 @@
     16,
     32
   ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Interlude",
+    "Chorus",
+    "Solo",
+    "Chorus"
+  ],
   "reference": "Original kizomba study inspired by the late-1970s and 1980s Luanda musseque fusion of Angolan semba, French Antillean zouk and Cabo Verde coladeira. Key reference: Eduardo Paim – Rosa Baila.",
   "url": "https://en.wikipedia.org/wiki/Kizomba",
   "parts": [

@@ -1,4 +1,5 @@
 import type { CreativeSession } from '../creative'
+import type { SectionType } from '../arrangement'
 import type { Meter } from '../meter'
 import type { Behavior, MovementMapping, ParameterRange } from '../model'
 
@@ -58,6 +59,8 @@ export type StyleProfile = {
   harmonicSequences?: number[][]
   swing: number
   sections: number[]
+  /** Curated type per section; legacy authoring sources without it fall back to Verse. */
+  sectionLabels?: SectionType[]
   parts: PartProfile[]
   reference: string
   url: string

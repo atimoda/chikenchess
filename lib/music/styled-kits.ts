@@ -7,6 +7,7 @@ export { MANCHESTER_JAZZ_REVISION } from './manchester-kit'
 import type { CityData } from '../cities-data'
 import type { PartProfile, ProfileSource, StyleProfile } from './kit-profiles/types'
 import { beatsPerBar, groupStarts, type Meter } from './meter'
+import { DEFAULT_SECTION_TYPE } from './arrangement'
 
 export const STYLE_REVISION = 'styles-2026-10-02-midi-v5'
 export const CITY_STYLE_REVISIONS: Record<string, string> = {
@@ -91,7 +92,7 @@ export function createStyledCityKit(city: CityData, profileOverride?: StyleProfi
   const kit = createCreativeSession()
   Object.assign(kit, { catalogRevision: CITY_STYLE_REVISIONS[city.id] ?? STYLE_REVISION, cityId: city.id, name: profile.name, bpm: profile.bpm, meter: profile.meter ?? '4/4', root: profile.root, scale: profile.scale,
     harmony: profile.harmonicSequences?.some(sequence => sequence?.length) ? 'kit' : profile.harmony, volume: .68, arrangement: { sections: profile.sections.map((beats, index) => ({
-      id: `section-${String.fromCharCode(97 + index)}`, label: String.fromCharCode(65 + index), beats,
+      id: `section-${String.fromCharCode(97 + index)}`, label: profile.sectionLabels?.[index] ?? DEFAULT_SECTION_TYPE, beats,
       ...(profile.harmonicSequences?.[index] ? { harmony: [...profile.harmonicSequences[index]] } : {}),
     })) } })
   for (const piece of kit.pieces) {

@@ -2,6 +2,7 @@ import type { CityData } from '../cities-data'
 import { createCreativeSession, creativeSchema, ROOTS, SCALES, type CreativeSession } from './creative'
 import { noteRoll } from './piano-roll'
 import { beatsPerBar } from './meter'
+import type { SectionType } from './arrangement'
 import { SAMPLE_BANKS } from './sample-banks'
 
 // Versioned seed keeps a city's factory arrangement identical in the game and
@@ -42,8 +43,9 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
     ? ['Pentatônica menor', 'Pentatônica maior', 'Maior', 'Menor natural', 'Dórica', 'Mixolídia'] as const
     : Object.keys(SCALES) as Array<keyof typeof SCALES>)
   const sectionBars = pick([[4, 4, 4, 4], [2, 2, 4], [4, 4, 4, 4]])
+  const sectionTypes: SectionType[] = sectionBars.length === 3 ? ['Intro', 'Verse', 'Chorus'] : ['Verse', 'Chorus', 'Bridge', 'Chorus']
   kit.arrangement = { sections: sectionBars.map((bars, index) => ({
-    id: `section-${String.fromCharCode(97 + index)}`, label: String.fromCharCode(65 + index), beats: bars * beatsPerBar(kit.meter),
+    id: `section-${String.fromCharCode(97 + index)}`, label: sectionTypes[index], beats: bars * beatsPerBar(kit.meter),
   })) }
 
   // Seed data becomes explicit notes immediately; no runtime groove interpreter.

@@ -3,9 +3,32 @@ import type { Instrument } from './model'
 import type { Performance } from './performance'
 import { beatsPerBar } from './meter'
 
+/** Closed vocabulary for global section names, in the order offered by the editor. */
+export const SECTION_TYPES = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Post-Chorus', 'Hook', 'Bridge', 'Interlude', 'Turnaround', 'Solo', 'Drop', 'Break', 'Outro'] as const
+export type SectionType = typeof SECTION_TYPES[number]
+export const DEFAULT_SECTION_TYPE: SectionType = 'Verse'
+
+const SECTION_ALIASES: Record<string, SectionType> = {
+  introducao: 'Intro', introduction: 'Intro', verso: 'Verse', estrofe: 'Verse', prerefrao: 'Pre-Chorus', refrao: 'Chorus',
+  posrefrao: 'Post-Chorus', gancho: 'Hook', ponte: 'Bridge', interludio: 'Interlude', breakdown: 'Break', quebra: 'Break',
+  final: 'Outro', coda: 'Outro', encerramento: 'Outro',
+}
+const sectionKey = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '')
+
+export function isSectionType(value: unknown): value is SectionType {
+  return typeof value === 'string' && (SECTION_TYPES as readonly string[]).includes(value)
+}
+
+/** Free-text labels saved before the closed vocabulary keep a recognizable type; anything else becomes Verse. */
+export function normalizeSectionLabel(value: unknown): SectionType {
+  if (isSectionType(value)) return value
+  const key = typeof value === 'string' ? sectionKey(value) : ''
+  return SECTION_TYPES.find(type => sectionKey(type) === key) ?? SECTION_ALIASES[key] ?? DEFAULT_SECTION_TYPE
+}
+
 const sectionSchema = z.object({
   id: z.string().min(1).max(80).regex(/^[a-zA-Z0-9_-]+$/),
-  label: z.string().trim().min(1).max(40),
+  label: z.preprocess(normalizeSectionLabel, z.enum(SECTION_TYPES)),
   beats: z.number().finite().min(.25).max(64),
   harmony: z.array(z.number().int().min(-14).max(14)).min(1).max(8).optional(),
 })
@@ -19,7 +42,7 @@ export const pieceSectionSchema = z.object({
 export const pieceArrangementSchema = z.object({ restart: z.boolean().default(true), sections: z.record(pieceSectionSchema) })
 export type Arrangement = z.infer<typeof arrangementSchema>
 export type PieceArrangement = z.infer<typeof pieceArrangementSchema>
-export const DEFAULT_ARRANGEMENT: Arrangement = {sections:[{id:'section-a',label:'A',beats:4}]}
+export const DEFAULT_ARRANGEMENT: Arrangement = {sections:[{id:'section-a',label:DEFAULT_SECTION_TYPE,beats:4}]}
 
 /** Return the section's exact downbeat, including fractional/compound pulses. */
 export function sectionStartCycle(plan: Arrangement, id: string, pulses = 4) {
@@ -77,7 +100,7 @@ export function migrateGlobalArrangement(data: Record<string, any>) {
     }
   }
   legacy ??= [{beats:4,variation:Number(data.sectionPattern) || 0}]
-  const plan: Arrangement = {sections:legacy.map((step,index) => ({id:`section-${index+1}`,label:String.fromCharCode(65+index),beats:step.beats,
+  const plan: Arrangement = {sections:legacy.map((step,index) => ({id:`section-${index+1}`,label:DEFAULT_SECTION_TYPE,beats:step.beats,
     ...(data.harmonicSequences?.[index] ? {harmony:data.harmonicSequences[index]} : {})}))}
   data.arrangement = arrangementSchema.parse(plan)
   for (const instrument of instruments) {

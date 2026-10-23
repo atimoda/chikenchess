@@ -572,22 +572,22 @@
     "sections": [
       {
         "id": "section-a",
-        "label": "A",
+        "label": "Verse",
         "beats": 16
       },
       {
         "id": "section-b",
-        "label": "B",
+        "label": "Chorus",
         "beats": 16
       },
       {
         "id": "section-c",
-        "label": "C",
+        "label": "Bridge",
         "beats": 16
       },
       {
         "id": "section-d",
-        "label": "D",
+        "label": "Chorus",
         "beats": 16
       }
     ]

@@ -573,32 +573,32 @@
     "sections": [
       {
         "id": "section-a",
-        "label": "A",
+        "label": "Intro",
         "beats": 16
       },
       {
         "id": "section-b",
-        "label": "B",
+        "label": "Verse",
         "beats": 24
       },
       {
         "id": "section-c",
-        "label": "C",
+        "label": "Break",
         "beats": 12
       },
       {
         "id": "section-d",
-        "label": "D",
+        "label": "Chorus",
         "beats": 24
       },
       {
         "id": "section-e",
-        "label": "E",
+        "label": "Interlude",
         "beats": 16
       },
       {
         "id": "section-f",
-        "label": "F",
+        "label": "Chorus",
         "beats": 32
       }
     ]

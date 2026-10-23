@@ -6,11 +6,11 @@ const creative = loadTs('lib/music/creative.ts')
 const variationEdit = loadTs('lib/music/variation-edit.ts')
 const { noteRoll } = loadTs('lib/music/piano-roll.ts')
 
-const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: String.fromCharCode(65+index), beats: value })) })
+const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: ['Intro','Verse','Chorus','Bridge','Outro'][index % 5], beats: value })) })
 
 test('piano editor follows authored phase, pauses and override priority without compiling patterns', () => {
  const {variationPosition}=loadTs('lib/music/performance.ts')
- const arrangement={sections:[{id:'intro',label:'Intro',beats:3},{id:'theme',label:'Theme',beats:5}]}
+ const arrangement={sections:[{id:'intro',label:'Intro',beats:3},{id:'theme',label:'Verse',beats:5}]}
  const instrument={...creative.createCreativeSession().instruments['w:b1'],pianoRolls:[0,2,4].map(degree=>noteRoll([degree])),arrangement:{restart:true,sections:{
   intro:{variation:0,transpose:0,active:true},theme:{variation:1,transpose:0,active:false},
  }}}

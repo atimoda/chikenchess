@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { arrangementPosition, type Arrangement } from '@/lib/music/arrangement'
+import { arrangementPosition, DEFAULT_SECTION_TYPE, isSectionType, SECTION_TYPES, type Arrangement, type SectionType } from '@/lib/music/arrangement'
 import type { HarmonyPlanId } from '@/lib/music/harmony'
 import { beatsPerBar } from '@/lib/music/meter'
 import type { MusicMonitor } from '@/lib/music/monitor'
@@ -12,7 +12,7 @@ import styles from './creative-studio.module.css'
 import controls from './music-arrangement-controls.module.css'
 
 type Section = Arrangement['sections'][number]
-type Draft = { id: string | null; label: string; beats: string; degrees: string }
+type Draft = { id: string | null; label: SectionType; beats: string; degrees: string }
 type Drag = {
   id: string; pointerId: number; element: HTMLButtonElement; capture: HTMLElement; x: number; y: number
   scrollLeft: number; center: number; slots: { id: string; center: number }[]
@@ -122,7 +122,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
       return
     }
     setNotice(null)
-    setDraft({ id: null, label: 'Seção ' + (arrangement.sections.length + 1), beats: String(Math.min(4, MAX_BEATS - total)), degrees: '' })
+    setDraft({ id: null, label: DEFAULT_SECTION_TYPE, beats: String(Math.min(4, MAX_BEATS - total)), degrees: '' })
   }
 
   const clickSection = (section: Section, detail: number) => {
@@ -218,9 +218,9 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
     if (!draft) return
     const existing = arrangement.sections.find(section => section.id === draft.id)
     if (draft.id !== null && !existing) { setError('Esta seção já foi excluída. Feche e selecione outra seção.'); return }
-    const label = draft.label.trim()
+    const label = draft.label
     const beats = Number(draft.beats)
-    if (!label || label.length > 40) { setError('Informe um nome com até 40 caracteres.'); return }
+    if (!isSectionType(label)) { setError('Escolha um tipo de seção da lista.'); return }
     if (!Number.isFinite(beats) || beats < .25 || beats > 64) { setError('A duração deve ser de 0,25 a 64 tempos.'); return }
     if (total - (existing?.beats ?? 0) + beats > MAX_BEATS) { setError('Essa duração excede o limite de 512 tempos do arranjo. Encurte uma seção.'); return }
     if (!existing && arrangement.sections.length >= MAX_SECTIONS) { setError('O arranjo já atingiu o limite de 24 seções. Exclua uma seção antes de adicionar.'); return }
@@ -309,7 +309,11 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
           <DialogDescription className={notice ? controls.description : controls.srOnly}>{notice ?? 'Salvar aplica os campos. Cancelar descarta o rascunho.'}</DialogDescription>
         </DialogHeader>
         {notice ? <div className={styles.actions + ' ' + controls.dialogActions}><button type="button" onClick={() => setNotice(null)}>Entendi</button></div> : draft && <form className={controls.form} noValidate onSubmit={event => { event.preventDefault(); save() }}>
-          <label><HelpLabel label="Nome da Seção">A seção é compartilhada por todas as peças.</HelpLabel><input aria-label="Nome da Seção" maxLength={40} value={draft.label} onChange={event => { setDraft({ ...draft, label: event.target.value }); setError('') }} /></label>
+          <label><HelpLabel label="Tipo de seção">Função da seção na forma da música. A seção é compartilhada por todas as peças; o mesmo tipo pode se repetir.</HelpLabel>
+            <select aria-label="Tipo de seção" value={draft.label} onChange={event => { if (isSectionType(event.target.value)) setDraft({ ...draft, label: event.target.value }); setError('') }}>
+              {SECTION_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
           <label><HelpLabel label="Duração (tempos)">De 0,25 a 64 pulsos. Todas as peças compartilham esta duração; a unidade do pulso acompanha o compasso do kit.</HelpLabel>
             <input aria-label="Duração da seção global" type="number" inputMode="decimal" min={.25} max={64} step={.25} value={draft.beats} onChange={event => { setDraft({ ...draft, beats: event.target.value }); setError('') }} />
           </label>

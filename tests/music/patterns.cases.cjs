@@ -7,7 +7,7 @@ const { noteRoll } = loadTs('lib/music/piano-roll.ts')
 const creative = loadTs('lib/music/creative.ts')
 const cityKits = loadTs('lib/music/city-kits.ts')
 const { arrangementPosition, pieceSection } = loadTs('lib/music/arrangement.ts')
-const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: String.fromCharCode(65+index), beats: value })) })
+const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: ['Intro','Verse','Chorus','Bridge','Outro'][index % 5], beats: value })) })
 
 test('loop voices use four shared effect buses while previews remain isolated', () => {
   const kit = cityKits.defaultCityKit('detroit')

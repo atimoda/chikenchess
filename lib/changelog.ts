@@ -3,6 +3,18 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.7.0',
+    date: '23/10/2026',
+    title: 'Seções do arranjo com tipos de forma musical',
+    groups: [
+      { title: 'Criativo', items: [
+        'No arranjo global, o nome livre da seção virou o dropdown "Tipo de seção", com Intro, Verse, Pre-Chorus, Chorus, Post-Chorus, Hook, Bridge, Interlude, Turnaround, Solo, Drop, Break e Outro. Um mesmo tipo pode aparecer mais de uma vez; o seletor de seção da peça mostra a posição antes do tipo (por exemplo, "4. Chorus").',
+        'Todos os kits de cidade e os estudos Manchester 1999, Düsseldorf original e Mouth Breather trocaram as letras A, B, C… por tipos que descrevem o papel de cada seção (por exemplo, Intro, Verse, Break, Drop em kits eletrônicos e Intro, Verse, Pre-Chorus, Chorus, Bridge em pop e rock).',
+        'Kits salvos continuam funcionando: letras de kits de cidade recebem o tipo da seção correspondente, nomes como "Refrão" ou "Ponte" são reconhecidos, e outros nomes viram Verse.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '22/10/2026',
     title: 'Best/Worst e barra de Chance não travam mais',
