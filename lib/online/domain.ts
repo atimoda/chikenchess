@@ -1,11 +1,13 @@
 import { Chess, type Square } from "chess.js";
 import { z } from "zod";
 import { HARMONY_PLAN_IDS } from "../music/harmony";
+import { EGG_REWARDS, cappedMatchEggs, rankedMovesPerList } from "../egg-rewards";
 import { ROOTS, SCALE_NAMES } from "../music/scales";
 import {
   advanceMatchPowers,
   createMatchPower,
   type MatchPower,
+  type MatchPowerKind,
 } from "../chess-powers";
 import {
   makePoweredChess,
@@ -109,6 +111,53 @@ export function createMatchState(): MatchState {
   };
 }
 
+/** Eggs a ranked move of `actor` earns now: x2 from the third in a row, never past the match cap. */
+export function rankedRewardEggs(
+  state: Pick<MatchState, "actions" | "eggs">,
+  actor: OnlineColor,
+  reward: "best" | "worst",
+): number {
+  let streak = 1;
+  for (const action of [...state.actions].reverse()) {
+    if (action.kind !== "move" || action.color !== actor) continue;
+    if (action.reward !== reward) break;
+    streak++;
+  }
+  return cappedMatchEggs(state.eggs[actor], (reward === "best" ? 1 : 3) * (streak >= 3 ? 2 : 1));
+}
+
+/** Destination squares of the actor's shared suggestions keep their eggs until this time. */
+export function squareEggsUntil(suggestions: NonNullable<MatchState["suggestions"]>): number {
+  return suggestions.expiresAt + EGG_REWARDS.squareEggsExtraSeconds * 1000;
+}
+
+/** The reward any piece earns by landing on a destination square of the visible suggestions. */
+export function squareReward(
+  state: Pick<MatchState, "suggestions">,
+  actor: OnlineColor,
+  key: string,
+  uci: string,
+  now: number,
+): "best" | "worst" | null {
+  const shared = state.suggestions;
+  if (!shared || shared.actor !== actor || shared.position !== key || now > squareEggsUntil(shared)) return null;
+  const move = shared.moves.find((m) => m.uci.slice(2, 4) === uci.slice(2, 4));
+  if (!move) return null;
+  return shared.kind === "best" && move.score >= -100 && !(move.mate != null && move.mate < 0) ? "best" : "worst";
+}
+
+/** Each team may apply each power at most once per turn: since the last move. */
+export function powerUsedThisTurn(
+  state: Pick<MatchState, "actions">,
+  power: MatchPowerKind,
+  color: OnlineColor,
+): boolean {
+  const lastMove = state.actions.findLastIndex((action) => action.kind === "move");
+  return state.actions
+    .slice(lastMove + 1)
+    .some((action) => action.kind === "power" && action.power === power && action.color === color);
+}
+
 /** JSON actions are the durable format; chess.js's private snapshot is never sent. */
 export function replayMatch(state: Pick<MatchState, "actions">) {
   const game = makePoweredChess(new Chess(), []);
@@ -207,10 +256,13 @@ function rewardFor(
   uci: string,
   analysis?: Extract<MatchCommand, { kind: "move" }>["analysis"],
 ): "best" | "worst" | null {
-  if (game.moves().length < 2) return null;
+  const legalMoves = game.moves().length;
+  if (legalMoves < 2) return null;
+  // Only the head of each list earns eggs; positions with few moves reward fewer.
+  const count = rankedMovesPerList(legalMoves);
   for (const seen of state.seen) {
     if (seen.position !== key) continue;
-    const move = seen.moves.find((m) => m.uci === uci);
+    const move = seen.moves.slice(0, count).find((m) => m.uci === uci);
     if (move)
       return seen.kind === "best" &&
         move.score >= -100 &&
@@ -221,12 +273,12 @@ function rewardFor(
   if (analysis?.position !== key) return null;
   validateSuggestions(game, analysis.best);
   validateSuggestions(game, analysis.worst);
-  const best = analysis.best.find((m) => m.uci === uci);
+  const best = analysis.best.slice(0, count).find((m) => m.uci === uci);
   if (best)
     return best.score < -100 || (best.mate != null && best.mate < 0)
       ? "worst"
       : "best";
-  return analysis.worst.some((m) => m.uci === uci) ? "worst" : null;
+  return analysis.worst.slice(0, count).some((m) => m.uci === uci) ? "worst" : null;
 }
 
 /** Serial command evaluation; Postgres rechecks identity/version and commits atomically. */
@@ -290,15 +342,16 @@ export function applyMatchCommand(
     validateSuggestions(game, command.moves);
     spend(state, actor, 1);
     state.usage[command.group]++;
+    const moves = command.moves.slice(0, rankedMovesPerList(game.moves().length));
     state.suggestions = {
       kind: command.group,
-      moves: command.moves,
+      moves,
       position: key,
       expiresAt: now + 3000,
       actor,
     };
     state.seen = [
-      { kind: command.group, moves: command.moves, position: key },
+      { kind: command.group, moves, position: key },
       ...state.seen.filter(
         (s) => s.kind !== command.group && s.position === key,
       ),
@@ -329,6 +382,8 @@ export function applyMatchCommand(
     state.drawOffer = null;
   } else if (command.kind === "power") {
     if (state.actions.length >= 768) reject("Match action limit reached");
+    if (powerUsedThisTurn(state, command.power, actor))
+      reject(`${command.power === "freeze" ? "Freeze" : "Shield"} can be used once per turn`);
     const power = createMatchPower(command.power, command.square as Square, game, state.actions.length + 1);
     const freezeError = freezeApplicationError(game, powers, power);
     if (freezeError) reject(freezeError);
@@ -346,7 +401,9 @@ export function applyMatchCommand(
   } else if (command.kind === "move") {
     if (state.actions.length >= 768) reject("Match action limit reached");
     const uci = `${command.from}${command.to}${command.promotion ?? ""}`;
-    const reward = rewardFor(state, game, key, uci, command.analysis);
+    const reward =
+      (game.moves().length > 1 ? squareReward(state, actor, key, uci, now) : null) ??
+      rewardFor(state, game, key, uci, command.analysis);
     // Powered adapter validates castling, en passant, frozen movement and protected captures.
     game.move({
       from: command.from,
@@ -363,13 +420,8 @@ export function applyMatchCommand(
     });
     const rewardKey = `${actor}|${key}|${uci}`;
     if (reward && !state.rewarded.includes(rewardKey)) {
-      let streak = 0;
-      for (const action of [...state.actions].reverse()) {
-        if (action.kind !== "move" || action.color !== actor) continue;
-        if (action.reward !== reward) break;
-        streak++;
-      }
-      const earned = (reward === "best" ? 1 : 3) * (streak >= 3 ? 2 : 1);
+      // The move was already pushed: count the streak before it.
+      const earned = rankedRewardEggs({ ...state, actions: state.actions.slice(0, -1) }, actor, reward);
       state.eggs[actor] += earned;
       state.collected[actor] += earned;
       state.rewarded.push(rewardKey);

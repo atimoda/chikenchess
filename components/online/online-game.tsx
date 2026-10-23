@@ -16,7 +16,8 @@ import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
 import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
-import { replayMatch, matchPosition } from "@/lib/online/domain";
+import { replayMatch, matchPosition, powerUsedThisTurn, rankedRewardEggs, squareEggsUntil } from "@/lib/online/domain";
+import { limitRankedLists } from "@/lib/egg-rewards";
 import { pendingMovePreview } from "@/lib/online/pending-move";
 import type { OnlineMatch, MatchCommand, RoomMember } from "@/lib/online/types";
 import { getOnlineClient } from "@/lib/online/client";
@@ -505,6 +506,11 @@ export function OnlineMatchBoard({
     (command: MatchCommand) => {
       if (command.kind === "undo") setMulliganPreviewActive(false);
       const cost = command.kind === "power" ? 3 : command.kind === "undo" ? 2 : command.kind === "suggest" ? 1 : 0;
+      if (command.kind === "power" && powerUsedThisTurn(match.state, command.power, color)) {
+        setArmedPower(null);
+        toast.info(`${command.power === "freeze" ? "Freeze" : "Shield"} can be used once per turn`);
+        return;
+      }
       if (cost && !hasEggsForAction(cost)) return;
       if (command.kind === "power" && command.power === "freeze") {
         const power = createMatchPower(
@@ -526,7 +532,7 @@ export function OnlineMatchBoard({
           toast.error(e.message ?? "Could not confirm this action"),
         );
     },
-    [online.send, replay.game, replay.powers, match.state.actions.length, hasEggsForAction],
+    [online.send, replay.game, replay.powers, match.state, color, hasEggsForAction],
   );
   const gesture = usePowerTargetingGesture({
     armedPower,
@@ -566,6 +572,29 @@ export function OnlineMatchBoard({
     );
     return () => clearTimeout(timer);
   }, [match.state.suggestions, position]);
+  // Eggs stay on the destination squares of your own suggestions a little longer than
+  // the arrows; any of your pieces landing there earns them.
+  const [squareEggs, setSquareEggs] = useState<{ square: Square; kind: "best" | "worst"; eggs: number }[]>([]);
+  useEffect(() => {
+    const shared = match.state.suggestions;
+    if (!shared || shared.actor !== color || shared.position !== position || squareEggsUntil(shared) <= Date.now()) {
+      setSquareEggs([]);
+      return;
+    }
+    const targets = new Map<string, "best" | "worst">();
+    for (const m of shared.moves) {
+      const square = m.uci.slice(2, 4);
+      if (!targets.has(square))
+        targets.set(square, shared.kind === "best" && rankedMoveLabelTone(m.score, m.mate ?? null) !== "worst" ? "best" : "worst");
+    }
+    setSquareEggs(
+      [...targets]
+        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardEggs(match.state, color, kind) }))
+        .filter((target) => target.eggs > 0),
+    );
+    const timer = setTimeout(() => setSquareEggs([]), Math.max(0, squareEggsUntil(shared) - Date.now()));
+    return () => clearTimeout(timer);
+  }, [match.state, position, color]);
   const onMove = (move: Move) => {
     if (!ownTurn || disabled) return;
     const currentAnalysis =
@@ -581,11 +610,9 @@ export function OnlineMatchBoard({
         ? {
             analysis: {
               position,
-              best: currentAnalysis.best
-                .slice(0, 3)
+              best: limitRankedLists(currentAnalysis).best
                 .map(({ uci, score, mate }) => ({ uci, score, mate })),
-              worst: currentAnalysis.worst
-                .slice(0, 3)
+              worst: limitRankedLists(currentAnalysis).worst
                 .map(({ uci, score, mate }) => ({ uci, score, mate })),
             },
           }
@@ -599,8 +626,7 @@ export function OnlineMatchBoard({
     !!analysis.analysis?.complete;
   const show = (group: "best" | "worst") => {
     if (!canShowSuggestions(group) || !analysis.analysis?.complete) return;
-    const moves = analysis.analysis[group]
-      .slice(0, 3)
+    const moves = limitRankedLists(analysis.analysis)[group]
       .map(({ uci, score, mate }) => ({ uci, score, mate }));
     perform({ kind: "suggest", group, moves, position });
     void getSfxEngine().playAnalysisWhistle(group === "best" ? "up" : "down");
@@ -1390,6 +1416,7 @@ export function OnlineMatchBoard({
               activeSquares={music.activeSquares}
               teamMixes={music.teamMixes}
               analysisArrows={movePreview ? [] : arrows}
+              squareEggs={movePreview ? [] : squareEggs}
               showRankedMoveMarks={false}
             />
           </div>
@@ -1441,12 +1468,12 @@ export function OnlineMatchBoard({
               title: "Volta 1 jogada · 2 golden eggs"
             },
             freeze: {
-              disabled: disabled || !ownTurn, 'aria-pressed': armedPower === "freeze",
+              disabled: disabled || !ownTurn || powerUsedThisTurn(match.state, "freeze", color), 'aria-pressed': armedPower === "freeze",
               onPointerDown: event => gesture.onButtonPointerDown("freeze", event), onLostPointerCapture: gesture.onLostPointerCapture,
               onClick: event => gesture.onButtonClick("freeze", event),
             },
             shield: {
-              disabled: disabled || !ownTurn, 'aria-pressed': armedPower === "shield",
+              disabled: disabled || !ownTurn || powerUsedThisTurn(match.state, "shield", color), 'aria-pressed': armedPower === "shield",
               onPointerDown: event => gesture.onButtonPointerDown("shield", event), onLostPointerCapture: gesture.onLostPointerCapture,
               onClick: event => gesture.onButtonClick("shield", event),
             },
@@ -1540,7 +1567,7 @@ export function OnlineMatchBoard({
                   data-match-power-action={kind}
                   {...costEvents(kind)}
                   type="button"
-                  disabled={disabled || !ownTurn}
+                  disabled={disabled || !ownTurn || powerUsedThisTurn(match.state, kind, color)}
                   title={`${kind} · 3 golden eggs`}
                   aria-label={
                     kind === "freeze"

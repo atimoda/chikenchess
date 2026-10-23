@@ -1,7 +1,7 @@
 import { cities } from '../cities-data'
 import { STYLE_PROFILES } from '../music/kit-profiles/catalog'
 
-export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'names' | 'music-profile' | 'music-preset'
+export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'egg-rewards' | 'names' | 'music-profile' | 'music-preset'
 export interface AdminEntry {
   id: string
   title: string
@@ -22,6 +22,7 @@ export const ADMIN_ENTRIES: AdminEntry[] = [
   ui('campaigns', 'Campanhas', 'Nomes das campanhas; os IDs são preservados.', 'campaigns'),
   ui('rank-titles', 'Títulos dos ranks', 'Nomes dos níveis; os limites de pontuação são preservados.', 'ranks'),
   ui('bots', 'Perfis dos bots', 'Configurações de dificuldade, atraso e poderes dos bots Pure Chess e ChickenBot.', 'bots'),
+  { ...ui('egg-rewards', 'Recompensas de ovos', 'Teto de golden eggs na partida, quantos lances Best/Worst rendem ovos conforme o número de lances possíveis, e quanto tempo os ovos ficam nas casas depois das setas.', 'egg-rewards'), group: 'Regras da partida' },
   { ...ui('baptism-names', 'Nomes de batismo', 'Títulos, adjetivos, substantivos e epítetos. Depois de salvar, gere a migração para publicar o catálogo no Supabase.', 'names'), group: 'Contas' },
   ...Object.keys(STYLE_PROFILES).map(cityId => {
     const city = cities.find(item => item.id === cityId)!

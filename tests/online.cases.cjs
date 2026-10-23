@@ -224,25 +224,51 @@ test('Match feature counters separate both powers and keep cumulative usage acro
   assert.equal(s.usage.redo, 1)
   assert.deepEqual(s.usage, { freeze: 1, shield: 1, undo: 1, redo: 1, best: 1, worst: 1 })
 })
-test('Freeze rejects the last opponent move before charging either actor, including accumulated powers and history', () => {
+test('Each team applies Freeze and Shield at most once per turn, rejected before charging', () => {
+  // Leaving the opponent without moves is covered by freezeApplicationError in powers.cases.cjs:
+  // with one Freeze per turn, the whole army can no longer be frozen at once.
   for (const actor of ['w', 'b']) {
     let s = actor === 'w' ? createMatchState() : move(createMatchState(), 'w', 'e2', 'e4')
     s.eggs[actor] = 100
+    const opponentRank = actor === 'w' ? '7' : '2'
+    s = command(s, actor, { kind: 'power', power: 'freeze', square: `a${opponentRank}` })
+    s = command(s, actor, { kind: 'power', power: 'shield', square: actor === 'w' ? 'a2' : 'a7' })
+    assert.equal(s.eggs[actor], 94)
+    for (const power of ['freeze', 'shield']) {
+      const before = globalThis.structuredClone(s)
+      assert.throws(() => command(s, actor, { kind: 'power', power, square: `h${opponentRank}` }), /once per turn/)
+      assert.deepEqual(s, before, 'rejected power preserves eggs, actions, turn and continuation')
+    }
+    const next = actor === 'w' ? ['b2', 'b3'] : ['b7', 'b6']
+    s = move(s, actor, ...next)
     const opponent = actor === 'w' ? 'b' : 'w'
-    const last = actor === 'w' ? 'g8' : 'g1'
-    const squares = replayMatch(s).game.board().flat()
-      .filter(piece => piece?.color === opponent && piece.square !== last)
-      .map(piece => piece.square)
-    for (const square of squares) s = command(s, actor, { kind: 'power', power: 'freeze', square })
-    assert.equal(replayMatch(s).powers.length, 15)
-    assert.equal(s.eggs[actor], 55)
-    const before = globalThis.structuredClone(s)
-    assert.throws(() => command(s, actor, { kind: 'power', power: 'freeze', square: last }), {
-      message: 'Você não pode deixar seu oponente sem jogadas.',
-    })
-    assert.deepEqual(s, before, 'rejected Freeze preserves eggs, actions, turn and continuation')
-    assert.equal(replayMatch(s).game.turn(), actor)
+    s.eggs[opponent] = 10
+    s = command(s, opponent, { kind: 'power', power: 'freeze', square: actor === 'w' ? 'b3' : 'b6' })
+    assert.equal(s.eggs[opponent], 7, 'the other team keeps its own allowance')
   }
+})
+test('Suggested destination squares pay any own piece until the eggs fade, and match eggs stop at 12', () => {
+  let s = createMatchState()
+  s.eggs.w = 5
+  const best = [{ uci: 'g1f3', score: 30 }, { uci: 'e2e4', score: 20 }, { uci: 'd2d4', score: 10 }]
+  s = command(s, 'w', { kind: 'suggest', group: 'best', position: matchPosition(s), moves: best }, 1000)
+  assert.equal(s.suggestions.moves.length, 3, 'the opening has 20 moves: three rewarded suggestions')
+  assert.equal(s.eggs.w, 4)
+  // Arrows last until 4000; the eggs stay 3 seconds more.
+  const late = command(s, 'w', { kind: 'move', from: 'g2', to: 'g3' }, 6500)
+  assert.equal(late.eggs.w, 4, 'g3 was never suggested')
+  const anyPiece = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 6900)
+  assert.equal(anyPiece.eggs.w, 5, 'the f-pawn lands on the suggested f3 square and earns the Best egg')
+  assert.equal(anyPiece.actions.at(-1).reward, 'best')
+  const expired = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 7100)
+  assert.equal(expired.eggs.w, 4, 'after the eggs fade only the exact seen move pays')
+
+  let capped = move(createMatchState(), 'w', 'e2', 'e4', 'worst')
+  capped.eggs.w = 11
+  capped = move(capped, 'b', 'e7', 'e5')
+  capped = move(capped, 'w', 'g1', 'f3', 'worst')
+  assert.equal(capped.eggs.w, 12, 'a 3-egg reward fills the balance only up to 12')
+  assert.equal(capped.collected.w, 4)
 })
 test('streaks double from the third eligible own move, opponent does not interrupt', () => {
   let s = move(createMatchState(), 'w', 'e2', 'e4', 'best')

@@ -1,0 +1,9 @@
+{
+  "maxMatchEggs": 12,
+  "rankedMovesByLegalMoves": [
+    { "minLegalMoves": 12, "moves": 3 },
+    { "minLegalMoves": 8, "moves": 2 },
+    { "minLegalMoves": 0, "moves": 1 }
+  ],
+  "squareEggsExtraSeconds": 3
+}

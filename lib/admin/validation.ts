@@ -62,16 +62,32 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
         skill: finite.int().min(0).max(20),
         alwaysBestMove: z.boolean(),
         delaySeconds: finite.min(0.5).max(30),
-        freezeTopMoves: finite.int().min(1).max(20),
-        freezeChanceBelowPercent: finite.min(0).max(100),
-        freezeEveryMoves: finite.int().min(1).max(100),
-        shieldEveryMoves: finite.int().min(1).max(100),
-        shieldChanceAbovePercent: finite.min(0).max(100),
-        worstChanceAbovePercent: finite.min(0).max(100),
-        worstMinScorePawns: finite.min(-100).max(100),
+        powerUsePercent: finite.min(0).max(100),
+        freezeMinThreatPawns: finite.min(0).max(100),
+        freezeCooldownMoves: finite.int().min(0).max(100),
+        shieldMinPiecePawns: finite.min(0).max(100),
+        shieldCooldownMoves: finite.int().min(0).max(100),
+        powerMinGainPawns: finite.min(0).max(100),
+        powerReserveEggs: finite.int().min(0).max(100),
+        worstFloorPawns: finite.min(-100).max(100),
+        worstMaxLossPawns: finite.min(0).max(100),
+        eggTarget: finite.int().min(0).max(100),
+        worstCooldownMoves: finite.int().min(0).max(100),
       }).strict()
       const result = z.array(botSchema).min(1).max(32).parse(value)
       if (new Set(result.map(item => item.id)).size !== result.length) throw new Error('IDs dos bots não podem repetir.')
+      break
+    }
+    case 'egg-rewards': {
+      const tier = z.object({ minLegalMoves: finite.int().min(0).max(256), moves: finite.int().min(0).max(10) }).strict()
+      const result = z.object({
+        maxMatchEggs: finite.int().min(1).max(999),
+        rankedMovesByLegalMoves: z.array(tier).min(1).max(16),
+        squareEggsExtraSeconds: finite.min(0).max(30),
+      }).strict().parse(value)
+      const minimums = result.rankedMovesByLegalMoves.map(item => item.minLegalMoves)
+      if (new Set(minimums).size !== minimums.length) throw new Error('Cada faixa precisa de um número mínimo de lances diferente.')
+      if (!minimums.includes(0)) throw new Error('Inclua uma faixa com minLegalMoves 0, para posições com poucos lances.')
       break
     }
     case 'names': {

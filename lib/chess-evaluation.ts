@@ -1,3 +1,4 @@
+import { limitRankedLists } from './egg-rewards'
 export type EvaluationSide = 'w' | 'b'
 interface EvaluationWorker { postMessage(message: string): void }
 export interface EvaluationCandidate { uci: string; san: string }
@@ -47,9 +48,11 @@ export function rankedMoveReward(
   if (!analysis?.complete || analysis.fen !== startingFen || analysis.side !== side) return null
   // There is no choice to reward when the only legal move is forced.
   if (analysis.legalMoves === 1) return null
-  const bestMove = analysis.best.find(candidate => candidate.uci === uci)
+  // Only the head of each list earns eggs; positions with few moves reward fewer.
+  const ranked = limitRankedLists(analysis)
+  const bestMove = ranked.best.find(candidate => candidate.uci === uci)
   if (bestMove) return rankedMoveLabelTone(bestMove.score, bestMove.mate) === 'worst' ? 'worst' : 'best'
-  if (analysis.worst.some(candidate => candidate.uci === uci)) return 'worst'
+  if (ranked.worst.some(candidate => candidate.uci === uci)) return 'worst'
   return null
 }
 
@@ -81,7 +84,7 @@ export function rankedMoveRewardDetails(
 ): { kind: 'best' | 'worst'; comeback: boolean } | null {
   if (analysis?.complete && analysis.side === side && analysis.fen === startingFen && analysis.legalMoves === 1) return null
   for (const entry of shown) {
-    const snapshot = entry.analysis
+    const snapshot = limitRankedLists(entry.analysis)
     if (!snapshot.complete || snapshot.fen !== startingFen || snapshot.side !== side || snapshot.legalMoves === 1) continue
     // Only the group actually shown counts as remembered, not its unseen counterpart.
     const move = snapshot[entry.kind].find(candidate => candidate.uci === uci)
@@ -92,7 +95,42 @@ export function rankedMoveRewardDetails(
     }
   }
   const kind = rankedMoveReward(analysis, startingFen, uci, side)
-  return kind ? { kind, comeback: analysis?.best.some(move => move.uci === uci && move.score < -100) ?? false } : null
+  return kind && analysis ? { kind, comeback: limitRankedLists(analysis).best.some(move => move.uci === uci && move.score < -100) } : null
+}
+
+/**
+ * While the eggs of a shown Best/Worst group stay on their destination squares,
+ * any piece that lands on one of those squares earns that reward.
+ */
+export function squareMoveRewardDetails(
+  shown: ShownMoveSuggestions | null,
+  startingFen: string,
+  uci: string,
+  side: EvaluationSide = 'w',
+): { kind: 'best' | 'worst'; comeback: boolean } | null {
+  if (!shown) return null
+  const snapshot = limitRankedLists(shown.analysis)
+  if (!snapshot.complete || snapshot.fen !== startingFen || snapshot.side !== side || snapshot.legalMoves === 1) return null
+  const moves = snapshot[shown.kind]
+  // The first suggestion on a square sets its eggs, the same one squareEggTargets draws.
+  const move = moves.find(candidate => candidate.uci.slice(2, 4) === uci.slice(2, 4))
+  if (!move) return null
+  return {
+    kind: shown.kind === 'best' && rankedMoveLabelTone(move.score, move.mate) !== 'worst' ? 'best' : 'worst',
+    comeback: shown.kind === 'best' && move.score < -100,
+  }
+}
+
+/** Destination squares that carry eggs for a shown group, one reward per square. */
+export function squareEggTargets(shown: ShownMoveSuggestions | null): { square: string; kind: 'best' | 'worst' }[] {
+  if (!shown) return []
+  const snapshot = limitRankedLists(shown.analysis)
+  const targets = new Map<string, 'best' | 'worst'>()
+  for (const move of snapshot[shown.kind]) {
+    const square = move.uci.slice(2, 4)
+    if (!targets.has(square)) targets.set(square, shown.kind === 'best' && rankedMoveLabelTone(move.score, move.mate) !== 'worst' ? 'best' : 'worst')
+  }
+  return [...targets].map(([square, kind]) => ({ square, kind }))
 }
 
 interface EvaluationCallbacks {
