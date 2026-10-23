@@ -307,7 +307,9 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     else data.fill(0)
   }, [])
   return {
-    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects, setEffects, snapshot, teamMixes, updateTeamMix, kit, applySharedPiece,
+    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects,
+    // Base values the user edits; `effects` above already includes temporary State/Event changes.
+    baseEffects: effects, setEffects, snapshot, teamMixes, updateTeamMix, kit, applySharedPiece,
     code, preview, pulseMonitor, error, getFrequencyData, getTeamFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,
     kitName: kit?.name ?? null,
     kitBpm: kit?.bpm ?? null,

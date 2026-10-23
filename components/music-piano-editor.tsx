@@ -114,7 +114,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       </g>})}
       {sounding&&present&&<line data-playhead x1={cursor/bars*480} x2={cursor/bars*480} y1={0} y2={264} stroke="#fff1b7" strokeWidth={2}/>}
      </svg>
-     {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,minHeight:41}}>{actions}<span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{bars} compassos / {bars*pulses} tempos</span></div>:actions}
+     {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,minHeight:41}}><span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{bars} compassos / {bars*pulses} tempos</span>{actions}</div>:actions}
      {selectedNote?.index===index&&roll.notes[selectedNote.note]&&<MusicNoteParams note={roll.notes[selectedNote.note]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selectedNote.note?{...note,...patch}:note)})} onDelete={()=>removeNote(index,roll,selectedNote.note)}/>}
    </div>
   })}

@@ -919,7 +919,7 @@ export function OnlineMatchBoard({
           selectedPiece={selected}
           effects={
             selected
-              ? (music.effects[selected.id] ?? DEFAULT_EFFECTS)
+              ? (music.baseEffects[selected.id] ?? DEFAULT_EFFECTS)
               : DEFAULT_EFFECTS
           }
           onEffectChange={music.setPieceEffect}

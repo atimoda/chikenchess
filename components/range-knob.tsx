@@ -3,7 +3,7 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode, type WheelEvent } from "react"
 import { cn } from "@/lib/utils"
 import type { ParameterRange } from '@/lib/music/model'
-import { DEFAULT_KNOB_SIZE, Knob, knobAmountFromPointer, knobCursor, knobDragMode, knobRelativeAmount, knobValueLabelStyle, type KnobDragMode, type KnobGestureMode, type KnobUpdateMode } from './knob'
+import { DEFAULT_KNOB_SIZE, Knob, knobAmountFromPointer, knobBottomTrim, knobCursor, knobDragMode, knobRelativeAmount, knobValueLabelStyle, type KnobDragMode, type KnobGestureMode, type KnobUpdateMode } from './knob'
 
 export type IntegerRange = ParameterRange
 
@@ -73,6 +73,7 @@ export function RangeKnob({
   const snap = (current: number) => Number(Math.max(min, Math.min(max, min + Math.round((current - min) / step) * step)).toFixed(6))
   // Children are positioned in the padding box (inside the 1px border); thumbs and arc sit on the border line.
   const inner = size - 2
+  const trim = knobBottomTrim(size, labelPosition)
   const center = inner / 2
   const radius = size / 2 - .5
   const arcPoint = (currentAmount: number) => {
@@ -208,7 +209,7 @@ export function RangeKnob({
     } else onChange({ ...value, frequency })
   }
 
-  const labelNode = labelContent ?? <span className={cn("text-center text-[10px] font-mono uppercase text-muted-foreground", labelPosition === "bottom" && "leading-none")}>{label}</span>
+  const labelNode = labelContent ?? <span className={cn("text-center text-[10px] font-mono uppercase text-muted-foreground", labelPosition === "bottom" && "block leading-none")}>{label}</span>
   const frequencyOptions = [
     ['loop', 'L', 'Shuffle value every LOOP'],
     ['section', 'S', 'Shuffle value every SESSION'],
@@ -263,6 +264,7 @@ export function RangeKnob({
           formatValue={formatSingleValue ?? (current => String(Number(current.toFixed(3))))}
           monitorValue={monitorValue}
           hideLabel
+          labelPosition={labelPosition}
           onChange={current => onChange({ ...value, first: current, second: current, frequency: 'fixed' })}
         />
       : <div
@@ -272,11 +274,10 @@ export function RangeKnob({
           role="group"
           aria-label={`${label}: ${formatValue?.(interval) ?? `${interval.first} a ${interval.second}`}`}
           className={cn(
-            "group relative rounded-full border border-border bg-secondary touch-none",
-            neon && "hover:border-[var(--city-neon)]",
+            "group relative rounded-full border border-transparent touch-none",
             !neon && "opacity-50",
           )}
-          style={{ width: size, height: size, borderColor: draggingThumb ? '#fff' : undefined, cursor: neon ? knobCursor(gestureMode, dragMode) : 'default' }}
+          style={{ width: size, height: size, cursor: neon ? knobCursor(gestureMode, dragMode) : 'default' }}
           onPointerEnter={event => {
             if (event.pointerType !== 'touch') setHoveredThumb(thumbAtClientX(event.clientX))
           }}
@@ -289,6 +290,7 @@ export function RangeKnob({
           onPointerCancel={event => endPointer(event, false)}
           onLostPointerCapture={() => finish(false)}
         >
+          <div data-knob-face aria-hidden="true" className={cn("pointer-events-none absolute -inset-px rounded-full border border-border bg-secondary", neon && "group-hover:border-[var(--city-neon)]")} style={{ borderColor: draggingThumb ? '#fff' : undefined, clipPath: trim ? `inset(0 0 ${trim}px 0)` : undefined }} />
           <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox={`0 0 ${inner} ${inner}`} aria-hidden="true">
             {interval.first !== interval.second && <path
               d={arcPath(amount(interval.first), amount(interval.second))}
@@ -312,7 +314,7 @@ export function RangeKnob({
             neon ? "text-foreground/60 group-hover:text-white" : "text-foreground/20",
           )}>{formatSingleValue?.(interval.second) ?? String(Number(interval.second.toFixed(3)))}</output>
         </div>}
-    {!hideLabel && labelPosition === "bottom" && labelNode}
+    {!hideLabel && labelPosition === "bottom" && <div style={{ marginTop: -trim }}>{labelNode}</div>}
     {showFrequency && <div role="group" aria-label={`Frequência de ${label}`} className={cn("flex items-center justify-center gap-[2px]", labelPosition === "bottom" && "mt-[2px]")} onPointerDown={event => event.stopPropagation()}>
       {frequencyOptions.map(([frequency, letter, description], index) => {
         const selected = !isFixed && selectedFrequency === frequency

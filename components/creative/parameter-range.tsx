@@ -5,7 +5,7 @@ import { RangeKnob, type IntegerRange } from '../range-knob'
 import styles from '../creative-studio.module.css'
 
 const RANGE_HELP: Record<string,string> = {
- 'Volume geral':'Controla o volume da banda inteira.', 'Range':'Sem L, S ou N selecionado, ajusta uma oitava fixa. Ao escolher uma bolinha, o knob passa a controlar dois limites inclusivos: L sorteia por repetição do loop, S por entrada na seção A–H e N por ataque, mantendo a mesma oitava nas notas simultâneas. N é a opção inicial. Samples sem afinação não mudam de altura.',
+ 'Volume geral':'Controla o volume da banda inteira.', 'Octaves':'Sem L, S ou N selecionado, ajusta uma oitava fixa. Ao escolher uma bolinha, o knob passa a controlar dois limites inclusivos: L sorteia por repetição do loop, S por entrada na seção A–H e N por ataque, mantendo a mesma oitava nas notas simultâneas. N é a opção inicial. Samples sem afinação não mudam de altura.',
  'Ganho do instrumento':'Volume base do timbre (0 a 1). Multiplica o Ganho adicional: base 0,3 × adicional 0,5 resulta em 0,15 antes dos acentos/velocidades das notas e do mixer. Alterar aqui preserva o multiplicador da peça e suas regras.',
  'Ganho adicional':'Multiplicador do ganho base da peça (0 a 2): 1 não muda, 0,5 reduz pela metade, 2 dobra e 0 silencia. Estados/Eventos podem sobrepor esse ganho e restaurá-lo ao terminar; o ganho base do instrumento permanece separado. Não é uma soma de volumes.', 'Ataque':'Tempo para a nota atingir seu volume. Curto produz ataque definido; longo produz entrada suave.',
  'Sustentação':'Nível mantido após o decaimento, enquanto a nota dura.', 'Liberação':'Tempo de saída da nota depois de encerrar sua duração.',

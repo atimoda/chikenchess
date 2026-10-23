@@ -12,7 +12,7 @@ import { beatsPerBar, meterLabel } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
 import { variationPosition } from '@/lib/music/performance'
 import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music/arrangement'
-import { ArrowLeftRight, Dices, Minus, Pin, Plus } from 'lucide-react'
+import { ArrowLeftRight, Dice5, Minus, Pin, Plus } from 'lucide-react'
 import styles from './music-playback.module.css'
 import type { KnobUpdateMode } from './knob'
 
@@ -86,9 +86,9 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
   const variationActions = instrument && onInstrumentChange ? <div className={styles.variationActions} aria-label="Ações da variação">
     <DivisionPicker value={division} onChange={setDivision} meter={snapshot.meter??'4/4'}/>
     <button type="button" aria-label="Inverter notas da variação" title="Espelhar variação no tempo" onClick={() => onInstrumentChange(reverseVariation(instrument,activeTab))}><ArrowLeftRight size={14}/></button>
-    <button type="button" aria-label="Randomizar notas da variação" title="Sortear notas" onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dices size={14}/></button>
-    <button type="button" aria-label={`Diminuir duração da variação ${activeTab+1}`} title="Diminuir um tempo" disabled={!activeRoll||activeRoll.bars<=1/beatsPerBar(snapshot.meter)} onClick={()=>resizeActiveVariation(-.25)}><Minus size={14}/></button>
-    <button type="button" aria-label={`Aumentar duração da variação ${activeTab+1}`} title="Aumentar um tempo" disabled={!activeRoll||activeRoll.bars>=8} onClick={()=>resizeActiveVariation(.25)}><Plus size={14}/></button>
+    <button type="button" aria-label="Randomizar notas da variação" title="Sortear notas" onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dice5 size={14}/></button>
+    <span className={styles.buttonPair}><button type="button" aria-label={`Diminuir duração da variação ${activeTab+1}`} title="Diminuir um tempo" disabled={!activeRoll||activeRoll.bars<=1/beatsPerBar(snapshot.meter)} onClick={()=>resizeActiveVariation(-.25)}><Minus size={14}/></button>
+    <button type="button" aria-label={`Aumentar duração da variação ${activeTab+1}`} title="Aumentar um tempo" disabled={!activeRoll||activeRoll.bars>=8} onClick={()=>resizeActiveVariation(.25)}><Plus size={14}/></button></span>
   </div> : null
   const notes = sourceInstrument?.pianoRolls.flatMap(roll => roll.notes.map(note => note.degree)) ?? []
   const bottom = notes.length ? Math.min(...notes) : 0

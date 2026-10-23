@@ -27,7 +27,7 @@ export function InstrumentParameters({instrument, effects, mapping, updateInstru
             <span className={styles.eyebrow}>03 / PARÂMETROS</span>
             <div className={styles.instrumentTitle}><h2>Som e movimento</h2><span>{instrument.name}</span></div>
             <details open><summary>Afinação e envelope</summary><div className={styles.controls}>
-              <ParameterRangeKnob label="Range" value={instrument.octaveRange ?? { first: instrument.octave, second: instrument.octave, frequency: 'note' }} min={0} max={7} formatSingleValue={value => String(value)} onChange={octaveRange => updateInstrument({ octaveRange })} />
+              <ParameterRangeKnob label="Octaves" value={instrument.octaveRange ?? { first: instrument.octave, second: instrument.octave, frequency: 'note' }} min={0} max={7} formatSingleValue={value => String(value)} onChange={octaveRange => updateInstrument({ octaveRange })} />
               <ParameterKnob label="Ganho do instrumento" value={instrument.gain} min={0} max={1} onChange={gain => updateInstrument({ gain })} />
               <ParameterKnob label="Ataque" value={instrument.attack} min={0.001} max={2} step={0.001} unit=" s" logarithmic onChange={attack => updateInstrument({ attack })} />
               <ParameterKnob label="Decaimento" value={effects.decay} min={0.01} max={2} unit=" s" logarithmic onChange={decay => updateEffects({ decay })} />

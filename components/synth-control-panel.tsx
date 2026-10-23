@@ -266,7 +266,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
           <div
             ref={knobGridRef}
             className={cn(
-              "grid grid-cols-5 gap-x-2 gap-y-4 py-2",
+              "grid grid-cols-5 gap-x-2 gap-y-[13px] py-2",
               (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale",
               !isOn && "pointer-events-none"
             )}
@@ -296,7 +296,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={(v) => onEffectChange("gain", v)}
               neon={isOn}
             />
-            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Range" showFrequency value={instrument.octaveRange ?? { first: instrument.octave, second: instrument.octave, frequency: 'note' }} min={0} max={7} step={1} formatValue={range => `${range.first}–${range.second}`} formatSingleValue={value => String(value)} updateMode="on-release" onChange={octaveRange => onInstrumentChange?.({ octaveRange })} neon={isOn && !!selectedSquare} /> : <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
+            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Octaves" ariaLabel="Octaves" showFrequency value={instrument.octaveRange ?? { first: instrument.octave, second: instrument.octave, frequency: 'note' }} min={0} max={7} step={1} formatValue={range => `${range.first}–${range.second}`} formatSingleValue={value => String(value)} updateMode="on-release" onChange={octaveRange => onInstrumentChange?.({ octaveRange })} neon={isOn && !!selectedSquare} /> : <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="PITCH"
               value={effects.pitch}
               min={0.5}

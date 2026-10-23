@@ -37,6 +37,11 @@ export const DEFAULT_KNOB_SIZE = 40
 /** Knobs of Musical params and the Creative parameter panel are 15% larger than the default. */
 export const LARGE_KNOB_SIZE = 46
 
+/** With the label below, the unused bottom of the dial is trimmed (about 5px at 46px) and the label moves up by the same amount. */
+export function knobBottomTrim(size: number, labelPosition?: string) {
+  return labelPosition === 'bottom' ? Math.round(size * 5 / 46) : 0
+}
+
 export function knobDragMode(gestureMode: KnobGestureMode, onMarker: boolean): KnobDragMode {
   if (gestureMode !== 'hybrid') return gestureMode
   return onMarker ? 'angular' : 'relative'
@@ -143,14 +148,15 @@ export function Knob({ value, min, max, step = .01, label, labelContent, ariaLab
     labelPosition === "right" && "text-left",
   )
 
+  const trim = knobBottomTrim(size, labelPosition)
   const cursor = neon ? knobCursor(gestureMode, dragMode) : 'default'
   const markerCursor = neon ? dragMode === 'relative' ? 'w-resize' : dragMode === 'angular' ? 'grabbing' : 'grab' : 'default'
   return <div className={cn("flex items-center select-none", labelPosition === "bottom" ? "gap-[2px]" : "gap-1", horizontalLabel ? "w-full flex-row" : "flex-col", labelPosition === "left" && "justify-end", labelPosition === "right" && "justify-start", !neon && "opacity-50")}>
     {!hideLabel && labelPosition === "top" && <span className="text-[10px] uppercase font-mono text-muted-foreground text-center" style={size!==40?{fontSize:size/4}:undefined}>{label}</span>}
     {!hideLabel && labelPosition === "left" && <span className={labelClasses}>{label}</span>}
     <div role="slider" data-update-mode={updateMode} data-gesture-mode={gestureMode} aria-label={ariaLabel ?? label} title={ariaLabel} aria-valuemin={min} aria-valuemax={max} aria-valuenow={displayedValue} aria-valuetext={formatValue?.(displayedValue)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
-      style={{width:size,height:size,borderColor:dragging?'#fff':accentColor,cursor}}
-      className={cn("relative w-10 h-10 rounded-full bg-secondary border border-border group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]", neon && "hover:border-[var(--city-neon)]", dragging && "border-white")}
+      style={{width:size,height:size,cursor}}
+      className="relative w-10 h-10 rounded-full border border-transparent group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]"
       onPointerEnter={() => {
         pointerInsideRef.current = true
         if (neon && !drag.current) setIndicatorOutside(true)
@@ -201,6 +207,8 @@ export function Knob({ value, min, max, step = .01, label, labelContent, ariaLab
         const direction = ['ArrowUp', 'ArrowRight'].includes(event.key) ? 1 : -1
         commit(event.key === 'Home' ? min : event.key === 'End' ? max : logarithmic ? fromAmount(Math.max(0, Math.min(1, amount + direction * .02))) : value + direction * step * (event.shiftKey ? 10 : 1))
       }}>
+      {/* Visible dial: a separate layer so the trim clips only the circle, not markers or values. */}
+      <div data-knob-face aria-hidden="true" className={cn("pointer-events-none absolute -inset-px rounded-full border border-border bg-secondary", neon && "group-hover:border-[var(--city-neon)]", dragging && "border-white")} style={{ borderColor: dragging ? '#fff' : accentColor, clipPath: trim ? `inset(0 0 ${trim}px 0)` : undefined }} />
       {/* CSS normalizes excess precision before hydration; serialize a stable angle. */}
       <div className="pointer-events-none absolute w-full h-full rounded-full" style={{ transform: `rotate(${Number((-135 + amount * 270).toFixed(3))}deg)` }}>
         {/* Wider invisible grip around the marker: in hybrid mode it starts the angular gesture. */}
@@ -215,7 +223,7 @@ export function Knob({ value, min, max, step = .01, label, labelContent, ariaLab
         {formatValue ? formatValue(displayedValue) : displayedValue.toFixed(2)}
       </span>
     </div>
-    {!hideLabel && labelPosition === "bottom" && (labelContent ?? <span className="text-[10px] uppercase font-mono leading-none text-muted-foreground text-center" style={size!==DEFAULT_KNOB_SIZE?{fontSize:Math.min(10,size/4)}:undefined}>{label}</span>)}
+    {!hideLabel && labelPosition === "bottom" && <div style={{ marginTop: -trim }}>{labelContent ?? <span className="block text-[10px] uppercase font-mono leading-none text-muted-foreground text-center" style={size!==DEFAULT_KNOB_SIZE?{fontSize:Math.min(10,size/4)}:undefined}>{label}</span>}</div>}
     {!hideLabel && labelPosition === "right" && <span className={labelClasses}>{label}</span>}
   </div>
 }

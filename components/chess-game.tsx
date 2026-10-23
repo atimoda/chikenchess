@@ -1660,7 +1660,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 selectedStatus={music.selected ? <MusicVoiceBadge monitor={music.monitor} id={music.selected.id} /> : undefined}
                 selectedPieceInfo={music.instrument?.name ?? null}
                 pieceSvg={music.selected ? PiecesSVG[`${music.selected.color}${music.selected.type.toUpperCase()}` as keyof typeof PiecesSVG] : null}
-                effects={music.selected ? music.effects[music.selected.id] ?? { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 } : DEFAULT_EFFECTS}
+                effects={music.selected ? music.baseEffects[music.selected.id] ?? { ...DEFAULT_EFFECTS, lpf: music.instrument?.lpf, hpf: music.instrument?.hpf, reverb: 0.12, decay: 0.15 } : DEFAULT_EFFECTS}
                 onEffectChange={(key, value) => {
                     if (!music.selected) return
                     music.setPieceEffect(key, value)
