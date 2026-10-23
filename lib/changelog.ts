@@ -42,7 +42,9 @@ export const CHANGELOG = [
       { title: 'Debug', items: [
         'No widget Debug, os botões passaram a se chamar Piece, Stockfish, Bot e Eggs.',
         'Novo botão Moves no Debug: por 2 golden eggs, mostra no tabuleiro as 10 melhores jogadas da posição, em vez das 3 do Best moves.',
-        'Novo switch Code no Debug, ligado por padrão, para mostrar ou esconder o código no fundo da partida.',
+        'Novo botão Code no Debug, ligado por padrão, para mostrar ou esconder o código no fundo da partida.',
+        'O botão Force win do Debug só aparece para usuários admin.',
+        'No Bot Control, o símbolo % dos campos de percentual fica antes do número, dentro do campo.',
         'O widget Bot Control ficou mais compacto, e os campos numéricos ganharam botões − e + que continuam ajustando o valor enquanto ficam pressionados. Os mesmos botões do modo Criativo também passaram a repetir ao segurar.',
         'O widget Debug Stockfish ganhou a mesma aparência dos demais widgets, com o botão de energia que o fecha.',
       ] },
