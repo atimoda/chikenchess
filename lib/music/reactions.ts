@@ -4,30 +4,30 @@ import type { MusicSnapshot } from './runtime-types'
 import { HARMONY_PLANS, HARMONY_PLAN_IDS, type HarmonyPlanId } from './harmony'
 
 export const STATES = {
-  opening: 'Abertura (até 20 meios-lances)', middle: 'Meio-jogo', endgame: 'Final (até 10 peças)',
-  check: 'Cheque', mate: 'Xeque-mate', stalemate: 'Afogamento', repetition: 'Repetição tripla',
-  insufficient: 'Material insuficiente', draw: 'Regra dos 50 lances', advantage: 'Vantagem material (≥ 5 pontos)',
+  opening: 'Opening (up to 20 half-moves)', middle: 'Middlegame', endgame: 'Endgame (up to 10 pieces)',
+  check: 'Check', mate: 'Checkmate', stalemate: 'Stalemate', repetition: 'Threefold repetition',
+  insufficient: 'Insufficient material', draw: '50-move rule', advantage: 'Material advantage (≥ 5 points)',
 } as const
 export const EVENTS = {
-  firstCastle: 'Primeiro roque', secondCastle: 'Segundo roque', firstCapture: 'Primeira captura', capture: 'Captura',
-  queenCapture: 'Captura de rainha', noQueens: 'Nenhuma rainha restante', noKnights: 'Todos os cavalos de um lado capturados',
-  noRooks: 'Todas as torres de um lado capturadas', noBishops: 'Todos os bispos de um lado capturados',
-  promotion: 'Promoção', underpromotion: 'Subpromoção', enPassant: 'En passant',
-  minimumOne: 'Formação mínima de um lado', minimumBoth: 'Formação mínima dos dois lados',
-  quiet: '10 meios-lances sem captura nem peão', checkEscape: 'Saída de cheque',
+  firstCastle: 'First castling', secondCastle: 'Second castling', firstCapture: 'First capture', capture: 'Capture',
+  queenCapture: 'Queen capture', noQueens: 'No queens left', noKnights: 'All knights of one side captured',
+  noRooks: 'All rooks of one side captured', noBishops: 'All bishops of one side captured',
+  promotion: 'Promotion', underpromotion: 'Underpromotion', enPassant: 'En passant',
+  minimumOne: 'Minimum setup on one side', minimumBoth: 'Minimum setup on both sides',
+  quiet: '10 half-moves without capture or pawn move', checkEscape: 'Check escape',
 } as const
 export const TRIGGERS = { ...STATES, ...EVENTS }
 export type Trigger = keyof typeof TRIGGERS
 export type Occurrence = { trigger: Trigger; color: 'w' | 'b'; ply: number }
 export interface ReactionContext { ply: number; states: Occurrence[]; events: Occurrence[] }
-export const ACTIONS = { transpose: 'Transpor (semitons; 2 = 1 tom)', bpm: 'Alterar BPM (%)', scale: 'Trocar escala paralela', relative: 'Relativa maior/menor', mode: 'Rotação modal (graus)', harmony: 'Trocar plano harmônico', invert: 'Inverter contorno melódico', variation: 'Forçar variação (0=A, 1=B…)', gain: 'Alterar ganho (%)', lpf: 'Filtro passa-baixas (Hz)', activate: 'Ativar banda' } as const
-export { SCALE_INTERVALS } from './scales'
-import { SCALE_INTERVALS } from './scales'
+export const ACTIONS = { transpose: 'Transpose (semitones; 2 = 1 whole tone)', bpm: 'Change BPM (%)', scale: 'Switch parallel scale', relative: 'Relative major/minor', mode: 'Modal rotation (degrees)', harmony: 'Switch harmonic plan', invert: 'Invert melodic contour', variation: 'Force variation (0=A, 1=B…)', gain: 'Change gain (%)', lpf: 'Low-pass filter (Hz)', activate: 'Activate band' } as const
+export { SCALE_INTERVALS, SCALE_LABELS } from './scales'
+import { SCALE_INTERVALS, SCALE_LABELS } from './scales'
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
 export const actionSchema = z.object({ type: z.enum(keys(ACTIONS)), rampBars: z.number().int().min(0).max(16).optional(), value: z.number().finite().min(-100).max(20000).default(0), scale: z.enum(keys(SCALE_INTERVALS)).default('Maior'), harmony: z.enum(HARMONY_PLAN_IDS).default('static') }).superRefine((a, ctx) => {
   const limits: Record<keyof typeof ACTIONS, [number, number]> = { transpose: [-12,12], bpm: [-30,30], scale: [0,0], relative:[0,0], mode:[0,11], harmony:[0,0], invert:[0,0], variation:[0,7], gain:[-100,100], lpf:[20,20000], activate:[0,0] }
   const [lo,hi]=limits[a.type]
-  if(a.value<lo || a.value>hi || (['transpose','mode','variation'].includes(a.type) && !Number.isInteger(a.value))) ctx.addIssue({code:'custom',message:'Valor fora do limite da ação.'})
+  if(a.value<lo || a.value>hi || (['transpose','mode','variation'].includes(a.type) && !Number.isInteger(a.value))) ctx.addIssue({code:'custom',message:'Value outside the action’s limit.'})
 })
 export const reactionSchema = z.object({ id: z.string().min(1).max(80), trigger: z.enum(keys(TRIGGERS)), enabled: z.boolean(), quantize: z.boolean().default(false), target: z.enum(['both','w','b','actor','opponent']), duration: z.number().int().min(0).max(32), actions: z.array(actionSchema).max(12) })
 export type Reaction = z.infer<typeof reactionSchema>
@@ -166,7 +166,7 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         if(action.type==='lpf') {result.instruments[id]={...inst,lpf:action.value,lpfRange:undefined};if(fx)fx.lpf=action.value}
         if(action.type==='invert'&&inst.behavior!=='pulse'){result.instruments[id]={...inst,pianoRolls:inst.pianoRolls.map(roll=>({...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}))}}
       }
-      descriptions.push(`${TRIGGERS[rule.trigger]} → ${ACTIONS[action.type]} ${action.type==='scale'?action.scale:action.type==='harmony'?HARMONY_PLANS[action.harmony].label:action.value || ''}`)
+      descriptions.push(`${TRIGGERS[rule.trigger]} → ${ACTIONS[action.type]} ${action.type==='scale'?SCALE_LABELS[action.scale]:action.type==='harmony'?HARMONY_PLANS[action.harmony].label:action.value || ''}`)
     }
   }
   for(const fx of Object.values(result.effects))fx.pitch=Math.max(.125,Math.min(8,fx.pitch))

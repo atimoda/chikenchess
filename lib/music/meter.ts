@@ -23,7 +23,7 @@ export function groupStarts(meter: Meter = '4/4'): number[] {
   return METERS[meter].groups.map(length => { const start = offset; offset += length; return start })
 }
 export function meterLabel(meter: Meter = '4/4') {
-  const unit = { quarter: 'semínima', 'dotted-quarter': 'semínima pontuada', half: 'mínima', eighth: 'colcheia' }[beatUnit(meter)]
+  const unit = { quarter: 'quarter note', 'dotted-quarter': 'dotted quarter', half: 'half note', eighth: 'eighth note' }[beatUnit(meter)]
   const groups = METERS[meter].groups
   return `${meter} · BPM = ${unit}${groups.some(n => n > 1) ? ` · ${groups.join('+')}` : ''}`
 }

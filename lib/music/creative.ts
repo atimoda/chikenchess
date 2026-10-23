@@ -10,7 +10,7 @@ import { defaultReactions, isLegacyReactionPreset, REACTION_PRESET_REVISION, rea
 import { HARMONY_PLAN_IDS } from './harmony'
 
 export const SOUNDS = ['sbd', 'sine', 'triangle', 'square', 'sawtooth', 'supersaw', 'white', 'pink', 'brown'] as const
-export { ROOTS, scaleForCreativeSession, SCALE_INTERVALS as SCALES } from './scales'
+export { ROOTS, scaleForCreativeSession, SCALE_INTERVALS as SCALES, SCALE_LABELS } from './scales'
 import { ROOTS, SCALE_NAMES, scaleForCreativeSession } from './scales'
 
 const finite = (min: number, max: number) => z.number().finite().min(min).max(max)
@@ -18,7 +18,7 @@ const sourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('synth') }),
   z.object({ kind: z.literal('sample'), bank: z.string().max(80), asset: z.string().max(80), variant: finite(0, 127).int(), pitched: z.boolean() }),
 ]).superRefine((source, ctx) => {
-  if (source.kind === 'sample' && !sampleAsset(source)?.variants[source.variant]) ctx.addIssue({ code: 'custom', message: 'Banco, som ou articulação de sample inexistente.' })
+  if (source.kind === 'sample' && !sampleAsset(source)?.variants[source.variant]) ctx.addIssue({ code: 'custom', message: 'Sample bank, sound or articulation does not exist.' })
 })
 const rangeFrequencySchema = z.enum(['fixed', 'loop', 'section', 'note']).optional()
 const octaveRangeSchema = z.union([
@@ -69,7 +69,7 @@ export const creativeSchema = z.object({
 }).superRefine((data, ctx) => {
   const initial = piecesFromHistory([])
   if (new Set(data.pieces.map(p => p.square)).size !== 32 || new Set(data.pieces.map(p => p.id)).size !== 32) {
-    ctx.addIssue({ code: 'custom', message: 'Cada peça precisa de uma identidade e casa únicas.' })
+    ctx.addIssue({ code: 'custom', message: 'Each piece needs a unique id and square.' })
   }
   for (const p of data.pieces) {
     const original = initial.find(x => x.id === p.id)
@@ -78,12 +78,12 @@ export const creativeSchema = z.object({
     }
   }
   for (const map of [data.instruments, data.effects, data.mappings]) {
-    if (Object.keys(map).length !== 32) ctx.addIssue({ code: 'custom', message: 'O kit precisa configurar exatamente 32 peças.' })
+    if (Object.keys(map).length !== 32) ctx.addIssue({ code: 'custom', message: 'The kit must set up exactly 32 pieces.' })
   }
   for (const instrument of Object.values(data.instruments)) {
     const entries = instrument.arrangement.sections
     if (Object.keys(entries).length !== data.arrangement.sections.length || data.arrangement.sections.some(s => !Object.hasOwn(entries,s.id) || entries[s.id].variation >= instrument.pianoRolls.length)) {
-      ctx.addIssue({code:'custom', message:'Cada peça precisa referenciar todas as seções globais e bancos MIDI existentes.'})
+      ctx.addIssue({code:'custom', message:'Each piece must reference every global section and existing MIDI bank.'})
     }
   }
 })
@@ -93,7 +93,7 @@ export const CREATIVE_STORAGE = 'chickenchess:creative:v5'
 export function createCreativeSession(): CreativeSession {
   const pieces = piecesFromHistory([])
   return creativeSchema.parse({
-    version: 7, name: 'Meu kit eletrônico', bpm: 118, meter: '4/4', volume: 0.75, root: 'C', scale: 'Pentatônica menor', arrangement: globalThis.structuredClone(DEFAULT_ARRANGEMENT), pieces,
+    version: 7, name: 'My electronic kit', bpm: 118, meter: '4/4', volume: 0.75, root: 'C', scale: 'Pentatônica menor', arrangement: globalThis.structuredClone(DEFAULT_ARRANGEMENT), pieces,
     instruments: Object.fromEntries(pieces.map(p => [p.id, { ...instrumentFor(p), arrangement:{restart:false,sections:{'section-a':{variation:0,transpose:0,active:true}}} }])),
     effects: Object.fromEntries(pieces.map(p => [p.id, { gain: 1, pitch: 1, pan: 0, delay: 0, reverb: 0.12, decay: 0.15 }])),
     mappings: Object.fromEntries(pieces.map(p => [p.id, { ...DEFAULT_MOVEMENT }])),
@@ -125,7 +125,7 @@ export function moveCreativePiece(session: CreativeSession, id: string, square: 
 export function parseCreativeSession(text: string): CreativeSession {
   // Explicit note banks are larger than the retired compact text format.
   // Individual banks still cap duration and note count in pianoRollSchema.
-  if (text.length > 2_000_000) throw new Error('Arquivo de kit muito grande.')
+  if (text.length > 2_000_000) throw new Error('Kit file too large.')
   const data = JSON.parse(text)
   // Text-era imports are intentionally simplified; no old pattern engine survives.
   if ([1, 2, 3, 4].includes(data?.version)) {

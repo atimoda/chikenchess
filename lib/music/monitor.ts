@@ -61,7 +61,7 @@ export function createMusicPulseMonitor() {
 }
 export type MusicPulseMonitor = ReturnType<typeof createMusicPulseMonitor>
 export const VOICE_STATUS_LABELS: Record<VoiceStatus, string> = {
-  inactive: 'Inativa', paused: 'Transporte pausado', 'solo-muted': 'Fora do solo', loading: 'Carregando sample',
-  error: 'Erro no sample', masked: 'Pausa de seção', rest: 'Pausa da frase', note: 'Tocando',
+  inactive: 'Inactive', paused: 'Transport paused', 'solo-muted': 'Outside solo', loading: 'Loading sample',
+  error: 'Sample error', masked: 'Section rest', rest: 'Phrase rest', note: 'Playing',
 }
 import type { HarmonyPlanId } from './harmony'

@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, forwardRef } from "react"
-import { Knob } from "./knob"
+import { Knob, LARGE_KNOB_SIZE } from "./knob"
 import { RangeKnob } from "./range-knob"
 import type { SquareEffects } from "@/lib/types"
 import { cn, stableHtml } from "@/lib/utils"
@@ -266,7 +266,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
           <div
             ref={knobGridRef}
             className={cn(
-              "grid grid-cols-5 gap-x-2 gap-y-4 py-2",
+              "grid grid-cols-5 gap-x-2 gap-y-[13px] py-2",
               (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale",
               !isOn && "pointer-events-none"
             )}
@@ -286,7 +286,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               .piece-params-scroll::-webkit-scrollbar { width: 6px; }
               .piece-params-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 999px; }
             `}</style>
-            <Knob
+            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="GAIN"
               value={effects.gain}
               min={0}
@@ -296,7 +296,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={(v) => onEffectChange("gain", v)}
               neon={isOn}
             />
-            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <RangeKnob label="Range" showFrequency value={instrument.octaveRange ?? { first: instrument.octave, second: instrument.octave, frequency: 'note' }} min={0} max={7} step={1} formatValue={range => `${range.first}–${range.second}`} formatSingleValue={value => String(value)} updateMode="on-release" onChange={octaveRange => onInstrumentChange?.({ octaveRange })} neon={isOn && !!selectedSquare} /> : <Knob
+            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Octaves" ariaLabel="Octaves" showFrequency value={instrument.octaveRange ?? { first: instrument.octave, second: instrument.octave, frequency: 'note' }} min={0} max={7} step={1} formatValue={range => `${range.first}–${range.second}`} formatSingleValue={value => String(value)} updateMode="on-release" onChange={octaveRange => onInstrumentChange?.({ octaveRange })} neon={isOn && !!selectedSquare} /> : <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="PITCH"
               value={effects.pitch}
               min={0.5}
@@ -305,7 +305,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={(v) => onEffectChange("pitch", v)}
               neon={isOn}
             />}
-            <Knob
+            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="PAN"
               value={effects.pan}
               min={-1}
@@ -315,7 +315,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={(v) => onEffectChange("pan", v)}
               neon={isOn}
             />
-            <Knob
+            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="DELAY"
               value={effects.delay}
               min={0}
@@ -327,7 +327,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             />
             
             {instrument ? <>
-            <RangeKnob
+            <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="LPF"
               ariaLabel="Corte passa-baixas"
               showFrequency
@@ -342,7 +342,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={lpfRange => onInstrumentChange?.({ lpfRange })}
               neon={isOn && !!selectedSquare}
             />
-            <Knob
+            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="HPF"
               value={effects.hpf ?? instrument.hpf}
               min={0}
@@ -354,7 +354,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={value => onEffectChange("hpf", value)}
               neon={isOn}
             />
-            </> : <Knob
+            </> : <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="LPF / HPF"
               value={filterDialValue(effects.lpf, effects.hpf)}
               min={-1}
@@ -369,7 +369,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               }}
               neon={isOn}
             />}
-            <RangeKnob
+            <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="DRIVE"
               showFrequency
               updateMode="on-release"
@@ -382,7 +382,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={driveRange => onInstrumentChange?.({ driveRange })}
               neon={isOn && !!selectedSquare && !!instrument}
             />
-            <RangeKnob
+            <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="REVERB"
               showFrequency
               updateMode="on-release"
@@ -396,7 +396,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               onChange={reverbRange => onInstrumentChange?.({ reverbRange })}
               neon={isOn && !!selectedSquare && !!instrument}
             />
-            <Knob
+            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="DECAY"
               value={effects.decay}
               min={0.01}
@@ -406,14 +406,14 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               neon={isOn}
             />
             {instrument && <>
-              <Knob label="ATAQUE" value={instrument.attack} min={.001} max={2} step={.001} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(3)} s`} onChange={attack => onInstrumentChange?.({ attack })} neon={isOn && !!selectedSquare} />
-              <Knob label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} updateMode="on-release" onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
-              <Knob label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
-              <Knob label="Length" value={instrument.clip ?? .7} min={.05} max={1} updateMode="on-release" formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
-              <Knob label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} neon={pitchSlideEnabled} />
-              <Knob label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} neon={pitchSlideEnabled} />
-              <RangeKnob label="SWING" showFrequency updateMode="on-release" value={instrument.swingRange ?? { first: instrument.extraSwing ?? 0, second: instrument.extraSwing ?? 0, frequency: 'note' }} min={0} max={.5} step={.01} formatValue={range => `${Math.round(range.first * 100)}–${Math.round(range.second * 100)}%`} formatSingleValue={value => `${Math.round(value * 100)}%`} onChange={swingRange => onInstrumentChange?.({ swingRange })} neon={isOn && !!selectedSquare} />
-              <Knob label="CHANCE" ariaLabel="Chance de tocar" value={instrument.playChance ?? 1} min={0} max={1} step={.01} updateMode="on-release" formatValue={value => `${Math.round(value * 100)}%`} onChange={playChance => onInstrumentChange?.({ playChance })} neon={isOn && !!selectedSquare} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="ATAQUE" value={instrument.attack} min={.001} max={2} step={.001} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(3)} s`} onChange={attack => onInstrumentChange?.({ attack })} neon={isOn && !!selectedSquare} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} updateMode="on-release" onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Length" value={instrument.clip ?? .7} min={.05} max={1} updateMode="on-release" formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} neon={pitchSlideEnabled} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} neon={pitchSlideEnabled} />
+              <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SWING" showFrequency updateMode="on-release" value={instrument.swingRange ?? { first: instrument.extraSwing ?? 0, second: instrument.extraSwing ?? 0, frequency: 'note' }} min={0} max={.5} step={.01} formatValue={range => `${Math.round(range.first * 100)}–${Math.round(range.second * 100)}%`} formatSingleValue={value => `${Math.round(value * 100)}%`} onChange={swingRange => onInstrumentChange?.({ swingRange })} neon={isOn && !!selectedSquare} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="CHANCE" ariaLabel="Chance de tocar" value={instrument.playChance ?? 1} min={0} max={1} step={.01} updateMode="on-release" formatValue={value => `${Math.round(value * 100)}%`} onChange={playChance => onInstrumentChange?.({ playChance })} neon={isOn && !!selectedSquare} />
             </>}
           </div>
           <div className={cn(!isStatic && "flex min-h-0 flex-1 flex-col overflow-hidden")}>

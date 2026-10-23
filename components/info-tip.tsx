@@ -22,7 +22,7 @@ export function InfoTip({label,children}:{label:string;children:ReactNode}){
   return()=>{window.removeEventListener('resize',place);window.removeEventListener('scroll',place,true);document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape)}
  },[open])
  return <span data-info-tip className={styles.anchor}>
-  <button ref={button} type="button" className={styles.trigger} aria-label={`Ajuda: ${label}`} aria-expanded={open} aria-controls={open?id:undefined} aria-describedby={open?id:undefined}
+  <button ref={button} type="button" className={styles.trigger} aria-label={`Help: ${label}`} aria-expanded={open} aria-controls={open?id:undefined} aria-describedby={open?id:undefined}
    onPointerEnter={e=>{if(e.pointerType==='mouse')show()}} onPointerLeave={leave}
    onFocus={e=>{if(e.currentTarget.matches(':focus-visible'))show()}}
    onBlur={e=>{if(!panel.current?.contains(e.relatedTarget as Node))close()}}

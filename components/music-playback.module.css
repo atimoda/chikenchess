@@ -7,7 +7,7 @@
 .voice { padding: 12px 0; min-height: 150px; }
 .pieceParamsVoice { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 42px; height: 100%; padding: 0; overflow: hidden; }
 .pieceParamsVariationViewer { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 42px; overflow: hidden; }
-.pieceParamsVoice .variationTabs { flex: 0 0 auto; }
+.pieceParamsVoice .variationTabs { flex: 0 0 auto; margin-bottom: 0; }
 .pieceParamsVoice .pieceParamsVariationViewer > section[aria-label='Editor de variações'] { flex: 1 1 0%; min-height: 0; overflow: hidden; }
 .variations { height: 174px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; font: 10px monospace; }
 .variations[data-tabbed='true'] { height: 124px; overflow: hidden; }
@@ -15,14 +15,25 @@
 .variationViewer[data-loop-enabled='false'] { opacity: .34; filter: grayscale(.8); }
 .variationTabs { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; min-width: 0; }
 .variationTabs[data-manage-variations='true'] { flex-wrap: wrap; row-gap: 8px; }
-.variationTabList { display: flex; flex-wrap: wrap; gap: 16px 4px; min-width: 0; width: 100%; overflow: visible; padding-top: 13px; margin-top: -13px; }
+.variationTabList { display: flex; flex-wrap: wrap; gap: 16px 0; min-width: 0; width: 100%; overflow: visible; padding-top: 13px; margin-top: -13px; }
 .variationTabList button { position: relative; overflow: visible; }
+/* Variation tabs form one joined strip; only the +/− pair keeps a gap at the end of the row. */
+.voice .variationTabList button + button { margin-left: -1px; }
+.voice .variationTabList button:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.voice .variationTabList button:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.voice .variationTabList button[role='tab'] + button:not([role='tab']) { margin-left: 4px; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.voice .variationTabList button[role='tab']:has(+ button:not([role='tab'])) { border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+.voice .variationTabList button[data-active='true'], .voice .variationTabList button:hover { z-index: 1; }
 .voice .variationTabList .pinnedVariation { position: absolute; top: -13px; left: 50%; width: 11px; height: 11px; transform: translateX(-50%); background: transparent; border-radius: 0; color: #82a85f; }
 .variationActions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
 .voice .variationTabs button, .voice .variationActions button { min-width: 27px; height: 25px; padding: 0; border: 1px solid #34463b; border-radius: 4px; color: #89988d; font: 10px monospace; background: #111a15; }
 .voice .variationTabs button[data-active='true'] { border-color: #82a85f; color: #c2db91; }
 .voice .variationTabs button[data-fixed='true'] { color: #fff; box-shadow: inset 0 0 0 1px #fff8; }
 .voice .variationTabs button[data-absent='true'] { border-color: #2b3a31; color: #6f7d73; }
+.buttonPair { display: inline-flex; }
+.voice .buttonPair button + button { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.voice .buttonPair button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.voice .buttonPair button:hover, .voice .buttonPair button:focus-visible { position: relative; z-index: 1; }
 .variationActions button { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .variationActions button:not(:disabled):hover,
 .variationActions button:not(:disabled):focus-visible { color: #e1eeac; background: #26342a; border-color: #82a85f; }
@@ -50,8 +61,8 @@
 .badge[data-status='error'] { color: #f7aa9d; }
 .noteParams { margin-top: 10px; min-width: 0; }
 .voice .noteParams h3 { margin: 0 0 6px; font: 9px monospace; color: #9eafa2; }
-.noteParamsRow { display: grid; grid-template-columns: minmax(0, 1fr) 28px 28px 27px; align-items: center; gap: 6px; }
-.noteSlideBox { display: grid; grid-template-columns: 28px 28px minmax(16px, 1fr); align-items: center; gap: 4px; padding: 4px; min-width: 0; border: 1px solid #34463b; border-radius: 4px; background: #111a15; }
+.noteParamsRow { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px 27px; align-items: center; gap: 6px; }
+.noteSlideBox { display: grid; grid-template-columns: 32px 32px minmax(16px, 1fr); align-items: center; gap: 4px; padding: 4px; min-width: 0; border: 1px solid #34463b; border-radius: 4px; background: #111a15; }
 .voice .noteSlideCurve { display: block; width: 100%; height: 32px; min-width: 0; background: transparent; }
 .voice .deleteNote { width: 27px; height: 27px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .voice .deleteNote svg { width: 14px; height: 14px; background: transparent; border-radius: 0; }

@@ -3,6 +3,31 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.7.0',
+    date: '23/10/2026',
+    title: 'Knobs maiores, com gesto duplo e rótulo embaixo',
+    groups: [
+      { title: 'Knobs', items: [
+        'Todos os knobs das partidas e do Criativo ganharam um gesto duplo: arrastar o tracinho (ou a bolinha, nos knobs de range) leva o valor ao ponto do círculo mais próximo do mouse ou do dedo, com cursor de mão; arrastar a partir do fundo do círculo ajusta o valor aos poucos, conforme o arraste, com cursor de seta horizontal. Nos knobs de range, o lado esquerdo do círculo ajusta a bolinha de menor valor e o lado direito a de maior valor.',
+        'Em Musical params (antigo Piece params) e no painel 03 / Parâmetros do Criativo, os knobs estão cerca de 15% maiores e o nome fica logo abaixo do círculo, acima das bolinhas L/S/N dos knobs de range.',
+        'As bolinhas e o arco selecionado dos knobs de range agora ficam exatamente sobre a borda do círculo.',
+        'Nesses knobs com nome embaixo, a parte de baixo do círculo, que a seleção nunca alcança, foi cortada em cerca de 5 px e o nome subiu junto; as linhas de knobs ficaram 3 px mais próximas.',
+        'O knob Range passou a se chamar Octaves, em Musical params e no Criativo.',
+        'Corrigido: em Musical params, um knob ajustado durante um Estado/Evento ativo (por exemplo, GAIN levado a 2) voltava a mostrar o valor já alterado pela regra (1.84) ao soltar, e o próximo arraste partia desse número. Agora o knob mostra e edita o valor-base da peça; a regra continua agindo por cima no áudio.',
+      ] },
+      { title: 'Criativo', items: [
+        'A página do Criativo está toda em inglês: textos, ajudas, avisos, Estados/Eventos, arranjo, escalas e status das vozes. Os nomes de kits e instrumentos continuam como foram salvos. Os status das vozes e os nomes dos Estados/Eventos também aparecem em inglês na partida.',
+        'No painel 03 / Parameters, o "?" de ajuda de cada knob fica em cima do círculo.',
+        'Os campos numéricos que ainda usavam as setinhas do navegador (duração da seção no Arranjo global, formação mínima, duração das regras e rampa de BPM) ganharam os botões redondos − e +.',
+      ] },
+      { title: 'Musical params', items: [
+        'A duração da variação ("Y compassos / Z tempos") passou para a linha de botões abaixo do sequenciador MIDI, alinhada à direita, sem o "Seção X".',
+        'Os botões das variações ficam colados, formando uma única faixa; só os botões +/− no fim da linha têm espaço. O espaço entre essas abas e o sequenciador é o mesmo que entre o sequenciador e os botões abaixo dele.',
+        'Na linha abaixo do sequenciador, "Y compassos / Z tempos" fica à esquerda e os botões à direita; os botões −/+ de duração formam um par colado, e Sortear notas mostra um único dado na face 5.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '22/10/2026',
     title: 'Best/Worst e barra de Chance não travam mais',

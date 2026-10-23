@@ -1,14 +1,16 @@
 "use client"
 
-import { useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react"
+import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode, type WheelEvent } from "react"
 import { cn } from "@/lib/utils"
 import type { ParameterRange } from '@/lib/music/model'
-import { Knob, knobAmountFromPointer, knobValueLabelStyle, type KnobGestureMode, type KnobUpdateMode } from './knob'
+import { DEFAULT_KNOB_SIZE, Knob, knobAmountFromPointer, knobBottomTrim, knobCursor, knobDragMode, knobRelativeAmount, knobValueLabelStyle, type KnobDragMode, type KnobGestureMode, type KnobUpdateMode } from './knob'
 
 export type IntegerRange = ParameterRange
 
 interface RangeKnobProps {
   label: string
+  /** Replaces the plain label text, e.g. to attach contextual help. */
+  labelContent?: ReactNode
   value: IntegerRange
   min: number
   max: number
@@ -21,6 +23,7 @@ interface RangeKnobProps {
   labelPosition?: "top" | "bottom"
   hideLabel?: boolean
   showFrequency?: boolean
+  size?: number
   updateMode?: KnobUpdateMode
   gestureMode?: KnobGestureMode
   onChange: (range: IntegerRange) => void
@@ -33,11 +36,13 @@ type ActiveDrag = {
   y: number
   amount: number
   latestRange: IntegerRange
+  mode: KnobDragMode
 }
 
 /** A compact range control. Its selected frequency also determines fixed/range mode. */
 export function RangeKnob({
   label,
+  labelContent,
   value,
   min,
   max,
@@ -50,13 +55,15 @@ export function RangeKnob({
   labelPosition = "top",
   hideLabel = false,
   showFrequency = false,
+  size = DEFAULT_KNOB_SIZE,
   updateMode = 'immediate',
-  gestureMode = 'angular',
+  gestureMode = 'hybrid',
   onChange,
 }: RangeKnobProps) {
   const drag = useRef<ActiveDrag | null>(null)
   const dialRef = useRef<HTMLDivElement>(null)
   const [draggingThumb, setDraggingThumb] = useState<Thumb | null>(null)
+  const [dragMode, setDragMode] = useState<KnobDragMode | null>(null)
   const [hoveredThumb, setHoveredThumb] = useState<Thumb | null>(null)
   const [draftRange, setDraftRange] = useState<IntegerRange | null>(null)
   const isFixed = value.frequency === 'fixed'
@@ -64,21 +71,24 @@ export function RangeKnob({
   const visibleRange = updateMode === 'on-release' && draggingThumb && draftRange ? draftRange : value
   const amount = (current: number) => max === min ? 0 : (current - min) / (max - min)
   const snap = (current: number) => Number(Math.max(min, Math.min(max, min + Math.round((current - min) / step) * step)).toFixed(6))
-  const point = (thumb: Thumb) => {
-    const angle = (-135 + amount(visibleRange[thumb]) * 270) * Math.PI / 180
-    const radius = 15.5
-    return { left: 20 + Math.sin(angle) * radius, top: 20 - Math.cos(angle) * radius }
-  }
+  // Children are positioned in the padding box (inside the 1px border); thumbs and arc sit on the border line.
+  const inner = size - 2
+  const trim = knobBottomTrim(size, labelPosition)
+  const center = inner / 2
+  const radius = size / 2 - .5
   const arcPoint = (currentAmount: number) => {
     const angle = (-135 + currentAmount * 270) * Math.PI / 180
-    const radius = 15.5
-    return { x: 20 + Math.sin(angle) * radius, y: 20 - Math.cos(angle) * radius }
+    return { x: center + Math.sin(angle) * radius, y: center - Math.cos(angle) * radius }
+  }
+  const point = (thumb: Thumb) => {
+    const { x, y } = arcPoint(amount(visibleRange[thumb]))
+    return { left: x, top: y }
   }
   const arcPath = (from: number, to: number) => {
     const start = arcPoint(from)
     const end = arcPoint(to)
     const largeArc = to - from > 2 / 3 ? 1 : 0
-    return `M ${start.x} ${start.y} A 15.5 15.5 0 ${largeArc} 1 ${end.x} ${end.y}`
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`
   }
   const interval = { first: Math.min(visibleRange.first, visibleRange.second), second: Math.max(visibleRange.first, visibleRange.second) }
   const lowThumb = value.first <= value.second ? 'first' : 'second'
@@ -110,15 +120,22 @@ export function RangeKnob({
     const activeThumb = thumb && !Object.is(value.first, value.second)
       ? thumb
       : isLeftHalf ? lowThumb : highThumb
+    // In hybrid mode, a thumb drags angularly; each half of the dial background nudges its own thumb.
+    const mode = knobDragMode(gestureMode, !!thumb)
     dial.setPointerCapture(event.pointerId)
-    drag.current = { thumb: activeThumb, x: event.clientX, y: event.clientY, amount: amount(visibleRange[activeThumb]), latestRange: { ...visibleRange } }
+    drag.current = { thumb: activeThumb, x: event.clientX, y: event.clientY, amount: amount(visibleRange[activeThumb]), latestRange: { ...visibleRange }, mode }
     setDraggingThumb(activeThumb)
+    setDragMode(mode)
     if (updateMode === 'on-release') setDraftRange({ ...visibleRange })
-    if (gestureMode === 'angular') {
+    if (mode === 'angular') {
       const current = drag.current
       changeThumb(current, knobAmountFromPointer(event.clientX, event.clientY, bounds, current.amount))
     }
   }
+
+  const nextAmountFor = (current: ActiveDrag, event: PointerEvent<HTMLDivElement>) => current.mode === 'angular'
+    ? knobAmountFromPointer(event.clientX, event.clientY, dialRef.current!.getBoundingClientRect(), amount(visibleRange[current.thumb]))
+    : knobRelativeAmount(current.amount, current.x, current.y, event.clientX, event.clientY)
 
   const move = (event: PointerEvent<HTMLDivElement>) => {
     const current = drag.current
@@ -128,10 +145,7 @@ export function RangeKnob({
     }
     event.preventDefault()
     event.stopPropagation()
-    const nextAmount = gestureMode === 'angular'
-      ? knobAmountFromPointer(event.clientX, event.clientY, dialRef.current!.getBoundingClientRect(), amount(visibleRange[current.thumb]))
-      : Math.max(0, Math.min(1, current.amount + (current.y - event.clientY + event.clientX - current.x) / 200))
-    changeThumb(current, nextAmount)
+    changeThumb(current, nextAmountFor(current, event))
   }
 
   const finish = (applyDraft: boolean) => {
@@ -140,16 +154,14 @@ export function RangeKnob({
     if (applyDraft && updateMode === 'on-release' && !sameEndpoints(pending.latestRange, value)) onChange(pending.latestRange)
     drag.current = null
     setDraggingThumb(null)
+    setDragMode(null)
     setDraftRange(null)
   }
 
   const endPointer = (event: PointerEvent<HTMLDivElement>, applyDraft: boolean) => {
     const current = drag.current
     if (current && applyDraft) {
-      const nextAmount = gestureMode === 'angular'
-        ? knobAmountFromPointer(event.clientX, event.clientY, dialRef.current!.getBoundingClientRect(), amount(visibleRange[current.thumb]))
-        : Math.max(0, Math.min(1, current.amount + (current.y - event.clientY + event.clientX - current.x) / 200))
-      changeThumb(current, nextAmount)
+      changeThumb(current, nextAmountFor(current, event))
     }
     event.stopPropagation()
     finish(applyDraft)
@@ -197,7 +209,7 @@ export function RangeKnob({
     } else onChange({ ...value, frequency })
   }
 
-  const labelNode = <span className="text-center text-[10px] font-mono uppercase text-muted-foreground">{label}</span>
+  const labelNode = labelContent ?? <span className={cn("text-center text-[10px] font-mono uppercase text-muted-foreground", labelPosition === "bottom" && "block leading-none")}>{label}</span>
   const frequencyOptions = [
     ['loop', 'L', 'Shuffle value every LOOP'],
     ['section', 'S', 'Shuffle value every SESSION'],
@@ -207,6 +219,7 @@ export function RangeKnob({
   const renderThumb = (thumb: Thumb) => {
     const position = point(thumb)
     const dragging = draggingThumb === thumb
+    const thumbCursor = !neon ? 'default' : dragMode === 'relative' ? 'w-resize' : dragging ? 'grabbing' : 'grab'
     return <button
       key={thumb}
       type="button"
@@ -222,11 +235,10 @@ export function RangeKnob({
       tabIndex={neon ? 0 : -1}
       className={cn(
         "absolute z-10 h-[9px] w-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-background touch-none",
-        neon ? "bg-[var(--city-neon)] cursor-grab focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]" : "bg-foreground/20 cursor-default",
-        dragging && "cursor-grabbing",
+        neon ? "bg-[var(--city-neon)] focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]" : "bg-foreground/20",
         hoveredThumb === thumb && "z-20",
       )}
-      style={{ left: position.left, top: position.top,
+      style={{ left: position.left, top: position.top, cursor: thumbCursor,
         backgroundColor: !neon ? undefined : dragging ? updateMode === 'on-release' ? 'rgba(161, 161, 170, .62)' : 'var(--city-neon, #b6e5ac)' : hoveredThumb === thumb ? '#fff' : undefined }}
       onPointerDown={event => start(thumb, event)}
       onWheel={event => adjustFromWheel(thumb, event)}
@@ -235,7 +247,7 @@ export function RangeKnob({
     />
   }
 
-  return <div className={cn("flex flex-col items-center gap-1 select-none", !neon && "opacity-50")}>
+  return <div className={cn("flex flex-col items-center select-none", labelPosition === "bottom" ? "gap-[2px]" : "gap-1", !neon && "opacity-50")}>
     {!hideLabel && labelPosition === "top" && labelNode}
     {isFixed
       ? <Knob
@@ -246,11 +258,13 @@ export function RangeKnob({
           max={max}
           step={step}
           neon={neon}
+          size={size}
           updateMode={updateMode}
           gestureMode={gestureMode}
           formatValue={formatSingleValue ?? (current => String(Number(current.toFixed(3))))}
           monitorValue={monitorValue}
           hideLabel
+          labelPosition={labelPosition}
           onChange={current => onChange({ ...value, first: current, second: current, frequency: 'fixed' })}
         />
       : <div
@@ -260,12 +274,10 @@ export function RangeKnob({
           role="group"
           aria-label={`${label}: ${formatValue?.(interval) ?? `${interval.first} a ${interval.second}`}`}
           className={cn(
-            "group relative h-10 w-10 rounded-full border border-border bg-secondary touch-none",
-            neon && "hover:border-[var(--city-neon)] cursor-grab",
-            !neon && "opacity-50 cursor-default",
-            draggingThumb && "cursor-grabbing",
+            "group relative rounded-full border border-transparent touch-none",
+            !neon && "opacity-50",
           )}
-          style={{ borderColor: draggingThumb ? '#fff' : undefined }}
+          style={{ width: size, height: size, cursor: neon ? knobCursor(gestureMode, dragMode) : 'default' }}
           onPointerEnter={event => {
             if (event.pointerType !== 'touch') setHoveredThumb(thumbAtClientX(event.clientX))
           }}
@@ -278,7 +290,8 @@ export function RangeKnob({
           onPointerCancel={event => endPointer(event, false)}
           onLostPointerCapture={() => finish(false)}
         >
-          <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 40 40" aria-hidden="true">
+          <div data-knob-face aria-hidden="true" className={cn("pointer-events-none absolute -inset-px rounded-full border border-border bg-secondary", neon && "group-hover:border-[var(--city-neon)]")} style={{ borderColor: draggingThumb ? '#fff' : undefined, clipPath: trim ? `inset(0 0 ${trim}px 0)` : undefined }} />
+          <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox={`0 0 ${inner} ${inner}`} aria-hidden="true">
             {interval.first !== interval.second && <path
               d={arcPath(amount(interval.first), amount(interval.second))}
               fill="none"
@@ -292,16 +305,17 @@ export function RangeKnob({
           {monitorValue !== undefined && Number.isFinite(monitorValue) && <div aria-hidden="true" className="pointer-events-none absolute inset-[2px]" style={{ transform: `rotate(${-135 + Math.max(0, Math.min(1, amount(monitorValue))) * 270}deg)` }}>
             <div className="absolute left-1/2 top-0 h-[6px] w-[2px] -translate-x-1/2 rounded-full bg-zinc-400" />
           </div>}
-          <output aria-hidden="true" style={knobValueLabelStyle(40, 'top')} className={cn(
+          <output aria-hidden="true" style={knobValueLabelStyle(inner, 'top')} className={cn(
             "pointer-events-none absolute z-20 whitespace-nowrap text-center font-mono text-[7px] font-bold leading-none",
             neon ? "text-foreground/60 group-hover:text-white" : "text-foreground/20",
           )}>{formatSingleValue?.(interval.first) ?? String(Number(interval.first.toFixed(3)))}</output>
-          <output aria-hidden="true" style={knobValueLabelStyle(40, 'bottom')} className={cn(
+          <output aria-hidden="true" style={knobValueLabelStyle(inner, 'bottom')} className={cn(
             "pointer-events-none absolute z-20 whitespace-nowrap text-center font-mono text-[7px] font-bold leading-none",
             neon ? "text-foreground/60 group-hover:text-white" : "text-foreground/20",
           )}>{formatSingleValue?.(interval.second) ?? String(Number(interval.second.toFixed(3)))}</output>
         </div>}
-    {showFrequency && <div role="group" aria-label={`Frequência de ${label}`} className="flex items-center justify-center gap-[2px]" onPointerDown={event => event.stopPropagation()}>
+    {!hideLabel && labelPosition === "bottom" && <div style={{ marginTop: -trim }}>{labelNode}</div>}
+    {showFrequency && <div role="group" aria-label={`Frequência de ${label}`} className={cn("flex items-center justify-center gap-[2px]", labelPosition === "bottom" && "mt-[2px]")} onPointerDown={event => event.stopPropagation()}>
       {frequencyOptions.map(([frequency, letter, description], index) => {
         const selected = !isFixed && selectedFrequency === frequency
         return <button key={frequency} type="button" aria-pressed={selected} aria-label={description} title={description}
@@ -326,6 +340,5 @@ export function RangeKnob({
         </button>
       })}
     </div>}
-    {!hideLabel && labelPosition === "bottom" && labelNode}
   </div>
 }
