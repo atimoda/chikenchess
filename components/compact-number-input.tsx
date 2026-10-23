@@ -75,7 +75,7 @@ export function CompactNumberInput({ariaLabel,value,min,max,step=1,onChange}:Pro
   const adjust=(direction:-1|1)=>{const next=stepValue(valueRef.current,direction,min,max,step);if(next===valueRef.current)return;valueRef.current=next;onChange(next)}
   return <div className={styles.numberStepper}>
     <input aria-label={ariaLabel} inputMode="decimal" value={value} onChange={event=>{const next=Number(event.target.value);if(Number.isFinite(next)&&next>=min&&next<=max)onChange(next)}} />
-    <StepperButton aria-label={`Diminuir ${ariaLabel}`} disabled={value<=min} onStep={()=>adjust(-1)}>−</StepperButton>
-    <StepperButton aria-label={`Aumentar ${ariaLabel}`} disabled={value>=max} onStep={()=>adjust(1)}>+</StepperButton>
+    <StepperButton aria-label={`Decrease ${ariaLabel}`} disabled={value<=min} onStep={()=>adjust(-1)}>−</StepperButton>
+    <StepperButton aria-label={`Increase ${ariaLabel}`} disabled={value>=max} onStep={()=>adjust(1)}>+</StepperButton>
   </div>
 }

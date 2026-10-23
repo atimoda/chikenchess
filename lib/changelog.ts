@@ -15,6 +15,11 @@ export const CHANGELOG = [
         'O knob Range passou a se chamar Octaves, em Musical params e no Criativo.',
         'Corrigido: em Musical params, um knob ajustado durante um Estado/Evento ativo (por exemplo, GAIN levado a 2) voltava a mostrar o valor já alterado pela regra (1.84) ao soltar, e o próximo arraste partia desse número. Agora o knob mostra e edita o valor-base da peça; a regra continua agindo por cima no áudio.',
       ] },
+      { title: 'Criativo', items: [
+        'A página do Criativo está toda em inglês: textos, ajudas, avisos, Estados/Eventos, arranjo, escalas e status das vozes. Os nomes de kits e instrumentos continuam como foram salvos. Os status das vozes e os nomes dos Estados/Eventos também aparecem em inglês na partida.',
+        'No painel 03 / Parameters, o "?" de ajuda de cada knob fica em cima do círculo.',
+        'Os campos numéricos que ainda usavam as setinhas do navegador (duração da seção no Arranjo global, formação mínima, duração das regras e rampa de BPM) ganharam os botões redondos − e +.',
+      ] },
       { title: 'Musical params', items: [
         'A duração da variação ("Y compassos / Z tempos") passou para a linha de botões abaixo do sequenciador MIDI, alinhada à direita, sem o "Seção X".',
         'Os botões das variações ficam colados, formando uma única faixa; só os botões +/− no fim da linha têm espaço. O espaço entre essas abas e o sequenciador é o mesmo que entre o sequenciador e os botões abaixo dele.',

@@ -8,11 +8,11 @@ type HarmonyPlan = { label: string; compactLabel: string; degrees: readonly numb
 
 export const HARMONY_PLANS: Record<HarmonyPlanId, HarmonyPlan> = {
   kit: { label: 'Kit Harmony', compactLabel: 'Kit', degrees: [0] },
-  static: { label: 'I - Estática', compactLabel: 'I', degrees: [0] },
-  cadence: { label: 'I–IV–V–I - Cadência', compactLabel: 'I–IV–V–I', degrees: [0, 3, 4, 0] },
-  circle: { label: 'I–V–ii–vi - Circular', compactLabel: 'I–V–ii–vi', degrees: [0, 4, 1, 5] },
-  descent: { label: 'i–VII–VI–V - Descendente', compactLabel: 'i–VII–VI–V', degrees: [0, -1, -2, -3] },
-  ascent: { label: 'I–ii–IV–V - Ascendente', compactLabel: 'I–ii–IV–V', degrees: [0, 1, 3, 4] },
+  static: { label: 'I - Static', compactLabel: 'I', degrees: [0] },
+  cadence: { label: 'I–IV–V–I - Cadence', compactLabel: 'I–IV–V–I', degrees: [0, 3, 4, 0] },
+  circle: { label: 'I–V–ii–vi - Circle', compactLabel: 'I–V–ii–vi', degrees: [0, 4, 1, 5] },
+  descent: { label: 'i–VII–VI–V - Descending', compactLabel: 'i–VII–VI–V', degrees: [0, -1, -2, -3] },
+  ascent: { label: 'I–ii–IV–V - Ascending', compactLabel: 'I–ii–IV–V', degrees: [0, 1, 3, 4] },
   'pop-punk-154': { label: 'I–V–IV · Pop punk', compactLabel: 'I–V–IV', degrees: [0, 4, 3] },
   'pop-1564': { label: 'I–V–vi–IV · Pop', compactLabel: 'I–V–vi–IV', degrees: [0, 4, 5, 3] },
   'rock-6415': { label: 'vi–IV–I–V · Rock', compactLabel: 'vi–IV–I–V', degrees: [5, 3, 0, 4] },

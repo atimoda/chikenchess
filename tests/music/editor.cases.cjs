@@ -121,7 +121,7 @@ test('moving harmony generates one voiced diatonic triad per sustain onset', asy
  const played=pattern.queryArc(1,1.01).map(event=>Number(event.value.note)).sort((a,b)=>a-b)
  assert.deepEqual(played,[48,53,57])
  assert.deepEqual(harmonyFrame('cadence',creative.creativeSnapshot(kit,true).scale,1),{
-  plan:'cadence',planLabel:'I–IV–V–I - Cadência',section:1,degree:3,roman:'IV',
+  plan:'cadence',planLabel:'I–IV–V–I - Cadence',section:1,degree:3,roman:'IV',
   chordDegrees:[3,5,7],chordNotes:['F','A','C'],chordName:'F',quality:'maior',
  })
  assert.deepEqual(harmonyFrame('static',['C4','C#4','D4','D#4','E4','F4','F#4','G4','G#4','A4','A#4','B4'],0).chordNotes,['C','E','G'])

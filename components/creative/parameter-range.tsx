@@ -5,25 +5,37 @@ import { RangeKnob, type IntegerRange } from '../range-knob'
 import styles from '../creative-studio.module.css'
 
 const RANGE_HELP: Record<string,string> = {
- 'Volume geral':'Controla o volume da banda inteira.', 'Octaves':'Sem L, S ou N selecionado, ajusta uma oitava fixa. Ao escolher uma bolinha, o knob passa a controlar dois limites inclusivos: L sorteia por repetição do loop, S por entrada na seção A–H e N por ataque, mantendo a mesma oitava nas notas simultâneas. N é a opção inicial. Samples sem afinação não mudam de altura.',
- 'Ganho do instrumento':'Volume base do timbre (0 a 1). Multiplica o Ganho adicional: base 0,3 × adicional 0,5 resulta em 0,15 antes dos acentos/velocidades das notas e do mixer. Alterar aqui preserva o multiplicador da peça e suas regras.',
- 'Ganho adicional':'Multiplicador do ganho base da peça (0 a 2): 1 não muda, 0,5 reduz pela metade, 2 dobra e 0 silencia. Estados/Eventos podem sobrepor esse ganho e restaurá-lo ao terminar; o ganho base do instrumento permanece separado. Não é uma soma de volumes.', 'Ataque':'Tempo para a nota atingir seu volume. Curto produz ataque definido; longo produz entrada suave.',
- 'Sustentação':'Nível mantido após o decaimento, enquanto a nota dura.', 'Liberação':'Tempo de saída da nota depois de encerrar sua duração.',
- 'Duração da nota (fração)':'Fração da duração rítmica ocupada pelo som. Valores menores deixam mais espaço entre ataques.',
- 'Passa-baixas':'Sem L, S ou N selecionado, ajusta um corte fixo de 20 Hz a 20 kHz. Ao escolher uma bolinha, o knob passa a controlar dois limites; N sorteia por ataque e é a opção inicial. Atenua frequências acima do corte; reduzir deixa o timbre mais fechado. Uma regra de filtro ativa tem prioridade e restaura os valores ao terminar.', 'Passa-altas':'Atenua frequências abaixo do corte. Aumentar remove graves.',
- 'Pan':'Posição estéreo: valores negativos deslocam para a esquerda, positivos para a direita.', 'Pan adicional':'Ajuste salvo que se soma à posição da coluna, conforme Abertura estéreo do tabuleiro. Mover a peça altera o Pan final do áudio, não este valor base. Abertura zero remove a influência da coluna. O Pan próprio da nota pode substituir o resultado.', 'Reverb':'Sem L, S ou N selecionado, ajusta uma ambiência fixa (0 a 100%). Ao escolher uma bolinha, o knob passa a controlar dois limites: L sorteia por loop, S por entrada na seção e N por ataque (padrão). É envio para buses compartilhados, não um reverb separado por nota.', 'Delay':'Quantidade de repetições do som.',
- 'Drive':'Sem L, S ou N selecionado, ajusta uma saturação fixa de 0 a 10. Ao escolher uma bolinha, o knob passa a controlar dois limites: L sorteia por loop, S por entrada na seção e N por ataque (padrão). Zero dispensa a distorção.',
- 'Swing':'Sem L, S ou N selecionado, ajusta um swing fixo de 0 a 50%. Ao escolher uma bolinha, o knob passa a controlar dois limites: L sorteia por loop, S por entrada na seção e N por ataque (padrão). Atrasa os contratempos, sem antecipar notas; notas simultâneas mantêm o mesmo atraso. Soma-se ao timing escrito no kit; o gesto manual continua imediato.',
- 'Chance de tocar':'Probabilidade de cada evento do piano roll tocar. 0% remove todos os eventos; 100% toca todos. Usa o modificador nativo degradeBy do Strudel. Aplica-se aos loops automáticos, não à nota manual no tabuleiro. No Criativo, o valor é salvo no kit; na partida, vale só para a sessão atual.',
- 'Distorção':'Saturação de 0 a 10 aplicada a este instrumento em todas as variações.', 'Nível da distorção':'Controla o volume do efeito no Strudel (distortvol). Não é uma porcentagem de mistura seco/molhado; ajuste o ganho ao comparar timbres.',
- 'Slide de afinação':'Aplica o mesmo envelope a todas as notas afinadas deste instrumento, em todas as variações. Para slides ocasionais, edite uma nota no piano roll.',
- 'Tempo do slide':'Tempo do envelope global deste instrumento em todas as variações. Só atua quando Slide de afinação é diferente de zero; uma nota com slide próprio usa seu próprio tempo. Intervalo de 0,001 a 2 segundos.',
+ 'Master volume':'Controls the volume of the whole band.',
+ 'Octaves':'With no L, S or N selected, sets one fixed octave. Picking a dot makes the knob control two inclusive limits: L draws per loop repeat, S per entry into section A–H and N per attack, keeping the same octave across simultaneous notes. N is the default. Unpitched samples don’t change pitch.',
+ 'Instrument gain':'Base volume of the timbre (0 to 1). It multiplies the Extra gain: base 0.3 × extra 0.5 gives 0.15 before note accents/velocities and the mixer. Changing it here keeps the piece’s multiplier and its rules.',
+ 'Extra gain':'Multiplier of the piece’s base gain (0 to 2): 1 leaves it unchanged, 0.5 halves it, 2 doubles it and 0 silences it. States/Events can override this gain and restore it when they end; the instrument’s base gain stays separate. It is not a sum of volumes.',
+ 'Attack':'Time for the note to reach its volume. Short gives a defined attack; long gives a soft entry.',
+ 'Decay':'Time the note takes to fall from its peak to the sustain level.',
+ 'Sustain':'Level held after the decay, while the note lasts.',
+ 'Release':'Fade-out time of the note after its length ends.',
+ 'Note length (fraction)':'Fraction of the rhythmic duration taken by the sound. Lower values leave more space between attacks.',
+ 'Low-pass':'With no L, S or N selected, sets a fixed cutoff from 20 Hz to 20 kHz. Picking a dot makes the knob control two limits; N draws per attack and is the default. Cuts frequencies above the cutoff; lowering it makes the timbre darker. An active filter rule takes priority and restores the values when it ends.',
+ 'High-pass':'Cuts frequencies below the cutoff. Raising it removes low end.',
+ 'Pitch (multiplier)':'Multiplies the playback pitch: 0.5 is an octave down, 2 an octave up.',
+ 'Pan':'Stereo position: negative values move left, positive values move right.',
+ 'Extra pan':'Saved offset added to the file position, according to the board’s Stereo width. Moving the piece changes the final audio pan, not this base value. Zero width removes the file’s influence. A note’s own Pan can replace the result.',
+ 'Reverb':'With no L, S or N selected, sets a fixed ambience (0 to 100%). Picking a dot makes the knob control two limits: L draws per loop, S per section entry and N per attack (default). It is a send to shared buses, not a separate reverb per note.',
+ 'Dotted delay':'Amount of echoes of the sound.',
+ 'Drive':'With no L, S or N selected, sets a fixed saturation from 0 to 10. Picking a dot makes the knob control two limits: L draws per loop, S per section entry and N per attack (default). Zero bypasses the distortion.',
+ 'Distortion level':'Controls the effect volume in Strudel (distortvol). It is not a dry/wet percentage; adjust the gain when comparing timbres.',
+ 'Swing':'With no L, S or N selected, sets a fixed swing from 0 to 50%. Picking a dot makes the knob control two limits: L draws per loop, S per section entry and N per attack (default). It delays the off-beats without pulling notes early; simultaneous notes share the same delay. It adds to the kit’s written timing; the manual gesture stays immediate.',
+ 'Play chance':'Probability that each piano roll event plays. 0% removes every event; 100% plays them all. Uses Strudel’s native degradeBy modifier. Applies to automatic loops, not to the manual note on the board. In Creative the value is saved in the kit; in a match it only lasts for the current session.',
+ 'Pitch slide':'Applies the same envelope to every pitched note of this instrument, in all variations. For occasional slides, edit a note in the piano roll.',
+ 'Slide time':'Time of this instrument’s global envelope in all variations. It only acts when Pitch slide is not zero; a note with its own slide uses its own time. Range 0.001 to 2 seconds.',
+ 'Degrees per file':'Scale degrees added for each file the piece moves from its original square.',
+ 'Degrees per rank':'Scale degrees added for each rank the piece advances, following its color.',
+ 'Board stereo width':'How much the file spreads pieces across the stereo field. Zero keeps every piece centered.',
 }
 export function Range({ label, value, min, max, step = 0.01, unit = '', help = true, onChange }: {
   label: string; value: number; min: number; max: number; step?: number; unit?: string; help?: boolean; onChange: (value: number) => void
 }) {
   return <label className={styles.range}>
-    <span>{label}{help&&<InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta ${label.toLowerCase()} nesta configuração. Intervalo: ${min} a ${max}${unit}.`}</InfoTip>}<output>{Number(value.toFixed(3))}{unit}</output></span>
+    <span>{label}{help&&<InfoTip label={label}>{RANGE_HELP[label] ?? `Adjusts ${label.toLowerCase()} for this setup. Range: ${min} to ${max}${unit}.`}</InfoTip>}<output>{Number(value.toFixed(3))}{unit}</output></span>
     <input type="range" aria-label={label} min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} />
   </label>
 }
@@ -35,17 +47,17 @@ export function ParameterKnob({ label, value, min, max, step = 0.01, unit = '', 
     if (unit === ' Hz') return current >= 1000 ? `${Number((current / 1000).toFixed(1))}kHz` : `${Number(current.toFixed(3))}Hz`
     return `${Number(current.toFixed(3))}${unit.trim()}`
   }
-  const labelContent = <div className={styles.parameterKnobLabel}><span>{label}</span><InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta ${label.toLowerCase()} nesta configuração. Intervalo: ${min} a ${max}${unit}.`}</InfoTip></div>
   return <div className={styles.parameterKnob}>
-    <Knob label={label} labelContent={labelContent} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} onChange={onChange} />
+    <InfoTip label={label}>{RANGE_HELP[label] ?? `Adjusts ${label.toLowerCase()} for this setup. Range: ${min} to ${max}${unit}.`}</InfoTip>
+    <Knob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} onChange={onChange} />
   </div>
 }
 
 export function ParameterRangeKnob({ label, value, min, max, step = 1, formatValue, formatSingleValue, updateMode = 'immediate', onChange }: {
   label: string; value: IntegerRange; min: number; max: number; step?: number; formatValue?: (value: IntegerRange) => string; formatSingleValue?: (value: number) => string; updateMode?: KnobUpdateMode; onChange: (value: IntegerRange) => void
 }) {
-  const labelContent = <div className={styles.parameterKnobLabel}><span>{label}</span><InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta os limites de ${label.toLowerCase()} entre ${min} e ${max}.`}</InfoTip></div>
   return <div className={styles.parameterKnob}>
-    <RangeKnob label={label} labelContent={labelContent} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} showFrequency updateMode={updateMode} formatValue={formatValue ?? (range => `${range.first}–${range.second}`)} formatSingleValue={formatSingleValue} onChange={onChange} />
+    <InfoTip label={label}>{RANGE_HELP[label] ?? `Adjusts the limits of ${label.toLowerCase()} between ${min} and ${max}.`}</InfoTip>
+    <RangeKnob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} showFrequency updateMode={updateMode} formatValue={formatValue ?? (range => `${range.first}–${range.second}`)} formatSingleValue={formatSingleValue} onChange={onChange} />
   </div>
 }

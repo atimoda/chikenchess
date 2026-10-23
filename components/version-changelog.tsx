@@ -14,7 +14,7 @@ export const ReleaseNotesContent = dynamic(() => import('./release-notes-content
 export function VersionChangelog({ mapButton = false, onOpen }: { mapButton?: boolean; onOpen?: () => void }) {
   const [open, setOpen] = useState(false)
   const handleOpen = () => onOpen ? onOpen() : setOpen(true)
-  const button = <button type="button" aria-label={`Abrir changelog ${RELEASE_LABEL}`} className={mapButton ? 'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background/80 px-3 text-[10px] font-mono text-muted-foreground backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]' : 'text-[10px] font-mono text-muted-foreground hover:text-primary underline-offset-4 hover:underline px-1 py-1'} onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); handleOpen() }}>
+  const button = <button type="button" aria-label={`Open changelog ${RELEASE_LABEL}`} className={mapButton ? 'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background/80 px-3 text-[10px] font-mono text-muted-foreground backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]' : 'text-[10px] font-mono text-muted-foreground hover:text-primary underline-offset-4 hover:underline px-1 py-1'} onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); handleOpen() }}>
     {mapButton && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-green-500" />}
     {RELEASE_LABEL}
   </button>

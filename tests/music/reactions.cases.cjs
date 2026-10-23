@@ -98,7 +98,7 @@ test('harmony reactions replace and restore the shared plan without rewriting th
   assert.deepEqual(active.snapshot.arrangement.sections[0].harmony, [0, 3, 4, 0])
   assert.deepEqual(active.snapshot.arrangement.sections.map(({harmony,...section})=>section),base.arrangement.sections.map(({harmony,...section})=>section))
   assert.deepEqual(base.arrangement.sections[0].harmony, [0, 3, 4, 0])
-  assert.ok(active.descriptions[0].includes('Descendente'))
+  assert.ok(active.descriptions[0].includes('Descending'))
   assert.equal(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.harmony,'kit')
   assert.deepEqual(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.arrangement, base.arrangement)
   assert.equal(kit.harmony,'kit')

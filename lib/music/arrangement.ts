@@ -10,8 +10,8 @@ const sectionSchema = z.object({
   harmony: z.array(z.number().int().min(-14).max(14)).min(1).max(8).optional(),
 })
 export const arrangementSchema = z.object({ sections: z.array(sectionSchema).min(1).max(24) }).superRefine((plan, ctx) => {
-  if (new Set(plan.sections.map(s => s.id)).size !== plan.sections.length) ctx.addIssue({code:'custom', message:'Identidades de seção precisam ser únicas.'})
-  if (plan.sections.reduce((sum, s) => sum + s.beats, 0) > 512) ctx.addIssue({code:'custom', message:'Arranjo limitado a 512 tempos.'})
+  if (new Set(plan.sections.map(s => s.id)).size !== plan.sections.length) ctx.addIssue({code:'custom', message:'Section ids must be unique.'})
+  if (plan.sections.reduce((sum, s) => sum + s.beats, 0) > 512) ctx.addIssue({code:'custom', message:'Arrangement limited to 512 beats.'})
 })
 export const pieceSectionSchema = z.object({
   variation: z.number().int().min(0).max(7), transpose: z.number().int().min(-24).max(24).default(0), active: z.boolean().default(true),
