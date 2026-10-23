@@ -1,6 +1,6 @@
 'use client'
 import { InfoTip } from '../info-tip'
-import { Knob, type KnobUpdateMode } from '../knob'
+import { Knob, LARGE_KNOB_SIZE, type KnobUpdateMode } from '../knob'
 import { RangeKnob, type IntegerRange } from '../range-knob'
 import styles from '../creative-studio.module.css'
 
@@ -35,17 +35,17 @@ export function ParameterKnob({ label, value, min, max, step = 0.01, unit = '', 
     if (unit === ' Hz') return current >= 1000 ? `${Number((current / 1000).toFixed(1))}kHz` : `${Number(current.toFixed(3))}Hz`
     return `${Number(current.toFixed(3))}${unit.trim()}`
   }
+  const labelContent = <div className={styles.parameterKnobLabel}><span>{label}</span><InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta ${label.toLowerCase()} nesta configuração. Intervalo: ${min} a ${max}${unit}.`}</InfoTip></div>
   return <div className={styles.parameterKnob}>
-    <div className={styles.parameterKnobLabel}><span>{label}</span><InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta ${label.toLowerCase()} nesta configuração. Intervalo: ${min} a ${max}${unit}.`}</InfoTip></div>
-    <Knob label={label} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} onChange={onChange} hideLabel />
+    <Knob label={label} labelContent={labelContent} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} onChange={onChange} />
   </div>
 }
 
 export function ParameterRangeKnob({ label, value, min, max, step = 1, formatValue, formatSingleValue, updateMode = 'immediate', onChange }: {
   label: string; value: IntegerRange; min: number; max: number; step?: number; formatValue?: (value: IntegerRange) => string; formatSingleValue?: (value: number) => string; updateMode?: KnobUpdateMode; onChange: (value: IntegerRange) => void
 }) {
+  const labelContent = <div className={styles.parameterKnobLabel}><span>{label}</span><InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta os limites de ${label.toLowerCase()} entre ${min} e ${max}.`}</InfoTip></div>
   return <div className={styles.parameterKnob}>
-    <div className={styles.parameterKnobLabel}><span>{label}</span><InfoTip label={label}>{RANGE_HELP[label] ?? `Ajusta os limites de ${label.toLowerCase()} entre ${min} e ${max}.`}</InfoTip></div>
-    <RangeKnob label={label} value={value} min={min} max={max} step={step} hideLabel showFrequency updateMode={updateMode} formatValue={formatValue ?? (range => `${range.first}–${range.second}`)} formatSingleValue={formatSingleValue} onChange={onChange} />
+    <RangeKnob label={label} labelContent={labelContent} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} showFrequency updateMode={updateMode} formatValue={formatValue ?? (range => `${range.first}–${range.second}`)} formatSingleValue={formatSingleValue} onChange={onChange} />
   </div>
 }

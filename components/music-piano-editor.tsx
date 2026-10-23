@@ -80,7 +80,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
    const bars=roll.bars, quantum=1/(pulses*division), cursor=playback.phase%bars
    const fixed=instrument.selectedVariation===index
    return <div key={index} style={{border:compact?'none':`1px solid ${active?'#bedb90':'#3a4b40'}`,padding:compact?0:6,marginTop:8,borderRadius:5}}>
-    {compact?<div style={{minHeight:14,textAlign:'right',fontSize:9,color:'#9eafa2'}}>{globalPosition&&`Seção ${globalPosition.section.label} · `}{bars} compassos / {bars*pulses} tempos</div>:<div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
+    {compact?null:<div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
      <div style={{display:'grid',gap:4}}><button style={{minWidth:98,whiteSpace:'nowrap',color:fixed?'#fff':undefined}} aria-pressed={fixed} onClick={()=>onChange({selectedVariation:fixed?undefined:index})}>Variação {String.fromCharCode(65+index)}</button>{sounding&&<span style={{fontSize:9}}>{present?'Tocando':'Pausa da seção'}</span>}</div>
      <div style={{width:156,marginLeft:'auto'}}><div style={{position:'relative'}}><input aria-label={`Compassos da variação ${index+1}`} inputMode="decimal" value={bars} readOnly style={{paddingRight:64}}/><button type="button" aria-label={`Diminuir duração da variação ${index+1}`} disabled={bars<=1/pulses} onClick={()=>save(index,resizeRoll(roll,Math.max(1/pulses,bars-1/pulses)))} style={{position:'absolute',right:32,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>−</button><button type="button" aria-label={`Aumentar duração da variação ${index+1}`} disabled={bars>=8} onClick={()=>save(index,resizeRoll(roll,Math.min(8,bars+1/pulses)))} style={{position:'absolute',right:3,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>+</button></div><span style={{display:'block',marginTop:3,fontSize:9,color:'#9eafa2'}}>{bars} compassos / {bars*pulses} tempos</span></div>
     </div>}
@@ -114,7 +114,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       </g>})}
       {sounding&&present&&<line data-playhead x1={cursor/bars*480} x2={cursor/bars*480} y1={0} y2={264} stroke="#fff1b7" strokeWidth={2}/>}
      </svg>
-     {actions}
+     {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,minHeight:41}}>{actions}<span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{bars} compassos / {bars*pulses} tempos</span></div>:actions}
      {selectedNote?.index===index&&roll.notes[selectedNote.note]&&<MusicNoteParams note={roll.notes[selectedNote.note]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selectedNote.note?{...note,...patch}:note)})} onDelete={()=>removeNote(index,roll,selectedNote.note)}/>}
    </div>
   })}

@@ -95,7 +95,7 @@
 .studio summary { cursor: pointer; font-size: 12px; font-weight: 500; color: #d5dfd2; }
 .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 10px 5px; padding-top: 18px; }
 .parameterKnob { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
-.parameterKnobLabel { display: flex; flex-direction: column-reverse; align-items: center; justify-content: flex-end; gap: 5px; width: 100%; min-height: 54px; color: #b2c0b6; font-size: 10px; line-height: 1.2; text-align: center; }
+.parameterKnobLabel { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 3px; width: 100%; color: #b2c0b6; font-size: 10px; line-height: 1.1; text-align: center; }
 .parameterKnobLabel > span:first-child { overflow-wrap: anywhere; }
 .parameterKnobLabel [data-info-tip] { margin: 0; }
 .parameterKnobLabel [data-info-tip] > button { margin: 0; }

@@ -3,6 +3,22 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.7.0',
+    date: '23/10/2026',
+    title: 'Knobs maiores, com gesto duplo e rótulo embaixo',
+    groups: [
+      { title: 'Knobs', items: [
+        'Todos os knobs das partidas e do Criativo ganharam um gesto duplo: arrastar o tracinho (ou a bolinha, nos knobs de range) leva o valor ao ponto do círculo mais próximo do mouse ou do dedo, com cursor de mão; arrastar a partir do fundo do círculo ajusta o valor aos poucos, conforme o arraste, com cursor de seta horizontal. Nos knobs de range, o lado esquerdo do círculo ajusta a bolinha de menor valor e o lado direito a de maior valor.',
+        'Em Musical params (antigo Piece params) e no painel 03 / Parâmetros do Criativo, os knobs estão cerca de 15% maiores e o nome fica logo abaixo do círculo, acima das bolinhas L/S/N dos knobs de range.',
+        'As bolinhas e o arco selecionado dos knobs de range agora ficam exatamente sobre a borda do círculo.',
+      ] },
+      { title: 'Musical params', items: [
+        'A duração da variação ("Y compassos / Z tempos") passou para a linha de botões abaixo do sequenciador MIDI, alinhada à direita, sem o "Seção X".',
+        'Os botões das variações ficam colados, formando uma única faixa; só os botões +/− no fim da linha têm espaço.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '22/10/2026',
     title: 'Best/Worst e barra de Chance não travam mais',
