@@ -80,3 +80,7 @@
 .panel button.add { align-self: flex-start; padding: 5px 10px; border-style: dashed; background: none; }
 
 @media (max-width: 520px) { .panelBody { padding-left: 10px; } }
+.actionsRow { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.panel button.save { padding: 4px 10px; font-size: 11px; border-color: #6e8f5f; }
+.saveStatus { margin: -4px 0 0; font-size: 11px; color: #b6e5ac; }
+.saveStatus[data-error] { color: #ffb4a8; }

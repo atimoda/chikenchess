@@ -16,7 +16,8 @@ import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
 import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
-import { replayMatch, matchPosition } from "@/lib/online/domain";
+import { replayMatch, matchPosition, onlineActionEvents } from "@/lib/online/domain";
+import type { Occurrence } from "@/lib/music/reactions";
 import { pendingMovePreview } from "@/lib/online/pending-move";
 import type { OnlineMatch, MatchCommand, RoomMember } from "@/lib/online/types";
 import { getOnlineClient } from "@/lib/online/client";
@@ -230,6 +231,28 @@ export function OnlineMatchBoard({
   );
   const actionsKey = JSON.stringify(match.state.actions);
   const replay = useMemo(() => replayMatch(match.state), [actionsKey]); // Match versions also include non-position commands.
+  // Powers and ranked moves come from the shared action list; shown hints and
+  // Mulligan leave no action behind, so each browser records them as they sync.
+  const derivedReactionEvents = useMemo(() => onlineActionEvents(match.state.actions), [actionsKey]); // Keyed like replay: the arrays are rebuilt on every sync.
+  const [syncedReactionEvents, setSyncedReactionEvents] = useState<Occurrence[]>([]);
+  const currentPly = replay.game.history().length;
+  const shownSuggestion = match.state.suggestions;
+  const shownSuggestionKey = shownSuggestion ? `${shownSuggestion.kind}|${shownSuggestion.actor}|${shownSuggestion.position}` : null;
+  useEffect(() => {
+    if (!shownSuggestion) return;
+    const event: Occurrence = { trigger: shownSuggestion.kind === "best" ? "seeBest" : "seeWorst", color: shownSuggestion.actor, ply: currentPly };
+    setSyncedReactionEvents((log) => [...log, event].slice(-128));
+  }, [shownSuggestionKey]); // Once per newly shown suggestion, not on every sync.
+  const undoCount = match.state.usage?.undo ?? 0;
+  const undoCountRef = useRef(undoCount);
+  useEffect(() => {
+    if (undoCount > undoCountRef.current) {
+      const event: Occurrence = { trigger: "mulligan", color: match.state.redo?.actor ?? color, ply: currentPly };
+      setSyncedReactionEvents((log) => [...log.filter((entry) => entry.ply <= currentPly), event].slice(-128));
+    }
+    undoCountRef.current = undoCount;
+  }, [undoCount]); // Only a rising Undo count is a new Mulligan.
+  const reactionEvents = useMemo(() => [...derivedReactionEvents, ...syncedReactionEvents], [derivedReactionEvents, syncedReactionEvents]);
   const [mulliganPreviewActive, setMulliganPreviewActive] = useState(false);
   const mulliganPreviewMoves = useMemo(() => {
     if (!mulliganPreviewActive) return null;
@@ -405,6 +428,7 @@ export function OnlineMatchBoard({
       canEditPiece: (id) =>
         !match.state.result && (id.startsWith(`${color}:`) || !syncParams),
       onPieceChange,
+      actionEvents: reactionEvents,
     },
   );
   const sharedRoot = match.state.boardMusic?.root ?? kit.root;

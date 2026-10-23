@@ -27,7 +27,14 @@ export function parseGlobalReactions(raw: string | null): Reactions {
 
 export function loadGlobalReactions(): Reactions {
   const raw = readRaw()
-  if (!cached || cached.raw !== raw) cached = { raw, value: parseGlobalReactions(raw) }
+  if (!cached || cached.raw !== raw) {
+    const value = parseGlobalReactions(raw)
+    // Once the official file carries these edits (saved to the game), drop the personal copy.
+    if (raw && isOfficialGlobalReactions(value)) {
+      try { window.localStorage.removeItem(GLOBAL_REACTIONS_STORAGE) } catch { /* keep using the equal copy */ }
+      cached = { raw: readRaw(), value }
+    } else cached = { raw, value }
+  }
   return cached.value
 }
 

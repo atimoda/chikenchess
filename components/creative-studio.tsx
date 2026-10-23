@@ -17,6 +17,7 @@ import { ChessgroundBoard, PiecesSVG } from './chessground-board'
 import { BoardResizeHandles } from './board-resize-handles'
 import { useBoardResize } from '@/hooks/use-board-resize'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
+import { identifyPitchCollection } from '@/lib/music/scales'
 import { CREATIVE_STORAGE, ROOTS, SCALES, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, moveCreativePiece, parseCreativeSession, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
 import { EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, resetLegacyMusicStorage, updateKitLibrary } from '@/lib/music/city-kits'
@@ -45,6 +46,9 @@ function messageOf(error: unknown) {
   return error instanceof Error ? error.message : 'Não foi possível carregar a configuração.'
 }
 
+
+const RULED = { borderColor: '#c9a85a', color: '#f0d48e', boxShadow: 'inset 0 0 0 1px #c9a85a55' } as const
+const RULED_TEXT = { color: '#f0d48e' } as const
 export function CreativeStudio() {
   const boardRef = useRef<HTMLDivElement | null>(null)
   const boardResize = useBoardResize({ boardRef, enabled: true, constrainToParent: true })
@@ -64,6 +68,10 @@ export function CreativeStudio() {
   const [showCode, setShowCode] = useState(false)
   const [editingInstrumentName, setEditingInstrumentName] = useState(false)
   const music = useCreativeMusic(session, playing, soloIds, simulation, showCode)
+  // Controls show what is sounding now; a change still edits the kit's base value.
+  const liveCollection = identifyPitchCollection(music.snapshot.scale, session.scale)
+  const live = { root: liveCollection.root as CreativeSession['root'], scale: liveCollection.scale ?? session.scale, harmony: music.snapshot.harmony ?? session.harmony }
+  const ruled = { bpm: Math.abs(music.snapshot.bpm - session.bpm) > .05, root: live.root !== session.root, scale: live.scale !== session.scale, harmony: live.harmony !== session.harmony }
   const selected = session.pieces.find(p => p.id === selectedId)!
   const boardGame = useMemo(() => {
     const board = new Chess()
@@ -328,11 +336,11 @@ export function CreativeStudio() {
             {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pause' : 'Play'}
           </button>
           <div className={styles.transportKnob}><span>Volume</span><Knob label="Volume" hideLabel value={session.volume} min={0} max={1} step={0.01} onChange={volume => setSession(s => ({ ...s, volume }))} /></div>
-          <div className={styles.transportKnob}><span>BPM</span><Knob label="BPM" hideLabel value={session.bpm} min={30} max={240} step={1} formatValue={value => String(value)} onChange={bpm => setSession(s => ({ ...s, bpm }))} /></div>
+          <div className={styles.transportKnob} title={ruled.bpm ? `A rule is changing the tempo to ${music.snapshot.bpm.toFixed(1)} BPM; the knob sets the kit's base tempo.` : undefined}><span style={ruled.bpm ? RULED_TEXT : undefined}>{ruled.bpm ? `BPM · ${Math.round(music.snapshot.bpm)}` : 'BPM'}</span><Knob label="BPM" hideLabel value={session.bpm} min={30} max={240} step={1} formatValue={value => String(value)} onChange={bpm => setSession(s => ({ ...s, bpm }))} /></div>
           <label><HelpLabel label="Compasso">{meterLabel(session.meter)}. Nos compostos, cada pulso se divide em três; nos ímpares de colcheia, o relógio conta colcheias iguais e os acentos formam grupos. Alterar o compasso reinicia o relógio da sessão.</HelpLabel><select aria-label="Compasso" value={session.meter} onChange={e => setSession(s => ({ ...s, meter: e.target.value as CreativeSession['meter'] }))}>{METER_IDS.map(meter=><option key={meter} value={meter}>{meter}</option>)}</select></label>
-          <label><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel><select aria-label="Tônica" value={session.root} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
-          <label><HelpLabel label={`Escala (${music.snapshot.scale.join(' ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select aria-label="Escala" value={session.scale} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
-          <div className={styles.harmonyControl}><label><span className={styles.helpCaption}><span>Harmonia <MusicHarmonyReadout monitor={music.monitor} compact /></span><InfoTip label="Harmonia">Kit Harmony usa os graus harmônicos salvos em cada seção do Arranjo global. Os outros planos usam sua própria progressão e deixam a edição desses graus desabilitada. Os graus do kit ficam guardados para quando você voltar a Kit Harmony. Baixos, acordes e melodias afinados compartilham esta harmonia.</InfoTip></span><select aria-label="Harmonia" value={session.harmony} onChange={e => {
+          <label><HelpLabel label="Tônica">Nota de referência comum às peças afinadas. Os graus das melodias acompanham esta nota.</HelpLabel><select aria-label="Tônica" value={live.root} style={ruled.root ? RULED : undefined} title={ruled.root ? `Changed by a rule; the kit uses ${session.root}` : undefined} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
+          <label><HelpLabel label={`Escala (${music.snapshot.scale.join(' ')})`}>Conjunto de notas permitido às vozes afinadas. Samples não afinados mantêm sua altura original.</HelpLabel><select aria-label="Escala" value={live.scale} style={ruled.scale ? RULED : undefined} title={ruled.scale ? `Changed by a rule; the kit uses ${session.scale}` : undefined} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{Object.keys(SCALES).map(scale => <option key={scale}>{scale}</option>)}</select></label>
+          <div className={styles.harmonyControl}><label><span className={styles.helpCaption}><span>Harmonia <MusicHarmonyReadout monitor={music.monitor} compact /></span><InfoTip label="Harmonia">Kit Harmony usa os graus harmônicos salvos em cada seção do Arranjo global. Os outros planos usam sua própria progressão e deixam a edição desses graus desabilitada. Os graus do kit ficam guardados para quando você voltar a Kit Harmony. Baixos, acordes e melodias afinados compartilham esta harmonia.</InfoTip></span><select aria-label="Harmonia" value={live.harmony} style={ruled.harmony ? RULED : undefined} title={ruled.harmony ? `Changed by a rule; the kit uses ${HARMONY_PLANS[session.harmony].label}` : undefined} onChange={e => {
             const harmony = e.target.value as HarmonyPlanId
             setSession(s => ({ ...s, harmony }))
           }}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label></div>

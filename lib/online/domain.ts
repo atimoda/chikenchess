@@ -15,6 +15,7 @@ import {
   freezeApplicationError,
 } from "../powered-chess";
 import type {
+  GameAction,
   MatchState,
   MatchCommand,
   OnlineColor,
@@ -387,4 +388,21 @@ export function applyMatchCommand(
   else if (next.isDraw()) state.result = { winner: null, reason: "draw" };
   if (state.result) clearSuggestions(state);
   return state;
+}
+
+/**
+ * Music events both peers can rebuild from the durable action list: powers at the
+ * ply they were cast, and ranked Best/Worst moves at the ply they completed.
+ */
+export function onlineActionEvents(actions: readonly GameAction[]) {
+  const events: Array<{ trigger: "freeze" | "shield" | "playBest" | "playWorst"; color: OnlineColor; ply: number }> = [];
+  let ply = 0;
+  for (const action of actions) {
+    if (action.kind === "power") events.push({ trigger: action.power, color: action.color, ply });
+    else {
+      ply++;
+      if (action.reward) events.push({ trigger: action.reward === "best" ? "playBest" : "playWorst", color: action.color, ply });
+    }
+  }
+  return events;
 }

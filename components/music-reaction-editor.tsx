@@ -2,9 +2,11 @@
 import { InfoTip } from './info-tip'
 import { CompactNumberInput } from './compact-number-input'
 import { useState } from 'react'
-import { ChevronDown, Plus, RotateCcw, Trash2, X } from 'lucide-react'
-import { ACTIONS, EVENTS, STATES, TRIGGERS, SCALE_INTERVALS, actionSummary, inheritTrigger, overrideTrigger, resolveReactions, type Trigger, type KitReactions, type ReactionContext, type Reaction } from '@/lib/music/reactions'
+import { ChevronDown, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react'
+import { ACTIONS, BOARD_EVENTS, POWER_EVENTS, STATES, TRIGGERS, SCALE_INTERVALS, actionSummary, inheritTrigger, overrideTrigger, resolveReactions, type Trigger, type KitReactions, type ReactionContext, type Reaction } from '@/lib/music/reactions'
 import { HARMONY_PLANS } from '@/lib/music/harmony'
+import { SCALE_SHIFTS } from '@/lib/music/scale-shift'
+import { saveOfficialReactions } from '@/lib/admin/reactions-file-client'
 import { isOfficialGlobalReactions, saveGlobalReactions, useGlobalReactions } from '@/lib/music/global-reactions'
 import styles from './music-reaction-editor.module.css'
 
@@ -15,7 +17,7 @@ type Props={kit:KitReactions;onKitChange:(kit:KitReactions)=>void;kitName:string
 const TARGETS:Record<Reaction['target'],string>={both:'Both sides',actor:'Trigger side',opponent:'Opponent',w:'White',b:'Black'}
 const RANGES:Partial<Record<Action['type'],{min:number;max:number;step?:number;unit:string}>>={transpose:{min:-12,max:12,unit:'st'},bpm:{min:-30,max:30,unit:'%'},mode:{min:0,max:11,unit:'steps'},gain:{min:-100,max:100,unit:'%'},lpf:{min:20,max:20000,step:100,unit:'Hz'}}
 const DEFAULT_VALUE:Partial<Record<Action['type'],number>>={gain:10,bpm:5,transpose:2,mode:1,lpf:4000,variation:1}
-const ACTION_HELP='Tempo, scale, relative, modal rotation and harmony plan are global even when the rule targets one side. Transpose, gain, filter, inversion, variation and activation follow the target. Percentages multiply; the last scale, plan, filter or variation wins.'
+const ACTION_HELP='Scale change moves from whatever scale and key the kit is in (relative, parallel, brighter or darker mode, neighbour key, chromatic mediant, key lift or a random choice), so it suits any style; Fixed scale always switches to the named scale. Random choices repeat for the same moment of the game. Tempo, scale, relative, modal rotation and harmony plan are global even when the rule targets one side. Transpose, gain, filter, inversion, variation and activation follow the target. Percentages multiply; the last scale, plan, filter or variation wins.'
 const MINIMUM_TRIGGERS=new Set<Trigger>(['minimumOne','minimumBoth'])
 
 /** Replace one trigger's rules in place, so the saved order of the others is kept. */
@@ -40,6 +42,11 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
   const shown=scope==='kit'?resolved:global
   const customized=kit.overrides.length+(kit.minimumPieces===undefined?0:1)
   const officialGlobal=isOfficialGlobalReactions(global)
+  const [saving,setSaving]=useState<{busy:boolean;message?:string;error?:boolean}>({busy:false})
+  const saveToGame=()=>{
+    setSaving({busy:true})
+    saveOfficialReactions(global).then(()=>setSaving({busy:false,message:'Saved to data/music/reactions.json. Deploy to publish it.'}),(error:Error)=>setSaving({busy:false,message:error.message,error:true}))
+  }
 
   const isActive=(id:Trigger)=>{
     if(id in STATES)return context.states.some(state=>state.trigger===id)
@@ -101,8 +108,12 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
         ?<><span><strong>{kitName}</strong> · {customized?`${kit.overrides.length} custom (marked KIT), the rest follow global`:'follows the global rules'}</span>
           {customized>0&&<button type="button" className={styles.link} onClick={()=>onKitChange({overrides:[],rules:[]})}><RotateCcw size={12}/>Reset kit to global</button>}</>
         :<><span>Shared by every kit · {officialGlobal?'official set':'edited in this browser'}</span>
-          {!officialGlobal&&<button type="button" className={styles.link} onClick={()=>saveGlobalReactions(null)}><RotateCcw size={12}/>Restore official</button>}</>}
+          <span className={styles.actionsRow}>
+            {!officialGlobal&&<button type="button" className={styles.link} onClick={()=>saveGlobalReactions(null)}><RotateCcw size={12}/>Restore official</button>}
+            <button type="button" className={styles.save} disabled={saving.busy||officialGlobal} title="Write these rules to the game's official file (local Admin only)" onClick={saveToGame}><Save size={13}/>{saving.busy?'Saving…':'Save to game'}</button>
+          </span></>}
     </p>
+    {scope==='global'&&saving.message&&<p className={styles.saveStatus} data-error={saving.error||undefined} role="status">{saving.message}</p>}
 
     <div className={styles.simulator} aria-label="Simulation">
       <div className={styles.simControls}>
@@ -111,8 +122,11 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
           <button type="button" aria-pressed={color==='w'} onClick={()=>changeColor('w')}>White</button>
           <button type="button" aria-pressed={color==='b'} onClick={()=>changeColor('b')}>Black</button>
         </div>
-        <button type="button" onClick={()=>onContext({...context,ply:context.ply+1})}>Next ply</button>
-        <InfoTip label="Simulation">Use the dot on each row to switch a state or event on or off. A new state replaces the previous one; events stack and expire as you press Next ply, which advances the half-move counter without moving pieces. The side is the attacker for check and mate, the affected side for lost pieces and minimum force, and the mover for other events.</InfoTip>
+        <div className={styles.segment} role="group" aria-label="Half-move counter">
+          <button type="button" disabled={context.ply===0} onClick={()=>onContext({...context,ply:Math.max(0,context.ply-1)})}>Previous ply</button>
+          <button type="button" onClick={()=>onContext({...context,ply:context.ply+1})}>Next ply</button>
+        </div>
+        <InfoTip label="Simulation">A ply is a half-move: one move by one side. Use the dot on each row to switch a state or event on or off. A new state replaces the previous one; events stack and expire as you press Next ply, which advances the half-move counter without moving pieces. Previous ply steps back, bringing expired events back and hiding events switched on at a later ply. The side is the attacker for check and mate, the affected side for lost pieces and minimum force, and the mover for other events.</InfoTip>
       </div>
       <output className={styles.simStatus} aria-live="polite">Ply {context.ply} · {bpm.toFixed(1)} BPM · {scale.join(' ')}</output>
       <ul className={styles.influences}>{descriptions.length?descriptions.map((description,index)=><li key={index}>{description}</li>):<li className={styles.muted}>Nothing playing</li>}</ul>
@@ -120,8 +134,10 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
 
     <h3 className={styles.group}>States <span>continuous</span></h3>
     <ul className={styles.list}>{(Object.keys(STATES) as Trigger[]).map(row)}</ul>
-    <h3 className={styles.group}>Events <span>timed</span></h3>
-    <ul className={styles.list}>{(Object.keys(EVENTS) as Trigger[]).map(row)}</ul>
+    <h3 className={styles.group}>Board events <span>timed</span></h3>
+    <ul className={styles.list}>{(Object.keys(BOARD_EVENTS) as Trigger[]).map(row)}</ul>
+    <h3 className={styles.group}>Powers &amp; hints <span>timed, chickenchess actions</span></h3>
+    <ul className={styles.list}>{(Object.keys(POWER_EVENTS) as Trigger[]).map(row)}</ul>
   </section>
 }
 
@@ -171,7 +187,8 @@ function RuleCard({rule,index,isState,onChange,onRemove}:{rule:Reaction;index:nu
         {range&&<span className={styles.value}><CompactNumberInput ariaLabel={ACTIONS[action.type]} min={range.min} max={range.max} step={range.step} value={action.value} onChange={n=>{if(action.type==='lpf'||action.type==='bpm'||action.type==='gain'||Number.isInteger(n))setAction(at,{value:n})}}/><small>{range.unit}</small></span>}
         {action.type==='variation'&&<select aria-label="Variation" value={action.value} onChange={e=>setAction(at,{value:Number(e.target.value)})}>{Array.from({length:8},(_,i)=><option key={i} value={i}>{String.fromCharCode(65+i)}</option>)}</select>}
         {action.type==='scale'&&<select aria-label="Target scale" value={action.scale} onChange={e=>setAction(at,{scale:e.target.value as Action['scale']})}>{Object.keys(SCALE_INTERVALS).map(name=><option key={name}>{name}</option>)}</select>}
-        {action.type==='harmony'&&<select aria-label="Harmony plan" value={action.harmony} onChange={e=>setAction(at,{harmony:e.target.value as Action['harmony']})}>{Object.entries(HARMONY_PLANS).map(([id,plan])=><option key={id} value={id}>{plan.label}</option>)}</select>}
+        {action.type==='scaleShift'&&<select aria-label="Scale change" value={action.shift??'relative'} onChange={e=>setAction(at,{shift:e.target.value as Action['shift']})}>{Object.entries(SCALE_SHIFTS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>}
+        {action.type==='harmony'&&<select aria-label="Harmony plan" value={action.harmony} onChange={e=>setAction(at,{harmony:e.target.value as Action['harmony']})}><option value="random">Random plan</option>{Object.entries(HARMONY_PLANS).map(([id,plan])=><option key={id} value={id}>{plan.label}</option>)}</select>}
         {action.type==='bpm'&&<span className={styles.value} title="Bars to reach the new tempo, also on the way back; 0 jumps."><CompactNumberInput ariaLabel="Tempo ramp in bars" min={0} max={16} value={action.rampBars??0} onChange={n=>{if(Number.isInteger(n))setAction(at,{rampBars:n})}}/><small>bar ramp</small></span>}
         <button type="button" className={styles.icon} aria-label={`Remove ${ACTIONS[action.type]}`} title="Remove influence" onClick={()=>onChange({actions:rule.actions.filter((_,i)=>i!==at)})}><X size={13}/></button>
       </li>

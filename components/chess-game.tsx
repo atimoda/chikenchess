@@ -58,6 +58,7 @@ import { GameActionCostHint, GameActionRow, GameBoardChanceBar, GameCityBackgrou
 import { BotControlWidget } from "./bot-control-widget"
 import { ChessBot, DEFAULT_BOT_ID, DEFAULT_BOT_PROFILES, getBotConfigParams, type BotConfigParams, type BotProfile } from "@/lib/chess-bots"
 import { loadEditableBotProfiles, saveBotProfile } from "@/lib/admin/bot-profiles-client"
+import type { Occurrence, Trigger } from "@/lib/music/reactions"
 
 import {
   DropdownMenu,
@@ -254,6 +255,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const eggCounterRef = useRef<HTMLDivElement | null>(null)
   const [armedPower, setArmedPower] = useState<MatchPowerKind | null>(null)
   const [matchPowers, setMatchPowers] = useState<MatchPower[]>([])
+  // Powers, Mulligan and Best/Worst have no trace in the move list, so the music keeps its own log.
+  const [reactionLog, setReactionLog] = useState<Occurrence[]>([])
+  const recordReaction = useCallback((trigger: Trigger, color: 'w' | 'b', ply: number) => setReactionLog(log => [...log, { trigger, color, ply }].slice(-128)), [])
   const matchPowersRef = useRef<MatchPower[]>([])
   const playerHasActivePower = matchPowers.some(p => (p.appliedBy ?? 'w') === 'w')
   const powerButtonRefs = useRef<Record<MatchPowerKind, HTMLButtonElement | null>>({ freeze: null, shield: null })
@@ -485,8 +489,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const spectrogramHandleRef = useRef<HTMLDivElement | null>(null)
   const spectrogramToggleRef = useRef<HTMLButtonElement | null>(null)
 
+  const musicOptions = useMemo(() => ({ actionEvents: reactionLog }), [reactionLog])
   const musicPositions = useMemo(() => powerTimelineRef.current.map(entry => entry.game), [game, matchPowers])
-  const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn, musicPositions)
+  const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn, musicPositions, musicOptions)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
   const { resumeAudio, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playDrum, engineRef } = useSfx()
@@ -716,6 +721,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             })
             if (decision.powerAction.kind === 'freeze') playDrum('ch', 0.648, 1)
             else playDrum('oh', 0.696)
+            recordReaction(decision.powerAction.kind, 'b', gameRef.current.history().length)
             matchPowersRef.current = [...matchPowersRef.current, power]
             setMatchPowers(matchPowersRef.current)
             setPoweredChessPowers(gameRef.current, matchPowersRef.current)
@@ -799,7 +805,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const showAnalysisArrows = useCallback((kind: AnalysisArrowKind) => {
     if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w') || !displayedAnalysis?.complete || displayedAnalysis.fen !== gameRef.current.fen()) return
     // The Debug top-ten view is a testing aid: it does not count as a Best use or a shown suggestion.
-    if (kind !== 'top') matchUsageRef.current[kind]++
+    if (kind !== 'top') {
+      matchUsageRef.current[kind]++
+      recordReaction(kind === 'best' ? 'seeBest' : 'seeWorst', 'w', gameRef.current.history().length)
+    }
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
     void engineRef.current?.playAnalysisWhistle(kind === 'worst' ? 'down' : 'up')
     analysisArrowKindRef.current = kind
@@ -879,6 +888,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }
     spendEggForAction(button, 3, () => {
       matchUsageRef.current[kind]++
+      recordReaction(kind, 'w', gameRef.current.history().length)
       matchPowersRef.current = [...matchPowersRef.current, power]
       setMatchPowers(matchPowersRef.current)
       setPoweredChessPowers(gameRef.current, matchPowersRef.current)
@@ -1179,6 +1189,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             const previousStreak = botRankedMoveStreakRef.current
             const streakCount = rewardKind ? (previousStreak.kind === rewardKind ? previousStreak.count + 1 : 1) : 0
             botRankedMoveStreakRef.current = { kind: rewardKind, count: streakCount }
+            if (rewardKind) recordReaction(rewardKind === 'best' ? 'playBest' : 'playWorst', 'b', gameCopy.history().length)
             if (rewardKind && !botRewardedMovesRef.current.has(rewardKey)) {
               botRewardedMovesRef.current.add(rewardKey)
               const streak = streakCount >= 3
@@ -1322,6 +1333,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         { game: clonePoweredChess(gameCopy, matchPowersRef.current), powers: matchPowersRef.current.map(power => ({ ...power })) },
       ]
       redoTimelineRef.current = []
+      if (rewardKind) recordReaction(rewardKind === 'best' ? 'playBest' : 'playWorst', 'w', gameCopy.history().length)
       setGame(gameCopy)
       gameRef.current = gameCopy // Ensure ref is updated immediately to prevent race conditions with AI
 
@@ -1353,6 +1365,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const restoredSnapshot = powerTimelineRef.current[targetPly]
     if (!restoredSnapshot) return
     matchUsageRef.current.undo++
+    setReactionLog(log => [...log.filter(entry => entry.ply <= targetPly), { trigger: 'mulligan' as const, color: 'w' as const, ply: targetPly }].slice(-128))
     redoTimelineRef.current = [...redoTimelineRef.current, ...removedSnapshots]
     powerTimelineRef.current = powerTimelineRef.current.slice(0, targetPly + 1)
     const newGame = clonePoweredChess(restoredSnapshot.game, restoredSnapshot.powers)

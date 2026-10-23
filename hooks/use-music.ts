@@ -11,7 +11,7 @@ import { creativeSchema, scaleForCreativeSession, type CreativeSession } from '@
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
 import { createTeamMixes, TEAM_GAIN_MAX, type TeamMix } from '@/lib/music/team-mixer'
 import type { HarmonyPlanId } from '@/lib/music/harmony'
-import { applyReactions, reactionContextFromGame, resolveReactions } from '@/lib/music/reactions'
+import { applyReactions, reactionContextFromGame, resolveReactions, withActionEvents, type Occurrence } from '@/lib/music/reactions'
 import { useGlobalReactions } from '@/lib/music/global-reactions'
 import { identifyPitchCollection } from '@/lib/music/scales'
 import type { SampleSource } from '@/lib/music/sample-banks'
@@ -20,6 +20,8 @@ export interface UseMusicOptions {
   initialKit?: CreativeSession
   canEditPiece?: (id: string) => boolean
   onPieceChange?: (id: string, instrument: Instrument, effects: SquareEffects | undefined) => void
+  /** Match actions the board cannot show (powers, Mulligan, Best/Worst); later plies are ignored. */
+  actionEvents?: readonly Occurrence[]
 }
 
 export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: number, volume: number, showCode = true, engineActive = true, positions: readonly Chess[] = [], options: UseMusicOptions = {}) {
@@ -41,7 +43,8 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
   const pieces = gameMusicState.pieces
   const globalReactions = useGlobalReactions()
   const reactions = useMemo(() => kit ? resolveReactions(globalReactions, kit.reactions) : null, [globalReactions, kit])
-  const context = useMemo(() => reactionContextFromGame(game, reactions?.minimumPieces, positions), [game, reactions?.minimumPieces, positions])
+  const actionEvents = options.actionEvents
+  const context = useMemo(() => withActionEvents(reactionContextFromGame(game, reactions?.minimumPieces, positions), actionEvents), [game, reactions?.minimumPieces, positions, actionEvents])
   const [effects, setEffects] = useState<Record<string, SquareEffects>>(builtInKit?.effects ?? {})
   const effectsRef = useRef(effects)
   effectsRef.current = effects
