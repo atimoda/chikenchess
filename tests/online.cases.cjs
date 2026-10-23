@@ -224,24 +224,27 @@ test('Match feature counters separate both powers and keep cumulative usage acro
   assert.equal(s.usage.redo, 1)
   assert.deepEqual(s.usage, { freeze: 1, shield: 1, undo: 1, redo: 1, best: 1, worst: 1 })
 })
-test('Freeze rejects the last opponent move before charging either actor, including accumulated powers and history', () => {
+test('Each team applies Freeze and Shield at most once per turn, rejected before charging', () => {
+  // Leaving the opponent without moves is covered by freezeApplicationError in powers.cases.cjs:
+  // with one Freeze per turn, the whole army can no longer be frozen at once.
   for (const actor of ['w', 'b']) {
     let s = actor === 'w' ? createMatchState() : move(createMatchState(), 'w', 'e2', 'e4')
     s.eggs[actor] = 100
+    const opponentRank = actor === 'w' ? '7' : '2'
+    s = command(s, actor, { kind: 'power', power: 'freeze', square: `a${opponentRank}` })
+    s = command(s, actor, { kind: 'power', power: 'shield', square: actor === 'w' ? 'a2' : 'a7' })
+    assert.equal(s.eggs[actor], 94)
+    for (const power of ['freeze', 'shield']) {
+      const before = globalThis.structuredClone(s)
+      assert.throws(() => command(s, actor, { kind: 'power', power, square: `h${opponentRank}` }), /once per turn/)
+      assert.deepEqual(s, before, 'rejected power preserves eggs, actions, turn and continuation')
+    }
+    const next = actor === 'w' ? ['b2', 'b3'] : ['b7', 'b6']
+    s = move(s, actor, ...next)
     const opponent = actor === 'w' ? 'b' : 'w'
-    const last = actor === 'w' ? 'g8' : 'g1'
-    const squares = replayMatch(s).game.board().flat()
-      .filter(piece => piece?.color === opponent && piece.square !== last)
-      .map(piece => piece.square)
-    for (const square of squares) s = command(s, actor, { kind: 'power', power: 'freeze', square })
-    assert.equal(replayMatch(s).powers.length, 15)
-    assert.equal(s.eggs[actor], 55)
-    const before = globalThis.structuredClone(s)
-    assert.throws(() => command(s, actor, { kind: 'power', power: 'freeze', square: last }), {
-      message: 'Você não pode deixar seu oponente sem jogadas.',
-    })
-    assert.deepEqual(s, before, 'rejected Freeze preserves eggs, actions, turn and continuation')
-    assert.equal(replayMatch(s).game.turn(), actor)
+    s.eggs[opponent] = 10
+    s = command(s, opponent, { kind: 'power', power: 'freeze', square: actor === 'w' ? 'b3' : 'b6' })
+    assert.equal(s.eggs[opponent], 7, 'the other team keeps its own allowance')
   }
 })
 test('streaks double from the third eligible own move, opponent does not interrupt', () => {

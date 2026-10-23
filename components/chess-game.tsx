@@ -42,7 +42,7 @@ import { isConstrainedDevice } from "@/lib/performance"
 import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveLabelTone, rankedMoveRewardDetails, rememberMoveSuggestions, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 import { WidgetToggleLayer } from "./widget-toggle-layer"
 import { OpponentMoveTimer } from "@/lib/opponent-move-timer"
-import { advanceMatchPowers, canUseMatchPower, createMatchPower, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
+import { advanceMatchPowers, canUseMatchPower, createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
 import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, stockfishSupportsPosition, syncPoweredMoveSan } from "@/lib/powered-chess"
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
@@ -229,6 +229,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const opponentEggBalanceRef = useRef(STARTING_MATCH_GOLDEN_EGGS)
   const botTurnCountRef = useRef(0)
   const botLastWorstTurnRef = useRef<number | null>(null)
+  const botLastPowerTurnRef = useRef<Record<MatchPowerKind, number | null>>({ freeze: null, shield: null })
   const debugEggClicksRef = useRef(0)
   const collectedMatchEggsRef = useRef(0)
   const victoryToastRef = useRef<string | number | null>(null)
@@ -675,6 +676,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           powers: matchPowersRef.current,
           botTurnNumber: nextBotTurnCount,
           lastWorstMoveTurn: botLastWorstTurnRef.current,
+          lastFreezeTurn: botLastPowerTurnRef.current.freeze,
+          lastShieldTurn: botLastPowerTurnRef.current.shield,
           botEggs: opponentEggBalanceRef.current,
           whiteScore: lastEvalScoreRef.current,
           whiteMate: lastEvalMateRef.current,
@@ -706,6 +709,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           const freezeErr = freezeApplicationError(gameRef.current, matchPowersRef.current, power)
           if (!freezeErr && opponentEggBalanceRef.current >= 3) {
             botPrePowerAnalysisRef.current = currentCompleteAnalysisRef.current
+            botLastPowerTurnRef.current = { ...botLastPowerTurnRef.current, [decision.powerAction.kind]: nextBotTurnCount }
             opponentEggBalanceRef.current = Math.max(0, opponentEggBalanceRef.current - 3)
             setVisibleOpponentEggs(opponentEggBalanceRef.current)
             const targetSquareEl = boardAreaRef.current?.querySelector<HTMLElement>(`[data-square="${decision.powerAction.square}"]`)
@@ -874,6 +878,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const targetPower = (square: Square, kind = armedPower) => {
     if (!kind || introPhase !== 3 || !canUseMatchPower(gameRef.current, 'w')) return
+    if (hasUsedPowerThisTurn(matchPowersRef.current, kind, gameRef.current, 'w')) {
+      setArmedPower(null)
+      toast.info(`${kind === 'freeze' ? 'Freeze' : 'Shield'} can be used once per turn`)
+      return
+    }
     if (matchPowersRef.current.some(power => power.kind === kind && power.square === square)) {
       toast.info('This square already has that power')
       return
@@ -2193,7 +2202,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 },
                 freeze: {
                   ref: element => { powerButtonRefs.current.freeze = element },
-                  disabled: !canUseMatchPower(game, 'w'), 'aria-pressed': armedPower === 'freeze',
+                  disabled: !canUseMatchPower(game, 'w') || hasUsedPowerThisTurn(matchPowers, 'freeze', game, 'w'), 'aria-pressed': armedPower === 'freeze',
                   onPointerDown: event => powerTargeting.onButtonPointerDown('freeze', event),
                   onLostPointerCapture: powerTargeting.onLostPointerCapture,
                   onClick: event => powerTargeting.onButtonClick('freeze', event),
@@ -2201,7 +2210,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 },
                 shield: {
                   ref: element => { powerButtonRefs.current.shield = element },
-                  disabled: !canUseMatchPower(game, 'w'), 'aria-pressed': armedPower === 'shield',
+                  disabled: !canUseMatchPower(game, 'w') || hasUsedPowerThisTurn(matchPowers, 'shield', game, 'w'), 'aria-pressed': armedPower === 'shield',
                   onPointerDown: event => powerTargeting.onButtonPointerDown('shield', event),
                   onLostPointerCapture: powerTargeting.onLostPointerCapture,
                   onClick: event => powerTargeting.onButtonClick('shield', event),
@@ -2311,7 +2320,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     ref={element => { powerButtonRefs.current.freeze = element }}
                     data-match-power-action="freeze"
                     type="button"
-                    disabled={!canUseMatchPower(game, 'w')}
+                    disabled={!canUseMatchPower(game, 'w') || hasUsedPowerThisTurn(matchPowers, 'freeze', game, 'w')}
                     aria-label="Congele uma casa por uma rodada"
                     aria-pressed={armedPower === 'freeze'}
                     title="Congele uma casa por uma rodada"
@@ -2329,7 +2338,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     ref={element => { powerButtonRefs.current.shield = element }}
                     data-match-power-action="shield"
                     type="button"
-                    disabled={!canUseMatchPower(game, 'w')}
+                    disabled={!canUseMatchPower(game, 'w') || hasUsedPowerThisTurn(matchPowers, 'shield', game, 'w')}
                     aria-label="Proteja uma casa por uma rodada"
                     aria-pressed={armedPower === 'shield'}
                     title="Proteja uma casa por uma rodada"

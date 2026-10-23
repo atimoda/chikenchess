@@ -6,6 +6,7 @@ import {
   advanceMatchPowers,
   createMatchPower,
   type MatchPower,
+  type MatchPowerKind,
 } from "../chess-powers";
 import {
   makePoweredChess,
@@ -107,6 +108,18 @@ export function createMatchState(): MatchState {
     drawOffer: null,
     rematchOffer: null,
   };
+}
+
+/** Each team may apply each power at most once per turn: since the last move. */
+export function powerUsedThisTurn(
+  state: Pick<MatchState, "actions">,
+  power: MatchPowerKind,
+  color: OnlineColor,
+): boolean {
+  const lastMove = state.actions.findLastIndex((action) => action.kind === "move");
+  return state.actions
+    .slice(lastMove + 1)
+    .some((action) => action.kind === "power" && action.power === power && action.color === color);
 }
 
 /** JSON actions are the durable format; chess.js's private snapshot is never sent. */
@@ -329,6 +342,8 @@ export function applyMatchCommand(
     state.drawOffer = null;
   } else if (command.kind === "power") {
     if (state.actions.length >= 768) reject("Match action limit reached");
+    if (powerUsedThisTurn(state, command.power, actor))
+      reject(`${command.power === "freeze" ? "Freeze" : "Shield"} can be used once per turn`);
     const power = createMatchPower(command.power, command.square as Square, game, state.actions.length + 1);
     const freezeError = freezeApplicationError(game, powers, power);
     if (freezeError) reject(freezeError);

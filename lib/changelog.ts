@@ -5,15 +5,21 @@ export const CHANGELOG = [
   {
     version: '1.6.8',
     date: '23/10/2026',
-    title: 'ChickenBots jogam Worst e Freeze com mais critério',
+    title: 'ChickenBots usam Freeze, Shield e Worst com critério',
     groups: [
       { title: 'ChickenBots', items: [
         'Os ChickenBots não entregam mais a partida para ganhar golden eggs: o Worst move agora só é jogado quando perde pouco em relação ao melhor lance, mantém o bot em vantagem e o bot ainda precisa de ovos. Ele espera alguns turnos entre um Worst e outro e não faz isso quando tem um lance que ganha material.',
         'O Freeze dos ChickenBots agora sempre congela a peça adversária que faz uma das melhores jogadas, nunca uma casa vazia, e nunca a peça que o próprio bot ia capturar. Depois do Freeze, o bot joga o melhor lance já considerando o gelo.',
         'O bot não paga mais um Freeze ou Shield e joga um Worst move no mesmo turno.',
+        'Os ChickenBots agora usam Freeze e Shield quando há um motivo no tabuleiro: parar um mate em 1, proteger uma peça atacada (por exemplo num garfo, protegendo uma peça e movendo a outra) ou congelar a peça adversária que ameaça ganhar material. Não gastam mais poderes em turnos fixos sem motivo.',
+        'Expert e Jedi conferem cada poder antes de pagar, simulando o lance e a melhor resposta, e guardam 3 ovos de reserva para emergências.',
+        'O Easy ChickenBot ficou mais fácil: procura poderes só em metade dos turnos, só reage a ameaças grandes (torre ou dama) e espera mais entre um poder e outro.',
+      ] },
+      { title: 'Partida', items: [
+        'Freeze e Shield agora podem ser usados no máximo uma vez cada por turno, na campanha e no online.',
       ] },
       { title: 'Debug', items: [
-        'No Bot Control, a seção Worst ganhou os campos W (score mínimo depois), V (perda máxima), O (só com ovos abaixo de) e K (intervalo mínimo entre Worst moves).',
+        'O Bot Control ganhou os campos dos novos critérios: Poderes (N, P, Q), Freeze (Y, Z), Shield (T, R) e Worst (W, V, O, K).',
       ] },
     ],
   },

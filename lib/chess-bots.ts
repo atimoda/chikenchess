@@ -1,18 +1,21 @@
-import { Chess, type Move, type Square } from 'chess.js'
+import type { Chess, Move, Square } from 'chess.js'
 import botsCatalogJson from '../data/ui/bots.json'
 import type { ChessMoveAnalysis } from './chess-evaluation'
-import { advanceMatchPowers, createMatchPower, permittedPowerMoves, type MatchPower, type MatchPowerKind } from './chess-powers'
-import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers } from './powered-chess'
+import { createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, type MatchPower, type MatchPowerKind } from './chess-powers'
+import { MATE_VALUE, evaluateBotPlan, pieceValue, shieldedAdvanceThreatens, threatsAfterPlan, topThreat, type PoweredPosition } from './chess-bot-tactics'
+import { freezeApplicationError } from './powered-chess'
 
 export type BotKind = 'pure' | 'chicken'
 
 export interface BotConfigParams {
   delaySeconds: number // U
-  freezeTopMoves: number // X
-  freezeChanceBelowPercent: number // Y%
-  freezeEveryMoves: number // Z
-  shieldEveryMoves: number // R
-  shieldChanceAbovePercent: number // T%
+  powerUsePercent: number // N: chance the bot looks for a Freeze/Shield on a turn
+  freezeMinThreatPawns: number // Y: the Freeze must take away at least Y pawns of opponent threat
+  freezeCooldownMoves: number // Z: minimum bot turns between two Freezes
+  shieldMinPiecePawns: number // T: the Shield must save at least T pawns (and a piece worth T)
+  shieldCooldownMoves: number // R: minimum bot turns between two Shields
+  powerMinGainPawns: number // P: two-ply check of the power plan must gain P pawns (0 = no check, no Shield advance)
+  powerReserveEggs: number // Q: eggs kept after a Freeze or Shield advance (mate and piece rescue may spend all)
   worstFloorPawns: number // W: the bot's score must stay at or above W pawns after the Worst move
   worstMaxLossPawns: number // V: the Worst move may lose at most V pawns against the best move
   eggTarget: number // O: farm Worst moves only while holding fewer eggs than this
@@ -32,15 +35,29 @@ export interface BotSpecialPowerAction {
   square: Square
 }
 
+/** Why the bot used a power: stop a mate, save a piece, take away a threat, or protect an advance. */
+export type BotPowerReason = 'mate' | 'rescue' | 'threat' | 'advance'
+
 export interface BotTurnDecision {
   powerAction: BotSpecialPowerAction | null
+  powerReason: BotPowerReason | null
   insufficientEggs: boolean
   moveUci: string | null
   usedWorstMoveForEggs: boolean
   usedShieldAdvance: boolean
 }
 
-const MATERIAL: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 }
+interface PowerPlan {
+  power: BotSpecialPowerAction
+  reason: BotPowerReason
+  moveUci: string
+  benefit: number
+}
+
+const POWER_COST = 3
+const REASON_PRIORITY: Record<BotPowerReason, number> = { mate: 0, rescue: 1, threat: 2, advance: 3 }
+// Two-ply checks run on the main thread; keep their number small.
+const MAX_CHECKED_PLANS = 2
 
 // A best move that gains this much over the current evaluation is a conversion, not a moment to farm eggs.
 const WORST_SKIP_BEST_GAIN_CP = 150
@@ -66,169 +83,91 @@ export function botCentipawnsFromChancePercent(percent: number): number {
   return Math.round((300 * delta) / (50 - Math.abs(delta)))
 }
 
-function quickPositionWhiteScore(game: Chess, powers: MatchPower[]): number {
-  if (game.isCheckmate()) return game.turn() === 'w' ? -100000 : 100000
-  if (game.isDraw()) return 0
-  let score = 0
-  for (const row of game.board()) {
-    for (const piece of row) {
-      if (!piece) continue
-      const value = MATERIAL[piece.type] ?? 0
-      const file = piece.square.charCodeAt(0) - 97
-      const rank = Number(piece.square[1])
-      const center = 3.5 - Math.abs(file - 3.5)
-      const advance = piece.color === 'w' ? rank - 2 : 7 - rank
-      const activity = piece.type === 'p' ? advance * 6 + center * 2
-        : piece.type === 'n' || piece.type === 'b' ? center * 8 + (piece.color === 'w' ? rank - 1 : 8 - rank) * 5
-        : piece.type === 'q' ? center * 2 : 0
-      score += (piece.color === 'w' ? 1 : -1) * (value + activity)
-    }
-  }
-  for (const power of powers) {
-    if (power.kind === 'freeze' && power.frozenColor) score += power.frozenColor === 'w' ? -30 : 30
-    if (power.kind === 'shield' && power.attachedColor) score += power.attachedColor === 'w' ? 20 : -20
-  }
-  if (game.isCheck()) score += game.turn() === 'w' ? -70 : 70
-  return score
-}
-
 function moveToUci(move: Pick<Move, 'from' | 'to' | 'promotion'>): string {
   return `${move.from}${move.to}${move.promotion ?? ''}`
 }
 
-/** Rank the opponent's (White's) available moves on the current board, best first for White. */
-export function rankOpponentMovesForBot(game: Chess, powers: MatchPower[]): Move[] {
-  try {
-    const botColor = game.turn()
-    const opponentColor = botColor === 'w' ? 'b' : 'w'
-    const ownPly = game.history().length + 1
-    const fen = game.fen().split(' ')
-    fen[1] = opponentColor
-    fen[3] = '-'
-    const opponentPowers = powers
-      .filter(item => (item.trapUntilPly ?? item.blocksOnPly) > ownPly)
-      .map(item => ({
-        ...item,
-        blocksOnPly: item.blocksOnPly - ownPly,
-        trapUntilPly: item.trapUntilPly === undefined ? undefined : item.trapUntilPly - ownPly,
-      }))
-    const opponentGame = makePoweredChess(new Chess(fen.join(' ')), opponentPowers)
-    const moves = opponentGame.moves({ verbose: true })
-    const scored = moves.map(candidate => {
-      const next = clonePoweredChess(opponentGame, opponentPowers)
-      const played = next.move({ from: candidate.from, to: candidate.to, promotion: candidate.promotion })
-      const nextPowers = advanceMatchPowers(opponentPowers, played, next, next.history().length)
-      setPoweredChessPowers(next, nextPowers)
-      const captureBonus = candidate.captured ? (MATERIAL[candidate.captured] ?? 100) * 0.25 : 0
-      const whiteScore = quickPositionWhiteScore(next, nextPowers) + captureBonus
-      return { move: candidate, score: whiteScore }
-    })
-    scored.sort((a, b) => b.score - a.score)
-    return scored.map(entry => entry.move)
-  } catch {
-    return []
-  }
+function cooldownOver(lastTurn: number | null, turn: number, cooldown: number): boolean {
+  return lastTurn === null || turn - lastTurn >= cooldown
 }
 
 function canApplyBotFreezeOnSquare(game: Chess, powers: MatchPower[], square: Square, plannedMove?: Move): boolean {
   if (powers.some(power => power.kind === 'freeze' && power.square === square)) return false
-  const botColor = game.turn()
   const occupant = game.get(square)
-  if (occupant?.color === botColor) return false
+  if (!occupant || occupant.color === game.turn()) return false
   const power = createMatchPower('freeze', square, game, -1)
   if (freezeApplicationError(game, powers, power)) return false
-  if (plannedMove) {
-    const nextPowers = [...powers, power]
-    const permitted = permittedPowerMoves([plannedMove], nextPowers, game.history().length + 1)
-    if (!permitted.length) return false
-  }
+  if (plannedMove && !permittedPowerMoves([plannedMove], [...powers, power], game.history().length + 1).length) return false
   return true
 }
 
-/**
- * Pick a Freeze target among the opponent pieces that play its top X available moves, at random.
- * Only the moving piece (`from`) is frozen: an empty destination would just become a trap the
- * opponent can avoid. A piece that the bot's planned move captures is never frozen, since a
- * frozen piece cannot be captured.
- */
-export function selectBotFreezeSquare(
-  game: Chess,
-  powers: MatchPower[],
-  topX: number,
-  random: () => number = Math.random,
-  plannedMove?: Move,
-): Square | null {
-  const opponentMoves = rankOpponentMovesForBot(game, powers)
-  if (!opponentMoves.length) return null
-  const limit = Math.max(1, Math.min(opponentMoves.length, Math.round(topX)))
-  const topCandidates = opponentMoves.slice(0, limit)
-
-  // Shuffle top X candidates using the provided random generator.
-  const indices = topCandidates.map((_, index) => index)
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1))
-    const temp = indices[i]!
-    indices[i] = indices[j]!
-    indices[j] = temp
-  }
-
-  for (const idx of indices) {
-    const square = topCandidates[idx]!.from
-    if (canApplyBotFreezeOnSquare(game, powers, square, plannedMove)) return square
-  }
-  return null
+function canApplyBotShieldOnSquare(game: Chess, powers: MatchPower[], square: Square): boolean {
+  if (powers.some(power => power.kind === 'shield' && power.square === square)) return false
+  const occupant = game.get(square)
+  return !!occupant && occupant.color === game.turn() && occupant.type !== 'k'
 }
 
 /**
- * Find a legal non-capture move where one of the bot's own pieces advances into a square
- * currently attacked by the opponent (White), so the bot can Shield that piece first and
- * advance safely 1 second later.
+ * Freeze and Shield plans that take away the opponent's threats left after the
+ * bot's planned move: the attacker is frozen, or the attacked piece is shielded.
  */
-export function selectBotShieldAdvanceMove(
-  game: Chess,
-  powers: MatchPower[],
-  permittedMoves: Move[],
-  blackAnalysis: ChessMoveAnalysis | null,
-  random: () => number = Math.random,
-): { shieldSquare: Square; moveUci: string } | null {
-  const unpowered = clonePoweredChess(game, [])
-  const candidates = permittedMoves.filter(move => {
-    if (move.color !== 'b' || move.captured) return false
-    if (Number(move.to[1]) > Number(move.from[1])) return false
-    if (powers.some(power => power.kind === 'shield' && power.square === move.from)) return false
-    const attackedByWhite = unpowered.isAttacked(move.to, 'w')
-    if (!attackedByWhite) return false
-    const testPower = createMatchPower('shield', move.from, game, -1)
-    const afterShield = permittedPowerMoves([move], [...powers, testPower], game.history().length + 1)
-    return afterShield.length > 0
-  })
-
-  if (!candidates.length) return null
-
-  if (blackAnalysis?.complete) {
-    const scoreByUci = new Map<string, number>()
-    for (const item of [...blackAnalysis.best, ...blackAnalysis.worst]) {
-      scoreByUci.set(item.uci, item.score)
-    }
-    candidates.sort((a, b) => (scoreByUci.get(moveToUci(b)) ?? 0) - (scoreByUci.get(moveToUci(a)) ?? 0))
+export function findDefensivePowerPlans(position: PoweredPosition, plannedMove: Move): PowerPlan[] {
+  const { game, powers } = position
+  const plannedUci = moveToUci(plannedMove)
+  const threats = threatsAfterPlan(position, null, plannedUci) ?? []
+  const before = topThreat(threats)
+  if (before <= 0) return []
+  const plans: PowerPlan[] = []
+  const consider = (power: BotSpecialPowerAction, reason: Exclude<BotPowerReason, 'mate' | 'advance'>) => {
+    const after = threatsAfterPlan(position, power, plannedUci)
+    if (!after) return
+    const remaining = topThreat(after)
+    const benefit = before - remaining
+    if (benefit <= 0) return
+    plans.push({ power, reason: before >= MATE_VALUE && remaining < MATE_VALUE ? 'mate' : reason, moveUci: plannedUci, benefit })
   }
-
-  const topCount = Math.min(candidates.length, 2)
-  const chosen = candidates[Math.floor(random() * topCount)] ?? candidates[0]!
-  return {
-    shieldSquare: chosen.from,
-    moveUci: moveToUci(chosen),
+  for (const from of new Set(threats.map(threat => threat.from))) {
+    if (canApplyBotFreezeOnSquare(game, powers, from, plannedMove)) consider({ kind: 'freeze', square: from }, 'threat')
   }
+  for (const target of new Set(threats.filter(threat => threat.gain < MATE_VALUE).map(threat => threat.to))) {
+    // The planned move may be the one that walks into the attack: the Shield goes on its origin and follows it.
+    const square = target === plannedMove.to ? plannedMove.from : target
+    if (canApplyBotShieldOnSquare(game, powers, square)) consider({ kind: 'shield', square }, 'rescue')
+  }
+  return plans.sort((a, b) => REASON_PRIORITY[a.reason] - REASON_PRIORITY[b.reason] || b.benefit - a.benefit)
+}
+
+/**
+ * Non-capture advances into a square the opponent could win right away: only a
+ * Shield makes them playable, so they are worth checking with a two-ply search.
+ */
+export function findShieldAdvancePlans(position: PoweredPosition, permittedMoves: Move[]): PowerPlan[] {
+  const { game, powers } = position
+  const plans: PowerPlan[] = []
+  for (const move of permittedMoves) {
+    if (move.captured || move.piece === 'k') continue
+    if (!canApplyBotShieldOnSquare(game, powers, move.from)) continue
+    if (!game.isAttacked(move.to, game.turn() === 'w' ? 'b' : 'w')) continue
+    const uci = moveToUci(move)
+    const exposed = (threatsAfterPlan(position, null, uci) ?? []).find(threat => threat.to === move.to)
+    if (!exposed) continue
+    // Worth a Shield only if the advanced piece then threatens to win material itself.
+    if (!shieldedAdvanceThreatens(position, uci)) continue
+    plans.push({ power: { kind: 'shield', square: move.from }, reason: 'advance', moveUci: uci, benefit: pieceValue(move.piece) })
+  }
+  return plans.sort((a, b) => b.benefit - a.benefit)
 }
 
 export function getBotConfigParams(profile: BotConfigParams): BotConfigParams {
   return {
     delaySeconds: profile.delaySeconds,
-    freezeTopMoves: profile.freezeTopMoves,
-    freezeChanceBelowPercent: profile.freezeChanceBelowPercent,
-    freezeEveryMoves: profile.freezeEveryMoves,
-    shieldEveryMoves: profile.shieldEveryMoves,
-    shieldChanceAbovePercent: profile.shieldChanceAbovePercent,
+    powerUsePercent: profile.powerUsePercent,
+    freezeMinThreatPawns: profile.freezeMinThreatPawns,
+    freezeCooldownMoves: profile.freezeCooldownMoves,
+    shieldMinPiecePawns: profile.shieldMinPiecePawns,
+    shieldCooldownMoves: profile.shieldCooldownMoves,
+    powerMinGainPawns: profile.powerMinGainPawns,
+    powerReserveEggs: profile.powerReserveEggs,
     worstFloorPawns: profile.worstFloorPawns,
     worstMaxLossPawns: profile.worstMaxLossPawns,
     eggTarget: profile.eggTarget,
@@ -236,18 +175,20 @@ export function getBotConfigParams(profile: BotConfigParams): BotConfigParams {
   }
 }
 
-export class ChessBot {
+export class ChessBot implements BotConfigParams {
   readonly id: string
   readonly name: string
   readonly kind: BotKind
   readonly skill: number
   readonly alwaysBestMove: boolean
   delaySeconds: number
-  freezeTopMoves: number
-  freezeChanceBelowPercent: number
-  freezeEveryMoves: number
-  shieldEveryMoves: number
-  shieldChanceAbovePercent: number
+  powerUsePercent: number
+  freezeMinThreatPawns: number
+  freezeCooldownMoves: number
+  shieldMinPiecePawns: number
+  shieldCooldownMoves: number
+  powerMinGainPawns: number
+  powerReserveEggs: number
   worstFloorPawns: number
   worstMaxLossPawns: number
   eggTarget: number
@@ -259,16 +200,19 @@ export class ChessBot {
     this.kind = profile.kind
     this.skill = profile.skill
     this.alwaysBestMove = profile.alwaysBestMove
-    this.delaySeconds = overrides?.delaySeconds ?? profile.delaySeconds
-    this.freezeTopMoves = overrides?.freezeTopMoves ?? profile.freezeTopMoves
-    this.freezeChanceBelowPercent = overrides?.freezeChanceBelowPercent ?? profile.freezeChanceBelowPercent
-    this.freezeEveryMoves = overrides?.freezeEveryMoves ?? profile.freezeEveryMoves
-    this.shieldEveryMoves = overrides?.shieldEveryMoves ?? profile.shieldEveryMoves
-    this.shieldChanceAbovePercent = overrides?.shieldChanceAbovePercent ?? profile.shieldChanceAbovePercent
-    this.worstFloorPawns = overrides?.worstFloorPawns ?? profile.worstFloorPawns
-    this.worstMaxLossPawns = overrides?.worstMaxLossPawns ?? profile.worstMaxLossPawns
-    this.eggTarget = overrides?.eggTarget ?? profile.eggTarget
-    this.worstCooldownMoves = overrides?.worstCooldownMoves ?? profile.worstCooldownMoves
+    const params = { ...getBotConfigParams(profile), ...overrides }
+    this.delaySeconds = params.delaySeconds
+    this.powerUsePercent = params.powerUsePercent
+    this.freezeMinThreatPawns = params.freezeMinThreatPawns
+    this.freezeCooldownMoves = params.freezeCooldownMoves
+    this.shieldMinPiecePawns = params.shieldMinPiecePawns
+    this.shieldCooldownMoves = params.shieldCooldownMoves
+    this.powerMinGainPawns = params.powerMinGainPawns
+    this.powerReserveEggs = params.powerReserveEggs
+    this.worstFloorPawns = params.worstFloorPawns
+    this.worstMaxLossPawns = params.worstMaxLossPawns
+    this.eggTarget = params.eggTarget
+    this.worstCooldownMoves = params.worstCooldownMoves
   }
 
   get isPureChess(): boolean {
@@ -290,16 +234,7 @@ export class ChessBot {
       kind: this.kind,
       skill: this.skill,
       alwaysBestMove: this.alwaysBestMove,
-      delaySeconds: this.delaySeconds,
-      freezeTopMoves: this.freezeTopMoves,
-      freezeChanceBelowPercent: this.freezeChanceBelowPercent,
-      freezeEveryMoves: this.freezeEveryMoves,
-      shieldEveryMoves: this.shieldEveryMoves,
-      shieldChanceAbovePercent: this.shieldChanceAbovePercent,
-      worstFloorPawns: this.worstFloorPawns,
-      worstMaxLossPawns: this.worstMaxLossPawns,
-      eggTarget: this.eggTarget,
-      worstCooldownMoves: this.worstCooldownMoves,
+      ...getBotConfigParams(this),
     }
   }
 
@@ -332,14 +267,79 @@ export class ChessBot {
     return permittedUcis[0] ?? null
   }
 
+  /** Whether a plan passes its own threshold and cooldown, before eggs and the two-ply check. */
+  private planQualifies(plan: PowerPlan, turn: number, lastFreezeTurn: number | null, lastShieldTurn: number | null): boolean {
+    if (plan.reason === 'mate') return true
+    if (plan.power.kind === 'freeze') {
+      return cooldownOver(lastFreezeTurn, turn, this.freezeCooldownMoves) && plan.benefit >= this.freezeMinThreatPawns * 100
+    }
+    if (!cooldownOver(lastShieldTurn, turn, this.shieldCooldownMoves)) return false
+    if (plan.reason === 'advance') return this.powerMinGainPawns > 0
+    return plan.benefit >= this.shieldMinPiecePawns * 100
+  }
+
+  private canAfford(plan: PowerPlan, eggs: number): boolean {
+    const keep = plan.reason === 'mate' || plan.reason === 'rescue' ? 0 : this.powerReserveEggs
+    return eggs - POWER_COST >= keep
+  }
+
+  /**
+   * Pick at most one power for this turn, by priority: stop a mate, rescue a piece,
+   * freeze the biggest threat, then a protected advance.
+   */
+  private choosePower(options: {
+    game: Chess
+    powers: MatchPower[]
+    plannedMove: Move | undefined
+    permittedMoves: Move[]
+    botTurnNumber: number
+    lastFreezeTurn: number | null
+    lastShieldTurn: number | null
+    botEggs: number
+    random: () => number
+  }): { plan: PowerPlan | null; insufficientEggs: boolean } {
+    const { game, powers, plannedMove, botTurnNumber, lastFreezeTurn, lastShieldTurn, botEggs, random } = options
+    if (!plannedMove || random() * 100 >= this.powerUsePercent) return { plan: null, insufficientEggs: false }
+    const position: PoweredPosition = { game, powers }
+    const turnColor = game.turn()
+    const qualifies = (plan: PowerPlan) =>
+      !hasUsedPowerThisTurn(powers, plan.power.kind, game, turnColor) &&
+      this.planQualifies(plan, botTurnNumber, lastFreezeTurn, lastShieldTurn)
+
+    let plans = findDefensivePowerPlans(position, plannedMove).filter(qualifies)
+    const advanceAffordable = botEggs - POWER_COST >= this.powerReserveEggs
+    if (!plans.length && advanceAffordable && this.powerMinGainPawns > 0 && cooldownOver(lastShieldTurn, botTurnNumber, this.shieldCooldownMoves)) {
+      plans = findShieldAdvancePlans(position, options.permittedMoves).filter(qualifies)
+    }
+    if (!plans.length) return { plan: null, insufficientEggs: false }
+
+    const affordable = plans.filter(plan => this.canAfford(plan, botEggs))
+    // Only a real emergency the bot cannot pay for is worth showing to the player.
+    const insufficientEggs = !affordable.length && plans.some(plan => plan.reason === 'mate' || plan.reason === 'rescue')
+    if (!affordable.length) return { plan: null, insufficientEggs }
+
+    const urgent = affordable.find(plan => plan.reason === 'mate')
+    if (urgent || this.powerMinGainPawns <= 0) return { plan: urgent ?? affordable[0]!, insufficientEggs: false }
+
+    const baseline = evaluateBotPlan(position, null, moveToUci(plannedMove))
+    if (baseline === null) return { plan: null, insufficientEggs: false }
+    for (const plan of affordable.slice(0, MAX_CHECKED_PLANS)) {
+      const score = evaluateBotPlan(position, plan.power, plan.moveUci)
+      if (score !== null && score - baseline >= this.powerMinGainPawns * 100) return { plan, insufficientEggs: false }
+    }
+    return { plan: null, insufficientEggs: false }
+  }
+
   decideTurn(options: {
     game: Chess
     powers?: MatchPower[]
     matchPowers?: MatchPower[]
     botTurnNumber?: number
     botTurnCount?: number
-    /** Bot turn number of the last Worst move played for eggs, if any. */
+    /** Bot turn numbers of the last Worst move, Freeze and Shield, if any. */
     lastWorstMoveTurn?: number | null
+    lastFreezeTurn?: number | null
+    lastShieldTurn?: number | null
     botEggs: number
     whiteScore?: number | null
     whiteEvalScore?: number | null
@@ -357,6 +357,8 @@ export class ChessBot {
       powers = options.matchPowers ?? [],
       botTurnNumber = options.botTurnCount ?? 0,
       lastWorstMoveTurn = null,
+      lastFreezeTurn = null,
+      lastShieldTurn = null,
       botEggs,
       whiteScore = options.whiteEvalScore ?? null,
       whiteMate = null,
@@ -365,17 +367,14 @@ export class ChessBot {
       bestAvailableUci,
       random = Math.random,
     } = options
-    const permittedMoves = options.permittedMoves ?? (options.legalUciMoves ? options.legalUciMoves.map(uci => {
-      const from = uci.slice(0, 2) as Square
-      const to = uci.slice(2, 4) as Square
-      const promotion = uci[4] as Move['promotion']
-      return { from, to, promotion, color: game.turn() } as Move
-    }) : game.moves({ verbose: true }))
-    const permittedUcis = options.legalUciMoves ?? permittedMoves.map(moveToUci)
+    const verboseMoves = game.moves({ verbose: true })
+    const permittedUcis = options.legalUciMoves ?? (options.permittedMoves ?? verboseMoves).map(moveToUci)
+    const permittedMoves = verboseMoves.filter(move => permittedUcis.includes(moveToUci(move)))
 
     if (this.isPureChess) {
       return {
         powerAction: null,
+        powerReason: null,
         insufficientEggs: false,
         moveUci: this.selectStandardMove(permittedUcis, blackAnalysis, stockfishSuggestedUci, bestAvailableUci),
         usedWorstMoveForEggs: false,
@@ -383,71 +382,12 @@ export class ChessBot {
       }
     }
 
-    const botPercent = botChancePercentFromWhiteScore(whiteScore, whiteMate)
-    const freezeEmergency = botPercent < this.freezeChanceBelowPercent
-    const freezePeriodic = this.freezeEveryMoves > 0 && botTurnNumber > 0 && botTurnNumber % this.freezeEveryMoves === 0
-    const shouldTryFreeze = freezeEmergency || freezePeriodic
-    const shouldTryShield =
-      this.shieldEveryMoves > 0 &&
-      botTurnNumber > 0 &&
-      botTurnNumber % this.shieldEveryMoves === 0 &&
-      botPercent > this.shieldChanceAbovePercent
-
-    let desiredPower: BotSpecialPowerAction | null = null
-    let shieldAdvanceMoveUci: string | null = null
-
-    // Freeze must not take away the capture the bot is about to play.
     const plannedUci = this.selectStandardMove(permittedUcis, blackAnalysis, stockfishSuggestedUci, bestAvailableUci)
-    const plannedMove = plannedUci ? game.moves({ verbose: true }).find(move => moveToUci(move) === plannedUci) : undefined
-
-    const tryResolveFreeze = (): BotSpecialPowerAction | null => {
-      const targetSquare = selectBotFreezeSquare(game, powers, this.freezeTopMoves, random, plannedMove)
-      if (!targetSquare) return null
-      return { kind: 'freeze', square: targetSquare }
-    }
-
-    const tryResolveShield = (): { power: BotSpecialPowerAction; moveUci: string } | null => {
-      const candidate = selectBotShieldAdvanceMove(game, powers, permittedMoves, blackAnalysis, random)
-      if (!candidate) return null
-      return { power: { kind: 'shield', square: candidate.shieldSquare }, moveUci: candidate.moveUci }
-    }
-
-    if (freezeEmergency) {
-      const freeze = tryResolveFreeze()
-      if (freeze) {
-        desiredPower = freeze
-      } else if (shouldTryShield) {
-        const shield = tryResolveShield()
-        if (shield) {
-          desiredPower = shield.power
-          shieldAdvanceMoveUci = shield.moveUci
-        }
-      }
-    } else if (shouldTryShield) {
-      const shield = tryResolveShield()
-      if (shield) {
-        desiredPower = shield.power
-        shieldAdvanceMoveUci = shield.moveUci
-      } else if (freezePeriodic) {
-        desiredPower = tryResolveFreeze()
-      }
-    } else if (freezePeriodic) {
-      desiredPower = tryResolveFreeze()
-    }
-
-    let powerAction: BotSpecialPowerAction | null = null
-    let insufficientEggs = false
-
-    if (desiredPower) {
-      if (botEggs >= 3) {
-        powerAction = desiredPower
-      } else {
-        insufficientEggs = true
-        shieldAdvanceMoveUci = null
-      }
-    } else if ((shouldTryFreeze || shouldTryShield) && botEggs < 3) {
-      insufficientEggs = true
-    }
+    const plannedMove = plannedUci ? permittedMoves.find(move => moveToUci(move) === plannedUci) : undefined
+    const { plan, insufficientEggs } = this.choosePower({
+      game, powers, plannedMove, permittedMoves, botTurnNumber, lastFreezeTurn, lastShieldTurn, botEggs, random,
+    })
+    const powerAction = plan?.power ?? null
 
     // If a power will be applied first, make sure the chosen normal move remains legal with that power active.
     const effectivePowers = powerAction
@@ -458,19 +398,20 @@ export class ChessBot {
       : permittedMoves
     const effectivePermittedUcis = effectivePermittedMoves.map(moveToUci)
 
-    if (powerAction?.kind === 'shield' && shieldAdvanceMoveUci && effectivePermittedUcis.includes(shieldAdvanceMoveUci)) {
+    if (plan && effectivePermittedUcis.includes(plan.moveUci)) {
       return {
         powerAction,
+        powerReason: plan.reason,
         insufficientEggs: false,
-        moveUci: shieldAdvanceMoveUci,
+        moveUci: plan.moveUci,
         usedWorstMoveForEggs: false,
-        usedShieldAdvance: true,
+        usedShieldAdvance: plan.reason === 'advance',
       }
     }
 
     // Worst move for 3 eggs: only on a turn without a power, while short of eggs, after the cooldown,
     // and only when the move gives up at most V pawns and keeps the bot at W pawns or better.
-    const worstCooldownOver = lastWorstMoveTurn === null || botTurnNumber - lastWorstMoveTurn >= this.worstCooldownMoves
+    const worstCooldownOver = cooldownOver(lastWorstMoveTurn, botTurnNumber, this.worstCooldownMoves)
     const bestCandidate = blackAnalysis?.best.find(candidate => effectivePermittedUcis.includes(candidate.uci))
     const botScore = whiteScore === null ? null : -whiteScore
     if (
@@ -501,6 +442,7 @@ export class ChessBot {
       if (chosenWorst) {
         return {
           powerAction,
+          powerReason: null,
           insufficientEggs,
           moveUci: chosenWorst.uci,
           usedWorstMoveForEggs: true,
@@ -511,6 +453,7 @@ export class ChessBot {
 
     return {
       powerAction,
+      powerReason: plan?.reason ?? null,
       insufficientEggs,
       moveUci: this.selectStandardMove(effectivePermittedUcis, blackAnalysis, stockfishSuggestedUci, bestAvailableUci),
       usedWorstMoveForEggs: false,

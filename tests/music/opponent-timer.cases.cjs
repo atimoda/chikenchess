@@ -109,15 +109,16 @@ test('Bot catalog defines the 5 PureChess bots and 3 ChickenBots with expected p
     ],
   )
   const easyChicken = findBotProfile('easy-chickenbot')
-  assert.equal(easyChicken.freezeTopMoves, 3)
-  assert.equal(easyChicken.freezeChanceBelowPercent, 10)
-  assert.equal(easyChicken.freezeEveryMoves, 8)
-  assert.equal(easyChicken.worstFloorPawns, 1)
-  assert.equal(easyChicken.worstMaxLossPawns, 1.5)
+  assert.equal(easyChicken.powerUsePercent, 50)
+  assert.equal(easyChicken.freezeMinThreatPawns, 5)
+  assert.equal(easyChicken.freezeCooldownMoves, 10)
+  assert.equal(easyChicken.shieldMinPiecePawns, 5)
+  assert.equal(easyChicken.shieldCooldownMoves, 10)
+  assert.equal(easyChicken.powerMinGainPawns, 0)
+  assert.equal(easyChicken.worstFloorPawns, 0.5)
+  assert.equal(easyChicken.worstMaxLossPawns, 2)
   assert.equal(easyChicken.eggTarget, 6)
   assert.equal(easyChicken.worstCooldownMoves, 2)
-  assert.equal(easyChicken.shieldEveryMoves, 9)
-  assert.equal(easyChicken.shieldChanceAbovePercent, 50)
 })
 
 test('Bot chance percentage maps 0 score to 50% and rounds-trip with centipawn score', () => {
@@ -175,70 +176,98 @@ test('PureChess and Jedi Pure Chess never trigger powers and Jedi picks the top 
   assert.equal(jediPure.delayMs, 3000)
 })
 
-test('ChickenBot triggers Freeze below Y% or every Z moves on one of the top X moves, and flags insufficient eggs', () => {
-  const game = makePoweredChess(new Chess('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
-  const bot = new ChessBot(findBotProfile('jedi-chickenbot'))
-  // whiteScore = 1000 => botPercent ~ 11.5% < Y (30%)
-  const firstCandidateDecision = bot.decideTurn({
-    game,
-    stockfishSuggestedUci: 'e7e5',
-    bestAvailableUci: 'e7e5',
-    blackAnalysis: null,
-    whiteScore: 1000,
-    botTurnNumber: 1,
-    botEggs: 3,
-    random: () => 0.1, // selects first among shuffled top X moves
-  })
-  assert.equal(firstCandidateDecision.powerAction?.kind, 'freeze')
-  assert.equal(firstCandidateDecision.insufficientEggs, false)
-  assert.ok(game.get(firstCandidateDecision.powerAction.square), 'Freezes the opponent piece to block the move')
+// After 1.e4 e5 2.Bc4 Nc6 3.Qh5, White threatens Qxf7#.
+const SCHOLAR_THREAT = 'r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3'
+// The d4 pawn forks the knights on c5 and e5.
+const PAWN_FORK = '4k3/8/8/2n1n3/3P4/8/8/4K3 b - - 0 1'
 
-  const secondCandidateDecision = bot.decideTurn({
+function quietTurn(bot, fen, planned, extra = {}) {
+  const game = makePoweredChess(new Chess(fen))
+  return bot.decideTurn({
     game,
-    stockfishSuggestedUci: 'e7e5',
-    bestAvailableUci: 'e7e5',
-    blackAnalysis: null,
-    whiteScore: 1000,
-    botTurnNumber: 1,
-    botEggs: 3,
-    random: () => 0.8, // selects other top X move candidate
-  })
-  assert.equal(secondCandidateDecision.powerAction?.kind, 'freeze')
-  assert.notEqual(firstCandidateDecision.powerAction?.square, secondCandidateDecision.powerAction?.square)
-
-  const noEggsDecision = bot.decideTurn({
-    game,
-    stockfishSuggestedUci: 'e7e5',
-    bestAvailableUci: 'e7e5',
-    blackAnalysis: null,
-    whiteScore: 1000,
-    botTurnNumber: 1,
-    botEggs: 2,
-    random: () => 0.2,
-  })
-  assert.equal(noEggsDecision.powerAction, null)
-  assert.equal(noEggsDecision.insufficientEggs, true)
-})
-
-test('ChickenBot triggers Shield on an own piece and advances to a square under opponent attack every R moves above T%', () => {
-  const game = makePoweredChess(new Chess('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
-  const bot = new ChessBot(findBotProfile('jedi-chickenbot'))
-  // botTurnNumber = 3 (multiple of R=3, not multiple of Z=4), whiteScore = 0 => botPercent = 50% > T (20%)
-  const decision = bot.decideTurn({
-    game,
-    stockfishSuggestedUci: 'e7e5',
-    bestAvailableUci: 'e7e5',
+    stockfishSuggestedUci: planned,
+    bestAvailableUci: planned,
     blackAnalysis: null,
     whiteScore: 0,
-    botTurnNumber: 3,
-    botEggs: 3,
+    botTurnNumber: 6,
+    botEggs: 9,
     random: () => 0,
+    ...extra,
   })
-  assert.equal(decision.powerAction?.kind, 'shield')
-  assert.equal(decision.usedShieldAdvance, true)
-  assert.equal(decision.powerAction?.square, decision.moveUci.slice(0, 2))
-  assert.equal(game.isAttacked(decision.moveUci.slice(2, 4), 'w'), true)
-  assert.ok(Number(decision.moveUci[3]) <= Number(decision.moveUci[1]))
+}
+
+test('ChickenBot spends no power in a quiet position, whatever the turn number', () => {
+  for (const id of ['easy-chickenbot', 'expert-chickenbot', 'jedi-chickenbot']) {
+    for (const botTurnNumber of [3, 4, 6, 8, 9, 12]) {
+      const decision = quietTurn(new ChessBot(findBotProfile(id)), 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1', 'e7e5', { botTurnNumber })
+      assert.equal(decision.powerAction, null, `${id} on turn ${botTurnNumber}`)
+      assert.equal(decision.insufficientEggs, false)
+      assert.equal(decision.moveUci, 'e7e5')
+    }
+  }
+})
+
+test('ChickenBot stops a mate in one left by its planned move, ignoring cooldowns', () => {
+  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
+  const decision = quietTurn(bot, SCHOLAR_THREAT, 'a7a6', { lastFreezeTurn: 5, lastShieldTurn: 5, botEggs: 3 })
+  assert.ok(decision.powerAction)
+  assert.equal(decision.powerReason, 'mate')
+  assert.equal(decision.moveUci, 'a7a6')
+  const game = makePoweredChess(new Chess(SCHOLAR_THREAT))
+  if (decision.powerAction.kind === 'freeze') assert.equal(game.get(decision.powerAction.square)?.color, 'w')
+
+  const broke = quietTurn(bot, SCHOLAR_THREAT, 'a7a6', { botEggs: 2 })
+  assert.equal(broke.powerAction, null)
+  assert.equal(broke.insufficientEggs, true, 'A mate it cannot pay for shows the egg warning')
+})
+
+test('ChickenBot shields a forked piece and still plays its planned move', () => {
+  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
+  const decision = quietTurn(bot, PAWN_FORK, 'c5e6')
+  assert.deepEqual(decision.powerAction, { kind: 'shield', square: 'e5' })
+  assert.equal(decision.powerReason, 'rescue')
+  assert.equal(decision.moveUci, 'c5e6')
+  assert.equal(decision.usedShieldAdvance, false)
+})
+
+test('ChickenBot Freeze and Shield follow their cooldowns, thresholds and egg reserve', () => {
+  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
+  const freeze = quietTurn(bot, PAWN_FORK, 'c5e6', { lastShieldTurn: 5 })
+  assert.deepEqual(freeze.powerAction, { kind: 'freeze', square: 'd4' }, 'Shield on cooldown: freeze the forking pawn')
+  assert.equal(freeze.powerReason, 'threat')
+  assert.equal(quietTurn(bot, PAWN_FORK, 'c5e6', { lastShieldTurn: 5, lastFreezeTurn: 2 }).powerAction, null)
+  assert.equal(quietTurn(bot, PAWN_FORK, 'c5e6', { lastShieldTurn: 5, lastFreezeTurn: 1 }).powerAction?.kind, 'freeze')
+
+  // A Freeze for a threat keeps Q = 3 eggs in reserve and is no emergency.
+  const reserve = quietTurn(bot, PAWN_FORK, 'c5e6', { lastShieldTurn: 5, botEggs: 5 })
+  assert.equal(reserve.powerAction, null)
+  assert.equal(reserve.insufficientEggs, false)
+  // Saving a piece may spend the last eggs.
+  assert.equal(quietTurn(bot, PAWN_FORK, 'c5e6', { botEggs: 3 }).powerAction?.kind, 'shield')
+
+  // A knight is below the Easy thresholds of 5 pawns.
+  assert.equal(quietTurn(new ChessBot(findBotProfile('easy-chickenbot')), PAWN_FORK, 'c5e6').powerAction, null)
+})
+
+test('Easy ChickenBot only looks for powers on about half of its turns', () => {
+  const bot = new ChessBot(findBotProfile('easy-chickenbot'))
+  assert.ok(quietTurn(bot, SCHOLAR_THREAT, 'a7a6', { random: () => 0.2 }).powerAction)
+  assert.equal(quietTurn(bot, SCHOLAR_THREAT, 'a7a6', { random: () => 0.7 }).powerAction, null)
+})
+
+test('ChickenBot uses each power at most once per turn', () => {
+  const { createMatchPower, hasUsedPowerThisTurn } = loadTs('lib/chess-powers.ts')
+  const game = makePoweredChess(new Chess(PAWN_FORK))
+  const shield = { ...createMatchPower('shield', 'c5', game, 1) }
+  assert.equal(hasUsedPowerThisTurn([shield], 'shield', game, 'b'), true)
+  assert.equal(hasUsedPowerThisTurn([shield], 'freeze', game, 'b'), false)
+  assert.equal(hasUsedPowerThisTurn([shield], 'shield', game, 'w'), false)
+  const bot = new ChessBot(findBotProfile('expert-chickenbot'))
+  const decision = bot.decideTurn({
+    game, powers: [shield], stockfishSuggestedUci: 'c5e6', bestAvailableUci: 'c5e6', blackAnalysis: null,
+    whiteScore: 0, botTurnNumber: 6, botEggs: 9, random: () => 0,
+  })
+  assert.notEqual(decision.powerAction?.kind, 'shield')
 })
 
 function worstFarmAnalysis(game) {
@@ -307,14 +336,17 @@ test('ChickenBot skips Worst moves with enough eggs, during the cooldown or when
 })
 
 test('ChickenBot never plays a Worst move on the same turn it pays for a power', () => {
-  const game = makePoweredChess(new Chess('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
+  const game = makePoweredChess(new Chess(PAWN_FORK))
   const bot = new ChessBot(findBotProfile('expert-chickenbot'))
-  // botTurnNumber = 6 is a multiple of Z and R for Expert.
   const decision = bot.decideTurn({
     game,
-    stockfishSuggestedUci: 'c7c5',
-    bestAvailableUci: 'c7c5',
-    blackAnalysis: worstFarmAnalysis(game),
+    stockfishSuggestedUci: 'c5e6',
+    bestAvailableUci: 'c5e6',
+    blackAnalysis: {
+      fen: game.fen(), side: 'b', legalMoves: 20, depth: 12, complete: true, final: true,
+      best: [{ uci: 'c5e6', san: 'Ne6', score: 250, mate: null, change: 0 }],
+      worst: [{ uci: 'c5a4', san: 'Na4', score: 200, mate: null, change: -50 }],
+    },
     whiteScore: -250,
     botTurnNumber: 6,
     botEggs: 3,
@@ -322,44 +354,5 @@ test('ChickenBot never plays a Worst move on the same turn it pays for a power',
   })
   assert.ok(decision.powerAction)
   assert.equal(decision.usedWorstMoveForEggs, false)
+  assert.equal(decision.moveUci, 'c5e6')
 })
-
-test('ChickenBot never freezes its own pieces, even when the opponent top move is a capture', () => {
-  const game = makePoweredChess(new Chess('rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
-  const bot = new ChessBot(findBotProfile('jedi-chickenbot'))
-  const decision = bot.decideTurn({
-    game,
-    stockfishSuggestedUci: 'c8g4',
-    bestAvailableUci: 'c8g4',
-    blackAnalysis: null,
-    whiteScore: 1000,
-    botTurnNumber: 1,
-    botEggs: 3,
-    random: () => 0.8, // pickOrigin >= 0.5 tries move.to first
-  })
-  assert.equal(decision.powerAction?.kind, 'freeze')
-  assert.notEqual(game.get(decision.powerAction.square)?.color, 'b', 'Bot must never freeze its own piece')
-})
-
-test('ChickenBot Freeze targets only opponent pieces and never the piece its planned move captures', () => {
-  // White's top replies include exd5; Black plans dxe4, so the e4 pawn must stay capturable.
-  const game = makePoweredChess(new Chess('rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'))
-  const bot = new ChessBot(findBotProfile('easy-chickenbot')).withParams({ freezeTopMoves: 20 })
-  for (const value of [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 0.99]) {
-    const decision = bot.decideTurn({
-      game,
-      stockfishSuggestedUci: 'd5e4',
-      bestAvailableUci: 'd5e4',
-      blackAnalysis: null,
-      whiteScore: 3000,
-      botTurnNumber: 1,
-      botEggs: 3,
-      random: () => value,
-    })
-    assert.equal(decision.powerAction?.kind, 'freeze')
-    assert.equal(game.get(decision.powerAction.square)?.color, 'w', 'Freezes a White piece, never an empty square')
-    assert.notEqual(decision.powerAction.square, 'e4')
-    assert.equal(decision.moveUci, 'd5e4')
-  }
-})
-

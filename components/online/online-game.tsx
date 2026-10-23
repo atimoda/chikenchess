@@ -16,7 +16,7 @@ import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
 import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
-import { replayMatch, matchPosition } from "@/lib/online/domain";
+import { replayMatch, matchPosition, powerUsedThisTurn } from "@/lib/online/domain";
 import { pendingMovePreview } from "@/lib/online/pending-move";
 import type { OnlineMatch, MatchCommand, RoomMember } from "@/lib/online/types";
 import { getOnlineClient } from "@/lib/online/client";
@@ -505,6 +505,11 @@ export function OnlineMatchBoard({
     (command: MatchCommand) => {
       if (command.kind === "undo") setMulliganPreviewActive(false);
       const cost = command.kind === "power" ? 3 : command.kind === "undo" ? 2 : command.kind === "suggest" ? 1 : 0;
+      if (command.kind === "power" && powerUsedThisTurn(match.state, command.power, color)) {
+        setArmedPower(null);
+        toast.info(`${command.power === "freeze" ? "Freeze" : "Shield"} can be used once per turn`);
+        return;
+      }
       if (cost && !hasEggsForAction(cost)) return;
       if (command.kind === "power" && command.power === "freeze") {
         const power = createMatchPower(
@@ -526,7 +531,7 @@ export function OnlineMatchBoard({
           toast.error(e.message ?? "Could not confirm this action"),
         );
     },
-    [online.send, replay.game, replay.powers, match.state.actions.length, hasEggsForAction],
+    [online.send, replay.game, replay.powers, match.state, color, hasEggsForAction],
   );
   const gesture = usePowerTargetingGesture({
     armedPower,
@@ -1440,12 +1445,12 @@ export function OnlineMatchBoard({
               title: "Volta 1 jogada · 2 golden eggs"
             },
             freeze: {
-              disabled: disabled || !ownTurn, 'aria-pressed': armedPower === "freeze",
+              disabled: disabled || !ownTurn || powerUsedThisTurn(match.state, "freeze", color), 'aria-pressed': armedPower === "freeze",
               onPointerDown: event => gesture.onButtonPointerDown("freeze", event), onLostPointerCapture: gesture.onLostPointerCapture,
               onClick: event => gesture.onButtonClick("freeze", event),
             },
             shield: {
-              disabled: disabled || !ownTurn, 'aria-pressed': armedPower === "shield",
+              disabled: disabled || !ownTurn || powerUsedThisTurn(match.state, "shield", color), 'aria-pressed': armedPower === "shield",
               onPointerDown: event => gesture.onButtonPointerDown("shield", event), onLostPointerCapture: gesture.onLostPointerCapture,
               onClick: event => gesture.onButtonClick("shield", event),
             },
@@ -1539,7 +1544,7 @@ export function OnlineMatchBoard({
                   data-match-power-action={kind}
                   {...costEvents(kind)}
                   type="button"
-                  disabled={disabled || !ownTurn}
+                  disabled={disabled || !ownTurn || powerUsedThisTurn(match.state, kind, color)}
                   title={`${kind} · 3 golden eggs`}
                   aria-label={
                     kind === "freeze"

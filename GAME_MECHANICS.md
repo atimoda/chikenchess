@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 23/10/2026 — v1.6.8 (ChickenBots jogam Worst e Freeze com mais critério). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 23/10/2026 — v1.6.8 (ChickenBots usam Freeze, Shield e Worst com critério; poderes uma vez por turno). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 

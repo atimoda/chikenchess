@@ -218,64 +218,87 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
             onChange={delaySeconds => onParamsChange({ delaySeconds })}
           />
 
+          <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300/85">
+            Poderes {!isChicken && "(inativo em PureChess)"}
+          </div>
+          <ParamField
+            code="N"
+            label="Procura poder em"
+            value={params.powerUsePercent}
+            min={0}
+            max={100}
+            step={5}
+            suffix="%"
+            disabled={!isChicken}
+            onChange={powerUsePercent => onParamsChange({ powerUsePercent: powerUsePercent })}
+          />
+          <ParamField
+            code="P"
+            label="Ganho mínimo (2 lances)"
+            value={params.powerMinGainPawns}
+            min={0}
+            max={20}
+            step={0.25}
+            disabled={!isChicken}
+            onChange={powerMinGainPawns => onParamsChange({ powerMinGainPawns: powerMinGainPawns })}
+          />
+          <ParamField
+            code="Q"
+            label="Ovos de reserva"
+            value={params.powerReserveEggs}
+            min={0}
+            max={100}
+            step={1}
+            disabled={!isChicken}
+            onChange={powerReserveEggs => onParamsChange({ powerReserveEggs: Math.round(powerReserveEggs) })}
+          />
+
           <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-300/85">
             Freeze {!isChicken && "(inativo em PureChess)"}
           </div>
           <ParamField
-            code="X"
-            label="Melhores jogadas alvo"
-            value={params.freezeTopMoves}
-            min={1}
-            max={20}
-            step={1}
-            disabled={!isChicken}
-            onChange={freezeTopMoves => onParamsChange({ freezeTopMoves: Math.round(freezeTopMoves) })}
-          />
-          <ParamField
             code="Y"
-            label="Barra abaixo de"
-            value={params.freezeChanceBelowPercent}
+            label="Ameaça mínima"
+            value={params.freezeMinThreatPawns}
             min={0}
-            max={100}
-            step={1}
-            suffix="%"
+            max={50}
+            step={0.5}
             disabled={!isChicken}
-            onChange={freezeChanceBelowPercent => onParamsChange({ freezeChanceBelowPercent })}
+            onChange={freezeMinThreatPawns => onParamsChange({ freezeMinThreatPawns: freezeMinThreatPawns })}
           />
           <ParamField
             code="Z"
-            label="A cada Z jogadas"
-            value={params.freezeEveryMoves}
-            min={1}
+            label="Intervalo mínimo"
+            value={params.freezeCooldownMoves}
+            min={0}
             max={100}
             step={1}
             disabled={!isChicken}
-            onChange={freezeEveryMoves => onParamsChange({ freezeEveryMoves: Math.round(freezeEveryMoves) })}
+            onChange={freezeCooldownMoves => onParamsChange({ freezeCooldownMoves: Math.round(freezeCooldownMoves) })}
           />
 
           <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300/85">
             Shield {!isChicken && "(inativo em PureChess)"}
           </div>
           <ParamField
-            code="R"
-            label="A cada R jogadas"
-            value={params.shieldEveryMoves}
-            min={1}
-            max={100}
-            step={1}
+            code="T"
+            label="Peça mínima salva"
+            value={params.shieldMinPiecePawns}
+            min={0}
+            max={50}
+            step={0.5}
             disabled={!isChicken}
-            onChange={shieldEveryMoves => onParamsChange({ shieldEveryMoves: Math.round(shieldEveryMoves) })}
+            onChange={shieldMinPiecePawns => onParamsChange({ shieldMinPiecePawns: shieldMinPiecePawns })}
           />
           <ParamField
-            code="T"
-            label="Barra acima de"
-            value={params.shieldChanceAbovePercent}
+            code="R"
+            label="Intervalo mínimo"
+            value={params.shieldCooldownMoves}
             min={0}
             max={100}
             step={1}
-            suffix="%"
             disabled={!isChicken}
-            onChange={shieldChanceAbovePercent => onParamsChange({ shieldChanceAbovePercent })}
+            onChange={shieldCooldownMoves => onParamsChange({ shieldCooldownMoves: Math.round(shieldCooldownMoves) })}
           />
 
           <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300/85">

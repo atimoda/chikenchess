@@ -24,6 +24,12 @@ export function canUseMatchPower(game: Chess, color: Move["color"]): boolean {
   return game.turn() === color && !game.isGameOver()
 }
 
+/** Each team may apply each power at most once per turn. */
+export function hasUsedPowerThisTurn(powers: MatchPower[], kind: MatchPowerKind, game: Chess, color: Move["color"]): boolean {
+  const ply = game.history().length
+  return powers.some(power => power.kind === kind && (power.appliedBy ?? "w") === color && power.appliedAtPly === ply)
+}
+
 export function shieldCaptureBlock(move: PowerMove, powers: MatchPower[]): ShieldCaptureBlock | null {
   if (!move.captured) return null
   const capturedSquare = move.flags.includes('e') ? `${move.to[0]}${move.from[1]}` : move.to
