@@ -4,6 +4,7 @@ import type { ChessMoveAnalysis } from './chess-evaluation'
 import { createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, type MatchPower, type MatchPowerKind } from './chess-powers'
 import { MATE_VALUE, evaluateBotPlan, pieceValue, shieldedAdvanceThreatens, threatsAfterPlan, topThreat, type PoweredPosition } from './chess-bot-tactics'
 import { freezeApplicationError } from './powered-chess'
+import { limitRankedLists } from './egg-rewards'
 
 export type BotKind = 'pure' | 'chicken'
 
@@ -412,6 +413,8 @@ export class ChessBot implements BotConfigParams {
     // Worst move for 3 eggs: only on a turn without a power, while short of eggs, after the cooldown,
     // and only when the move gives up at most V pawns and keeps the bot at W pawns or better.
     const worstCooldownOver = cooldownOver(lastWorstMoveTurn, botTurnNumber, this.worstCooldownMoves)
+    // Only the rewarded head of each list earns eggs (fewer when the position has few moves).
+    const ranked = blackAnalysis ? limitRankedLists(blackAnalysis) : null
     const bestCandidate = blackAnalysis?.best.find(candidate => effectivePermittedUcis.includes(candidate.uci))
     const botScore = whiteScore === null ? null : -whiteScore
     if (
@@ -421,18 +424,19 @@ export class ChessBot implements BotConfigParams {
       whiteMate === null &&
       blackAnalysis?.complete &&
       blackAnalysis.legalMoves > 1 &&
-      blackAnalysis.worst.length > 0 &&
+      ranked &&
+      ranked.worst.length > 0 &&
       bestCandidate &&
       bestCandidate.mate === null &&
       (botScore === null || bestCandidate.score - botScore <= WORST_SKIP_BEST_GAIN_CP)
     ) {
       const floorCp = this.worstFloorPawns * 100
       const maxLossCp = this.worstMaxLossPawns * 100
-      const eligibleWorst = blackAnalysis.worst
+      const eligibleWorst = ranked.worst
         .filter(
           candidate =>
             effectivePermittedUcis.includes(candidate.uci) &&
-            !blackAnalysis.best.some(best => best.uci === candidate.uci) &&
+            !ranked.best.some(best => best.uci === candidate.uci) &&
             candidate.mate === null &&
             candidate.score >= floorCp &&
             bestCandidate.score - candidate.score <= maxLossCp,

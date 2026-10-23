@@ -16,7 +16,8 @@ import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
 import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
-import { replayMatch, matchPosition, powerUsedThisTurn } from "@/lib/online/domain";
+import { replayMatch, matchPosition, powerUsedThisTurn, rankedRewardEggs, squareEggsUntil } from "@/lib/online/domain";
+import { limitRankedLists } from "@/lib/egg-rewards";
 import { pendingMovePreview } from "@/lib/online/pending-move";
 import type { OnlineMatch, MatchCommand, RoomMember } from "@/lib/online/types";
 import { getOnlineClient } from "@/lib/online/client";
@@ -571,6 +572,29 @@ export function OnlineMatchBoard({
     );
     return () => clearTimeout(timer);
   }, [match.state.suggestions, position]);
+  // Eggs stay on the destination squares of your own suggestions a little longer than
+  // the arrows; any of your pieces landing there earns them.
+  const [squareEggs, setSquareEggs] = useState<{ square: Square; kind: "best" | "worst"; eggs: number }[]>([]);
+  useEffect(() => {
+    const shared = match.state.suggestions;
+    if (!shared || shared.actor !== color || shared.position !== position || squareEggsUntil(shared) <= Date.now()) {
+      setSquareEggs([]);
+      return;
+    }
+    const targets = new Map<string, "best" | "worst">();
+    for (const m of shared.moves) {
+      const square = m.uci.slice(2, 4);
+      if (!targets.has(square))
+        targets.set(square, shared.kind === "best" && rankedMoveLabelTone(m.score, m.mate ?? null) !== "worst" ? "best" : "worst");
+    }
+    setSquareEggs(
+      [...targets]
+        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardEggs(match.state, color, kind) }))
+        .filter((target) => target.eggs > 0),
+    );
+    const timer = setTimeout(() => setSquareEggs([]), Math.max(0, squareEggsUntil(shared) - Date.now()));
+    return () => clearTimeout(timer);
+  }, [match.state, position, color]);
   const onMove = (move: Move) => {
     if (!ownTurn || disabled) return;
     const currentAnalysis =
@@ -586,11 +610,9 @@ export function OnlineMatchBoard({
         ? {
             analysis: {
               position,
-              best: currentAnalysis.best
-                .slice(0, 3)
+              best: limitRankedLists(currentAnalysis).best
                 .map(({ uci, score, mate }) => ({ uci, score, mate })),
-              worst: currentAnalysis.worst
-                .slice(0, 3)
+              worst: limitRankedLists(currentAnalysis).worst
                 .map(({ uci, score, mate }) => ({ uci, score, mate })),
             },
           }
@@ -604,8 +626,7 @@ export function OnlineMatchBoard({
     !!analysis.analysis?.complete;
   const show = (group: "best" | "worst") => {
     if (!canShowSuggestions(group) || !analysis.analysis?.complete) return;
-    const moves = analysis.analysis[group]
-      .slice(0, 3)
+    const moves = limitRankedLists(analysis.analysis)[group]
       .map(({ uci, score, mate }) => ({ uci, score, mate }));
     perform({ kind: "suggest", group, moves, position });
     void getSfxEngine().playAnalysisWhistle(group === "best" ? "up" : "down");
@@ -1394,6 +1415,7 @@ export function OnlineMatchBoard({
               activeSquares={music.activeSquares}
               teamMixes={music.teamMixes}
               analysisArrows={movePreview ? [] : arrows}
+              squareEggs={movePreview ? [] : squareEggs}
               showRankedMoveMarks={false}
             />
           </div>

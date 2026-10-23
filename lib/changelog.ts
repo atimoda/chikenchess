@@ -17,8 +17,12 @@ export const CHANGELOG = [
       ] },
       { title: 'Partida', items: [
         'Freeze e Shield agora podem ser usados no máximo uma vez cada por turno, na campanha e no online.',
+        'Ao mostrar Best ou Worst moves, as casas destino das setas mostram os golden eggs que valem ali. Eles ficam 3 segundos a mais que as setas e qualquer peça que for para aquela casa enquanto estiverem visíveis ganha esses ovos.',
+        'Com poucos lances disponíveis, as listas de Best e Worst ficam menores: 3 de cada com 12 ou mais lances, 2 com 8 a 11 e 1 com menos de 8. Isso evita ganhar ovos quase sempre no fim da partida.',
+        'Cada lado ganha no máximo 12 golden eggs por lances ranqueados numa partida.',
       ] },
       { title: 'Debug', items: [
+        'O Admin ganhou o catálogo Recompensas de ovos, para editar o teto de ovos, o tamanho das listas e o tempo extra dos ovos nas casas.',
         'O Bot Control ganhou os campos dos novos critérios: Poderes (N, P, Q), Freeze (Y, Z), Shield (T, R) e Worst (W, V, O, K).',
       ] },
     ],

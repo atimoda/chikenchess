@@ -78,6 +78,18 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       if (new Set(result.map(item => item.id)).size !== result.length) throw new Error('IDs dos bots não podem repetir.')
       break
     }
+    case 'egg-rewards': {
+      const tier = z.object({ minLegalMoves: finite.int().min(0).max(256), moves: finite.int().min(0).max(10) }).strict()
+      const result = z.object({
+        maxMatchEggs: finite.int().min(1).max(999),
+        rankedMovesByLegalMoves: z.array(tier).min(1).max(16),
+        squareEggsExtraSeconds: finite.min(0).max(30),
+      }).strict().parse(value)
+      const minimums = result.rankedMovesByLegalMoves.map(item => item.minLegalMoves)
+      if (new Set(minimums).size !== minimums.length) throw new Error('Cada faixa precisa de um número mínimo de lances diferente.')
+      if (!minimums.includes(0)) throw new Error('Inclua uma faixa com minLegalMoves 0, para posições com poucos lances.')
+      break
+    }
     case 'names': {
       const words = z.array(z.string().min(1).max(12).refine(word => word === word.trim() && !hasControl(word), 'Termo inválido ou com espaços nas extremidades.')).min(1).max(5000).superRefine((items, ctx) => {
         if (new Set(items).size !== items.length) ctx.addIssue({ code: 'custom', message: 'Remova os termos repetidos nesta categoria.' })

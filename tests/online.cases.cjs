@@ -247,6 +247,29 @@ test('Each team applies Freeze and Shield at most once per turn, rejected before
     assert.equal(s.eggs[opponent], 7, 'the other team keeps its own allowance')
   }
 })
+test('Suggested destination squares pay any own piece until the eggs fade, and match eggs stop at 12', () => {
+  let s = createMatchState()
+  s.eggs.w = 5
+  const best = [{ uci: 'g1f3', score: 30 }, { uci: 'e2e4', score: 20 }, { uci: 'd2d4', score: 10 }]
+  s = command(s, 'w', { kind: 'suggest', group: 'best', position: matchPosition(s), moves: best }, 1000)
+  assert.equal(s.suggestions.moves.length, 3, 'the opening has 20 moves: three rewarded suggestions')
+  assert.equal(s.eggs.w, 4)
+  // Arrows last until 4000; the eggs stay 3 seconds more.
+  const late = command(s, 'w', { kind: 'move', from: 'g2', to: 'g3' }, 6500)
+  assert.equal(late.eggs.w, 4, 'g3 was never suggested')
+  const anyPiece = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 6900)
+  assert.equal(anyPiece.eggs.w, 5, 'the f-pawn lands on the suggested f3 square and earns the Best egg')
+  assert.equal(anyPiece.actions.at(-1).reward, 'best')
+  const expired = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 7100)
+  assert.equal(expired.eggs.w, 4, 'after the eggs fade only the exact seen move pays')
+
+  let capped = move(createMatchState(), 'w', 'e2', 'e4', 'worst')
+  capped.eggs.w = 11
+  capped = move(capped, 'b', 'e7', 'e5')
+  capped = move(capped, 'w', 'g1', 'f3', 'worst')
+  assert.equal(capped.eggs.w, 12, 'a 3-egg reward fills the balance only up to 12')
+  assert.equal(capped.collected.w, 4)
+})
 test('streaks double from the third eligible own move, opponent does not interrupt', () => {
   let s = move(createMatchState(), 'w', 'e2', 'e4', 'best')
   s = move(s, 'b', 'e7', 'e5')

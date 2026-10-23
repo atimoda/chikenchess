@@ -307,3 +307,38 @@ test('suggestions are temporary copied snapshots scoped to a valid player positi
   assert.equal(rankedMoveRewardDetails({ ...seen[0].analysis, legalMoves: 1 }, 'before', 'e2e4', seen), null)
   assert.deepEqual(rememberMoveSuggestions(seen, { kind: 'best', analysis: { ...seen[0].analysis, complete: false } }), seen)
 })
+
+test('rewarded Best/Worst lists shrink with the number of legal moves and eggs never pass the match cap', () => {
+  const { rankedMovesPerList, limitRankedLists, cappedMatchEggs, EGG_REWARDS } = loadTs('lib/egg-rewards.ts')
+  assert.deepEqual([40, 12, 11, 8, 7, 4, 3, 2].map(count => rankedMovesPerList(count)), [3, 3, 2, 2, 1, 1, 1, 1])
+  const moves = ['a', 'b', 'c'].map((uci, index) => ({ uci, score: -index * 50, mate: null }))
+  const limited = limitRankedLists({ legalMoves: 9, best: moves, worst: moves })
+  assert.deepEqual(limited.best.map(move => move.uci), ['a', 'b'])
+  assert.equal(EGG_REWARDS.maxMatchEggs, 12)
+  assert.equal(cappedMatchEggs(5, 3), 3)
+  assert.equal(cappedMatchEggs(11, 3), 1)
+  assert.equal(cappedMatchEggs(12, 6), 0)
+  assert.equal(cappedMatchEggs(20, 1), 0, 'a balance above the cap keeps its eggs and earns none')
+
+  const analysis = { fen: 'before', side: 'w', legalMoves: 5, complete: true, final: true,
+    best: [{ uci: 'e2e4', score: 30, mate: null }, { uci: 'd2d4', score: 20, mate: null }],
+    worst: [{ uci: 'f2f3', score: -300, mate: null }, { uci: 'g2g4', score: -250, mate: null }] }
+  assert.equal(rankedMoveReward(analysis, 'before', 'e2e4'), 'best')
+  assert.equal(rankedMoveReward(analysis, 'before', 'd2d4'), null, 'with 5 moves only the top Best pays')
+  assert.equal(rankedMoveReward(analysis, 'before', 'g2g4'), null)
+  assert.equal(rankedMoveReward({ ...analysis, legalMoves: 2 }, 'before', 'f2f3'), 'worst')
+})
+
+test('eggs on a shown destination square pay any piece that lands there', () => {
+  const { squareMoveRewardDetails, squareEggTargets } = loadTs('lib/chess-evaluation.ts')
+  const analysis = { fen: 'before', side: 'w', legalMoves: 20, complete: true, final: true,
+    best: [{ uci: 'g1f3', score: 30, mate: null }, { uci: 'e2e4', score: -150, mate: null }],
+    worst: [{ uci: 'h2h4', score: -300, mate: null }] }
+  const shown = { kind: 'best', analysis }
+  assert.deepEqual(squareEggTargets(shown), [{ square: 'f3', kind: 'best' }, { square: 'e4', kind: 'worst' }])
+  assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'g2f3'), { kind: 'best', comeback: false }, 'another piece on f3 earns the Best eggs')
+  assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'd3e4'), { kind: 'worst', comeback: true })
+  assert.equal(squareMoveRewardDetails(shown, 'before', 'h2h4'), null, 'a square from the other, unseen group pays nothing here')
+  assert.equal(squareMoveRewardDetails(shown, 'after', 'g2f3'), null)
+  assert.equal(squareMoveRewardDetails(null, 'before', 'g2f3'), null)
+})
