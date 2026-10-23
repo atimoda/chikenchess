@@ -571,87 +571,87 @@
     "sections": [
       {
         "id": "section-a",
-        "label": "A",
+        "label": "Intro",
         "beats": 24
       },
       {
         "id": "section-b",
-        "label": "B",
+        "label": "Intro",
         "beats": 48
       },
       {
         "id": "section-c",
-        "label": "C",
+        "label": "Verse",
         "beats": 48
       },
       {
         "id": "section-d",
-        "label": "D",
+        "label": "Hook",
         "beats": 24
       },
       {
         "id": "section-e",
-        "label": "E",
+        "label": "Verse",
         "beats": 24
       },
       {
         "id": "section-f",
-        "label": "F",
+        "label": "Hook",
         "beats": 24
       },
       {
         "id": "section-g",
-        "label": "G",
+        "label": "Verse",
         "beats": 24
       },
       {
         "id": "section-h",
-        "label": "H",
+        "label": "Chorus",
         "beats": 24
       },
       {
         "id": "section-i",
-        "label": "I",
+        "label": "Chorus",
         "beats": 24
       },
       {
         "id": "section-j",
-        "label": "J",
+        "label": "Bridge",
         "beats": 48
       },
       {
         "id": "section-k",
-        "label": "K",
+        "label": "Verse",
         "beats": 24
       },
       {
         "id": "section-l",
-        "label": "L",
+        "label": "Break",
         "beats": 8
       },
       {
         "id": "section-m",
-        "label": "M",
+        "label": "Verse",
         "beats": 48
       },
       {
         "id": "section-n",
-        "label": "N",
+        "label": "Chorus",
         "beats": 24
       },
       {
         "id": "section-o",
-        "label": "O",
+        "label": "Chorus",
         "beats": 24
       },
       {
         "id": "section-p",
-        "label": "P",
+        "label": "Outro",
         "beats": 24
       },
       {
         "id": "section-q",
-        "label": "Q",
+        "label": "Outro",
         "beats": 24
       }
     ]

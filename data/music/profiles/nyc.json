@@ -13,6 +13,14 @@
     16,
     32
   ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Break",
+    "Chorus",
+    "Interlude",
+    "Chorus"
+  ],
   "parts": [
     {
       "role": "bass",

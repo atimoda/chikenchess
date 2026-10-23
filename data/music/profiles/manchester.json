@@ -13,6 +13,14 @@
     16,
     32
   ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Break",
+    "Drop",
+    "Interlude",
+    "Drop"
+  ],
   "parts": [
     {
       "role": "rhythm",

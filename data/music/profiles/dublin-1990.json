@@ -14,6 +14,14 @@
     8,
     16
   ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Interlude",
+    "Chorus",
+    "Solo",
+    "Chorus"
+  ],
   "parts": [
     {
       "role": "melody",

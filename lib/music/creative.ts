@@ -1,11 +1,13 @@
 import { METER_IDS } from './meter'
 import { arrangementSchema, pieceArrangementSchema, migrateGlobalArrangement, DEFAULT_ARRANGEMENT, pieceSection, type Arrangement } from './arrangement'
+import { STYLE_PROFILES } from './kit-profiles/catalog'
 import { pianoRollSchema } from './piano-roll'
 import { z } from 'zod'
 import { DEFAULT_MOVEMENT, instrumentFor, piecesFromHistory } from './model'
 import type { MusicSnapshot } from './runtime-types'
 import { sampleAsset } from './sample-banks'
 import dusseldorfMidi from '../../public/presets/dusseldorf-original.json'
+import manchesterJazz from '../../public/presets/manchester-1999.json'
 import { defaultReactions, isLegacyReactionPreset, REACTION_PRESET_REVISION, reactionsSchema } from './reactions'
 import { HARMONY_PLAN_IDS } from './harmony'
 
@@ -162,7 +164,20 @@ export function parseCreativeSession(text: string): CreativeSession {
     if (data.arrangement?.sections?.some((section: { harmony?: number[] }) => section.harmony?.length)) data.harmony = 'kit'
     data.version = 7
   }
+  restoreCatalogSectionTypes(data)
   return creativeSchema.parse(data)
+}
+
+// Kits saved before the closed section vocabulary carry automatic letters. Sections
+// still matching a catalog id recover the curated type; other text is normalized by the schema.
+function restoreCatalogSectionTypes(data: Record<string, any>) {
+  const catalog: { id: string; label: string }[] | undefined = data?.cityId === manchesterJazz.cityId ? manchesterJazz.arrangement.sections
+    : STYLE_PROFILES[data?.cityId]?.sectionLabels?.map((label, index) => ({ id: `section-${String.fromCharCode(97 + index)}`, label }))
+  for (const section of data?.arrangement?.sections ?? []) {
+    if (typeof section?.label !== 'string' || !/^[A-Z]$/.test(section.label)) continue
+    const match = catalog?.find(item => item.id === section.id)
+    if (match) section.label = match.label
+  }
 }
 
 /** Stable identities keep piece assignments attached when sections move or rename. */
