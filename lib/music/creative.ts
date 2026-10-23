@@ -8,7 +8,7 @@ import type { MusicSnapshot } from './runtime-types'
 import { sampleAsset } from './sample-banks'
 import dusseldorfMidi from '../../public/presets/dusseldorf-original.json'
 import manchesterJazz from '../../public/presets/manchester-1999.json'
-import { defaultReactions, isLegacyReactionPreset, REACTION_PRESET_REVISION, reactionsSchema } from './reactions'
+import { kitReactionsSchema, migrateKitReactions, REACTION_PRESET_REVISION } from './reactions'
 import { HARMONY_PLAN_IDS } from './harmony'
 
 export const SOUNDS = ['sbd', 'sine', 'triangle', 'square', 'sawtooth', 'supersaw', 'white', 'pink', 'brown'] as const
@@ -57,7 +57,7 @@ const pieceSchema = z.object({
   type: z.enum(['p', 'n', 'b', 'r', 'q', 'k']), color: z.enum(['w', 'b']), active: z.boolean(),
 })
 export const creativeSchema = z.object({
-  reactions: reactionsSchema,
+  reactions: kitReactionsSchema,
   reactionPresetRevision: z.string().max(80).default(REACTION_PRESET_REVISION),
   harmony: z.enum(HARMONY_PLAN_IDS).default('kit'),
   catalogRevision: z.string().max(80).optional(),
@@ -141,14 +141,9 @@ export function parseCreativeSession(text: string): CreativeSession {
       instrument.pianoRolls = Array.from({ length: count }, (_, index) => instrument.pianoRolls?.[index] ?? fallback[index % fallback.length])
     }
   }
-  // Replace old factory presets; authored rules win while missing triggers gain defaults.
-  if (data?.reactionPresetRevision !== REACTION_PRESET_REVISION) {
-    if (!data?.reactions || isLegacyReactionPreset(data.reactions)) {
-      data.reactions = { minimumPieces: data?.reactions?.minimumPieces ?? 4, rules: defaultReactions() }
-    } else {
-      const configured = new Set((data.reactions.rules ?? []).map((rule:{trigger?:string})=>rule.trigger))
-      data.reactions.rules = [...(data.reactions.rules ?? []), ...defaultReactions().filter(rule=>!configured.has(rule.trigger))]
-    }
+  // Kits from before the global set stored every rule; keep only what was authored.
+  if (data && (!data.reactions || !Array.isArray(data.reactions.overrides))) {
+    data.reactions = migrateKitReactions(data.reactions, data.reactionPresetRevision)
     data.reactionPresetRevision = REACTION_PRESET_REVISION
   }
   // Repair the old factory timeline: <...> already spans 16 cycles; /16

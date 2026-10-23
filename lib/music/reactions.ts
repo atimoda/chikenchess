@@ -2,39 +2,48 @@ import { Chess } from 'chess.js'
 import { z } from 'zod'
 import type { MusicSnapshot } from './runtime-types'
 import { HARMONY_PLANS, HARMONY_PLAN_IDS, type HarmonyPlanId } from './harmony'
+import officialGlobalReactions from '../../data/music/reactions.json'
+import { SCALE_SHIFTS, SCALE_SHIFT_IDS, seededIndex, shiftScale } from './scale-shift'
 
 export const STATES = {
-  opening: 'Opening (up to 20 half-moves)', middle: 'Middlegame', endgame: 'Endgame (up to 10 pieces)',
+  opening: 'Opening (first 20 plies)', middle: 'Middlegame', endgame: 'Endgame (≤ 10 pieces)',
   check: 'Check', mate: 'Checkmate', stalemate: 'Stalemate', repetition: 'Threefold repetition',
-  insufficient: 'Insufficient material', draw: '50-move rule', advantage: 'Material advantage (≥ 5 points)',
+  insufficient: 'Insufficient material', draw: '50-move rule', advantage: 'Material advantage (≥ 5)',
 } as const
-export const EVENTS = {
-  firstCastle: 'First castling', secondCastle: 'Second castling', firstCapture: 'First capture', capture: 'Capture',
-  queenCapture: 'Queen capture', noQueens: 'No queens left', noKnights: 'All knights of one side captured',
-  noRooks: 'All rooks of one side captured', noBishops: 'All bishops of one side captured',
+export const BOARD_EVENTS = {
+  firstCastle: 'First castle', secondCastle: 'Second castle', firstCapture: 'First capture', capture: 'Capture',
+  queenCapture: 'Queen capture', noQueens: 'No queens left', noKnights: 'Side lost all knights',
+  noRooks: 'Side lost all rooks', noBishops: 'Side lost all bishops',
   promotion: 'Promotion', underpromotion: 'Underpromotion', enPassant: 'En passant',
-  minimumOne: 'Minimum setup on one side', minimumBoth: 'Minimum setup on both sides',
-  quiet: '10 half-moves without capture or pawn move', checkEscape: 'Check escape',
+  minimumOne: 'Minimum force (one side)', minimumBoth: 'Minimum force (both sides)',
+  quiet: '10 quiet plies', checkEscape: 'Check escape',
 } as const
+/** chickenchess actions: powers, Mulligan and Best/Worst hints, recorded by the match itself. */
+export const POWER_EVENTS = {
+  freeze: 'Freeze applied', shield: 'Shield applied', mulligan: 'Mulligan',
+  seeBest: 'Best moves shown', seeWorst: 'Worst moves shown', playBest: 'Best move played', playWorst: 'Worst move played',
+} as const
+export const EVENTS = { ...BOARD_EVENTS, ...POWER_EVENTS }
 export const TRIGGERS = { ...STATES, ...EVENTS }
 export type Trigger = keyof typeof TRIGGERS
 export type Occurrence = { trigger: Trigger; color: 'w' | 'b'; ply: number }
 export interface ReactionContext { ply: number; states: Occurrence[]; events: Occurrence[] }
-export const ACTIONS = { transpose: 'Transpose (semitones; 2 = 1 whole tone)', bpm: 'Change BPM (%)', scale: 'Switch parallel scale', relative: 'Relative major/minor', mode: 'Modal rotation (degrees)', harmony: 'Switch harmonic plan', invert: 'Invert melodic contour', variation: 'Force variation (0=A, 1=B…)', gain: 'Change gain (%)', lpf: 'Low-pass filter (Hz)', activate: 'Activate band' } as const
+export const ACTIONS = { transpose: 'Transpose', bpm: 'Tempo', scale: 'Fixed scale', scaleShift: 'Scale change', relative: 'Relative major/minor', mode: 'Modal rotation', harmony: 'Harmony plan', invert: 'Invert melody', variation: 'Force variation', gain: 'Gain', lpf: 'Low-pass filter', activate: 'Activate band' } as const
 export { SCALE_INTERVALS, SCALE_LABELS } from './scales'
-import { SCALE_INTERVALS, SCALE_LABELS } from './scales'
+import { SCALE_INTERVALS, identifyPitchCollection } from './scales'
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
-export const actionSchema = z.object({ type: z.enum(keys(ACTIONS)), rampBars: z.number().int().min(0).max(16).optional(), value: z.number().finite().min(-100).max(20000).default(0), scale: z.enum(keys(SCALE_INTERVALS)).default('Maior'), harmony: z.enum(HARMONY_PLAN_IDS).default('static') }).superRefine((a, ctx) => {
-  const limits: Record<keyof typeof ACTIONS, [number, number]> = { transpose: [-12,12], bpm: [-30,30], scale: [0,0], relative:[0,0], mode:[0,11], harmony:[0,0], invert:[0,0], variation:[0,7], gain:[-100,100], lpf:[20,20000], activate:[0,0] }
+export const actionSchema = z.object({ type: z.enum(keys(ACTIONS)), rampBars: z.number().int().min(0).max(16).optional(), value: z.number().finite().min(-100).max(20000).default(0), scale: z.enum(keys(SCALE_INTERVALS)).default('Maior'), harmony: z.enum([...HARMONY_PLAN_IDS, 'random'] as [HarmonyPlanId | 'random', ...(HarmonyPlanId | 'random')[]]).default('static'), shift: z.enum(SCALE_SHIFT_IDS).optional() }).superRefine((a, ctx) => {
+  const limits: Record<keyof typeof ACTIONS, [number, number]> = { transpose: [-12,12], bpm: [-30,30], scale: [0,0], scaleShift: [0,0], relative:[0,0], mode:[0,11], harmony:[0,0], invert:[0,0], variation:[0,7], gain:[-100,100], lpf:[20,20000], activate:[0,0] }
   const [lo,hi]=limits[a.type]
   if(a.value<lo || a.value>hi || (['transpose','mode','variation'].includes(a.type) && !Number.isInteger(a.value))) ctx.addIssue({code:'custom',message:'Value outside the action’s limit.'})
 })
 export const reactionSchema = z.object({ id: z.string().min(1).max(80), trigger: z.enum(keys(TRIGGERS)), enabled: z.boolean(), quantize: z.boolean().default(false), target: z.enum(['both','w','b','actor','opponent']), duration: z.number().int().min(0).max(32), actions: z.array(actionSchema).max(12) })
 export type Reaction = z.infer<typeof reactionSchema>
-const action=(type:keyof typeof ACTIONS,value=0,scale:keyof typeof SCALE_INTERVALS='Maior',rampBars?:number,harmony:HarmonyPlanId='static')=>({type,value,scale,harmony,...(rampBars===undefined?{}:{rampBars})})
+const action=(type:keyof typeof ACTIONS,value=0,scale:keyof typeof SCALE_INTERVALS='Maior',rampBars?:number,harmony:HarmonyPlanId|'random'='static')=>({type,value,scale,harmony,...(rampBars===undefined?{}:{rampBars})})
 const legacyCheckRule=():Reaction=>({id:'check-band',trigger:'check',enabled:true,quantize:false,target:'actor',duration:1,actions:[action('activate')]})
-export const REACTION_PRESET_REVISION='reactions-2026-09-20-v3'
-export const defaultReactions = (): Reaction[] => [
+export const REACTION_PRESET_REVISION='reactions-2026-10-23-global-v2'
+/** Frozen copy of the last per-kit factory preset; only migrations compare against it. */
+export const legacyFactoryReactions = (): Reaction[] => [
   {id:'check-band',trigger:'check',enabled:true,quantize:false,target:'actor',duration:1,actions:[action('activate'),action('gain',6)]},
   {id:'phase-opening',trigger:'opening',enabled:true,quantize:true,target:'both',duration:1,actions:[action('gain',-8)]},
   {id:'phase-middle',trigger:'middle',enabled:true,quantize:true,target:'both',duration:1,actions:[action('gain',3)]},
@@ -62,14 +71,93 @@ export const defaultReactions = (): Reaction[] => [
   {id:'event-quiet',trigger:'quiet',enabled:true,quantize:true,target:'both',duration:2,actions:[action('lpf',2400),action('gain',-10)]},
   {id:'event-check-escape',trigger:'checkEscape',enabled:true,quantize:false,target:'actor',duration:1,actions:[action('gain',5)]},
 ]
-export const reactionsSchema = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(80).default(defaultReactions) }).default({ minimumPieces:4,rules:defaultReactions() })
+const baseReactionsSchema = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(80) })
+/** Official global set (data/music/reactions.json, editable in Admin). */
+export const defaultReactions = (): Reaction[] => baseReactionsSchema.parse(officialGlobalReactions).rules
+export const defaultGlobalReactions = (): Reactions => baseReactionsSchema.parse(officialGlobalReactions)
+export const reactionsSchema = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(80).default(defaultReactions) }).default(()=>defaultGlobalReactions())
+/** Resolved rule set: the global set with the kit's overridden triggers swapped in. */
 export type Reactions = z.infer<typeof reactionsSchema>
+
+/** A kit stores only what differs from the global set: whole triggers it owns, plus an optional threshold. */
+export const kitReactionsSchema = z.object({
+  minimumPieces: z.number().int().min(2).max(15).optional(),
+  overrides: z.array(z.enum(keys(TRIGGERS))).max(Object.keys(TRIGGERS).length).default([]),
+  rules: z.array(reactionSchema).max(80).default([]),
+}).transform(kit => {
+  const overrides = [...new Set(kit.overrides)]
+  return { ...kit, overrides, rules: kit.rules.filter(rule => overrides.includes(rule.trigger)) }
+}).default({ overrides: [], rules: [] })
+export type KitReactions = z.infer<typeof kitReactionsSchema>
+
+/** Keeps the global order; an overridden trigger takes the slot of its first global rule. */
+export function resolveReactions(global: Reactions, kit: KitReactions | undefined): Reactions {
+  if (!kit) return global
+  const owned = new Set(kit.overrides), placed = new Set<Trigger>(), rules: Reaction[] = []
+  for (const rule of global.rules) {
+    if (!owned.has(rule.trigger)) { rules.push(rule); continue }
+    if (placed.has(rule.trigger)) continue
+    placed.add(rule.trigger)
+    rules.push(...kit.rules.filter(item => item.trigger === rule.trigger))
+  }
+  rules.push(...kit.rules.filter(rule => !placed.has(rule.trigger)))
+  return { minimumPieces: kit.minimumPieces ?? global.minimumPieces, rules }
+}
+
+/** Start a kit override from the current global rules, so editing begins from what plays now. */
+export function overrideTrigger(kit: KitReactions, global: Reactions, trigger: Trigger): KitReactions {
+  if (kit.overrides.includes(trigger)) return kit
+  return { ...kit, overrides: [...kit.overrides, trigger], rules: [...kit.rules, ...global.rules.filter(rule => rule.trigger === trigger).map(rule => ({ ...rule, actions: rule.actions.map(action => ({ ...action })) }))] }
+}
+export function inheritTrigger(kit: KitReactions, trigger: Trigger): KitReactions {
+  return { ...kit, overrides: kit.overrides.filter(item => item !== trigger), rules: kit.rules.filter(rule => rule.trigger !== trigger) }
+}
+
+const comparable = (rules: Reaction[], harmony = true) => JSON.stringify(rules.map(rule => ({ ...rule, actions: rule.actions.filter(action => harmony || action.type !== 'harmony').map(action => ({ type: action.type, value: action.value, scale: action.scale, ...(harmony ? { harmony: action.harmony } : {}), ...(action.rampBars === undefined ? {} : { rampBars: action.rampBars }) })) })))
+/**
+ * Kits saved before the global set carried a full rule list. Triggers still equal to
+ * the old factory preset follow the global set; authored triggers become overrides.
+ * A trigger missing from a current-revision kit was deleted on purpose (silenced).
+ */
+export function migrateKitReactions(raw: unknown, revision: unknown): KitReactions {
+  const parsed = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(80).default([]) }).safeParse(raw)
+  if (!parsed.success || isLegacyReactionPreset(parsed.data)) {
+    const minimum = parsed.success ? parsed.data.minimumPieces : 4
+    return { overrides: [], rules: [], ...(minimum === 4 ? {} : { minimumPieces: minimum }) }
+  }
+  const { minimumPieces, rules } = parsed.data
+  const factory = legacyFactoryReactions(), overrides: Trigger[] = []
+  // Power events did not exist before the global set, so old kits never authored them.
+  for (const trigger of [...Object.keys(STATES), ...Object.keys(BOARD_EVENTS)] as Trigger[]) {
+    const mine = rules.filter(rule => rule.trigger === trigger), stock = factory.filter(rule => rule.trigger === trigger)
+    if (!mine.length) { if (revision === 'reactions-2026-09-20-v3') overrides.push(trigger); continue }
+    if (comparable(mine) === comparable(stock) || comparable(mine, false) === comparable(stock, false)) continue
+    overrides.push(trigger)
+  }
+  return { overrides, rules: rules.filter(rule => overrides.includes(rule.trigger)), ...(minimumPieces === 4 ? {} : { minimumPieces }) }
+}
 export function isLegacyReactionPreset(value:unknown){
   const parsed=reactionsSchema.safeParse(value)
   if(!parsed.success)return false
   if(parsed.data.rules.length===1&&JSON.stringify(parsed.data.rules[0])===JSON.stringify(legacyCheckRule()))return true
   const withoutHarmony=(rules:Reaction[])=>rules.map(rule=>({id:rule.id,trigger:rule.trigger,enabled:rule.enabled,quantize:rule.quantize,target:rule.target,duration:rule.duration,actions:rule.actions.filter(action=>action.type!=='harmony').map(action=>({type:action.type,value:action.value,scale:action.scale,...(action.rampBars===undefined?{}:{rampBars:action.rampBars})}))}))
-  return JSON.stringify(withoutHarmony(parsed.data.rules))===JSON.stringify(withoutHarmony(defaultReactions()))
+  return JSON.stringify(withoutHarmony(parsed.data.rules))===JSON.stringify(withoutHarmony(legacyFactoryReactions()))
+}
+const signed=(n:number)=>`${n>0?'+':n<0?'−':'±'}${Math.abs(n)}`
+/** Short human summary shared by the editor rows and the active-influence list. */
+export function actionSummary(action: Reaction['actions'][number]) {
+  switch(action.type){
+    case 'transpose': return `Transpose ${signed(action.value)} st`
+    case 'bpm': return `Tempo ${signed(action.value)}%${action.rampBars?` over ${action.rampBars} bar${action.rampBars===1?'':'s'}`:''}`
+    case 'scale': return `Scale → ${SCALE_LABELS[action.scale]} (fixed)`
+    case 'harmony': return action.harmony==='random'?'Harmony → random plan':`Harmony → ${HARMONY_PLANS[action.harmony].label}`
+    case 'scaleShift': return `Scale → ${SCALE_SHIFTS[action.shift??'relative'].replace(/ \(.*\)$/,'').toLowerCase()}`
+    case 'mode': return `Modal rotation ${signed(action.value)}`
+    case 'variation': return `Variation ${String.fromCharCode(65+action.value)}`
+    case 'gain': return `Gain ${signed(action.value)}%`
+    case 'lpf': return `Low-pass ${action.value} Hz`
+    default: return ACTIONS[action.type]
+  }
 }
 const other = (c:'w'|'b') => c==='w'?'b':'w'
 
@@ -121,6 +209,11 @@ export function reactionContextFromGame(chess:Chess, minimum=4, positions:readon
   if(Math.abs(diff)>=5)add('advantage',diff>0?'w':'b')
   return {ply,states,events}
 }
+/** Merge recorded match actions into the board ledger; occurrences after the current ply (undone) are dropped. */
+export function withActionEvents(context: ReactionContext, actions: readonly Occurrence[] = []): ReactionContext {
+  const current = actions.filter(action => action.ply <= context.ply)
+  return current.length ? { ...context, events: [...context.events, ...current].sort((a, b) => a.ply - b.ply) } : context
+}
 const pitchNames=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
 const pc=(note:string)=>{const m=/^([A-G])([#b]?)/i.exec(note)!; return (({C:0,D:2,E:4,F:5,G:7,A:9,B:11}[m[1].toUpperCase()]!)+(m[2]==='#'?1:m[2]==='b'?-1:0)+12)%12}
 const note=(n:number)=>pitchNames[((n%12)+12)%12]+'4'
@@ -137,16 +230,34 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
     if(!hit)continue
     const color=rule.target==='actor'?hit.color:rule.target==='opponent'?other(hit.color):rule.target
     const ids=result.pieces.filter(p=>color==='both'||p.color===color).map(p=>p.id)
-    for(const action of rule.actions){
-      const root=pc(result.scale[0])
+    for(const [index,action] of rule.actions.entries()){
+      const root=pc(result.scale[0]), seed=`${rule.id}|${hit.trigger}|${hit.color}|${hit.ply}|${index}`
+      // Tonic moves keep the register: compensate the octave when the pitch class wraps past C.
+      const keepRegister=(move:number)=>{const octaves=Math.floor((root+move)/12);if(octaves)for(const piece of result.pieces){const inst=result.instruments[piece.id],fx=result.effects[piece.id];if(inst&&fx&&!(inst.source?.kind==='sample'&&!inst.source.pitched))fx.pitch*=2**octaves}}
       if(action.type==='bpm') result.bpm=Math.max(30,Math.min(240,result.bpm*(1+action.value/100)))
       else if(action.type==='scale')result.scale=SCALE_INTERVALS[action.scale].map(n=>note(root+n))
-      else if(action.type==='harmony'){result.harmony=action.harmony}
+      else if(action.type==='scaleShift'){
+        const shifted=shiftScale(result.scale,action.shift??'relative',seed)
+        if(shifted.skipped){descriptions.push(`${TRIGGERS[rule.trigger]} → scale change skipped: ${shifted.skipped}.`);continue}
+        result.scale=shifted.scale
+        if(shifted.rootMove)keepRegister(shifted.rootMove)
+        descriptions.push(`${TRIGGERS[rule.trigger]} → ${SCALE_SHIFTS[shifted.applied].replace(/ \(.*\)$/,'')}: ${identifyPitchCollection(result.scale).root} ${identifyPitchCollection(result.scale).label}`)
+        continue
+      }
+      else if(action.type==='harmony'){
+        if(action.harmony!=='random')result.harmony=action.harmony
+        else{
+          const options=HARMONY_PLAN_IDS.filter(id=>id!=='kit'&&id!=='static'&&id!==result.harmony)
+          result.harmony=options[seededIndex(seed,options.length)]
+          descriptions.push(`${TRIGGERS[rule.trigger]} → Harmony → ${HARMONY_PLANS[result.harmony].label} (random)`)
+          continue
+        }
+      }
       else if(action.type==='relative'){
         const intervals=result.scale.map(n=>(pc(n)-root+12)%12).join(',')
         if(intervals===SCALE_INTERVALS.Maior.join(','))result.scale=SCALE_INTERVALS['Menor natural'].map(n=>note(root+9+n))
         else if(intervals===SCALE_INTERVALS['Menor natural'].join(','))result.scale=SCALE_INTERVALS.Maior.map(n=>note(root+3+n))
-        else {descriptions.push('Relativa ignorada: requer maior ou menor natural.');continue}
+        else {descriptions.push('Relative skipped: needs a major or natural minor scale.');continue}
       } else if(action.type==='mode') {const offset=action.value%result.scale.length;result.scale=[...result.scale.slice(offset),...result.scale.slice(0,offset)]}
       else if(action.type==='transpose'&&color==='both'){
         result.scale=result.scale.map(n=>note(pc(n)+action.value))
@@ -166,7 +277,7 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         if(action.type==='lpf') {result.instruments[id]={...inst,lpf:action.value,lpfRange:undefined};if(fx)fx.lpf=action.value}
         if(action.type==='invert'&&inst.behavior!=='pulse'){result.instruments[id]={...inst,pianoRolls:inst.pianoRolls.map(roll=>({...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}))}}
       }
-      descriptions.push(`${TRIGGERS[rule.trigger]} → ${ACTIONS[action.type]} ${action.type==='scale'?SCALE_LABELS[action.scale]:action.type==='harmony'?HARMONY_PLANS[action.harmony].label:action.value || ''}`)
+      descriptions.push(`${TRIGGERS[rule.trigger]} → ${actionSummary(action)}`)
     }
   }
   for(const fx of Object.values(result.effects))fx.pitch=Math.max(.125,Math.min(8,fx.pitch))

@@ -11,7 +11,8 @@ import { creativeSchema, scaleForCreativeSession, type CreativeSession } from '@
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
 import { createTeamMixes, TEAM_GAIN_MAX, type TeamMix } from '@/lib/music/team-mixer'
 import type { HarmonyPlanId } from '@/lib/music/harmony'
-import { applyReactions, reactionContextFromGame } from '@/lib/music/reactions'
+import { applyReactions, reactionContextFromGame, resolveReactions, withActionEvents, type Occurrence } from '@/lib/music/reactions'
+import { useGlobalReactions } from '@/lib/music/global-reactions'
 import { identifyPitchCollection } from '@/lib/music/scales'
 import type { SampleSource } from '@/lib/music/sample-banks'
 
@@ -19,6 +20,8 @@ export interface UseMusicOptions {
   initialKit?: CreativeSession
   canEditPiece?: (id: string) => boolean
   onPieceChange?: (id: string, instrument: Instrument, effects: SquareEffects | undefined) => void
+  /** Match actions the board cannot show (powers, Mulligan, Best/Worst); later plies are ignored. */
+  actionEvents?: readonly Occurrence[]
 }
 
 export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: number, volume: number, showCode = true, engineActive = true, positions: readonly Chess[] = [], options: UseMusicOptions = {}) {
@@ -38,7 +41,10 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
   const history = useMemo(() => game.history(), [game])
   const gameMusicState = useMemo(() => gameMusicStateFromGame(game), [game, positions])
   const pieces = gameMusicState.pieces
-  const context = useMemo(() => reactionContextFromGame(game, kit?.reactions.minimumPieces, positions), [game, kit?.reactions.minimumPieces, positions])
+  const globalReactions = useGlobalReactions()
+  const reactions = useMemo(() => kit ? resolveReactions(globalReactions, kit.reactions) : null, [globalReactions, kit])
+  const actionEvents = options.actionEvents
+  const context = useMemo(() => withActionEvents(reactionContextFromGame(game, reactions?.minimumPieces, positions), actionEvents), [game, reactions?.minimumPieces, positions, actionEvents])
   const [effects, setEffects] = useState<Record<string, SquareEffects>>(builtInKit?.effects ?? {})
   const effectsRef = useRef(effects)
   effectsRef.current = effects
@@ -70,7 +76,7 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     title: kit ? `${city.name} · ${kit.name}` : city.name,
   }), [pieces, manuallyActiveIds, soloRestoredIds, kit, city.scale, city.name, bpm, volume, playing, effects, teamMixes])
   const [audible, setAudible] = useState<MusicSnapshot | null>(null)
-  const resolved = useMemo(() => kit ? applyReactions(baseSnapshot,kit.reactions,context) : {snapshot:baseSnapshot,descriptions:[]},[baseSnapshot,kit,context])
+  const resolved = useMemo(() => reactions ? applyReactions(baseSnapshot,reactions,context) : {snapshot:baseSnapshot,descriptions:[]},[baseSnapshot,reactions,context])
   const soloIdsList = useMemo(() => [...soloIds], [soloIds])
   const soloSnapshot = useMemo<MusicSnapshot>(() => {
     if (!soloIdsList.length) return resolved.snapshot
@@ -87,7 +93,7 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
       pieces: resolved.snapshot.pieces.map(piece => ({ ...piece, active: soloIds.has(piece.id) })),
     }
   }, [resolved.snapshot, soloIds, soloIdsList])
-  const input = useMemo(() => ({...baseSnapshot,soloIds:soloIdsList.length ? soloIdsList : undefined,reactionInput:kit?{config:kit.reactions,context,scope:city.id}:undefined}),[baseSnapshot,soloIdsList,kit,context,city.id])
+  const input = useMemo(() => ({...baseSnapshot,soloIds:soloIdsList.length ? soloIdsList : undefined,reactionInput:reactions?{config:reactions,context,scope:city.id}:undefined}),[baseSnapshot,soloIdsList,reactions,context,city.id])
   const snapshot: MusicSnapshot = audible ?? soloSnapshot
   const currentPitchCollection = useMemo(() => identifyPitchCollection(snapshot.scale, kit?.scale), [snapshot.scale, kit?.scale])
   const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active && snapshot.instruments?.[p.id]?.loopEnabled !== false).map(p => p.square)), [snapshot.pieces, snapshot.instruments])

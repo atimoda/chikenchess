@@ -18,6 +18,8 @@ Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../GAME_M
 | Salvar kit da fase | Salva o kit associado à cidade no armazenamento local; a próxima partida usa essa configuração |
 | Exportar/importar | JSON v7 com rolls MIDI, fontes, comportamento, arranjo global e atribuições por peça; schema e compilação Strudel são validados |
 
+Tônica, Escala, Harmonia e BPM do transporte mostram, destacados em dourado, os valores que estão tocando quando uma regra de Estados e Eventos os altera (o BPM aparece no rótulo, o knob continua no valor-base); escolher um valor sempre edita a base do kit.
+
 Não há ainda catálogo oficial em servidor, inventário online ou sincronização automática entre dispositivos. Armazenamento do kit, rascunho criativo e ajustes temporários da partida são camadas distintas.
 
 No Criativo, em desktop, tablet e tela de celular em paisagem, Tabuleiro/Estados e Eventos/Banda ocupam a coluna esquerda, Instrumento a primeira coluna direita e Parâmetros a segunda. A Banda fica no fim da coluna do tabuleiro e mostra diretamente **32 vozes independentes**, sem numeração de painel nem legenda redundante de loop. Cada coluna tem rolagem própria, com barras visuais escondidas (scroll por roda, trackpad e toque preservado); as colunas não têm gap. O seletor de kit ocupa uma faixa inteira acima do transporte. Em celular em retrato, o tabuleiro volta ao topo e os painéis seguem abaixo para preservar a área útil e o toque.
