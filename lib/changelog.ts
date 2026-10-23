@@ -53,6 +53,8 @@ export const CHANGELOG = [
         'No arranjo global, o nome livre da seção virou o dropdown "Tipo de seção", com Intro, Verse, Pre-Chorus, Chorus, Post-Chorus, Hook, Bridge, Interlude, Turnaround, Solo, Drop, Break e Outro. Um mesmo tipo pode aparecer mais de uma vez; o seletor de seção da peça mostra a posição antes do tipo (por exemplo, "4. Chorus").',
         'Todos os kits de cidade e os estudos Manchester 1999, Düsseldorf original e Mouth Breather trocaram as letras A, B, C… por tipos que descrevem o papel de cada seção (por exemplo, Intro, Verse, Break, Drop em kits eletrônicos e Intro, Verse, Pre-Chorus, Chorus, Bridge em pop e rock).',
         'Kits salvos continuam funcionando: letras de kits de cidade recebem o tipo da seção correspondente, nomes como "Refrão" ou "Ponte" são reconhecidos, e outros nomes viram Verse.',
+        'O Criativo ficou bem mais leve: o tabuleiro não fica mais se redesenhando sem parar quando nada acontece, e a lista de kits não reconstrói mais todos os kits de cidade a cada clique. O arraste de peças voltou a ficar fluido e não derruba mais os quadros por segundo.',
+        'Clicar ou segurar uma peça no Criativo volta a tocar a nota dela, e as notas do arraste não falham mais quando a página está ocupada.',
       ] },
       { title: 'Globo', items: [
         'Ao entrar numa cidade pelo globo, a câmera agora mergulha no pin até o círculo interno preencher a tela inteira, antes de abrir a fase.',
@@ -63,6 +65,7 @@ export const CHANGELOG = [
         'Com a música tocando, Piece Params, o piano roll e o Mixer só se atualizam quando algo visível muda; o cursor do piano roll continua andando sem refazer o editor inteiro.',
         'No celular, a engine musical agenda as notas com mais antecedência e usa um buffer de áudio maior, para reduzir os "rasgos" no som quando o aparelho fica ocupado. As ativações de loop podem entrar até cerca de um décimo de segundo mais tarde que antes.',
         'No celular, o Spectrogram atualiza a 15 quadros por segundo, deixando mais folga para a música e os gestos.',
+        'Na partida, a nota de segurar ou arrastar uma peça sai antes de o painel da peça se atualizar, então ela não se perde quando o aparelho está ocupado.',
         'No celular, as duas equipes passam a dividir um único reverb em vez de um para cada, o que corta cerca de um terço do processamento de áudio e reduz os cortes no som. A quantidade de reverb de cada peça não muda; a cauda do reverb agora acompanha os dois lados do crossfader por igual.',
       ] },
       { title: 'Debug', items: [

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Chess, Square } from 'chess.js'
 import type { CityData } from '@/lib/cities-data'
 import type { SquareEffects } from '@/lib/types'
@@ -154,13 +154,17 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     if (!engineActive) return
     const piece = pieces.find(p => p.square === from)
     if (!piece) return
-    setSelectedId(piece.id)
+    // Submit the note first. Superdough drops an attack whose start time passed
+    // while it awaited, and an urgent match render would run before it resumes.
+    runtime.current?.audition(piece.id, to)
     // The runtime owns the live square. Keeping React state stable while the
     // pointer crosses the board avoids rerendering the whole match per note.
-    setPreview(current => current?.id === piece.id && current.mode === 'manual'
-      ? current
-      : { id: piece.id, square: to, mode: 'manual' })
-    runtime.current?.audition(piece.id, to)
+    startTransition(() => {
+      setSelectedId(piece.id)
+      setPreview(current => current?.id === piece.id && current.mode === 'manual'
+        ? current
+        : { id: piece.id, square: to, mode: 'manual' })
+    })
   }, [pieces, engineActive])
   const endAudition = useCallback(() => {
     setPreview(null)
