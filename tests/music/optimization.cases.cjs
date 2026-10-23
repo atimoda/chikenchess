@@ -39,3 +39,26 @@ test('manual reverb cache reuses buffers with fresh tails and invalidates change
  assert.equal(generated,2)
  cache.clear();make().getReverb(2);assert.equal(generated,3)
 })
+
+test('constrained loop buses share one convolver and keep per-bus sends',()=>{
+ const {SharedLoopReverb}=loadTs('lib/music/shared-reverb.ts')
+ const node=kind=>({kind,edges:[],gain:{value:1,setTargetAtTime(v){this.value=v}},connect(t){this.edges.push(t);return t},disconnect(){this.edges=[]}})
+ let reverbs=0,regenerated=0
+ const context={currentTime:0,createGain:()=>node('gain'),createReverb:(duration=2)=>Object.assign(node('reverb'),{id:++reverbs,duration,generate(d){this.duration=d;regenerated++}})}
+ const w=node('w'),b=node('b'),shared=new SharedLoopReverb(context,[w,b])
+ const orbit=()=>{const o={getReverb:()=>assert.fail('Superdough reverb must not be created')};shared.attach(o);return o}
+ const white=orbit(),black=orbit()
+ const whiteSend=white.getReverb(2),blackSend=black.getReverb(2)
+ assert.notEqual(whiteSend,blackSend,'each bus keeps its own send')
+ assert.equal(white.reverbNode,whiteSend,'Superdough routes sendReverb into the bus send')
+ assert.equal(whiteSend.edges[0],blackSend.edges[0],'both sends reach the same convolver')
+ assert.equal(reverbs,1)
+ assert.equal(white.getReverb(2),whiteSend);assert.equal(regenerated,0)
+ black.getReverb(3);assert.equal(regenerated,1,'changed settings regenerate the shared impulse')
+ shared.setLevel(.5)
+ const ret=whiteSend.edges[0].edges[0]
+ assert.equal(ret.gain.value,.5)
+ assert.deepEqual(ret.edges.map(share=>[share.gain.value,share.edges[0]]),[[.5,w],[.5,b]],'tail returns to both team buses equally')
+ const custom=Object.assign(node('custom'),{}),withIr={getReverb:()=>custom};shared.attach(withIr)
+ assert.equal(withIr.getReverb(2,.1,15000,1000,{}),custom,'custom impulse keeps Superdough path')
+})

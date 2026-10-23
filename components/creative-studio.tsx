@@ -1,4 +1,5 @@
 'use client'
+import { stableHtml } from '@/lib/utils'
 import { METER_IDS, meterLabel } from '@/lib/music/meter'
 import { Knob } from './knob'
 import { InstrumentParameters } from './creative/instrument-parameters'
@@ -425,7 +426,7 @@ export function CreativeStudio() {
           <section className={styles.panel}>
             <span className={styles.eyebrow}>Selected Instrument</span>
             <div className={styles.instrumentIdentity}>
-              <span className={styles.instrumentAvatar} aria-hidden="true" dangerouslySetInnerHTML={{ __html: PiecesSVG[`${selected.color}${selected.type.toUpperCase()}` as keyof typeof PiecesSVG] }} />
+              <span className={styles.instrumentAvatar} aria-hidden="true" dangerouslySetInnerHTML={stableHtml(PiecesSVG[`${selected.color}${selected.type.toUpperCase()}` as keyof typeof PiecesSVG])} />
               <div className={styles.instrumentHeading}>
                 <div className={styles.instrumentTitle}>
                   {editingInstrumentName ? <input autoFocus aria-label="Nome do instrumento" maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrumento' })} onBlur={() => setEditingInstrumentName(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur() }} /> : <h2>{instrument.name}</h2>}

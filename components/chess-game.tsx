@@ -1574,7 +1574,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, [activeWidgetOrder, knobsOn, mixerOn, musicEngineOn, panelsFollowPlayerTurn, pieceDebugOn, spectrogramOn])
 
   const { pieceConnections, chainConnections, resizeTick } = useGameWidgetLayout({
-    rootRef, boardAreaRef, boardScale, musicEngineOn,
+    // Connections are hidden on portrait phones; skip measuring them after every move.
+    rootRef, boardAreaRef, boardScale, musicEngineOn: musicEngineOn && !isPortraitMobile,
     selectedSquare: music.selected?.square ?? null,
     introPhase, activeWidgetOrder,
     widgets: {

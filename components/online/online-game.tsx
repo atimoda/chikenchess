@@ -804,7 +804,8 @@ export function OnlineMatchBoard({
     rootRef,
     boardAreaRef: boardRef,
     boardScale: 1,
-    musicEngineOn: engineOn,
+    // Connections are hidden on portrait phones; skip measuring them after every move.
+    musicEngineOn: engineOn && !isPortraitMobile,
     selectedSquare: selected?.square ?? null,
     orientation: color === "w" ? "white" : "black",
     introPhase,
