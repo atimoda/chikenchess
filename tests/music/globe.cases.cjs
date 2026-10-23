@@ -4,19 +4,28 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { loadTs } = require('../helpers/music.cjs')
 
-test('city flight ends above the selected world pin, even from the opposite side', () => {
+test('city flight dives until the pin core fills the viewport, even from the opposite side', () => {
   const { Vector3, Quaternion } = require('three')
-  const { cityDirection, cityFlightPose } = loadTs('lib/globe-navigation.ts')
+  const { cityDirection, cityFlightPose, sphereFillDistance } = loadTs('lib/globe-navigation.ts')
   const pin = cityDirection(51.23, 6.78).applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), 1.5))
   const from = pin.clone().normalize().multiplyScalar(-6)
-  for (const progress of [0, .25, .5, .75, 1]) {
-    const pose = cityFlightPose(from, new Vector3(0, 1, 0), pin, progress)
-    assert.ok(pose.position.length() >= 2.25 - 1e-8)
-    assert.ok(pose.position.toArray().every(Number.isFinite))
+  for (const aspect of [16 / 9, 9 / 19.5]) {
+    const endGap = sphereFillDistance(.04, 45, aspect)
+    // The sphere's silhouette must reach past the viewport's corner.
+    const halfDiagonal = Math.atan(Math.tan(Math.PI / 8) * Math.hypot(1, aspect))
+    assert.ok(Math.asin(.04 / endGap) > halfDiagonal)
+    let previousGap = Infinity
+    for (const progress of [0, .25, .5, .75, .9, 1]) {
+      const pose = cityFlightPose(from, new Vector3(0, 1, 0), pin, progress, endGap)
+      const gap = pose.position.length() - 2
+      assert.ok(gap >= endGap - 1e-8 && gap <= previousGap + 1e-8)
+      assert.ok(pose.position.toArray().every(Number.isFinite))
+      previousGap = gap
+    }
+    const end = cityFlightPose(from, new Vector3(0, 1, 0), pin, 1, endGap)
+    assert.ok(end.position.clone().normalize().distanceTo(pin.clone().normalize()) < 1e-8)
+    assert.ok(Math.abs(end.position.length() - 2 - endGap) < 1e-8)
   }
-  const end = cityFlightPose(from, new Vector3(0, 1, 0), pin, 1)
-  assert.ok(end.position.clone().normalize().distanceTo(pin.clone().normalize()) < 1e-8)
-  assert.ok(Math.abs(end.position.length() - 2.25) < 1e-8)
 })
 
 test('vector coastlines and grid dots remain above the sphere', () => {
