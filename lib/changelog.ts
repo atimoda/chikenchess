@@ -3,6 +3,16 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.6.8',
+    date: '23/10/2026',
+    title: 'Entrada na cidade mais imersiva',
+    groups: [
+      { title: 'Globo', items: [
+        'Ao entrar numa cidade pelo globo, a câmera agora mergulha no pin até o círculo interno preencher a tela inteira, antes de abrir a fase.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '22/10/2026',
     title: 'Best/Worst e barra de Chance não travam mais',
