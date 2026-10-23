@@ -3,6 +3,75 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.7.0',
+    date: '23/10/2026',
+    title: 'Estados e Eventos globais, ChickenBots com critério e knobs novos',
+    groups: [
+      { title: 'Estados e Eventos', items: [
+        'Agora existe um conjunto global de regras de Estados e Eventos que vale para todos os kits. Cada kit pode personalizar qualquer estado ou evento com regras próprias; o que não for personalizado continua seguindo o global, inclusive edições futuras dele.',
+        'O painel do Criativo foi redesenhado: as abas "This kit" e "Global" escolhem o que está sendo editado, cada linha mostra um resumo do efeito (por exemplo "Gain +6%") e um selo Kit ou Global, e o editor abre na própria linha. "Customize for this kit" copia as regras globais para o kit, "Use global" devolve o gatilho ao global e "Reset kit to global" limpa todas as personalizações do kit.',
+        'Simular ficou separado de editar: o ponto à esquerda de cada linha liga/desliga o estado ou evento na simulação, e a faixa Simulate reúne o lado (White/Black), o botão Next ply, o BPM/escala resultantes e as influências em execução.',
+        'Kits salvos antes desta versão mantêm só os gatilhos que tinham sido alterados; os que continuavam iguais ao padrão passam a seguir o global. As edições do global ficam salvas neste navegador, com "Restore official" para voltar ao conjunto oficial.',
+        'Na aba Global, "Save to game" grava as regras direto no arquivo oficial do jogo quando o Criativo é aberto pelo Admin local com uma conta admin; depois do deploy elas valem para todos.',
+        'Novos eventos do chickenchess: Freeze applied, Shield applied, Mulligan, Best/Worst moves shown e Best/Worst move played, na campanha e no online. No global, Freeze leva a escala um modo mais escuro, Shield um modo mais claro e Mulligan abaixa 1 semitom; ver ou jogar Best/Worst não muda nada por padrão.',
+        'Nova influência "Scale change", que muda a escala em relação à atual: relativa, paralela, um modo mais claro ou mais escuro, tom vizinho (V ou IV), mediante cromática, subida de 1 semitom ou sorteio. O sorteio se repete igual para o mesmo momento da partida (Undo/Redo e os dois jogadores online ouvem o mesmo). A escala específica continua disponível como "Fixed scale".',
+        '"Harmony plan" ganhou a opção "Random plan". As regras globais não usam mais escala nem plano harmônico fixos: o Final e a formação mínima sorteiam um plano, sem rainhas o modo escurece, o afogamento troca para a paralela e a promoção sobe a tonalidade em 1 semitom.',
+        'A simulação ganhou "Previous ply" para voltar um meio-lance (ply = meio-lance, a jogada de um lado).',
+        'No Criativo, BPM, Tônica, Escala e Harmonia mostram em dourado o valor que está tocando quando uma regra o altera; mexer no controle continua editando o valor-base do kit.',
+      ] },
+      { title: 'ChickenBots', items: [
+        'Os ChickenBots não entregam mais a partida para ganhar golden eggs: o Worst move agora só é jogado quando perde pouco em relação ao melhor lance, mantém o bot em vantagem e o bot ainda precisa de ovos. Ele espera alguns turnos entre um Worst e outro e não faz isso quando tem um lance que ganha material.',
+        'O Freeze dos ChickenBots agora sempre congela a peça adversária que faz uma das melhores jogadas, nunca uma casa vazia, e nunca a peça que o próprio bot ia capturar. Depois do Freeze, o bot joga o melhor lance já considerando o gelo.',
+        'O bot não paga mais um Freeze ou Shield e joga um Worst move no mesmo turno.',
+        'Os ChickenBots agora usam Freeze e Shield quando há um motivo no tabuleiro: parar um mate em 1, proteger uma peça atacada (por exemplo num garfo, protegendo uma peça e movendo a outra) ou congelar a peça adversária que ameaça ganhar material. Não gastam mais poderes em turnos fixos sem motivo.',
+        'Expert e Jedi conferem cada poder antes de pagar, simulando o lance e a melhor resposta, e guardam 3 ovos de reserva para emergências.',
+        'O Easy ChickenBot ficou mais fácil: procura poderes só em metade dos turnos, só reage a ameaças grandes (torre ou dama) e espera mais entre um poder e outro.',
+      ] },
+      { title: 'Partida', items: [
+        'Freeze e Shield agora podem ser usados no máximo uma vez cada por turno, na campanha e no online.',
+        'Ao mostrar Best ou Worst moves, as casas destino das setas mostram os golden eggs que valem ali. Eles ficam 3 segundos a mais que as setas e qualquer peça que for para aquela casa enquanto estiverem visíveis ganha esses ovos.',
+        'Com poucos lances disponíveis, as listas de Best e Worst ficam menores: 3 de cada com 12 ou mais lances, 2 com 8 a 11 e 1 com menos de 8. Isso evita ganhar ovos quase sempre no fim da partida.',
+        'Cada lado ganha no máximo 12 golden eggs por lances ranqueados numa partida.',
+      ] },
+      { title: 'Knobs', items: [
+        'Todos os knobs das partidas e do Criativo ganharam um gesto duplo: arrastar o tracinho (ou a bolinha, nos knobs de range) leva o valor ao ponto do círculo mais próximo do mouse ou do dedo, com cursor de mão; arrastar a partir do fundo do círculo ajusta o valor aos poucos, conforme o arraste, com cursor de seta horizontal. Nos knobs de range, o lado esquerdo do círculo ajusta a bolinha de menor valor e o lado direito a de maior valor.',
+        'Em Musical params (antigo Piece params) e no painel 03 / Parâmetros do Criativo, os knobs estão cerca de 15% maiores e o nome fica logo abaixo do círculo, acima das bolinhas L/S/N dos knobs de range.',
+        'As bolinhas e o arco selecionado dos knobs de range agora ficam exatamente sobre a borda do círculo.',
+        'Nesses knobs com nome embaixo, a parte de baixo do círculo, que a seleção nunca alcança, foi cortada em cerca de 5 px e o nome subiu junto; as linhas de knobs ficaram 3 px mais próximas.',
+        'O knob Range passou a se chamar Octaves, em Musical params e no Criativo.',
+        'Corrigido: em Musical params, um knob ajustado durante um Estado/Evento ativo (por exemplo, GAIN levado a 2) voltava a mostrar o valor já alterado pela regra (1.84) ao soltar, e o próximo arraste partia desse número. Agora o knob mostra e edita o valor-base da peça; a regra continua agindo por cima no áudio.',
+      ] },
+      { title: 'Musical params', items: [
+        'A duração da variação ("Y compassos / Z tempos") passou para a linha de botões abaixo do sequenciador MIDI, alinhada à direita, sem o "Seção X".',
+        'Os botões das variações ficam colados, formando uma única faixa; só os botões +/− no fim da linha têm espaço. O espaço entre essas abas e o sequenciador é o mesmo que entre o sequenciador e os botões abaixo dele.',
+        'Na linha abaixo do sequenciador, "Y compassos / Z tempos" fica à esquerda e os botões à direita; os botões −/+ de duração formam um par colado, e Sortear notas mostra um único dado na face 5.',
+      ] },
+      { title: 'Criativo', items: [
+        'A página do Criativo está toda em inglês: textos, ajudas, avisos, Estados/Eventos, arranjo, escalas e status das vozes. Os nomes de kits e instrumentos continuam como foram salvos. Os status das vozes e os nomes dos Estados/Eventos também aparecem em inglês na partida.',
+        'No painel 03 / Parameters, o "?" de ajuda de cada knob fica em cima do círculo.',
+        'Os campos numéricos que ainda usavam as setinhas do navegador (duração da seção no Arranjo global, formação mínima, duração das regras e rampa de BPM) ganharam os botões redondos − e +.',
+        'No arranjo global, o nome livre da seção virou o dropdown "Tipo de seção", com Intro, Verse, Pre-Chorus, Chorus, Post-Chorus, Hook, Bridge, Interlude, Turnaround, Solo, Drop, Break e Outro. Um mesmo tipo pode aparecer mais de uma vez; o seletor de seção da peça mostra a posição antes do tipo (por exemplo, "4. Chorus").',
+        'Todos os kits de cidade e os estudos Manchester 1999, Düsseldorf original e Mouth Breather trocaram as letras A, B, C… por tipos que descrevem o papel de cada seção (por exemplo, Intro, Verse, Break, Drop em kits eletrônicos e Intro, Verse, Pre-Chorus, Chorus, Bridge em pop e rock).',
+        'Kits salvos continuam funcionando: letras de kits de cidade recebem o tipo da seção correspondente, nomes como "Refrão" ou "Ponte" são reconhecidos, e outros nomes viram Verse.',
+      ] },
+      { title: 'Globo', items: [
+        'Ao entrar numa cidade pelo globo, a câmera agora mergulha no pin até o círculo interno preencher a tela inteira, antes de abrir a fase.',
+      ] },
+      { title: 'Desempenho no celular', items: [
+        'As peças deslizam pelo tabuleiro sem engasgar mesmo com a música tocando: a animação do lance não depende mais do processamento da página.',
+        'Cada lance ficou bem mais leve: o tabuleiro não redesenha mais todas as peças a cada atualização, e as linhas de conexão dos widgets, que ficam ocultas no celular em pé, não são mais calculadas.',
+        'Com a música tocando, Piece Params, o piano roll e o Mixer só se atualizam quando algo visível muda; o cursor do piano roll continua andando sem refazer o editor inteiro.',
+        'No celular, a engine musical agenda as notas com mais antecedência e usa um buffer de áudio maior, para reduzir os "rasgos" no som quando o aparelho fica ocupado. As ativações de loop podem entrar até cerca de um décimo de segundo mais tarde que antes.',
+        'No celular, o Spectrogram atualiza a 15 quadros por segundo, deixando mais folga para a música e os gestos.',
+        'No celular, as duas equipes passam a dividir um único reverb em vez de um para cada, o que corta cerca de um terço do processamento de áudio e reduz os cortes no som. A quantidade de reverb de cada peça não muda; a cauda do reverb agora acompanha os dois lados do crossfader por igual.',
+      ] },
+      { title: 'Debug', items: [
+        'O Admin ganhou o catálogo Recompensas de ovos, para editar o teto de ovos, o tamanho das listas e o tempo extra dos ovos nas casas.',
+        'O Bot Control ganhou os campos dos novos critérios: Poderes (N, P, Q), Freeze (Y, Z), Shield (T, R) e Worst (W, V, O, K).',
+      ] },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '22/10/2026',
     title: 'Best/Worst e barra de Chance não travam mais',
@@ -42,7 +111,9 @@ export const CHANGELOG = [
       { title: 'Debug', items: [
         'No widget Debug, os botões passaram a se chamar Piece, Stockfish, Bot e Eggs.',
         'Novo botão Moves no Debug: por 2 golden eggs, mostra no tabuleiro as 10 melhores jogadas da posição, em vez das 3 do Best moves.',
-        'Novo switch Code no Debug, ligado por padrão, para mostrar ou esconder o código no fundo da partida.',
+        'Novo botão Code no Debug, ligado por padrão, para mostrar ou esconder o código no fundo da partida.',
+        'O botão Force win do Debug só aparece para usuários admin.',
+        'No Bot Control, o símbolo % dos campos de percentual fica antes do número, dentro do campo.',
         'O widget Bot Control ficou mais compacto, e os campos numéricos ganharam botões − e + que continuam ajustando o valor enquanto ficam pressionados. Os mesmos botões do modo Criativo também passaram a repetir ao segurar.',
         'O widget Debug Stockfish ganhou a mesma aparência dos demais widgets, com o botão de energia que o fecha.',
       ] },

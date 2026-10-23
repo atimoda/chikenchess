@@ -2,7 +2,7 @@
 
 import type { CSSProperties, RefObject } from "react"
 import { PiecesSVG } from "@/components/chessground-board"
-import { cn } from "@/lib/utils"
+import { cn, stableHtml } from "@/lib/utils"
 
 interface CapturedPiecesProps {
   /** Lowercase piece letters, in capture order. */
@@ -37,7 +37,7 @@ export function CapturedPieces({ pieces, color, viewportRef, contentRef, scale, 
           key={i}
           className="w-6 h-6 shrink-0 opacity-90 p-0.5"
           style={itemStyle}
-          dangerouslySetInnerHTML={{ __html: PiecesSVG[`${color}${piece.toUpperCase()}` as keyof typeof PiecesSVG] }}
+          dangerouslySetInnerHTML={stableHtml(PiecesSVG[`${color}${piece.toUpperCase()}` as keyof typeof PiecesSVG])}
         />
       ))}
     </div>

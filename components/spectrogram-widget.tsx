@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useRef, forwardRef, useEffect } from "react"
+import { useRef, forwardRef, useEffect, useState } from "react"
+import { isConstrainedDevice } from "@/lib/performance"
 import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
@@ -47,6 +48,9 @@ export function SpectrogramCanvas({
   const animationRef = useRef<number>(0)
   const lastFrameRef = useRef(0)
   const dataArrayRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(128))
+  // Phones share the main thread with the audio scheduler; 15 fps keeps the
+  // bars readable while leaving more of each second to music and gestures.
+  const [frameInterval] = useState(() => 1000 / (isConstrainedDevice() ? 15 : 24))
 
   useEffect(() => {
     if (!isOn) {
@@ -60,7 +64,7 @@ export function SpectrogramCanvas({
     const animate = (timestamp: number) => {
       animationRef.current = requestAnimationFrame(animate)
       // Canvas analysis is intentionally capped. Audio scheduling is unaffected.
-      if (timestamp - lastFrameRef.current < 1000 / 24) return
+      if (timestamp - lastFrameRef.current < frameInterval) return
       lastFrameRef.current = timestamp
       const canvas = canvasRef.current
       if (!canvas) return
@@ -140,7 +144,7 @@ export function SpectrogramCanvas({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current)
     }
-  }, [isOn, isPlaying, cityColor, origin, mirrored, getFrequencyData])
+  }, [isOn, isPlaying, cityColor, origin, mirrored, getFrequencyData, frameInterval])
 
   return (
     <canvas

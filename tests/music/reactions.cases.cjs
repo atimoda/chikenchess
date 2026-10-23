@@ -75,16 +75,75 @@ test('reaction ledger detects castling, captures, depleted families, thresholds,
   assert.ok(reactionContext(repeat).states.some(e=>e.trigger==='repetition'))
 })
 
-test('factory reaction preset covers every trigger and every implemented influence', () => {
-  const { ACTIONS, TRIGGERS, defaultReactions }=loadTs('lib/music/reactions.ts')
+test('global preset covers the board, the powers and Mulligan with relational, style-neutral influences', () => {
+  const { ACTIONS, STATES, BOARD_EVENTS, POWER_EVENTS, defaultReactions }=loadTs('lib/music/reactions.ts')
   const rules=defaultReactions()
-  assert.equal(rules.length,Object.keys(TRIGGERS).length)
-  assert.deepEqual(new Set(rules.map(rule=>rule.trigger)),new Set(Object.keys(TRIGGERS)))
-  assert.deepEqual(new Set(rules.flatMap(rule=>rule.actions.map(action=>action.type))),new Set(Object.keys(ACTIONS)))
+  const covered=new Set(rules.map(rule=>rule.trigger))
+  for(const trigger of [...Object.keys(STATES),...Object.keys(BOARD_EVENTS),'freeze','shield','mulligan'])assert.ok(covered.has(trigger),trigger)
+  // Hints and ranked moves exist as triggers but stay silent in the global set.
+  for(const trigger of ['seeBest','seeWorst','playBest','playWorst'])assert.ok(trigger in POWER_EVENTS&&!covered.has(trigger),trigger)
+  const used=new Set(rules.flatMap(rule=>rule.actions.map(action=>action.type)))
+  assert.deepEqual(new Set(Object.keys(ACTIONS).filter(type=>!used.has(type))),new Set(['scale','relative']))
+  // No fixed scale and no named harmony plan: every global change is relative to the kit.
+  assert.ok(rules.every(rule=>rule.actions.every(action=>action.type!=='harmony'||action.harmony==='random')))
   assert.deepEqual(rules.find(rule=>rule.trigger==='capture').actions.map(action=>[action.type,action.value]),[['gain',3]])
   assert.equal(rules.find(rule=>rule.trigger==='noQueens').duration,0)
-  assert.ok(rules.find(rule=>rule.trigger==='promotion').actions.some(action=>action.type==='transpose'&&action.value===12))
-  assert.equal(rules.find(rule=>rule.trigger==='endgame').actions.find(action=>action.type==='harmony').harmony,'cadence')
+  assert.ok(rules.find(rule=>rule.trigger==='promotion').actions.some(action=>action.type==='scaleShift'&&action.shift==='lift'))
+  assert.deepEqual(rules.find(rule=>rule.trigger==='mulligan').actions.map(action=>[action.type,action.value]),[['transpose',-1]])
+  assert.deepEqual(rules.filter(rule=>rule.trigger==='freeze'||rule.trigger==='shield').map(rule=>rule.actions[0].shift),['darker','brighter'])
+})
+
+test('scale changes follow the current key and mode, keep the register and repeat their random choices', () => {
+  const { shiftScale, seededIndex }=loadTs('lib/music/scale-shift.ts')
+  const C=['C4','D4','E4','F4','G4','A4','B4']
+  assert.deepEqual(shiftScale(C,'parallel').scale,['C4','D4','D#4','F4','G4','G#4','A#4'])
+  assert.deepEqual(shiftScale(C,'brighter').scale,['C4','D4','E4','F#4','G4','A4','B4'])
+  assert.deepEqual(shiftScale(C,'darker').scale,['C4','D4','E4','F4','G4','A4','A#4'])
+  const relative=shiftScale(C,'relative')
+  assert.deepEqual([relative.scale[0],relative.rootMove],['A4',-3])
+  assert.deepEqual([shiftScale(C,'dominant').scale[0],shiftScale(C,'dominant').rootMove],['G4',-5])
+  assert.equal(shiftScale(C,'subdominant').scale[0],'F4')
+  assert.equal(shiftScale(C,'mediantUp').scale[0],'E4')
+  assert.equal(shiftScale(C,'lift').scale.join(' '),'C#4 D#4 F4 F#4 G#4 A#4 C4')
+  const locrian=['C4','C#4','D#4','F4','F#4','G#4','A#4']
+  assert.match(shiftScale(locrian,'darker').skipped,/darkest/)
+  assert.match(shiftScale(['C4','D4','E4','F#4','G#4','A#4'],'parallel').skipped,/no parallel/)
+  assert.deepEqual(shiftScale(C,'randomRelated','seed'),shiftScale(C,'randomRelated','seed'))
+  assert.notEqual(shiftScale(C,'randomAny','x').scale.join(),C.join())
+  assert.ok(seededIndex('a',5)>=0&&seededIndex('a',5)<5)
+})
+
+test('random harmony and scale changes are deterministic per occurrence and never pick a fixed plan', () => {
+  const { applyReactions, reactionsSchema }=loadTs('lib/music/reactions.ts')
+  const kit=creative.createCreativeSession(), base=creative.creativeSnapshot(kit,true)
+  const config=reactionsSchema.parse({rules:[{id:'r',trigger:'capture',enabled:true,target:'both',duration:2,actions:[{type:'harmony',harmony:'random'},{type:'scaleShift',shift:'randomRelated'}]}]})
+  const at=ply=>({ply,states:[],events:[{trigger:'capture',color:'w',ply}]})
+  const first=applyReactions(base,config,at(3))
+  assert.deepEqual(first.snapshot.harmony,applyReactions(base,config,at(3)).snapshot.harmony)
+  assert.deepEqual(first.snapshot.scale,applyReactions(base,config,at(3)).snapshot.scale)
+  assert.ok(!['kit','static'].includes(first.snapshot.harmony))
+  const plans=new Set(Array.from({length:12},(_,ply)=>applyReactions(base,config,at(ply)).snapshot.harmony))
+  assert.ok(plans.size>1)
+  assert.ok(first.descriptions.some(text=>/random/.test(text)))
+})
+
+test('match actions join the board ledger and undone plies drop out', () => {
+  const { withActionEvents }=loadTs('lib/music/reactions.ts')
+  const { onlineActionEvents }=loadTs('lib/online/domain.ts')
+  const board={ply:2,states:[],events:[{trigger:'capture',color:'w',ply:2}]}
+  const merged=withActionEvents(board,[{trigger:'freeze',color:'b',ply:1},{trigger:'mulligan',color:'w',ply:4}])
+  assert.deepEqual(merged.events.map(event=>event.trigger),['freeze','capture'])
+  assert.equal(withActionEvents(board,[]),board)
+  const actions=[
+    {kind:'move',from:'e2',to:'e4',color:'w',reward:'best'},
+    {kind:'power',power:'shield',square:'e4',color:'b',id:1},
+    {kind:'move',from:'e7',to:'e5',color:'b',reward:'worst'},
+    {kind:'power',power:'freeze',square:'e5',color:'w',id:2},
+  ]
+  assert.deepEqual(onlineActionEvents(actions),[
+    {trigger:'playBest',color:'w',ply:1},{trigger:'shield',color:'b',ply:1},
+    {trigger:'playWorst',color:'b',ply:2},{trigger:'freeze',color:'w',ply:2},
+  ])
 })
 
 test('harmony reactions replace and restore the shared plan without rewriting the kit', () => {
@@ -98,7 +157,7 @@ test('harmony reactions replace and restore the shared plan without rewriting th
   assert.deepEqual(active.snapshot.arrangement.sections[0].harmony, [0, 3, 4, 0])
   assert.deepEqual(active.snapshot.arrangement.sections.map(({harmony,...section})=>section),base.arrangement.sections.map(({harmony,...section})=>section))
   assert.deepEqual(base.arrangement.sections[0].harmony, [0, 3, 4, 0])
-  assert.ok(active.descriptions[0].includes('Descendente'))
+  assert.ok(active.descriptions[0].includes('Descending'))
   assert.equal(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.harmony,'kit')
   assert.deepEqual(applyReactions(base,config,{ply:30,states:[],events:[]}).snapshot.arrangement, base.arrangement)
   assert.equal(kit.harmony,'kit')
@@ -140,21 +199,82 @@ test('draw triggers distinguish stalemate from the fifty-move rule', () => {
   assert.ok(!fifty.includes('stalemate'))
 })
 
-test('legacy factory reactions upgrade while authored reaction sets remain intact', () => {
-  const { REACTION_PRESET_REVISION, defaultReactions }=loadTs('lib/music/reactions.ts')
+test('legacy kits keep only authored triggers as overrides and follow the global set elsewhere', () => {
+  const { REACTION_PRESET_REVISION, legacyFactoryReactions, defaultReactions, resolveReactions, defaultGlobalReactions }=loadTs('lib/music/reactions.ts')
   const kit=creative.createCreativeSession()
+  assert.deepEqual(kit.reactions,{overrides:[],rules:[]})
   const legacy={...kit,reactionPresetRevision:undefined,reactions:{minimumPieces:6,rules:[{id:'check-band',trigger:'check',enabled:true,quantize:false,target:'actor',duration:1,actions:[{type:'activate',value:0,scale:'Maior'}]}]}}
   const upgraded=creative.parseCreativeSession(JSON.stringify(legacy))
   assert.equal(upgraded.reactionPresetRevision,REACTION_PRESET_REVISION)
-  assert.equal(upgraded.reactions.minimumPieces,6)
-  assert.deepEqual(upgraded.reactions.rules,defaultReactions())
-  const previousFactory={...kit,reactionPresetRevision:'reactions-2026-09-20-v1',reactions:{minimumPieces:4,rules:defaultReactions().map(rule=>({...rule,actions:rule.actions.filter(action=>action.type!=='harmony').map(({harmony,...action})=>action)}))}}
-  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(previousFactory)).reactions.rules,defaultReactions())
+  assert.deepEqual(upgraded.reactions,{overrides:[],rules:[],minimumPieces:6})
+  const fullFactory={...kit,reactionPresetRevision:'reactions-2026-09-20-v3',reactions:{minimumPieces:4,rules:legacyFactoryReactions()}}
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(fullFactory)).reactions,{overrides:[],rules:[]})
+  const previousFactory={...kit,reactionPresetRevision:'reactions-2026-09-20-v1',reactions:{minimumPieces:4,rules:legacyFactoryReactions().map(rule=>({...rule,actions:rule.actions.filter(action=>action.type!=='harmony').map(({harmony,...action})=>action)}))}}
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(previousFactory)).reactions,{overrides:[],rules:[]})
+  // One edited trigger plus one deleted trigger in a current-revision kit.
+  const edited=legacyFactoryReactions().filter(rule=>rule.trigger!=='quiet').map(rule=>rule.trigger==='capture'?{...rule,duration:3}:rule)
+  const authored={...kit,reactionPresetRevision:'reactions-2026-09-20-v3',reactions:{minimumPieces:4,rules:edited}}
+  const migrated=creative.parseCreativeSession(JSON.stringify(authored)).reactions
+  assert.deepEqual(new Set(migrated.overrides),new Set(['capture','quiet']))
+  assert.deepEqual(migrated.rules.map(rule=>[rule.trigger,rule.duration]),[['capture',3]])
+  const resolved=resolveReactions(defaultGlobalReactions(),migrated)
+  assert.equal(resolved.rules.length,defaultReactions().length-1)
+  assert.ok(!resolved.rules.some(rule=>rule.trigger==='quiet'))
+  assert.equal(resolved.rules.find(rule=>rule.trigger==='capture').duration,3)
+  // Unchanged triggers keep the global rule order.
+  assert.deepEqual(resolved.rules.map(rule=>rule.id),defaultReactions().filter(rule=>rule.trigger!=='quiet').map(rule=>rule.id))
+  // Older revisions never saved a deletion: missing triggers keep following the global set.
   const custom={...kit,reactionPresetRevision:undefined,reactions:{minimumPieces:4,rules:[{id:'mine',trigger:'capture',enabled:true,quantize:false,target:'actor',duration:3,actions:[{type:'gain',value:9,scale:'Maior',harmony:'static'}]}]}}
   const merged=creative.parseCreativeSession(JSON.stringify(custom)).reactions
-  assert.deepEqual(merged.rules[0],custom.reactions.rules[0])
-  assert.equal(merged.rules.length,Object.keys(loadTs('lib/music/reactions.ts').TRIGGERS).length)
-  assert.equal(new Set(merged.rules.map(rule=>rule.trigger)).size,Object.keys(loadTs('lib/music/reactions.ts').TRIGGERS).length)
+  assert.deepEqual(merged,{overrides:['capture'],rules:custom.reactions.rules})
+  assert.equal(resolveReactions(defaultGlobalReactions(),merged).rules.length,defaultReactions().length)
+})
+
+test('global edits reach every kit except the triggers a kit overrides; kits can inherit again', () => {
+  const { defaultGlobalReactions, resolveReactions, overrideTrigger, inheritTrigger, kitReactionsSchema }=loadTs('lib/music/reactions.ts')
+  const global=defaultGlobalReactions()
+  const louder={...global,minimumPieces:6,rules:global.rules.map(rule=>rule.trigger==='capture'||rule.trigger==='check'?{...rule,actions:[{type:'gain',value:40,scale:'Maior',harmony:'static'}]}:rule)}
+  const plain=kitReactionsSchema.parse(undefined)
+  let kit=overrideTrigger(plain,global,'capture')
+  assert.deepEqual(kit.rules,global.rules.filter(rule=>rule.trigger==='capture'))
+  kit={...kit,rules:kit.rules.map(rule=>({...rule,actions:[{type:'lpf',value:900,scale:'Maior',harmony:'static'}]})),minimumPieces:3}
+  const resolved=resolveReactions(louder,kit)
+  assert.equal(resolved.minimumPieces,3)
+  assert.equal(resolved.rules.find(rule=>rule.trigger==='capture').actions[0].type,'lpf')
+  assert.equal(resolved.rules.find(rule=>rule.trigger==='check').actions[0].value,40)
+  assert.equal(resolveReactions(louder,plain).minimumPieces,6)
+  const back=inheritTrigger(kit,'capture')
+  assert.deepEqual(back.overrides,[])
+  assert.equal(resolveReactions(louder,back).rules.find(rule=>rule.trigger==='capture').actions[0].value,40)
+  // A silenced override has no rules, and stray rules of inherited triggers are dropped on parse.
+  const silent=kitReactionsSchema.parse({overrides:['check','check'],rules:global.rules.filter(rule=>rule.trigger==='capture')})
+  assert.deepEqual(silent,{overrides:['check'],rules:[]})
+  assert.ok(!resolveReactions(louder,silent).rules.some(rule=>rule.trigger==='check'))
+})
+
+test('global reactions persist personal edits, restore the official set and add new triggers', () => {
+  const { memoryStorage }=require('../helpers/music.cjs')
+  const previous=globalThis.window
+  globalThis.window={localStorage:memoryStorage(new Map()),addEventListener(){},removeEventListener(){}}
+  try {
+    const store=loadTs('lib/music/global-reactions.ts')
+    const { defaultGlobalReactions, REACTION_PRESET_REVISION }=loadTs('lib/music/reactions.ts')
+    assert.deepEqual(store.loadGlobalReactions(),defaultGlobalReactions())
+    const edited={...defaultGlobalReactions(),minimumPieces:5}
+    store.saveGlobalReactions(edited)
+    assert.equal(store.loadGlobalReactions().minimumPieces,5)
+    assert.equal(store.isOfficialGlobalReactions(store.loadGlobalReactions()),false)
+    store.saveGlobalReactions(null)
+    assert.equal(globalThis.window.localStorage.getItem(store.GLOBAL_REACTIONS_STORAGE),null)
+    // Saving the official set again keeps storage empty, so later official updates still arrive.
+    store.saveGlobalReactions(defaultGlobalReactions())
+    assert.equal(globalThis.window.localStorage.getItem(store.GLOBAL_REACTIONS_STORAGE),null)
+    const older=JSON.stringify({revision:'old',knownTriggers:['check'],minimumPieces:4,rules:[]})
+    assert.deepEqual(store.parseGlobalReactions(older).rules,defaultGlobalReactions().rules.filter(rule=>rule.trigger!=='check'))
+    const current=JSON.stringify({revision:REACTION_PRESET_REVISION,minimumPieces:4,rules:[]})
+    assert.deepEqual(store.parseGlobalReactions(current).rules,[])
+    assert.deepEqual(store.parseGlobalReactions('{broken'),defaultGlobalReactions())
+  } finally { if(previous===undefined)delete globalThis.window; else globalThis.window=previous }
 })
 
 test('kit reactions round-trip, restore base, expire and never accumulate on rerender', () => {
@@ -171,7 +291,8 @@ test('kit reactions round-trip, restore base, expire and never accumulate on rer
   const infinite=reactionsSchema.parse({rules:[{...config.rules[0],duration:0}]})
   assert.equal(applyReactions(base,infinite,{...context,ply:999}).snapshot.bpm,base.bpm*1.1)
   assert.equal(base.scale[0],'C4')
-  assert.deepEqual(creative.parseCreativeSession(JSON.stringify({...kit,reactions:config})).reactions,config)
+  const owned={overrides:['queenCapture'],rules:config.rules,minimumPieces:5}
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify({...kit,reactions:owned})).reactions,owned)
   assert.throws(()=>reactionsSchema.parse({...config,rules:[{...config.rules[0],actions:[{type:'bpm',value:500}]}]}))
 })
 

@@ -241,21 +241,15 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               disabled={topMovesDisabled}
               title="Veja as 10 melhores jogadas · 2 golden eggs"
               onClick={event => { event.stopPropagation(); onShowTopMoves(event.currentTarget) }}
-              className="rounded border border-green-300/35 px-2 py-1 font-mono text-[10px] text-green-100/80 transition-colors hover:border-green-200/70 hover:text-green-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >Moves</button>}
             {onToggleCodeVisible && <button
               type="button"
-              role="switch"
-              aria-checked={codeVisible}
+              aria-pressed={codeVisible}
               title={codeVisible ? "Esconder o código no fundo" : "Mostrar o código no fundo"}
               onClick={event => { event.stopPropagation(); onToggleCodeVisible() }}
-              className={cn("flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] transition-colors", codeVisible ? "border-[#78ff93]/60 bg-[#78ff93]/10 text-[#b6ffc4]" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >
-              <span aria-hidden="true" className={cn("relative h-2.5 w-[18px] shrink-0 rounded-full transition-colors", codeVisible ? "bg-[#78ff93]/70" : "bg-white/25")}>
-                <span className={cn("absolute top-[1px] h-2 w-2 rounded-full bg-white transition-[left]", codeVisible ? "left-[9px]" : "left-[1px]")} />
-              </span>
-              Code
-            </button>}
+              className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", codeVisible ? "border-[#78ff93]/60 bg-[#78ff93]/10 text-[#b6ffc4]" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
+            >Code</button>}
             {onForceWin && <button
               type="button"
               onClick={event => { event.stopPropagation(); onForceWin() }}

@@ -44,7 +44,7 @@ export class MusicTransport {
   private beatsPerBar=4
   private boundary=-1
   private stoppedCycle=0
-  constructor(private options:{ getTime:()=>number;latency:number;onBoundary:(cycle:number)=>void;onTrigger:(hap:any,deadline:number,duration:number,cps:number,time:number)=>void;onError:(error:unknown)=>void }) {this.latency=options.latency}
+  constructor(private options:{ getTime:()=>number;latency:number;interval?:number;onBoundary:(cycle:number)=>void;onTrigger:(hap:any,deadline:number,duration:number,cps:number,time:number)=>void;onError:(error:unknown)=>void }) {this.latency=options.latency}
   get tempo() {const now=this.options.getTime();return this.preceding.find(entry=>now<entry.until)?.map??this.tempoMap}
   get cycle() {return this.started?this.tempo.cycleAt(this.options.getTime()):this.stoppedCycle}
   get schedulingCycle() {return this.started?this.tempoMap.cycleAt(this.options.getTime()):this.stoppedCycle}
@@ -56,7 +56,7 @@ export class MusicTransport {
   setMeter(beatsPerBar:number) {if(this.beatsPerBar===beatsPerBar)return;this.stop();this.beatsPerBar=beatsPerBar;this.tempoMap.setBeatsPerBar(beatsPerBar,this.target,this.options.getTime())}
   setCps(cps:number,bars=0) {const factor=60*this.beatsPerBar,bpm=Math.max(30,Math.min(240,cps*factor));if(bpm===this.target)return;this.target=bpm;if(this.started)this.tempoMap.change(this.lastEnd,bpm,bars);else this.tempoMap.reset(bpm,this.options.getTime())}
   async setPattern(pattern:any) {this.pattern=pattern}
-  async start() {if(this.started)return;this.started=true;this.lastEnd=this.stoppedCycle;this.boundary=-1;this.tempoMap.reset(this.target,this.options.getTime()+.03,this.stoppedCycle);this.tick();this.timer=setInterval(()=>this.tick(),50)}
+  async start() {if(this.started)return;this.started=true;this.lastEnd=this.stoppedCycle;this.boundary=-1;this.tempoMap.reset(this.target,this.options.getTime()+.03,this.stoppedCycle);this.tick();this.timer=setInterval(()=>this.tick(),this.options.interval??50)}
   stop() {this.started=false;if(this.timer)clearInterval(this.timer);this.timer=undefined;this.lastEnd=0;this.stoppedCycle=0;this.queuedSeek=undefined;this.landing=undefined;this.preceding=[]}
   /** Replace the next destination, without cutting or rescheduling current audio. */
   queueSeek(at:number,target:number,commit:()=>void) {

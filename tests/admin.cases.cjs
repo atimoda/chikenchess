@@ -34,6 +34,9 @@ test('catalog validation rejects structural and stable-contract edits', () => {
   const ranks = json('rank-titles'); const changed = ranks.map(item => ({ ...item })); changed[0].minPoints = 1; assert.throws(() => validateAdminValue(entry('rank-titles'), changed))
   const names = json('baptism-names'); const duplicate = structuredClone(names); duplicate.title.push(duplicate.title[0]); assert.throws(() => validateAdminValue(entry('baptism-names'), duplicate))
   const oversized = structuredClone(names); oversized.title = ['T'.repeat(12)]; oversized.noun = ['N'.repeat(12)]; oversized.adjective = ['A'.repeat(12)]; oversized.epithet = ['E'.repeat(12)]; assert.throws(() => validateAdminValue(entry('baptism-names'), oversized))
+  const rewards = json('egg-rewards')
+  assert.throws(() => validateAdminValue(entry('egg-rewards'), { ...rewards, rankedMovesByLegalMoves: rewards.rankedMovesByLegalMoves.filter(tier => tier.minLegalMoves > 0) }), /minLegalMoves 0/)
+  assert.throws(() => validateAdminValue(entry('egg-rewards'), { ...rewards, maxMatchEggs: 0 }))
   assert.ok(openings.length > 0)
 })
 

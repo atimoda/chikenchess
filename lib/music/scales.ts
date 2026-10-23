@@ -21,6 +21,28 @@ export const SCALE_INTERVALS = {
   'Chromatic': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
 } as const
 export type ScaleName = keyof typeof SCALE_INTERVALS
+/** English display names; the Portuguese keys stay as the saved identifiers. */
+export const SCALE_LABELS: Record<ScaleName, string> = {
+  'Pentatônica menor': 'Minor pentatonic',
+  'Pentatônica maior': 'Major pentatonic',
+  'Maior': 'Major',
+  'Menor natural': 'Natural minor',
+  'Dórica': 'Dorian',
+  'Mixolídia': 'Mixolydian',
+  'Blues menor': 'Minor blues',
+  'Blues maior': 'Major blues',
+  'Whole tone': 'Whole tone',
+  'Octatonic / Diminished (tom–semitom)': 'Octatonic / Diminished (whole–half)',
+  'Octatonic / Diminished (semitom–tom)': 'Octatonic / Diminished (half–whole)',
+  'Harmônica menor': 'Harmonic minor',
+  'Melódica menor (ascendente / jazz)': 'Melodic minor (ascending / jazz)',
+  'Phrygian': 'Phrygian',
+  'Lydian': 'Lydian',
+  'Lydian dominant': 'Lydian dominant',
+  'Locrian': 'Locrian',
+  'Aeolian': 'Aeolian',
+  'Chromatic': 'Chromatic',
+}
 export const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
 export type RootName = typeof ROOTS[number]
 

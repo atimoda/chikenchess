@@ -8,7 +8,9 @@ import { creativeSchema, SOUNDS, ROOTS, parseCreativeSession } from '../music/cr
 import { SCALE_NAMES } from '../music/scales'
 import { HARMONY_PLAN_IDS } from '../music/harmony'
 import { METER_IDS } from '../music/meter'
+import { SECTION_TYPES } from '../music/arrangement'
 import { createStyledCityKit } from '../music/styled-kits'
+import { reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
 
 const hasControl = (value: string, multiline = false) => [...value].some(character => { const code = character.codePointAt(0)!; return (code < 32 || code === 127) && !(multiline && [9, 10, 13].includes(code)) })
@@ -36,8 +38,8 @@ const partSchema = z.object({
 export const styleProfileSchema = z.object({
   name: text, bpm: finite.min(30).max(240), meter: z.enum(METER_IDS).optional(), root: z.enum(ROOTS), scale: z.enum(SCALE_NAMES), harmony: z.enum(HARMONY_PLAN_IDS),
   harmonicSequences: z.array(z.array(finite).min(1).max(64)).max(24).optional(), swing: finite.min(0).max(.5),
-  sections: z.array(finite.min(.25).max(64)).min(1).max(24), parts: z.array(partSchema).length(16), reference: text, url: z.string().url(),
-}).strict()
+  sections: z.array(finite.min(.25).max(64)).min(1).max(24), sectionLabels: z.array(z.enum(SECTION_TYPES)).min(1).max(24), parts: z.array(partSchema).length(16), reference: text, url: z.string().url(),
+}).strict().refine(profile => profile.sectionLabels.length === profile.sections.length, 'Informe um tipo de seção para cada duração.')
 
 export function validateAdminValue(entry: AdminEntry, value: unknown): void {
   switch (entry.kind) {
@@ -62,16 +64,32 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
         skill: finite.int().min(0).max(20),
         alwaysBestMove: z.boolean(),
         delaySeconds: finite.min(0.5).max(30),
-        freezeTopMoves: finite.int().min(1).max(20),
-        freezeChanceBelowPercent: finite.min(0).max(100),
-        freezeEveryMoves: finite.int().min(1).max(100),
-        shieldEveryMoves: finite.int().min(1).max(100),
-        shieldChanceAbovePercent: finite.min(0).max(100),
-        worstChanceAbovePercent: finite.min(0).max(100),
-        worstMinScorePawns: finite.min(-100).max(100),
+        powerUsePercent: finite.min(0).max(100),
+        freezeMinThreatPawns: finite.min(0).max(100),
+        freezeCooldownMoves: finite.int().min(0).max(100),
+        shieldMinPiecePawns: finite.min(0).max(100),
+        shieldCooldownMoves: finite.int().min(0).max(100),
+        powerMinGainPawns: finite.min(0).max(100),
+        powerReserveEggs: finite.int().min(0).max(100),
+        worstFloorPawns: finite.min(-100).max(100),
+        worstMaxLossPawns: finite.min(0).max(100),
+        eggTarget: finite.int().min(0).max(100),
+        worstCooldownMoves: finite.int().min(0).max(100),
       }).strict()
       const result = z.array(botSchema).min(1).max(32).parse(value)
       if (new Set(result.map(item => item.id)).size !== result.length) throw new Error('IDs dos bots não podem repetir.')
+      break
+    }
+    case 'egg-rewards': {
+      const tier = z.object({ minLegalMoves: finite.int().min(0).max(256), moves: finite.int().min(0).max(10) }).strict()
+      const result = z.object({
+        maxMatchEggs: finite.int().min(1).max(999),
+        rankedMovesByLegalMoves: z.array(tier).min(1).max(16),
+        squareEggsExtraSeconds: finite.min(0).max(30),
+      }).strict().parse(value)
+      const minimums = result.rankedMovesByLegalMoves.map(item => item.minLegalMoves)
+      if (new Set(minimums).size !== minimums.length) throw new Error('Cada faixa precisa de um número mínimo de lances diferente.')
+      if (!minimums.includes(0)) throw new Error('Inclua uma faixa com minLegalMoves 0, para posições com poucos lances.')
       break
     }
     case 'names': {
@@ -88,6 +106,12 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       const city = cities.find(item => item.id === entry.cityId)
       if (!city) throw new Error('Cidade não encontrada.')
       createStyledCityKit(city, profile)
+      break
+    }
+    case 'music-reactions': {
+      const raw = z.object({ minimumPieces: z.unknown(), rules: z.array(z.unknown()) }).strict().parse(value)
+      const result = reactionsSchema.parse(raw)
+      if (new Set(result.rules.map(rule => rule.id)).size !== result.rules.length) throw new Error('IDs das regras não podem repetir.')
       break
     }
     case 'music-preset': {

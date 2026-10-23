@@ -6,7 +6,8 @@ import { creativeSnapshot, type CreativeSession } from '@/lib/music/creative'
 import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
 import { strudelCodeStats } from '@/lib/music/code-export'
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
-import { applyReactions, type ReactionContext } from '@/lib/music/reactions'
+import { applyReactions, resolveReactions, type ReactionContext } from '@/lib/music/reactions'
+import { useGlobalReactions } from '@/lib/music/global-reactions'
 import type { SampleSource } from '@/lib/music/sample-banks'
 
 export function useCreativeMusic(session: CreativeSession, playing: boolean, soloIds: ReadonlySet<string>, context: ReactionContext, showCode = false) {
@@ -18,11 +19,13 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   const [preparedFingerprint, setPreparedFingerprint] = useState<string | null>(null)
   const pulseMonitor = useMemo(createMusicPulseMonitor, [])
   const soloList = useMemo(() => [...soloIds], [soloIds])
-  const input = useMemo(() => ({...creativeSnapshot(session,playing,soloList), reactionInput:{config:session.reactions,context,scope:session.cityId??session.name}}),[session,playing,soloList,context])
+  const globalReactions = useGlobalReactions()
+  const reactions = useMemo(() => resolveReactions(globalReactions, session.reactions), [globalReactions, session.reactions])
+  const input = useMemo(() => ({...creativeSnapshot(session,playing,soloList), reactionInput:{config:reactions,context,scope:session.cityId??session.name}}),[session,playing,soloList,context,reactions])
   const sampleFingerprint = JSON.stringify(Object.values(session.instruments).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source] : []))
   const sampleSources = useMemo(() => JSON.parse(sampleFingerprint) as SampleSource[], [sampleFingerprint])
   const auditionReady = preparedFingerprint === sampleFingerprint
-  const resolved = useMemo(() => applyReactions(input,session.reactions,context),[input,session.reactions,context])
+  const resolved = useMemo(() => applyReactions(input,reactions,context),[input,reactions,context])
   const snapshot = audible ?? resolved.snapshot
   const code = useMemo(() => showCode ? renderMusicCode(snapshot, preview) : '', [snapshot, preview, showCode])
 

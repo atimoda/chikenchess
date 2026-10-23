@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 interface KnobProps {
@@ -9,6 +9,8 @@ interface KnobProps {
   max: number
   step?: number
   label: string
+  /** Replaces the plain label text, e.g. to attach contextual help. */
+  labelContent?: ReactNode
   ariaLabel?: string
   onChange: (value: number) => void
   formatValue?: (value: number) => string
@@ -24,7 +26,36 @@ interface KnobProps {
 }
 
 export type KnobUpdateMode = 'immediate' | 'on-release'
-export type KnobGestureMode = 'relative' | 'angular'
+/**
+ * relative: dragging anywhere changes the value incrementally.
+ * angular: the value follows the circle point nearest to the pointer.
+ * hybrid: dragging the marker is angular (grab cursor); dragging the dial background is relative (w-resize cursor).
+ */
+export type KnobGestureMode = 'relative' | 'angular' | 'hybrid'
+export type KnobDragMode = Exclude<KnobGestureMode, 'hybrid'>
+export const DEFAULT_KNOB_SIZE = 40
+/** Knobs of Musical params and the Creative parameter panel are 15% larger than the default. */
+export const LARGE_KNOB_SIZE = 46
+
+/** With the label below, the unused bottom of the dial is trimmed (about 5px at 46px) and the label moves up by the same amount. */
+export function knobBottomTrim(size: number, labelPosition?: string) {
+  return labelPosition === 'bottom' ? Math.round(size * 5 / 46) : 0
+}
+
+export function knobDragMode(gestureMode: KnobGestureMode, onMarker: boolean): KnobDragMode {
+  if (gestureMode !== 'hybrid') return gestureMode
+  return onMarker ? 'angular' : 'relative'
+}
+
+export function knobRelativeAmount(startAmount: number, startX: number, startY: number, clientX: number, clientY: number) {
+  return Math.max(0, Math.min(1, startAmount + (startY - clientY + clientX - startX) / 200))
+}
+
+export function knobCursor(gestureMode: KnobGestureMode, dragMode: KnobDragMode | null) {
+  if (dragMode === 'angular') return 'grabbing'
+  if (dragMode === 'relative') return 'w-resize'
+  return gestureMode === 'relative' || gestureMode === 'hybrid' ? 'w-resize' : 'grab'
+}
 
 interface KnobBounds {
   left: number
@@ -54,14 +85,15 @@ export function knobValueLabelStyle(size: number, row?: 'top' | 'bottom'): React
   }
 }
 
-export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top", monitorValue, size = 40, accentColor, updateMode = 'immediate', gestureMode = 'angular' }: KnobProps) {
-  const drag = useRef<{ x: number; y: number; amount: number; latestValue: number } | null>(null)
+export function Knob({ value, min, max, step = .01, label, labelContent, ariaLabel, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top", monitorValue, size = DEFAULT_KNOB_SIZE, accentColor, updateMode = 'immediate', gestureMode = 'hybrid' }: KnobProps) {
+  const drag = useRef<{ x: number; y: number; amount: number; latestValue: number; mode: KnobDragMode } | null>(null)
   const indicatorRef = useRef<HTMLDivElement>(null)
   const pointerInsideRef = useRef(false)
   const lastMonitorValueRef = useRef<number | undefined>(undefined)
   const flashSequenceRef = useRef(0)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [dragging, setDragging] = useState(false)
+  const [dragMode, setDragMode] = useState<KnobDragMode | null>(null)
+  const dragging = dragMode !== null
   const [draftValue, setDraftValue] = useState<number | null>(null)
   const [flashMarker, setFlashMarker] = useState<{ amount: number; sequence: number } | null>(null)
   const toAmount = (v: number) => logarithmic ? (Math.log1p(v) - Math.log1p(min)) / (Math.log1p(max) - Math.log1p(min)) : (v - min) / (max - min)
@@ -94,15 +126,15 @@ export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, 
     drag.current = null
     if (applyDraft && updateMode === 'on-release' && pending && !Object.is(pending.latestValue, value)) onChange(pending.latestValue)
     setDraftValue(null)
-    setDragging(false)
+    setDragMode(null)
     pointerInsideRef.current = pointerIsInside
     setIndicatorOutside(pointerIsInside)
   }
   const horizontalLabel = labelPosition === "left" || labelPosition === "right"
   const updateFromPointer = (event: React.PointerEvent<HTMLDivElement>, start: NonNullable<typeof drag.current>) => {
-    const nextAmount = gestureMode === 'angular'
+    const nextAmount = start.mode === 'angular'
       ? knobAmountFromPointer(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect(), amount)
-      : Math.max(0, Math.min(1, start.amount + (start.y - event.clientY + event.clientX - start.x) / 200))
+      : knobRelativeAmount(start.amount, start.x, start.y, event.clientX, event.clientY)
     const nextValue = Math.max(min, Math.min(max, Math.round(fromAmount(nextAmount) / step) * step))
     if (Object.is(start.latestValue, nextValue)) return
     start.latestValue = nextValue
@@ -116,12 +148,15 @@ export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, 
     labelPosition === "right" && "text-left",
   )
 
-  return <div className={cn("flex items-center gap-1 select-none", horizontalLabel ? "w-full flex-row" : "flex-col", labelPosition === "left" && "justify-end", labelPosition === "right" && "justify-start", !neon && "opacity-50")}>
+  const trim = knobBottomTrim(size, labelPosition)
+  const cursor = neon ? knobCursor(gestureMode, dragMode) : 'default'
+  const markerCursor = neon ? dragMode === 'relative' ? 'w-resize' : dragMode === 'angular' ? 'grabbing' : 'grab' : 'default'
+  return <div className={cn("flex items-center select-none", labelPosition === "bottom" ? "gap-[2px]" : "gap-1", horizontalLabel ? "w-full flex-row" : "flex-col", labelPosition === "left" && "justify-end", labelPosition === "right" && "justify-start", !neon && "opacity-50")}>
     {!hideLabel && labelPosition === "top" && <span className="text-[10px] uppercase font-mono text-muted-foreground text-center" style={size!==40?{fontSize:size/4}:undefined}>{label}</span>}
     {!hideLabel && labelPosition === "left" && <span className={labelClasses}>{label}</span>}
     <div role="slider" data-update-mode={updateMode} data-gesture-mode={gestureMode} aria-label={ariaLabel ?? label} title={ariaLabel} aria-valuemin={min} aria-valuemax={max} aria-valuenow={displayedValue} aria-valuetext={formatValue?.(displayedValue)} aria-disabled={!neon} tabIndex={neon ? 0 : -1}
-      style={{width:size,height:size,borderColor:dragging?'#fff':accentColor}}
-      className={cn("relative w-10 h-10 rounded-full bg-secondary border border-border group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]", neon ? "cursor-grab hover:border-[var(--city-neon)]" : "cursor-default", dragging && "border-white cursor-grabbing")}
+      style={{width:size,height:size,cursor}}
+      className="relative w-10 h-10 rounded-full border border-transparent group touch-none focus-visible:outline-2 focus-visible:outline-[var(--city-neon)]"
       onPointerEnter={() => {
         pointerInsideRef.current = true
         if (neon && !drag.current) setIndicatorOutside(true)
@@ -134,8 +169,9 @@ export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, 
         if (!neon || event.button !== 0) return
         event.preventDefault(); event.stopPropagation()
         event.currentTarget.setPointerCapture(event.pointerId)
-        drag.current = { x: event.clientX, y: event.clientY, amount, latestValue: value }; setDragging(true); setIndicatorOutside(true)
-        if (gestureMode === 'angular') updateFromPointer(event, drag.current)
+        const mode = knobDragMode(gestureMode, !!(event.target as Element).closest?.('[data-knob-marker]'))
+        drag.current = { x: event.clientX, y: event.clientY, amount, latestValue: value, mode }; setDragMode(mode); setIndicatorOutside(true)
+        if (mode === 'angular') updateFromPointer(event, drag.current)
       }}
       onPointerMove={event => {
         const start = drag.current
@@ -171,8 +207,12 @@ export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, 
         const direction = ['ArrowUp', 'ArrowRight'].includes(event.key) ? 1 : -1
         commit(event.key === 'Home' ? min : event.key === 'End' ? max : logarithmic ? fromAmount(Math.max(0, Math.min(1, amount + direction * .02))) : value + direction * step * (event.shiftKey ? 10 : 1))
       }}>
+      {/* Visible dial: a separate layer so the trim clips only the circle, not markers or values. */}
+      <div data-knob-face aria-hidden="true" className={cn("pointer-events-none absolute -inset-px rounded-full border border-border bg-secondary", neon && "group-hover:border-[var(--city-neon)]", dragging && "border-white")} style={{ borderColor: dragging ? '#fff' : accentColor, clipPath: trim ? `inset(0 0 ${trim}px 0)` : undefined }} />
       {/* CSS normalizes excess precision before hydration; serialize a stable angle. */}
-      <div className="absolute w-full h-full rounded-full" style={{ transform: `rotate(${Number((-135 + amount * 270).toFixed(3))}deg)` }}>
+      <div className="pointer-events-none absolute w-full h-full rounded-full" style={{ transform: `rotate(${Number((-135 + amount * 270).toFixed(3))}deg)` }}>
+        {/* Wider invisible grip around the marker: in hybrid mode it starts the angular gesture. */}
+        {gestureMode === 'hybrid' && <div data-knob-marker aria-hidden="true" className="pointer-events-auto absolute left-1/2 -translate-x-1/2 rounded-full" style={{ top: -size / 8, width: size / 2.6, height: size / 2.6, cursor: markerCursor }} />}
         <div ref={indicatorRef} className={cn("absolute top-0 left-1/2 w-1 h-2 rounded-full transition-transform duration-150 ease-out", neon ? (dragging ? "" : "bg-[var(--city-neon)] group-hover:bg-white") : "bg-foreground/20")} style={{ transform: "translateX(-50%)", width: size / 10, height: size / 5, backgroundColor: !neon ? 'rgba(161, 161, 170, .45)' : dragging ? updateMode === 'on-release' ? 'rgba(161, 161, 170, .55)' : 'var(--city-neon, #b6e5ac)' : undefined }} />
       </div>
       {flashMarker && <div key={flashMarker.sequence} className="pointer-events-none absolute w-full h-full rounded-full" style={{ transform: `rotate(${Number((-135 + flashMarker.amount * 270).toFixed(3))}deg)` }} aria-hidden="true">
@@ -183,7 +223,7 @@ export function Knob({ value, min, max, step = .01, label, ariaLabel, onChange, 
         {formatValue ? formatValue(displayedValue) : displayedValue.toFixed(2)}
       </span>
     </div>
-    {!hideLabel && labelPosition === "bottom" && <span className="text-[10px] uppercase font-mono text-muted-foreground text-center">{label}</span>}
+    {!hideLabel && labelPosition === "bottom" && <div style={{ marginTop: -trim }}>{labelContent ?? <span className="block text-[10px] uppercase font-mono leading-none text-muted-foreground text-center" style={size!==DEFAULT_KNOB_SIZE?{fontSize:Math.min(10,size/4)}:undefined}>{label}</span>}</div>}
     {!hideLabel && labelPosition === "right" && <span className={labelClasses}>{label}</span>}
   </div>
 }

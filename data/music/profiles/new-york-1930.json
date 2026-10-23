@@ -13,6 +13,14 @@
     16,
     32
   ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Turnaround",
+    "Chorus",
+    "Solo",
+    "Outro"
+  ],
   "reference": "Gershwin, I Got Rhythm (1930), para o espírito do rhythm changes; turnaround original iii7–VI7–ii7–V7.",
   "url": "https://gershwin.com/songs/i-got-rhythm/",
   "parts": [

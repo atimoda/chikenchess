@@ -6,7 +6,7 @@ const { voiceSpecs, compileVoice, renderMusicCode } = loadTs('lib/music/runtime.
 
 function fixture() {
   const kit = creative.updateCreativeArrangement(creative.createCreativeSession(), { sections: [
-    { id: 'a', label: 'A', beats: 16 }, { id: 'b', label: 'B', beats: 16 },
+    { id: 'a', label: 'Intro', beats: 16 }, { id: 'b', label: 'Verse', beats: 16 },
   ] })
   kit.pieces.forEach(piece => { piece.active = piece.id === 'w:b1' })
   Object.assign(kit.instruments['w:b1'], {
@@ -73,7 +73,7 @@ test('N draws per original attack, keeps chord notes together, and is stable acr
 
 test('S follows global section boundaries with both pinned and rule-forced MIDI variations', async () => {
   const api = await strudel(); let kit = fixture()
-  kit = creative.updateCreativeArrangement(kit, { sections: [{ id: 'a', label: 'A', beats: 16 }, { id: 'b', label: 'B', beats: 32 }, { id: 'c', label: 'C', beats: 16 }] })
+  kit = creative.updateCreativeArrangement(kit, { sections: [{ id: 'a', label: 'Intro', beats: 16 }, { id: 'b', label: 'Verse', beats: 32 }, { id: 'c', label: 'Chorus', beats: 16 }] })
   const inst = kit.instruments['w:b1']
   inst.swingRange = { first: 0, second: 0 }
   inst.reverbRange.frequency = 'section'; inst.driveRange.frequency = 'section'

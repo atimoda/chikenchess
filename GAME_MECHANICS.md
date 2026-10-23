@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 22/10/2026 — v1.6.7 (Best/Worst e barra de Chance não travam mais depois que um poder expira). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 23/10/2026 — v1.7.0 (Estados e Eventos globais, ChickenBots com critério, knobs novos, seções com forma musical, mergulho na cidade e desempenho no celular). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 

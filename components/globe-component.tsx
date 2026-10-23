@@ -5,10 +5,10 @@
 import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
-import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute } from 'three'
+import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, type PerspectiveCamera, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute } from 'three'
 import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup, type PopupExitMotion } from './city-popup'
-import { cityDirection, cityFlightPose, popupStandbyCompensation } from '@/lib/globe-navigation'
+import { cityDirection, cityFlightPose, popupStandbyCompensation, sphereFillDistance } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
 import { constrainPopupPosition, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
@@ -68,6 +68,8 @@ interface GlobeProps {
 }
 
 const GLOBE_RADIUS = 2
+const PIN_RADIUS = .04
+const CAMERA_NEAR = .1
 const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
 
 type PopupLineState = { startX: number; startY: number; cpX: number; cpY: number; endX: number; endY: number; handlePath: string }
@@ -772,12 +774,21 @@ const GlobeContent = ({
   }, [cities, playMapSound])
 
   const [targetCameraPos, setTargetCameraPos] = useState<Vector3 | null>(null)
-  const entryFlight = useRef<{ city: CityData; from: Vector3; up: Vector3; pin: Vector3; elapsed: number; duration: number; done: boolean } | null>(null)
+  const entryFlight = useRef<{ city: CityData; from: Vector3; up: Vector3; pin: Vector3; endGap: number; elapsed: number; duration: number; done: boolean } | null>(null)
   useEffect(() => {
     const city = cities.find(candidate => candidate.id === enteringCityId)
-    if (!city || !globeRef.current) { entryFlight.current = null; return }
+    const perspective = camera as PerspectiveCamera
+    if (!city || !globeRef.current) {
+      entryFlight.current = null
+      if (perspective.near !== CAMERA_NEAR) { perspective.near = CAMERA_NEAR; perspective.updateProjectionMatrix() }
+      return
+    }
     const pin = globeRef.current.localToWorld(cityDirection(city.pinCoordinates.lat, city.pinCoordinates.lng, GLOBE_RADIUS))
-    entryFlight.current = { city, from: camera.position.clone(), up: camera.up.clone(), pin, elapsed: 0, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? .15 : 1.4, done: false }
+    // End the dive inside the pin's glow, close enough for the inner circle to fill the screen.
+    const endGap = sphereFillDistance(PIN_RADIUS, perspective.fov, perspective.aspect)
+    perspective.near = endGap / 5
+    perspective.updateProjectionMatrix()
+    entryFlight.current = { city, from: camera.position.clone(), up: camera.up.clone(), pin, endGap, elapsed: 0, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? .15 : 1.4, done: false }
     setTargetCameraPos(null)
     centeringCamera.current = false
     resumeStandbyAfterCenter.current = false
@@ -793,7 +804,7 @@ const GlobeContent = ({
       if (flight.done) return
       flight.elapsed += delta
       const progress = Math.min(1, flight.elapsed / flight.duration)
-      const pose = cityFlightPose(flight.from, flight.up, flight.pin, progress)
+      const pose = cityFlightPose(flight.from, flight.up, flight.pin, progress, flight.endGap)
       camera.position.copy(pose.position)
       camera.up.copy(pose.up)
       camera.lookAt(0, 0, 0)
@@ -1273,7 +1284,7 @@ const GlobeContent = ({
                     </mesh>
                 )}
 
-                {locationConquered && <ConqueredFlag city={city} idleRotationRef={idleFlagMotion} />}
+                {locationConquered && !eras.some(era => era.id === enteringCityId) && <ConqueredFlag city={city} idleRotationRef={idleFlagMotion} />}
 
                 {/* Pulse Ring Effect (Hover/Selected) */}
                 {(locationOpen || isHovered) && <PulsingRing city={city} isOpen={locationOpen} isHoveredProp={isHovered} />}

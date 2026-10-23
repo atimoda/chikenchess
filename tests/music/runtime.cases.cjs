@@ -148,7 +148,7 @@ test('a later Creative gesture resumes audio before awaiting an earlier suspende
 
 test('playback monitor distinguishes inactive, rhythmic rest and globally masked section', async () => {
   const api = await strudel()
-  const lab = creative.updateCreativeArrangement(creative.createCreativeSession(),{sections:[{id:'a',label:'A',beats:4},{id:'b',label:'B',beats:4}]})
+  const lab = creative.updateCreativeArrangement(creative.createCreativeSession(),{sections:[{id:'a',label:'Intro',beats:4},{id:'b',label:'Verse',beats:4}]})
   lab.pieces.find(p => p.id === 'w:b1').active = true
   lab.instruments['w:b1'] = { ...lab.instruments['w:b1'], pianoRolls: [noteRoll([0, null])], arrangement: { restart: true, sections: {
     a:{variation:0,transpose:0,active:true},b:{variation:0,transpose:0,active:false},

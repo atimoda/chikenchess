@@ -1,16 +1,18 @@
 import { METER_IDS } from './meter'
 import { arrangementSchema, pieceArrangementSchema, migrateGlobalArrangement, DEFAULT_ARRANGEMENT, pieceSection, type Arrangement } from './arrangement'
+import { STYLE_PROFILES } from './kit-profiles/catalog'
 import { pianoRollSchema } from './piano-roll'
 import { z } from 'zod'
 import { DEFAULT_MOVEMENT, instrumentFor, piecesFromHistory } from './model'
 import type { MusicSnapshot } from './runtime-types'
 import { sampleAsset } from './sample-banks'
 import dusseldorfMidi from '../../public/presets/dusseldorf-original.json'
-import { defaultReactions, isLegacyReactionPreset, REACTION_PRESET_REVISION, reactionsSchema } from './reactions'
+import manchesterJazz from '../../public/presets/manchester-1999.json'
+import { kitReactionsSchema, migrateKitReactions, REACTION_PRESET_REVISION } from './reactions'
 import { HARMONY_PLAN_IDS } from './harmony'
 
 export const SOUNDS = ['sbd', 'sine', 'triangle', 'square', 'sawtooth', 'supersaw', 'white', 'pink', 'brown'] as const
-export { ROOTS, scaleForCreativeSession, SCALE_INTERVALS as SCALES } from './scales'
+export { ROOTS, scaleForCreativeSession, SCALE_INTERVALS as SCALES, SCALE_LABELS } from './scales'
 import { ROOTS, SCALE_NAMES, scaleForCreativeSession } from './scales'
 
 const finite = (min: number, max: number) => z.number().finite().min(min).max(max)
@@ -18,7 +20,7 @@ const sourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('synth') }),
   z.object({ kind: z.literal('sample'), bank: z.string().max(80), asset: z.string().max(80), variant: finite(0, 127).int(), pitched: z.boolean() }),
 ]).superRefine((source, ctx) => {
-  if (source.kind === 'sample' && !sampleAsset(source)?.variants[source.variant]) ctx.addIssue({ code: 'custom', message: 'Banco, som ou articulação de sample inexistente.' })
+  if (source.kind === 'sample' && !sampleAsset(source)?.variants[source.variant]) ctx.addIssue({ code: 'custom', message: 'Sample bank, sound or articulation does not exist.' })
 })
 const rangeFrequencySchema = z.enum(['fixed', 'loop', 'section', 'note']).optional()
 const octaveRangeSchema = z.union([
@@ -55,7 +57,7 @@ const pieceSchema = z.object({
   type: z.enum(['p', 'n', 'b', 'r', 'q', 'k']), color: z.enum(['w', 'b']), active: z.boolean(),
 })
 export const creativeSchema = z.object({
-  reactions: reactionsSchema,
+  reactions: kitReactionsSchema,
   reactionPresetRevision: z.string().max(80).default(REACTION_PRESET_REVISION),
   harmony: z.enum(HARMONY_PLAN_IDS).default('kit'),
   catalogRevision: z.string().max(80).optional(),
@@ -69,7 +71,7 @@ export const creativeSchema = z.object({
 }).superRefine((data, ctx) => {
   const initial = piecesFromHistory([])
   if (new Set(data.pieces.map(p => p.square)).size !== 32 || new Set(data.pieces.map(p => p.id)).size !== 32) {
-    ctx.addIssue({ code: 'custom', message: 'Cada peça precisa de uma identidade e casa únicas.' })
+    ctx.addIssue({ code: 'custom', message: 'Each piece needs a unique id and square.' })
   }
   for (const p of data.pieces) {
     const original = initial.find(x => x.id === p.id)
@@ -78,12 +80,12 @@ export const creativeSchema = z.object({
     }
   }
   for (const map of [data.instruments, data.effects, data.mappings]) {
-    if (Object.keys(map).length !== 32) ctx.addIssue({ code: 'custom', message: 'O kit precisa configurar exatamente 32 peças.' })
+    if (Object.keys(map).length !== 32) ctx.addIssue({ code: 'custom', message: 'The kit must set up exactly 32 pieces.' })
   }
   for (const instrument of Object.values(data.instruments)) {
     const entries = instrument.arrangement.sections
     if (Object.keys(entries).length !== data.arrangement.sections.length || data.arrangement.sections.some(s => !Object.hasOwn(entries,s.id) || entries[s.id].variation >= instrument.pianoRolls.length)) {
-      ctx.addIssue({code:'custom', message:'Cada peça precisa referenciar todas as seções globais e bancos MIDI existentes.'})
+      ctx.addIssue({code:'custom', message:'Each piece must reference every global section and existing MIDI bank.'})
     }
   }
 })
@@ -93,7 +95,7 @@ export const CREATIVE_STORAGE = 'chickenchess:creative:v5'
 export function createCreativeSession(): CreativeSession {
   const pieces = piecesFromHistory([])
   return creativeSchema.parse({
-    version: 7, name: 'Meu kit eletrônico', bpm: 118, meter: '4/4', volume: 0.75, root: 'C', scale: 'Pentatônica menor', arrangement: globalThis.structuredClone(DEFAULT_ARRANGEMENT), pieces,
+    version: 7, name: 'My electronic kit', bpm: 118, meter: '4/4', volume: 0.75, root: 'C', scale: 'Pentatônica menor', arrangement: globalThis.structuredClone(DEFAULT_ARRANGEMENT), pieces,
     instruments: Object.fromEntries(pieces.map(p => [p.id, { ...instrumentFor(p), arrangement:{restart:false,sections:{'section-a':{variation:0,transpose:0,active:true}}} }])),
     effects: Object.fromEntries(pieces.map(p => [p.id, { gain: 1, pitch: 1, pan: 0, delay: 0, reverb: 0.12, decay: 0.15 }])),
     mappings: Object.fromEntries(pieces.map(p => [p.id, { ...DEFAULT_MOVEMENT }])),
@@ -125,7 +127,7 @@ export function moveCreativePiece(session: CreativeSession, id: string, square: 
 export function parseCreativeSession(text: string): CreativeSession {
   // Explicit note banks are larger than the retired compact text format.
   // Individual banks still cap duration and note count in pianoRollSchema.
-  if (text.length > 2_000_000) throw new Error('Arquivo de kit muito grande.')
+  if (text.length > 2_000_000) throw new Error('Kit file too large.')
   const data = JSON.parse(text)
   // Text-era imports are intentionally simplified; no old pattern engine survives.
   if ([1, 2, 3, 4].includes(data?.version)) {
@@ -139,14 +141,9 @@ export function parseCreativeSession(text: string): CreativeSession {
       instrument.pianoRolls = Array.from({ length: count }, (_, index) => instrument.pianoRolls?.[index] ?? fallback[index % fallback.length])
     }
   }
-  // Replace old factory presets; authored rules win while missing triggers gain defaults.
-  if (data?.reactionPresetRevision !== REACTION_PRESET_REVISION) {
-    if (!data?.reactions || isLegacyReactionPreset(data.reactions)) {
-      data.reactions = { minimumPieces: data?.reactions?.minimumPieces ?? 4, rules: defaultReactions() }
-    } else {
-      const configured = new Set((data.reactions.rules ?? []).map((rule:{trigger?:string})=>rule.trigger))
-      data.reactions.rules = [...(data.reactions.rules ?? []), ...defaultReactions().filter(rule=>!configured.has(rule.trigger))]
-    }
+  // Kits from before the global set stored every rule; keep only what was authored.
+  if (data && (!data.reactions || !Array.isArray(data.reactions.overrides))) {
+    data.reactions = migrateKitReactions(data.reactions, data.reactionPresetRevision)
     data.reactionPresetRevision = REACTION_PRESET_REVISION
   }
   // Repair the old factory timeline: <...> already spans 16 cycles; /16
@@ -162,7 +159,20 @@ export function parseCreativeSession(text: string): CreativeSession {
     if (data.arrangement?.sections?.some((section: { harmony?: number[] }) => section.harmony?.length)) data.harmony = 'kit'
     data.version = 7
   }
+  restoreCatalogSectionTypes(data)
   return creativeSchema.parse(data)
+}
+
+// Kits saved before the closed section vocabulary carry automatic letters. Sections
+// still matching a catalog id recover the curated type; other text is normalized by the schema.
+function restoreCatalogSectionTypes(data: Record<string, any>) {
+  const catalog: { id: string; label: string }[] | undefined = data?.cityId === manchesterJazz.cityId ? manchesterJazz.arrangement.sections
+    : STYLE_PROFILES[data?.cityId]?.sectionLabels?.map((label, index) => ({ id: `section-${String.fromCharCode(97 + index)}`, label }))
+  for (const section of data?.arrangement?.sections ?? []) {
+    if (typeof section?.label !== 'string' || !/^[A-Z]$/.test(section.label)) continue
+    const match = catalog?.find(item => item.id === section.id)
+    if (match) section.label = match.label
+  }
 }
 
 /** Stable identities keep piece assignments attached when sections move or rename. */

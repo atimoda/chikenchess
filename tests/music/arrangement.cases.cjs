@@ -14,7 +14,7 @@ function fixture() {
   kit.instruments['w:b1'].pianoRolls = [noteRoll([0, 2, 4], .75, .5), noteRoll([5, 6], 2, .5)]
   kit.instruments['w:d1'].pianoRolls = [noteRoll([0, 1, 2], 1.5, .5)]
   kit = creative.updateCreativeArrangement(kit, { sections: [
-    { id: 'intro', label: 'Intro', beats: 3 }, { id: 'theme', label: 'Theme', beats: 5 }, { id: 'break', label: 'Break', beats: 4 },
+    { id: 'intro', label: 'Intro', beats: 3 }, { id: 'theme', label: 'Verse', beats: 5 }, { id: 'break', label: 'Break', beats: 4 },
   ] })
   for (const id of ['w:b1', 'w:d1']) kit.instruments[id].arrangement = { restart: true, sections: {
     intro: { variation: 0, transpose: 0, active: true },
@@ -43,11 +43,11 @@ test('global section boundaries use shared pulses, wrap and stay independent of 
       assert.equal(arrangementPosition(arrangement, beat / pulses, pulses).index, index, `${pulses} pulses, beat ${beat}`)
     }
   }
-  assert.deepEqual(DEFAULT_ARRANGEMENT.sections.map(section => [section.label, section.beats]), [['A',4]])
+  assert.deepEqual(DEFAULT_ARRANGEMENT.sections.map(section => [section.label, section.beats]), [['Verse',4]])
 })
 
 test('section seeking resolves exact starts in compound and fractional global sections', () => {
-  const plan = { sections: [{ id: 'a', label: 'A', beats: 2.25 }, { id: 'b', label: 'B', beats: 5.5 }, { id: 'c', label: 'C', beats: 3 }] }
+  const plan = { sections: [{ id: 'a', label: 'Intro', beats: 2.25 }, { id: 'b', label: 'Verse', beats: 5.5 }, { id: 'c', label: 'Chorus', beats: 3 }] }
   for (const pulses of [2,3,4,5,7]) {
     assert.equal(sectionStartCycle(plan,'a',pulses),0)
     assert.equal(sectionStartCycle(plan,'b',pulses),2.25/pulses)
@@ -117,7 +117,7 @@ test('runtime seeking discards old buses, repeats the section downbeat and updat
     assert.ok(removed.length>0)
     assert.ok(runtime.generation>generation)
     assert.equal(runtime.monitor.getSnapshot().section,1)
-    assert.equal(runtime.monitor.getSnapshot().transport.sectionLabel,'Theme')
+    assert.equal(runtime.monitor.getSnapshot().transport.sectionLabel,'Verse')
     assert.ok(Math.abs(runtime.monitor.getSnapshot().cycle-.75)<1e-9)
     const count=attacks.filter(attack=>attack.voice==='w:b1:loop'&&attack.cycle===.75).length
     assert.ok(count>0)
@@ -234,13 +234,13 @@ test('initial electronic draft and bare instruments play the complete four-bar M
 })
 
 test('schema 7 validates global IDs, section budget and piece selection independently', () => {
-  const sections = [{ id: 'a', label: 'A', beats: 64 }, { id: 'b', label: 'B', beats: 64 }]
+  const sections = [{ id: 'a', label: 'Intro', beats: 64 }, { id: 'b', label: 'Verse', beats: 64 }]
   assert.ok(arrangementSchema.safeParse({ sections }).success)
   assert.equal(arrangementSchema.safeParse({ sections: [] }).success, false)
   assert.equal(arrangementSchema.safeParse({ sections: [sections[0], sections[0]] }).success, false)
-  assert.equal(arrangementSchema.safeParse({ sections: Array.from({ length: 9 }, (_, index) => ({ id: `s${index}`, label: `S${index}`, beats: 64 })) }).success, false)
-  assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'A', beats: 65 }] }).success, false)
-  assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'A', beats: .125 }] }).success, false)
+  assert.equal(arrangementSchema.safeParse({ sections: Array.from({ length: 9 }, (_, index) => ({ id: `s${index}`, label: 'Verse', beats: 64 })) }).success, false)
+  assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'Intro', beats: 65 }] }).success, false)
+  assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'Intro', beats: .125 }] }).success, false)
   assert.ok(pieceArrangementSchema.safeParse({ restart: false, sections: { a: { variation: 7, transpose: -24, active: false } } }).success)
   for (const patch of [{ variation: 8 }, { variation: -1 }, { transpose: 25 }, { transpose: -25 }, { active: 'yes' }]) {
     assert.equal(pieceArrangementSchema.safeParse({ restart: true, sections: { a: { variation: 0, transpose: 0, active: true, ...patch } } }).success, false)
@@ -250,7 +250,7 @@ test('schema 7 validates global IDs, section budget and piece selection independ
 test('reorder, rename, resize and remove global sections preserve piece assignments by ID', () => {
   const kit = fixture(), before = JSON.stringify(kit)
   const next = creative.updateCreativeArrangement(kit, { sections: [
-    { ...kit.arrangement.sections[1], label: 'Renamed theme', beats: 7 },
+    { ...kit.arrangement.sections[1], label: 'Chorus', beats: 7 },
     { ...kit.arrangement.sections[0], beats: 2 }, { id: 'outro', label: 'Outro', beats: 3 },
   ] })
   assert.deepEqual(next.arrangement.sections.map(section => section.id), ['theme','intro','outro'])
@@ -365,8 +365,8 @@ test('continuous short MIDI rolls follow global per-bar harmony in slices, expor
   kit.pieces.forEach(piece => { piece.active = piece.id === id })
   kit.instruments[id].pianoRolls = [noteRoll([0], .5, .8), noteRoll([2], .5, .8)]
   kit = creative.updateCreativeArrangement(kit, { sections: [
-    { id: 'long', label: 'Four bars', beats: 16, harmony: [0,3,4,0] },
-    { id: 'answer', label: 'Answer', beats: 8, harmony: [4,3] },
+    { id: 'long', label: 'Verse', beats: 16, harmony: [0,3,4,0] },
+    { id: 'answer', label: 'Chorus', beats: 8, harmony: [4,3] },
   ] })
   kit.instruments[id].arrangement = { restart: false, sections: {
     long: { variation: 0, transpose: 2, active: true }, answer: { variation: 1, transpose: -3, active: true },
@@ -402,9 +402,31 @@ test('continuous short MIDI rolls follow global per-bar harmony in slices, expor
         assert.equal(frame.section,second?1:0)
         assert.equal(frame.transport.harmonicRoot,root)
         assert.equal(frame.transport.authoredHarmony,true)
-        assert.equal(frame.transport.sectionLabel,second?'Answer':'Four bars')
+        assert.equal(frame.transport.sectionLabel,second?'Chorus':'Verse')
         assert.deepEqual(frame.tracks[id].notes,[expected[(time%6)*2][1]])
       }
     } finally {runtime.scheduler=null;runtime.dispose()}
   }
+})
+
+test('section names use the closed vocabulary in every catalog kit and legacy saves recover their types', () => {
+  const { SECTION_TYPES, normalizeSectionLabel } = loadTs('lib/music/arrangement.ts')
+  const { STYLE_PROFILES, createStyledCityKit } = loadTs('lib/music/styled-kits.ts')
+  const { cities } = loadTs('lib/cities-data.ts')
+  for (const [cityId, profile] of Object.entries(STYLE_PROFILES)) {
+    assert.equal(profile.sectionLabels.length, profile.sections.length, cityId)
+    const city = cities.find(item => item.id === cityId)
+    if (city) assert.deepEqual(createStyledCityKit(city).arrangement.sections.map(section => section.label), profile.sectionLabels, cityId)
+  }
+  for (const preset of ['manchester-1999', 'dusseldorf-original', 'mouth-breather']) {
+    for (const section of require(`../../public/presets/${preset}.json`).arrangement.sections) assert.ok(SECTION_TYPES.includes(section.label), `${preset}: ${section.label}`)
+  }
+  assert.equal(normalizeSectionLabel('refrão'), 'Chorus')
+  assert.equal(normalizeSectionLabel(' pre chorus '), 'Pre-Chorus')
+  assert.equal(normalizeSectionLabel('Seção 3'), 'Verse')
+  assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'Drop Break', beats: 4 }] }).data.sections[0].label, 'Verse')
+  const legacy = JSON.parse(JSON.stringify(createStyledCityKit(cities.find(city => city.id === 'berlin'))))
+  legacy.arrangement.sections.forEach((section, index) => { section.label = String.fromCharCode(65 + index) })
+  legacy.arrangement.sections[1].label = 'Ponte'
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(legacy)).arrangement.sections.map(section => section.label), ['Intro', 'Bridge', 'Break', 'Drop', 'Interlude', 'Drop'])
 })

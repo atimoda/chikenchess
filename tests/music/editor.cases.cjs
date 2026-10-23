@@ -6,11 +6,11 @@ const creative = loadTs('lib/music/creative.ts')
 const variationEdit = loadTs('lib/music/variation-edit.ts')
 const { noteRoll } = loadTs('lib/music/piano-roll.ts')
 
-const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: String.fromCharCode(65+index), beats: value })) })
+const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: ['Intro','Verse','Chorus','Bridge','Outro'][index % 5], beats: value })) })
 
 test('piano editor follows authored phase, pauses and override priority without compiling patterns', () => {
  const {variationPosition}=loadTs('lib/music/performance.ts')
- const arrangement={sections:[{id:'intro',label:'Intro',beats:3},{id:'theme',label:'Theme',beats:5}]}
+ const arrangement={sections:[{id:'intro',label:'Intro',beats:3},{id:'theme',label:'Verse',beats:5}]}
  const instrument={...creative.createCreativeSession().instruments['w:b1'],pianoRolls:[0,2,4].map(degree=>noteRoll([degree])),arrangement:{restart:true,sections:{
   intro:{variation:0,transpose:0,active:true},theme:{variation:1,transpose:0,active:false},
  }}}
@@ -121,7 +121,7 @@ test('moving harmony generates one voiced diatonic triad per sustain onset', asy
  const played=pattern.queryArc(1,1.01).map(event=>Number(event.value.note)).sort((a,b)=>a-b)
  assert.deepEqual(played,[48,53,57])
  assert.deepEqual(harmonyFrame('cadence',creative.creativeSnapshot(kit,true).scale,1),{
-  plan:'cadence',planLabel:'I–IV–V–I - Cadência',section:1,degree:3,roman:'IV',
+  plan:'cadence',planLabel:'I–IV–V–I - Cadence',section:1,degree:3,roman:'IV',
   chordDegrees:[3,5,7],chordNotes:['F','A','C'],chordName:'F',quality:'maior',
  })
  assert.deepEqual(harmonyFrame('static',['C4','C#4','D4','D#4','E4','F4','F#4','G4','G#4','A4','A#4','B4'],0).chordNotes,['C','E','G'])
