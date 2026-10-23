@@ -9,6 +9,7 @@ import { SCALE_NAMES } from '../music/scales'
 import { HARMONY_PLAN_IDS } from '../music/harmony'
 import { METER_IDS } from '../music/meter'
 import { createStyledCityKit } from '../music/styled-kits'
+import { reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
 
 const hasControl = (value: string, multiline = false) => [...value].some(character => { const code = character.codePointAt(0)!; return (code < 32 || code === 127) && !(multiline && [9, 10, 13].includes(code)) })
@@ -88,6 +89,12 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       const city = cities.find(item => item.id === entry.cityId)
       if (!city) throw new Error('Cidade não encontrada.')
       createStyledCityKit(city, profile)
+      break
+    }
+    case 'music-reactions': {
+      const raw = z.object({ minimumPieces: z.unknown(), rules: z.array(z.unknown()) }).strict().parse(value)
+      const result = reactionsSchema.parse(raw)
+      if (new Set(result.rules.map(rule => rule.id)).size !== result.rules.length) throw new Error('IDs das regras não podem repetir.')
       break
     }
     case 'music-preset': {

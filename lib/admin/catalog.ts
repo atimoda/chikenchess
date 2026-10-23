@@ -1,7 +1,7 @@
 import { cities } from '../cities-data'
 import { STYLE_PROFILES } from '../music/kit-profiles/catalog'
 
-export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'names' | 'music-profile' | 'music-preset'
+export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'names' | 'music-profile' | 'music-preset' | 'music-reactions'
 export interface AdminEntry {
   id: string
   title: string
@@ -23,6 +23,8 @@ export const ADMIN_ENTRIES: AdminEntry[] = [
   ui('rank-titles', 'Títulos dos ranks', 'Nomes dos níveis; os limites de pontuação são preservados.', 'ranks'),
   ui('bots', 'Perfis dos bots', 'Configurações de dificuldade, atraso e poderes dos bots Pure Chess e ChickenBot.', 'bots'),
   { ...ui('baptism-names', 'Nomes de batismo', 'Títulos, adjetivos, substantivos e epítetos. Depois de salvar, gere a migração para publicar o catálogo no Supabase.', 'names'), group: 'Contas' },
+  { id: 'reactions', title: 'Estados e Eventos globais', group: 'Kits musicais', kind: 'music-reactions', path: 'data/music/reactions.json',
+    description: 'Regras oficiais de Estados e Eventos usadas por todos os kits; cada kit pode sobrescrever gatilhos no Criativo.' },
   ...Object.keys(STYLE_PROFILES).map(cityId => {
     const city = cities.find(item => item.id === cityId)!
     return { id: `profile:${cityId}`, title: `${city.year} · ${city.name}`, group: 'Kits musicais', kind: 'music-profile' as const, cityId,

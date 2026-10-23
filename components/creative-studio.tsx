@@ -407,7 +407,7 @@ export function CreativeStudio() {
 
           </section>
 
-          <MusicReactionEditor config={session.reactions} onChange={reactions=>setSession(s=>({...s,reactions}))} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} />
+          <MusicReactionEditor kit={session.reactions} onKitChange={reactions=>setSession(s=>({...s,reactions}))} kitName={session.name} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} />
 
           <section className={`${styles.panel} ${styles.bandPanel}`}>
             <div className={styles.sectionHeader}><h2>32 vozes independentes</h2></div>

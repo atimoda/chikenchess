@@ -140,21 +140,82 @@ test('draw triggers distinguish stalemate from the fifty-move rule', () => {
   assert.ok(!fifty.includes('stalemate'))
 })
 
-test('legacy factory reactions upgrade while authored reaction sets remain intact', () => {
-  const { REACTION_PRESET_REVISION, defaultReactions }=loadTs('lib/music/reactions.ts')
+test('legacy kits keep only authored triggers as overrides and follow the global set elsewhere', () => {
+  const { REACTION_PRESET_REVISION, TRIGGERS, defaultReactions, resolveReactions, defaultGlobalReactions }=loadTs('lib/music/reactions.ts')
   const kit=creative.createCreativeSession()
+  assert.deepEqual(kit.reactions,{overrides:[],rules:[]})
   const legacy={...kit,reactionPresetRevision:undefined,reactions:{minimumPieces:6,rules:[{id:'check-band',trigger:'check',enabled:true,quantize:false,target:'actor',duration:1,actions:[{type:'activate',value:0,scale:'Maior'}]}]}}
   const upgraded=creative.parseCreativeSession(JSON.stringify(legacy))
   assert.equal(upgraded.reactionPresetRevision,REACTION_PRESET_REVISION)
-  assert.equal(upgraded.reactions.minimumPieces,6)
-  assert.deepEqual(upgraded.reactions.rules,defaultReactions())
+  assert.deepEqual(upgraded.reactions,{overrides:[],rules:[],minimumPieces:6})
+  const fullFactory={...kit,reactionPresetRevision:'reactions-2026-09-20-v3',reactions:{minimumPieces:4,rules:defaultReactions()}}
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(fullFactory)).reactions,{overrides:[],rules:[]})
   const previousFactory={...kit,reactionPresetRevision:'reactions-2026-09-20-v1',reactions:{minimumPieces:4,rules:defaultReactions().map(rule=>({...rule,actions:rule.actions.filter(action=>action.type!=='harmony').map(({harmony,...action})=>action)}))}}
-  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(previousFactory)).reactions.rules,defaultReactions())
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(previousFactory)).reactions,{overrides:[],rules:[]})
+  // One edited trigger plus one deleted trigger in a current-revision kit.
+  const edited=defaultReactions().filter(rule=>rule.trigger!=='quiet').map(rule=>rule.trigger==='capture'?{...rule,duration:3}:rule)
+  const authored={...kit,reactionPresetRevision:'reactions-2026-09-20-v3',reactions:{minimumPieces:4,rules:edited}}
+  const migrated=creative.parseCreativeSession(JSON.stringify(authored)).reactions
+  assert.deepEqual(new Set(migrated.overrides),new Set(['capture','quiet']))
+  assert.deepEqual(migrated.rules.map(rule=>[rule.trigger,rule.duration]),[['capture',3]])
+  const resolved=resolveReactions(defaultGlobalReactions(),migrated)
+  assert.equal(resolved.rules.length,Object.keys(TRIGGERS).length-1)
+  assert.ok(!resolved.rules.some(rule=>rule.trigger==='quiet'))
+  assert.equal(resolved.rules.find(rule=>rule.trigger==='capture').duration,3)
+  // Unchanged triggers keep the global rule order.
+  assert.deepEqual(resolved.rules.map(rule=>rule.id),defaultReactions().filter(rule=>rule.trigger!=='quiet').map(rule=>rule.id))
+  // Older revisions never saved a deletion: missing triggers keep following the global set.
   const custom={...kit,reactionPresetRevision:undefined,reactions:{minimumPieces:4,rules:[{id:'mine',trigger:'capture',enabled:true,quantize:false,target:'actor',duration:3,actions:[{type:'gain',value:9,scale:'Maior',harmony:'static'}]}]}}
   const merged=creative.parseCreativeSession(JSON.stringify(custom)).reactions
-  assert.deepEqual(merged.rules[0],custom.reactions.rules[0])
-  assert.equal(merged.rules.length,Object.keys(loadTs('lib/music/reactions.ts').TRIGGERS).length)
-  assert.equal(new Set(merged.rules.map(rule=>rule.trigger)).size,Object.keys(loadTs('lib/music/reactions.ts').TRIGGERS).length)
+  assert.deepEqual(merged,{overrides:['capture'],rules:custom.reactions.rules})
+  assert.equal(resolveReactions(defaultGlobalReactions(),merged).rules.length,Object.keys(TRIGGERS).length)
+})
+
+test('global edits reach every kit except the triggers a kit overrides; kits can inherit again', () => {
+  const { defaultGlobalReactions, resolveReactions, overrideTrigger, inheritTrigger, kitReactionsSchema }=loadTs('lib/music/reactions.ts')
+  const global=defaultGlobalReactions()
+  const louder={...global,minimumPieces:6,rules:global.rules.map(rule=>rule.trigger==='capture'||rule.trigger==='check'?{...rule,actions:[{type:'gain',value:40,scale:'Maior',harmony:'static'}]}:rule)}
+  const plain=kitReactionsSchema.parse(undefined)
+  let kit=overrideTrigger(plain,global,'capture')
+  assert.deepEqual(kit.rules,global.rules.filter(rule=>rule.trigger==='capture'))
+  kit={...kit,rules:kit.rules.map(rule=>({...rule,actions:[{type:'lpf',value:900,scale:'Maior',harmony:'static'}]})),minimumPieces:3}
+  const resolved=resolveReactions(louder,kit)
+  assert.equal(resolved.minimumPieces,3)
+  assert.equal(resolved.rules.find(rule=>rule.trigger==='capture').actions[0].type,'lpf')
+  assert.equal(resolved.rules.find(rule=>rule.trigger==='check').actions[0].value,40)
+  assert.equal(resolveReactions(louder,plain).minimumPieces,6)
+  const back=inheritTrigger(kit,'capture')
+  assert.deepEqual(back.overrides,[])
+  assert.equal(resolveReactions(louder,back).rules.find(rule=>rule.trigger==='capture').actions[0].value,40)
+  // A silenced override has no rules, and stray rules of inherited triggers are dropped on parse.
+  const silent=kitReactionsSchema.parse({overrides:['check','check'],rules:global.rules.filter(rule=>rule.trigger==='capture')})
+  assert.deepEqual(silent,{overrides:['check'],rules:[]})
+  assert.ok(!resolveReactions(louder,silent).rules.some(rule=>rule.trigger==='check'))
+})
+
+test('global reactions persist personal edits, restore the official set and add new triggers', () => {
+  const { memoryStorage }=require('../helpers/music.cjs')
+  const previous=globalThis.window
+  globalThis.window={localStorage:memoryStorage(new Map()),addEventListener(){},removeEventListener(){}}
+  try {
+    const store=loadTs('lib/music/global-reactions.ts')
+    const { defaultGlobalReactions, REACTION_PRESET_REVISION }=loadTs('lib/music/reactions.ts')
+    assert.deepEqual(store.loadGlobalReactions(),defaultGlobalReactions())
+    const edited={...defaultGlobalReactions(),minimumPieces:5}
+    store.saveGlobalReactions(edited)
+    assert.equal(store.loadGlobalReactions().minimumPieces,5)
+    assert.equal(store.isOfficialGlobalReactions(store.loadGlobalReactions()),false)
+    store.saveGlobalReactions(null)
+    assert.equal(globalThis.window.localStorage.getItem(store.GLOBAL_REACTIONS_STORAGE),null)
+    // Saving the official set again keeps storage empty, so later official updates still arrive.
+    store.saveGlobalReactions(defaultGlobalReactions())
+    assert.equal(globalThis.window.localStorage.getItem(store.GLOBAL_REACTIONS_STORAGE),null)
+    const older=JSON.stringify({revision:'old',knownTriggers:['check'],minimumPieces:4,rules:[]})
+    assert.deepEqual(store.parseGlobalReactions(older).rules,defaultGlobalReactions().rules.filter(rule=>rule.trigger!=='check'))
+    const current=JSON.stringify({revision:REACTION_PRESET_REVISION,minimumPieces:4,rules:[]})
+    assert.deepEqual(store.parseGlobalReactions(current).rules,[])
+    assert.deepEqual(store.parseGlobalReactions('{broken'),defaultGlobalReactions())
+  } finally { if(previous===undefined)delete globalThis.window; else globalThis.window=previous }
 })
 
 test('kit reactions round-trip, restore base, expire and never accumulate on rerender', () => {
@@ -171,7 +232,8 @@ test('kit reactions round-trip, restore base, expire and never accumulate on rer
   const infinite=reactionsSchema.parse({rules:[{...config.rules[0],duration:0}]})
   assert.equal(applyReactions(base,infinite,{...context,ply:999}).snapshot.bpm,base.bpm*1.1)
   assert.equal(base.scale[0],'C4')
-  assert.deepEqual(creative.parseCreativeSession(JSON.stringify({...kit,reactions:config})).reactions,config)
+  const owned={overrides:['queenCapture'],rules:config.rules,minimumPieces:5}
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify({...kit,reactions:owned})).reactions,owned)
   assert.throws(()=>reactionsSchema.parse({...config,rules:[{...config.rules[0],actions:[{type:'bpm',value:500}]}]}))
 })
 

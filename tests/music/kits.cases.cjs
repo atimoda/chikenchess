@@ -203,7 +203,7 @@ test('every city has a reproducible, distinct kit with roles independent of ches
   const { cities } = loadTs('lib/cities-data.ts')
   const { defaultCityKit, EDITABLE_CITY_KITS } = loadTs('lib/music/city-kits.ts')
   const { createRandomCityKit } = loadTs('lib/music/random-kit.ts')
-  const { REACTION_PRESET_REVISION, TRIGGERS } = loadTs('lib/music/reactions.ts')
+  const { REACTION_PRESET_REVISION } = loadTs('lib/music/reactions.ts')
   assert.deepEqual(EDITABLE_CITY_KITS.map(c => c.id), cities.map(c => c.id))
   const fingerprints = new Set(), kingBehaviors = new Set()
   for (const city of cities) {
@@ -211,7 +211,7 @@ test('every city has a reproducible, distinct kit with roles independent of ches
     assert.deepEqual(kit, defaultCityKit(city.id))
     assert.equal(kit.cityId, city.id)
     assert.equal(kit.reactionPresetRevision, REACTION_PRESET_REVISION)
-    assert.deepEqual(new Set(kit.reactions.rules.map(rule => rule.trigger)), new Set(Object.keys(TRIGGERS)))
+    assert.deepEqual(kit.reactions, { overrides: [], rules: [] })
     assert.equal(kit.pieces.filter(p => p.active).length, 16)
     assert.ok(kit.pieces.filter(p => p.active).every(p => p.color === 'w'))
     assert.deepEqual(creative.parseCreativeSession(JSON.stringify(kit)), JSON.parse(JSON.stringify(kit)))

@@ -3,6 +3,19 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.7.0',
+    date: '23/10/2026',
+    title: 'Estados e Eventos globais, com regras próprias por kit',
+    groups: [
+      { title: 'Estados e Eventos', items: [
+        'Agora existe um conjunto global de regras de Estados e Eventos que vale para todos os kits. Cada kit pode personalizar qualquer estado ou evento com regras próprias; o que não for personalizado continua seguindo o global, inclusive edições futuras dele.',
+        'O painel do Criativo foi redesenhado: as abas "This kit" e "Global" escolhem o que está sendo editado, cada linha mostra um resumo do efeito (por exemplo "Gain +6%") e um selo Kit ou Global, e o editor abre na própria linha. "Customize for this kit" copia as regras globais para o kit, "Use global" devolve o gatilho ao global e "Reset kit to global" limpa todas as personalizações do kit.',
+        'Simular ficou separado de editar: o ponto à esquerda de cada linha liga/desliga o estado ou evento na simulação, e a faixa Simulate reúne o lado (White/Black), o botão Next ply, o BPM/escala resultantes e as influências em execução.',
+        'Kits salvos antes desta versão mantêm só os gatilhos que tinham sido alterados; os que continuavam iguais ao padrão passam a seguir o global. As edições do global ficam salvas neste navegador, com "Restore official" para voltar ao conjunto oficial, que também pode ser editado no Admin.',
+      ] },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '22/10/2026',
     title: 'Best/Worst e barra de Chance não travam mais',

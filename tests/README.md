@@ -1,6 +1,6 @@
 # Testes por domínio
 
-`npm run test:music` reúne 258 casos, incluindo as regressões do arranjo global, organizados abaixo. Os arquivos `.cases.cjs` evitam descoberta duplicada pelo runner padrão. Helpers em `helpers/music.cjs` compartilham o carregamento TypeScript, os imports JSON dos presets MIDI, o armazenamento em memória e o bundle real do Strudel.
+`npm run test:music` reúne 269 casos, incluindo as regressões do arranjo global, organizados abaixo. Os arquivos `.cases.cjs` evitam descoberta duplicada pelo runner padrão. Helpers em `helpers/music.cjs` compartilham o carregamento TypeScript, os imports JSON dos presets MIDI, o armazenamento em memória e o bundle real do Strudel.
 
 | Arquivo em `tests/music/` | Casos | Responsabilidade |
 | --- | ---: | --- |
@@ -11,7 +11,7 @@
 | `ranges.cases.cjs` | 16 | Valores fixos e ranges L/S/N incluindo LPF de 20–20000 Hz, N padrão para ranges sem frequência salva, seções/reentrada/fase contínua/timeline/pin, sorteios por ataque compartilhados em acordes, estabilidade em janelas curtas, ordem de notas densas, cap opcional nas prévias, prioridade/retorno de reação LPF, exportação, harmonia por compasso, afinação/URL e seis cenas por cidade |
 | `kits.cases.cjs` | 23 | Cidades, descrições culturais, 13 bancos sob orçamento de 15 MB, Salvador, curadoria, geração MIDI determinística, persistência schema 7 com arranjo global/atribuições por peça, refresh de revisão sem backup, reset legado único/idempotente, armazenamento bloqueado/recuperado e preservação de perfil/progresso/biblioteca MIDI |
 | `runtime.cases.cjs` | 23 | Monitor de notas/pausas explícitas, pulsos isolados, buses por capacidade, transporte/visibilidade, samples sem grafo antecipado, espera dos worklets de Drive/Supersaw no primeiro ataque, cancelamento, ataques secos imediatos, nota manual sem refresh/relógio, soltura curta e supressão por saída |
-| `reactions.cases.cjs` | 14 | Cheque com presença/pausas por peça, eventos, regras, transformações de graus MIDI/escala e prioridade/retorno da harmonia sobre sequências do kit |
+| `reactions.cases.cjs` | 16 | Cheque com presença/pausas por peça, eventos, regras, conjunto global com overrides por kit e migração dos kits antigos, transformações de graus MIDI/escala e prioridade/retorno da harmonia sobre sequências do kit |
 | `transport.cases.cjs` | 13 | Mixer por equipe, fine pitch em todas as notas MIDI e velocidade de samples, BPM/compasso, rampas, downbeat, salto pausado/reinício/preservação de rampas, seção enfileirada com deadline exato/monitor sem avanço antecipado/substituição/cancelamento e fila de regras com coalescência/cancelamento/rebase |
 | `meter.cases.cjs` | 6 | Onze compassos, unidade do BPM, agrupamentos, persistência de quintos/sétimos, 19 kits rítmicos, reset de fórmula e equivalência Strudel |
 | `editor.cases.cjs` | 13 | Duração, atribuições na forma global, progressões harmônicas/tétrades de jazz nos eventos compilados sem expandir bancos, edição/espelho/randomização MIDI, +/− de bancos explícitos com limites e pin, loop por peça, cursor sem falsa reprodução, fase visual sem compilar, slides e pan por nota |
