@@ -126,6 +126,9 @@ function GlidingSquare({ startX, startY, targetX, targetY, duration, easing, cla
 }
 
 const COLUMNS = ["a", "b", "c", "d", "e", "f", "g", "h"]
+// Stable default: a fresh [] per render re-ran the fading-power effect, whose
+// state update rendered the board again in an endless loop (Creative board).
+const NO_POWERS: MatchPower[] = []
 const ROWS = ["8", "7", "6", "5", "4", "3", "2", "1"]
 
 // Custom SVG pieces with neon glow effect
@@ -179,7 +182,7 @@ export function ChessgroundBoard({
   onBoardClick,
   armedPower,
   onPowerTarget,
-  matchPowers = [],
+  matchPowers = NO_POWERS,
   confirmedPowerState,
   isMoveAllowed,
   onShieldCaptureBlocked,
@@ -455,7 +458,7 @@ export function ChessgroundBoard({
       }
       return power
     })
-    setFadingPowers(effects)
+    setFadingPowers(current => current.length === 0 && effects.length === 0 ? current : effects)
     if (!effects.length) return
     const cancels = [...new Set(effects.map(power => power.kind))].map(kind => getSfxEngine().playPowerRelease(kind))
     const timer = window.setTimeout(() => setFadingPowers([]), POWER_RELEASE_MS)

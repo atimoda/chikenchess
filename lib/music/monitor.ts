@@ -21,13 +21,21 @@ export function isLoopRunning(frame: MusicFrame, id: string, loopEnabled = true)
 // chess analysis or the audio patterns.
 export function createMusicMonitor() {
   let frame = EMPTY_MUSIC_FRAME
+  let deferred: ReturnType<typeof setTimeout> | undefined
   const listeners = new Set<() => void>()
+  const notify = () => { if (deferred) clearTimeout(deferred); deferred = undefined; listeners.forEach(listener => listener()) }
   return {
     hasSubscribers: () => listeners.size > 0,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     getSnapshot: () => frame,
     getServerSnapshot: () => EMPTY_MUSIC_FRAME,
-    publish: (next: MusicFrame) => { frame = next; listeners.forEach(listener => listener()) },
+    /** `later` keeps the frame current but renders subscribers in the next task,
+     * after an audio gesture has finished handing its attack to Superdough. */
+    publish: (next: MusicFrame, later = false) => {
+      frame = next
+      if (!later) notify()
+      else deferred ??= setTimeout(notify, 0)
+    },
   }
 }
 export type MusicMonitor = ReturnType<typeof createMusicMonitor>

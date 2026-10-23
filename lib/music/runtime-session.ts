@@ -353,17 +353,18 @@ export class MusicRuntime {
     const pattern = voice.manual ? compileVoice(this.api, voice) : this.patternFor(voice)
     const hap = pattern.queryArc(0, voice.manual ? 1 : 4).find((h: any) => h.hasOnset())
     if (!hap) return
-    const time = this.api.getAudioContext().currentTime + 0.03
     const duration = voice.manual ? Math.max(.16, voice.instrument.attack + .2) : .12
-    if (voice.manual) {
-      this.manualHit = { voice, value: hap.value, start: time, end: time + duration }
-      // A previous manual note's orbit was detached when entering this square.
-      // Reattach the new note to the current mix before submitting its attack.
-      this.connectVoice(voice)
-      this.publishFrame()
-    }
+    // A previous manual note's orbit was detached when entering this square.
+    // Reattach the new note to the current mix before submitting its attack, and
+    // only then read the clock: Superdough skips an attack whose start already passed.
+    if (voice.manual) this.connectVoice(voice)
+    const time = this.api.getAudioContext().currentTime + 0.03
+    if (voice.manual) this.manualHit = { voice, value: hap.value, start: time, end: time + duration }
     void this.output(hap, 0, duration, this.state.bpm / (60 * beatsPerBar(this.state.meter)), time,
       () => !voice.manual || this.manualHit?.voice === voice).catch(this.error)
+    // Panels re-render synchronously on a monitor change; letting them run before
+    // Superdough resumes from its awaits pushed the attack past its start time.
+    if (voice.manual) this.publishFrame(true)
     this.scheduleVisual(voice, time, duration)
   }
 
@@ -397,7 +398,7 @@ export class MusicRuntime {
     return false
   }
 
-  private publishFrame() {
+  private publishFrame(later = false) {
     if (!this.api || !this.scheduler || !this.state || this.disposed) return
     try {
       // Cyclist's lastBegin/lastTick describe the queued interval; subtract its
@@ -456,7 +457,7 @@ export class MusicRuntime {
           values: last ? { gain: Number(last.gain) * Number(last.velocity ?? 1), lpf: Number(last.cutoff ?? last.lpf), pan: Number(last.pan), room: Number(last.room), delay: Number(last.delay) } : {},
         }
       }
-      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section, tracks, transport: this.transportFrame(cycle) })
+      this.monitor.publish({ running: this.scheduler.started, cycle, beat: Math.floor((cycle % 1) * beatsPerBar(this.state.meter)) + 1, section, tracks, transport: this.transportFrame(cycle) }, later)
     } catch (error) { this.error(error) }
   }
 

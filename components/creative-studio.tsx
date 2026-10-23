@@ -89,6 +89,9 @@ export function CreativeStudio() {
   const effects = session.effects[selectedId]
   const mapping = session.mappings[selectedId]
   const activeCount = session.pieces.filter(p => p.active).length
+  // Building a default kit composes and validates the whole kit; doing it for
+  // every city on each render made every click and drag frame pay for ~47 kits.
+  const defaultKitOptions = useMemo(() => EDITABLE_CITY_KITS.map(city => ({ ...city, kitName: defaultCityKit(city.id)?.name ?? city.name })), [])
   const cityName = (cityId?: string) => EDITABLE_CITY_KITS.find(city => city.id === cityId)?.name
   const kitLabel = (kit: CreativeSession) => `${kit.name}${cityName(kit.cityId) ? ` (${cityName(kit.cityId)})` : ''}`
   const linkedUserCities = new Set(kits.flatMap(kit => kit.cityId ? [kit.cityId] : []))
@@ -303,7 +306,7 @@ export function CreativeStudio() {
               <option value={MOUTH_BREATHER_KIT}>Mouth Breather · eefano study</option>
               <option value={DUSSELDORF_ORIGINAL_KIT}>Düsseldorf · Electro 01</option>
             </optgroup>
-            <optgroup label="Default kits">{EDITABLE_CITY_KITS.map(city=>{const kit=defaultCityKit(city.id)!;return <option key={city.id} value={`${DEFAULT_KIT_PREFIX}${city.id}`}>{kit.name}{linkedUserCities.has(city.id)?'':` (${city.name})`}</option>})}</optgroup>
+            <optgroup label="Default kits">{defaultKitOptions.map(city=><option key={city.id} value={`${DEFAULT_KIT_PREFIX}${city.id}`}>{city.kitName}{linkedUserCities.has(city.id)?'':` (${city.name})`}</option>)}</optgroup>
           </select></label>
           <div className={styles.actions}>
               <button className={styles.primary} disabled={!selectedKit} onClick={() => void loadSelectedKit()}>Load kit</button>

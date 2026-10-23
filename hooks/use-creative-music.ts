@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Square } from 'chess.js'
 import { creativeSnapshot, type CreativeSession } from '@/lib/music/creative'
 import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
@@ -64,11 +64,13 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
     if (playing) { setError(''); void runtime.current?.unlock() }
   }, [playing])
   const audition = useCallback((id: string, square: string, mode: Preview['mode'] = 'manual') => {
-    // The runtime owns the live square; crossing cells must not rerender the studio.
-    setPreview(current => current?.id === id && current.mode === mode
-      ? current
-      : { id, square: square as Square, mode })
+    // Submit the note first. Superdough drops an attack whose start time passed
+    // while it awaited, and an urgent studio render would run before it resumes.
     runtime.current?.audition(id, square as Square, mode)
+    // The runtime owns the live square; crossing cells must not rerender the studio.
+    startTransition(() => setPreview(current => current?.id === id && current.mode === mode
+      ? current
+      : { id, square: square as Square, mode }))
   }, [])
   const unlock = useCallback(() => { void runtime.current?.unlock(false) }, [])
   const seekSection = useCallback((sectionId: string) => {
