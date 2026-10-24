@@ -10,7 +10,9 @@ import { applyReactions, resolveReactions, type ReactionContext } from '@/lib/mu
 import { useGlobalReactions } from '@/lib/music/global-reactions'
 import type { SampleSource } from '@/lib/music/sample-banks'
 
-export function useCreativeMusic(session: CreativeSession, playing: boolean, soloIds: ReadonlySet<string>, context: ReactionContext, showCode = false) {
+// `identity` names the loaded kit for the runtime: changing it restarts the clock,
+// while renaming the kit in the editor must not touch the audio.
+export function useCreativeMusic(session: CreativeSession, playing: boolean, soloIds: ReadonlySet<string>, context: ReactionContext, showCode = false, identity = session.name) {
   const runtime = useRef<MusicRuntime | null>(null)
   const monitor = useMemo(createMusicMonitor, [])
   const [preview, setPreview] = useState<Preview | null>(null)
@@ -21,7 +23,7 @@ export function useCreativeMusic(session: CreativeSession, playing: boolean, sol
   const soloList = useMemo(() => [...soloIds], [soloIds])
   const globalReactions = useGlobalReactions()
   const reactions = useMemo(() => resolveReactions(globalReactions, session.reactions), [globalReactions, session.reactions])
-  const input = useMemo(() => ({...creativeSnapshot(session,playing,soloList), reactionInput:{config:reactions,context,scope:session.cityId??session.name}}),[session,playing,soloList,context,reactions])
+  const input = useMemo(() => ({...creativeSnapshot(session,playing,soloList), title: identity, reactionInput:{config:reactions,context,scope:session.cityId??identity}}),[session,playing,soloList,context,reactions,identity])
   const sampleFingerprint = JSON.stringify(Object.values(session.instruments).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source] : []))
   const sampleSources = useMemo(() => JSON.parse(sampleFingerprint) as SampleSource[], [sampleFingerprint])
   const auditionReady = preparedFingerprint === sampleFingerprint

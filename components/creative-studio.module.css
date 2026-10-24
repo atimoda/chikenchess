@@ -1,5 +1,9 @@
 .studio { min-height: 100dvh; background: #101615; color: #e9ede9; padding: 28px clamp(16px, 3vw, 48px); font-size: 14px; }
-.header { max-width: 1920px; margin: 0 auto 26px; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.header { max-width: 1920px; margin: 0 auto 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 18px 24px; }
+.kitHeader { flex: 0 1 640px; min-width: 0; display: grid; gap: 8px; border: 0; padding: 0; margin: 0; }
+.kitPick { display: flex; align-items: end; gap: 8px; }
+.kitPick > label { flex: 1; min-width: 0; }
+.kitHeader .actions { margin-top: 0; }
 .identity { display: flex; gap: 20px; align-items: center; }
 .identity > a { padding: 12px; border: 1px solid #37423e; border-radius: 50%; }
 .header h1 { font-size: 26px; font-weight: 600; letter-spacing: -.6px; display: flex; align-items: center; gap: 10px; }
@@ -13,7 +17,7 @@
 .workspace { max-width: 1920px; margin: auto; border: 0; min-width: 0; }
 .studio button, .upload { border: 1px solid #45534a; background: #25312b; border-radius: 6px; padding: 8px 11px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: background .12s, border-color .12s; color: #e0e9df; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .studio button:hover, .upload:hover { background: #374b3b; border-color: #7f9b81; }
-.studio button:disabled, .workspace:disabled .upload { opacity: .45; cursor: wait; }
+.studio button:disabled, .workspace:disabled .upload, .kitHeader:disabled .upload { opacity: .45; cursor: wait; }
 .studio button[aria-pressed='true'] { border-color: #b6e5ac; color: #c9f2be; background: #344633; }
 .studio button.primary { background: #b6e5ac; border-color: #b6e5ac; color: #172419; font-weight: 600; }
 .studio button.primary:hover { background: #cff7c6; }
@@ -36,9 +40,9 @@
 .sessionRow { margin-bottom: 8px; }
 .harmonyControl { display: grid; gap: 4px; min-width: 180px; align-self: start; }
 .transportKnob { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 11px; color: #aebcaf; flex-shrink: 0; }
-.transportFooter { flex-basis: 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.transportFooter > *:first-child { min-width: 0; flex: 1 1 300px; flex-wrap: wrap; }
-.rampSlot { flex: 0 1 220px; min-width: 150px; }
+.rampSlot { flex: 1 1 260px; min-width: 200px; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.rampSlot > [aria-label='Music clock'] { padding: 2px 0 0; gap: 8px; }
+.activeCount { margin-left: auto; align-self: center; font: 11px var(--font-geist-mono), monospace; color: #d0dccb; }
 .sessionRow .transport { margin-bottom: 0; border-radius: 10px; }
 .sessionRow .transport > label:not(.range) { flex-direction: column; }
 .sessionRow .transport > .range { flex-direction: column; }
@@ -57,8 +61,6 @@
 .panel { background: #19221d; border: 1px solid #35443a; border-radius: 10px; padding: 22px; min-width: 0; }
 .panel h2 { font-size: 18px; font-weight: 500; letter-spacing: -.3px; }
 .sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.segmented { display: flex; background: #111a14; padding: 3px; border-radius: 7px; flex-shrink: 0; }
-.segmented button { background: transparent; border-color: transparent; padding: 7px 10px; }
 .board { position: relative; width: min(100%, 560px); margin: 0 auto; aspect-ratio: 1; touch-action: pan-y; user-select: none; }
 .boardReadyGate { display: block; width: 100%; height: 100%; min-width: 0; padding: 0; margin: 0; border: 0; }
 .studio .board button[data-square] { min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; gap: 0; }
@@ -116,17 +118,15 @@
 .studio label.check { grid-column: 1 / -1; flex-direction: row; align-items: center; line-height: 1.5; }
 .check input { accent-color: #b6dba1; }
 .error { color: #f6b4a5; font-size: 11px; margin-top: 10px; line-height: 1.5; }
-.kitHub { display: grid; grid-template-columns: minmax(300px, .85fr) minmax(520px, 1.15fr); gap: 18px; margin-bottom: 8px; }
-.kitStage, .kitLibrary { min-width: 0; }
-.kitLibrary { border-left: 1px solid #35443a; padding-left: 18px; }
 .kitFields { display: grid; grid-template-columns: 1.1fr 1fr; gap: 8px; align-items: end; }
+.kitFields[data-single='true'] { grid-template-columns: 1fr; }
 .studio label.upload { position: relative; flex-direction: row; color: #e0e9df; }
 .upload input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
 .upload:focus-within { outline: 2px solid #d9ef9e; }
 .studio details.code { border: 1px solid #35443a; padding: 18px 22px; }
 .code pre { overflow: auto; max-height: 360px; padding-top: 14px; font-size: 11px; line-height: 1.8; color: #c6e4b4; }
 @media (max-width: 980px) { .panel { padding: 16px; } .sectionHeader { align-items: start; flex-direction: column; } .voices, .bandPanel .voices { grid-template-columns: 1fr; gap: 18px; } .status { margin-left: 0; } }
-@media (max-width: 900px) { .kitHub { grid-template-columns: 1fr; } .kitLibrary { border-left: 0; border-top: 1px solid #35443a; padding: 14px 0 0; } }
+@media (max-width: 900px) { .kitHeader { flex-basis: 100%; } }
 @media (max-width: 720px) { .studio { padding: 18px 12px; } .header { margin-bottom: 18px; } .header p { display: none; } .header h1 { font-size: 23px; } .identity { gap: 12px; } .columns { grid-template-columns: 1fr; } .boardPanel { position: static; } .controlColumns { grid-template-columns: 1fr; } .controlColumn { max-height: none; overflow: visible; padding-right: 0; } .transport { padding: 12px; gap: 12px; } .transport > .range { width: 120px; } .canvas { gap: 14px; } .voices, .bandPanel .voices { grid-template-columns: 1fr 1fr; gap: 12px; } .kitFields { grid-template-columns: 1fr; } .sectionHeader { flex-direction: row; flex-wrap: wrap; } }
 @media (max-width: 720px) and (orientation: landscape) { .studio { padding: 10px 12px; } .header { margin-bottom: 10px; } .header h1 { font-size: 20px; } .identity > a { padding: 8px; } .transport { margin-bottom: 10px; padding: 9px 10px; gap: 9px; } .columns { grid-template-columns: minmax(200px, .7fr) minmax(300px, 1.3fr); gap: 10px; } .boardPanel { position: sticky; top: 8px; } .controlColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .controlColumn { max-height: calc(100dvh - 16px); overflow-y: auto; padding-right: 3px; } .panel { padding: 10px; } .hint { font-size: 10px; } .voices, .bandPanel .voices { grid-template-columns: 1fr; gap: 10px; } }
 @media (prefers-reduced-motion: reduce) { .studio button { transition: none; } }

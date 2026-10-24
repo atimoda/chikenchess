@@ -10,6 +10,7 @@ import { HARMONY_PLAN_IDS } from '../music/harmony'
 import { METER_IDS } from '../music/meter'
 import { SECTION_TYPES } from '../music/arrangement'
 import { createStyledCityKit } from '../music/styled-kits'
+import { prepareOfficialCityKit } from '../music/city-kits'
 import { reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
 
@@ -111,7 +112,7 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
     case 'music-reactions': {
       const raw = z.object({ minimumPieces: z.unknown(), rules: z.array(z.unknown()) }).strict().parse(value)
       const result = reactionsSchema.parse(raw)
-      if (new Set(result.rules.map(rule => rule.id)).size !== result.rules.length) throw new Error('IDs das regras não podem repetir.')
+      if (new Set(result.rules.map((rule: { id: string }) => rule.id)).size !== result.rules.length) throw new Error('IDs das regras não podem repetir.')
       break
     }
     case 'music-preset': {
@@ -126,4 +127,11 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
 export function adminValidationMessage(error: unknown): string {
   if (error instanceof z.ZodError) return error.issues.map(issue => `${issue.path.join('.') || 'JSON'}: ${issue.message}`).join('\n')
   return error instanceof Error ? error.message : 'Conteúdo inválido.'
+}
+
+/** Validates a Creative kit sent by Save DB and returns the city's official kit to write. */
+export function validateOfficialKit(cityId: unknown, value: unknown, revision: string) {
+  if (typeof cityId !== 'string' || !cities.some(city => city.id === cityId)) throw new Error('Cidade não encontrada.')
+  creativeSchema.parse(value)
+  return prepareOfficialCityKit(parseCreativeSession(JSON.stringify(value)), cityId, revision)
 }

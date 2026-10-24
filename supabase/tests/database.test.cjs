@@ -768,3 +768,20 @@ test('running game revisions cover new membership and offscreen commits with cal
   assert.deepEqual([await runningRevision(players[0]),await runningRevision(players[1])],updated)
   assert.equal((await rpc(players[0],'get_online_match',[initial.id])).version,1)
 })
+test('creative kits are private to the signed-in owner, upsert by name and refuse guests',async()=>{
+  const [owner,other]=[ids[3],ids[4]]
+  const kit=(name,bpm)=>({name,bpm,version:7})
+  assert.deepEqual(await rpc(owner,'creative_kits'),[])
+  await rpc(owner,'creative_kit_save',['Groove',kit('Groove',120)])
+  await rpc(owner,'creative_kit_save',['Groove',kit('Groove',128)])
+  const listed=await rpc(owner,'creative_kits')
+  assert.deepEqual(listed.map(row=>row.name),['Groove'])
+  assert.equal((await rpc(owner,'creative_kit',['Groove'])).bpm,128)
+  assert.equal(await rpc(other,'creative_kit',['Groove']),null)
+  assert.deepEqual(await rpc(other,'creative_kits'),[])
+  await assert.rejects(rpc(owner,'creative_kit_save',['Other',kit('Mismatch',1)]),/INVALID_KIT/)
+  await assert.rejects(asUser(owner,'select * from online_private.creative_kits'),/permission denied/)
+  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({is_anonymous:true})])
+  try { await assert.rejects(rpc(other,'creative_kit_save',['Guest',kit('Guest',1)]),/ACCOUNT_REQUIRED/) }
+  finally { await db.query("select set_config('request.jwt.claims','',false)") }
+})

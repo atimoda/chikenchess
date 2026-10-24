@@ -41,7 +41,7 @@ export function phraseRoll(text: string, bars: number, swing = 0, gate = .65, me
   })) }
 }
 
-function profileSource(source: ProfileSource) {
+export function profileSampleSource(source: ProfileSource) {
   if (source.kind === 'synth') return { kind: 'synth' as const }
   return { kind: 'sample' as const, bank: SAMPLE_BANKS[source.bank], asset: source.asset, variant: source.variant ?? 0, pitched: source.pitched ?? true }
 }
@@ -65,7 +65,7 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
     return roll
   })
   Object.assign(instrument, {
-    name: part.name, behavior: part.behavior, source: profileSource(part.source), sound: part.source.kind === 'synth' ? part.source.sound : 'sine', pianoRolls,
+    name: part.name, behavior: part.behavior, source: profileSampleSource(part.source), sound: part.source.kind === 'synth' ? part.source.sound : 'sine', pianoRolls,
     octave: part.octave ?? 3, gain: part.gain ?? .18, attack: part.attack ?? .008, decay: part.decay ?? .18, sustain: part.sustain ?? .6,
     release: part.release ?? .12, clip: part.clip ?? .9, lpf: part.lpf ?? 9000, hpf: part.hpf ?? 20,
     distortion: part.distortion, distortionMix: part.distortionMix, pitchAttack: part.pitchAttack,

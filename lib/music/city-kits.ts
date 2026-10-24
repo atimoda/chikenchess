@@ -1,6 +1,7 @@
 import { CREATIVE_STORAGE, parseCreativeSession, type CreativeSession } from './creative'
 import { cities } from '../cities-data'
 import { createStyledCityKit } from './styled-kits'
+import { OFFICIAL_CITY_KITS } from './official-kits'
 
 export const CITY_KIT_STORAGE_PREFIX = 'chickenchess:city-kit:v1:'
 export const KIT_LIBRARY_STORAGE = `${CREATIVE_STORAGE}:kits`
@@ -13,9 +14,32 @@ export function cityKitStorageKey(cityId: string) {
   return `${CITY_KIT_STORAGE_PREFIX}${cityId}`
 }
 
+const officialKits = new Map<string, CreativeSession>()
+function officialCityKit(cityId: string) {
+  if (!Object.hasOwn(OFFICIAL_CITY_KITS, cityId)) return null
+  let kit = officialKits.get(cityId)
+  if (!kit) {
+    kit = prepareOfficialCityKit(parseCreativeSession(JSON.stringify(OFFICIAL_CITY_KITS[cityId])), cityId)
+    officialKits.set(cityId, kit)
+  }
+  return globalThis.structuredClone(kit)
+}
+
+/** The city's official kit saved from Creative (Save DB), else the kit composed from its style profile. */
 export function defaultCityKit(cityId: string): CreativeSession | null {
   const city = cities.find(city => city.id === cityId)
-  return city ? createStyledCityKit(city) : null
+  if (!city) return null
+  return officialCityKit(cityId) ?? createStyledCityKit(city)
+}
+
+/** Normalizes a kit into a city's official kit: starting squares, the white band on. */
+export function prepareOfficialCityKit(session: CreativeSession, cityId: string, revision = session.catalogRevision): CreativeSession {
+  return parseCreativeSession(JSON.stringify({
+    ...session,
+    cityId,
+    catalogRevision: revision,
+    pieces: session.pieces.map(piece => ({ ...piece, square: piece.origin, active: piece.color === 'w' })),
+  }))
 }
 
 export function prepareCityKitForCreative(session: CreativeSession, cityId: string): CreativeSession {

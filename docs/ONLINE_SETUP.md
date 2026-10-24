@@ -80,6 +80,8 @@ npx supabase link --project-ref SEU_PROJECT_REF
 npx supabase db push
 ```
 
+Os kits do Criativo salvos na conta (24/10, v1.8.0) dependem de aplicar `202610240001_creative_kits.sql` com o mesmo `db push`: tabela privada `online_private.creative_kits` e RPCs `creative_kits`, `creative_kit` e `creative_kit_save`, só para contas (convidados recebem `ACCOUNT_REQUIRED`). Sem a migração, “Save kit” logado avisa que não alcançou a conta e o kit continua só no navegador.
+
 A regra de pote/divisão de ovos depende de aplicar `202610090001_match_egg_settlement.sql` ao projeto remoto com o mesmo fluxo de `db push`; sua suíte local cobre crédito único e rollback.
 
 As migrações ficam em `supabase/migrations/`; a primeira instala a base, e `202610040002_business_conflicts.sql` corrige a resposta dos conflitos de versão. Não as execute novamente manualmente após `db push`; o histórico registra cada aplicação. Os saves completos e os backups de transferência ficam em `online_private`, que não entra nos schemas expostos pela Data API. A lista pública usa `online_public_rooms`, contendo somente ID, código, nome do criador e ocupação de salas públicas abertas com uma vaga. Convites privados usam códigos aleatórios de 128 bits.

@@ -42,11 +42,11 @@ function DivisionPicker({ value, onChange, meter }: { value:number; onChange:(va
     <select aria-label="Grid subdivision" value={value} onChange={event=>onChange(Number(event.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,meter)}</option>)}</select>
   </label>
 }
-export function MusicTransportReadout({ monitor, arrangement, activeCount, solo = false, showBeatUnit = false }: { monitor: MusicMonitor; arrangement?: Arrangement; activeCount?: number; solo?: boolean; showBeatUnit?: boolean }) {
+export function MusicTransportReadout({ monitor, arrangement, activeCount, solo = false, showBeatUnit = false, showStatus = true }: { monitor: MusicMonitor; arrangement?: Arrangement; activeCount?: number; solo?: boolean; showBeatUnit?: boolean; showStatus?: boolean }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const position = arrangement ? arrangementPosition(arrangement, frame.cycle, beatsPerBar(frame.transport?.meter)) : undefined
   return <div className={styles.transport} aria-label="Music clock">
-    <span>{frame.running ? 'Playing' : 'Stopped'} · Section <b>{position?.section.label ?? frame.transport?.sectionLabel ?? String.fromCharCode(65 + Math.max(0, frame.section))}</b></span>
+    {showStatus&&<span>{frame.running ? 'Playing' : 'Stopped'} · Section <b>{position?.section.label ?? frame.transport?.sectionLabel ?? String.fromCharCode(65 + Math.max(0, frame.section))}</b></span>}
     <span>Bar {Math.floor(frame.cycle) + 1}</span>
     {showBeatUnit&&<span aria-label="BPM unit">{meterLabel(frame.transport?.meter).split(' · ').slice(1).join(' · ')}<InfoTip label="Beat unit">BPM counts beats per minute, not grid cells. A dotted quarter is a quarter plus half of it: three eighths. In 6/8, 9/8 and 12/8 each beat has three eighths; that is 2, 3 and 4 beats per bar. In the MIDI editor, “1 part” is a whole beat; “3 parts” splits that beat into three eighths. The menu picks the beat subdivision, not the BPM unit.</InfoTip></span>}
     {frame.transport&&<span aria-label="Current BPM">{frame.transport.bpm.toFixed(1)} → {frame.transport.targetBpm.toFixed(1)} BPM {frame.transport.ramp&&frame.transport.ramp.progress<1&&<progress aria-label="Ramp progress" max={1} value={frame.transport.ramp.progress} style={{width:60}}/>}{frame.transport.pending.length>0&&` · ${frame.transport.pending.length} change(s) at the bar line`}</span>}
