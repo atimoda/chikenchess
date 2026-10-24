@@ -7,7 +7,8 @@ import type { SquareEffects } from '@/lib/types'
 import { instrumentFor, gameMusicStateFromGame, type Instrument, type InstrumentPerformanceEdit } from '@/lib/music/model'
 import { MusicRuntime, renderMusicCode, type Preview, type MusicSnapshot } from '@/lib/music/runtime'
 import { defaultCityKit, loadCityKit } from '@/lib/music/city-kits'
-import { creativeSchema, scaleForCreativeSession, type CreativeSession } from '@/lib/music/creative'
+import { creativeSchema, scaleForCreativeSession, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
+import type { Arrangement } from '@/lib/music/arrangement'
 import { createMusicMonitor, createMusicPulseMonitor } from '@/lib/music/monitor'
 import { createTeamMixes, TEAM_GAIN_MAX, type TeamMix } from '@/lib/music/team-mixer'
 import type { HarmonyPlanId } from '@/lib/music/harmony'
@@ -96,7 +97,9 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
   const input = useMemo(() => ({...baseSnapshot,soloIds:soloIdsList.length ? soloIdsList : undefined,reactionInput:reactions?{config:reactions,context,scope:city.id}:undefined}),[baseSnapshot,soloIdsList,reactions,context,city.id])
   const snapshot: MusicSnapshot = audible ?? soloSnapshot
   const currentPitchCollection = useMemo(() => identifyPitchCollection(snapshot.scale, kit?.scale), [snapshot.scale, kit?.scale])
-  const activeSquares = useMemo(() => new Set(snapshot.pieces.filter(p => p.active && snapshot.instruments?.[p.id]?.loopEnabled !== false).map(p => p.square)), [snapshot.pieces, snapshot.instruments])
+  const activePieces = useMemo(() => snapshot.pieces.filter(p => p.active && snapshot.instruments?.[p.id]?.loopEnabled !== false), [snapshot.pieces, snapshot.instruments])
+  const activeSquares = useMemo(() => new Set(activePieces.map(p => p.square)), [activePieces])
+  const activeIds = useMemo(() => new Set(activePieces.map(p => p.id)), [activePieces])
   const code = useMemo(() => enabled && showCode ? renderMusicCode(snapshot, preview) : '', [enabled, showCode, snapshot, preview])
 
   useEffect(() => {
@@ -186,14 +189,15 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
       setSelectedId(null)
     }
   }, [pieces])
-  const togglePiece = useCallback((square: Square) => {
+  // `select: false` keeps the current selection (Song & Instruments list).
+  const togglePiece = useCallback((square: Square, select = true) => {
     const piece = pieces.find(p => p.square === square)
     const currentKit = kitRef.current
     if (!piece || !currentKit || canEditPieceRef.current?.(piece.id) === false) return false
     const active = resolved.snapshot.pieces.some(p => p.id === piece.id && p.active)
     const enabled = currentKit.instruments[piece.id]?.loopEnabled !== false
     const turnOn = !active || !enabled
-    setSelectedId(piece.id)
+    if (select) setSelectedId(piece.id)
     if (turnOn) setManuallyActiveIds(current => new Set(current).add(piece.id))
     const nextInstrument = { ...currentKit.instruments[piece.id], loopEnabled: turnOn }
     const nextKit = { ...currentKit, instruments: { ...currentKit.instruments, [piece.id]: nextInstrument } }
@@ -202,7 +206,7 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     onPieceChangeRef.current?.(piece.id, nextInstrument, effectsRef.current[piece.id])
     return turnOn
   }, [pieces, resolved.snapshot.pieces])
-  const toggleSolo = useCallback((id: string) => {
+  const toggleSolo = useCallback((id: string, select = true) => {
     if (!pieces.some(piece => piece.id === id)) return false
     endAudition()
     if (soloIds.has(id)) {
@@ -226,7 +230,7 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     }
     soloCycleIdsRef.current.add(id)
     setManuallyActiveIds(current => new Set(current).add(id))
-    setSelectedId(id)
+    if (select) setSelectedId(id)
     setSoloIds(current => new Set([...current, id]))
     return true
   }, [pieces, endAudition, soloIds, resolved.snapshot])
@@ -308,6 +312,18 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
   const setHarmony = useCallback((harmony: HarmonyPlanId) => {
     setKit(current => current && ({ ...current, harmony }))
   }, [])
+  /** Global Sections edits from the Song & Instruments panel (campaign only). */
+  const updateArrangement = useCallback((arrangement: Arrangement) => {
+    const current = kitRef.current
+    if (!current) return
+    kitRef.current = updateCreativeArrangement(current, arrangement)
+    setKit(kitRef.current)
+  }, [])
+  const seekSection = useCallback((sectionId: string) => {
+    // Queue against the current order and durations, not the coalesced update.
+    runtime.current?.update(input)
+    runtime.current?.queueSection(sectionId)
+  }, [input])
   const getFrequencyData = useCallback((data: Uint8Array<ArrayBuffer>) => {
     if (runtime.current) runtime.current.getFrequencyData(data)
     else data.fill(0)
@@ -329,6 +345,6 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     baseTonality: kit ? { root: kit.root, scale: kit.scale } : undefined,
     currentScaleLabel: currentPitchCollection.label,
     harmony: snapshot.harmony ?? kit?.harmony,
-    attackingColor: gameMusicState.attackingColor, activeSquares,
+    attackingColor: gameMusicState.attackingColor, activeSquares, activeIds, updateArrangement, seekSection,
   }
 }

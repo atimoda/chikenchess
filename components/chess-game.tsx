@@ -20,6 +20,7 @@ import { usePowerTargetingGesture } from '@/hooks/use-power-targeting-gesture'
 import { LiveCodeWidget } from "./live-code-widget"
 import { StockfishDebugOverlay } from "./stockfish-debug-overlay"
 import { SynthControlPanel } from "./synth-control-panel"
+import { MusicSongPanel, type SongPanelHover } from "./music-song-panel"
 import { PieceDebugWidget } from "./piece-debug-widget"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './music-playback'
@@ -450,6 +451,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
+  const [songHover, setSongHover] = useState<SongPanelHover | null>(null)
   const mixerManuallyClosedRef = useRef(false)
   const musicWidgetsBeforeMuteRef = useRef<{
     mixer: boolean
@@ -1634,10 +1636,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }
   }, [activeWidgetOrder, knobsOn, mixerOn, musicEngineOn, panelsFollowPlayerTurn, pieceDebugOn, spectrogramOn])
 
-  const { pieceConnections, chainConnections, resizeTick } = useGameWidgetLayout({
+  const { pieceConnections, chainConnections, hoverConnections, resizeTick } = useGameWidgetLayout({
     // Connections are hidden on portrait phones; skip measuring them after every move.
     rootRef, boardAreaRef, boardScale, musicEngineOn: musicEngineOn && !isPortraitMobile,
     selectedSquare: music.selected?.square ?? null,
+    hoveredPiece: knobsOn && !music.selected ? songHover : null,
     introPhase, activeWidgetOrder,
     widgets: {
       knobs: { ref: knobsRef, on: knobsOn, position: knobsPosition, setPosition: setKnobsPosition },
@@ -1717,6 +1720,35 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
                   <MusicVoiceReadout variationTabs showStatus={false} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
                 </> : undefined}
+                song={music.kit ? <MusicSongPanel
+                  pieces={music.snapshot.pieces}
+                  names={Object.fromEntries(music.snapshot.pieces.map(piece => [piece.id, music.snapshot.instruments?.[piece.id]?.name]))}
+                  activeIds={music.activeIds}
+                  soloIds={music.soloIds}
+                  monitor={music.monitor}
+                  arrangement={music.kit.arrangement}
+                  harmony={music.kit.harmony}
+                  onArrangementChange={music.updateArrangement}
+                  onSeek={music.seekSection}
+                  onSelect={square => { setSongHover(null); music.select(square) }}
+                  onToggle={square => {
+                    const turnedOn = music.togglePiece(square, false)
+                    if (turnedOn && !isPlaying && music.engineActive) {
+                      setHasPlaybackStarted(true)
+                      setIsPlaying(true)
+                      void resumeAudio()
+                    }
+                  }}
+                  onSolo={id => {
+                    const turnedOn = music.toggleSolo(id, false)
+                    if (turnedOn && !isPlaying && music.engineActive) {
+                      setHasPlaybackStarted(true)
+                      setIsPlaying(true)
+                      void resumeAudio()
+                    }
+                  }}
+                  onHover={setSongHover}
+                /> : undefined}
                 ref={knobsRef}
                 toggleRef={knobsToggleRef}
                 togglePortalized={togglePortalized}
@@ -2415,6 +2447,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       
       {/* Connection Lines Layer - Moved BEHIND widgets and board (z-0 to z-10 range, but above BG) */}
       <GameWidgetConnections visible={musicEngineOn && !isPortraitMobile} pieceConnections={pieceConnections} chainConnections={chainConnections} />
+      <GameWidgetConnections overlay visible={musicEngineOn && !isPortraitMobile} pieceConnections={hoverConnections} />
 
       <div
         data-widget-entrance={introPhase === 2 ? "true" : undefined}

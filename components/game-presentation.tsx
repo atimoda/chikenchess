@@ -161,10 +161,12 @@ export function GameCityTitleIntro({
   )
 }
 
-export function GameWidgetConnections({ visible, pieceConnections, chainConnections }: { visible: boolean; pieceConnections: readonly WidgetConnection[]; chainConnections: readonly WidgetConnection[] }) {
-  if (!visible) return null
+/** Bezier lines between widgets and the board. `overlay` draws above the widgets,
+ * for the hover link from a Song & Instruments row to its piece. */
+export function GameWidgetConnections({ visible, pieceConnections, chainConnections = [], overlay = false }: { visible: boolean; pieceConnections: readonly WidgetConnection[]; chainConnections?: readonly WidgetConnection[]; overlay?: boolean }) {
+  if (!visible || (overlay && !pieceConnections.length)) return null
   return (
-      <svg aria-label="Conexões entre widgets e tabuleiro" className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 5 }}>
+      <svg aria-label={overlay ? undefined : "Conexões entre widgets e tabuleiro"} aria-hidden={overlay || undefined} data-connections={overlay ? 'hover' : undefined} className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: overlay ? 100 : 5 }}>
         {[...pieceConnections, ...chainConnections].map((conn, i) => {
           if (!conn) return null
           

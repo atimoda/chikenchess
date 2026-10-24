@@ -32,10 +32,58 @@ export interface GameWidgetLayoutOptions {
   orientation?: 'white' | 'black'
   introPhase: number
   activeWidgetOrder: readonly string[]
+  /** Piece row hovered in the Song & Instruments list, with its on/off dot. */
+  hoveredPiece?: { square: Square; anchor: HTMLElement } | null
   widgets: Partial<Record<'knobs' | 'pieceDebug' | 'globalPanel' | 'mixer' | 'spectrogram' | 'liveCode' | 'botControl', GameWidgetLayoutItem>>
 }
 
 const ignorePosition: Dispatch<SetStateAction<GameWidgetPosition | null>> = () => {}
+
+type ConnectionRect = { left: number; right: number; top: number; bottom: number; width: number; height: number }
+type ConnectionSide = NonNullable<WidgetConnection['sourceSide']>
+
+function squareRect(square: Square, boardRect: ConnectionRect, orientation: 'white' | 'black'): ConnectionRect | null {
+  const fileIndex = 'abcdefgh'.indexOf(square[0])
+  const rank = Number.parseInt(square[1], 10)
+  if (fileIndex < 0 || !Number.isFinite(rank)) return null
+  const width = boardRect.width / 8, height = boardRect.height / 8
+  const rowFromTop = orientation === 'black' ? rank - 1 : 8 - rank
+  const column = orientation === 'black' ? 7 - fileIndex : fileIndex
+  const left = boardRect.left + column * width
+  const top = boardRect.top + rowFromTop * height
+  return { left, top, right: left + width, bottom: top + height, width, height }
+}
+
+/** Straight-side connection from one rect to another, relative to the container. */
+function connectRects(sourceRect: ConnectionRect, targetRect: ConnectionRect, containerRect: ConnectionRect): WidgetConnection {
+  const dx = targetRect.left + targetRect.width / 2 - sourceRect.left - sourceRect.width / 2
+  const dy = targetRect.top + targetRect.height / 2 - sourceRect.top - sourceRect.height / 2
+  const horizontal = Math.abs(dx) >= Math.abs(dy)
+  const sourceSide: ConnectionSide = horizontal ? dx >= 0 ? 'right' : 'left' : dy >= 0 ? 'bottom' : 'top'
+  const targetSide: ConnectionSide = horizontal ? dx >= 0 ? 'left' : 'right' : dy >= 0 ? 'top' : 'bottom'
+  const point = (rect: ConnectionRect, side: ConnectionSide) => {
+    switch (side) {
+      case 'left': return { anchorX: rect.left, anchorY: rect.top + rect.height / 2, x: rect.left - 5, y: rect.top + rect.height / 2 }
+      case 'right': return { anchorX: rect.right, anchorY: rect.top + rect.height / 2, x: rect.right + 5, y: rect.top + rect.height / 2 }
+      case 'top': return { anchorX: rect.left + rect.width / 2, anchorY: rect.top, x: rect.left + rect.width / 2, y: rect.top - 5 }
+      case 'bottom': return { anchorX: rect.left + rect.width / 2, anchorY: rect.bottom, x: rect.left + rect.width / 2, y: rect.bottom + 5 }
+    }
+  }
+  const source = point(sourceRect, sourceSide)
+  const target = point(targetRect, targetSide)
+  return {
+    x1: source.x - containerRect.left,
+    y1: source.y - containerRect.top,
+    x2: target.x - containerRect.left,
+    y2: target.y - containerRect.top,
+    anchorX1: source.anchorX - containerRect.left,
+    anchorY1: source.anchorY - containerRect.top,
+    anchorX2: target.anchorX - containerRect.left,
+    anchorY2: target.anchorY - containerRect.top,
+    sourceSide,
+    targetSide,
+  }
+}
 
 /** Campaign placement and connection geometry, also used by the online game. */
 export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
@@ -203,8 +251,6 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
 
     const containerRect = rootRef.current.getBoundingClientRect()
     const boardRect = boardAreaRef.current.getBoundingClientRect()
-    const squareWidth = boardRect.width / 8
-    const squareHeight = boardRect.height / 8
 
     // --- CHAIN CONNECTIONS (MST) ---
     const widgets = {
@@ -401,53 +447,10 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
 
     // Piece Params connects to the selected square. Piece Debug chooses one nearby target.
     const directConnections: WidgetConnection[] = []
-    type ConnectionRect = { left: number; right: number; top: number; bottom: number; width: number; height: number }
-    const squareRectFor = (square: Square): ConnectionRect | null => {
-      const fileIndex = 'abcdefgh'.indexOf(square[0])
-      const rank = Number.parseInt(square[1], 10)
-      if (fileIndex < 0 || !Number.isFinite(rank)) return null
-      const rowFromTop = orientation === 'black' ? rank - 1 : 8 - rank
-      const column = orientation === 'black' ? 7 - fileIndex : fileIndex
-      const left = boardRect.left + column * squareWidth
-      const top = boardRect.top + rowFromTop * squareHeight
-      return { left, top, right: left + squareWidth, bottom: top + squareHeight, width: squareWidth, height: squareHeight }
-    }
-    const selectedSquareRect = selectedSquare ? squareRectFor(selectedSquare) : null
+    const selectedSquareRect = selectedSquare ? squareRect(selectedSquare, boardRect, orientation) : null
     const connectWidgetToRect = (widgetRef: RefObject<HTMLDivElement | null>, targetRect: ConnectionRect) => {
       const widget = widgetRef.current
-      if (!widget) return
-      const sourceRect = widget.getBoundingClientRect()
-      const dx = targetRect.left + targetRect.width / 2 - sourceRect.left - sourceRect.width / 2
-      const dy = targetRect.top + targetRect.height / 2 - sourceRect.top - sourceRect.height / 2
-      const horizontal = Math.abs(dx) >= Math.abs(dy)
-      const sourceSide: NonNullable<WidgetConnection['sourceSide']> = horizontal
-        ? dx >= 0 ? 'right' : 'left'
-        : dy >= 0 ? 'bottom' : 'top'
-      const targetSide: NonNullable<WidgetConnection['targetSide']> = horizontal
-        ? dx >= 0 ? 'left' : 'right'
-        : dy >= 0 ? 'top' : 'bottom'
-      const point = (rect: ConnectionRect, side: NonNullable<WidgetConnection['sourceSide']>) => {
-        switch (side) {
-          case 'left': return { anchorX: rect.left, anchorY: rect.top + rect.height / 2, x: rect.left - 5, y: rect.top + rect.height / 2 }
-          case 'right': return { anchorX: rect.right, anchorY: rect.top + rect.height / 2, x: rect.right + 5, y: rect.top + rect.height / 2 }
-          case 'top': return { anchorX: rect.left + rect.width / 2, anchorY: rect.top, x: rect.left + rect.width / 2, y: rect.top - 5 }
-          case 'bottom': return { anchorX: rect.left + rect.width / 2, anchorY: rect.bottom, x: rect.left + rect.width / 2, y: rect.bottom + 5 }
-        }
-      }
-      const source = point(sourceRect, sourceSide)
-      const target = point(targetRect, targetSide)
-      directConnections.push({
-        x1: source.x - containerRect.left,
-        y1: source.y - containerRect.top,
-        x2: target.x - containerRect.left,
-        y2: target.y - containerRect.top,
-        anchorX1: source.anchorX - containerRect.left,
-        anchorY1: source.anchorY - containerRect.top,
-        anchorX2: target.anchorX - containerRect.left,
-        anchorY2: target.anchorY - containerRect.top,
-        sourceSide,
-        targetSide,
-      })
+      if (widget) directConnections.push(connectRects(widget.getBoundingClientRect(), targetRect, containerRect))
     }
 
     if (knobsOn && selectedSquareRect) connectWidgetToRect(knobsRef, selectedSquareRect)
@@ -471,5 +474,15 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
 
   }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, hasSpectrogramWidget, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
 
-  return { pieceConnections: pieceWidgetConnections, chainConnections, resizeTick }
+  // Hovering a row of the Song & Instruments list links its on/off dot to the piece.
+  const [hoverConnections, setHoverConnections] = useState<WidgetConnection[]>([])
+  const hoveredPiece = options.hoveredPiece ?? null
+  useEffect(() => {
+    const root = rootRef.current, board = boardAreaRef.current
+    const target = hoveredPiece && board ? squareRect(hoveredPiece.square, board.getBoundingClientRect(), orientation) : null
+    if (!musicEngineOn || !root || !hoveredPiece?.anchor.isConnected || !target) { setHoverConnections([]); return }
+    setHoverConnections([connectRects(hoveredPiece.anchor.getBoundingClientRect(), target, root.getBoundingClientRect())])
+  }, [hoveredPiece, musicEngineOn, orientation, rootRef, boardAreaRef, resizeTick, knobsPosition])
+
+  return { pieceConnections: pieceWidgetConnections, chainConnections, hoverConnections, resizeTick }
 }

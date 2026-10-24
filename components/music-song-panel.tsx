@@ -1,0 +1,70 @@
+'use client'
+
+import { useRef } from 'react'
+import type { Square } from 'chess.js'
+import type { Arrangement } from '@/lib/music/arrangement'
+import type { HarmonyPlanId } from '@/lib/music/harmony'
+import type { MusicPiece } from '@/lib/music/model'
+import type { MusicMonitor } from '@/lib/music/monitor'
+import { cn } from '@/lib/utils'
+import { MusicArrangementControls } from './music-arrangement-controls'
+import { MusicVoiceBadge } from './music-playback'
+
+export interface SongPanelHover { square: Square; anchor: HTMLElement }
+
+/** Song & Instruments: the Piece Params view when no piece is selected. The
+ * Global Sections bar sits on top; each row turns its piece on or off from the
+ * dot on the left, and a click on the name selects the piece. */
+export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, onSelect, onToggle, onSolo, canToggle, onHover }: {
+  pieces: readonly MusicPiece[]
+  names: Readonly<Record<string, string | undefined>>
+  activeIds: ReadonlySet<string>
+  soloIds: ReadonlySet<string>
+  monitor: MusicMonitor
+  arrangement?: Arrangement
+  harmony?: HarmonyPlanId
+  onArrangementChange?: (arrangement: Arrangement) => void
+  onSeek: (sectionId: string) => void
+  onSelect: (square: Square) => void
+  onToggle: (square: Square) => void
+  onSolo?: (id: string) => void
+  canToggle?: (piece: MusicPiece) => boolean
+  onHover?: (hover: SongPanelHover | null) => void
+}) {
+  const dots = useRef(new Map<string, HTMLButtonElement>())
+  const hover = (piece: MusicPiece | null) => {
+    const anchor = piece && dots.current.get(piece.id)
+    onHover?.(piece && anchor ? { square: piece.square, anchor } : null)
+  }
+  return <div className="flex min-w-0 flex-col gap-2">
+    {arrangement && <section aria-label="Global Sections" className="min-w-0">
+      <h3 className="m-0 mb-1 font-mono text-[9px] leading-none text-[#9eafa2]">Global Sections</h3>
+      <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} />
+    </section>}
+    <section aria-label="Instruments" className="grid min-w-0 grid-cols-2 gap-x-2" onPointerLeave={() => hover(null)}>
+      {(['w', 'b'] as const).map(color => <div key={color} className="min-w-0">
+        <h3 className="m-0 px-1 pb-1.5 font-mono text-[9px] uppercase leading-none tracking-[1px] text-[#96a79a]">{color === 'w' ? 'White' : 'Black'}</h3>
+        {pieces.filter(piece => piece.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(piece => {
+          const active = activeIds.has(piece.id)
+          const solo = soloIds.has(piece.id)
+          const name = names[piece.id] ?? piece.id
+          const toggleAllowed = canToggle?.(piece) ?? true
+          return <div key={piece.id} data-piece-row={piece.id} className="flex min-w-0 items-stretch rounded border-b border-[#2e3b31] hover:bg-white/5"
+            onPointerEnter={() => hover(piece)} onFocus={() => hover(piece)} onBlur={() => hover(null)}>
+            <button type="button" ref={element => { if (element) dots.current.set(piece.id, element); else dots.current.delete(piece.id) }}
+              className={cn('w-6 shrink-0 cursor-pointer bg-transparent p-0 text-[12px] leading-none disabled:cursor-not-allowed disabled:opacity-40', active ? 'text-[#c0e494]' : 'text-white/45 hover:text-white/80')}
+              aria-label={`${active ? 'Deactivate' : 'Activate'} ${name} (${piece.square})`} aria-pressed={active} disabled={!toggleAllowed}
+              title={toggleAllowed ? (active ? 'Turn off' : 'Turn on') : 'This piece cannot be changed now'}
+              onClick={() => onToggle(piece.square)}><span aria-hidden="true">{active ? '●' : '○'}</span></button>
+            <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 bg-transparent py-1.5 pr-1 text-left font-mono text-[10px] text-[#e0e9df]"
+              title={`Select ${name} (${piece.square})`} onClick={() => onSelect(piece.square)}>
+              <span className="truncate">{name}</span><span className="shrink-0 scale-90"><MusicVoiceBadge monitor={monitor} id={piece.id} /></span>
+            </button>
+            {onSolo && <button type="button" className={cn('w-5 shrink-0 cursor-pointer bg-transparent p-0 font-mono text-[10px] font-semibold leading-none', solo ? 'text-white' : 'text-[#849389] hover:text-white/80')}
+              aria-label={`${solo ? 'Disable' : 'Enable'} solo ${name}`} title="Solo" aria-pressed={solo} onClick={() => onSolo(piece.id)}>S</button>}
+          </div>
+        })}
+      </div>)}
+    </section>
+  </div>
+}

@@ -16,6 +16,7 @@ export const CHANGELOG = [
         'Mudar o nome do kit não reinicia mais a música.',
         'Em "This piece\'s arrangement", o checkbox "Piece present in this global section" saiu: agora a peça toca na seção quando "Piece MIDI variation" tem uma variação escolhida, e a nova opção vazia "— none (piece rests)" deixa a peça em pausa naquela seção. Kits salvos com o checkbox desmarcado passam a usar a opção vazia e continuam soando igual.',
         'Uma aba de variação pinada agora toca em todas as seções, inclusive nas que estão sem variação. Uma regra de States & Events que troca a variação continua respeitando as seções vazias.',
+        'Na barra de Global Sections, o duplo clique numa seção não abre mais popup: abre, na linha logo abaixo, Label, Beats e Harmony lado a lado (com os rótulos em cima) e um botão de lixeira para excluir. As mudanças valem na hora, e o + já cria a seção e abre a edição dela.',
       ] },
       { title: 'Piece Params', items: [
         'Os knobs agora ficam abaixo do sequenciador MIDI, sob o título "Piece params".',
@@ -25,6 +26,9 @@ export const CHANGELOG = [
         '"Restart MIDI when the global section starts" virou um botão com uma seta girando na linha de botões abaixo do sequenciador, na partida e no Criativo. Ligado, o ícone fica na cor normal; desligado, fica 50% mais apagado.',
         'O painel não mostra mais barras de rolagem; a rolagem continua funcionando.',
         'Os knobs Swing e Chance agora ficam logo depois de Reverb.',
+        'Sem peça selecionada, o painel vira "Song & Instruments", com um ícone de nota musical no avatar. Abaixo do título fica a barra de Global Sections e, embaixo dela, a lista das peças (White e Black), parecida com o painel de vozes do Criativo.',
+        'Na lista, a bolinha de ligar/desligar fica à esquerda de cada peça, clicar no nome seleciona a peça e passar o mouse desenha uma linha da bolinha até a peça no tabuleiro.',
+        'Na campanha, a barra de Global Sections pode ser editada como no Criativo; na partida online, ela só marca a próxima seção, porque o arranjo é compartilhado pelos dois jogadores.',
       ] },
       { title: 'Admin', items: [
         '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',
