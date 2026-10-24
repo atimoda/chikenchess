@@ -6,7 +6,8 @@ import type { Meter } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMonitorSelector } from '@/hooks/use-monitor-selector'
-import { MusicNoteParams } from './music-note-params'
+import { MusicNoteParams, useNoteParamsHost } from './music-note-params'
+import { Trash2 } from 'lucide-react'
 import type { KnobUpdateMode } from './knob'
 import { addVariation, removeLastVariation } from '@/lib/music/variation-edit'
 import type { Instrument } from '@/lib/music/model'
@@ -54,7 +55,7 @@ function PianoRollPlayhead({monitor,snapshot,instrument,id,roll,high,rowHeight,e
  </g>
 }
 
-export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate',visualUpdatesEnabled=true}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode;division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode;visualUpdatesEnabled?:boolean}){
+export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate',visualUpdatesEnabled=true}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode|((leading:ReactNode)=>ReactNode);division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode;visualUpdatesEnabled?:boolean}){
  const [error,setError]=useState('')
  const [selectedNote,setSelectedNote]=useState<{index:number;note:number}|null>(null)
  const [draft,setDraft]=useState<{index:number;roll:PianoRoll}|null>(null),[localDivision,setLocalDivision]=useState(defaultGridDivision(snapshot.meter))
@@ -81,6 +82,22 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
  }
  const point=(e:React.PointerEvent<SVGSVGElement>,bars:number,low:number,high:number)=>{const box=e.currentTarget.getBoundingClientRect();return {start:Math.max(0,Math.min(bars-1/(pulses*division),Math.floor((e.clientX-box.left)/box.width*bars*pulses*division)/(pulses*division))),degree:Math.max(low,Math.min(high,high-Math.floor((e.clientY-box.top)/box.height*(high-low+1))))}}
  const cancel=()=>{drag.current=null;setDraft(null)}
+ // Piece Params shows the selected note's knobs in its own knob panel; the
+ // handlers go through a ref so a published selection never saves stale rolls.
+ const noteParamsHost=useNoteParamsHost()
+ const selectedVisible=!!selectedNote&&visibleVariations.some(({index})=>index===selectedNote.index)
+ const selectedRoll=selectedNote?(draft?.index===selectedNote.index?draft.roll:instrument.pianoRolls[selectedNote.index]):undefined
+ const selectedValue=selectedVisible&&selectedNote?selectedRoll?.notes[selectedNote.note]:undefined
+ const noteHandlers=useRef({change:(_patch:Partial<PianoNote>)=>{},deselect:()=>{}})
+ noteHandlers.current={
+  change:patch=>{if(!selectedNote||!selectedRoll)return;save(selectedNote.index,{...selectedRoll,notes:selectedRoll.notes.map((note,i)=>i===selectedNote.note?{...note,...patch}:note)})},
+  deselect:()=>setSelectedNote(null),
+ }
+ useEffect(()=>{
+  if(!noteParamsHost)return
+  noteParamsHost(selectedValue?{note:selectedValue,updateMode:knobUpdateMode,onChange:patch=>noteHandlers.current.change(patch),onDeselect:()=>noteHandlers.current.deselect()}:null)
+ },[noteParamsHost,selectedValue,knobUpdateMode])
+ useEffect(()=>()=>noteParamsHost?.(null),[noteParamsHost])
  return <section aria-label="Variation editor" data-midi-visual-panel data-compact={compact||undefined}>
   {!compact&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}><label><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>Beat subdivision<InfoTip label="How to edit notes">The subdivision sets the rhythmic points inside each beat: 3 parts show the eighths in 6/8, 9/8 and 12/8. Click an empty area and drag to draw. Drag a note to move it; hold Alt while dragging to duplicate it with its parameters. Drag its right edge to lengthen or shorten it. Double-click a note to delete it. You can also select it and use Delete note, Delete or Backspace.</InfoTip></span><select value={division} onChange={e=>setDivision(Number(e.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,snapshot.meter)}</option>)}</select></label></div>}
   
@@ -127,8 +144,15 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       </g>})}
       {sounding&&present&&<PianoRollPlayhead monitor={monitor} snapshot={snapshot} instrument={instrument} id={id} roll={roll} high={high} rowHeight={rowHeight} enabled={visualUpdatesEnabled}/>}
      </svg>
-     {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,minHeight:41}}><span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{bars} bars / {bars*pulses} beats</span>{actions}</div>:actions}
-     {selectedNote?.index===index&&roll.notes[selectedNote.note]&&<MusicNoteParams note={roll.notes[selectedNote.note]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selectedNote.note?{...note,...patch}:note)})} onDelete={()=>removeNote(index,roll,selectedNote.note)}/>}
+     {(()=>{
+      const selected=selectedNote?.index===index&&roll.notes[selectedNote.note]?selectedNote.note:-1
+      const deleteNote=selected>=0?<button type="button" aria-label="Delete note" title="Delete note" onClick={()=>removeNote(index,roll,selected)}><Trash2 size={14}/></button>:null
+      const row=typeof actions==='function'?actions(deleteNote):<>{deleteNote}{actions}</>
+      return <>
+       {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,minHeight:41}}><span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{bars} bars / {bars*pulses} beats</span>{row}</div>:row}
+       {!noteParamsHost&&selected>=0&&<MusicNoteParams note={roll.notes[selected]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selected?{...note,...patch}:note)})}/>}
+      </>
+     })()}
    </div>
   })}
   {onlyVariation===undefined&&<div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:8}}><button type="button" disabled={bankCount>=8} onClick={()=>onChange(addVariation(instrument))}>Add variation</button><button type="button" disabled={bankCount<=1} onClick={()=>onChange(removeLastVariation(instrument))}>Remove last variation</button></div>}

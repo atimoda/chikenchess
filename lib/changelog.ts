@@ -15,6 +15,12 @@ export const CHANGELOG = [
         'A linha de status abaixo do Play saiu. A curva de transição de BPM fica na linha de Time signature, Scale e Harmony, com compasso, BPM e as bolinhas do tempo logo abaixo; "X/32 active" fica abaixo do tabuleiro, à direita dos botões Activate white, Mute all e Reset positions.',
         'Mudar o nome do kit não reinicia mais a música.',
       ] },
+      { title: 'Piece Params', items: [
+        'Os knobs agora ficam abaixo do sequenciador MIDI, sob o título "Piece params".',
+        'Selecionar uma nota no sequenciador troca os knobs pelos da nota (Accent, Pan, Slide ST e Slide sec, no mesmo tamanho dos knobs da peça) e o título vira "Piece params / Note params". Clicar em "Piece params" desmarca a nota e devolve os knobs da peça.',
+        'A rampa do slide da nota fica visível, ocupando o espaço de dois knobs, logo acima de Slide ST e Slide sec. Nos dois modos, Slide ST e Slide sec são os dois últimos knobs do painel.',
+        'O botão de excluir nota foi para a linha de botões abaixo do sequenciador, como primeira opção, e só aparece com uma nota selecionada.',
+      ] },
       { title: 'Admin', items: [
         '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',
       ] },

@@ -61,10 +61,3 @@
 .badge[data-status='note'] { color: #d5f49d; }
 .badge[data-status='masked'], .badge[data-status='loading'] { color: #e1b778; }
 .badge[data-status='error'] { color: #f7aa9d; }
-.noteParams { margin-top: 10px; min-width: 0; }
-.voice .noteParams h3 { margin: 0 0 6px; font: 9px monospace; color: #9eafa2; }
-.noteParamsRow { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px 27px; align-items: center; gap: 6px; }
-.noteSlideBox { display: grid; grid-template-columns: 32px 32px minmax(16px, 1fr); align-items: center; gap: 4px; padding: 4px; min-width: 0; border: 1px solid #34463b; border-radius: 4px; background: #111a15; }
-.voice .noteSlideCurve { display: block; width: 100%; height: 32px; min-width: 0; background: transparent; }
-.voice .deleteNote { width: 27px; height: 27px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
-.voice .deleteNote svg { width: 14px; height: 14px; background: transparent; border-radius: 0; }

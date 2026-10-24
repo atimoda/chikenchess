@@ -10,6 +10,7 @@ import { LockKeyhole, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
+import { KnobPanelTitle, NoteParamsHostContext, NoteParamsKnobs, type NoteParamsSelection } from "./music-note-params"
 import type { Instrument, InstrumentPerformanceEdit, MusicPiece } from '@/lib/music/model'
 import { filterDialHertz, filterDialLabel, filterDialValue } from '@/lib/music/team-mixer'
 import type { MusicMonitor, TrackFrame } from '@/lib/music/monitor'
@@ -75,6 +76,9 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   const knobGridRef = useRef<HTMLDivElement>(null)
   const [midiVisualUpdatesEnabled, setMidiVisualUpdatesEnabled] = useState(true)
   const [minPanelHeight, setMinPanelHeight] = useState(420)
+  // A note selected in the MIDI editor swaps the knob panel to its Note params.
+  const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
+  const noteMode = !!noteSelection && !!playback
   const panelStyle = {
     "--city-neon": cityColor,
   } as React.CSSProperties
@@ -252,7 +256,22 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
       {/* Main Content - z-50 */}
       <div ref={contentViewportRef} inert={readOnly} aria-disabled={readOnly || undefined} className={cn("relative z-50 max-w-full px-2.5", isStatic ? "w-full max-h-none overflow-visible py-2.5" : "h-full w-full min-h-0 overflow-hidden pt-2.5 pb-0", !isOn && "opacity-50 grayscale")} style={panelStyle}>
-        <div className={cn("flex flex-col gap-3", !isStatic && "h-full min-h-0")}>
+        <div className={cn("flex flex-col gap-3", !isStatic && "piece-params-scroll h-full min-h-0 overflow-y-auto pb-2.5")}>
+          <style jsx global>{`
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+            .scrollbar-hide {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
+            .piece-params-scroll {
+              scrollbar-color: rgba(255,255,255,.28) transparent;
+              scrollbar-width: thin;
+            }
+            .piece-params-scroll::-webkit-scrollbar { width: 6px; }
+            .piece-params-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 999px; }
+          `}</style>
           <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
             {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
             <div className="min-w-0">
@@ -263,29 +282,24 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               {selectedSquare && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
-          <div
-            ref={knobGridRef}
-            className={cn(
-              "grid grid-cols-5 gap-x-2 gap-y-[13px] py-2",
-              (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale",
-              !isOn && "pointer-events-none"
-            )}
+          {playback && <div className="flex flex-none flex-col">
+            <NoteParamsHostContext.Provider value={setNoteSelection}>
+              <MusicPlaybackViewport visualUpdatesEnabled={isStatic || midiVisualUpdatesEnabled} pieceParamsLayout={!isStatic}>
+                {playback}
+              </MusicPlaybackViewport>
+            </NoteParamsHostContext.Provider>
+          </div>}
+          <section aria-label={noteMode ? 'Note params' : 'Piece params'} className="flex flex-none flex-col">
+            <KnobPanelTitle noteMode={noteMode} onPieceParams={() => noteSelection?.onDeselect()} />
+            <div
+              ref={knobGridRef}
+              className={cn(
+                "grid grid-cols-5 gap-x-2 gap-y-[13px] py-2",
+                (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale",
+                !isOn && "pointer-events-none"
+              )}
           >
-            <style jsx global>{`
-              .scrollbar-hide::-webkit-scrollbar {
-                display: none;
-              }
-              .scrollbar-hide {
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-              }
-              .piece-params-scroll {
-                scrollbar-color: rgba(255,255,255,.28) transparent;
-                scrollbar-width: thin;
-              }
-              .piece-params-scroll::-webkit-scrollbar { width: 6px; }
-              .piece-params-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 999px; }
-            `}</style>
+              {noteMode && noteSelection ? <NoteParamsKnobs note={noteSelection.note} onChange={noteSelection.onChange} updateMode={noteSelection.updateMode} neon={isOn && !!selectedSquare} /> : <>
             <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="GAIN"
               value={effects.gain}
@@ -410,19 +424,14 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} updateMode="on-release" onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Length" value={instrument.clip ?? .7} min={.05} max={1} updateMode="on-release" formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} neon={pitchSlideEnabled} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} neon={pitchSlideEnabled} />
               <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SWING" showFrequency updateMode="on-release" value={instrument.swingRange ?? { first: instrument.extraSwing ?? 0, second: instrument.extraSwing ?? 0, frequency: 'note' }} min={0} max={.5} step={.01} formatValue={range => `${Math.round(range.first * 100)}–${Math.round(range.second * 100)}%`} formatSingleValue={value => `${Math.round(value * 100)}%`} onChange={swingRange => onInstrumentChange?.({ swingRange })} neon={isOn && !!selectedSquare} />
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="CHANCE" ariaLabel="Chance de tocar" value={instrument.playChance ?? 1} min={0} max={1} step={.01} updateMode="on-release" formatValue={value => `${Math.round(value * 100)}%`} onChange={playChance => onInstrumentChange?.({ playChance })} neon={isOn && !!selectedSquare} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} neon={pitchSlideEnabled} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} neon={pitchSlideEnabled} />
             </>}
-          </div>
-          <div className={cn(!isStatic && "flex min-h-0 flex-1 flex-col overflow-hidden")}>
-            {playback && <div style={!isStatic ? { minHeight: 42 } : undefined} className={cn(!isStatic && "flex min-h-0 flex-1 flex-col overflow-hidden")}>
-              <MusicPlaybackViewport visualUpdatesEnabled={isStatic || midiVisualUpdatesEnabled} pieceParamsLayout={!isStatic}>
-                {playback}
-              </MusicPlaybackViewport>
-            </div>}
-          </div>
+              </>}
+            </div>
+          </section>
         </div>
       </div>
       {isOn && readOnly && <div className={cn("absolute inset-0 z-[65] flex items-center justify-center rounded-md bg-black/35", isStatic ? "touch-pan-y" : "touch-none")}>

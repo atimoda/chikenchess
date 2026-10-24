@@ -93,7 +93,9 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     const bars=Math.max(1/beatsPerBar(snapshot.meter),Math.min(8,activeRoll.bars+delta/beatsPerBar(snapshot.meter)*4))
     onInstrumentChange({pianoRolls:instrument.pianoRolls.map((roll,index)=>index===activeTab?resizeRoll(activeRoll,bars):roll)})
   }
-  const variationActions = instrument && onInstrumentChange ? <div className={styles.variationActions} aria-label="Variation actions">
+  // The piano editor passes Delete note (only while a note is selected) as the first action.
+  const variationActions = instrument && onInstrumentChange ? (leading: ReactNode) => <div className={styles.variationActions} aria-label="Variation actions">
+    {leading}
     <DivisionPicker value={division} onChange={setDivision} meter={snapshot.meter??'4/4'}/>
     <button type="button" aria-label="Reverse variation notes" title="Mirror the variation in time" onClick={() => onInstrumentChange(reverseVariation(instrument,activeTab))}><ArrowLeftRight size={14}/></button>
     <button type="button" aria-label="Randomize variation notes" title="Randomize notes" onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dice5 size={14}/></button>
