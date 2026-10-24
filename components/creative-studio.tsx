@@ -13,6 +13,7 @@ import { MusicReactionEditor } from './music-reaction-editor'
 import type { ReactionContext } from '@/lib/music/reactions'
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Square } from 'chess.js'
+import { toast } from 'sonner'
 import { ArrowLeft, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
 import { ChessgroundBoard, PiecesSVG } from './chessground-board'
 import { BoardResizeHandles } from './board-resize-handles'
@@ -48,6 +49,11 @@ function messageOf(error: unknown) {
 }
 
 
+// Creative messages share the match's toast and stay until dismissed; one id keeps a single popup.
+function setNotice(message: string) {
+  toast(message, { id: 'creative-notice', duration: Infinity, closeButton: true })
+}
+
 const RULED = { borderColor: '#c9a85a', color: '#f0d48e', boxShadow: 'inset 0 0 0 1px #c9a85a55' } as const
 const RULED_TEXT = { color: '#f0d48e' } as const
 export function CreativeStudio() {
@@ -62,7 +68,6 @@ export function CreativeStudio() {
   const soloMemoryRef = useRef<string[] | null>(null)
   const soloCycleIdsRef = useRef<Set<string>>(new Set())
   const [mode, setMode] = useState<'move' | 'play'>('move')
-  const [notice, setNotice] = useState('')
   const [kits, setKits] = useState<CreativeSession[]>([])
   const [selectedKit, setSelectedKit] = useState('')
   const [simulation, setSimulation] = useState<ReactionContext>({ ply:0, states:[{ trigger:'opening',color:'w',ply:0 }], events:[] })
@@ -168,6 +173,8 @@ export function CreativeStudio() {
   }, [session, ready])
 
   useEffect(() => setEditingInstrumentName(false), [selectedId])
+  useEffect(() => { if (music.error) setNotice(`Audio: ${music.error}`) }, [music.error])
+  useEffect(() => () => { toast.dismiss('creative-notice') }, [])
 
   const updateInstrument = useCallback((update: Partial<Instrument>) => {
     setSession(s => ({ ...s, instruments: { ...s.instruments, [selectedId]: { ...s.instruments[selectedId], ...update } } }))
@@ -212,7 +219,7 @@ export function CreativeStudio() {
     setPlaying(true)
     setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: nextSoloIds.has(p.id) })) }))
   }
-  function stop() { setPlaying(false); music.endAudition(); setNotice('Arrangement paused.') }
+  function stop() { setPlaying(false); music.endAudition() }
   function select(id: string) { music.endAudition(); setSelectedId(id) }
 
   async function loadSession(next: CreativeSession, autoplay = false) {
@@ -291,9 +298,7 @@ export function CreativeStudio() {
 
   return <main className={styles.studio}>
     <header className={styles.header}>
-      <div className={styles.identity}><Link href="/" aria-label="Back to the world"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS LAB</span><h1><FlaskConical size={22} /> Creative Mode</h1></div></div>
-      <InfoTip label="Creative Mode">A workbench for composing with the pieces. No stage intro and no forced turns: try sounds, simulate states and save kits for your matches.</InfoTip>
-      <VersionChangelog />
+      <div className={styles.identity}><Link href="/" aria-label="Back to the world"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS LAB<InfoTip label="Creative Mode">A workbench for composing with the pieces. No stage intro and no forced turns: try sounds, simulate states and save kits for your matches.</InfoTip><VersionChangelog /></span><h1><FlaskConical size={22} /> Creative Mode</h1></div></div>
     </header>
 
     <fieldset disabled={!ready || busy} className={styles.workspace}>
@@ -475,6 +480,5 @@ export function CreativeStudio() {
 
       <details className={`${styles.panel} ${styles.code}`} onToggle={event => setShowCode(event.currentTarget.open)}><summary>Running Strudel code<InfoTip label="Running code">Generated from the active voices and the preview. To edit it, use the instrument controls.</InfoTip></summary>{music.codeStats && <p>Export: {(music.codeStats.bytes / 1024).toFixed(1)} KB · {music.codeStats.stacks} stacks · {music.codeStats.timeCats} timeCat · {music.codeStats.orbits} orbits · {music.codeStats.filters} declared filters<InfoTip label="Export metrics">Counts of the generated code, not of active audio nodes. The effects and voices actually running vary during the music.</InfoTip></p>}<pre>{music.code}</pre></details>
     </fieldset>
-    <div className={styles.notice} role="status" aria-live="polite">{!ready ? 'Opening workbench…' : busy ? 'Validating patterns…' : music.error ? `Audio: ${music.error}` : notice || 'Select a piece or load a setup to get started.'}</div>
   </main>
 }

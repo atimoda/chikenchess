@@ -45,6 +45,7 @@ export const CHANGELOG = [
         'A duração da variação ("Y compassos / Z tempos") passou para a linha de botões abaixo do sequenciador MIDI, alinhada à direita, sem o "Seção X".',
         'Os botões das variações ficam colados, formando uma única faixa; só os botões +/− no fim da linha têm espaço. O espaço entre essas abas e o sequenciador é o mesmo que entre o sequenciador e os botões abaixo dele.',
         'Na linha abaixo do sequenciador, "Y compassos / Z tempos" fica à esquerda e os botões à direita; os botões −/+ de duração formam um par colado, e Sortear notas mostra um único dado na face 5.',
+        'Na partida, a aba da variação fixada pelo jogador volta a mostrar o ícone de alfinete em cima dela, como no Criativo.',
       ] },
       { title: 'Criativo', items: [
         'A página do Criativo está toda em inglês: textos, ajudas, avisos, Estados/Eventos, arranjo, escalas e status das vozes. Os nomes de kits e instrumentos continuam como foram salvos. Os status das vozes e os nomes dos Estados/Eventos também aparecem em inglês na partida.',
@@ -55,6 +56,10 @@ export const CHANGELOG = [
         'Kits salvos continuam funcionando: letras de kits de cidade recebem o tipo da seção correspondente, nomes como "Refrão" ou "Ponte" são reconhecidos, e outros nomes viram Verse.',
         'O Criativo ficou bem mais leve: o tabuleiro não fica mais se redesenhando sem parar quando nada acontece, e a lista de kits não reconstrói mais todos os kits de cidade a cada clique. O arraste de peças voltou a ficar fluido e não derruba mais os quadros por segundo.',
         'Clicar ou segurar uma peça no Criativo volta a tocar a nota dela, e as notas do arraste não falham mais quando a página está ocupada.',
+        'Clique duplo numa peça do Criativo volta a ligar/desligar o loop dela, como na partida.',
+        'As bolinhas dos knobs de range do Criativo agora têm a mesma cor verde dos tracinhos dos knobs simples.',
+        'A barra fixa de mensagens no rodapé do Criativo saiu. Os avisos (kit salvo, carregado, exportado, erros) aparecem num popup branco no canto inferior direito, igual ao da partida, e ficam até você fechá-lo no X.',
+        'O cabeçalho do Criativo ficou mais compacto: a ajuda "Creative Mode" e o número da versão (ainda abrindo as notas de versão) ficam na mesma linha do "CHICKENCHESS LAB".',
       ] },
       { title: 'Globo', items: [
         'Ao entrar numa cidade pelo globo, a câmera agora mergulha no pin até o círculo interno preencher a tela inteira, antes de abrir a fase.',

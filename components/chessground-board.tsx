@@ -227,6 +227,9 @@ export function ChessgroundBoard({
   const dragHighlightTimeoutRef = useRef<number | null>(null)
   const tapStartRef = useRef<{ square: Square; x: number; y: number; pointerType: string } | null>(null)
   const lastTapRef = useRef<{ square: Square; time: number; pointerType: string } | null>(null)
+  // Free mode starts the drag on pointerdown and swaps the piece for the ghost,
+  // so the browser never emits click/dblclick; the release on the same square counts the taps.
+  const freeTapRef = useRef<{ square: Square; time: number } | null>(null)
   const frozenAttemptRef = useRef<{ square: Square; pointerId: number; notified: boolean } | null>(null)
   const [frozenFeedbackSquare, setFrozenFeedbackSquare] = useState<Square | null>(null)
   const frozenFeedbackTimeoutRef = useRef<number | null>(null)
@@ -723,8 +726,16 @@ export function ChessgroundBoard({
       if (file >= 0 && file < 8 && rank >= 0 && rank < 8 && freeMode) {
         const targetSquare = `${columns[file]}${rows[rank]}` as Square
         if (freeMode.mode === 'move' && targetSquare !== dragPiece.from) {
+          freeTapRef.current = null
           freeMode.onMove(dragPiece.from, targetSquare)
           didMove = true
+        } else if (freeMode.mode === 'move' && game.get(targetSquare)) {
+          const last = freeTapRef.current
+          const now = Date.now()
+          if (last?.square === targetSquare && now - last.time < 350) {
+            freeTapRef.current = null
+            freeMode.onTogglePiece(targetSquare)
+          } else freeTapRef.current = { square: targetSquare, time: now }
         }
       } else if (didDrag && file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith(playerColor) && game.turn() === playerColor && !movesDisabled && !game.isGameOver()) {
         const targetSquare = `${columns[file]}${rows[rank]}` as Square
@@ -1008,9 +1019,6 @@ export function ChessgroundBoard({
                 onPointerCancel={() => { tapStartRef.current = null; lastTapRef.current = null; setPressedPieceSquare(null) }}
                 onLostPointerCapture={e => {
                   if (frozenAttemptRef.current?.pointerId === e.pointerId) clearFrozenFeedback()
-                }}
-                onDoubleClick={() => {
-                  if (freeMode?.mode === 'move' && piece) freeMode.onTogglePiece(square)
                 }}
                 onKeyDown={e => {
                   if (armedPower && !freeMode && (e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); onPowerTarget?.(square) }
