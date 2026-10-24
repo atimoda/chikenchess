@@ -15,8 +15,12 @@ export interface SongPanelHover { square: Square; anchor: HTMLElement }
 /** Song & Instruments: the Piece Params view when no piece is selected. The
  * Global Sections bar sits on top; each row turns its piece on or off from the
  * dot on the left, and a click on the name selects the piece. */
-export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, onSelect, onToggle, onSolo, canToggle, onHover }: {
+export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, onSelect, onToggle, onSolo, canToggle, onHover, ownColor = 'w', onAudition }: {
   pieces: readonly MusicPiece[]
+  /** The player's team, listed first; the opponent's pieces follow in the same column. */
+  ownColor?: 'w' | 'b'
+  /** Plays the piece's note as a tap on the board would, when its row is hovered. */
+  onAudition?: (square: Square) => void
   names: Readonly<Record<string, string | undefined>>
   activeIds: ReadonlySet<string>
   soloIds: ReadonlySet<string>
@@ -36,13 +40,13 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
     const anchor = piece && dots.current.get(piece.id)
     onHover?.(piece && anchor ? { square: piece.square, anchor } : null)
   }
+  const teams = ownColor === 'w' ? ['w', 'b'] as const : ['b', 'w'] as const
   return <div className="flex min-w-0 flex-col gap-2">
     {arrangement && <section aria-label="Global Sections" className="min-w-0">
-      <h3 className="m-0 mb-1 font-mono text-[9px] leading-none text-[#9eafa2]">Global Sections</h3>
       <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} />
     </section>}
-    <section aria-label="Instruments" className="grid min-w-0 grid-cols-2 gap-x-2" onPointerLeave={() => hover(null)}>
-      {(['w', 'b'] as const).map(color => <div key={color} className="min-w-0">
+    <section aria-label="Instruments" className="flex min-w-0 flex-col gap-2.5" onPointerLeave={() => hover(null)}>
+      {teams.map(color => <div key={color} className="min-w-0">
         <h3 className="m-0 px-1 pb-1.5 font-mono text-[9px] uppercase leading-none tracking-[1px] text-[#96a79a]">{color === 'w' ? 'White' : 'Black'}</h3>
         {pieces.filter(piece => piece.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(piece => {
           const active = activeIds.has(piece.id)
@@ -50,7 +54,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
           const name = names[piece.id] ?? piece.id
           const toggleAllowed = canToggle?.(piece) ?? true
           return <div key={piece.id} data-piece-row={piece.id} className="flex min-w-0 items-stretch rounded border-b border-[#2e3b31] hover:bg-white/5"
-            onPointerEnter={() => hover(piece)} onFocus={() => hover(piece)} onBlur={() => hover(null)}>
+            onPointerEnter={event => { hover(piece); if (event.pointerType === 'mouse') onAudition?.(piece.square) }} onFocus={() => hover(piece)} onBlur={() => hover(null)}>
             <button type="button" ref={element => { if (element) dots.current.set(piece.id, element); else dots.current.delete(piece.id) }}
               className={cn('w-6 shrink-0 cursor-pointer bg-transparent p-0 text-[12px] leading-none disabled:cursor-not-allowed disabled:opacity-40', active ? 'text-[#c0e494]' : 'text-white/45 hover:text-white/80')}
               aria-label={`${active ? 'Deactivate' : 'Activate'} ${name} (${piece.square})`} aria-pressed={active} disabled={!toggleAllowed}

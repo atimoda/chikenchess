@@ -54,6 +54,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
   const suppressClick = useRef(false)
   const pendingSeek = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null)
   const seek = useRef(onSeek)
+  const openBeforeClick = useRef(false)
 
   useEffect(() => { seek.current = onSeek }, [onSeek])
 
@@ -104,8 +105,6 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
     cancelDrag()
     setError('')
     setNotice(null)
-    // A second double click on the open section closes its editor row.
-    if (editingId === section.id) { setEditingId(null); return }
     setEditingId(section.id)
     setDegrees(section.harmony?.join(' ') ?? '')
   }
@@ -182,9 +181,14 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
       return
     }
     if (onChange && (pendingSeek.current?.id === section.id || detail > 1)) {
-      edit(section)
+      // Double clicking the section that was already open closes its row.
+      if (openBeforeClick.current) closeEditor()
+      else edit(section)
       return
     }
+    openBeforeClick.current = editingId === section.id
+    // With the row open, a single click moves it to the clicked section.
+    if (onChange && editingId && editingId !== section.id) edit(section)
     clearPendingSeek()
     pendingSeek.current = { id: section.id, timer: setTimeout(() => {
       pendingSeek.current = null

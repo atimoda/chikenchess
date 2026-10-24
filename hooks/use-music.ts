@@ -169,6 +169,14 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
         : { id: piece.id, square: to, mode: 'manual' })
     })
   }, [pieces, engineActive])
+  /** One short note, like a tap on the piece, without changing the selection. */
+  const tapAudition = useCallback((square: Square) => {
+    if (!engineActive) return
+    const piece = pieces.find(p => p.square === square)
+    if (!piece) return
+    runtime.current?.audition(piece.id, square)
+    runtime.current?.releaseAudition()
+  }, [pieces, engineActive])
   const endAudition = useCallback(() => {
     setPreview(null)
     runtime.current?.endAudition()
@@ -333,7 +341,7 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     else data.fill(0)
   }, [])
   return {
-    enabled, engineActive, audition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects,
+    enabled, engineActive, audition, tapAudition, endAudition, releaseAudition, select, togglePiece, toggleSolo, soloIds, reset, selected, effects: snapshot.effects,
     // Base values the user edits; `effects` above already includes temporary State/Event changes.
     baseEffects: effects, setEffects, snapshot, teamMixes, updateTeamMix, kit, applySharedPiece,
     code, preview, pulseMonitor, error, getFrequencyData, getTeamFrequencyData, monitor, reactionDescriptions: snapshot.reactionDescriptions ?? resolved.descriptions,

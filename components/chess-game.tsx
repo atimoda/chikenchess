@@ -1679,6 +1679,15 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     { id: 'botControl', label: 'Bot Control', ref: botControlToggleRef, isOn: botControlOn && codeBackdropOn, cityColor: city.color, onToggle: toggleBotControl, position: botControlPosition ?? { x: 0, y: 0 }, onPositionChange: setBotControlPosition, onDragStart: () => handleWidgetHeaderClick('botControl') },
   ], [botControlOn, botControlPosition, city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, spectrogramMode, spectrogramOn, spectrogramPosition, resizeTick, toggleBotControl, togglePlayerTurnPanel, toggleWidget])
 
+  // The on/off dot of the Song & Instruments list and of Piece Params.
+  const toggleSongPiece = (square: Square) => {
+    const turnedOn = music.togglePiece(square, false)
+    if (turnedOn && !isPlaying && music.engineActive) {
+      setHasPlaybackStarted(true)
+      setIsPlaying(true)
+      void resumeAudio()
+    }
+  }
   const widgetsContent = (mobileMode: boolean) => {
       const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', zIndex: 10 } : undefined
       const togglePortalized = !mobileMode && widgetTogglesReady
@@ -1705,20 +1714,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 instrument={music.instrument}
                 selectedPiece={music.selected}
                 onInstrumentChange={music.updateInstrument}
-                isSolo={!!music.selected && music.soloIds.has(music.selected.id)}
-                onSoloToggle={music.selected ? () => {
-                  const selectedId = music.selected?.id
-                  if (!selectedId) return
-                  const turnedOn = music.toggleSolo(selectedId)
-                  if (turnedOn && !isPlaying && music.engineActive) {
-                    setHasPlaybackStarted(true)
-                    setIsPlaying(true)
-                    void resumeAudio()
-                  }
-                } : undefined}
+                onDeselect={() => music.select(null)}
                 playback={knobsOn && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
-                  <MusicVoiceReadout variationTabs showStatus={false} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
+                  <MusicVoiceReadout variationTabs showStatus={false} loopOn={music.activeIds.has(music.selected.id)} onLoopToggle={() => { if (music.selected) toggleSongPiece(music.selected.square) }} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
                 </> : undefined}
                 song={music.kit ? <MusicSongPanel
                   pieces={music.snapshot.pieces}
@@ -1731,14 +1730,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onArrangementChange={music.updateArrangement}
                   onSeek={music.seekSection}
                   onSelect={square => { setSongHover(null); music.select(square) }}
-                  onToggle={square => {
-                    const turnedOn = music.togglePiece(square, false)
-                    if (turnedOn && !isPlaying && music.engineActive) {
-                      setHasPlaybackStarted(true)
-                      setIsPlaying(true)
-                      void resumeAudio()
-                    }
-                  }}
+                  onToggle={toggleSongPiece}
+                  ownColor="w"
+                  onAudition={music.tapAudition}
                   onSolo={id => {
                     const turnedOn = music.toggleSolo(id, false)
                     if (turnedOn && !isPlaying && music.engineActive) {

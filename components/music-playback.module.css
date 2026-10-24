@@ -63,3 +63,9 @@
 .badge[data-status='note'] { color: #d5f49d; }
 .badge[data-status='masked'], .badge[data-status='loading'] { color: #e1b778; }
 .badge[data-status='error'] { color: #f7aa9d; }
+
+/* Piece Params: loop on/off dot at the start of the variation tabs, styled like the Song & Instruments list. */
+.voice .variationTabs .loopDot { flex: 0 0 auto; align-self: flex-end; min-width: 18px; width: 18px; border: 0; background: transparent; color: #ffffff73; font-size: 14px; line-height: 1; cursor: pointer; }
+.voice .variationTabs .loopDot:hover { color: #ffffffcc; }
+.voice .variationTabs .loopDot[data-on='true'] { color: #c0e494; text-shadow: 0 0 6px #c0e49499; }
+.variationTabs .loopDot + .variationTabList { flex: 1 1 0; width: auto; }

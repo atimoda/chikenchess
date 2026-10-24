@@ -30,8 +30,8 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   togglePortalized?: boolean
   isOn: boolean
   onToggle: () => void
-  isSolo?: boolean
-  onSoloToggle?: () => void
+  /** Deselects the piece, back to the Song & Instruments list. */
+  onDeselect?: () => void
   playback?: React.ReactNode
   instrument?: Instrument | null
   onInstrumentChange?: (patch: InstrumentPerformanceEdit) => void
@@ -59,8 +59,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   togglePortalized = false,
   isOn,
   onToggle,
-  isSolo = false,
-  onSoloToggle,
+  onDeselect,
   playback,
   instrument,
   onInstrumentChange,
@@ -226,37 +225,16 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         className="absolute inset-x-0 top-0 h-8 z-60"
       />
 
-      {isOn && !readOnly && selectedSquare && instrument && onInstrumentChange && playback && <>
-        {onSoloToggle && <button
-          type="button"
-          aria-label={isSolo ? 'Desativar Solo da peça' : 'Ativar Solo da peça'}
-          title={isSolo ? 'Desativar Solo' : 'Ativar Solo'}
-          aria-pressed={isSolo}
-          className={cn(
-            "absolute right-[39px] top-2 z-[70] flex h-[25px] w-[27px] items-center justify-center rounded border bg-[#111a15] font-mono text-[11px] font-bold transition-colors hover:border-white/60 hover:text-white",
-            isSolo ? "border-white/70 text-white" : "border-white/25 text-white/60",
-          )}
-          onClick={event => {
-            event.stopPropagation()
-            onSoloToggle()
-          }}
-        >S</button>}
-        <button
-          type="button"
-          aria-label={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
-          title={instrument.loopEnabled === false ? 'Ligar variações da peça' : 'Desligar variações da peça'}
-          aria-pressed={instrument.loopEnabled === false}
-          data-loop-enabled={instrument.loopEnabled !== false}
-          className={cn(
-            "absolute right-2 top-2 z-[70] flex h-[25px] w-[27px] items-center justify-center rounded border bg-[#111a15] text-white/60 transition-colors hover:border-white/60 hover:text-white",
-            instrument.loopEnabled === false ? "border-red-400/70 text-red-300" : "border-white/25",
-          )}
-          onClick={event => {
-            event.stopPropagation()
-            onInstrumentChange({ loopEnabled: instrument.loopEnabled === false })
-          }}
-        ><span aria-hidden="true" className="font-mono text-[12px] font-bold leading-none">M</span></button>
-      </>}
+      {isOn && selectedSquare && onDeselect && <button
+        type="button"
+        aria-label="Back to Song & Instruments"
+        title="Back to the instrument list"
+        className="absolute right-2 top-2 z-[70] flex h-[25px] w-[27px] cursor-pointer items-center justify-center rounded border border-white/25 bg-[#111a15] text-white/70 transition-colors hover:border-white/60 hover:text-white"
+        onClick={event => {
+          event.stopPropagation()
+          onDeselect()
+        }}
+      ><svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z" /></svg></button>}
 
       {/* Main Content - z-50 */}
       <div ref={contentViewportRef} inert={readOnly} aria-disabled={readOnly || undefined} className={cn("relative z-50 max-w-full px-2.5", isStatic ? "w-full max-h-none overflow-visible py-2.5" : "h-full w-full min-h-0 overflow-hidden pt-2.5 pb-0", !isOn && "opacity-50 grayscale")} style={panelStyle}>
