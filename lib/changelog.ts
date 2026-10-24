@@ -24,6 +24,7 @@ export const CHANGELOG = [
         'O botão de excluir nota foi para a linha de botões abaixo do sequenciador, como primeira opção, e só aparece com uma nota selecionada.',
         '"Restart MIDI when the global section starts" virou um botão com uma seta girando na linha de botões abaixo do sequenciador, na partida e no Criativo. Ligado, o ícone fica na cor normal; desligado, fica 50% mais apagado.',
         'O painel não mostra mais barras de rolagem; a rolagem continua funcionando.',
+        'Os knobs Swing e Chance agora ficam logo depois de Reverb.',
       ] },
       { title: 'Admin', items: [
         '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',
