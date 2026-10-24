@@ -11,7 +11,7 @@ export function removeLastVariation(instrument: Instrument): InstrumentPerforman
   const count = instrument.pianoRolls.length
   if (count <= 1) return {}
   return { pianoRolls: instrument.pianoRolls.slice(0,-1),
-    ...(instrument.arrangement ? {arrangement:{...instrument.arrangement,sections:Object.fromEntries(Object.entries(instrument.arrangement.sections).map(([id,step]) => [id,{...step,variation:Math.min(step.variation,count-2)}]))}} : {}),
+    ...(instrument.arrangement ? {arrangement:{...instrument.arrangement,sections:Object.fromEntries(Object.entries(instrument.arrangement.sections).map(([id,step]) => [id,{...step,variation:step.variation === null ? null : Math.min(step.variation,count-2)}]))}} : {}),
     selectedVariation: instrument.selectedVariation === undefined ? undefined : Math.min(instrument.selectedVariation,count-2) }
 }
 

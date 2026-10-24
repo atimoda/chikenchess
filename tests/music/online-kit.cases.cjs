@@ -18,8 +18,8 @@ function kit(name, sound, degree) {
     instrument.arrangement = {
       restart: piece.color === 'b',
       sections: {
-        [`${name}-a`]: { variation: 1, transpose: degree, active: true },
-        [`${name}-b`]: { variation: 0, transpose: -degree, active: false },
+        [`${name}-a`]: { variation: 1, transpose: degree },
+        [`${name}-b`]: { variation: null, transpose: -degree },
       },
     }
     value.effects[piece.id] = { gain: piece.color === 'w' ? .4 : .6, pitch: 1, pan: degree / 10, delay: .1, reverb: .2, decay: .3 }
@@ -57,16 +57,16 @@ test('online kit keeps the host context and maps both team voices onto its secti
   assert.deepEqual(combined.instruments['w:a2'].pianoRolls, white.instruments['w:a2'].pianoRolls)
   assert.deepEqual(combined.instruments['b:a7'].pianoRolls, black.instruments['b:a7'].pianoRolls)
   assert.deepEqual(combined.instruments['w:a2'].arrangement.sections, {
-    'host-intro': { variation: 1, transpose: 2, active: true },
-    'host-main': { variation: 0, transpose: -2, active: false },
-    'host-return': { variation: 1, transpose: 2, active: true },
+    'host-intro': { variation: 1, transpose: 2 },
+    'host-main': { variation: null, transpose: -2 },
+    'host-return': { variation: 1, transpose: 2 },
   })
   assert.deepEqual(combined.instruments['b:a7'].arrangement.sections, {
-    'host-intro': { variation: 1, transpose: -2, active: true },
-    'host-main': { variation: 0, transpose: 2, active: false },
-    'host-return': { variation: 1, transpose: -2, active: true },
+    'host-intro': { variation: 1, transpose: -2 },
+    'host-main': { variation: null, transpose: 2 },
+    'host-return': { variation: 1, transpose: -2 },
   })
-  assert.deepEqual(Object.values(combined.instruments['w:b1'].arrangement.sections).map(step => step.variation), [0, 0, 0])
+  assert.deepEqual(Object.values(combined.instruments['w:b1'].arrangement.sections).map(step => step.variation), [0, null, 0])
 })
 
 test('online city choices stay isolated and composition does not mutate any input', () => {

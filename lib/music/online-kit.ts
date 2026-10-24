@@ -28,7 +28,7 @@ export function combineOnlineKits(
         const assignment = pieceSection(instrument, source.arrangement, sourceIndex)
         return [section.id, {
           ...assignment,
-          variation: assignment.variation % instrument.pianoRolls.length,
+          variation: assignment.variation === null ? null : assignment.variation % instrument.pianoRolls.length,
         }]
       })),
     }

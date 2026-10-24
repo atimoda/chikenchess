@@ -17,9 +17,9 @@ function fixture() {
     { id: 'intro', label: 'Intro', beats: 3 }, { id: 'theme', label: 'Verse', beats: 5 }, { id: 'break', label: 'Break', beats: 4 },
   ] })
   for (const id of ['w:b1', 'w:d1']) kit.instruments[id].arrangement = { restart: true, sections: {
-    intro: { variation: 0, transpose: 0, active: true },
-    theme: { variation: id === 'w:b1' ? 1 : 0, transpose: 5, active: true },
-    break: { variation: 0, transpose: -7, active: false },
+    intro: { variation: 0, transpose: 0 },
+    theme: { variation: id === 'w:b1' ? 1 : 0, transpose: 5 },
+    break: { variation: null, transpose: -7 },
   } }
   return kit
 }
@@ -241,10 +241,13 @@ test('schema 7 validates global IDs, section budget and piece selection independ
   assert.equal(arrangementSchema.safeParse({ sections: Array.from({ length: 9 }, (_, index) => ({ id: `s${index}`, label: 'Verse', beats: 64 })) }).success, false)
   assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'Intro', beats: 65 }] }).success, false)
   assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'Intro', beats: .125 }] }).success, false)
-  assert.ok(pieceArrangementSchema.safeParse({ restart: false, sections: { a: { variation: 7, transpose: -24, active: false } } }).success)
-  for (const patch of [{ variation: 8 }, { variation: -1 }, { transpose: 25 }, { transpose: -25 }, { active: 'yes' }]) {
-    assert.equal(pieceArrangementSchema.safeParse({ restart: true, sections: { a: { variation: 0, transpose: 0, active: true, ...patch } } }).success, false)
+  assert.ok(pieceArrangementSchema.safeParse({ restart: false, sections: { a: { variation: 7, transpose: -24 }, b: { variation: null, transpose: 0 } } }).success)
+  for (const patch of [{ variation: 8 }, { variation: -1 }, { variation: undefined }, { transpose: 25 }, { transpose: -25 }, { active: 'yes' }]) {
+    assert.equal(pieceArrangementSchema.safeParse({ restart: true, sections: { a: { variation: 0, transpose: 0, ...patch } } }).success, false)
   }
+  // Kits saved with the retired presence checkbox keep resting where it was unchecked.
+  assert.deepEqual(pieceArrangementSchema.parse({ restart: true, sections: { a: { variation: 3, transpose: 2, active: false }, b: { variation: 1, transpose: -1, active: true } } }).sections,
+    { a: { variation: null, transpose: 2 }, b: { variation: 1, transpose: -1 } })
 })
 
 test('reorder, rename, resize and remove global sections preserve piece assignments by ID', () => {
@@ -257,7 +260,7 @@ test('reorder, rename, resize and remove global sections preserve piece assignme
   for (const [id, instrument] of Object.entries(next.instruments)) {
     assert.deepEqual(Object.keys(instrument.arrangement.sections).sort(), ['intro','outro','theme'])
     for (const section of ['theme','intro']) assert.deepEqual(instrument.arrangement.sections[section], kit.instruments[id].arrangement.sections[section])
-    assert.deepEqual(instrument.arrangement.sections.outro, { variation: 2 % instrument.pianoRolls.length, transpose: 0, active: true })
+    assert.deepEqual(instrument.arrangement.sections.outro, { variation: 2 % instrument.pianoRolls.length, transpose: 0 })
     assert.equal(instrument.arrangement.restart, kit.instruments[id].arrangement.restart)
   }
   assert.equal(JSON.stringify(kit), before)
@@ -268,7 +271,7 @@ test('missing piece section defaults use global index modulo each piece MIDI ban
   const kit = fixture(), instrument = kit.instruments['w:b1']
   const missing = { ...instrument, arrangement: { restart: false, sections: {} } }
   for (let index = 0; index < kit.arrangement.sections.length; index++) {
-    assert.deepEqual(pieceSection(missing, kit.arrangement, index), { variation: index % 2, transpose: 0, active: true })
+    assert.deepEqual(pieceSection(missing, kit.arrangement, index), { variation: index % 2, transpose: 0 })
   }
 })
 
@@ -288,20 +291,22 @@ test('mixed MIDI lengths switch together at global boundaries, preserving transp
   assert.deepEqual(events(exported(api, snapshot)), events(actual))
 })
 
-test('pin and rule override only MIDI selection, retaining presence, chromatic transpose and restart', async () => {
+test('a pin plays every section while a rule override only swaps MIDI, both retaining transpose and restart', async () => {
   const api = await strudel(), kit = fixture(), id = 'w:b1'
   kit.instruments[id].selectedVariation = 0
   const snapshot = creative.creativeSnapshot(kit, true)
   const pinned = voiceSpecs(snapshot, null).find(voice => voice.piece.id === id)
-  const ruleSnapshot = { ...snapshot, sectionOverrides: { [id]: 1 } }
+  const unpinned = creative.creativeSnapshot({ ...kit, instruments: { ...kit.instruments, [id]: { ...kit.instruments[id], selectedVariation: undefined } } }, true)
+  const ruleSnapshot = { ...unpinned, sectionOverrides: { [id]: 1 } }
   const overridden = voiceSpecs(ruleSnapshot, null).find(voice => voice.piece.id === id)
   const midi = degree => degreeToMidi(degree, snapshot.scale, kit.instruments[id].octave)
-  for (const [voice, pitch] of [[pinned,midi(0)],[overridden,midi(5)]]) {
+  // A pinned tab plays even in the section with no variation; a rule keeps it resting.
+  for (const [voice, pitch, rests] of [[pinned,midi(0),false],[overridden,midi(5),true]]) {
     assert.equal(voice.performance.restart, true)
-    assert.deepEqual(voice.performance.steps.map(step => [step.beats,step.transpose,step.active]), [[3,0,true],[5,5,true],[4,-7,false]])
+    assert.deepEqual(voice.performance.steps.map(step => [step.beats,step.transpose,step.active]), [[3,0,true],[5,5,true],[4,-7,!rests]])
     const pattern = compileVoice(api, voice)
     assert.equal(events(pattern, .75, .751)[0].note, pitch + 5)
-    assert.deepEqual(events(pattern, 2, 3), [])
+    assert.equal(events(pattern, 2, 3).length === 0, rests)
   }
   const manual = voiceSpecs(ruleSnapshot, { id, square: 'b1', mode: 'manual' }).find(voice => voice.manual)
   assert.ok(events(compileVoice(api, manual), 0, .01).length > 0)
@@ -347,7 +352,7 @@ test('v5 migration uses the first piece performance durations and maps other pie
   assert.deepEqual(migrated.arrangement.sections.map(section => section.harmony), [[0,3],[4,0]])
   for (const [id, source] of [[first,authoritative],[other,secondary]]) {
     assert.equal(migrated.instruments[id].arrangement.restart, source.restart)
-    assert.deepEqual(migrated.arrangement.sections.map(section => migrated.instruments[id].arrangement.sections[section.id]), source.steps.map(({ beats, ...step }) => step))
+    assert.deepEqual(migrated.arrangement.sections.map(section => migrated.instruments[id].arrangement.sections[section.id]), source.steps.map(({ beats, active, ...step }) => ({ ...step, variation: active ? step.variation : null })))
     assert.deepEqual(migrated.instruments[id].pianoRolls, legacy.instruments[id].pianoRolls)
     assert.equal(Object.hasOwn(migrated.instruments[id], 'performance'), false)
   }
@@ -369,7 +374,7 @@ test('continuous short MIDI rolls follow global per-bar harmony in slices, expor
     { id: 'answer', label: 'Chorus', beats: 8, harmony: [4,3] },
   ] })
   kit.instruments[id].arrangement = { restart: false, sections: {
-    long: { variation: 0, transpose: 2, active: true }, answer: { variation: 1, transpose: -3, active: true },
+    long: { variation: 0, transpose: 2 }, answer: { variation: 1, transpose: -3 },
   } }
   const { MusicRuntime } = loadTs('lib/music/runtime.ts')
   for (const pin of [undefined,0,1]) {

@@ -84,7 +84,7 @@ export const creativeSchema = z.object({
   }
   for (const instrument of Object.values(data.instruments)) {
     const entries = instrument.arrangement.sections
-    if (Object.keys(entries).length !== data.arrangement.sections.length || data.arrangement.sections.some(s => !Object.hasOwn(entries,s.id) || entries[s.id].variation >= instrument.pianoRolls.length)) {
+    if (Object.keys(entries).length !== data.arrangement.sections.length || data.arrangement.sections.some(s => !Object.hasOwn(entries,s.id) || (entries[s.id].variation ?? 0) >= instrument.pianoRolls.length)) {
       ctx.addIssue({code:'custom', message:'Each piece must reference every global section and existing MIDI bank.'})
     }
   }

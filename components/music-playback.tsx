@@ -12,7 +12,7 @@ import { resizeRoll } from '@/lib/music/piano-roll'
 import { beatsPerBar, meterLabel } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
 import { variationPosition } from '@/lib/music/performance'
-import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music/arrangement'
+import { arrangementPosition, type Arrangement } from '@/lib/music/arrangement'
 import { ArrowLeftRight, Dice5, Minus, Pin, Plus } from 'lucide-react'
 import styles from './music-playback.module.css'
 import type { KnobUpdateMode } from './knob'
@@ -74,7 +74,6 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     return {
       notes: showStatus ? frame.tracks[id]?.notes.map(noteLabel).join(' + ') : undefined,
       running: !manual && isLoopRunning(frame,id,sourceInstrument?.loopEnabled!==false),
-      sectionIndex: globalPosition?.index,
       variation: position?.variation ?? 0,
       present: position?.present,
       // The compact tab view draws its playhead in the piano editor; only the
@@ -86,8 +85,8 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
   const sourceVariationCount = sourceInstrument?.pianoRolls.length ?? 0
   const activeTab = playback.variation
   const activeRoll=instrument?.pianoRolls[activeTab]
-  const currentSection=sourceInstrument&&snapshot.arrangement&&playback.sectionIndex!==undefined ? pieceSection(sourceInstrument,snapshot.arrangement,playback.sectionIndex) : undefined
-  const absentVariation=currentSection&&!currentSection.active?activeTab:null
+  // Present already counts the pin: a pinned tab plays even in an empty section.
+  const absentVariation=playback.present===false?activeTab:null
   const resizeActiveVariation=(delta:number)=>{
     if(!instrument||!onInstrumentChange||!activeRoll)return
     const bars=Math.max(1/beatsPerBar(snapshot.meter),Math.min(8,activeRoll.bars+delta/beatsPerBar(snapshot.meter)*4))

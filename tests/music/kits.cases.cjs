@@ -75,8 +75,8 @@ test('Salvador 1992 assigns brass to knights and rooks over complementary surdos
   const onsets = id => kit.instruments[id].pianoRolls[0].notes.map(note => note.start)
   assert.deepEqual(onsets('w:a2'), [0, .5], 'fundo anchors the first and third beats')
   assert.deepEqual(onsets('w:b2'), [.25, .75], 'meio fills the second and fourth beats')
-  assert.equal(kit.instruments['w:b1'].arrangement.sections[kit.arrangement.sections[0].id].active, false)
-  assert.equal(kit.instruments['w:b1'].arrangement.sections[kit.arrangement.sections[1].id].active, true)
+  assert.equal(kit.instruments['w:b1'].arrangement.sections[kit.arrangement.sections[0].id].variation, null)
+  assert.notEqual(kit.instruments['w:b1'].arrangement.sections[kit.arrangement.sections[1].id].variation, null)
 })
 
 test('new timbre banks reach the intended city styles', () => {
@@ -255,7 +255,7 @@ test('curated arrangements vary density, timbre and harmonic direction by city',
     const kit = defaultCityKit(city.id)
     const white = kit.pieces.filter(piece => piece.color === 'w')
     const instruments = white.map(piece => kit.instruments[piece.id])
-    const density = kit.arrangement.sections.map(section => instruments.filter(instrument => instrument.arrangement.sections[section.id].active).length)
+    const density = kit.arrangement.sections.map(section => instruments.filter(instrument => instrument.arrangement.sections[section.id].variation !== null).length)
     const timbres = new Set(instruments.map(instrument => instrument.source?.kind === 'sample'
       ? `${instrument.source.bank}/${instrument.source.asset}/${instrument.source.variant}`
       : `synth/${instrument.sound}`))
@@ -326,7 +326,7 @@ test('every city voice produces bounded, in-scale Strudel events in every sectio
     for (const voice of voices) for (const section of ['0', '1', '2']) {
       // Random kits thin the band per section; a voice absent from a section is silent by design.
       const sectionId = kit.arrangement.sections[Number(section)]?.id
-      if (sectionId && kit.instruments[voice.piece.id].arrangement.sections[sectionId]?.active === false) continue
+      if (sectionId && kit.instruments[voice.piece.id].arrangement.sections[sectionId]?.variation === null) continue
       const events = compileVoice(api, { ...voice, performance: undefined, sectionPattern: section }).queryArc(0, 4)
       const label = `${city.id}/${seed}/${voice.piece.id}/section${section}`
       assert.ok(events.length > 0 && events.length <= 128, `${label}: audible, bounded density (${events.length})`)

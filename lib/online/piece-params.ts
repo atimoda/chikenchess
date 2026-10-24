@@ -21,7 +21,7 @@ export function parsePieceParams(value: unknown, contextCityId?: string) {
     throw new Error("Piece parameters are too large");
   const params = paramsSchema.parse(value);
   const instrument = params.instrument;
-  if (Object.values(instrument.arrangement.sections).some(section => section.variation >= instrument.pianoRolls.length)
+  if (Object.values(instrument.arrangement.sections).some(section => (section.variation ?? 0) >= instrument.pianoRolls.length)
     || (instrument.selectedVariation ?? 0) >= instrument.pianoRolls.length)
     throw new Error("Unknown MIDI variation");
   if (contextCityId) {

@@ -14,6 +14,8 @@ export const CHANGELOG = [
         'O tabuleiro do Criativo funciona como o da partida: não há mais o seletor Move/Play squares. Segurar toca a nota, arrastar move a peça para qualquer casa (trocando de lugar com a que estiver lá) e clicar numa casa vazia desmarca a peça.',
         'A linha de status abaixo do Play saiu. A curva de transição de BPM fica na linha de Time signature, Scale e Harmony, com compasso, BPM e as bolinhas do tempo logo abaixo; "X/32 active" fica abaixo do tabuleiro, à direita dos botões Activate white, Mute all e Reset positions.',
         'Mudar o nome do kit não reinicia mais a música.',
+        'Em "This piece\'s arrangement", o checkbox "Piece present in this global section" saiu: agora a peça toca na seção quando "Piece MIDI variation" tem uma variação escolhida, e a nova opção vazia "— none (piece rests)" deixa a peça em pausa naquela seção. Kits salvos com o checkbox desmarcado passam a usar a opção vazia e continuam soando igual.',
+        'Uma aba de variação pinada agora toca em todas as seções, inclusive nas que estão sem variação. Uma regra de States & Events que troca a variação continua respeitando as seções vazias.',
       ] },
       { title: 'Piece Params', items: [
         'Os knobs agora ficam abaixo do sequenciador MIDI, sob o título "Piece params".',

@@ -111,7 +111,7 @@ test('an activated Düsseldorf queen keeps the city lead loop during gameplay', 
 test('solo isolates a Düsseldorf voice and preserves its authored section entrances', async () => {
   const api = await strudel()
   const lab = withSections(creative.createDusseldorfSession(),[48,16])
-  lab.instruments['w:d1'].arrangement = { restart: true, sections: {s0:{variation:0,transpose:0,active:false},s1:{variation:1,transpose:0,active:true}} }
+  lab.instruments['w:d1'].arrangement = { restart: true, sections: {s0:{variation:null,transpose:0},s1:{variation:1,transpose:0}} }
   const snapshot = creative.creativeSnapshot(lab, true, 'w:d1')
   const voices = voiceSpecs(snapshot, null)
   assert.equal(voices.length, 1)

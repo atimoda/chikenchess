@@ -211,11 +211,12 @@ export function createRandomCityKit(city: CityData, variation = '01'): CreativeS
       selectedVariation: undefined,
       lpfRange: undefined, reverbRange: undefined, driveRange: undefined, swingRange: undefined, octaveRange: undefined,
     })
-    instrument.arrangement = { restart: chance(.7), sections: Object.fromEntries(kit.arrangement.sections.map((section, index) => [section.id, {
-      variation: Math.floor(random() * pianoRolls.length), transpose: 0,
+    instrument.arrangement = { restart: chance(.7), sections: Object.fromEntries(kit.arrangement.sections.map((section, index) => {
+      const variation = Math.floor(random() * pianoRolls.length)
       // The intro and outro thin the band out; the middle sections keep most voices.
-      active: index === 0 || index === kit.arrangement.sections.length - 1 ? chance(.45) : chance(.8),
-    }])) }
+      const present = index === 0 || index === kit.arrangement.sections.length - 1 ? chance(.45) : chance(.8)
+      return [section.id, { variation: present ? variation : null, transpose: 0 }]
+    })) }
   }
   return creativeSchema.parse(JSON.parse(JSON.stringify(kit)))
 }

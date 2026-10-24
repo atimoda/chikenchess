@@ -74,7 +74,8 @@ export const legacyFactoryReactions = (): Reaction[] => [
 const baseReactionsSchema = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(80) })
 /** Official global set (data/music/reactions.json, editable in Admin). */
 export const defaultReactions = (): Reaction[] => baseReactionsSchema.parse(officialGlobalReactions).rules
-export const defaultGlobalReactions = (): Reactions => baseReactionsSchema.parse(officialGlobalReactions)
+// Typed from the base schema: naming `Reactions` here would make reactionsSchema's default refer to itself.
+export const defaultGlobalReactions = (): z.infer<typeof baseReactionsSchema> => baseReactionsSchema.parse(officialGlobalReactions)
 export const reactionsSchema = z.object({ minimumPieces: z.number().int().min(2).max(15).default(4), rules: z.array(reactionSchema).max(80).default(defaultReactions) }).default(()=>defaultGlobalReactions())
 /** Resolved rule set: the global set with the kit's overridden triggers swapped in. */
 export type Reactions = z.infer<typeof reactionsSchema>

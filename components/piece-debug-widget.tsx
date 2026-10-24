@@ -65,9 +65,8 @@ const PieceConfigurationSummary = memo(function PieceConfigurationSummary({
       : `Afinação: arredondar(Δcoluna × ${formatSummaryNumber(mapping.fileDegrees)} + ⌊avanço × ${formatSummaryNumber(mapping.rankDegrees)}⌋), limitado a ±${movementMapping ? 12 : 4} graus.`
   const sections = plan.sections.map((section, index) => {
     const step = pieceSection(instrument, plan, index)
-    const variation = String.fromCharCode(65 + step.variation)
     const transpose = step.transpose === 0 ? '±0 st' : `${step.transpose > 0 ? '+' : ''}${step.transpose} st`
-    return `${section.label} (${formatSummaryNumber(section.beats)}t): ${variation}, ${transpose}, ${step.active ? 'presente' : 'pausa'}`
+    return `${section.label} (${formatSummaryNumber(section.beats)}t): ${step.variation === null ? 'pausa (sem variação)' : String.fromCharCode(65 + step.variation)}, ${transpose}`
   }).join(' · ')
   const typeName = pieceTypeNames[piece.type]
   const activation = piece.activation === 'check' ? 'cheque' : piece.activation === 'move' ? 'lance' : 'base'
