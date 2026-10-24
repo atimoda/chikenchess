@@ -18,6 +18,11 @@ export const CHANGELOG = [
       { title: 'Admin', items: [
         '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',
       ] },
+      { title: 'Partida', items: [
+        'Os golden eggs das casas destino de Best/Worst ficam centralizados na casa, atrás do score da seta, com uma borda preta fina no lugar do brilho colorido.',
+        'Depois que as setas somem, os ovos ficam 3 segundos visíveis e então somem num fade de 3 segundos. Até sumirem por completo, qualquer peça que for para a casa ganha os ovos; depois disso, só o lance indicado pela seta.',
+        'Ao ganhar ovos num lance, cada ovo dá um giro de 360° enquanto sobe acima da peça.',
+      ] },
     ],
   },
   {

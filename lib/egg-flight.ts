@@ -81,7 +81,7 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
           const e = easeInOut(p)
           const curX = x0 + spreadX * e
           const curY = y0 - 50 * e
-          egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0)`
+          egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0) rotate(${360 * e}deg)`
           frame = window.requestAnimationFrame(tick)
           return
         }

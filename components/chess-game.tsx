@@ -35,7 +35,7 @@ import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/l
 import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, settleCityDraw, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
-import { EGG_REWARDS, cappedMatchEggs, limitRankedLists } from "@/lib/egg-rewards"
+import { EGG_REWARDS, cappedMatchEggs, limitRankedLists, squareEggsExtraMs } from "@/lib/egg-rewards"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
 import { SpectrogramWidget } from "./spectrogram-widget"
@@ -231,6 +231,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   // The group whose eggs sit on its destination squares; any piece landing there earns them.
   const [squareEggGroup, setSquareEggGroup] = useState<ShownMoveSuggestions | null>(null)
   const squareEggGroupRef = useRef<ShownMoveSuggestions | null>(null)
+  // When the square eggs start fading (epoch ms); they are gone, and no longer pay any piece, after the fade.
+  const [squareEggFadeAt, setSquareEggFadeAt] = useState<number | null>(null)
   const squareEggTimeoutRef = useRef<number | null>(null)
   const suggestionPositionKeyRef = useRef<string | null>(null)
 
@@ -858,7 +860,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       analysisArrowTimeoutRef.current = null
     }, 3000)
     if (squareEggTimeoutRef.current !== null) window.clearTimeout(squareEggTimeoutRef.current)
-    squareEggTimeoutRef.current = kind === 'top' ? null : window.setTimeout(clearSquareEggs, 3000 + EGG_REWARDS.squareEggsExtraSeconds * 1000)
+    squareEggTimeoutRef.current = kind === 'top' ? null : window.setTimeout(clearSquareEggs, 3000 + squareEggsExtraMs())
+    if (kind !== 'top') setSquareEggFadeAt(Date.now() + 3000 + EGG_REWARDS.squareEggsHoldSeconds * 1000)
     if (kind === 'top') clearSquareEggs()
   }, [displayedAnalysis, clearSquareEggs])
 
@@ -2158,6 +2161,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   musicPulseMonitor={music.engineActive ? music.pulseMonitor : undefined}
                   analysisArrows={analysisArrows}
                   squareEggs={squareEggs}
+                  squareEggsFadeAt={squareEggFadeAt}
                   rankedMoveMark={rankedMoveMark}
                   showRankedMoveMarks={showRankedMoveMarks}
                   rankedMoveAnnouncement={rankedMoveAnnouncement}
