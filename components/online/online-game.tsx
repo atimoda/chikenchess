@@ -941,6 +941,10 @@ export function OnlineMatchBoard({
         ? { position: "static", width: "100%", zIndex: 10 }
         : { zIndex: activeWidgetOrder.indexOf(id) + 10 };
     const portalized = !mobile && widgetTogglesReady;
+    // The on/off dot of the Song & Instruments list and of Piece Params.
+    const toggleSongPiece = (square: Square) => {
+      if (music.togglePiece(square, false) && engineOn) setPlaying(true);
+    };
     return (
       <>
         {spectrogramMode === "widget" && (
@@ -1010,10 +1014,9 @@ export function OnlineMatchBoard({
                 canToggle={(piece) =>
                   !result && (piece.color === color || !syncParams)
                 }
-                onToggle={(square) => {
-                  if (music.togglePiece(square, false) && engineOn)
-                    setPlaying(true);
-                }}
+                onToggle={toggleSongPiece}
+                ownColor={color}
+                onAudition={music.tapAudition}
                 onSolo={
                   result
                     ? undefined
@@ -1041,17 +1044,7 @@ export function OnlineMatchBoard({
                 ]
               : undefined
           }
-          isSolo={!!selected && music.soloIds.has(selected.id)}
-          onSoloToggle={
-            locked || result
-              ? undefined
-              : () => {
-                  if (selected) {
-                    const enabled = music.toggleSolo(selected.id);
-                    if (enabled && engineOn) setPlaying(true);
-                  }
-                }
-          }
+          onDeselect={() => music.select(null)}
           playback={
             paramsOn && selected ? (
               <MusicVoiceReadout
@@ -1063,6 +1056,8 @@ export function OnlineMatchBoard({
                 onInstrumentChange={
                   locked || result ? undefined : music.updateInstrument
                 }
+                loopOn={music.activeIds.has(selected.id)}
+                onLoopToggle={() => toggleSongPiece(selected.square)}
                 variationTabs
                 knobUpdateMode="on-release"
               />

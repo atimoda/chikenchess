@@ -27,7 +27,7 @@
   background: #25312b;
   color: #e0e9df;
   font-size: 12px;
-  cursor: grab;
+  cursor: pointer;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -134,8 +134,26 @@
 .dock[data-compact='true'] .timeline::-webkit-scrollbar { display: none; }
 .dock[data-compact='true'] .timeline .sectionButton { min-width: 44px; min-height: 32px; gap: 1px; padding: 4px 5px; font-size: 10px; border-radius: 5px; }
 .dock[data-compact='true'] .timeline .sectionButton[data-next='true'] { min-width: 64px; }
-.dock[data-compact='true'] .sectionButton small { font-size: 9px; }
-.dock[data-compact='true'] .timeline .addButton { flex-basis: 28px; width: 28px; min-width: 28px; height: 32px; }
+.dock[data-compact='true'] .sectionButton small { display: none; }
+/* Full names, wrapping at the hyphen ("Pre-" / "Chorus") when space runs out. */
+.dock[data-compact='true'] .sectionLabel { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.15; }
+.dock[data-compact='true'] .timeline .sectionButton { justify-content: center; min-width: min-content; }
+.dock[data-compact='true'] .timeline .addButton {
+  display: inline-flex;
+  flex-basis: 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 32px;
+  border: 1px solid #45534a;
+  border-radius: 5px;
+  background: #25312b;
+  color: #c2d3be;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.dock[data-compact='true'] .timeline .addButton:hover { background: #374b3b; border-color: #92bd87; color: #fff; }
 .dock[data-compact='true'] .editor { padding: 2px 0 4px; }
 .dock[data-compact='true'] .inlineNotice { padding: 0 0 4px; }
 
