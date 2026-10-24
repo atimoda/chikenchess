@@ -324,9 +324,12 @@ test('every city voice produces bounded, in-scale Strudel events in every sectio
     const pitchClasses = new Set(creative.SCALES[kit.scale].map(n => (creative.ROOTS.indexOf(kit.root) + n) % 12))
     const voices = voiceSpecs({ ...snapshot, pieces: snapshot.pieces.map(p => ({ ...p, active: true })) }, null)
     for (const voice of voices) for (const section of ['0', '1', '2']) {
+      // Random kits thin the band per section; a voice absent from a section is silent by design.
+      const sectionId = kit.arrangement.sections[Number(section)]?.id
+      if (sectionId && kit.instruments[voice.piece.id].arrangement.sections[sectionId]?.active === false) continue
       const events = compileVoice(api, { ...voice, performance: undefined, sectionPattern: section }).queryArc(0, 4)
       const label = `${city.id}/${seed}/${voice.piece.id}/section${section}`
-      assert.ok(events.length > 0 && events.length <= 128, `${label}: audible, bounded density`)
+      assert.ok(events.length > 0 && events.length <= 128, `${label}: audible, bounded density (${events.length})`)
       for (const { value } of events) {
         for (const key of ['gain', 'cutoff', 'pan', 'room', 'delay']) assert.ok(Number.isFinite(Number(value[key])), `${label}: ${key}`)
         assert.ok(value.gain > 0 && value.gain < 1, `${label}: gain`)

@@ -3,6 +3,24 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.8.0',
+    date: '24/10/2026',
+    title: 'Kits salvos na conta, kit aleatório novo e Criativo mais enxuto',
+    groups: [
+      { title: 'Criativo', items: [
+        'Com login, "Save kit" salva o kit na sua conta: ele aparece em My kits em qualquer computador em que você entrar. Sem login, continua salvando só neste navegador.',
+        'O seletor de kit, o botão Load, o nome do kit e os botões Save kit, Export, Import e New random kit subiram para o cabeçalho, ao lado do título. Load (e New random kit ou Import) pergunta antes quando o kit atual tem alterações não salvas.',
+        '"New random kit" substitui "Generate random kit" e "New draft": sorteia todos os parâmetros a cada clique, cria de 4 a 7 seções e deixa States & Events sem regras próprias. Peões tocam 8 percussões diferentes do estilo da cidade, cavalos fazem o baixo, bispos as teclas, torres sopros/synth, o rei cordas/guitarra e a rainha sorteia entre melodia principal, pad ou contramelodia.',
+        'O tabuleiro do Criativo funciona como o da partida: não há mais o seletor Move/Play squares. Segurar toca a nota, arrastar move a peça para qualquer casa (trocando de lugar com a que estiver lá) e clicar numa casa vazia desmarca a peça.',
+        'A linha de status abaixo do Play saiu. A curva de transição de BPM fica na linha de Time signature, Scale e Harmony, com compasso, BPM e as bolinhas do tempo logo abaixo; "X/32 active" fica abaixo do tabuleiro, à direita dos botões Activate white, Mute all e Reset positions.',
+        'Mudar o nome do kit não reinicia mais a música.',
+      ] },
+      { title: 'Admin', items: [
+        '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',
+      ] },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '23/10/2026',
     title: 'Estados e Eventos globais, ChickenBots com critério e knobs novos',

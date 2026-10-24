@@ -7,6 +7,7 @@ import nextEnv from '@next/env'
 import { loadAdminCatalog } from './load-catalog.mjs'
 import { createAdminFileService } from './file-service.mjs'
 import { generateNamesMigration } from './names-migration.mjs'
+import { saveOfficialKit } from './official-kits.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 nextEnv.loadEnvConfig(root, true)
@@ -19,7 +20,7 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 if (!url || !key) throw new Error('Configure as variáveis públicas do Supabase em .env.local para verificar o acesso admin.')
 const auth = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
-const { ADMIN_ENTRIES, validateAdminValue, adminValidationMessage, isAdminUser } = await loadAdminCatalog(root)
+const { ADMIN_ENTRIES, validateAdminValue, adminValidationMessage, validateOfficialKit, isAdminUser } = await loadAdminCatalog(root)
 const service = createAdminFileService({
   root, origin, entries: ADMIN_ENTRIES,
   authenticate: async bearer => {
@@ -32,6 +33,13 @@ const service = createAdminFileService({
   },
   operations: {
     '/names-migration': () => generateNamesMigration(root, value => validateAdminValue(ADMIN_ENTRIES.find(entry => entry.kind === 'names'), value)),
+    // Creative "Save DB": the kit becomes the city's official default after deploy.
+    '/official-kit': ({ cityId, value }) => {
+      let kit
+      try { kit = validateOfficialKit(cityId, value, `official:${cityId}:${new Date().toISOString()}`) }
+      catch (cause) { const error = new Error('Invalid kit'); error.status = 422; error.publicMessage = adminValidationMessage(cause); throw error }
+      return saveOfficialKit(root, cityId, kit)
+    },
     '/validate': ({ id, value }) => {
       const entry = ADMIN_ENTRIES.find(item => item.id === id)
       if (!entry) throw new Error('Unknown catalog')
