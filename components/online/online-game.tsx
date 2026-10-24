@@ -60,6 +60,7 @@ import { EggCounter, MatchStatus } from "../match/egg-counter";
 import { GameplayTipDialog, useGameplayTip } from "../match/gameplay-tip";
 import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "../match/match-view-controls";
 import { MixerWidget } from "../mixer-widget";
+import { MusicSongPanel, type SongPanelHover } from "../music-song-panel";
 import { SynthControlPanel } from "../synth-control-panel";
 import { MusicVoiceReadout, MusicTransportReadout } from "../music-playback";
 import {
@@ -285,6 +286,7 @@ export function OnlineMatchBoard({
   const [mixerOn, setMixerOn] = useState(false);
   const [paramsOn, setParamsOn] = useState(false);
   const [syncParams, setSyncParams] = useState(true);
+  const [songHover, setSongHover] = useState<SongPanelHover | null>(null);
   const [opponentOpen, setOpponentOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [resumedMatch] = useState(
@@ -858,6 +860,7 @@ export function OnlineMatchBoard({
     // Connections are hidden on portrait phones; skip measuring them after every move.
     musicEngineOn: engineOn && !isPortraitMobile,
     selectedSquare: selected?.square ?? null,
+    hoveredPiece: paramsOn && !selected ? songHover : null,
     orientation: color === "w" ? "white" : "black",
     introPhase,
     activeWidgetOrder,
@@ -982,6 +985,47 @@ export function OnlineMatchBoard({
           onPositionChange={setKnobsPosition}
           style={panelStyle("knobs")}
           onClickCapture={() => bringToFront("knobs")}
+          song={
+            music.kit ? (
+              // The arrangement is shared by both players' kits, so a match
+              // only queues sections here; editing stays in Creative.
+              <MusicSongPanel
+                pieces={music.snapshot.pieces}
+                names={Object.fromEntries(
+                  music.snapshot.pieces.map((piece) => [
+                    piece.id,
+                    music.snapshot.instruments?.[piece.id]?.name,
+                  ]),
+                )}
+                activeIds={music.activeIds}
+                soloIds={music.soloIds}
+                monitor={music.monitor}
+                arrangement={music.kit.arrangement}
+                harmony={music.kit.harmony}
+                onSeek={music.seekSection}
+                onSelect={(square) => {
+                  setSongHover(null);
+                  music.select(square);
+                }}
+                canToggle={(piece) =>
+                  !result && (piece.color === color || !syncParams)
+                }
+                onToggle={(square) => {
+                  if (music.togglePiece(square, false) && engineOn)
+                    setPlaying(true);
+                }}
+                onSolo={
+                  result
+                    ? undefined
+                    : (id) => {
+                        if (music.toggleSolo(id, false) && engineOn)
+                          setPlaying(true);
+                      }
+                }
+                onHover={setSongHover}
+              />
+            ) : undefined
+          }
           readOnly={locked || !!result}
           readOnlyMessage={locked ? "Opponent’s Piece Params" : "Match ended"}
           instrument={music.instrument}
@@ -1685,6 +1729,11 @@ export function OnlineMatchBoard({
         visible={engineOn && !isPortraitMobile}
         pieceConnections={widgetLayout.pieceConnections}
         chainConnections={widgetLayout.chainConnections}
+      />
+      <GameWidgetConnections
+        overlay
+        visible={engineOn && !isPortraitMobile}
+        pieceConnections={widgetLayout.hoverConnections}
       />
       <div
         data-widget-entrance={introPhase === 2 ? "true" : undefined}

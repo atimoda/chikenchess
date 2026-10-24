@@ -6,7 +6,7 @@ import { Knob, LARGE_KNOB_SIZE } from "./knob"
 import { RangeKnob } from "./range-knob"
 import type { SquareEffects } from "@/lib/types"
 import { cn, stableHtml } from "@/lib/utils"
-import { LockKeyhole, Power } from "lucide-react"
+import { LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
@@ -42,6 +42,8 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   selectedPiece?: MusicPiece | null
   readOnly?: boolean
   readOnlyMessage?: string
+  /** Song & Instruments view, shown instead of the knobs while no piece is selected. */
+  song?: React.ReactNode
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -69,6 +71,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   selectedPiece,
   readOnly = false,
   readOnlyMessage = "Piece Params locked",
+  song,
   ...props
 }, ref) => {
   const isStatic = props.style?.position === 'static'
@@ -79,6 +82,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   // A note selected in the MIDI editor swaps the knob panel to its Note params.
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
   const noteMode = !!noteSelection && !!playback
+  const songMode = !selectedSquare && !!song
   const panelStyle = {
     "--city-neon": cityColor,
   } as React.CSSProperties
@@ -267,12 +271,12 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             }
           `}</style>
           <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
-            {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
+            {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : songMode ? <div className="flex w-11 h-11 shrink-0 items-center justify-center rounded border border-white/20 bg-white/10 text-white/80" aria-hidden="true"><Music className="h-6 w-6" /></div> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
             <div className="min-w-0">
               <h2 className={cn(
                 "truncate text-sm font-mono font-bold transition-colors duration-300",
                 "text-white"
-              )}>{selectedSquare ? selectedPieceInfo ?? 'Instrumento' : 'No piece selected'}</h2>
+              )}>{selectedSquare ? selectedPieceInfo ?? 'Instrumento' : songMode ? 'Song & Instruments' : 'No piece selected'}</h2>
               {selectedSquare && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
@@ -283,7 +287,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               </MusicPlaybackViewport>
             </NoteParamsHostContext.Provider>
           </div>}
-          <section aria-label={noteMode ? 'Note params' : 'Piece params'} className="flex flex-none flex-col">
+          {songMode ? song : <section aria-label={noteMode ? 'Note params' : 'Piece params'} className="flex flex-none flex-col">
             <KnobPanelTitle noteMode={noteMode} onPieceParams={() => noteSelection?.onDeselect()} />
             <div
               ref={knobGridRef}
@@ -427,7 +431,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             </>}
               </>}
             </div>
-          </section>
+          </section>}
         </div>
       </div>
       {isOn && readOnly && <div className={cn("absolute inset-0 z-[65] flex items-center justify-center rounded-md bg-black/35", isStatic ? "touch-pan-y" : "touch-none")}>
