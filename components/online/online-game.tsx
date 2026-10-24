@@ -17,7 +17,7 @@ import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
 import { replayMatch, matchPosition, onlineActionEvents, powerUsedThisTurn, rankedRewardEggs, squareEggsUntil } from "@/lib/online/domain";
-import { limitRankedLists } from "@/lib/egg-rewards";
+import { EGG_REWARDS, limitRankedLists } from "@/lib/egg-rewards";
 import type { Occurrence } from "@/lib/music/reactions";
 import { pendingMovePreview } from "@/lib/online/pending-move";
 import type { OnlineMatch, MatchCommand, RoomMember } from "@/lib/online/types";
@@ -599,6 +599,7 @@ export function OnlineMatchBoard({
   // Eggs stay on the destination squares of your own suggestions a little longer than
   // the arrows; any of your pieces landing there earns them.
   const [squareEggs, setSquareEggs] = useState<{ square: Square; kind: "best" | "worst"; eggs: number }[]>([]);
+  const squareEggsFadeAt = match.state.suggestions ? squareEggsUntil(match.state.suggestions) - EGG_REWARDS.squareEggsFadeSeconds * 1000 : null;
   useEffect(() => {
     const shared = match.state.suggestions;
     if (!shared || shared.actor !== color || shared.position !== position || squareEggsUntil(shared) <= Date.now()) {
@@ -1441,6 +1442,7 @@ export function OnlineMatchBoard({
               teamMixes={music.teamMixes}
               analysisArrows={movePreview ? [] : arrows}
               squareEggs={movePreview ? [] : squareEggs}
+              squareEggsFadeAt={squareEggsFadeAt}
               showRankedMoveMarks={false}
             />
           </div>

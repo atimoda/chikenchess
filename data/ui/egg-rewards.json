@@ -5,5 +5,6 @@
     { "minLegalMoves": 8, "moves": 2 },
     { "minLegalMoves": 0, "moves": 1 }
   ],
-  "squareEggsExtraSeconds": 3
+  "squareEggsHoldSeconds": 3,
+  "squareEggsFadeSeconds": 3
 }

@@ -86,7 +86,8 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       const result = z.object({
         maxMatchEggs: finite.int().min(1).max(999),
         rankedMovesByLegalMoves: z.array(tier).min(1).max(16),
-        squareEggsExtraSeconds: finite.min(0).max(30),
+        squareEggsHoldSeconds: finite.min(0).max(30),
+        squareEggsFadeSeconds: finite.min(0).max(30),
       }).strict().parse(value)
       const minimums = result.rankedMovesByLegalMoves.map(item => item.minLegalMoves)
       if (new Set(minimums).size !== minimums.length) throw new Error('Cada faixa precisa de um número mínimo de lances diferente.')

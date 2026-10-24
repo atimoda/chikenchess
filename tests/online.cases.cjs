@@ -254,13 +254,13 @@ test('Suggested destination squares pay any own piece until the eggs fade, and m
   s = command(s, 'w', { kind: 'suggest', group: 'best', position: matchPosition(s), moves: best }, 1000)
   assert.equal(s.suggestions.moves.length, 3, 'the opening has 20 moves: three rewarded suggestions')
   assert.equal(s.eggs.w, 4)
-  // Arrows last until 4000; the eggs stay 3 seconds more.
-  const late = command(s, 'w', { kind: 'move', from: 'g2', to: 'g3' }, 6500)
+  // Arrows last until 4000; the eggs stay solid 3 seconds more, then fade for 3 seconds.
+  const late = command(s, 'w', { kind: 'move', from: 'g2', to: 'g3' }, 8500)
   assert.equal(late.eggs.w, 4, 'g3 was never suggested')
-  const anyPiece = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 6900)
-  assert.equal(anyPiece.eggs.w, 5, 'the f-pawn lands on the suggested f3 square and earns the Best egg')
+  const anyPiece = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 9900)
+  assert.equal(anyPiece.eggs.w, 5, 'the f-pawn lands on the still fading f3 eggs and earns the Best egg')
   assert.equal(anyPiece.actions.at(-1).reward, 'best')
-  const expired = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 7100)
+  const expired = command(s, 'w', { kind: 'move', from: 'f2', to: 'f3' }, 10100)
   assert.equal(expired.eggs.w, 4, 'after the eggs fade only the exact seen move pays')
 
   let capped = move(createMatchState(), 'w', 'e2', 'e4', 'worst')

@@ -12,6 +12,7 @@ import { cn, stableHtml } from "@/lib/utils"
 import rewardStyles from "./chessground-board.module.css"
 import { frozenCaptureBlock, shieldCaptureBlock, type ShieldCaptureBlock, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
 import { getSfxEngine } from "@/lib/sfx-engine"
+import { EGG_REWARDS } from "@/lib/egg-rewards"
 import { MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, POWER_RELEASE_MS, releasedPowers, type MulliganPreviewMove } from "@/lib/power-presentation"
 
 interface ChessgroundBoardProps {
@@ -50,6 +51,8 @@ interface ChessgroundBoardProps {
   analysisArrows?: AnalysisArrow[]
   /** Golden eggs drawn on suggested destination squares: any piece landing there earns them. */
   squareEggs?: { square: Square; kind: 'best' | 'worst'; eggs: number }[]
+  /** Epoch ms when the square eggs start fading out (over the configured fade). */
+  squareEggsFadeAt?: number | null
   rankedMoveMark?: { square: Square; kind: 'best' | 'worst'; id: number } | null
   showRankedMoveMarks?: boolean
   rankedMoveAnnouncement?: { square: Square; kind: 'best' | 'worst' | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null
@@ -198,6 +201,7 @@ export function ChessgroundBoard({
   musicPulseMonitor,
   analysisArrows = [],
   squareEggs = [],
+  squareEggsFadeAt = null,
   rankedMoveMark,
   showRankedMoveMarks = true,
   rankedMoveAnnouncement,
@@ -208,6 +212,17 @@ export function ChessgroundBoard({
   const columns = orientation === "black" ? [...COLUMNS].reverse() : COLUMNS
   const rows = orientation === "black" ? [...ROWS].reverse() : ROWS
   const boardRef = useRef<HTMLDivElement>(null)
+  // Square eggs stay solid, then fade out until the moment they stop paying any piece.
+  // The fade is timed from the wall clock so a re-render or remount never restarts it.
+  const squareEggSquares = squareEggs.map(item => item.square).join()
+  useEffect(() => {
+    if (squareEggsFadeAt === null || !squareEggSquares) return
+    const animations = [...(boardRef.current?.querySelectorAll<HTMLElement>('[data-square-eggs]') ?? [])].map(element => element.animate(
+      [{ opacity: 1 }, { opacity: 0 }],
+      { duration: EGG_REWARDS.squareEggsFadeSeconds * 1000, delay: squareEggsFadeAt - Date.now(), easing: 'linear', fill: 'forwards' },
+    ))
+    return () => animations.forEach(animation => animation.cancel())
+  }, [squareEggsFadeAt, squareEggSquares])
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [pressedPieceSquare, setPressedPieceSquare] = useState<Square | null>(null)
   const [legalMoves, setLegalMoves] = useState<Square[]>([])
@@ -1110,14 +1125,13 @@ export function ChessgroundBoard({
                   return <span
                     data-square-eggs={target.eggs}
                     aria-label={`${target.eggs} golden ${target.eggs === 1 ? 'egg' : 'eggs'} for any piece that lands here`}
-                    className={cn(rewardStyles.squareEggs, "pointer-events-none absolute inset-x-0 bottom-[4%] z-[12] flex flex-wrap items-end justify-center gap-[2%] px-[6%]")}
+                    className={cn(rewardStyles.squareEggs, "pointer-events-none absolute inset-0 z-[12] flex flex-wrap content-center items-center justify-center gap-[2%] px-[6%]")}
                   >
                     {Array.from({ length: shown }, (_, index) => <span
                       key={index}
                       aria-hidden="true"
                       className={cn(
-                        "inline-block w-[14%] min-w-[7px] aspect-[15/19] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)]",
-                        target.kind === 'best' ? "shadow-[0_0_6px_#41ed8c]" : "shadow-[0_0_6px_#ff424b]",
+                        "inline-block w-[14%] min-w-[7px] aspect-[15/19] rounded-[50%_50%_45%_45%/60%_60%_40%_40%] border border-black/80 bg-[radial-gradient(circle_at_32%_25%,#fff8c4_0%,#facc15_43%,#b45309_100%)]",
                       )}
                     />)}
                   </span>

@@ -37,6 +37,7 @@ test('catalog validation rejects structural and stable-contract edits', () => {
   const rewards = json('egg-rewards')
   assert.throws(() => validateAdminValue(entry('egg-rewards'), { ...rewards, rankedMovesByLegalMoves: rewards.rankedMovesByLegalMoves.filter(tier => tier.minLegalMoves > 0) }), /minLegalMoves 0/)
   assert.throws(() => validateAdminValue(entry('egg-rewards'), { ...rewards, maxMatchEggs: 0 }))
+  assert.throws(() => validateAdminValue(entry('egg-rewards'), { ...rewards, squareEggsFadeSeconds: -1 }))
   assert.ok(openings.length > 0)
 })
 

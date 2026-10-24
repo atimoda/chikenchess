@@ -8,11 +8,18 @@ export interface EggRewardsConfig {
   maxMatchEggs: number
   /** How many Best and how many Worst moves earn eggs, by number of legal moves (highest matching tier wins). */
   rankedMovesByLegalMoves: { minLegalMoves: number; moves: number }[]
-  /** The eggs on the suggested destination squares stay this long after the arrows fade. */
-  squareEggsExtraSeconds: number
+  /** The eggs on the suggested destination squares stay fully visible this long after the arrows fade... */
+  squareEggsHoldSeconds: number
+  /** ...then fade out over this long; any piece landing there earns them until they are gone. */
+  squareEggsFadeSeconds: number
 }
 
 export const EGG_REWARDS: EggRewardsConfig = eggRewardsJson
+
+/** How long the square eggs outlive the arrows: the full hold plus the fade. */
+export function squareEggsExtraMs(config: EggRewardsConfig = EGG_REWARDS): number {
+  return (config.squareEggsHoldSeconds + config.squareEggsFadeSeconds) * 1000
+}
 
 /** Rewarded moves per list (Best and Worst each) for a position with `legalMoves` choices. */
 export function rankedMovesPerList(legalMoves: number, config: EggRewardsConfig = EGG_REWARDS): number {

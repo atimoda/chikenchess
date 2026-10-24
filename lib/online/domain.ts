@@ -1,7 +1,7 @@
 import { Chess, type Square } from "chess.js";
 import { z } from "zod";
 import { HARMONY_PLAN_IDS } from "../music/harmony";
-import { EGG_REWARDS, cappedMatchEggs, rankedMovesPerList } from "../egg-rewards";
+import { cappedMatchEggs, rankedMovesPerList, squareEggsExtraMs } from "../egg-rewards";
 import { ROOTS, SCALE_NAMES } from "../music/scales";
 import {
   advanceMatchPowers,
@@ -129,7 +129,7 @@ export function rankedRewardEggs(
 
 /** Destination squares of the actor's shared suggestions keep their eggs until this time. */
 export function squareEggsUntil(suggestions: NonNullable<MatchState["suggestions"]>): number {
-  return suggestions.expiresAt + EGG_REWARDS.squareEggsExtraSeconds * 1000;
+  return suggestions.expiresAt + squareEggsExtraMs();
 }
 
 /** The reward any piece earns by landing on a destination square of the visible suggestions. */
