@@ -6,7 +6,7 @@ import { Knob, LARGE_KNOB_SIZE } from "./knob"
 import { RangeKnob } from "./range-knob"
 import type { SquareEffects } from "@/lib/types"
 import { cn, stableHtml } from "@/lib/utils"
-import { LockKeyhole, Power } from "lucide-react"
+import { LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
@@ -33,6 +33,8 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   isSolo?: boolean
   onSoloToggle?: () => void
   playback?: React.ReactNode
+  /** Shown instead of the piece editor while no piece is selected. */
+  overview?: React.ReactNode
   instrument?: Instrument | null
   onInstrumentChange?: (patch: InstrumentPerformanceEdit) => void
   pieceSvg?: string | null
@@ -60,6 +62,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   isSolo = false,
   onSoloToggle,
   playback,
+  overview,
   instrument,
   onInstrumentChange,
   pieceSvg,
@@ -79,6 +82,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   // A note selected in the MIDI editor swaps the knob panel to its Note params.
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
   const noteMode = !!noteSelection && !!playback
+  const showOverview = !selectedSquare && !!overview
   const panelStyle = {
     "--city-neon": cityColor,
   } as React.CSSProperties
@@ -113,7 +117,10 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
     if (!viewport || !wrapper || isStatic) return
     const updateMinimumHeight = () => {
       const target = viewport.querySelector<HTMLElement>('[role="tablist"][aria-label="Variações do instrumento"]') ?? knobGridRef.current
-      if (!target) return
+      if (!target) {
+        setMinPanelHeight(current => current === 320 ? current : 320)
+        return
+      }
       const required = Math.ceil(target.getBoundingClientRect().bottom - wrapper.getBoundingClientRect().top + 4)
       const viewportLimit = Math.floor(window.innerHeight * .9)
       const next = Math.max(320, Math.min(required, viewportLimit))
@@ -130,7 +137,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       observer?.disconnect()
       window.removeEventListener('resize', updateMinimumHeight)
     }
-  }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined])
+  }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined, showOverview])
 
   const subscribeMonitor = useCallback((listener: () => void) => monitor?.subscribe(listener) ?? (() => {}), [monitor])
   const readMonitorValues = useCallback(() => monitor && monitorId
@@ -267,23 +274,24 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             }
           `}</style>
           <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
-            {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
+            {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : showOverview ? <div className="flex w-11 h-11 shrink-0 items-center justify-center rounded border border-white/20 bg-white/10 text-white/80" aria-hidden="true"><Music className="h-6 w-6" /></div> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
             <div className="min-w-0">
               <h2 className={cn(
                 "truncate text-sm font-mono font-bold transition-colors duration-300",
                 "text-white"
-              )}>{selectedSquare ? selectedPieceInfo ?? 'Instrumento' : 'No piece selected'}</h2>
+              )}>{selectedSquare ? selectedPieceInfo ?? 'Instrumento' : showOverview ? 'Song & Instruments' : 'No piece selected'}</h2>
               {selectedSquare && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
-          {playback && <div className="flex flex-none flex-col">
+          {showOverview && <div className="flex flex-none flex-col">{overview}</div>}
+          {!showOverview && playback && <div className="flex flex-none flex-col">
             <NoteParamsHostContext.Provider value={setNoteSelection}>
               <MusicPlaybackViewport visualUpdatesEnabled={isStatic || midiVisualUpdatesEnabled} pieceParamsLayout={!isStatic}>
                 {playback}
               </MusicPlaybackViewport>
             </NoteParamsHostContext.Provider>
           </div>}
-          <section aria-label={noteMode ? 'Note params' : 'Piece params'} className="flex flex-none flex-col">
+          {!showOverview && <section aria-label={noteMode ? 'Note params' : 'Piece params'} className="flex flex-none flex-col">
             <KnobPanelTitle noteMode={noteMode} onPieceParams={() => noteSelection?.onDeselect()} />
             <div
               ref={knobGridRef}
@@ -427,7 +435,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             </>}
               </>}
             </div>
-          </section>
+          </section>}
         </div>
       </div>
       {isOn && readOnly && <div className={cn("absolute inset-0 z-[65] flex items-center justify-center rounded-md bg-black/35", isStatic ? "touch-pan-y" : "touch-none")}>

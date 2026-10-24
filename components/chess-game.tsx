@@ -23,6 +23,7 @@ import { SynthControlPanel } from "./synth-control-panel"
 import { PieceDebugWidget } from "./piece-debug-widget"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './music-playback'
+import { MusicPieceOverview, type PieceHover } from './music-piece-overview'
 import { MusicHarmonyReadout } from './music-transition-view'
 import { VersionChangelog } from './version-changelog'
 import { VictoryBasket } from './victory-basket'
@@ -313,6 +314,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const boardAreaRef = useRef<HTMLDivElement | null>(null)
   const movesTickerRef = useRef<HTMLDivElement>(null)
   const [knobsPosition, setKnobsPosition] = useState<{ x: number; y: number } | null>(null)
+  const [hoveredPiece, setHoveredPiece] = useState<PieceHover | null>(null)
   const [pieceDebugPosition, setPieceDebugPosition] = useState<{ x: number; y: number } | null>(null)
   const [globalPanelPosition, setGlobalPanelPosition] = useState<{ x: number; y: number } | null>(null)
   const [mixerPosition, setMixerPosition] = useState<{ x: number; y: number } | null>(null)
@@ -1638,6 +1640,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     // Connections are hidden on portrait phones; skip measuring them after every move.
     rootRef, boardAreaRef, boardScale, musicEngineOn: musicEngineOn && !isPortraitMobile,
     selectedSquare: music.selected?.square ?? null,
+    hoveredPiece,
     introPhase, activeWidgetOrder,
     widgets: {
       knobs: { ref: knobsRef, on: knobsOn, position: knobsPosition, setPosition: setKnobsPosition },
@@ -1713,6 +1716,35 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     void resumeAudio()
                   }
                 } : undefined}
+                overview={knobsOn && music.kit ? <MusicPieceOverview
+                  arrangement={music.kit.arrangement}
+                  harmony={music.harmony ?? music.kit.harmony}
+                  monitor={music.monitor}
+                  onArrangementChange={music.updateArrangement}
+                  onSeek={music.seekSection}
+                  pieces={music.snapshot.pieces}
+                  instruments={music.snapshot.instruments}
+                  activeSquares={music.activeSquares}
+                  soloIds={music.soloIds}
+                  onSelect={square => music.select(square as Square)}
+                  onToggle={square => {
+                    const turnedOn = music.togglePiece(square as Square, false)
+                    if (turnedOn && !isPlaying && music.engineActive) {
+                      setHasPlaybackStarted(true)
+                      setIsPlaying(true)
+                      void resumeAudio()
+                    }
+                  }}
+                  onSolo={id => {
+                    const turnedOn = music.toggleSolo(id, false)
+                    if (turnedOn && !isPlaying && music.engineActive) {
+                      setHasPlaybackStarted(true)
+                      setIsPlaying(true)
+                      void resumeAudio()
+                    }
+                  }}
+                  onHover={setHoveredPiece}
+                /> : undefined}
                 playback={knobsOn && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
                   <MusicVoiceReadout variationTabs showStatus={false} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />

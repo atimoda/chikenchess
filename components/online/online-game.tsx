@@ -62,6 +62,7 @@ import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "../match/match-vie
 import { MixerWidget } from "../mixer-widget";
 import { SynthControlPanel } from "../synth-control-panel";
 import { MusicVoiceReadout, MusicTransportReadout } from "../music-playback";
+import { MusicPieceOverview, type PieceHover } from "../music-piece-overview";
 import {
   GameActionCostHint,
   GameActionRow,
@@ -326,6 +327,7 @@ export function OnlineMatchBoard({
     x: number;
     y: number;
   } | null>(null);
+  const [hoveredPiece, setHoveredPiece] = useState<PieceHover | null>(null);
   const [mixerPosition, setMixerPosition] = useState<{
     x: number;
     y: number;
@@ -858,6 +860,7 @@ export function OnlineMatchBoard({
     // Connections are hidden on portrait phones; skip measuring them after every move.
     musicEngineOn: engineOn && !isPortraitMobile,
     selectedSquare: selected?.square ?? null,
+    hoveredPiece,
     orientation: color === "w" ? "white" : "black",
     introPhase,
     activeWidgetOrder,
@@ -1007,6 +1010,31 @@ export function OnlineMatchBoard({
                     if (enabled && engineOn) setPlaying(true);
                   }
                 }
+          }
+          overview={
+            paramsOn && music.kit ? (
+              // The form is shared by both players, so sections only queue here.
+              <MusicPieceOverview
+                arrangement={music.kit.arrangement}
+                harmony={music.harmony ?? music.kit.harmony}
+                monitor={music.monitor}
+                onSeek={music.seekSection}
+                pieces={music.snapshot.pieces}
+                instruments={music.snapshot.instruments}
+                activeSquares={music.activeSquares}
+                soloIds={music.soloIds}
+                onSelect={(square) => music.select(square as Square)}
+                onToggle={(square) => music.togglePiece(square as Square, false)}
+                onSolo={(id) => {
+                  const enabled = music.toggleSolo(id, false);
+                  if (enabled && engineOn) setPlaying(true);
+                }}
+                onHover={setHoveredPiece}
+                canEdit={(id) =>
+                  !result && (id.startsWith(`${color}:`) || !syncParams)
+                }
+              />
+            ) : undefined
           }
           playback={
             paramsOn && selected ? (

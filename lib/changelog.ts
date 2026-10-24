@@ -25,6 +25,13 @@ export const CHANGELOG = [
         '"Restart MIDI when the global section starts" virou um botão com uma seta girando na linha de botões abaixo do sequenciador, na partida e no Criativo. Ligado, o ícone fica na cor normal; desligado, fica 50% mais apagado.',
         'O painel não mostra mais barras de rolagem; a rolagem continua funcionando.',
         'Os knobs Swing e Chance agora ficam logo depois de Reverb.',
+        'Sem nenhuma peça selecionada, o painel vira "Song & Instruments", com uma nota musical no lugar do avatar: mostra a barra de Global Sections e a lista das peças de White e Black.',
+        'Na lista, a bolinha à esquerda liga ou desliga a peça sem selecioná-la, o nome seleciona a peça e o S faz Solo. Passar o mouse sobre uma peça desenha uma linha da bolinha até ela no tabuleiro.',
+        'Na partida contra a IA, a barra de Global Sections funciona como no Criativo: clique escolhe a próxima seção e as edições valem só para a partida. No online, a forma é compartilhada pelos dois jogadores, então a barra só escolhe a próxima seção.',
+      ] },
+      { title: 'Global Sections', items: [
+        'Na partida e no Criativo, o duplo clique numa seção não abre mais um popup: a edição aparece logo abaixo da barra, numa linha só, com Label, Beats, Harmony e um botão de lixeira. As mudanças valem na hora (Harmony ao sair do campo ou com Enter); Esc ou outro duplo clique na seção fecha a linha.',
+        'O botão + adiciona uma seção Verse na hora e já abre a edição dela.',
       ] },
       { title: 'Admin', items: [
         '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',

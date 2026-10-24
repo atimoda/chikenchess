@@ -29,6 +29,8 @@ export interface GameWidgetLayoutOptions {
   boardScale: number
   musicEngineOn: boolean
   selectedSquare: Square | string | null
+  /** Piece list row under the pointer in Piece Params; links its dot to the piece. */
+  hoveredPiece?: { square: Square | string; element: HTMLElement } | null
   orientation?: 'white' | 'black'
   introPhase: number
   activeWidgetOrder: readonly string[]
@@ -49,6 +51,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
   const fallback: GameWidgetLayoutItem = { ref: emptyRef, on: false, position: null, setPosition: ignorePosition }
   const { rootRef, boardAreaRef, musicEngineOn, introPhase, activeWidgetOrder, orientation = 'white' } = options
   const selectedSquare = options.selectedSquare as Square | null
+  const hoveredPiece = options.hoveredPiece ?? null
   const knobs = options.widgets.knobs ?? fallback
   const knobsRef = knobs.ref
   const knobsOn = knobs.on
@@ -413,7 +416,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
       return { left, top, right: left + squareWidth, bottom: top + squareHeight, width: squareWidth, height: squareHeight }
     }
     const selectedSquareRect = selectedSquare ? squareRectFor(selectedSquare) : null
-    const connectWidgetToRect = (widgetRef: RefObject<HTMLDivElement | null>, targetRect: ConnectionRect) => {
+    const connectWidgetToRect = (widgetRef: RefObject<HTMLElement | null>, targetRect: ConnectionRect) => {
       const widget = widgetRef.current
       if (!widget) return
       const sourceRect = widget.getBoundingClientRect()
@@ -451,6 +454,8 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
     }
 
     if (knobsOn && selectedSquareRect) connectWidgetToRect(knobsRef, selectedSquareRect)
+    const hoveredSquareRect = knobsOn && !selectedSquare && hoveredPiece?.element.isConnected ? squareRectFor(hoveredPiece.square as Square) : null
+    if (hoveredPiece && hoveredSquareRect) connectWidgetToRect({ current: hoveredPiece.element }, hoveredSquareRect)
     if (pieceDebugOn) {
       const debugRect = pieceDebugRef.current?.getBoundingClientRect()
       const paramsRect = knobsOn ? knobsRef.current?.getBoundingClientRect() : undefined
@@ -469,7 +474,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
     }
     setPieceWidgetConnections(directConnections)
 
-  }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, hasSpectrogramWidget, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
+  }, [musicEngineOn, selectedSquare, hoveredPiece, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, hasSpectrogramWidget, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
 
   return { pieceConnections: pieceWidgetConnections, chainConnections, resizeTick }
 }
