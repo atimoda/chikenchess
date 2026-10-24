@@ -12,12 +12,14 @@ test('piano editor follows authored phase, pauses and override priority without 
  const {variationPosition}=loadTs('lib/music/performance.ts')
  const arrangement={sections:[{id:'intro',label:'Intro',beats:3},{id:'theme',label:'Verse',beats:5}]}
  const instrument={...creative.createCreativeSession().instruments['w:b1'],pianoRolls:[0,2,4].map(degree=>noteRoll([degree])),arrangement:{restart:true,sections:{
-  intro:{variation:0,transpose:0,active:true},theme:{variation:1,transpose:0,active:false},
+  intro:{variation:0,transpose:0},theme:{variation:null,transpose:0},
  }}}
- assert.deepEqual(variationPosition(instrument,0,1,4,undefined,arrangement),{variation:1,present:false,phase:.25})
- assert.deepEqual(variationPosition({...instrument,arrangement:{...instrument.arrangement,restart:false}},0,1,4,undefined,arrangement),{variation:1,present:false,phase:1})
- assert.deepEqual(variationPosition({...instrument,selectedVariation:2},0,1,4,undefined,arrangement),{variation:2,present:false,phase:.25})
- assert.deepEqual(variationPosition({...instrument,selectedVariation:2},0,1,4,0,arrangement),{variation:0,present:false,phase:.25})
+ // A section with no variation rests and shows bank A; a pinned tab plays through it.
+ assert.deepEqual(variationPosition(instrument,0,1,4,undefined,arrangement),{variation:0,present:false,phase:.25})
+ assert.deepEqual(variationPosition({...instrument,arrangement:{...instrument.arrangement,restart:false}},0,1,4,undefined,arrangement),{variation:0,present:false,phase:1})
+ assert.deepEqual(variationPosition(instrument,0,1,4,2,arrangement),{variation:2,present:false,phase:.25},'a rule swaps the bank but keeps the rest')
+ assert.deepEqual(variationPosition({...instrument,selectedVariation:2},0,1,4,undefined,arrangement),{variation:2,present:true,phase:.25})
+ assert.deepEqual(variationPosition({...instrument,selectedVariation:2},0,1,4,0,arrangement),{variation:0,present:true,phase:.25})
  assert.deepEqual(variationPosition({...instrument,arrangement:undefined},5,1,3),{variation:0,present:true,phase:1})
  assert.deepEqual(variationPosition({...instrument,arrangement:undefined},5,2.5,4),{variation:0,present:true,phase:2.5},'a bare instrument follows continuous MIDI phase past each default A entry')
 })
@@ -184,7 +186,7 @@ test('fixed variation plays its whole multi-bar phrase instead of restarting eve
 test('section form preserves asymmetric lengths, silence, transpose and restart selection', async () => {
  const api=await strudel(),kit=withSections(creative.createCreativeSession(),[3,5,2])
  const instrument=kit.instruments['w:b1']
- Object.assign(instrument,{pianoRolls:[noteRoll([0,1]),noteRoll([2,3])],arrangement:{restart:true,sections:{s0:{variation:0,transpose:0,active:true},s1:{variation:1,transpose:-5,active:true},s2:{variation:0,transpose:0,active:false}}}})
+ Object.assign(instrument,{pianoRolls:[noteRoll([0,1]),noteRoll([2,3])],arrangement:{restart:true,sections:{s0:{variation:0,transpose:0},s1:{variation:1,transpose:-5},s2:{variation:null,transpose:0}}}})
  kit.pieces.forEach(p=>p.active=p.id==='w:b1')
  const voice=voiceSpecs(creative.creativeSnapshot(kit,true),null)[0],pattern=compileVoice(api,voice)
  const events=pattern.queryArc(0,2.5).filter(h=>h.hasOnset())
@@ -197,8 +199,9 @@ test('section form preserves asymmetric lengths, silence, transpose and restart 
  assert.equal(compileVoice(api,overridden).queryArc(2,2.5).length,0)
  instrument.selectedVariation=0
  const pinned=voiceSpecs(creative.creativeSnapshot(kit,true),null)[0]
- assert.deepEqual(pinned.performance.steps.map(step=>[step.beats,step.transpose,step.active]),[[3,0,true],[5,-5,true],[2,0,false]])
- assert.equal(compileVoice(api,pinned).queryArc(2,2.5).length,0)
+ // The pin plays even in the section with no variation.
+ assert.deepEqual(pinned.performance.steps.map(step=>[step.beats,step.transpose,step.active]),[[3,0,true],[5,-5,true],[2,0,true]])
+ assert.ok(compileVoice(api,pinned).queryArc(2,2.5).some(h=>h.hasOnset()))
 })
 
 test('per-note slide uses canonical pattack and pan overrides after global controls', async () => {

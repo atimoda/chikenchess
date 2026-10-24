@@ -34,7 +34,7 @@ test('black check does not resurrect captured voices and mate still obeys transp
 test('check activates attackers while preserving authored section silence and the saved kit', async () => {
   const api = await strudel()
   const kit = creative.createDusseldorfSession()
-  for (const id of ['w:e2', 'w:e1']) for(const step of Object.values(kit.instruments[id].arrangement.sections))step.active=false
+  for (const id of ['w:e2', 'w:e1']) for(const step of Object.values(kit.instruments[id].arrangement.sections))step.variation=null
   const before = JSON.stringify(kit)
   const during = model.gameMusicStateFromHistory(['e4', 'd5', 'Bb5+'])
   const snapshot = { ...creative.creativeSnapshot(kit, true), pieces: during.pieces }

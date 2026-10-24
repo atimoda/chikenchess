@@ -72,7 +72,8 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
     lpfRange: part.lpfRange, driveRange: part.driveRange, reverbRange: part.reverbRange, swingRange: part.swingRange,
     selectedVariation: undefined,
     arrangement: { restart: arrangement.restart ?? !(part.role === 'texture' || part.role === 'response'), sections: Object.fromEntries(kit.arrangement.sections.map((section, index) => [section.id, {
-      variation: arrangement.variations?.[index] ?? index % patterns.length, transpose: arrangement.transpose?.[index] ?? 0, active: arrangement.active?.[index] ?? true,
+      // Profiles author presence as `active`; a kit stores an absent section as no variation.
+      variation: arrangement.active?.[index] === false ? null : arrangement.variations?.[index] ?? index % patterns.length, transpose: arrangement.transpose?.[index] ?? 0,
     }])) },
   })
   kit.effects[piece.id] = {

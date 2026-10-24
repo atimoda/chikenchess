@@ -151,7 +151,7 @@ test('playback monitor distinguishes inactive, rhythmic rest and globally masked
   const lab = creative.updateCreativeArrangement(creative.createCreativeSession(),{sections:[{id:'a',label:'Intro',beats:4},{id:'b',label:'Verse',beats:4}]})
   lab.pieces.find(p => p.id === 'w:b1').active = true
   lab.instruments['w:b1'] = { ...lab.instruments['w:b1'], pianoRolls: [noteRoll([0, null])], arrangement: { restart: true, sections: {
-    a:{variation:0,transpose:0,active:true},b:{variation:0,transpose:0,active:false},
+    a:{variation:0,transpose:0},b:{variation:null,transpose:0},
   } } }
   let seconds = .2
   const runtime = new MusicRuntime(() => {}, error => { throw error })

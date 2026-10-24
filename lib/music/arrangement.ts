@@ -36,12 +36,17 @@ export const arrangementSchema = z.object({ sections: z.array(sectionSchema).min
   if (new Set(plan.sections.map(s => s.id)).size !== plan.sections.length) ctx.addIssue({code:'custom', message:'Section ids must be unique.'})
   if (plan.sections.reduce((sum, s) => sum + s.beats, 0) > 512) ctx.addIssue({code:'custom', message:'Arrangement limited to 512 beats.'})
 })
+// A piece is present in a section when that section names one of its MIDI
+// variations; null leaves it silent there. Kits saved with the retired
+// `active` checkbox migrate on read: unchecked sections become null.
 export const pieceSectionSchema = z.object({
-  variation: z.number().int().min(0).max(7), transpose: z.number().int().min(-24).max(24).default(0), active: z.boolean().default(true),
-})
+  variation: z.number().int().min(0).max(7).nullable(), transpose: z.number().int().min(-24).max(24).default(0),
+  active: z.boolean().optional(),
+}).transform(({ active, ...step }) => active === false ? { ...step, variation: null } : step)
 export const pieceArrangementSchema = z.object({ restart: z.boolean().default(true), sections: z.record(pieceSectionSchema) })
 export type Arrangement = z.infer<typeof arrangementSchema>
 export type PieceArrangement = z.infer<typeof pieceArrangementSchema>
+export type PieceSection = z.infer<typeof pieceSectionSchema>
 export const DEFAULT_ARRANGEMENT: Arrangement = {sections:[{id:'section-a',label:DEFAULT_SECTION_TYPE,beats:4}]}
 
 /** Return the section's exact downbeat, including fractional/compound pulses. */
@@ -72,15 +77,22 @@ export function arrangementPosition(plan: Arrangement, cycle: number, pulses = 4
 
 export function pieceSection(instrument: Instrument, plan: Arrangement, index: number) {
   const entries = instrument.arrangement?.sections, id = plan.sections[index].id
-  return entries && Object.hasOwn(entries,id) ? entries[id] : {variation:index % instrument.pianoRolls.length,transpose:0,active:true}
+  return entries && Object.hasOwn(entries,id) ? entries[id] : {variation:index % instrument.pianoRolls.length,transpose:0}
 }
 
-/** Duration is derived, never saved again on an instrument. Pins replace MIDI only. */
+/** A pinned tab always plays; otherwise the section's variation decides presence.
+ * A rule override replaces only the bank, so an empty section stays silent. */
+export function pieceStep(instrument: Instrument, step: PieceSection, override?: number) {
+  const count = instrument.pianoRolls.length
+  const variation = override ?? instrument.selectedVariation ?? step.variation ?? 0
+  return {variation:(variation % count + count) % count,transpose:step.transpose,active:instrument.selectedVariation !== undefined || step.variation !== null}
+}
+
+/** Duration is derived, never saved again on an instrument. */
 export function piecePerformance(instrument: Instrument, plan: Arrangement, override?: number): Performance {
-  return {restart:instrument.arrangement?.restart ?? false,steps:plan.sections.map((section,index) => {
-    const step = pieceSection(instrument,plan,index)
-    return {...step,beats:section.beats,variation:(override ?? instrument.selectedVariation ?? step.variation) % instrument.pianoRolls.length}
-  })}
+  return {restart:instrument.arrangement?.restart ?? false,steps:plan.sections.map((section,index) => ({
+    ...pieceStep(instrument,pieceSection(instrument,plan,index),override),beats:section.beats,
+  }))}
 }
 
 // Import-only bridge. No retired timeline or per-piece duration reaches playback.
@@ -106,7 +118,7 @@ export function migrateGlobalArrangement(data: Record<string, any>) {
   for (const instrument of instruments) {
     instrument.arrangement = {restart:instrument.performance?.restart ?? false, sections:Object.fromEntries(plan.sections.map((section,index) => {
       const step = instrument.performance?.steps[index % instrument.performance.steps.length]
-      return [section.id,{variation:(step?.variation ?? legacy![index].variation) % instrument.pianoRolls.length,transpose:step?.transpose ?? 0,active:step?.active ?? true}]
+      return [section.id,{variation:step?.active === false ? null : (step?.variation ?? legacy![index].variation) % instrument.pianoRolls.length,transpose:step?.transpose ?? 0}]
     }))}
     delete instrument.performance
   }

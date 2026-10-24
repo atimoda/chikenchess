@@ -1,5 +1,5 @@
 import type { Instrument } from './model'
-import { DEFAULT_ARRANGEMENT, arrangementPosition, pieceSection, type Arrangement } from './arrangement'
+import { DEFAULT_ARRANGEMENT, arrangementPosition, pieceSection, pieceStep, type Arrangement } from './arrangement'
 
 /** Compiler-only form derived from the global arrangement. Never persisted. */
 export interface Performance {
@@ -28,11 +28,9 @@ export function performancePosition(performance: Performance, cycle: number, bea
 
 /** Editor phase from authored data; drawing a piano roll never compiles audio patterns. */
 export function variationPosition(instrument: Instrument, section: number, cycle: number, beatsPerBar = 4, override?: number, arrangement?: Arrangement) {
-  const count = instrument.pianoRolls.length
   const plan = arrangement ?? DEFAULT_ARRANGEMENT
   const position = arrangementPosition(plan,cycle,beatsPerBar)
-  const step = pieceSection(instrument,plan,position.index)
-  const variation = ((override ?? instrument.selectedVariation ?? step.variation) % count + count) % count
-  return { variation, present:step.active,
+  const step = pieceStep(instrument,pieceSection(instrument,plan,position.index),override)
+  return { variation:step.variation, present:step.active,
     phase: (instrument.arrangement?.restart ?? false) ? position.progress * position.section.beats / beatsPerBar : cycle }
 }

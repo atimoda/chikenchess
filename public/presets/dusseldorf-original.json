@@ -398,23 +398,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -962,23 +958,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -1101,23 +1093,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -1528,23 +1516,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -1607,23 +1591,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -1734,23 +1714,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -1849,23 +1825,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -1940,23 +1912,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -2307,23 +2275,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -2585,23 +2549,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -3247,23 +3207,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -3381,23 +3337,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -3538,23 +3490,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -3672,23 +3620,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -3830,23 +3774,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -4180,23 +4120,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -4554,23 +4490,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -4832,23 +4764,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -5494,23 +5422,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -5628,23 +5552,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -5785,23 +5705,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -5919,23 +5835,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -6077,23 +5989,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -6427,23 +6335,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       },
@@ -6525,23 +6429,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -7089,23 +6989,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -7228,23 +7124,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -7655,23 +7547,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 2,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 1,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -7734,23 +7622,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -7861,23 +7745,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -7976,23 +7856,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }
@@ -8067,23 +7943,19 @@
         "sections": {
           "section-a": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-b": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-c": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           },
           "section-d": {
             "variation": 0,
-            "transpose": 0,
-            "active": true
+            "transpose": 0
           }
         }
       }

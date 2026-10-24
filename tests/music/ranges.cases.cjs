@@ -12,7 +12,7 @@ function fixture() {
   Object.assign(kit.instruments['w:b1'], {
     behavior: 'phrase',
     pianoRolls: [{ bars: 4, notes: Array.from({ length: 32 }, (_, index) => ({ start: index / 8, duration: .0625, degree: 0, velocity: .8 })) }],
-    arrangement: { restart: true, sections: { a: { variation: 0, transpose: 0, active: true }, b: { variation: 0, transpose: 0, active: true } } },
+    arrangement: { restart: true, sections: { a: { variation: 0, transpose: 0 }, b: { variation: 0, transpose: 0 } } },
     driveRange: { first: 2, second: .5, frequency: 'loop' }, reverbRange: { first: .04, second: .2, frequency: 'loop' },
     swingRange: { first: .01, second: .08, frequency: 'loop' }, lpfRange: { first: 400, second: 4000, frequency: 'loop' }, octaveRange: undefined,
   })
@@ -319,7 +319,8 @@ test('all 60 city presets have six composed scenes and E/F harmony sequences are
     for (const instrument of Object.values(kit.instruments)) {
       const banks = instrument.pianoRolls.length
       assert.equal(banks, 6, `${city.id}/${instrument.name}: six banks`)
-      assert.deepEqual(kit.arrangement.sections.map(section => instrument.arrangement.sections[section.id].variation), [0, 1, 2, 3, 4, 5])
+      // A section with no variation is an authored rest; every other one plays its own scene.
+      assert.deepEqual(kit.arrangement.sections.map((section, index) => instrument.arrangement.sections[section.id].variation ?? index), [0, 1, 2, 3, 4, 5])
     }
     if (city.id !== 'manchester-1999') {
       assert.equal(kit.arrangement.sections.length, 6)

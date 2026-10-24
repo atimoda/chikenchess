@@ -13,7 +13,7 @@ import { beatsPerBar, meterLabel } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
 import { variationPosition } from '@/lib/music/performance'
 import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music/arrangement'
-import { ArrowLeftRight, Dice5, Minus, Pin, Plus } from 'lucide-react'
+import { ArrowLeftRight, Dice5, Minus, Pin, Plus, RotateCw } from 'lucide-react'
 import styles from './music-playback.module.css'
 import type { KnobUpdateMode } from './knob'
 
@@ -74,7 +74,6 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     return {
       notes: showStatus ? frame.tracks[id]?.notes.map(noteLabel).join(' + ') : undefined,
       running: !manual && isLoopRunning(frame,id,sourceInstrument?.loopEnabled!==false),
-      sectionIndex: globalPosition?.index,
       variation: position?.variation ?? 0,
       present: position?.present,
       // The compact tab view draws its playhead in the piano editor; only the
@@ -86,15 +85,25 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
   const sourceVariationCount = sourceInstrument?.pianoRolls.length ?? 0
   const activeTab = playback.variation
   const activeRoll=instrument?.pianoRolls[activeTab]
-  const currentSection=sourceInstrument&&snapshot.arrangement&&playback.sectionIndex!==undefined ? pieceSection(sourceInstrument,snapshot.arrangement,playback.sectionIndex) : undefined
-  const absentVariation=currentSection&&!currentSection.active?activeTab:null
+  // Present already counts the pin: a pinned tab plays even in an empty section.
+  const absentVariation=playback.present===false?activeTab:null
   const resizeActiveVariation=(delta:number)=>{
     if(!instrument||!onInstrumentChange||!activeRoll)return
     const bars=Math.max(1/beatsPerBar(snapshot.meter),Math.min(8,activeRoll.bars+delta/beatsPerBar(snapshot.meter)*4))
     onInstrumentChange({pianoRolls:instrument.pianoRolls.map((roll,index)=>index===activeTab?resizeRoll(activeRoll,bars):roll)})
   }
-  const variationActions = instrument && onInstrumentChange ? <div className={styles.variationActions} aria-label="Variation actions">
+  // Same default as playback (piecePerformance): an instrument without arrangement keeps its phase.
+  const restart=instrument?.arrangement?.restart ?? false
+  const toggleRestart=()=>{
+    const plan=snapshot.arrangement
+    if(!instrument||!onInstrumentChange||!plan)return
+    onInstrumentChange({arrangement:{restart:!restart,sections:Object.fromEntries(plan.sections.map((section,index)=>[section.id,pieceSection(instrument,plan,index)]))}})
+  }
+  // The piano editor passes Delete note (only while a note is selected) as the first action.
+  const variationActions = instrument && onInstrumentChange ? (leading: ReactNode) => <div className={styles.variationActions} aria-label="Variation actions">
+    {leading}
     <DivisionPicker value={division} onChange={setDivision} meter={snapshot.meter??'4/4'}/>
+    {snapshot.arrangement&&<button type="button" className={styles.restartToggle} aria-label="Restart MIDI when the global section starts" aria-pressed={restart} data-on={restart} title={restart ? 'Restart MIDI at each global section: on. The loop starts again when a section starts.' : 'Restart MIDI at each global section: off. The loop keeps its global phase across sections.'} onClick={toggleRestart}><RotateCw size={14}/></button>}
     <button type="button" aria-label="Reverse variation notes" title="Mirror the variation in time" onClick={() => onInstrumentChange(reverseVariation(instrument,activeTab))}><ArrowLeftRight size={14}/></button>
     <button type="button" aria-label="Randomize variation notes" title="Randomize notes" onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dice5 size={14}/></button>
     <span className={styles.buttonPair}><button type="button" aria-label={`Shorten variation ${activeTab+1}`} title="Remove one beat" disabled={!activeRoll||activeRoll.bars<=1/beatsPerBar(snapshot.meter)} onClick={()=>resizeActiveVariation(-.25)}><Minus size={14}/></button>
