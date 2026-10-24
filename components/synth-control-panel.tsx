@@ -256,7 +256,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
       {/* Main Content - z-50 */}
       <div ref={contentViewportRef} inert={readOnly} aria-disabled={readOnly || undefined} className={cn("relative z-50 max-w-full px-2.5", isStatic ? "w-full max-h-none overflow-visible py-2.5" : "h-full w-full min-h-0 overflow-hidden pt-2.5 pb-0", !isOn && "opacity-50 grayscale")} style={panelStyle}>
-        <div className={cn("flex flex-col gap-3", !isStatic && "piece-params-scroll h-full min-h-0 overflow-y-auto pb-2.5")}>
+        <div className={cn("flex flex-col gap-3", !isStatic && "scrollbar-hide h-full min-h-0 overflow-y-auto pb-2.5")}>
           <style jsx global>{`
             .scrollbar-hide::-webkit-scrollbar {
               display: none;
@@ -265,12 +265,6 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               -ms-overflow-style: none;
               scrollbar-width: none;
             }
-            .piece-params-scroll {
-              scrollbar-color: rgba(255,255,255,.28) transparent;
-              scrollbar-width: thin;
-            }
-            .piece-params-scroll::-webkit-scrollbar { width: 6px; }
-            .piece-params-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 999px; }
           `}</style>
           <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
             {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}

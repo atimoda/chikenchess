@@ -22,6 +22,8 @@ export const CHANGELOG = [
         'Selecionar uma nota no sequenciador troca os knobs pelos da nota (Accent, Pan, Slide ST e Slide sec, no mesmo tamanho dos knobs da peça) e o título vira "Piece params / Note params". Clicar em "Piece params" desmarca a nota e devolve os knobs da peça.',
         'A rampa do slide da nota fica visível, ocupando o espaço de dois knobs, logo acima de Slide ST e Slide sec. Nos dois modos, Slide ST e Slide sec são os dois últimos knobs do painel.',
         'O botão de excluir nota foi para a linha de botões abaixo do sequenciador, como primeira opção, e só aparece com uma nota selecionada.',
+        '"Restart MIDI when the global section starts" virou um botão com uma seta girando na linha de botões abaixo do sequenciador, na partida e no Criativo. Ligado, o ícone fica na cor normal; desligado, fica 50% mais apagado.',
+        'O painel não mostra mais barras de rolagem; a rolagem continua funcionando.',
       ] },
       { title: 'Admin', items: [
         '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',

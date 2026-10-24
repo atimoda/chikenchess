@@ -23,7 +23,8 @@ export function MusicPerformanceControls({ instrument, arrangement, onChange, mo
   const count = instrument.pianoRolls.length
   const fixed = override ?? instrument.selectedVariation
   const current = pieceStep(instrument, currentStep, override)
-  const patch = (update: Partial<PieceArrangement['sections'][string]>, restart = instrument.arrangement?.restart ?? true) => {
+  const patch = (update: Partial<PieceArrangement['sections'][string]>) => {
+    const restart = instrument.arrangement?.restart ?? true
     const sections = Object.fromEntries(arrangement.sections.map((item, sectionIndex) => [item.id, pieceSection(instrument, arrangement, sectionIndex)]))
     onChange({ arrangement: { restart, sections: { ...sections, [section.id]: { ...step, ...update } } } })
   }
@@ -35,6 +36,5 @@ export function MusicPerformanceControls({ instrument, arrangement, onChange, mo
     <div className={styles.pieceSectionIdentity} aria-label="Global section name and length"><span>{section.label}</span><span>{section.beats} beats · edited in the global Arrangement</span></div>
     <label>Piece MIDI variation<select aria-label="Piece MIDI variation in this section" value={step.variation === null ? '' : step.variation % count} onChange={event => patch({ variation: event.target.value === '' ? null : Number(event.target.value) })}><option value="">— none (piece rests)</option>{instrument.pianoRolls.map((_, bank) => <option key={bank} value={bank}>{String.fromCharCode(65 + bank)}</option>)}</select></label>
     <label><HelpLabel label="Piece transposition in this section">Chromatic shift from −24 to +24 semitones, on pitched voices only. Zero keeps the base scale; the transposition can leave the scale and still applies with a pinned or forced variation.</HelpLabel><CompactNumberInput ariaLabel="Piece transposition in this section" min={-24} max={24} value={step.transpose} onChange={transpose => { if (Number.isInteger(transpose)) patch({ transpose }) }} /></label>
-    <label><input type="checkbox" checked={instrument.arrangement?.restart ?? true} onChange={event => patch({}, event.target.checked)} />Restart MIDI when the global section starts<InfoTip label="MIDI restart">Checked, this piece’s loop starts at the entry of the global section. Unchecked, it keeps its global phase. Section length and presence/transposition still share the same clock, including with pins and rules.</InfoTip></label>
   </details>
 }
