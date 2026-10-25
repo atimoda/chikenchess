@@ -60,7 +60,7 @@ import { EggCounter, MatchStatus } from "../match/egg-counter";
 import { GameplayTipDialog, useGameplayTip } from "../match/gameplay-tip";
 import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "../match/match-view-controls";
 import { MixerWidget } from "../mixer-widget";
-import { MusicSongPanel, type SongPanelHover } from "../music-song-panel";
+import { MusicSongPanel, MusicSongSections, type SongPanelHover } from "../music-song-panel";
 import { SynthControlPanel } from "../synth-control-panel";
 import { MusicVoiceReadout, MusicTransportReadout } from "../music-playback";
 import {
@@ -1053,6 +1053,16 @@ export function OnlineMatchBoard({
           // The list stays usable with an opponent's piece selected.
           readOnly={(locked && paramsOpen) || !!result}
           showSong={!paramsOpen}
+          sections={
+            music.kit ? (
+              <MusicSongSections
+                arrangement={music.kit.arrangement}
+                harmony={music.kit.harmony}
+                monitor={music.monitor}
+                onSeek={music.seekSection}
+              />
+            ) : undefined
+          }
           songMidi={{ on: songMidiOn, onToggle: () => setSongMidiOn((on) => !on) }}
           readOnlyMessage={locked ? "Opponent’s Piece Params" : "Match ended"}
           instrument={music.instrument}

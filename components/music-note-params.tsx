@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useState } from 'react'
 import type { PianoNote } from '@/lib/music/piano-roll'
 import { Knob, LARGE_KNOB_SIZE, type KnobUpdateMode } from './knob'
 
@@ -33,14 +33,16 @@ export function SlideRamp({ slide, seconds, neon = true }: { slide: number; seco
  * slide graph on the second. */
 export function NoteParamsKnobs({ note, onChange, updateMode = 'immediate', neon = true }: { note: PianoNote; onChange: (patch: Partial<PianoNote>) => void; updateMode?: KnobUpdateMode; neon?: boolean }) {
   const slide = note.slide ?? 0, seconds = note.slideSeconds ?? .5, pan = note.pan ?? .5
+  // The graph follows the knobs while they are dragged, before the release commits.
+  const [draft, setDraft] = useState<{ slide?: number | null; seconds?: number | null }>({})
   return <>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="ACCENT" ariaLabel="Note accent" value={note.velocity} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => n.toFixed(2)} onChange={velocity => onChange({ velocity })} neon={neon}/>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="PAN" ariaLabel="Note pan" value={pan} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => n.toFixed(2)} onChange={pan => onChange({ pan })} neon={neon}/>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="CHANCE" ariaLabel="Note chance" value={note.chance ?? 1} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => `${Math.round(n * 100)}%`} onChange={chance => onChange({ chance: chance >= 1 ? undefined : chance })} neon={neon}/>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="RATCHET" ariaLabel="Note ratchet" value={note.ratchet ?? 1} min={1} max={4} step={1} updateMode={updateMode} formatValue={n => `×${n}`} onChange={ratchet => onChange({ ratchet: ratchet <= 1 ? undefined : ratchet })} neon={neon}/>
-    <div className="col-start-1"><Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Note slide" value={slide} min={-24} max={24} step={1} updateMode={updateMode} formatValue={n => `${n > 0 ? '+' : ''}${n} st`} onChange={slide => onChange({ slide })} neon={neon}/></div>
-    <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Note slide time" value={seconds} min={.001} max={2} step={.001} updateMode={updateMode} formatValue={n => `${Number(n.toFixed(3))} s`} onChange={slideSeconds => onChange({ slideSeconds })} neon={neon}/>
-    <SlideRamp slide={slide} seconds={seconds} neon={neon}/>
+    <div className="col-start-1"><Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Note slide" value={slide} min={-24} max={24} step={1} updateMode={updateMode} formatValue={n => `${n > 0 ? '+' : ''}${n} st`} onChange={slide => onChange({ slide })} onDraftChange={value => setDraft(d => ({ ...d, slide: value }))} neon={neon}/></div>
+    <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Note slide time" value={seconds} min={.001} max={2} step={.001} updateMode={updateMode} formatValue={n => `${Number(n.toFixed(3))} s`} onChange={slideSeconds => onChange({ slideSeconds })} onDraftChange={value => setDraft(d => ({ ...d, seconds: value }))} neon={neon}/>
+    <SlideRamp slide={draft.slide ?? slide} seconds={draft.seconds ?? seconds} neon={neon}/>
   </>
 }
 

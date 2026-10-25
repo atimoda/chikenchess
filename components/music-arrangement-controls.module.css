@@ -135,6 +135,8 @@
 .dock[data-compact='true'] .timeline .sectionButton { min-width: 44px; min-height: 32px; gap: 1px; padding: 4px 5px; font-size: 10px; border-radius: 5px; }
 .dock[data-compact='true'] .timeline .sectionButton[data-next='true'] { min-width: 64px; }
 .dock[data-compact='true'] .sectionButton small { display: none; }
+/* The compact bar has no beats line, so the queued section shows "Next" under its label. */
+.compactNext { font-size: 9px; line-height: 1; color: #d9ef9e; font-weight: 600; }
 /* Full names, wrapping at the hyphen ("Pre-" / "Chorus") when space runs out. */
 .dock[data-compact='true'] .sectionLabel { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.15; }
 .dock[data-compact='true'] .timeline .sectionButton { justify-content: center; min-width: min-content; }

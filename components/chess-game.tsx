@@ -20,7 +20,7 @@ import { usePowerTargetingGesture } from '@/hooks/use-power-targeting-gesture'
 import { LiveCodeWidget } from "./live-code-widget"
 import { StockfishDebugOverlay } from "./stockfish-debug-overlay"
 import { SynthControlPanel } from "./synth-control-panel"
-import { MusicSongPanel, type SongPanelHover } from "./music-song-panel"
+import { MusicSongPanel, MusicSongSections, type SongPanelHover } from "./music-song-panel"
 import { PieceDebugWidget } from "./piece-debug-widget"
 import { useMusic } from "@/hooks/use-music"
 import { MusicTransportReadout, MusicVoiceBadge, MusicVoiceReadout } from './music-playback'
@@ -1736,6 +1736,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
                   <MusicVoiceReadout variationTabs showStatus={false} loopOn={music.activeIds.has(music.selected.id)} onLoopToggle={() => { if (music.selected) toggleSongPiece(music.selected.square) }} soloOn={music.soloIds.has(music.selected.id)} onSoloToggle={() => { if (music.selected) soloSongPiece(music.selected.id) }} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
                 </> : undefined}
+                sections={music.kit ? <MusicSongSections arrangement={music.kit.arrangement} harmony={music.kit.harmony} monitor={music.monitor} onChange={music.updateArrangement} onSeek={music.seekSection} /> : undefined}
                 song={music.kit ? <MusicSongPanel
                   pieces={music.snapshot.pieces}
                   names={Object.fromEntries(music.snapshot.pieces.map(piece => [piece.id, music.snapshot.instruments?.[piece.id]?.name]))}

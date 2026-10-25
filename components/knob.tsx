@@ -22,6 +22,8 @@ interface KnobProps {
   size?: number
   accentColor?: string
   updateMode?: KnobUpdateMode
+  /** In on-release mode, the value under the pointer while dragging; null when the drag ends. */
+  onDraftChange?: (value: number | null) => void
   gestureMode?: KnobGestureMode
 }
 
@@ -85,7 +87,7 @@ export function knobValueLabelStyle(size: number, row?: 'top' | 'bottom'): React
   }
 }
 
-export function Knob({ value, min, max, step = .01, label, labelContent, ariaLabel, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top", monitorValue, size = DEFAULT_KNOB_SIZE, accentColor, updateMode = 'immediate', gestureMode = 'hybrid' }: KnobProps) {
+export function Knob({ value, min, max, step = .01, label, labelContent, ariaLabel, onChange, formatValue, neon = true, logarithmic = false, hideLabel = false, labelPosition = "top", monitorValue, size = DEFAULT_KNOB_SIZE, accentColor, updateMode = 'immediate', onDraftChange, gestureMode = 'hybrid' }: KnobProps) {
   const drag = useRef<{ x: number; y: number; amount: number; latestValue: number; mode: KnobDragMode } | null>(null)
   const indicatorRef = useRef<HTMLDivElement>(null)
   const pointerInsideRef = useRef(false)
@@ -126,6 +128,7 @@ export function Knob({ value, min, max, step = .01, label, labelContent, ariaLab
     drag.current = null
     if (applyDraft && updateMode === 'on-release' && pending && !Object.is(pending.latestValue, value)) onChange(pending.latestValue)
     setDraftValue(null)
+    if (pending && updateMode === 'on-release') onDraftChange?.(null)
     setDragMode(null)
     pointerInsideRef.current = pointerIsInside
     setIndicatorOutside(pointerIsInside)
@@ -139,7 +142,7 @@ export function Knob({ value, min, max, step = .01, label, labelContent, ariaLab
     if (Object.is(start.latestValue, nextValue)) return
     start.latestValue = nextValue
     if (updateMode === 'immediate') commit(nextValue)
-    else setDraftValue(nextValue)
+    else { setDraftValue(nextValue); onDraftChange?.(nextValue) }
   }
   const labelClasses = cn(
     "text-[10px] uppercase font-mono text-muted-foreground",

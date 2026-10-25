@@ -305,6 +305,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
           }}>
           {playing && <span className={controls.progress} aria-hidden="true" style={{ width: Math.max(0, Math.min(1, position.progress)) * 100 + '%' }} />}
           <span className={controls.sectionLabel}>{item.label}</span><small>{item.beats} beats{next && <span className={controls.nextMarker}> · Next</span>}</small>
+          {compact && next && <span className={controls.compactNext} aria-hidden="true">Next</span>}
         </button>
       })}
       {onChange && <button type="button" className={controls.addButton} aria-label="Add global section" title="Add global section" onClick={add}><Plus size={compact ? 14 : 18} aria-hidden="true" /></button>}
