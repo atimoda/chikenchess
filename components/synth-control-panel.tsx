@@ -6,7 +6,7 @@ import { Knob, LARGE_KNOB_SIZE } from "./knob"
 import { RangeKnob } from "./range-knob"
 import type { SquareEffects } from "@/lib/types"
 import { cn, stableHtml } from "@/lib/utils"
-import { LockKeyhole, Music, Power } from "lucide-react"
+import { Eye, EyeOff, LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
@@ -42,8 +42,12 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   selectedPiece?: MusicPiece | null
   readOnly?: boolean
   readOnlyMessage?: string
-  /** Song & Instruments view, shown instead of the knobs while no piece is selected. */
+  /** Song & Instruments view, shown while no piece is selected or `showSong` is set. */
   song?: React.ReactNode
+  /** Keeps the Song & Instruments list with a piece selected (Piece Params closed). */
+  showSong?: boolean
+  /** "midi" eye toggle for the list's MIDI strips. */
+  songMidi?: { on: boolean; onToggle: () => void }
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -71,6 +75,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   readOnly = false,
   readOnlyMessage = "Piece Params locked",
   song,
+  showSong = false,
+  songMidi,
   ...props
 }, ref) => {
   const isStatic = props.style?.position === 'static'
@@ -81,7 +87,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   // A note selected in the MIDI editor swaps the knob panel to its Note params.
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
   const noteMode = !!noteSelection && !!playback
-  const songMode = !selectedSquare && !!song
+  const songMode = !!song && (!selectedSquare || showSong)
   const panelStyle = {
     "--city-neon": cityColor,
   } as React.CSSProperties
@@ -225,7 +231,19 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         className="absolute inset-x-0 top-0 h-8 z-60"
       />
 
-      {isOn && selectedSquare && onDeselect && <button
+      {isOn && songMode && songMidi && <button
+        type="button"
+        aria-pressed={songMidi.on}
+        aria-label={songMidi.on ? 'Hide the MIDI of the active pieces' : 'Show the MIDI of the active pieces'}
+        title={songMidi.on ? 'Hide MIDI' : 'Show MIDI'}
+        className={cn("absolute right-2 top-2 z-[70] flex h-[25px] cursor-pointer items-center gap-1 rounded border bg-[#111a15] px-1.5 font-mono text-[10px] transition-colors hover:border-white/60 hover:text-white", songMidi.on ? "border-white/40 text-white" : "border-white/20 text-white/50")}
+        onClick={event => {
+          event.stopPropagation()
+          songMidi.onToggle()
+        }}
+      >{songMidi.on ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}midi</button>}
+
+      {isOn && selectedSquare && !songMode && onDeselect && <button
         type="button"
         aria-label="Back to Song & Instruments"
         title="Back to the instrument list"
@@ -249,16 +267,16 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             }
           `}</style>
           <div className="flex items-center gap-3 mb-1 px-2 pr-10 min-h-12 relative">
-            {pieceSvg && selectedSquare ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : songMode ? <div className="flex w-11 h-11 shrink-0 items-center justify-center rounded border border-white/20 bg-white/10 text-white/80" aria-hidden="true"><Music className="h-6 w-6" /></div> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
+            {pieceSvg && selectedSquare && !songMode ? <div className="w-11 h-11 shrink-0 rounded border border-white/20 bg-white/10 p-1" aria-hidden="true" dangerouslySetInnerHTML={stableHtml(pieceSvg)} /> : songMode ? <div className="flex w-11 h-11 shrink-0 items-center justify-center rounded border border-white/20 bg-white/10 text-white/80" aria-hidden="true"><Music className="h-6 w-6" /></div> : <div className="w-11 h-11 shrink-0 rounded border border-white/10 bg-white/5" />}
             <div className="min-w-0">
               <h2 className={cn(
                 "truncate text-sm font-mono font-bold transition-colors duration-300",
                 "text-white"
-              )}>{selectedSquare ? selectedPieceInfo ?? 'Instrumento' : songMode ? 'Song & Instruments' : 'No piece selected'}</h2>
-              {selectedSquare && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
+              )}>{songMode ? 'Song & Instruments' : selectedSquare ? selectedPieceInfo ?? 'Instrumento' : 'No piece selected'}</h2>
+              {selectedSquare && !songMode && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
-          {playback && <div className="flex flex-none flex-col">
+          {playback && !songMode && <div className="flex flex-none flex-col">
             <NoteParamsHostContext.Provider value={setNoteSelection}>
               <MusicPlaybackViewport visualUpdatesEnabled={isStatic || midiVisualUpdatesEnabled} pieceParamsLayout={!isStatic}>
                 {playback}

@@ -153,6 +153,22 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     runtime.current?.endAudition()
   }, [history])
 
+  // Moving a piece turns it back on, even after the user muted it.
+  const movedFrom = useRef<{ plies: number; squares: Map<string, string> } | null>(null)
+  useEffect(() => {
+    const previous = movedFrom.current
+    movedFrom.current = { plies: history.length, squares: new Map(pieces.map(piece => [piece.id, piece.square])) }
+    const current = kitRef.current
+    if (!previous || !current || history.length <= previous.plies) return
+    const revived = pieces.filter(piece => previous.squares.has(piece.id) && previous.squares.get(piece.id) !== piece.square
+      && current.instruments[piece.id]?.loopEnabled === false && canEditPieceRef.current?.(piece.id) !== false)
+    if (!revived.length) return
+    const instruments = { ...current.instruments }
+    for (const piece of revived) instruments[piece.id] = { ...instruments[piece.id], loopEnabled: true }
+    kitRef.current = { ...current, instruments }
+    setKit(kitRef.current)
+    for (const piece of revived) onPieceChangeRef.current?.(piece.id, instruments[piece.id], effectsRef.current[piece.id])
+  }, [history, pieces])
   const audition = useCallback((from: Square, to: Square = from) => {
     if (!engineActive) return
     const piece = pieces.find(p => p.square === from)

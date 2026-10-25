@@ -27,14 +27,17 @@ function SlideRamp({ slide, seconds }: { slide: number; seconds: number }) {
 }
 
 /** Knob cells for a selected note, laid out for the five-column Piece Params grid.
- * The ramp spans two cells right above SLIDE ST / SLIDE SEC, which close the panel. */
+ * The ramp spans the last two cells of the first row, right above SLIDE ST /
+ * SLIDE SEC, which close the panel. */
 export function NoteParamsKnobs({ note, onChange, updateMode = 'immediate', neon = true }: { note: PianoNote; onChange: (patch: Partial<PianoNote>) => void; updateMode?: KnobUpdateMode; neon?: boolean }) {
   const slide = note.slide ?? 0, seconds = note.slideSeconds ?? .5, pan = note.pan ?? .5
   return <>
-    <SlideRamp slide={slide} seconds={seconds}/>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="ACCENT" ariaLabel="Note accent" value={note.velocity} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => n.toFixed(2)} onChange={velocity => onChange({ velocity })} neon={neon}/>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="PAN" ariaLabel="Note pan" value={pan} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => n.toFixed(2)} onChange={pan => onChange({ pan })} neon={neon}/>
-    <div className="col-start-1"><Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Note slide" value={slide} min={-24} max={24} step={1} updateMode={updateMode} formatValue={n => `${n > 0 ? '+' : ''}${n} st`} onChange={slide => onChange({ slide })} neon={neon}/></div>
+    <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="CHANCE" ariaLabel="Note chance" value={note.chance ?? 1} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => `${Math.round(n * 100)}%`} onChange={chance => onChange({ chance: chance >= 1 ? undefined : chance })} neon={neon}/>
+    <SlideRamp slide={slide} seconds={seconds}/>
+    <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="RATCHET" ariaLabel="Note ratchet" value={note.ratchet ?? 1} min={1} max={4} step={1} updateMode={updateMode} formatValue={n => `×${n}`} onChange={ratchet => onChange({ ratchet: ratchet <= 1 ? undefined : ratchet })} neon={neon}/>
+    <div className="col-start-4"><Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Note slide" value={slide} min={-24} max={24} step={1} updateMode={updateMode} formatValue={n => `${n > 0 ? '+' : ''}${n} st`} onChange={slide => onChange({ slide })} neon={neon}/></div>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Note slide time" value={seconds} min={.001} max={2} step={.001} updateMode={updateMode} formatValue={n => `${Number(n.toFixed(3))} s`} onChange={slideSeconds => onChange({ slideSeconds })} neon={neon}/>
   </>
 }

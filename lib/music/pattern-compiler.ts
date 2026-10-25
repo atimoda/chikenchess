@@ -46,6 +46,9 @@ function applyRanges(api: Strudel, voice: VoiceSpec, pattern: StrudelPattern) {
   return pattern
 }
 
+// A ratcheted note repeats evenly inside its own timeCat chunk.
+const ratchet = (pattern: StrudelPattern, times?: number) => times && times > 1 ? pattern.fast(times) : pattern
+
 export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
   if (!voice.manual && voice.instrument.loopEnabled === false) return api.silence
   if(voice.performance){
@@ -72,10 +75,11 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
     if (fixed !== undefined && index !== fixed % voice.pianoRolls.length) return api.silence
     const lanes = optimizeRoll(roll).map(lane => {
       const chunks: [number, StrudelPattern][] = lane.segments.map(segment => [segment.duration,
-        !segment.notes ? api.silence : segment.notes.length === 1 ? events(segment.notes[0]) : api.stack(...segment.notes.map(note => events(note)))])
+        !segment.notes ? api.silence : ratchet(segment.notes.length === 1 ? events(segment.notes[0]) : api.stack(...segment.notes.map(note => events(note))), lane.ratchet)])
       let pattern = (api as Strudel & {timeCat:(...chunks:[number,StrudelPattern][])=>StrudelPattern}).timeCat(...chunks).velocity(lane.velocity).slow(roll.bars)
       if (lane.slide && !voice.unpitched) pattern = pattern.withValue((v: object) => ({ ...v, ccSlide: lane.slide, ccSlideTime: lane.slideSeconds ?? .5 }))
       if (lane.pan !== undefined) pattern = pattern.withValue((v: object) => ({ ...v, ccPan: lane.pan }))
+      if (lane.chance !== undefined && !voice.manual) pattern = pattern.degradeBy(1 - lane.chance)
       return pattern
     })
     return lanes.length === 0 ? api.silence : lanes.length === 1 ? lanes[0] : api.stack(...lanes)

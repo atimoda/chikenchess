@@ -58,7 +58,7 @@ export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: st
   const status = useSyncExternalStore<VoiceStatus>(monitor.subscribe, () => monitor.getSnapshot().tracks[id]?.status ?? 'inactive', () => 'inactive')
   return <span className={styles.badge} data-status={status}>{VOICE_STATUS_LABELS[status]}</span>
 }
-export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, showStatus = true, instrument, onInstrumentChange, variationTabs = false, manageVariations = variationTabs, knobUpdateMode = 'immediate', loopOn = false, onLoopToggle }: { loopOn?: boolean; onLoopToggle?: () => void; instrument?:Instrument; onInstrumentChange?:(patch:InstrumentPerformanceEdit)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean; showStatus?: boolean; variationTabs?: boolean; manageVariations?: boolean; knobUpdateMode?:KnobUpdateMode }) {
+export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, showStatus = true, instrument, onInstrumentChange, variationTabs = false, manageVariations = variationTabs, knobUpdateMode = 'immediate', loopOn = false, onLoopToggle, soloOn = false, onSoloToggle }: { loopOn?: boolean; onLoopToggle?: () => void; soloOn?: boolean; onSoloToggle?: () => void; instrument?:Instrument; onInstrumentChange?:(patch:InstrumentPerformanceEdit)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean; showStatus?: boolean; variationTabs?: boolean; manageVariations?: boolean; knobUpdateMode?:KnobUpdateMode }) {
   const viewport = useContext(MusicPlaybackViewportContext)
   const [division,setDivision]=useState(defaultGridDivision(snapshot.meter))
   useEffect(() => setDivision(defaultGridDivision(snapshot.meter)), [snapshot.meter])
@@ -127,6 +127,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
           <button type="button" aria-label="Remove last variation" title="Remove last variation" disabled={sourceVariationCount<=1} onClick={()=>onInstrumentChange(removeLastVariation(instrument))}>−</button>
         </>}
         </div>
+        {onSoloToggle&&<button type="button" className={styles.soloText} aria-label={soloOn ? 'Disable solo' : 'Enable solo'} title="Solo" aria-pressed={soloOn} data-on={soloOn} onClick={onSoloToggle}>S</button>}
       </div>
       <MusicPianoEditor compact actions={variationActions} onlyVariation={activeTab} division={division} onDivisionChange={setDivision} snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode} visualUpdatesEnabled={viewport.visualUpdatesEnabled}/>
       </>}

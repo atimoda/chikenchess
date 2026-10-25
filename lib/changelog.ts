@@ -33,6 +33,10 @@ export const CHANGELOG = [
         'Na barra de Global Sections da partida, o título saiu, a contagem de beats também, e o nome de cada seção aparece inteiro, quebrando a linha quando falta espaço. O botão + ganhou hover.',
         'A lista de peças ficou numa coluna só: primeiro as peças do seu time, depois as do adversário. Passar o mouse numa peça da lista toca a nota dela, como um clique na peça do tabuleiro.',
         'Com uma peça selecionada, o botão M virou a mesma bolinha de ligar/desligar da lista, no começo da linha de abas das variações, e o botão Solo deu lugar a um botão Voltar, que desmarca a peça e volta para a lista de instrumentos.',
+        'O S de Solo voltou ao Piece Params, no fim da linha de abas das variações, e a bolinha de ligar/desligar ficou com o contorno visível quando a peça está desligada.',
+        'Na lista de instrumentos, as peças ativas mostram uma faixa compacta do MIDI tocando; o botão "midi" com o olho, no canto do painel, liga ou desliga essas faixas.',
+        'Clicar no nome de uma peça (ou selecioná-la no tabuleiro) agora expande o MIDI completo dela na própria lista, com as abas e os botões. Duplo clique no nome, o novo link "Params" ou o duplo clique no tabuleiro que liga a peça abrem o Piece Params completo.',
+        'Note params ganhou os knobs Ratchet (repete a nota 2, 3 ou 4 vezes dentro da duração dela) e Chance (probabilidade de a nota tocar).',
       ] },
       { title: 'Admin', items: [
         '"Linked stage" aparece só para admins. No Admin local, o novo botão "Save DB" grava o kit como kit oficial da fase vinculada; depois do deploy ele substitui o kit padrão dessa cidade para todos, nas partidas e no Criativo.',
@@ -41,6 +45,7 @@ export const CHANGELOG = [
         'Os golden eggs das casas destino de Best/Worst ficam centralizados na casa, atrás do score da seta, com uma borda preta fina no lugar do brilho colorido.',
         'Depois que as setas somem, os ovos ficam 3 segundos visíveis e então somem num fade de 3 segundos. Até sumirem por completo, qualquer peça que for para a casa ganha os ovos; depois disso, só o lance indicado pela seta.',
         'Ao ganhar ovos num lance, cada ovo dá um giro de 360° enquanto sobe acima da peça.',
+        'Uma peça desligada volta a tocar quando é movida.',
       ] },
     ],
   },

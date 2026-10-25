@@ -9,13 +9,19 @@ export interface RollLane {
   slide?: number
   slideSeconds?: number
   pan?: number
+  /** Repeats of each note inside its own length (2–4). */
+  ratchet?: number
+  /** Probability (0–1) that each note of the lane plays. */
+  chance?: number
 }
 export function optimizeRoll(roll: PianoRoll): RollLane[] {
   type Event = { start: number; duration: number; notes: number[] }
   type Group = { controls: Omit<RollLane, 'segments'>; events: Event[] }
   const groups = new Map<string, Group>()
   for (const note of roll.notes) {
-    const controls = { velocity: note.velocity, slide: note.slide, slideSeconds: note.slideSeconds, pan: note.pan }
+    const controls = { velocity: note.velocity, slide: note.slide, slideSeconds: note.slideSeconds, pan: note.pan,
+      ratchet: note.ratchet !== undefined && note.ratchet > 1 ? note.ratchet : undefined,
+      chance: note.chance !== undefined && note.chance < 1 ? note.chance : undefined }
     const key = JSON.stringify(controls)
     let group = groups.get(key)
     if (!group) { group = { controls, events: [] }; groups.set(key, group) }
@@ -47,6 +53,6 @@ export function rollLaneNotation(lane: RollLane) {
   const number = (value: number) => String(Number(value.toFixed(12)))
   return lane.segments.map(({duration,notes}) => {
     const value = !notes ? '~' : notes.length === 1 ? String(notes[0]) : `[${notes.join(',')}]`
-    return `${value}@${number(duration)}`
+    return `${notes && lane.ratchet ? `[${value}*${lane.ratchet}]` : value}@${number(duration)}`
   }).join(' ')
 }

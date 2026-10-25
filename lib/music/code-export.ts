@@ -50,7 +50,8 @@ function voiceCode(voice: VoiceSpec): string {
     if (fixed !== undefined && i !== fixed % voice.pianoRolls.length) return 'silence'
     return stackCode(optimizeRoll(roll).map(lane => {
       const overrides = { ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .5 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}) }
-      return `${event}(${JSON.stringify(rollLaneNotation(lane))}).velocity(${lane.velocity}).slow(${roll.bars}).withValue(v => ({...v, ccOverrides: ${JSON.stringify(overrides)}}))`
+      const chance = lane.chance !== undefined && !voice.manual ? `.degradeBy(${Number((1 - lane.chance).toFixed(12))})` : ''
+      return `${event}(${JSON.stringify(rollLaneNotation(lane))}).velocity(${lane.velocity}).slow(${roll.bars})${chance}.withValue(v => ({...v, ccOverrides: ${JSON.stringify(overrides)}}))`
     }))
   })
   let source = fixed !== undefined ? banks[fixed % banks.length]
