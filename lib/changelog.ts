@@ -3,6 +3,17 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.8.1',
+    date: '25/10/2026',
+    title: 'Ovos de lances premiados não travam mais depois do teto',
+    groups: [
+      { title: 'Partida', items: [
+        'Um Best ou Worst move feito com o contador cheio (12 ovos) não fica mais marcado como "já pago": se você voltar a jogada com Undo e repetir o mesmo lance com espaço no contador, os ovos entram normalmente. Vale para você, para os ChickenBots e para a partida online.',
+        'O aviso do primeiro Best ou Worst move premiado não é mais gasto num lance que não rendeu ovos por causa do teto.',
+      ] },
+    ],
+  },
+  {
     version: '1.8.0',
     date: '24/10/2026',
     title: 'Kits salvos na conta, kit aleatório novo e Criativo mais enxuto',

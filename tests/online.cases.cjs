@@ -269,6 +269,22 @@ test('Suggested destination squares pay any own piece until the eggs fade, and m
   capped = move(capped, 'w', 'g1', 'f3', 'worst')
   assert.equal(capped.eggs.w, 12, 'a 3-egg reward fills the balance only up to 12')
   assert.equal(capped.collected.w, 4)
+
+  // A ranked move blocked by the cap is not spent: after Undo frees room, replaying it pays.
+  let full = createMatchState()
+  full.eggs.w = 12
+  full = move(full, 'w', 'e2', 'e4', 'worst')
+  assert.equal(full.eggs.w, 12, 'a full balance earns nothing')
+  full = move(full, 'b', 'e7', 'e5')
+  full = command(full, 'w', { kind: 'undo' })
+  assert.equal(full.eggs.w, 10)
+  full = move(full, 'w', 'e2', 'e4', 'worst')
+  assert.equal(full.eggs.w, 12, 'the capped move pays once there is room')
+  full = move(full, 'b', 'e7', 'e5')
+  full.eggs.w = 4
+  full = command(full, 'w', { kind: 'undo' })
+  full = move(full, 'w', 'e2', 'e4', 'worst')
+  assert.equal(full.eggs.w, 2, 'a move that already paid never pays again')
 })
 test('streaks double from the third eligible own move, opponent does not interrupt', () => {
   let s = move(createMatchState(), 'w', 'e2', 'e4', 'best')
