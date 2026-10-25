@@ -41,6 +41,10 @@ export const CHANGELOG = [
         'Corrigido: o cursor de reprodução voltou a andar no MIDI do Piece Params depois de abrir a peça pela lista.',
         'Note params reorganizado: Accent, Pan, Chance e Ratchet na primeira linha; Slide ST, Slide sec e o gráfico do slide na segunda. O gráfico perdeu a moldura e o fundo e agora aparece também nos knobs da peça, à direita de Slide sec.',
         '"Randomize notes" agora sorteia as notas em toda a altura visível do sequenciador. Antes elas se concentravam perto do meio e, depois de muitos cliques, subiam uma oitava.',
+        'Na lista de instrumentos, passar o mouse numa peça faz a borda da bolinha de ligar/desligar piscar junto com a nota tocada.',
+        'Abrir pelo nome uma peça desligada na lista agora também liga a peça.',
+        'O MIDI completo na lista ganhou as mesmas margens laterais da faixa compacta.',
+        'O gráfico do slide (Note params e Piece params) acompanha os knobs Slide ST e Slide sec enquanto você arrasta, sem esperar soltar o mouse; a música continua mudando só ao soltar.',
         'Note params ganhou os knobs Ratchet (repete a nota 2, 3 ou 4 vezes dentro da duração dela) e Chance (probabilidade de a nota tocar).',
       ] },
       { title: 'Admin', items: [

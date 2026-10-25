@@ -87,6 +87,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   // A note selected in the MIDI editor swaps the knob panel to its Note params.
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
   const noteMode = !!noteSelection && !!playback
+  // Slide graph values under the SLIDE ST / SLIDE SEC knobs while they are dragged.
+  const [slideDraft, setSlideDraft] = useState<{ slide?: number | null; seconds?: number | null }>({})
   const songMode = !!song && (!selectedSquare || showSong)
   const panelStyle = {
     "--city-neon": cityColor,
@@ -423,9 +425,9 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} updateMode="on-release" onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Length" value={instrument.clip ?? .7} min={.05} max={1} updateMode="on-release" formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} neon={pitchSlideEnabled} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} neon={pitchSlideEnabled} />
-              <SlideRamp slide={instrument.pitchEnvelope ?? 0} seconds={instrument.pitchAttack ?? .15} neon={pitchSlideEnabled} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} onDraftChange={value => setSlideDraft(d => ({ ...d, slide: value }))} neon={pitchSlideEnabled} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} onDraftChange={value => setSlideDraft(d => ({ ...d, seconds: value }))} neon={pitchSlideEnabled} />
+              <SlideRamp slide={slideDraft.slide ?? instrument.pitchEnvelope ?? 0} seconds={slideDraft.seconds ?? instrument.pitchAttack ?? .15} neon={pitchSlideEnabled} />
             </>}
               </>}
             </div>

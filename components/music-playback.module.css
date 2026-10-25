@@ -76,3 +76,26 @@
 /* A turned-off loop dims the editor, but the tab row's on/off dot and S stay readable. */
 .variationViewer[data-loop-enabled='false'] { opacity: 1; filter: none; }
 .variationViewer[data-loop-enabled='false'] > :not(.variationTabs), .variationViewer[data-loop-enabled='false'] .variationTabList { opacity: .34; filter: grayscale(.8); }
+
+/* Song list: the on/off dot's ring blinks when hovering a row plays its note. */
+.auditionBlink {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid #fff1b7;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0;
+  animation: auditionBlink 420ms ease-out;
+}
+
+@keyframes auditionBlink {
+  0% { opacity: 1; transform: scale(.85); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auditionBlink { animation-duration: 1ms; }
+}
