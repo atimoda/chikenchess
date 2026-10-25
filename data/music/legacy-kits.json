@@ -1,0 +1,74 @@
+[
+  {
+    "id": "dusseldorf",
+    "name": "Rhein · laboratório motorik · legacy",
+    "city": "Düsseldorf",
+    "revision": "dusseldorf-2026-10-02-midi-v6"
+  },
+  {
+    "id": "nyc",
+    "name": "Loft · disco de cordas · legacy",
+    "city": "New York City",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "chicago",
+    "name": "Warehouse · primeiras máquinas · legacy",
+    "city": "Chicago",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "detroit",
+    "name": "Metro · circuitos sincopados · legacy",
+    "city": "Detroit",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "ibiza",
+    "name": "Amnesia · horizonte balearic · legacy",
+    "city": "Ibiza",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "manchester",
+    "name": "Hacienda · ácido em espiral · legacy",
+    "city": "Manchester",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "berlin",
+    "name": "Tresor · concreto e aço · legacy",
+    "city": "Berlin",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "tokyo",
+    "name": "Tokyo · mosaico de circuitos · legacy",
+    "city": "Tokyo",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "london",
+    "name": "Breaks · fragmentos da madrugada · legacy",
+    "city": "London",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "saopaulo",
+    "name": "Subsolo · pulsação paulistana · legacy",
+    "city": "São Paulo",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "johannesburg",
+    "name": "Jozi · kwaito desacelerado · legacy",
+    "city": "Johannesburg",
+    "revision": "styles-2026-10-02-midi-v5"
+  },
+  {
+    "id": "paris",
+    "name": "Da Seine · funk filtrado · legacy",
+    "city": "Paris",
+    "revision": "styles-2026-10-02-midi-v5"
+  }
+]

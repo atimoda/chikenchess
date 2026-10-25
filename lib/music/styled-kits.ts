@@ -11,15 +11,30 @@ import { DEFAULT_SECTION_TYPE } from './arrangement'
 
 export const STYLE_REVISION = 'styles-2026-10-02-midi-v5'
 export const CITY_STYLE_REVISIONS: Record<string, string> = {
-  dusseldorf: 'dusseldorf-2026-10-02-midi-v6',
   'new-orleans-1953': 'new-orleans-2026-10-02-midi-v6',
   'salvador-1992': 'salvador-2026-10-02-midi-v4',
   'leipzig-1723': 'leipzig-2026-10-02-midi-v4',
   'vienna-1825': 'vienna-2026-10-02-midi-v4',
   goa: 'goa-2026-10-25-design-v2',
+  // Electronic World rewrite: profiles authored by scripts/electronic/<city>.py.
+  dusseldorf: 'dusseldorf-2026-10-25-electronic-v1',
+  nyc: 'nyc-2026-10-25-electronic-v1',
+  chicago: 'chicago-2026-10-25-electronic-v1',
+  detroit: 'detroit-2026-10-25-electronic-v1',
+  ibiza: 'ibiza-2026-10-25-electronic-v1',
+  manchester: 'manchester-2026-10-25-electronic-v1',
+  berlin: 'berlin-2026-10-25-electronic-v1',
+  tokyo: 'tokyo-2026-10-25-electronic-v1',
+  london: 'london-2026-10-25-electronic-v1',
+  saopaulo: 'saopaulo-2026-10-25-electronic-v1',
+  johannesburg: 'johannesburg-2026-10-25-electronic-v1',
+  paris: 'paris-2026-10-25-electronic-v1',
+  bristol: 'bristol-2026-10-25-electronic-v1',
+  croydon: 'croydon-2026-10-25-electronic-v1',
+  durban: 'durban-2026-10-25-electronic-v1',
 }
 
-const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', psytrance: 'chicken-psytrance-v1' } as const
+const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', psytrance: 'chicken-psytrance-v1', machines: 'chicken-machines-v1', electronic: 'chicken-electronic-v1' } as const
 import { parseProfileToken } from './profile-tokens'
 const WHITE_SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2'] as const
 
@@ -107,6 +122,7 @@ export function createStyledCityKit(city: CityData, profileOverride?: StyleProfi
       id: `section-${String.fromCharCode(97 + index)}`, label: profile.sectionLabels?.[index] ?? DEFAULT_SECTION_TYPE, beats,
       ...(profile.harmonicSequences?.[index] ? { harmony: [...profile.harmonicSequences[index]] } : {}),
     })) } })
+  if (profile.reactions) kit.reactions = structuredClone(profile.reactions)
   for (const piece of kit.pieces) {
     piece.active = piece.color === 'w'
     const slot = WHITE_SLOTS.indexOf(canonicalOrigin(piece.origin, piece.color) as typeof WHITE_SLOTS[number])

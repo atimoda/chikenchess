@@ -36,3 +36,4 @@ next-env.d.ts
 
 # Generated full-form audio reviews (sources and reports live in scripts/docs).
 /.artifacts/
+__pycache__/

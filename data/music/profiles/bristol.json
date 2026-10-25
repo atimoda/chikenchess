@@ -1,0 +1,1361 @@
+{
+  "name": "Bristol · trip-hop 1994",
+  "bpm": 90,
+  "root": "G",
+  "scale": "Menor natural",
+  "harmony": "static",
+  "swing": 0.14,
+  "sections": [
+    32,
+    64,
+    32,
+    64,
+    32,
+    64
+  ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Break",
+    "Chorus",
+    "Interlude",
+    "Chorus"
+  ],
+  "parts": [
+    {
+      "role": "texture",
+      "name": "Chiado de vinil",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electronic",
+        "asset": "vinyl",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 1,
+      "clip": 1,
+      "lpf": 8000,
+      "hpf": 400,
+      "design": {
+        "role": "fx"
+      },
+      "effects": {
+        "reverb": 0,
+        "pan": -0.15
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chimbal empoeirado",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "machines",
+        "asset": "dusty-hat",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 0",
+        ". . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 .",
+        "0 . 0 0' 0 . 0 . 0 . 0 0' 0 . 0 . 0 . 0 0' 0 . 0 . 0 . 0 0' 0 . 0 0",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 . 0 0' 0 . 0 . 0 . 0 0' 0 . 0 . 0 . 0 0' 0 . 0 . 0 . 0 0' 0 . 0 0*2"
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.4,
+      "clip": 0.6,
+      "lpf": 9000,
+      "hpf": 2500,
+      "effects": {
+        "reverb": 0.05,
+        "pan": 0.25
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "response",
+      "name": "Scratch",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "electronic",
+        "asset": "scratch",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . 0 . 0 .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . 0 . . . . . . . . . . . . . . . 0 . 0 0",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . 0 . . .",
+        ". . . . . . . . . . . . 0 . 0 . . . . . . . . . . . . . 0 0 0 ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.2,
+      "clip": 0.8,
+      "lpf": 8000,
+      "hpf": 400,
+      "design": {
+        "role": "fx"
+      },
+      "effects": {
+        "reverb": 0.15,
+        "pan": 0.4
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Caixa empoeirada",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "machines",
+        "asset": "dusty-snare",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . 0! . . . . . . . 0! . . . . . . . 0! . . . . . . . 0! . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . 0! . . .",
+        ". . . . 0! . . . . . . . 0! . . . . . . . 0! . . . . . . . 0! . . .",
+        ". . . . 0! . . . . . . . 0! . . . . . . . 0! . . . . . . . 0! . . .",
+        ". . . . 0! . . . . . . . 0! . . . . . . . 0! . . . . . 0' . 0! . 0' ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.45,
+      "clip": 0.8,
+      "lpf": 9000,
+      "hpf": 150,
+      "effects": {
+        "reverb": 0.2,
+        "pan": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Rhodes",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "keys",
+        "asset": "rhodes",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "2,4,6,7_ . . . . . . . . . . . . . . . 2,4,5,6_ . . . . . . . . . . . . . . . 2,3,5,6_ . . . . . . . . . . . . . . . 1,3,4,6_ . . . . . . . . . . . . . . .",
+        "2,4,6,7_ . . . . . . . . . 2,4,6,7' . . . . . 2,4,5,6_ . . . . . . . . . 2,4,5,6' . . . . . 2,3,5,6_ . . . . . . . . . 2,3,5,6' . . . . . 1,3,4,6_ . . . . . . . . . 1,3,4,6' . . . . .",
+        "2,4,6,7_ . . . . . . . . . . . . . . . 2,4,6,7_ . . . . . . . . . . . . . . . 2,4,5,6_ . . . . . . . . . . . . . . . 2,4,5,6_ . . . . . . . . . . . . . . .",
+        "2,4,6,7_ . . . . . . . . . 2,4,6,7' . . . . . 2,4,5,6_ . . . . . . . . . 2,4,5,6' . . . . . 2,3,5,6_ . . . . . . . . . 2,3,5,6' . . . . . 1,3,4,6_ . . . . . . . . . 1,3,4,6' . . . . .",
+        "2,4,6,7_ . . . . . . . . . . . . . . . 2,4,6,7_ . . . . . . . . . . . . . . . 2,4,5,6_ . . . . . . . . . . . . . . . 2,4,5,6_ . . . . . . . . . . . . . . .",
+        "2,4,6,7_ . . . . . . . . . 2,4,6,7' . . . . . 2,4,5,6_ . . . . . . . . . 2,4,5,6' . . . . . 2,3,5,6_ . . . . . . . . . 2,3,5,6' . . . . . 1,3,4,6_ . . . . . . . . . 1,3,4,6' . . . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.08,
+      "attack": 0.005,
+      "decay": 1,
+      "sustain": 0.5,
+      "release": 0.6,
+      "gate": 0.9,
+      "clip": 0.95,
+      "lpf": 3500,
+      "hpf": 120,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.35,
+        "delay": 0.1,
+        "pan": -0.2
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Ghost notes",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "machines",
+        "asset": "break-ghost",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . 0' . 0' . . . . . 0' . . . . . . . 0' . 0' . . 0' . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . 0' . 0' . . . . . 0' . 0' . . . . . 0' . 0' . . 0' . . 0'",
+        ". . . . . . . . . 0' . . . . . . . . . . . . . . . 0' . . . . . .",
+        ". . 0' . . . . 0' . 0' . 0' . . . 0' . 0' . . . . . 0' . 0' . . 0' . 0' 0'"
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.6,
+      "clip": 0.6,
+      "lpf": 8000,
+      "hpf": 300,
+      "effects": {
+        "reverb": 0.08,
+        "pan": -0.1
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Teremim",
+      "behavior": "phrase",
+      "source": {
+        "kind": "synth",
+        "sound": "sine"
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "4_ . . . . . . . 5~-1 . . . 4 . . . 2_ . . . . . . . . . . . . . . . 3_ . . . . . 2 . 0 . . . 2~-2 . . . 1_ . . . . . . . . . . . . . . .",
+        "7~-12 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5~-1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . 9~-1 . 7 . . . 6 . . . 5_ . . . . . . . 4 . . . 2 . . . 3_ . . . . . 5 . 7 . . . 6~-1 . . . 4_ . . . . . . . . . . . . . . .",
+        "4_ . . . . . . . . . . . . . . . . . . . . . . . 2 . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . 9~-1 . 7 . . . 6 . . . 5_ . . . . . . . 4 . . . 2 . . . 3_ . . . . . 5 . 7 . . . 9~-2 . . . 11~-12 . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.2,
+      "attack": 0.12,
+      "decay": 0.5,
+      "sustain": 0.9,
+      "release": 0.5,
+      "gate": 0.95,
+      "clip": 0.9,
+      "lpf": 5000,
+      "hpf": 200,
+      "design": {
+        "vibrato": 6,
+        "vibratoDepth": 0.25
+      },
+      "mapping": {
+        "fileDegrees": 0,
+        "panWidth": 0.1
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.45,
+        "delay": 0.25,
+        "pan": 0
+      }
+    },
+    {
+      "role": "bass",
+      "name": "Sub profundo",
+      "behavior": "phrase",
+      "source": {
+        "kind": "synth",
+        "sound": "sine"
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . -2_ . . . . . . . . . . . . . . . -4_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -2_ . . . . . . . . . . . . . . . -2_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . 0 . . 7~-7 . -2_ . . . . . . . . . . -2 . . 5~-7 . -4_ . . . . . . . . . . -4 . . 3~-7 . -3_ . . . . . . . . . . -3 . . 4~-7 .",
+        "0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -2_ . . . . . . . . . . . . . . . -2_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . 0 . . 7~-7 . -2_ . . . . . . . . . . -2 . . 5~-7 . -4_ . . . . . . . . . . -4 . . 3~-7 . -3_ . . . . . . . . . . -3 . . 4~-7 ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 1,
+      "gain": 0.25,
+      "attack": 0.01,
+      "decay": 0.6,
+      "sustain": 0.8,
+      "release": 0.3,
+      "gate": 0.9,
+      "clip": 0.95,
+      "lpf": 220,
+      "hpf": 25,
+      "design": {
+        "role": "bass"
+      },
+      "mapping": {
+        "fileDegrees": 0,
+        "panWidth": 0
+      },
+      "effects": {
+        "reverb": 0,
+        "pan": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Cordas de cinema",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "cello-sustain",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -4,-2,0,2_ . . . . . . . . . . . . . . . -3,-1,1,3_ . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -4,-2,0,2_ . . . . . . . . . . . . . . . -3,-1,1,3_ . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . 0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -4,-2,0,2_ . . . . . . . . . . . . . . . -3,-1,1,3_ . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . 0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -4,-2,0,2_ . . . . . . . . . . . . . . . -3,-1,1,3_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.3,
+      "attack": 0.6,
+      "decay": 1,
+      "sustain": 0.85,
+      "release": 1,
+      "gate": 0.97,
+      "clip": 1,
+      "lpf": 4000,
+      "hpf": 80,
+      "design": {
+        "role": "pad"
+      },
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.45,
+        "pan": 0.2
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Bumbo empoeirado",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "machines",
+        "asset": "dusty-kick",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . 0 . . . . . 0! . . 0 . . . . . . 0 . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . 0 . . . . . 0! . . 0 . . . . . . 0 . . . . .",
+        "0! . . . . . . . . . 0 . . . . 0 0! . . . . . 0 . . 0 . . . . . .",
+        "0! . . . . . . . . . 0 . . . . 0 0! . . . . . 0 . . 0 . . . . . ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.75,
+      "clip": 0.6,
+      "lpf": 6000,
+      "hpf": 30,
+      "mapping": {
+        "panWidth": 0
+      },
+      "effects": {
+        "reverb": 0,
+        "pan": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Guitarra de espião",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "guitars",
+        "asset": "clean",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . 2 . . 3 . 4_ . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . 7 . 6 . 4_ . . .",
+        "0 . . 2 . . 3 . 4_ . . . . . . . 5 . . 4 . . 2 . 1_ . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . 11 . 9 .",
+        "0 . . 2 . . 3 . 4_ . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . 7 . 9 . 11_ . . ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "octave": 3,
+      "gain": 0.8,
+      "attack": 0.003,
+      "decay": 0.6,
+      "sustain": 0.4,
+      "release": 0.5,
+      "gate": 0.8,
+      "clip": 0.9,
+      "lpf": 5000,
+      "hpf": 150,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.55,
+        "delay": 0.3,
+        "pan": -0.35
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Ride do break",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "machines",
+        "asset": "break-ride",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.25,
+      "clip": 0.7,
+      "lpf": 11000,
+      "hpf": 2500,
+      "effects": {
+        "reverb": 0.12,
+        "pan": 0.3
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Órgão Hammond",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "keys",
+        "asset": "organ",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -4,-2,0,2_ . . . . . . . . . . . . . . . -3,-1,1,3_ . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . 0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -4,-2,0,2_ . . . . . . . . . . . . . . . -3,-1,1,3_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0,2,4,6_ . . . . . . . . . . . . . . . -2,0,2,4_ . . . . . . . . . . . . . . . -4,-2,0,2_ . . . . . . . . . . . . . . . -3,-1,1,3_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.06,
+      "attack": 0.3,
+      "decay": 1,
+      "sustain": 0.8,
+      "release": 0.6,
+      "gate": 0.95,
+      "clip": 0.95,
+      "lpf": 3500,
+      "hpf": 200,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.35,
+        "pan": 0.35
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Pandeirola lenta",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "percussion",
+        "asset": "tambourine",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . . . . . . . . . . . . .",
+        ". . . . 0 . . . . . . . 0 . . 0",
+        ". . . . 0 . . . . . . . . . . .",
+        ". . . . 0 . . . . . . . 0 . 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 1,
+      "clip": 0.6,
+      "lpf": 12000,
+      "hpf": 2500,
+      "effects": {
+        "reverb": 0.12,
+        "pan": -0.3
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Trompa",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "horn-sustain",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1_ . . . . . . . . . . . . . . .",
+        "4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.4,
+      "attack": 0.4,
+      "decay": 1,
+      "sustain": 0.8,
+      "release": 1,
+      "gate": 0.95,
+      "clip": 0.95,
+      "lpf": 4000,
+      "hpf": 80,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "design": {
+        "role": "fx"
+      },
+      "effects": {
+        "reverb": 0.5,
+        "pan": 0.15
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tímpano",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "world",
+        "asset": "timpani",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . .",
+        ". . . . . . . . 0 . . . 0*2 0*2 0*2 0*2",
+        ". . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . 0 . . .",
+        ". . . . . . . . 0*2 0*2 0*2 0*2 0*3 0*3 0*3 0*3"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.25,
+      "clip": 0.8,
+      "lpf": 5000,
+      "hpf": 40,
+      "effects": {
+        "reverb": 0.3,
+        "pan": -0.1
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fills": [
+          5,
+          5,
+          null,
+          5,
+          5,
+          null
+        ]
+      }
+    }
+  ],
+  "reactions": {
+    "overrides": [
+      "capture",
+      "captureDrought",
+      "check",
+      "endgame",
+      "evalSwing",
+      "firstCastle",
+      "middle",
+      "opening",
+      "queenCapture",
+      "quiet",
+      "tension"
+    ],
+    "rules": [
+      {
+        "id": "bri-opening",
+        "trigger": "opening",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "bri-middle",
+        "trigger": "middle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "bri-endgame",
+        "trigger": "endgame",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "reverb",
+            "value": 0.5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "bri-castle",
+        "trigger": "firstCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 4,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "bri-check",
+        "trigger": "check",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "activate",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "bri-tension",
+        "trigger": "tension",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "bpm",
+            "value": -4,
+            "scale": "Maior",
+            "harmony": "static",
+            "rampBars": 8
+          },
+          {
+            "type": "lpf",
+            "value": 1800,
+            "scale": "Maior",
+            "harmony": "static",
+            "rampBars": 8
+          }
+        ],
+        "instruments": "pad"
+      },
+      {
+        "id": "bri-capture",
+        "trigger": "capture",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ],
+        "instruments": "drums"
+      },
+      {
+        "id": "bri-queen",
+        "trigger": "queenCapture",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 4,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "reverb",
+            "value": 0.7,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "bri-quiet",
+        "trigger": "quiet",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "delay",
+            "value": 0.45,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "bri-swing",
+        "trigger": "evalSwing",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "delay",
+            "value": 0.4,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ],
+        "instruments": "lead"
+      },
+      {
+        "id": "bri-drought",
+        "trigger": "captureDrought",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 900,
+            "scale": "Maior",
+            "harmony": "static",
+            "rampBars": 4
+          }
+        ],
+        "instruments": "lead"
+      }
+    ]
+  },
+  "reference": "Trip-hop de Bristol em 1994 (Portishead — Dummy, Massive Attack, Tricky): referência de estilo; material original",
+  "url": "https://en.wikipedia.org/wiki/Trip_hop"
+}

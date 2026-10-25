@@ -10,7 +10,7 @@ const { arrangementPosition, pieceSection } = loadTs('lib/music/arrangement.ts')
 const withSections = (kit, beats) => creative.updateCreativeArrangement(kit, { sections: beats.map((value,index) => ({ id: `s${index}`, label: ['Intro','Verse','Chorus','Bridge','Outro'][index % 5], beats: value })) })
 
 test('loop voices use four shared effect buses while previews remain isolated', () => {
-  const kit = cityKits.defaultCityKit('detroit')
+  const kit = cityKits.defaultCityKit('chicago')
   const snapshot = creative.creativeSnapshot(kit, true)
   snapshot.pieces = snapshot.pieces.map(piece => ({ ...piece, active: true }))
   const voices = voiceSpecs(snapshot, null)

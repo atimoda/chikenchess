@@ -109,11 +109,11 @@ test('Bot catalog defines the 5 PureChess bots and 3 ChickenBots with expected p
     ],
   )
   const easyChicken = findBotProfile('easy-chickenbot')
-  assert.equal(easyChicken.powerUsePercent, 50)
-  assert.equal(easyChicken.freezeMinThreatPawns, 5)
-  assert.equal(easyChicken.freezeCooldownMoves, 10)
-  assert.equal(easyChicken.shieldMinPiecePawns, 5)
-  assert.equal(easyChicken.shieldCooldownMoves, 10)
+  assert.equal(easyChicken.powerUsePercent, 60)
+  assert.equal(easyChicken.freezeMinThreatPawns, 3)
+  assert.equal(easyChicken.freezeCooldownMoves, 6)
+  assert.equal(easyChicken.shieldMinPiecePawns, 3)
+  assert.equal(easyChicken.shieldCooldownMoves, 6)
   assert.equal(easyChicken.powerMinGainPawns, 0)
   assert.equal(easyChicken.worstFloorPawns, 0.5)
   assert.equal(easyChicken.worstMaxLossPawns, 2)
@@ -245,8 +245,8 @@ test('ChickenBot Freeze and Shield follow their cooldowns, thresholds and egg re
   // Saving a piece may spend the last eggs.
   assert.equal(quietTurn(bot, PAWN_FORK, 'c5e6', { botEggs: 3 }).powerAction?.kind, 'shield')
 
-  // A knight is below the Easy thresholds of 5 pawns.
-  assert.equal(quietTurn(new ChessBot(findBotProfile('easy-chickenbot')), PAWN_FORK, 'c5e6').powerAction, null)
+  // Easy's thresholds are 3 pawns, so it also saves the forked knight.
+  assert.deepEqual(quietTurn(new ChessBot(findBotProfile('easy-chickenbot')), PAWN_FORK, 'c5e6').powerAction, { kind: 'shield', square: 'e5' })
 })
 
 test('Easy ChickenBot only looks for powers on about half of its turns', () => {

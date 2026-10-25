@@ -13,7 +13,7 @@ import { SECTION_TYPES } from '../music/arrangement'
 import { createStyledCityKit } from '../music/styled-kits'
 import { isProfileToken } from '../music/profile-tokens'
 import { prepareOfficialCityKit } from '../music/city-kits'
-import { reactionsSchema } from '../music/reactions'
+import { kitReactionsSchema, reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
 
 const hasControl = (value: string, multiline = false) => [...value].some(character => { const code = character.codePointAt(0)!; return (code < 32 || code === 127) && !(multiline && [9, 10, 13].includes(code)) })
@@ -28,7 +28,7 @@ const partSchema = z.object({
   behavior: z.enum(['pulse', 'phrase', 'sustain']),
   source: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('synth'), sound: z.enum(SOUNDS) }).strict(),
-    z.object({ kind: z.literal('sample'), bank: z.enum(['electro', 'jazz', 'world', 'strings', 'keys', 'synths', 'drums', 'sambaReggae', 'classical', 'band', 'percussion', 'guitars', 'psytrance']), asset: text, variant: z.number().int().min(0).max(127).optional(), pitched: z.boolean().optional() }).strict(),
+    z.object({ kind: z.literal('sample'), bank: z.enum(['electro', 'jazz', 'world', 'strings', 'keys', 'synths', 'drums', 'sambaReggae', 'classical', 'band', 'percussion', 'guitars', 'psytrance', 'machines', 'electronic']), asset: text, variant: z.number().int().min(0).max(127).optional(), pitched: z.boolean().optional() }).strict(),
   ]),
   patterns: z.array(z.string().min(1).max(16000).refine(value => value.trim().split(/\s+/).every(isProfileToken), 'Use graus inteiros, acordes separados por vírgula, ponto para pausas e as marcas ! \' ? * ~ _ < >.')).min(1).max(8),
   bars: z.union([finite.positive().max(64), z.array(finite.positive().max(64)).min(1).max(8)]).optional(),
@@ -42,7 +42,7 @@ const partSchema = z.object({
 export const styleProfileSchema = z.object({
   name: text, bpm: finite.min(30).max(240), meter: z.enum(METER_IDS).optional(), root: z.enum(ROOTS), scale: z.enum(SCALE_NAMES), harmony: z.enum(HARMONY_PLAN_IDS),
   harmonicSequences: z.array(z.array(finite).min(1).max(64)).max(24).optional(), swing: finite.min(0).max(.5),
-  sections: z.array(finite.min(.25).max(64)).min(1).max(24), sectionLabels: z.array(z.enum(SECTION_TYPES)).min(1).max(24), parts: z.array(partSchema).length(16), reference: text, url: z.string().url(),
+  sections: z.array(finite.min(.25).max(64)).min(1).max(24), sectionLabels: z.array(z.enum(SECTION_TYPES)).min(1).max(24), parts: z.array(partSchema).length(16), reactions: kitReactionsSchema.optional(), reference: text, url: z.string().url(),
 }).strict().refine(profile => profile.sectionLabels.length === profile.sections.length, 'Informe um tipo de seção para cada duração.')
 
 export function validateAdminValue(entry: AdminEntry, value: unknown): void {

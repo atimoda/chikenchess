@@ -1,11 +1,12 @@
 import type { CreativeSession } from '../creative'
 import type { SectionType } from '../arrangement'
 import type { Meter } from '../meter'
+import type { KitReactions } from '../reactions'
 import type { Behavior, Instrument, MovementMapping, ParameterRange, SoundDesignKey } from '../model'
 
 export type PartRole = 'rhythm' | 'bass' | 'harmony' | 'melody' | 'response' | 'texture'
 export type SynthSound = 'sbd' | 'sine' | 'triangle' | 'square' | 'sawtooth' | 'supersaw' | 'white' | 'pink' | 'brown'
-export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae' | 'classical' | 'band' | 'percussion' | 'guitars' | 'psytrance'
+export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae' | 'classical' | 'band' | 'percussion' | 'guitars' | 'psytrance' | 'machines' | 'electronic'
 
 export type ProfileSource =
   | { kind: 'synth'; sound: SynthSound }
@@ -66,6 +67,8 @@ export type StyleProfile = {
   /** Curated type per section; legacy authoring sources without it fall back to Verse. */
   sectionLabels?: SectionType[]
   parts: PartProfile[]
+  /** The kit's own States & Events (triggers it overrides, their rules, thresholds). */
+  reactions?: KitReactions
   reference: string
   url: string
 }

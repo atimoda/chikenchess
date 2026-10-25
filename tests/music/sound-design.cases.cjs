@@ -11,7 +11,7 @@ const voiceOf = (snapshot, id) => voiceSpecs(snapshot, null).find(voice => voice
 const firstValue = pattern => pattern.queryArc(0, 8).find(event => event.hasOnset()).value
 
 test('kits without sound-design fields keep their exact voices', () => {
-  const kit = cityKits.defaultCityKit('detroit')
+  const kit = cityKits.defaultCityKit('buenos-aires-1940')
   const parsed = creative.creativeSchema.parse(JSON.parse(JSON.stringify(kit)))
   assert.equal(JSON.stringify(voiceSpecs(allActive(parsed), null)), JSON.stringify(voiceSpecs(allActive(kit), null)))
   for (const voice of voiceSpecs(allActive(kit), null)) {
@@ -121,9 +121,9 @@ test('a fill plays its variation in the last bar of a section and harmonizes wit
   const { performancePattern } = loadTs('lib/music/performance.ts')
   const kit = cityKits.defaultCityKit('detroit')
   const snapshot = allActive(kit)
-  const id = Object.keys(snapshot.instruments).find(key => snapshot.instruments[key].pianoRolls.length > 1 && snapshot.instruments[key].arrangement?.restart)
-  const instrument = snapshot.instruments[id]
   const first = snapshot.arrangement.sections[0]
+  const id = Object.keys(snapshot.instruments).find(key => snapshot.instruments[key].pianoRolls.length > 1 && snapshot.instruments[key].arrangement?.restart && snapshot.instruments[key].arrangement.sections[first.id].variation === 0)
+  const instrument = snapshot.instruments[id]
   const sections = { ...instrument.arrangement.sections, [first.id]: { ...instrument.arrangement.sections[first.id], variation: 0, fill: 1 } }
   const filled = withInstrument(snapshot, id, { arrangement: { ...instrument.arrangement, sections } })
   const voice = voiceOf(filled, id)

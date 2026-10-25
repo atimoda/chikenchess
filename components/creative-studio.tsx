@@ -34,11 +34,14 @@ import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './mus
 import { VersionChangelog } from './version-changelog'
 import styles from './creative-studio.module.css'
 import { duckSourceOptions } from '@/lib/music/sound-design'
+import LEGACY_KITS from '@/data/music/legacy-kits.json'
 
 const pieceNames = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' }
 const MOUTH_BREATHER_KIT = 'builtin:mouth-breather'
 const DUSSELDORF_ORIGINAL_KIT = 'builtin:dusseldorf-original'
 const DEFAULT_KIT_PREFIX = 'default:'
+// Electronic World kits as they were before the 26/10 revision, for history; no city link.
+const LEGACY_KIT_PREFIX = 'legacy:'
 const USER_KIT_PREFIX = 'user:'
 type Instrument = CreativeSession['instruments'][string]
 type Effects = CreativeSession['effects'][string]
@@ -168,7 +171,7 @@ export function CreativeStudio() {
             const user = normalized.find(kit => kit.name === restored!.name)
             baseline = user
             const standard = restored.cityId && defaultCityKit(restored.cityId)?.name === restored.name
-            setSelectedKit(user ? `${USER_KIT_PREFIX}${user.name}` : standard ? `${DEFAULT_KIT_PREFIX}${restored.cityId}` : restored.name === 'Mouth Breather · estudo eefano' ? MOUTH_BREATHER_KIT : restored.name === 'Düsseldorf · Electro 01' ? DUSSELDORF_ORIGINAL_KIT : '')
+            setSelectedKit(user ? `${USER_KIT_PREFIX}${user.name}` : standard ? `${DEFAULT_KIT_PREFIX}${restored.cityId}` : restored.name === 'Mouth Breather · estudo eefano' ? MOUTH_BREATHER_KIT : restored.name === 'Düsseldorf · Electro 01' ? DUSSELDORF_ORIGINAL_KIT : LEGACY_KITS.some(kit => kit.name === restored!.name) ? `${LEGACY_KIT_PREFIX}${LEGACY_KITS.find(kit => kit.name === restored!.name)!.id}` : '')
           }
         }
       } catch (error) {
@@ -285,6 +288,14 @@ export function CreativeStudio() {
       if (kit) await loadSession(kit, true)
       return
     }
+    if (selectedKit.startsWith(LEGACY_KIT_PREFIX)) {
+      try {
+        const response = await window.fetch(`/presets/legacy/${selectedKit.slice(LEGACY_KIT_PREFIX.length)}.json`)
+        if (!response.ok) throw new Error('Legacy kit unavailable')
+        await loadSession(parseCreativeSession(await response.text()), true)
+      } catch (error) { setNotice(messageOf(error)) }
+      return
+    }
     if (selectedKit === DUSSELDORF_ORIGINAL_KIT) {
       await loadSession({ ...createDusseldorfSession(), cityId: undefined }, true)
       return
@@ -377,7 +388,7 @@ export function CreativeStudio() {
       <div className={styles.identity}><Link href="/" aria-label="Back to the world"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS LAB<InfoTip label="Creative Mode">A workbench for composing with the pieces. No stage intro and no forced turns: try sounds, simulate states and save kits for your matches.</InfoTip><VersionChangelog /></span><h1><FlaskConical size={22} /> Creative Mode</h1></div></div>
       <fieldset disabled={!ready || busy} className={styles.kitHeader} aria-label="Current kit and library">
         <div className={styles.kitPick}>
-          <label><span className={styles.helpCaption}>Current Creative kit<InfoTip label="Load and try kits">My kits lists the kits saved {account ? 'in your account and in this browser' : 'in this browser'} and the standalone studies. The cities’ default kits are below. Load asks first when the current kit has unsaved changes.</InfoTip></span><select aria-label="Current Creative kit" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
+          <label><span className={styles.helpCaption}>Current Creative kit<InfoTip label="Load and try kits">My kits lists the kits saved {account ? 'in your account and in this browser' : 'in this browser'} and the standalone studies. The cities’ default kits are below, followed by Legacy kits: earlier versions of the Electronic World kits, kept for history and not linked to any city. Load asks first when the current kit has unsaved changes.</InfoTip></span><select aria-label="Current Creative kit" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
             <option value="">Current draft</option>
             <optgroup label="My kits">
               {libraryNames.map(name => { const kit = kits.find(item => item.name === name); return <option key={name} value={`${USER_KIT_PREFIX}${name}`}>{kit ? kitLabel(kit) : name}</option> })}
@@ -385,6 +396,7 @@ export function CreativeStudio() {
               <option value={DUSSELDORF_ORIGINAL_KIT}>Düsseldorf · Electro 01</option>
             </optgroup>
             <optgroup label="Default kits">{defaultKitOptions.map(city=><option key={city.id} value={`${DEFAULT_KIT_PREFIX}${city.id}`}>{city.kitName}{linkedUserCities.has(city.id)?'':` (${city.name})`}</option>)}</optgroup>
+            <optgroup label="Legacy kits">{LEGACY_KITS.map(kit=><option key={kit.id} value={`${LEGACY_KIT_PREFIX}${kit.id}`}>{kit.name} ({kit.city})</option>)}</optgroup>
           </select></label>
           <button className={styles.primary} disabled={!selectedKit} onClick={() => void loadSelectedKit()}>Load</button>
         </div>
