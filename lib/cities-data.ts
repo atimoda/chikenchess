@@ -410,6 +410,28 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
         "Allez."
     ]
   },
+  // Goa (1994): Anjuna beach parties, psychedelic trance
+  {
+    id: "goa",
+    name: "Goa",
+    country: "India",
+    year: 1994,
+    genre: "Goa trance / Psytrance",
+    description: "Beach parties in Anjuna fused acid squelch, rolling basslines and Eastern scales into all-night psychedelic trance.",
+    bpm: 145,
+    scale: ["E4", "F4", "G#4", "A4", "B4", "C5", "D5"], // Phrygian dominant
+    geoCoordinates: { lat: 15.5736, lng: 73.7407 },
+    color: "#b6ff3b", // Ultraviolet-lit fluoro lime
+    image: "/cities/goa.svg",
+    samples: { kick: "bd:0", snare: "sd:0", hihat: "hh:0", bass: "bass:0", pad: "pad:0", lead: "synth:0" },
+    introPhrases: [
+        "The sun is not up yet.",
+        "The bass keeps rolling.",
+        "Every piece is a layer.",
+        "Lose the thread, lose the trance.",
+        "Find the peak."
+    ]
+  },
   // 13. Vienna (1780)
   {
     id: "vienna",
@@ -492,6 +514,7 @@ const campaignMembership: Record<string, CampaignId[]> = {
   detroit: ['electronic-history'], ibiza: ['electronic-history'], manchester: ['electronic-history'],
   berlin: ['electronic-history'], tokyo: ['electronic-history'], london: ['electronic-history'],
   saopaulo: ['electronic-history'], johannesburg: ['electronic-history'], paris: ['electronic-history'],
+  goa: ['electronic-history'],
   'manchester-1999': ['world-ballads'], 'buenos-aires-1940': ['world-ballads'],
   'dublin-1990': ['world-ballads'], 'new-orleans-1953': ['world-ballads'],
   vienna: ['classical'],

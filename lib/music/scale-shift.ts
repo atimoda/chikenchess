@@ -22,7 +22,7 @@ const RELATED: readonly ScaleShift[] = ['relative', 'parallel', 'brighter', 'dar
 const LADDERS: readonly (readonly ScaleName[])[] = [
   ['Lydian', 'Maior', 'Mixolídia', 'Dórica', 'Menor natural', 'Phrygian', 'Locrian'],
   ['Pentatônica maior', 'Blues maior', 'Pentatônica menor', 'Blues menor'],
-  ['Lydian dominant', 'Melódica menor (ascendente / jazz)', 'Harmônica menor'],
+  ['Lydian dominant', 'Melódica menor (ascendente / jazz)', 'Harmônica menor', 'Phrygian dominant'],
 ]
 const PARALLEL: Partial<Record<ScaleName, ScaleName>> = {
   'Maior': 'Menor natural', 'Menor natural': 'Maior', 'Aeolian': 'Maior',
@@ -30,6 +30,7 @@ const PARALLEL: Partial<Record<ScaleName, ScaleName>> = {
   'Blues maior': 'Blues menor', 'Blues menor': 'Blues maior',
   'Mixolídia': 'Dórica', 'Dórica': 'Mixolídia', 'Lydian': 'Phrygian', 'Phrygian': 'Lydian',
   'Harmônica menor': 'Maior', 'Melódica menor (ascendente / jazz)': 'Maior', 'Lydian dominant': 'Melódica menor (ascendente / jazz)', 'Locrian': 'Lydian',
+  'Phrygian dominant': 'Phrygian',
 }
 const RELATIVE: Partial<Record<ScaleName, [ScaleName, number]>> = {
   'Maior': ['Menor natural', 9], 'Menor natural': ['Maior', 3], 'Aeolian': ['Maior', 3],
