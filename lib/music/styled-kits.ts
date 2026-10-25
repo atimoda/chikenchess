@@ -20,6 +20,7 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
 }
 
 const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', psytrance: 'chicken-psytrance-v1' } as const
+import { parseProfileToken } from './profile-tokens'
 const WHITE_SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2'] as const
 
 export function phraseRoll(text: string, bars: number, swing = 0, gate = .65, meter: Meter = '4/4'): PianoRoll {
@@ -36,10 +37,17 @@ export function phraseRoll(text: string, bars: number, swing = 0, gate = .65, me
     if (Math.abs(phase / pulseSlots - Math.round(phase / pulseSlots)) < .001) return meter === '3/4' ? .77 : .84
     return .62
   }
-  return { bars, notes: tokens.flatMap((token, index) => token === '.' ? [] : token.split(',').map(degree => {
-    const start = (index + (index % 2 ? swing : 0)) * unit
-    return { start, duration: Math.max(.01, Math.min(unit * gate, bars - start)), degree: Number(degree), velocity: accent(index) }
-  })) }
+  const starts = tokens.map((_, index) => (index + (index % 2 ? swing : 0)) * unit)
+  const next = (index: number) => { const at = tokens.findIndex((token, i) => i > index && token !== '.'); return at < 0 ? bars : starts[at] }
+  return { bars, notes: tokens.flatMap((token, index) => {
+    const parsed = parseProfileToken(token)
+    if (!parsed) return []
+    const { marks } = parsed, start = starts[index]
+    const duration = marks.legato ? next(index) - start : unit * gate
+    return parsed.degrees.map(degree => ({ start, duration: Math.max(.01, Math.min(duration, bars - start)), degree, velocity: marks.velocity ?? accent(index),
+      ...(marks.slide ? { slide: marks.slide, slideSeconds: .06 } : {}), ...(marks.chance !== undefined ? { chance: marks.chance } : {}),
+      ...(marks.ratchet ? { ratchet: marks.ratchet } : {}), ...(marks.pan !== undefined ? { pan: marks.pan } : {}) }))
+  }) }
 }
 
 export function profileSampleSource(source: ProfileSource) {
@@ -72,9 +80,11 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
     distortion: part.distortion, distortionMix: part.distortionMix, pitchAttack: part.pitchAttack,
     lpfRange: part.lpfRange, driveRange: part.driveRange, reverbRange: part.reverbRange, swingRange: part.swingRange,
     selectedVariation: undefined,
+    ...part.design,
     arrangement: { restart: arrangement.restart ?? !(part.role === 'texture' || part.role === 'response'), sections: Object.fromEntries(kit.arrangement.sections.map((section, index) => [section.id, {
       // Profiles author presence as `active`; a kit stores an absent section as no variation.
       variation: arrangement.active?.[index] === false ? null : arrangement.variations?.[index] ?? index % patterns.length, transpose: arrangement.transpose?.[index] ?? 0,
+      ...(typeof arrangement.fills?.[index] === 'number' ? { fill: arrangement.fills[index]! % patterns.length } : {}),
     }])) },
   })
   kit.effects[piece.id] = {

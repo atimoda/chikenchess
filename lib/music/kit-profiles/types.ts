@@ -1,7 +1,7 @@
 import type { CreativeSession } from '../creative'
 import type { SectionType } from '../arrangement'
 import type { Meter } from '../meter'
-import type { Behavior, MovementMapping, ParameterRange } from '../model'
+import type { Behavior, Instrument, MovementMapping, ParameterRange, SoundDesignKey } from '../model'
 
 export type PartRole = 'rhythm' | 'bass' | 'harmony' | 'melody' | 'response' | 'texture'
 export type SynthSound = 'sbd' | 'sine' | 'triangle' | 'square' | 'sawtooth' | 'supersaw' | 'white' | 'pink' | 'brown'
@@ -15,6 +15,8 @@ export type SectionArrangement = {
   active?: boolean[]
   variations?: number[]
   transpose?: number[]
+  /** Variation for the last bar of each section (null: no fill). */
+  fills?: (number | null)[]
   restart?: boolean
 }
 
@@ -47,6 +49,8 @@ export type PartProfile = {
   arrangement?: SectionArrangement
   effects?: Partial<{ gain: number; pitch: number; pan: number; delay: number; reverb: number; decay: number }>
   mapping?: Partial<MovementMapping>
+  /** Filter, delay, LFO, sidechain and synthesis settings, copied onto the instrument. */
+  design?: Partial<Pick<Instrument, SoundDesignKey>>
 }
 
 export type StyleProfile = {

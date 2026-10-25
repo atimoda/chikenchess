@@ -41,6 +41,8 @@ export const arrangementSchema = z.object({ sections: z.array(sectionSchema).min
 // `active` checkbox migrate on read: unchecked sections become null.
 export const pieceSectionSchema = z.object({
   variation: z.number().int().min(0).max(7).nullable(), transpose: z.number().int().min(-24).max(24).default(0),
+  /** Variation played in the section's last bar, leading into the next section. */
+  fill: z.number().int().min(0).max(7).optional(),
   active: z.boolean().optional(),
 }).transform(({ active, ...step }) => active === false ? { ...step, variation: null } : step)
 export const pieceArrangementSchema = z.object({ restart: z.boolean().default(true), sections: z.record(pieceSectionSchema) })
@@ -89,10 +91,15 @@ export function pieceStep(instrument: Instrument, step: PieceSection, override?:
 }
 
 /** Duration is derived, never saved again on an instrument. */
-export function piecePerformance(instrument: Instrument, plan: Arrangement, override?: number): Performance {
-  return {restart:instrument.arrangement?.restart ?? false,steps:plan.sections.map((section,index) => ({
-    ...pieceStep(instrument,pieceSection(instrument,plan,index),override),beats:section.beats,
-  }))}
+export function piecePerformance(instrument: Instrument, plan: Arrangement, override?: number, pulses = 4): Performance {
+  const count = instrument.pianoRolls.length
+  return {restart:instrument.arrangement?.restart ?? false,steps:plan.sections.map((section,index) => {
+    const authored = pieceSection(instrument,plan,index), step = pieceStep(instrument,authored,override)
+    // A fill needs a section longer than its bar; a pinned tab or a rule override plays straight through.
+    const fill = authored.fill !== undefined && step.active && override === undefined && instrument.selectedVariation === undefined && section.beats > pulses
+      ? {variation:authored.fill % count,beats:pulses} : undefined
+    return {...step,beats:section.beats,...(fill ? {fill} : {})}
+  })}
 }
 
 // Import-only bridge. No retired timeline or per-piece duration reaches playback.

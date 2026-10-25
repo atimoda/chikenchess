@@ -37,9 +37,10 @@ function voiceCode(voice: VoiceSpec): string {
     const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined, playChance: undefined,
       ...(voice.instrument.octaveRange ? { octaveRange: undefined } : {}),
       ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
-    const variations = [...new Set(plan.steps.filter(step=>step.active).map(step=>step.variation))]
+    const variations = [...new Set(plan.steps.filter(step=>step.active).flatMap(step=>step.fill?[step.variation,step.fill.variation]:[step.variation]))]
     const declarations = variations.map(index=>`const part${index} = ${voiceCode({...baseVoice,performance:undefined,harmonic:undefined,sectionPattern:String(index)})};`).join('\n    ')
-    const banks = plan.steps.map(step=>step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence')
+    const part = (step: { active: boolean; variation: number; transpose: number }) => step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence'
+    const banks = [...plan.steps.map(part), ...plan.steps.flatMap(step => step.fill ? [part({ ...step, variation: step.fill.variation })] : [])]
     const selector = JSON.stringify(performancePattern(plan, true, voice.beatsPerBar))
     const form = `${plan.restart ? 'pickRestart' : 'pick'}([${banks.join(', ')}], mini(${selector}))`
     const source = `(() => {\n    ${declarations}\n    return ${form};\n  })()`

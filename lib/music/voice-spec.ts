@@ -68,11 +68,13 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
     const design = soundDesignControls(instrument, { bpm: state.bpm, beatsPerBar: beatsPerBar(state.meter), unpitched, sample: source?.kind === 'sample' })
     if (!ownBus) { delete design.delaytime; delete design.delayfeedback }
     const pan = Math.max(0, Math.min(1, 0.5 + ((square.charCodeAt(0) - 97) / 7 - 0.5) * mapping.panWidth + (fx?.pan ?? 0) / 2))
-    const performance = manual ? undefined : piecePerformance(instrument,plan,state.sectionOverrides?.[piece.id])
+    const performance = manual ? undefined : piecePerformance(instrument,plan,state.sectionOverrides?.[piece.id],beatsPerBar(state.meter))
     const harmonic = melodic ? {pulses:beatsPerBar(state.meter),sections:plan.sections.map((section,index) => {
-      const roll = sourceRolls[performance!.steps[index].variation]
+      const step = performance!.steps[index]
+      // The fill bar harmonizes with its section: its notes join the section's map.
+      const roll = step.fill ? {...sourceRolls[step.variation],notes:[...sourceRolls[step.variation].notes,...sourceRolls[step.fill.variation].notes]} : sourceRolls[step.variation]
       const sequence = harmonyPlan === 'kit' ? section.harmony ?? [0] : [roots[index]]
-      return {beats:section.beats,transpose:performance!.steps[index].transpose,notes:sequence.map(root => Object.fromEntries(roll.notes.map(note => [String(Math.round(toMidi(note.degree)*1e6)),
+      return {beats:section.beats,transpose:step.transpose,notes:sequence.map(root => Object.fromEntries(roll.notes.map(note => [String(Math.round(toMidi(note.degree)*1e6)),
         generatedChords ? generatedChords[index] : [toMidi(note.degree,root)]])))}
     })} : undefined
     return {

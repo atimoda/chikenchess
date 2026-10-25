@@ -99,3 +99,51 @@ test('pan LFO sweeps around the board pan as a Strudel signal', async () => {
   assert.ok(pans.every(pan => pan >= 0 && pan <= 1))
   assert.match(renderMusicCode(snapshot, null), /\.pan\(sine\.range\(/)
 })
+
+test('profile tokens carry accents, ghosts, chances, ratchets, slides, legato and pan', () => {
+  const { phraseRoll } = loadTs('lib/music/styled-kits.ts')
+  const { isProfileToken } = loadTs('lib/music/profile-tokens.ts')
+  const plain = phraseRoll('0 . 2 4', 1)
+  assert.deepEqual(plain.notes.map(note => Object.keys(note)), [['start', 'duration', 'degree', 'velocity'], ['start', 'duration', 'degree', 'velocity'], ['start', 'duration', 'degree', 'velocity']])
+  const roll = phraseRoll("0! 1' 2?70 3*3 4~-12 5_ . 6< 0,2,4>", 1, 0, .5)
+  const [accent, ghost, chance, ratchet, slide, legato, left, ...chord] = roll.notes
+  assert.equal(accent.velocity, 1); assert.equal(ghost.velocity, .45)
+  assert.equal(chance.chance, .7); assert.equal(ratchet.ratchet, 3)
+  assert.deepEqual([slide.slide, slide.slideSeconds], [-12, .06])
+  assert.ok(Math.abs(legato.duration - 2 / 9) < 1e-12, 'legato holds over the rest to the next note')
+  assert.equal(left.pan, .2); assert.deepEqual(chord.map(note => [note.degree, note.pan]), [[0, .8], [2, .8], [4, .8]])
+  assert.ok(isProfileToken('4!~2*2?') && isProfileToken('.') && !isProfileToken('4x') && !isProfileToken('*2'))
+  assert.equal(phraseRoll('0?', 1).notes[0].chance, .5)
+})
+
+test('a fill plays its variation in the last bar of a section and harmonizes with it', async () => {
+  const api = await strudel()
+  const { performancePattern } = loadTs('lib/music/performance.ts')
+  const kit = cityKits.defaultCityKit('detroit')
+  const snapshot = allActive(kit)
+  const id = Object.keys(snapshot.instruments).find(key => snapshot.instruments[key].pianoRolls.length > 1 && snapshot.instruments[key].arrangement?.restart)
+  const instrument = snapshot.instruments[id]
+  const first = snapshot.arrangement.sections[0]
+  const sections = { ...instrument.arrangement.sections, [first.id]: { ...instrument.arrangement.sections[first.id], variation: 0, fill: 1 } }
+  const filled = withInstrument(snapshot, id, { arrangement: { ...instrument.arrangement, sections } })
+  const voice = voiceOf(filled, id)
+  assert.deepEqual(voice.performance.steps[0].fill, { variation: 1, beats: 4 })
+  const steps = voice.performance.steps.length
+  assert.match(performancePattern(voice.performance, true), new RegExp(`^\\[0@${first.beats - 4} ${steps}@4 `))
+  const lastBar = first.beats / 4 - 1
+  const events = (pattern, from, to) => pattern.queryArc(from, to).filter(event => event.hasOnset()).map(event => JSON.stringify([event.whole.begin.valueOf() - from, event.value.note ?? event.value.n]))
+  const plain = compileVoice(api, voiceOf(snapshot, id)), withFill = compileVoice(api, voice)
+  assert.deepEqual(events(withFill, 0, lastBar), events(plain, 0, lastBar))
+  assert.notDeepEqual(events(withFill, lastBar, lastBar + 1), events(plain, lastBar, lastBar + 1))
+  assert.match(renderMusicCode(filled, null), /pickRestart\(\[/)
+  // Rule overrides and pinned tabs play straight through.
+  assert.equal(voiceSpecs({ ...filled, sectionOverrides: { [id]: 0 } }, null).find(v => v.piece.id === id).performance.steps[0].fill, undefined)
+})
+
+test('variations may be 16 bars long with up to 256 notes', () => {
+  const { pianoRollSchema } = loadTs('lib/music/piano-roll.ts')
+  const notes = Array.from({ length: 256 }, (_, i) => ({ start: i / 16, duration: 1 / 16, degree: 0, velocity: 1 }))
+  assert.equal(pianoRollSchema.parse({ bars: 16, notes }).notes.length, 256)
+  assert.throws(() => pianoRollSchema.parse({ bars: 17, notes: [] }))
+  assert.throws(() => pianoRollSchema.parse({ bars: 16, notes: [...notes, notes[0]] }))
+})

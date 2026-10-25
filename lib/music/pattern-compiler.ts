@@ -58,13 +58,15 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       ...(voice.instrument.octaveRange ? { octaveRange: undefined } : {}),
       ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
     const compiled=new Map<string,StrudelPattern>()
-    const banks=plan.steps.map(step=>{
+    const bank=(step:{active:boolean;variation:number;transpose:number})=>{
       if(!step.active)return api.silence
       const key=`${step.variation}:${voice.unpitched?0:step.transpose}`
       let pattern=compiled.get(key)
       if(!pattern){pattern=compileVoice(api,{...baseVoice,performance:undefined,harmonic:undefined,sectionPattern:String(step.variation)});if(!voice.unpitched&&step.transpose)pattern=pattern.transpose(step.transpose);compiled.set(key,pattern)}
       return pattern
-    })
+    }
+    // Section banks by index, then one bank per fill (see performancePattern).
+    const banks=[...plan.steps.map(bank),...plan.steps.flatMap(step=>step.fill?[bank({...step,variation:step.fill.variation})]:[])]
     const selector=performancePattern(plan,true,voice.beatsPerBar)
     const picker=api as StrudelWithPick
     const pattern = plan.restart?picker.pickRestart(banks,selector):picker.pick(banks,selector)
