@@ -8,10 +8,12 @@ Every part carries six patterns, one per section of the shared plan:
 Run a stage: python3 scripts/brazilian/<stage>.py, then node scripts/electronic/check.cjs <stage>.
 """
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'electronic'))
-from kit import act, arrangement, bar, bars, machine, part, reactions, recorded, rep, rule, sample, synth, write  # noqa: E402,F401
+import kit  # noqa: E402
+from kit import act, arrangement, bar, bars, machine, part, reactions, recorded, rep, rule, sample, synth  # noqa: E402,F401
 
 HITS = {'x': '', 'X': '!', 'g': "'", 'o': '?70', 'h': '?40', 'r': '*2', 'R': '*3'}
 
@@ -62,9 +64,36 @@ def lasting_safe(rules):
 
 def shift(text, amount):
     """Move every degree of a token line by `amount` scale steps (thirds, octaves), keeping the marks."""
-    import re
     out = []
     for token in text.split():
         match = re.match(r'^(-?\d+(?:,-?\d+)*)(.*)$', token)
         out.append(token if not match else ','.join(str(int(d) + amount) for d in match.group(1).split(',')) + match.group(2))
     return ' '.join(out)
+
+
+# Winds, voices, strings, pads and the sanfona sing through the rests a phrase writes as dots.
+SUSTAINING = {'flute-sustain', 'viola-sustain', 'coro-laia', 'analog-pad', 'tenor-sax', 'trompete', 'trombone', 'sanfona'}
+
+
+def held(pattern, bar_count):
+    """Ties every note to the next one (legato `_`), at most one bar: a longer rest gets a
+    silent 0%-chance note one bar later, which ends the held note there."""
+    tokens = pattern.split()
+    per = len(tokens) // bar_count
+    notes = [i for i, token in enumerate(tokens) if token != '.']
+    out = list(tokens)
+    for at, following in zip(notes, notes[1:] + [None]):
+        if '_' not in out[at]:
+            out[at] += '_'
+        end = following if following is not None else len(tokens)
+        if end - at > per and at + per < len(tokens):
+            out[at + per] = re.match(r'^-?\d+', tokens[at]).group(0) + '?0'
+    return ' '.join(out)
+
+
+def write(city, profile):
+    """Writes the profile; sustaining parts (gate 0.75 or more) hold their notes, the rest stay as gated."""
+    for entry in profile['parts']:
+        if entry['source'].get('asset') in SUSTAINING and entry.get('gate', 0) >= .75:
+            entry['patterns'] = [held(pattern, count) for pattern, count in zip(entry['patterns'], entry['bars'])]
+    kit.write(city, profile)
