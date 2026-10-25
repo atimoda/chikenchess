@@ -55,6 +55,18 @@ export const cityCoordinates: Record<string, { x: number; y: number }> = {
     "x": 70.48,
     "y": 41.35
   },
+  "bristol": {
+    "x": 42.62,
+    "y": 20.42
+  },
+  "croydon": {
+    "x": 44.22,
+    "y": 21.62
+  },
+  "durban": {
+    "x": 54.92,
+    "y": 78.46
+  },
   "vienna": {
     "x": 49.5,
     "y": 25.0

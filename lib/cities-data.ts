@@ -432,6 +432,72 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
         "Find the peak."
     ]
   },
+  // Bristol (1994): Trip-hop
+  {
+    id: "bristol",
+    name: "Bristol",
+    country: "UK",
+    year: 1994,
+    genre: "Trip-hop",
+    description: "Bristol's sound-system crews slowed hip-hop breaks under dub bass, film-score strings and smoky vinyl, turning the club into a late-night cinema.",
+    bpm: 90,
+    scale: ["G3", "A3", "Bb3", "C4", "D4", "Eb4", "F4"], // G natural minor
+    geoCoordinates: { lat: 51.4545, lng: -2.5879 },
+    color: "#8fa3b8", // Rain-washed slate
+    image: "/cities/bristol.svg",
+    samples: { kick: "bd:0", snare: "sd:0", hihat: "hh:0", bass: "bass:0", pad: "pad:0", lead: "synth:0" },
+    introPhrases: [
+        "It is raining again.",
+        "Slow down the break.",
+        "Every move leaves a crackle.",
+        "Play it like a film.",
+        "Fade to grey."
+    ]
+  },
+  // Croydon (2006): Dubstep
+  {
+    id: "croydon",
+    name: "Croydon",
+    country: "UK",
+    year: 2006,
+    genre: "Dubstep",
+    description: "In South London's record shops and pirate radio, producers stripped UK garage down to half-time drums and sub-bass you feel in the chest, built for the sound system.",
+    bpm: 140,
+    scale: ["F3", "Gb3", "Ab3", "Bb3", "C4", "Db4", "Eb4"], // F Phrygian
+    geoCoordinates: { lat: 51.3762, lng: -0.0982 },
+    color: "#39ff88", // Sub-bass green
+    image: "/cities/croydon.svg",
+    samples: { kick: "bd:0", snare: "sd:0", hihat: "hh:0", bass: "bass:0", pad: "pad:0", lead: "synth:0" },
+    introPhrases: [
+        "Half the tempo, twice the weight.",
+        "Wait for the drop.",
+        "Feel it in the chest.",
+        "Space is part of the riddim.",
+        "Wobble."
+    ]
+  },
+  // Durban (2016): Gqom
+  {
+    id: "durban",
+    name: "Durban",
+    country: "South Africa",
+    year: 2016,
+    genre: "Gqom",
+    description: "Teenage producers in Durban's townships built gqom on cracked software: broken, kickless house rhythms, hammering toms and ominous chants for taxi stereos and street parties.",
+    bpm: 126,
+    scale: ["C4", "Db4", "Eb4", "F4", "G4", "Ab4", "Bb4"], // C Phrygian
+    geoCoordinates: { lat: -29.8587, lng: 31.0218 },
+    color: "#ff6a2b", // Indian Ocean sunrise
+    image: "/cities/durban.svg",
+    samples: { kick: "bd:0", snare: "sd:0", hihat: "hh:0", bass: "bass:0", pad: "pad:0", lead: "synth:0" },
+    introPhrases: [
+        "No kick on the one.",
+        "The toms do the talking.",
+        "Hear the taxi coming.",
+        "Break the grid.",
+        "Gqom!"
+    ]
+  },
   // 13. Vienna (1780)
   {
     id: "vienna",
@@ -514,7 +580,7 @@ const campaignMembership: Record<string, CampaignId[]> = {
   detroit: ['electronic-history'], ibiza: ['electronic-history'], manchester: ['electronic-history'],
   berlin: ['electronic-history'], tokyo: ['electronic-history'], london: ['electronic-history'],
   saopaulo: ['electronic-history'], johannesburg: ['electronic-history'], paris: ['electronic-history'],
-  goa: ['electronic-history'],
+  goa: ['electronic-history'], bristol: ['electronic-history'], croydon: ['electronic-history'], durban: ['electronic-history'],
   'manchester-1999': ['world-ballads'], 'buenos-aires-1940': ['world-ballads'],
   'dublin-1990': ['world-ballads'], 'new-orleans-1953': ['world-ballads'],
   vienna: ['classical'],
