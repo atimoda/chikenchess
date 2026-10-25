@@ -94,3 +94,20 @@ Design de som (25/10, revisão `goa-2026-10-25-design-v2`, campo `design` das pa
 Os 15 perfis da campanha (menos Goa) são escritos em `scripts/electronic/<cidade>.py` com a biblioteca `scripts/electronic/kit.py` e validados por `node scripts/electronic/check.cjs <cidade>`. Cada perfil traz as reações próprias do kit (`reactions`), escolhidas pelo estilo: por exemplo, a tensão abre a 303 em Manchester, fecha o filtro do loop inteiro em Paris e desacelera a fita em Bristol. A harmonia é estática, com acordes escritos em graus absolutos. Os bancos `chicken-machines-v1` e `chicken-electronic-v1` são síntese própria (`scripts/generate-machine-samples.py`, `scripts/generate-electronic-samples.py`, sobre `scripts/synthkit.py`).
 
 Os kits anteriores das 12 cidades ficam em `public/presets/legacy/<cidade>.json` (índice `data/music/legacy-kits.json`, gerados por `scripts/export-legacy-kits.cjs`) e aparecem no Criativo no grupo **Legacy kits**, sem cidade associada.
+
+## Brazilian refeito · 25/10
+
+As 10 fases da campanha são escritas em `scripts/brazilian/<fase>.py`; as melodias, linhas e levadas são originais, escritas na linguagem de cada estilo.
+
+| Fase | Linguagem | Referência |
+| --- | --- | --- |
+| Rio · 1910 | Choro: forma em rondó, flauta solista, cavaquinho no centro, baixaria do violão de 7 cordas, pandeiro | [Choro](https://pt.wikipedia.org/wiki/Choro) |
+| Rio · 1930 | Samba do Estácio: surdo de marcação, tamborim em teleco-teco, cuíca, coro de roda | [Samba](https://pt.wikipedia.org/wiki/Samba) |
+| Recife · 1935 | Frevo de rua: metais em pergunta e resposta, tarol em semicolcheias | [Frevo](https://pt.wikipedia.org/wiki/Frevo) |
+| Piracicaba · 1940 | Moda caipira e cateretê: dupla em terças, viola caipira, palmas e sapateado | [Música caipira](https://pt.wikipedia.org/wiki/M%C3%BAsica_caipira) |
+| Recife · 1950 | Baião: sanfona, zabumba, triângulo, modo mixolídio | [Baião](https://pt.wikipedia.org/wiki/Bai%C3%A3o_(g%C3%AAnero_musical)) |
+| Rio · 1960 | Bossa nova: batida do violão, harmonia em tétrades, clave no aro | [Bossa nova](https://pt.wikipedia.org/wiki/Bossa_nova) |
+| Recife · 1975 | Maracatu de baque virado: alfaias, caixas, gonguê, loa e coro | [Maracatu nação](https://pt.wikipedia.org/wiki/Maracatu_na%C3%A7%C3%A3o) |
+| Rio · 1984 | Bateria de escola de samba em ensaio: surdos de primeira, segunda e terceira, repique, tamborins, caixas, cuíca, apito, paradinha; samba-enredo cantado pela quadra | [Estação Primeira de Mangueira](https://pt.wikipedia.org/wiki/Esta%C3%A7%C3%A3o_Primeira_de_Mangueira) e [Bateria (escola de samba)](https://pt.wikipedia.org/wiki/Bateria_(escola_de_samba)) |
+| Salvador · 1992 | Samba-reggae: surdos em diálogo, repique, caixa, metais | [Samba-reggae](https://pt.wikipedia.org/wiki/Samba-reggae) |
+| Rio · 1995 | Funk carioca: Volt Mix na 808, baile | [Funk carioca](https://pt.wikipedia.org/wiki/Funk_carioca) |

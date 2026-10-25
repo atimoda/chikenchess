@@ -167,7 +167,7 @@
     {
       "role": "texture",
       "name": "Aboio",
-      "behavior": "phrase",
+      "behavior": "sustain",
       "source": {
         "kind": "sample",
         "bank": "brasil",
@@ -1068,7 +1068,7 @@
           true,
           true,
           true,
-          true
+          false
         ],
         "restart": true,
         "variations": [
@@ -1077,7 +1077,7 @@
           2,
           3,
           4,
-          0
+          5
         ],
         "transpose": [
           0,

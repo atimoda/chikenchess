@@ -1,4 +1,4 @@
-// Freezes the Electronic World kits as they were before the 25/10/2026 revision into
+// Freezes the Electronic World and Brazilian kits as they were before the 25/10/2026 revisions into
 // public/presets/legacy/<city>.json. They load in Creative under "Legacy kits", with no
 // city link, so the history stays playable after the profiles are rewritten.
 // Run once, before changing a profile: node scripts/export-legacy-kits.cjs [city ...]
@@ -9,7 +9,8 @@ const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
 const { creativeSchema } = loadTs('lib/music/creative.ts')
 const { cities } = loadTs('lib/cities-data.ts')
 
-const LEGACY = ['dusseldorf', 'nyc', 'chicago', 'detroit', 'ibiza', 'manchester', 'berlin', 'tokyo', 'london', 'saopaulo', 'johannesburg', 'paris']
+const LEGACY = ['dusseldorf', 'nyc', 'chicago', 'detroit', 'ibiza', 'manchester', 'berlin', 'tokyo', 'london', 'saopaulo', 'johannesburg', 'paris',
+  'rio-1910', 'rio-1930', 'recife-1935', 'piracicaba-1940', 'recife-1950', 'rio-1960', 'recife-1975', 'salvador-1992', 'rio-1995']
 const dest = path.resolve(__dirname, '..', 'public', 'presets', 'legacy')
 fs.mkdirSync(dest, { recursive: true })
 const index = []

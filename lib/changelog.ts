@@ -5,7 +5,7 @@ export const CHANGELOG = [
   {
     version: '1.9.0',
     date: '25/10/2026',
-    title: 'Electronic World refeito, Goa, Bristol, Croydon e Durban, engine musical expandida e samples 5× menores',
+    title: 'Electronic World e Brazilian refeitos, Goa, Bristol, Croydon, Durban e o ensaio da Mangueira, engine musical expandida e samples 5× menores',
     groups: [
       { title: 'Electronic World refeito', items: [
         'Os 12 kits da campanha foram recompostos para soar como os estilos que representam: baterias, timbres, melodias, ritmos, efeitos e a função de cada peça seguem o gênero e o ano de cada cidade.',
@@ -14,6 +14,17 @@ export const CHANGELOG = [
         'Nova York 1977 (disco), Chicago 1984 (house na TR-808), Detroit 1986 (techno com cordas e piano), Ibiza 1986 (balearic com violão espanhol), Manchester 1988 (acid house com a TB-303 na dama), Berlim 1991 (Tresor, hoover e eco dub), Tóquio 1991 (techno minimal com arpejador e pentatônica), Londres 1992 (breakbeat picado e hoover), São Paulo 1993 (hard techno com surdo, agogô, repique e chocalho), Joanesburgo 1994 (kwaito com canto de chamada e resposta) e Paris 1995 (French touch com sidechain e filtro).',
         'Correção: nos kits refeitos, a abertura e o meio-jogo prendiam a música numa única variação ("A game rule forces only variation A"), deixando a maior parte das peças em silêncio. Agora a música segue o arranjo normalmente e só eventos curtos (roque, xeque, captura da dama, lances quietos) trocam de variação.',
         'Cada kit tem reações próprias ao xadrez: na abertura a música começa enxuta, o roque e o xeque soltam o refrão ou o drop, a captura da dama leva ao break, a tensão mexe no filtro do jeito do estilo (a 303 abre em Manchester, o loop inteiro fecha em Paris, a fita desacelera em Bristol) e o final vai ao pico.',
+      ] },
+      { title: 'Brazilian refeito', items: [
+        'Os 9 kits da campanha foram recompostos para soar fiéis a cada estilo: forma, ritmo, instrumentos e o papel de cada peça seguem o gênero e a época.',
+        'Rio 1910 (choro com flauta, cavaquinho, bandolim e a baixaria do violão de 7 cordas), Rio 1930 (samba do Estácio com surdo, tamborim em teleco-teco, cuíca e coro da roda), Recife 1935 (frevo de rua com chamada de trompete, resposta dos saxofones e tarol), Piracicaba 1940 (moda caipira com a dupla em terças e a viola em ponteio e rasqueado), Recife 1950 (baião com sanfona, zabumba, triângulo e aboio), Rio 1960 (bossa nova com a batida do violão, contrabaixo, flauta e trompete com surdina), Recife 1975 (maracatu de baque virado com alfaias, caixas, gonguê e a loa do mestre), Salvador 1992 (samba-reggae com surdos em diálogo, trompetes e trombones) e Rio 1995 (funk carioca no Volt Mix da 808).',
+        'Novo banco de samples brasileiros: cavaquinho, bandolim, viola caipira, sanfona, coro, tamborim, surdos, zabumba, alfaia, pandeiro, palmas, gonguê, triângulo, ganzá, reco-reco, apito e cuícas.',
+        'Cada kit reage ao xadrez do seu jeito: o xeque puxa a convenção ou a breque do estilo, o roque abre o refrão, a captura da dama leva ao break ou ao solo e o final vai ao pico. Fases longas da partida (abertura, meio-jogo, seca de capturas) não prendem a música numa variação.',
+        'Os volumes foram equilibrados por medição de cada instrumento no renderizador do jogo.',
+      ] },
+      { title: 'Nova fase · Ensaio da Mangueira', items: [
+        'Rio de Janeiro 1984: um ensaio da bateria da Estação Primeira de Mangueira na quadra, a 138 BPM. Surdo de primeira, surdo de terceira cortando, repique de chamada, tamborins, caixas, tarol, chocalhos, agogô, reco-reco, duas cuícas, o apito do mestre, o cavaquinho e a quadra cantando o samba-enredo.',
+        'O xeque faz a paradinha da bateria; a foto da fase é do desfile da Mangueira de 1957.',
       ] },
       { title: 'Novas fases · Bristol, Croydon e Durban', items: [
         'Bristol 1994: trip-hop a 90 BPM, breakbeat lento e empoeirado, vinil, scratches, Rhodes, órgão Hammond, cordas de cinema, trompa e um teremim na dama.',
@@ -47,7 +58,7 @@ export const CHANGELOG = [
         'Todos os samples foram convertidos para Opus: de 14,8 MB para 2,9 MB. Navegadores sem Opus (Safari antigo) recebem uma versão AAC.',
       ] },
       { title: 'Criativo', items: [
-        'Novo grupo Legacy kits na lista de kits: as versões anteriores dos 12 kits do Electronic World continuam disponíveis para tocar e editar, sem ligação com as cidades.',
+        'Novo grupo Legacy kits na lista de kits: as versões anteriores dos 12 kits do Electronic World e dos 9 kits do Brazilian continuam disponíveis para tocar e editar, sem ligação com as cidades.',
         'Nova escala Phrygian dominant em Scale e nas regras de States & Events.',
       ] },
       { title: 'Partida', items: [

@@ -63,6 +63,7 @@ import profile59 from '../../../data/music/profiles/goa.json'
 import profile60 from '../../../data/music/profiles/bristol.json'
 import profile61 from '../../../data/music/profiles/croydon.json'
 import profile62 from '../../../data/music/profiles/durban.json'
+import profile63 from '../../../data/music/profiles/rio-1984.json'
 
 export const STYLE_PROFILES = {
   'dusseldorf': profile0,
@@ -128,5 +129,6 @@ export const STYLE_PROFILES = {
   'bristol': profile60,
   'croydon': profile61,
   'durban': profile62,
+  'rio-1984': profile63,
 } as unknown as Record<string, StyleProfile>
 

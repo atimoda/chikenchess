@@ -48,82 +48,82 @@ parts = [
     # a1 · rook: surdo de primeira, open on the second beat.
     part('rhythm', 'Surdo de primeira', 'pulse', brasil('surdo-mangueira'), [
         drum('.... X...'), drum('.... X...'), hits(CONVENCAO), drum('.... X...'), drum('.... X..x'), drum('.... X..x'),
-    ], [1, 1, 4, 1, 1, 1], gain=.45, clip=1, lpf=2500, hpf=28, mapping={'panWidth': 0}, effects={'reverb': .08, 'pan': 0},
+    ], [1, 1, 4, 1, 1, 1], gain=0.348, clip=1, lpf=2500, hpf=28, mapping={'panWidth': 0}, effects={'reverb': .08, 'pan': 0},
         arrangement=arrangement((False, True, True, True, True, True))),
     # a2 · pawn: the same surdos muted on the first beat.
     part('rhythm', 'Surdo · abafado', 'pulse', brasil('surdo-abafado'), [
         drum('X... ....'), drum('X... ....'), drum('X... ....'), drum('X... ....'), drum('X... ..x.'), drum('X... ..x.'),
-    ], [1] * 6, gain=.38, clip=.8, lpf=2500, hpf=30, mapping={'panWidth': 0}, effects={'reverb': .06, 'pan': 0},
+    ], [1] * 6, gain=0.33, clip=.8, lpf=2500, hpf=30, mapping={'panWidth': 0}, effects={'reverb': .06, 'pan': 0},
         arrangement=arrangement((False, True, False, True, True, True))),
     # b1 · knight: repique, the chamada and the convenção.
     part('rhythm', 'Repique · chamada', 'pulse', samba('repinique'), [
         hits('X.X. X.X. XxXx X... X.X. X.X. XXXX X...'), drum('x.xX .xx.'), hits('X.xx .xX. X.xx .XXX x.xX .xx. XXXX X...'), drum('x.xX .xx.'), drum('X.xX .xX.'), drum('x.xX .xxx'),
-    ], [4, 1, 4, 1, 1, 1], gain=.22, clip=.8, lpf=9000, hpf=200, effects={'reverb': .1, 'pan': -.25}),
+    ], [4, 1, 4, 1, 1, 1], gain=0.317, clip=.8, lpf=9000, hpf=200, effects={'reverb': .1, 'pan': -.25}),
     # b2 · pawn: tamborins, teleco-teco and carreteiro.
     part('rhythm', 'Tamborim', 'pulse', brasil('tamborim'), [
         hits(TELECO), hits(TELECO), hits(CARRETEIRO), hits(TELECO), hits(CARRETEIRO), hits(CARRETEIRO),
-    ], [2] * 6, gain=.24, clip=.7, lpf=9000, hpf=300, effects={'reverb': .06, 'pan': .25},
+    ], [2] * 6, gain=0.358, clip=.7, lpf=9000, hpf=300, effects={'reverb': .06, 'pan': .25},
         arrangement=arrangement((False, True, True, True, True, True))),
     # c1 · bishop: the high cuíca.
     part('response', 'Cuíca aguda', 'pulse', brasil('cuica-aguda'), [
         drum('..x. .x.x'), drum('..x. .x.x'), drum('..x. ..x.'), drum('..xx .x.x'), drum('.xxx .x.x'), drum('..xx .xxx'),
-    ], [1] * 6, gain=.2, clip=.9, lpf=6000, hpf=200, effects={'reverb': .1, 'pan': .4},
+    ], [1] * 6, gain=0.236, clip=.9, lpf=6000, hpf=200, effects={'reverb': .1, 'pan': .4},
         arrangement=arrangement((False, True, False, True, True, True))),
     # c2 · pawn: caixas de guerra, in cima.
     part('rhythm', 'Caixa de guerra', 'pulse', samba('caixa'), [
         drum('.... ..xx'), drum('xXgx xXgx'), drum('X... ....'), drum('xXgx xXgx'), drum('xXgx xXgX'), drum('xXgX xXgX'),
-    ], [1] * 6, gain=.2, clip=.6, lpf=10000, hpf=200, effects={'reverb': .08, 'pan': -.15},
+    ], [1] * 6, gain=0.142, clip=.6, lpf=10000, hpf=200, effects={'reverb': .08, 'pan': -.15},
         arrangement=arrangement((False, True, False, True, True, True))),
     # d1 · queen: the quadra singing the samba-enredo.
     part('melody', 'Coro da quadra', 'phrase', brasil('coro-laia', True), [
         mel(REFRAO[4:]), mel(SAMBA), mel(REFRAO[:4]), mel(REFRAO * 2), mel(REFRAO * 2), mel(REFRAO * 2),
-    ], [4, 16, 4, 16, 16, 16], octave=4, gain=.24, attack=.03, decay=.4, sustain=.75, release=.2, gate=.9, lpf=6000, hpf=150,
+    ], [4, 16, 4, 16, 16, 16], octave=4, gain=0.443, attack=.03, decay=.4, sustain=.75, release=.2, gate=.9, lpf=6000, hpf=150,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, True, True, False, True)), effects={'reverb': .3, 'pan': 0}),
     # d2 · pawn: tarol.
     part('rhythm', 'Tarol', 'pulse', samba('tarol'), [
         drum('.... ..xx'), drum('x.xx x.xx'), drum('x... ....'), drum('x.xx x.xx'), drum('xxxx x.xx'), drum('xxxx xxxx'),
-    ], [1] * 6, gain=.14, clip=.6, lpf=10000, hpf=300, effects={'reverb': .08, 'pan': .15},
+    ], [1] * 6, gain=0.371, clip=.6, lpf=10000, hpf=300, effects={'reverb': .08, 'pan': .15},
         arrangement=arrangement((False, True, False, True, True, True))),
     # e1 · king: the cavaquinho, the samba's only harmony.
     part('harmony', 'Cavaquinho', 'phrase', brasil('cavaquinho', True), [
-        cavaco(REFRAIN[4:]), cavaco(VERSE), cavaco(REFRAIN[:4], 'X... ....'), cavaco(REFRAIN * 2), cavaco(REFRAIN * 2, 'X... .x.x'), cavaco(REFRAIN * 2, 'X.xx .xxx'),
-    ], [4, 16, 4, 16, 16, 16], octave=4, gain=.2, attack=.002, decay=.25, sustain=.1, release=.08, gate=.4, lpf=9000, hpf=300,
+        cavaco(REFRAIN[4:]), cavaco(VERSE), cavaco(REFRAIN[:4], 'X... ....'), cavaco(REFRAIN * 2), cavaco(REFRAIN * 2, 'X... .x.x'), cavaco(REFRAIN * 2, 'X.x. .xxx'),
+    ], [4, 16, 4, 16, 16, 16], octave=4, gain=0.25, attack=.002, decay=.25, sustain=.1, release=.08, gate=.4, lpf=9000, hpf=300,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, False, True), restart=False), effects={'reverb': .1, 'pan': .2}),
     # e2 · pawn: chocalhos.
     part('rhythm', 'Chocalho', 'pulse', samba('chocalho'), [
         drum('x.x. x.x.'), drum('gxgX gxgX'), drum('x... x...'), drum('gxgX gxgX'), drum('gxgX gxgX'), drum('gXgX gXgX'),
-    ], [1] * 6, gain=.12, clip=.6, lpf=12000, hpf=2500, effects={'reverb': .05, 'pan': -.3},
+    ], [1] * 6, gain=0.184, clip=.6, lpf=12000, hpf=2500, effects={'reverb': .05, 'pan': -.3},
         arrangement=arrangement((False, True, False, True, True, True))),
     # f1 · bishop: the low cuíca answering.
-    part('response', 'Cuíca grave', 'pulse', brasil('cuica-grave'), [
+    part('response', 'Cuíca grave', 'sustain', brasil('cuica-grave'), [
         drum('x... ..x.'), drum('x... ..x.'), drum('x... ....'), drum('x..x ..x.'), drum('x.x. ..x.'), drum('x..x ..xx'),
-    ], [1] * 6, gain=.2, clip=.9, lpf=5000, hpf=120, effects={'reverb': .1, 'pan': -.4},
+    ], [1] * 6, gain=0.277, clip=.9, lpf=5000, hpf=120, effects={'reverb': .1, 'pan': -.4},
         arrangement=arrangement((False, False, False, True, True, True))),
     # f2 · pawn: agogô.
     part('rhythm', 'Agogô', 'pulse', samba('agogo-agudo'), [
         drum('x... ....'), hits('x.x..x.x x.x.x.x.'), drum('x... ....'), hits('x.x..x.x x.x.x.x.'), hits('x.x..x.x x.x.x.xx'), hits('x.x..x.x x.x.x.xx'),
-    ], [1, 2, 1, 2, 2, 2], gain=.08, clip=.5, lpf=9000, hpf=800, effects={'reverb': .1, 'pan': .35},
+    ], [1, 2, 1, 2, 2, 2], gain=0.179, clip=.5, lpf=9000, hpf=800, effects={'reverb': .1, 'pan': .35},
         arrangement=arrangement((False, True, False, True, True, True))),
     # g1 · knight: the mestre's apito commanding the entries and the paradinha.
     part('response', 'Apito do mestre', 'pulse', brasil('apito'), [
         hits('X... X... X.X. X...' + ' ....' * 4), hits('X...' + ' ....' * 31), hits('X... .... .... .... X.X. .... .... ....'),
         hits('X...' + ' ....' * 31), hits('X... .... X... ....' + ' ....' * 28), hits('X...' + ' ....' * 31),
-    ], [4, 16, 4, 16, 16, 16], gain=.12, clip=1, lpf=8000, hpf=800, effects={'reverb': .25, 'pan': .3}),
+    ], [4, 16, 4, 16, 16, 16], gain=0.154, clip=1, lpf=8000, hpf=800, effects={'reverb': .25, 'pan': .3}),
     # g2 · pawn: reco-reco.
     part('rhythm', 'Reco-reco', 'pulse', brasil('reco-reco'), [
         drum('.... x...'), drum('x.xx x.xx'), drum('.... x...'), drum('x.xx x.xx'), drum('x.xx x.xx'), drum('x.xx x.xx'),
-    ], [1] * 6, gain=.1, clip=.6, lpf=9000, hpf=1500, effects={'reverb': .05, 'pan': .3},
+    ], [1] * 6, gain=0.258, clip=.6, lpf=9000, hpf=1500, effects={'reverb': .05, 'pan': .3},
         arrangement=arrangement((False, False, False, True, True, True))),
     # h1 · rook: surdo de terceira, the cutting surdo.
     part('rhythm', 'Surdo de terceira · corte', 'pulse', samba('surdo-viradeira'), [
         drum('.... ..x.'), drum('..x. ..xx'), drum('X... ..X.'), drum('..x. .xxx'), drum('.xx. ..xx'), drum('.xx. .xxx'),
-    ], [1] * 6, gain=.26, clip=.8, lpf=3500, hpf=40, effects={'reverb': .06, 'pan': .1},
+    ], [1] * 6, gain=0.314, clip=.8, lpf=3500, hpf=40, effects={'reverb': .06, 'pan': .1},
         arrangement=arrangement((False, True, True, True, True, True))),
     # h2 · pawn: tamborim viradas into each section.
     part('rhythm', 'Tamborim · virada', 'pulse', brasil('tamborim-abafado'), [
         drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('XxXx XXXX'),
-    ], [1] * 6, gain=.2, clip=.6, lpf=9000, hpf=300, effects={'reverb': .06, 'pan': -.3},
-        arrangement=arrangement(variations=(0, 1, 2, 3, 4, 0), fills=(5, 5, 5, 5, 5, None))),
+    ], [1] * 6, gain=0.338, clip=.6, lpf=9000, hpf=300, effects={'reverb': .06, 'pan': -.3},
+        arrangement=arrangement((True, True, True, True, True, False), fills=(5, 5, 5, 5, 5, None))),
 ]
 
 profile = {

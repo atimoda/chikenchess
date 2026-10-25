@@ -56,7 +56,7 @@ parts = [
     # a1 · rook: the double bass.
     part('bass', 'Contrabaixo', 'phrase', recorded('guitars', 'bass'), [
         bass(INTRO), bass(A), bass(INTRO), bass(B), bass(A, busy=True), bass(B, busy=True),
-    ], [4, 8, 4, 8, 8, 8], octave=2, gain=.4, attack=.006, decay=.6, sustain=.35, release=.25, gate=.8, lpf=1800, hpf=35,
+    ], [4, 8, 4, 8, 8, 8], octave=2, gain=0.482, attack=.006, decay=.6, sustain=.35, release=.25, gate=.8, lpf=1800, hpf=35,
         design={'role': 'bass'}, mapping={'fileDegrees': 0, 'panWidth': .1}, effects={'reverb': .1, 'pan': .05},
         arrangement=arrangement((False, True, True, True, True, True))),
     # a2 · pawn: soft bass drum doubling the bass.
@@ -67,12 +67,12 @@ parts = [
     # b1 · knight: muted trumpet solo.
     part('melody', 'Trompete com surdina', 'phrase', samba('trompete', True), [
         mel(SOLO[4:]), mel(SOLO), mel(SOLO[:4]), mel(SOLO), mel(SOLO), mel(SOLO),
-    ], [4, 8, 4, 8, 8, 8], octave=4, gain=.13, attack=.015, decay=.3, sustain=.6, release=.12, gate=.8, lpf=3200, hpf=300,
+    ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.328, attack=.015, decay=.3, sustain=.6, release=.12, gate=.8, lpf=3200, hpf=300,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, False, True, False), restart=False), effects={'reverb': .25, 'pan': .2}),
     # b2 · pawn: cross-stick on the bossa clave.
     part('rhythm', 'Aro · clave da bossa', 'pulse', sample('drums', 'wood-rim', False), [
         hits(CLAVE), hits(CLAVE), hits(CLAVE), hits(CLAVE), hits(CLAVE), hits(CLAVE),
-    ], [2] * 6, gain=.14, clip=.5, lpf=8000, hpf=300, effects={'reverb': .08, 'pan': -.2},
+    ], [2] * 6, gain=0.228, clip=.5, lpf=8000, hpf=300, effects={'reverb': .08, 'pan': -.2},
         arrangement=arrangement((False, True, True, True, True, True))),
     # c1 · bishop: marimba answers, like the vibraphone of the period's records.
     part('response', 'Marimba', 'phrase', recorded('band', 'marimba'), [
@@ -84,21 +84,21 @@ parts = [
     # c2 · pawn: brushes on the snare, sixteenths with a swirl.
     part('rhythm', 'Vassourinha', 'pulse', sample('drums', 'brush', False), [
         drum('g.g. g.g. g.g. g.g.'), drum('gxgx gxgx gxgx gxgx'), drum('g.g. g.g. g.g. g.g.'), drum('gxgx gxgx gxgx gxgx'), drum('gxgx gxgx gxgx gxgx'), drum('gXgx gXgx gXgx gXgx'),
-    ], [1] * 6, gain=.1, clip=.5, lpf=9000, hpf=600, effects={'reverb': .08, 'pan': .15}),
+    ], [1] * 6, gain=0.237, clip=.5, lpf=9000, hpf=600, effects={'reverb': .08, 'pan': .15}),
     # d1 · queen: the flute melody.
     part('melody', 'Flauta', 'phrase', recorded('classical', 'flute-sustain'), [
-        mel([REST, REST, REST, '. . . . . . . . 4 . 6 . 7 . 9 .']), mel(MEL_A), mel([REST] * 4), mel(MEL_B), mel(MEL_A), mel(MEL_B),
-    ], [4, 8, 4, 8, 8, 8], octave=4, gain=.24, attack=.03, decay=.4, sustain=.75, release=.2, gate=.9, lpf=8000, hpf=250,
+        mel([REST, REST, REST, '. . . . . . . . 4 . 6 . 7 . 9 .']), mel(MEL_A), mel([REST] * 3 + ['. . . . . . . . . . . . . . 4 .']), mel(MEL_B), mel(MEL_A), mel(MEL_B),
+    ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.66, attack=.03, decay=.4, sustain=.75, release=.2, gate=.9, lpf=8000, hpf=250,
         mapping={'fileDegrees': 0}, arrangement=arrangement((True, True, False, True, False, True)), effects={'reverb': .25, 'pan': 0}),
     # d2 · pawn: shaker.
     part('rhythm', 'Shaker', 'pulse', recorded('percussion', 'shaker', pitched=False), [
         drum('x.x. x.x. x.x. x.x.'), drum('gxgx gxgx gxgx gxgx'), drum('x.x. x.x. x.x. x.x.'), drum('gxgx gxgx gxgx gxgx'), drum('gxgx gxgx gxgx gxgx'), drum('gxgx gxgx gxgx gxgx'),
-    ], [1] * 6, gain=.08, clip=.5, lpf=12000, hpf=3000, effects={'reverb': .05, 'pan': -.3},
+    ], [1] * 6, gain=0.227, clip=.5, lpf=12000, hpf=3000, effects={'reverb': .05, 'pan': -.3},
         arrangement=arrangement((False, True, False, True, True, True))),
     # e1 · king: the violão's batida, the heart of bossa.
     part('harmony', 'Violão · batida', 'phrase', recorded('guitars', 'nylon'), [
         batida(INTRO), batida(A), batida(INTRO), batida(B), batida(A), batida(B),
-    ], [4, 8, 4, 8, 8, 8], octave=3, gain=.24, attack=.004, decay=.35, sustain=.25, release=.15, gate=.45, lpf=5000, hpf=120,
+    ], [4, 8, 4, 8, 8, 8], octave=3, gain=0.196, attack=.004, decay=.35, sustain=.25, release=.15, gate=.45, lpf=5000, hpf=120,
         mapping={'fileDegrees': 0}, effects={'reverb': .12, 'pan': -.15}),
     # e2 · pawn: hi-hat foot on two and four.
     part('rhythm', 'Chimbal de pé', 'pulse', recorded('percussion', 'hat', pitched=False), [
@@ -109,7 +109,7 @@ parts = [
     part('harmony', 'Trombones', 'sustain', samba('trombone', True), [
         chords(INTRO, 'x... .... .... ....'), chords(A, 'x... .... .... ....'), chords(INTRO, 'x... .... .... ....'),
         chords(B, '..x. .... .... ....'), chords(A, 'x... .... .... ....'), chords(B, '..x. .... x... ....'),
-    ], [4, 8, 4, 8, 8, 8], octave=3, gain=.08, attack=.05, decay=.5, sustain=.6, release=.3, gate=.9, lpf=2500, hpf=100,
+    ], [4, 8, 4, 8, 8, 8], octave=3, gain=0.125, attack=.05, decay=.5, sustain=.6, release=.3, gate=.9, lpf=2500, hpf=100,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, True, False, True)), effects={'reverb': .3, 'pan': .25}),
     # f2 · pawn: ride cymbal under the solo.
     part('rhythm', 'Prato de condução', 'pulse', recorded('percussion', 'ride', pitched=False), [
@@ -125,19 +125,19 @@ parts = [
     # g2 · pawn: ganzá, very light.
     part('rhythm', 'Ganzá', 'pulse', sample('brasil', 'ganza', False), [
         drum('...x ...x ...x ...x'), drum('...x ...x ...x ...x'), drum('...x ...x ...x ...x'), drum('.x.x .x.x .x.x .x.x'), drum('...x ...x ...x ...x'), drum('.x.x .x.x .x.x .x.x'),
-    ], [1] * 6, gain=.06, clip=.5, lpf=12000, hpf=3500, effects={'reverb': .05, 'pan': .35},
+    ], [1] * 6, gain=0.174, clip=.5, lpf=12000, hpf=3500, effects={'reverb': .05, 'pan': .35},
         arrangement=arrangement((False, False, False, True, False, True))),
     # h1 · rook: sparse piano comping (Jobim at the keyboard).
     part('harmony', 'Piano', 'phrase', recorded('band', 'piano'), [
         chords(INTRO, '.... .... .... ..x.'), chords(A, '.... ...x .... ....'), chords(INTRO, '.... .... .... ..x.'),
         chords(B, '.... ...x .... ..x.'), chords(A, '.... ...x .... ....'), chords(B, '.... ...x .... ..x.'),
-    ], [4, 8, 4, 8, 8, 8], octave=4, gain=.12, attack=.003, decay=.7, sustain=.3, release=.3, gate=.6, lpf=6000, hpf=150,
+    ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.153, attack=.003, decay=.7, sustain=.3, release=.3, gate=.6, lpf=6000, hpf=150,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, True, True)), effects={'reverb': .2, 'pan': .2}),
     # h2 · pawn: brush sweeps into each section.
     part('rhythm', 'Vassourinha · virada', 'pulse', sample('drums', 'brush', False), [
         drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('.... .... x.xx xXxX'),
-    ], [1] * 6, gain=.12, clip=.5, lpf=9000, hpf=600, effects={'reverb': .1, 'pan': -.1},
-        arrangement=arrangement(variations=(0, 1, 2, 3, 4, 0), fills=(5, 5, 5, 5, 5, None))),
+    ], [1] * 6, gain=0.207, clip=.5, lpf=9000, hpf=600, effects={'reverb': .1, 'pan': -.1},
+        arrangement=arrangement((True, True, True, True, True, False), fills=(5, 5, 5, 5, 5, None))),
 ]
 
 profile = {

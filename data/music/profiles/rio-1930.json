@@ -51,7 +51,7 @@
         8
       ],
       "octave": 2,
-      "gain": 0.42,
+      "gain": 0.454,
       "attack": 0.004,
       "decay": 0.5,
       "sustain": 0.3,
@@ -125,7 +125,7 @@
         1,
         1
       ],
-      "gain": 0.4,
+      "gain": 0.32,
       "clip": 0.8,
       "lpf": 3000,
       "hpf": 30,
@@ -191,7 +191,7 @@
         1,
         1
       ],
-      "gain": 0.2,
+      "gain": 0.265,
       "clip": 0.9,
       "lpf": 6000,
       "hpf": 200,
@@ -254,7 +254,7 @@
         2,
         2
       ],
-      "gain": 0.24,
+      "gain": 0.398,
       "clip": 0.7,
       "lpf": 9000,
       "hpf": 300,
@@ -318,7 +318,7 @@
         8
       ],
       "octave": 3,
-      "gain": 0.2,
+      "gain": 0.159,
       "attack": 0.004,
       "decay": 0.35,
       "sustain": 0.2,
@@ -388,7 +388,7 @@
         1,
         1
       ],
-      "gain": 0.15,
+      "gain": 0.304,
       "clip": 0.7,
       "lpf": 12000,
       "hpf": 2500,
@@ -452,7 +452,7 @@
         8
       ],
       "octave": 5,
-      "gain": 0.24,
+      "gain": 0.916,
       "attack": 0.012,
       "decay": 0.3,
       "sustain": 0.7,
@@ -522,7 +522,7 @@
         1,
         1
       ],
-      "gain": 0.24,
+      "gain": 0.348,
       "clip": 0.8,
       "lpf": 4000,
       "hpf": 60,
@@ -586,7 +586,7 @@
         8
       ],
       "octave": 4,
-      "gain": 0.24,
+      "gain": 0.455,
       "attack": 0.002,
       "decay": 0.3,
       "sustain": 0.15,
@@ -656,7 +656,7 @@
         1,
         1
       ],
-      "gain": 0.1,
+      "gain": 0.21,
       "clip": 0.6,
       "lpf": 12000,
       "hpf": 2500,
@@ -720,7 +720,7 @@
         8
       ],
       "octave": 4,
-      "gain": 0.2,
+      "gain": 0.242,
       "attack": 0.002,
       "decay": 0.25,
       "sustain": 0.1,
@@ -790,7 +790,7 @@
         1,
         1
       ],
-      "gain": 0.12,
+      "gain": 0.311,
       "clip": 0.6,
       "lpf": 9000,
       "hpf": 1500,
@@ -829,7 +829,7 @@
     {
       "role": "melody",
       "name": "Coro da roda",
-      "behavior": "phrase",
+      "behavior": "sustain",
       "source": {
         "kind": "sample",
         "bank": "brasil",
@@ -854,7 +854,7 @@
         8
       ],
       "octave": 4,
-      "gain": 0.2,
+      "gain": 0.348,
       "attack": 0.03,
       "decay": 0.4,
       "sustain": 0.7,
@@ -924,7 +924,7 @@
         1,
         1
       ],
-      "gain": 0.14,
+      "gain": 0.321,
       "clip": 0.6,
       "lpf": 8000,
       "hpf": 400,
@@ -987,7 +987,7 @@
         1,
         1
       ],
-      "gain": 0.42,
+      "gain": 0.292,
       "clip": 1,
       "lpf": 2500,
       "hpf": 30,
@@ -1053,7 +1053,7 @@
         1,
         1
       ],
-      "gain": 0.2,
+      "gain": 0.348,
       "clip": 0.6,
       "lpf": 9000,
       "hpf": 300,
@@ -1068,7 +1068,7 @@
           true,
           true,
           true,
-          true
+          false
         ],
         "restart": true,
         "variations": [
@@ -1077,7 +1077,7 @@
           2,
           3,
           4,
-          0
+          5
         ],
         "transpose": [
           0,

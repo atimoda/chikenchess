@@ -51,7 +51,7 @@
         4
       ],
       "octave": 3,
-      "gain": 0.2,
+      "gain": 0.286,
       "attack": 0.006,
       "decay": 0.3,
       "sustain": 0.5,
@@ -121,7 +121,7 @@
         1,
         1
       ],
-      "gain": 0.4,
+      "gain": 0.371,
       "clip": 0.9,
       "lpf": 2500,
       "hpf": 30,
@@ -188,7 +188,7 @@
         4
       ],
       "octave": 4,
-      "gain": 0.24,
+      "gain": 0.489,
       "attack": 0.006,
       "decay": 0.3,
       "sustain": 0.6,
@@ -258,7 +258,7 @@
         1,
         1
       ],
-      "gain": 0.34,
+      "gain": 0.298,
       "clip": 0.9,
       "lpf": 2800,
       "hpf": 35,
@@ -324,7 +324,7 @@
         1,
         1
       ],
-      "gain": 0.2,
+      "gain": 0.322,
       "clip": 0.8,
       "lpf": 9000,
       "hpf": 200,
@@ -387,7 +387,7 @@
         1,
         1
       ],
-      "gain": 0.18,
+      "gain": 0.151,
       "clip": 0.6,
       "lpf": 10000,
       "hpf": 250,
@@ -426,7 +426,7 @@
     {
       "role": "melody",
       "name": "Coro · refrão",
-      "behavior": "phrase",
+      "behavior": "sustain",
       "source": {
         "kind": "sample",
         "bank": "brasil",
@@ -451,7 +451,7 @@
         4
       ],
       "octave": 4,
-      "gain": 0.24,
+      "gain": 0.427,
       "attack": 0.03,
       "decay": 0.4,
       "sustain": 0.75,
@@ -521,7 +521,7 @@
         1,
         1
       ],
-      "gain": 0.26,
+      "gain": 0.276,
       "clip": 0.8,
       "lpf": 3500,
       "hpf": 40,
@@ -585,7 +585,7 @@
         4
       ],
       "octave": 3,
-      "gain": 0.14,
+      "gain": 0.247,
       "attack": 0.003,
       "decay": 0.2,
       "sustain": 0.1,
@@ -655,7 +655,7 @@
         1,
         1
       ],
-      "gain": 0.16,
+      "gain": 0.24,
       "clip": 0.7,
       "lpf": 8000,
       "hpf": 150,
@@ -793,7 +793,7 @@
         1,
         1
       ],
-      "gain": 0.1,
+      "gain": 0.187,
       "clip": 0.6,
       "lpf": 12000,
       "hpf": 2500,
@@ -857,7 +857,7 @@
         4
       ],
       "octave": 4,
-      "gain": 0.15,
+      "gain": 0.258,
       "attack": 0.006,
       "decay": 0.3,
       "sustain": 0.6,
@@ -927,7 +927,7 @@
         1,
         1
       ],
-      "gain": 0.07,
+      "gain": 0.151,
       "clip": 0.5,
       "lpf": 9000,
       "hpf": 800,
@@ -991,7 +991,7 @@
         4
       ],
       "octave": 3,
-      "gain": 0.12,
+      "gain": 0.141,
       "attack": 0.006,
       "decay": 0.25,
       "sustain": 0.4,
@@ -1061,7 +1061,7 @@
         1,
         1
       ],
-      "gain": 0.16,
+      "gain": 0.232,
       "clip": 0.8,
       "lpf": 9000,
       "hpf": 200,
@@ -1076,7 +1076,7 @@
           true,
           true,
           true,
-          true
+          false
         ],
         "restart": true,
         "variations": [
@@ -1085,7 +1085,7 @@
           2,
           3,
           4,
-          0
+          5
         ],
         "transpose": [
           0,

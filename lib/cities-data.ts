@@ -598,6 +598,7 @@ const rhythmCityPhotos: Record<string, string> = {
   'rio-1930': 'https://commons.wikimedia.org/wiki/Special:FilePath/Revolu%C3%A7%C3%A3o_de_1930%3B_populares_e_revolucion%C3%A1rios_na_avenida_Rio_Branco_%28002080RJ3602%29.jpg?width=1600',
   'rio-1960': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_ipanema.jpg?width=1600',
   'salvador-1992': 'https://commons.wikimedia.org/wiki/Special:FilePath/Largo_do_Pelourinho_Salvador_2018-0919.jpg?width=1600',
+  'rio-1984': 'https://commons.wikimedia.org/wiki/Special:FilePath/Desfile_da_Escola_de_Samba_Mangueira_%281957%29.jpg?width=1600',
   'recife-1975': 'https://commons.wikimedia.org/wiki/Special:FilePath/Maracatu_Na%C3%A7%C3%A3o_-_Recife,_Pernambuco,_Brazil.jpg?width=1600',
   'rio-1995': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rocinha_rio_de_janeiro_panorama_2010.jpg?width=1600',
   'recife-1935': 'https://commons.wikimedia.org/wiki/Special:FilePath/Frevo_no_Carnaval_do_Recife.jpg?width=1600',

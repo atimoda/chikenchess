@@ -44,48 +44,48 @@ parts = [
     # a1 · rook: trombone replies.
     part('response', 'Trombone · resposta', 'phrase', samba('trombone', True), [
         mel(TROMBONE), mel(TROMBONE), mel(TROMBONE[:2] * 2), mel([shift(x, 3) for x in TROMBONE]), mel(TROMBONE), mel([shift(x, 3) for x in TROMBONE]),
-    ], [4] * 6, octave=3, gain=.2, attack=.006, decay=.3, sustain=.5, release=.1, gate=.6, lpf=4500, hpf=80,
+    ], [4] * 6, octave=3, gain=0.286, attack=.006, decay=.3, sustain=.5, release=.1, gate=.6, lpf=4500, hpf=80,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, False, True)), effects={'reverb': .18, 'pan': -.3}),
     # a2 · pawn: surdo fundo, one and three.
     part('rhythm', 'Surdo fundo', 'pulse', samba('surdo-fundo'), [
         drum('X... .... X... ....'), drum('X... .... X... ....'), drum('X... .... X... ....'), drum('X... .... X... ....'), drum('X... .... X... ....'), drum('X... .... X... ....'),
-    ], [1] * 6, gain=.4, clip=.9, lpf=2500, hpf=30, mapping={'panWidth': 0}, effects={'reverb': .06, 'pan': -.05}),
+    ], [1] * 6, gain=0.371, clip=.9, lpf=2500, hpf=30, mapping={'panWidth': 0}, effects={'reverb': .06, 'pan': -.05}),
     # b1 · knight: trumpets' call.
     part('melody', 'Trompete · chamada', 'phrase', samba('trompete', True), [
         mel(HORN_VERSE), mel(HORN_VERSE), mel(HORN_VERSE[:2] * 2), mel([REST, REST, REST, '. . . . . . . . 7 . 7 . 6 4 . .']), mel(HORN_VERSE), mel(HORN_VERSE),
-    ], [4] * 6, octave=4, gain=.24, attack=.006, decay=.3, sustain=.6, release=.1, gate=.75, lpf=8000, hpf=200,
+    ], [4] * 6, octave=4, gain=0.489, attack=.006, decay=.3, sustain=.6, release=.1, gate=.75, lpf=8000, hpf=200,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, False, True)), effects={'reverb': .18, 'pan': .2}),
     # b2 · pawn: surdo meio, two and four.
     part('rhythm', 'Surdo meio', 'pulse', samba('surdo-meio'), [
         drum('.... X... .... X...'), drum('.... X... .... X...'), drum('.... X... .... X...'), drum('.... X... .... X...'), drum('.... X... .... X...'), drum('.... X... .... X...'),
-    ], [1] * 6, gain=.34, clip=.9, lpf=2800, hpf=35, mapping={'panWidth': 0}, effects={'reverb': .06, 'pan': .05}),
+    ], [1] * 6, gain=0.298, clip=.9, lpf=2800, hpf=35, mapping={'panWidth': 0}, effects={'reverb': .06, 'pan': .05}),
     # c1 · bishop: repique, calls and the break solo.
     part('rhythm', 'Repique · chamada', 'pulse', samba('repinique'), [
         drum('X.x. X.x. XxXx X...'), drum('.... .... .... x.xx'), drum('X.xx .xX. x.xX .XXX'), drum('.... .... ..x. x.xx'), drum('x.x. .x.x ..x. x.x.'), drum('..x. .x.. ..x. x.xx'),
-    ], [1] * 6, gain=.2, clip=.8, lpf=9000, hpf=200, effects={'reverb': .1, 'pan': -.25}),
+    ], [1] * 6, gain=0.322, clip=.8, lpf=9000, hpf=200, effects={'reverb': .1, 'pan': -.25}),
     # c2 · pawn: caixa, the samba-reggae rimshot figure.
     part('rhythm', 'Caixa', 'pulse', samba('caixa'), [
         drum('.... .... .... x.xx'), drum(CAIXA), drum('x... x... x... x...'), drum('x..x ..x. ..x. x.x.'), drum(CAIXA), drum('x..x ..x. ..x. x.xx'),
-    ], [1] * 6, gain=.18, clip=.6, lpf=10000, hpf=250, effects={'reverb': .08, 'pan': .2},
+    ], [1] * 6, gain=0.151, clip=.6, lpf=10000, hpf=250, effects={'reverb': .08, 'pan': .2},
         arrangement=arrangement((False, True, True, True, True, True))),
     # d1 · queen: the crowd's refrain.
-    part('melody', 'Coro · refrão', 'phrase', brasil('coro-laia', True), [
+    part('melody', 'Coro · refrão', 'sustain', brasil('coro-laia', True), [
         mel(COROS), mel(COROS), mel(COROS[:2] * 2), mel(COROS), mel(COROS), mel(COROS),
-    ], [4] * 6, octave=4, gain=.24, attack=.03, decay=.4, sustain=.75, release=.2, gate=.9, lpf=6000, hpf=150,
+    ], [4] * 6, octave=4, gain=0.427, attack=.03, decay=.4, sustain=.75, release=.2, gate=.9, lpf=6000, hpf=150,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, True, False, True)), effects={'reverb': .3, 'pan': 0}),
     # d2 · pawn: surdo dobra between the two.
     part('rhythm', 'Surdo dobra', 'pulse', samba('surdo-viradeira'), [
         drum('.... .... .... ..xx'), drum('..x. ..xx ..x. ..x.'), drum('..x. ..xx ..x. ..xx'), drum('..x. ..xx ..x. ..x.'), drum('..x. ..xx ..x. ..xx'), drum('..x. ..xx ..x. ..xx'),
-    ], [1] * 6, gain=.26, clip=.8, lpf=3500, hpf=40, effects={'reverb': .06, 'pan': .15}),
+    ], [1] * 6, gain=0.276, clip=.8, lpf=3500, hpf=40, effects={'reverb': .06, 'pan': .15}),
     # e1 · king: reggae guitar on the offbeats.
     part('harmony', 'Guitarra · contratempo', 'phrase', recorded('guitars', 'muted'), [
         skank(VERSE), skank(VERSE), skank(VERSE, '..x. .... ..x. ....'), skank(REFRAIN), skank(VERSE), skank(REFRAIN, '..x. ..xx ..x. ..x.'),
-    ], [4] * 6, octave=3, gain=.14, attack=.003, decay=.2, sustain=.1, release=.08, gate=.3, lpf=5000, hpf=250,
+    ], [4] * 6, octave=3, gain=0.247, attack=.003, decay=.2, sustain=.1, release=.08, gate=.3, lpf=5000, hpf=250,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, False, True), restart=False), effects={'reverb': .15, 'pan': .3}),
     # e2 · pawn: timbau.
     part('rhythm', 'Timbau', 'pulse', samba('timbau'), [
         drum('x..x .x.. x..x .x..'), drum('x..x .x.. x..x .xxx'), drum('x..x .x.x x..x .xxx'), drum('x..x .x.. x..x .xxx'), drum('xx.x .x.x xx.x .xxx'), drum('x..x .x.x x..x .xxx'),
-    ], [1] * 6, gain=.16, clip=.7, lpf=8000, hpf=150, effects={'reverb': .08, 'pan': -.15},
+    ], [1] * 6, gain=0.24, clip=.7, lpf=8000, hpf=150, effects={'reverb': .08, 'pan': -.15},
         arrangement=arrangement((False, True, False, True, True, True))),
     # f1 · bishop: electric bass.
     part('bass', 'Baixo elétrico', 'phrase', recorded('guitars', 'bass'), [
@@ -96,30 +96,30 @@ parts = [
     # f2 · pawn: chocalho.
     part('rhythm', 'Chocalho', 'pulse', samba('chocalho'), [
         drum('x.x. x.x. x.x. x.x.'), drum('gxgX gxgX gxgX gxgX'), drum('x.x. x.x. x.x. x.x.'), drum('gxgX gxgX gxgX gxgX'), drum('gxgX gxgX gxgX gxgX'), drum('gXgX gXgX gXgX gXgX'),
-    ], [1] * 6, gain=.1, clip=.6, lpf=12000, hpf=2500, effects={'reverb': .05, 'pan': .3},
+    ], [1] * 6, gain=0.187, clip=.6, lpf=12000, hpf=2500, effects={'reverb': .05, 'pan': .3},
         arrangement=arrangement((False, True, False, True, True, True))),
     # g1 · knight: second trumpet, a third under the call.
     part('response', 'Trompete · resposta', 'phrase', samba('trompete', True), [
         mel([shift(x, -2) for x in HORN_VERSE]), mel([shift(x, -2) for x in HORN_VERSE]), mel([shift(x, -2) for x in HORN_VERSE[:2]] * 2),
         mel([REST, REST, REST, shift('. . . . . . . . 7 . 7 . 6 4 . .', -2)]), mel([shift(x, -2) for x in HORN_VERSE]), mel([shift(x, -2) for x in HORN_VERSE]),
-    ], [4] * 6, octave=4, gain=.15, attack=.006, decay=.3, sustain=.6, release=.1, gate=.75, lpf=7000, hpf=200,
+    ], [4] * 6, octave=4, gain=0.258, attack=.006, decay=.3, sustain=.6, release=.1, gate=.75, lpf=7000, hpf=200,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, True, False, True)), effects={'reverb': .18, 'pan': -.2}),
     # g2 · pawn: agogô.
     part('rhythm', 'Agogô', 'pulse', samba('agogo-agudo'), [
         drum('x... x... x... x...'), drum('x.x. .x.x ..x. x...'), drum('x... x... x... x...'), drum('x.x. .x.x ..x. x...'), drum('x.x. .x.x ..x. x...'), drum('x.x. .x.x ..x. x.x.'),
-    ], [1] * 6, gain=.07, clip=.5, lpf=9000, hpf=800, effects={'reverb': .1, 'pan': .35},
+    ], [1] * 6, gain=0.151, clip=.5, lpf=9000, hpf=800, effects={'reverb': .1, 'pan': .35},
         arrangement=arrangement((False, False, False, True, True, True))),
     # h1 · rook: trombones' closing hits at the end of each phrase.
     part('harmony', 'Trombone · fecho', 'phrase', samba('trombone', True), [
         skank(VERSE, '.... .... .... X...'), skank(VERSE, '.... .... .... X...'), skank(VERSE, '.... .... .... X...'),
         skank(REFRAIN, '.... .... .... X.x.'), skank(VERSE, '.... .... .... X...'), skank(REFRAIN, '.... .... X... X.x.'),
-    ], [4] * 6, octave=3, gain=.12, attack=.006, decay=.25, sustain=.4, release=.1, gate=.5, lpf=4000, hpf=120,
+    ], [4] * 6, octave=3, gain=0.141, attack=.006, decay=.25, sustain=.4, release=.1, gate=.5, lpf=4000, hpf=120,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, False, True)), effects={'reverb': .15, 'pan': .25}),
     # h2 · pawn: repique rolls into each section.
     part('rhythm', 'Repique · virada', 'pulse', samba('repinique'), [
         drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('.... .... .... ...g'), drum('x.x. x.x. xxxx XXXX'),
-    ], [1] * 6, gain=.16, clip=.8, lpf=9000, hpf=200, effects={'reverb': .1, 'pan': -.1},
-        arrangement=arrangement(variations=(0, 1, 2, 3, 4, 0), fills=(5, 5, 5, 5, 5, None))),
+    ], [1] * 6, gain=0.232, clip=.8, lpf=9000, hpf=200, effects={'reverb': .1, 'pan': -.1},
+        arrangement=arrangement((True, True, True, True, True, False), fills=(5, 5, 5, 5, 5, None))),
 ]
 
 profile = {

@@ -312,7 +312,7 @@ test('sample maps encode sharp filenames while preserving real local file paths'
   assert.deepEqual(Object.keys(Object.values(bass.map)[0]), ['c1', 'e1', 'g1', 'c2'])
 })
 
-test('all 64 city presets have six composed scenes and E/F harmony sequences are distinct', () => {
+test('all 65 city presets have six composed scenes and E/F harmony sequences are distinct', () => {
   const { cities } = loadTs('lib/cities-data.ts'), { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   for (const city of cities) {
     const kit = defaultCityKit(city.id)

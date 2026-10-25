@@ -59,7 +59,7 @@ parts = [
     ], [1] * 6, gain=.38, clip=.7, lpf=3000, hpf=30, mapping={'panWidth': 0}, effects={'reverb': .05, 'pan': 0}),
     # b1 · knight: tenor saxes, the reeds' answer and their own interlude.
     part('response', 'Saxofones · resposta', 'phrase', recorded('band', 'tenor-sax', 1), [
-        mel([REST, REST, REST, '0 2 4 2 0 . . .']), mel(ANSWER_A), mel([REST] * 4), mel(ANSWER_B), mel(FULL_A), mel(ANSWER_B),
+        mel([REST, REST, REST, '0 2 4 2 0 . . .']), mel(ANSWER_A), mel([REST, REST, REST, '. . . . . . 4! .']), mel(ANSWER_B), mel(FULL_A), mel(ANSWER_B),
     ], [4, 8, 4, 8, 8, 8], octave=3, gain=0.265, attack=.01, decay=.3, sustain=.6, release=.1, gate=.8, lpf=6000, hpf=120,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, True, True)), effects={'reverb': .15, 'pan': .3}),
     # b2 · pawn: tarol, the frevo's sixteenth engine.
@@ -68,7 +68,7 @@ parts = [
     ], [1] * 6, gain=0.356, clip=.6, lpf=10000, hpf=300, effects={'reverb': .08, 'pan': -.2}),
     # c1 · bishop: alto voice of the saxes, a third over the answer.
     part('response', 'Sax alto · terças', 'phrase', recorded('band', 'tenor-sax', 0), [
-        mel([REST, REST, REST, shift('0 2 4 2 0 . . .', 2)]), mel([shift(x, 2) for x in ANSWER_A]), mel([REST] * 4),
+        mel([REST, REST, REST, shift('0 2 4 2 0 . . .', 2)]), mel([shift(x, 2) for x in ANSWER_A]), mel([REST, REST, REST, '. . . . . . 6! .']),
         mel([shift(x, 2) for x in ANSWER_B]), mel([shift(x, 2) for x in FULL_A]), mel([shift(x, 2) for x in ANSWER_B]),
     ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.473, attack=.01, decay=.3, sustain=.6, release=.1, gate=.8, lpf=6500, hpf=200,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, True, True, True)), effects={'reverb': .15, 'pan': .4}),
@@ -88,7 +88,7 @@ parts = [
     ], [1] * 6, gain=.06, clip=.7, lpf=10000, hpf=2500, effects={'reverb': .1, 'pan': -.35},
         arrangement=arrangement((False, True, True, True, False, True))),
     # e1 · king: the high trumpet's long shouts in the refrains.
-    part('melody', 'Trompete agudo · grito', 'phrase', samba('trompete', True), [
+    part('melody', 'Trompete agudo · grito', 'sustain', samba('trompete', True), [
         mel(['7_ . . . . . . .', REST, REST, REST]), mel(['7_ . . . . . . .', REST, REST, REST, '6_ . . . . . . .', REST, REST, REST]), mel(['7! . . . . . . .', REST, REST, REST]),
         mel(['10_ . . . . . . .', REST, '9_ . . . . . . .', REST, '8_ . . . . . . .', REST, '7_ . . . . . . .', REST]),
         mel(['7_ . . . . . . .', REST, REST, REST, '6_ . . . . . . .', REST, REST, REST]),
@@ -131,7 +131,7 @@ parts = [
     part('rhythm', 'Tarol · rufo', 'pulse', samba('tarol'), [
         drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('rrrr RRRX'),
     ], [1] * 6, gain=0.3, clip=.6, lpf=10000, hpf=300, effects={'reverb': .1, 'pan': -.1},
-        arrangement=arrangement(variations=(0, 1, 2, 3, 4, 0), fills=(5, 5, 5, 5, 5, None))),
+        arrangement=arrangement((True, True, True, True, True, False), fills=(5, 5, 5, 5, 5, None))),
 ]
 
 profile = {

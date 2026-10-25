@@ -58,7 +58,7 @@ parts = [
         drum('X... ....'), drum('X..x ....'), drum('X..x ..X.'), drum('X..x ....'), drum('X..x ....'), drum('X..x ..x.'),
     ], [1] * 6, gain=0.356, clip=.8, lpf=3500, hpf=35, mapping={'panWidth': 0}, effects={'reverb': .06, 'pan': 0}),
     # b1 · knight: the aboio, sung over the intro and the break.
-    part('texture', 'Aboio', 'phrase', brasil('coro-laia', True), [
+    part('texture', 'Aboio', 'sustain', brasil('coro-laia', True), [
         mel(ABOIO), mel(ABOIO * 2), mel(ABOIO), mel(ABOIO * 2), mel(ABOIO * 2), mel(ABOIO * 2),
     ], [4, 8, 4, 8, 8, 8], octave=4, gain=.16, attack=.08, decay=.5, sustain=.8, release=.4, gate=.95, lpf=5000, hpf=200,
         mapping={'fileDegrees': 0}, arrangement=arrangement((True, False, True, False, False, False), restart=False), effects={'reverb': .45, 'pan': .2}),
@@ -125,7 +125,7 @@ parts = [
     part('rhythm', 'Zabumba · repique', 'pulse', brasil('bacalhau'), [
         drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('xxxx XXXX'),
     ], [1] * 6, gain=0.306, clip=.6, lpf=9000, hpf=300, effects={'reverb': .06, 'pan': -.1},
-        arrangement=arrangement(variations=(0, 1, 2, 3, 4, 0), fills=(5, 5, 5, 5, 5, None))),
+        arrangement=arrangement((True, True, True, True, True, False), fills=(5, 5, 5, 5, 5, None))),
 ]
 
 profile = {

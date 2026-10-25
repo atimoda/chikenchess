@@ -67,41 +67,41 @@ parts = [
     # a1 · rook: the seven-string's low bass (rooted), the floor of the regional.
     part('bass', 'Violão 7 cordas · bordão', 'phrase', recorded('guitars', 'nylon'), [
         walk(INTRO), walk(A), walk(('Dm', 'A7', 'Dm', 'A7')), walk(B), walk(A), walk(A),
-    ], [4, 8, 4, 8, 8, 8], octave=2, gain=.42, attack=.004, decay=.5, sustain=.3, release=.2, gate=.7, lpf=2600, hpf=40,
+    ], [4, 8, 4, 8, 8, 8], octave=2, gain=0.458, attack=.004, decay=.5, sustain=.3, release=.2, gate=.7, lpf=2600, hpf=40,
         design={'role': 'bass'}, mapping={'fileDegrees': 0, 'panWidth': .1}, effects={'reverb': .12, 'pan': -.1}),
     # a2 · pawn: pandeiro thumb (grave).
     part('rhythm', 'Pandeiro · grave', 'pulse', brasil('pandeiro-grave'), [
         drum('X... ....'), drum('X... x..x'), drum('X... ....'), drum('X... x..x'), drum('X..x x...'), drum('X..x x..x'),
-    ], [1] * 6, gain=.3, clip=.8, lpf=4000, hpf=60, effects={'reverb': .08, 'pan': 0}),
+    ], [1] * 6, gain=0.355, clip=.8, lpf=4000, hpf=60, effects={'reverb': .08, 'pan': 0}),
     # b1 · knight: bandolim counter-line, the solo in the fifth section.
     part('response', 'Bandolim · contracanto', 'phrase', brasil('bandolim', True), [
         mel(COUNTER_A[4:]), mel(COUNTER_A), mel(COUNTER_A[:4]), mel(COUNTER_B), mel(SOLO), mel(COUNTER_A),
-    ], [4, 8, 4, 8, 8, 8], octave=4, gain=.4, attack=.002, decay=.5, sustain=.2, release=.2, gate=.8, lpf=8000, hpf=180,
+    ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.49, attack=.002, decay=.5, sustain=.2, release=.2, gate=.8, lpf=8000, hpf=180,
         arrangement=arrangement((False, True, False, True, True, True)), effects={'reverb': .18, 'pan': .3}),
     # b2 · pawn: pandeiro slap.
     part('rhythm', 'Pandeiro · tapa', 'pulse', brasil('pandeiro-tapa'), [
         drum('.... ..x.'), drum('.... ..X.'), drum('.... ..x.'), drum('..x. ..X.'), drum('.... ..X.'), drum('..x. ..Xx'),
-    ], [1] * 6, gain=.25, clip=.8, lpf=9000, hpf=150, effects={'reverb': .08, 'pan': .05},
+    ], [1] * 6, gain=0.204, clip=.8, lpf=9000, hpf=150, effects={'reverb': .08, 'pan': .05},
         arrangement=arrangement((False, True, True, True, True, True))),
     # c1 · bishop: six-string guitar chords, arpeggiated in the B part.
     part('harmony', 'Violão 6 cordas · harmonia', 'phrase', recorded('guitars', 'nylon'), [
         over(INTRO, lambda c: comp(CAVACO[c], 'x... x...')), over(A, lambda c: comp(CAVACO[c], '..x. ..x.')), over(('Dm', 'A7', 'Dm', 'A7'), lambda c: comp(CAVACO[c], 'x... ....')),
         over(B, lambda c: comp(CAVACO[c], 'x.x. ..x.')), over(A, lambda c: comp(CAVACO[c], '..x. ..x.')), over(A, lambda c: comp(CAVACO[c], 'x.x. ..x.')),
-    ], [4, 8, 4, 8, 8, 8], octave=3, gain=.22, attack=.004, decay=.4, sustain=.25, release=.2, gate=.55, lpf=5000, hpf=120,
+    ], [4, 8, 4, 8, 8, 8], octave=3, gain=0.174, attack=.004, decay=.4, sustain=.25, release=.2, gate=.55, lpf=5000, hpf=120,
         mapping={'fileDegrees': 0}, effects={'reverb': .15, 'pan': -.3}),
     # c2 · pawn: pandeiro jingles, the sixteenth motor with the accent on the last of each beat.
     part('rhythm', 'Pandeiro · platinelas', 'pulse', brasil('pandeiro-platinela'), [
         drum('gxgX gxgX'), drum('gxgX gxgX'), drum('g.gX g.gX'), drum('gxgX gxgX'), drum('gxgX gxgX'), drum('gxgX gxgX'),
-    ], [1] * 6, gain=.16, clip=.7, lpf=12000, hpf=2500, effects={'reverb': .06, 'pan': .12}),
+    ], [1] * 6, gain=0.307, clip=.7, lpf=12000, hpf=2500, effects={'reverb': .06, 'pan': .12}),
     # d1 · queen: the flute melody.
     part('melody', 'Flauta · melodia', 'phrase', recorded('classical', 'flute-sustain'), [
         mel(MEL_A[4:]), mel(MEL_A), mel(['. . . . . . . .'] * 3 + ['. . . . 1 3 4 6']), mel(MEL_B), mel(MEL_A[:4] + MEL_A[4:]), mel(MEL_A),
-    ], [4, 8, 4, 8, 8, 8], octave=4, gain=.3, attack=.012, decay=.3, sustain=.7, release=.12, gate=.85, lpf=9000, hpf=250,
+    ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.833, attack=.012, decay=.3, sustain=.7, release=.12, gate=.85, lpf=9000, hpf=250,
         arrangement=arrangement((False, True, True, True, False, True)), effects={'reverb': .2, 'pan': 0}),
     # d2 · pawn: cavaquinho centre.
     part('harmony', 'Cavaquinho · centro', 'phrase', brasil('cavaquinho', True), [
         cavaco(INTRO, 'X.x. X.x.'), cavaco(A), cavaco(('Dm', 'A7', 'Dm', 'A7'), 'X... ....'), cavaco(B, 'X.xx .x.x'), cavaco(A), cavaco(A, 'X.xx .xxx'),
-    ], [4, 8, 4, 8, 8, 8], octave=4, gain=.24, attack=.002, decay=.25, sustain=.1, release=.08, gate=.4, lpf=9000, hpf=300,
+    ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.258, attack=.002, decay=.25, sustain=.1, release=.08, gate=.4, lpf=9000, hpf=300,
         mapping={'fileDegrees': 0}, effects={'reverb': .1, 'pan': .2}),
     # e1 · king: salon piano, Nazareth-style left-hand maxixe and chords.
     part('harmony', 'Piano de salão', 'phrase', recorded('band', 'piano'), [
@@ -111,7 +111,7 @@ parts = [
     # e2 · pawn: ganzá sixteenths.
     part('rhythm', 'Ganzá', 'pulse', brasil('ganza'), [
         drum('x.x. x.x.'), drum('gxgx gxgX'), drum('x... x...'), drum('gxgx gxgX'), drum('gxgx gxgX'), drum('gXgx gXgX'),
-    ], [1] * 6, gain=.12, clip=.7, lpf=13000, hpf=3500, effects={'reverb': .04, 'pan': -.25},
+    ], [1] * 6, gain=0.261, clip=.7, lpf=13000, hpf=3500, effects={'reverb': .04, 'pan': -.25},
         arrangement=arrangement((False, True, False, True, True, True))),
     # f1 · bishop: the seven-string baixaria answering the phrase ends (the interlude is its solo).
     part('response', 'Violão 7 cordas · baixaria', 'phrase', recorded('guitars', 'nylon'), [
@@ -126,34 +126,34 @@ parts = [
     # f2 · pawn: reco-reco on the second beat.
     part('rhythm', 'Reco-reco', 'pulse', brasil('reco-reco'), [
         drum('.... x...'), drum('.... x.x.'), drum('.... x...'), drum('..x. x.x.'), drum('.... x...'), drum('..x. x.x.'),
-    ], [1] * 6, gain=.14, clip=.6, lpf=9000, hpf=1500, effects={'reverb': .05, 'pan': .3},
+    ], [1] * 6, gain=0.327, clip=.6, lpf=9000, hpf=1500, effects={'reverb': .05, 'pan': .3},
         arrangement=arrangement((False, False, True, True, True, True))),
     # g1 · knight: trombone counter-melody of the old choro bands, in the B part and the finale.
-    part('response', 'Trombone · contraponto', 'phrase', samba('trombone', True), [
+    part('response', 'Trombone · contraponto', 'sustain', samba('trombone', True), [
         mel(['-3 . . . . . . .', '. . . . . . . .', '0 . . . . . . .', '-1 . . . . . . .']),
         mel(['0 . . . . . . .', '-1 . . . . . . .', '-3 . . . . . . .', '-2 . -3 . -4 . . .', '-4 . . . . . . .', '0 . . . . . . .', '-3 . . . -1 . . .', '0 . . . . . . .']),
         mel(['0 . . . . . . .', '-3 . . . . . . .', '0 . . . . . . .', '-3 . . . . . . .']),
         mel(['-2 . . . 0 . . .', '2 . . . . . . .', '-4 . . . -2 . . .', '0 . -1 . -2 . -3 .', '-1 . . . 1 . . .', '0 . . . . . . .', '-3 . . . -1 . . .', '0 . . . . . . .']),
         mel(['0 . . . . . . .', '-1 . . . . . . .', '-3 . . . . . . .', '-2 . -3 . -4 . . .', '-4 . . . . . . .', '0 . . . . . . .', '-3 . . . -1 . . .', '0 . . . . . . .']),
         mel(['0 . . . 2 . . .', '-1 . . . 1 . . .', '-3 . . . -1 . . .', '-2 . -3 . -4 . . .', '-4 . . . -2 . . .', '0 . . . 2 . . .', '-3 . . . -1 . . .', '0 . . . . . . .']),
-    ], [4, 8, 4, 8, 8, 8], octave=3, gain=.16, attack=.01, decay=.4, sustain=.6, release=.15, gate=.9, lpf=4000, hpf=90,
+    ], [4, 8, 4, 8, 8, 8], octave=3, gain=0.269, attack=.01, decay=.4, sustain=.6, release=.15, gate=.9, lpf=4000, hpf=90,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, True, False, True)), effects={'reverb': .2, 'pan': .25}),
     # g2 · pawn: second guitar's offbeat chops (the 'batida' under the flute).
     part('harmony', 'Violão · batida', 'phrase', recorded('guitars', 'nylon'), [
         over(INTRO, lambda c: comp(CAVACO[c], '.... x...')), over(A, lambda c: comp(CAVACO[c], '.x.. .x.x')), over(('Dm', 'A7', 'Dm', 'A7'), lambda c: comp(CAVACO[c], '.... x...')),
         over(B, lambda c: comp(CAVACO[c], '.x.x .x.x')), over(A, lambda c: comp(CAVACO[c], '.x.. .x.x')), over(A, lambda c: comp(CAVACO[c], '.x.x .x.x')),
-    ], [4, 8, 4, 8, 8, 8], octave=3, gain=.14, attack=.004, decay=.2, sustain=.1, release=.1, gate=.3, lpf=4500, hpf=200,
+    ], [4, 8, 4, 8, 8, 8], octave=3, gain=0.204, attack=.004, decay=.2, sustain=.1, release=.1, gate=.3, lpf=4500, hpf=200,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, True, True)), effects={'reverb': .1, 'pan': .35}),
     # h1 · rook: second flute (the 'flautim' an octave up) doubling the peaks.
     part('melody', 'Flautim · dobra', 'phrase', recorded('classical', 'flute-sustain', 1), [
         mel(MEL_A[6:] + MEL_A[6:]), mel(MEL_A), mel(MEL_A[4:]), mel(MEL_B), mel(MEL_A), mel(MEL_A),
-    ], [4, 8, 4, 8, 8, 8], octave=5, gain=.1, attack=.012, decay=.3, sustain=.7, release=.12, gate=.8, lpf=10000, hpf=400,
+    ], [4, 8, 4, 8, 8, 8], octave=5, gain=0.256, attack=.012, decay=.3, sustain=.7, release=.12, gate=.8, lpf=10000, hpf=400,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, True, False, True)), effects={'reverb': .25, 'pan': -.3}),
     # h2 · pawn: jingle roll fills into each section (a soft ghost elsewhere, the roll on the last bar).
     part('rhythm', 'Pandeiro · rufo', 'pulse', brasil('pandeiro-platinela'), [
         drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('.... ...g'), drum('rrrr RRRR'),
-    ], [1] * 6, gain=.12, clip=.7, lpf=12000, hpf=2500, effects={'reverb': .1, 'pan': -.1},
-        arrangement=arrangement(variations=(0, 1, 2, 3, 4, 0), fills=(5, 5, 5, 5, 5, None))),
+    ], [1] * 6, gain=0.331, clip=.7, lpf=12000, hpf=2500, effects={'reverb': .1, 'pan': -.1},
+        arrangement=arrangement((True, True, True, True, True, False), fills=(5, 5, 5, 5, 5, None))),
 ]
 
 profile = {
