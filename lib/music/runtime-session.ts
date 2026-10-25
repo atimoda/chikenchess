@@ -211,7 +211,7 @@ export class MusicRuntime {
   private resolveState() {
     if(!this.sourceState)return
     const input=this.sourceState.reactionInput
-    const resolved=input?applyReactions(this.sourceState,input.config,input.context,this.reactionQueue.entries):undefined
+    const resolved=input?applyReactions(this.sourceState,input.config,input.context,this.reactionQueue.entries,this.reactionQueue.rampStates()):undefined
     this.state=resolved?{...resolved.snapshot,reactionDescriptions:resolved.descriptions}:this.sourceState
     if(input?.lockedBpm!==undefined){this.state={...this.state,bpm:input.lockedBpm};this.rampBars=0}
     const soloIds = this.sourceState.soloIds?.length ? this.sourceState.soloIds : this.sourceState.soloId ? [this.sourceState.soloId] : []

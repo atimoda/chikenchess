@@ -23,6 +23,8 @@ export interface UseMusicOptions {
   onPieceChange?: (id: string, instrument: Instrument, effects: SquareEffects | undefined) => void
   /** Match actions the board cannot show (powers, Mulligan, Best/Worst); later plies are ignored. */
   actionEvents?: readonly Occurrence[]
+  /** Engine evaluations (white centipawns) by ply, for the tension and swing triggers. */
+  evaluations?: Readonly<Record<number, number>>
 }
 
 export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: number, volume: number, showCode = true, engineActive = true, positions: readonly Chess[] = [], options: UseMusicOptions = {}) {
@@ -45,7 +47,9 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
   const globalReactions = useGlobalReactions()
   const reactions = useMemo(() => kit ? resolveReactions(globalReactions, kit.reactions) : null, [globalReactions, kit])
   const actionEvents = options.actionEvents
-  const context = useMemo(() => withActionEvents(reactionContextFromGame(game, reactions?.minimumPieces, positions), actionEvents), [game, reactions?.minimumPieces, positions, actionEvents])
+  const evaluations = options.evaluations
+  const thresholds = reactions?.thresholds
+  const context = useMemo(() => withActionEvents(reactionContextFromGame(game, reactions?.minimumPieces, positions, { evaluations, thresholds }), actionEvents), [game, reactions?.minimumPieces, positions, actionEvents, evaluations, thresholds])
   const [effects, setEffects] = useState<Record<string, SquareEffects>>(builtInKit?.effects ?? {})
   const effectsRef = useRef(effects)
   effectsRef.current = effects

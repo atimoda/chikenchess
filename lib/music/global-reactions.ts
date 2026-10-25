@@ -17,7 +17,8 @@ export function parseGlobalReactions(raw: string | null): Reactions {
     const data = JSON.parse(raw)
     const parsed = reactionsSchema.parse({ minimumPieces: data.minimumPieces, rules: data.rules })
     // Triggers added after the save start from the official rules; authored ones stay untouched.
-    if (data.revision !== REACTION_PRESET_REVISION) {
+    // Saves list the triggers they knew, so a new trigger is recognised without a revision bump.
+    if (data.revision !== REACTION_PRESET_REVISION || Array.isArray(data.knownTriggers)) {
       const known = new Set<string>(data.knownTriggers ?? parsed.rules.map(rule => rule.trigger))
       parsed.rules.push(...defaultGlobalReactions().rules.filter(rule => !known.has(rule.trigger)))
     }

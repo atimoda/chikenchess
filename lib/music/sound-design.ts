@@ -1,6 +1,6 @@
 // Superdough controls for the optional sound-design fields of an instrument.
 // Every field is opt-in: an instrument without them produces the controls it always did.
-import { DELAY_TIMES, type Instrument, type LfoShape } from './model'
+import { DELAY_TIMES, type Instrument, type InstrumentRole, type LfoShape } from './model'
 
 export interface PanLfo { period: number; depth: number; shape: LfoShape; center: number }
 export interface DuckTrigger { orbits: number[]; depth: number[]; release: number[] }
@@ -60,4 +60,14 @@ export function panLfo(instrument: Instrument, center: number, bpm: number, beat
 /** The same team's piece standing on the ducked piece's source slot (black mirrors white). */
 export function duckSourceId(piece: { color: 'w' | 'b' }, slot: string) {
   return `${piece.color}:${piece.color === 'w' ? slot : `${slot[0]}${9 - Number(slot[1])}`}`
+}
+
+/** Role used by reaction filters: the author's choice, else a guess from behavior, source and register. */
+export function instrumentRole(instrument: Instrument): InstrumentRole {
+  if (instrument.role) return instrument.role
+  const unpitched = instrument.source?.kind === 'sample' && !instrument.source.pitched
+  if (unpitched) return instrument.behavior === 'sustain' ? 'fx' : 'drums'
+  if (instrument.source?.kind !== 'sample' && instrument.behavior === 'pulse' && ['sbd', 'white', 'pink', 'brown'].includes(instrument.sound)) return 'drums'
+  if (instrument.behavior === 'sustain') return 'pad'
+  return instrument.octave <= 2 ? 'bass' : 'lead'
 }
