@@ -170,7 +170,7 @@ test('Goa 1994 ships an official psytrance kit with its own palette, articulatio
   assert.equal(kit.bpm, 145)
   assert.equal(kit.root, 'E')
   assert.equal(kit.scale, 'Phrygian dominant')
-  assert.equal(kit.catalogRevision, 'goa-2026-10-25-midi-v1')
+  assert.equal(kit.catalogRevision, 'goa-2026-10-25-design-v2')
   const white = kit.pieces.filter(piece => piece.color === 'w').map(piece => kit.instruments[piece.id])
   assert.ok(white.filter(instrument => instrument.source?.bank === 'chicken-psytrance-v1').length >= 15, 'psytrance bank carries the band')
   const byName = name => white.find(instrument => instrument.name === name)
@@ -183,6 +183,12 @@ test('Goa 1994 ships an official psytrance kit with its own palette, articulatio
   assert.equal(byName('Lead Hallucinogen').arrangement.sections['section-a'].variation, null, 'the queen lead waits for the verse')
   for (const trigger of ['opening', 'check', 'capture', 'quiet', 'endgame']) assert.ok(kit.reactions.overrides.includes(trigger), trigger)
   assert.equal(kit.reactions.rules.find(rule => rule.trigger === 'opening').actions[0].scale, 'Phrygian')
+  // Sound design: the bass and pad duck under the kick, the acid parts resonate, the FM arp echoes on its own bus.
+  assert.equal(byName('Baixo rolante').duckSource, 'e2')
+  assert.ok(byName('Acid squelch').resonance > 10 && byName('Acid squelch').filterEnv > 0, 'acid resonance and filter envelope')
+  assert.equal(byName('Arpejo FM').delayTime, '3/16')
+  assert.equal(byName('Pad do nascer do sol').lfoTarget, 'lpf')
+  assert.equal(kit.reactions.rules.find(rule => rule.id === 'goa-tension').instruments, 'lead')
 })
 
 test('Phrygian dominant is a named scale with a parallel minor mode', () => {

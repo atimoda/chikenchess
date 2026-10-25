@@ -16,7 +16,7 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'salvador-1992': 'salvador-2026-10-02-midi-v4',
   'leipzig-1723': 'leipzig-2026-10-02-midi-v4',
   'vienna-1825': 'vienna-2026-10-02-midi-v4',
-  goa: 'goa-2026-10-25-midi-v1',
+  goa: 'goa-2026-10-25-design-v2',
 }
 
 const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', psytrance: 'chicken-psytrance-v1' } as const
