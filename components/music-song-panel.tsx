@@ -51,6 +51,20 @@ function Reveal({ open, mode, children }: { open: boolean; mode: string; childre
   </div>
 }
 
+/** The match's compact Global Sections bar, shared by the instrument list and
+ * Piece Params (above the variation tabs). */
+export function MusicSongSections({ arrangement, harmony, monitor, onChange, onSeek }: {
+  arrangement: Arrangement
+  harmony?: HarmonyPlanId
+  monitor: MusicMonitor
+  onChange?: (arrangement: Arrangement) => void
+  onSeek: (sectionId: string) => void
+}) {
+  return <section aria-label="Global Sections" className="min-w-0">
+    <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onChange} onSeek={onSeek} />
+  </section>
+}
+
 /** Song & Instruments: the Piece Params list view. The Global Sections bar sits
  * on top; each row turns its piece on or off from the dot on the left. Active
  * pieces show a compact MIDI strip. Selecting a piece (here or on the board)
@@ -103,9 +117,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   const expand = (piece: MusicPiece) => { setExpandedId(piece.id); if (selectedId !== piece.id) onSelect(piece.square) }
   const teams = ownColor === 'w' ? ['w', 'b'] as const : ['b', 'w'] as const
   return <div className="flex min-w-0 flex-col gap-2">
-    {arrangement && <section aria-label="Global Sections" className="min-w-0">
-      <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} />
-    </section>}
+    {arrangement && <MusicSongSections arrangement={arrangement} harmony={harmony} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} />}
     <section aria-label="Instruments" className="flex min-w-0 flex-col gap-2.5" onPointerLeave={() => hover(null)}>
       {teams.map(color => <div key={color} className="min-w-0">
         <h3 className="m-0 px-1 pb-1.5 font-mono text-[9px] uppercase leading-none tracking-[1px] text-[#96a79a]">{color === 'w' ? 'White' : 'Black'}</h3>

@@ -45,6 +45,9 @@ export const CHANGELOG = [
         'Abrir pelo nome uma peça desligada na lista agora também liga a peça.',
         'O MIDI completo na lista ganhou as mesmas margens laterais da faixa compacta.',
         'O gráfico do slide (Note params e Piece params) acompanha os knobs Slide ST e Slide sec enquanto você arrasta, sem esperar soltar o mouse; a música continua mudando só ao soltar.',
+        'Na barra de Global Sections da partida, a seção marcada como próxima mostra "Next" embaixo do nome.',
+        'A barra de Global Sections também aparece no Piece Params, acima das abas de variações da peça.',
+        'O Piece Params pode ser encolhido verticalmente o quanto você quiser; o conteúdo continua rolando dentro do painel.',
         'Note params ganhou os knobs Ratchet (repete a nota 2, 3 ou 4 vezes dentro da duração dela) e Chance (probabilidade de a nota tocar).',
       ] },
       { title: 'Admin', items: [

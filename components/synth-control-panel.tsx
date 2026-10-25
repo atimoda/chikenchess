@@ -16,6 +16,8 @@ import { filterDialHertz, filterDialLabel, filterDialValue } from '@/lib/music/t
 import type { MusicMonitor, TrackFrame } from '@/lib/music/monitor'
 
 const EMPTY_VOICE_VALUES: TrackFrame['values'] = {}
+// Header height: below it the panel would hide its own title and controls.
+const MIN_PANEL_HEIGHT = 80
 
 interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   selectedSquare: string | null
@@ -46,6 +48,8 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   song?: React.ReactNode
   /** Keeps the Song & Instruments list with a piece selected (Piece Params closed). */
   showSong?: boolean
+  /** Global Sections bar shown above the variation tabs in Piece Params. */
+  sections?: React.ReactNode
   /** "midi" eye toggle for the list's MIDI strips. */
   songMidi?: { on: boolean; onToggle: () => void }
 }
@@ -75,6 +79,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   readOnly = false,
   readOnlyMessage = "Piece Params locked",
   song,
+  sections,
   showSong = false,
   songMidi,
   ...props
@@ -83,7 +88,6 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   const contentViewportRef = useRef<HTMLDivElement>(null)
   const knobGridRef = useRef<HTMLDivElement>(null)
   const [midiVisualUpdatesEnabled, setMidiVisualUpdatesEnabled] = useState(true)
-  const [minPanelHeight, setMinPanelHeight] = useState(420)
   // A note selected in the MIDI editor swaps the knob panel to its Note params.
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
   const noteMode = !!noteSelection && !!playback
@@ -119,31 +123,6 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
     return () => observer.disconnect()
   }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined, songMode])
 
-  useEffect(() => {
-    const viewport = contentViewportRef.current
-    const wrapper = viewport?.parentElement
-    if (!viewport || !wrapper || isStatic) return
-    const updateMinimumHeight = () => {
-      const target = viewport.querySelector<HTMLElement>('[role="tablist"][aria-label="Variações do instrumento"]') ?? knobGridRef.current
-      if (!target) return
-      const required = Math.ceil(target.getBoundingClientRect().bottom - wrapper.getBoundingClientRect().top + 4)
-      const viewportLimit = Math.floor(window.innerHeight * .9)
-      const next = Math.max(320, Math.min(required, viewportLimit))
-      setMinPanelHeight(current => current === next ? current : next)
-    }
-    updateMinimumHeight()
-    const observer = typeof ResizeObserver === 'undefined' ? null : new window.ResizeObserver(updateMinimumHeight)
-    observer?.observe(viewport)
-    if (knobGridRef.current) observer?.observe(knobGridRef.current)
-    const tabs = viewport.querySelector<HTMLElement>('[role="tablist"][aria-label="Variações do instrumento"]')
-    if (tabs) observer?.observe(tabs)
-    window.addEventListener('resize', updateMinimumHeight)
-    return () => {
-      observer?.disconnect()
-      window.removeEventListener('resize', updateMinimumHeight)
-    }
-  }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined, songMode])
-
   const subscribeMonitor = useCallback((listener: () => void) => monitor?.subscribe(listener) ?? (() => {}), [monitor])
   const readMonitorValues = useCallback(() => monitor && monitorId
     ? monitor.getSnapshot().tracks[monitorId]?.values ?? EMPTY_VOICE_VALUES
@@ -177,7 +156,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         size={isStatic ? { width: '100%', height: 'auto' } : undefined}
         minWidth={isStatic ? '100%' : 340}
         maxWidth={isStatic ? '100%' : undefined}
-        minHeight={isStatic ? 'auto' : minPanelHeight}
+        // Free vertical resize: the content scrolls inside when the panel is short.
+        minHeight={isStatic ? 'auto' : MIN_PANEL_HEIGHT}
         maxHeight={isStatic ? undefined : '90vh'}
         enable={isStatic ? false : { top: false, right: false, bottom: true, left: false, topRight: false, bottomRight: false, bottomLeft: false, topLeft: false }}
         handleStyles={{ bottom: { zIndex: 90, height: 10, bottom: 0, cursor: 'ns-resize' } }}
@@ -279,6 +259,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               {selectedSquare && !songMode && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
+          {/* The tab strip already keeps 13 px of pin headroom above it. */}
+          {isOn && sections && !songMode && <div className="-mb-3 flex-none">{sections}</div>}
           {playback && !songMode && <div className="flex flex-none flex-col">
             <NoteParamsHostContext.Provider value={setNoteSelection}>
               <MusicPlaybackViewport visualUpdatesEnabled={isStatic || midiVisualUpdatesEnabled} pieceParamsLayout={!isStatic}>
