@@ -7,13 +7,13 @@ import { useMonitorSelector } from '@/hooks/use-monitor-selector'
 import { MUSIC_GRID_DIVISIONS, MusicPianoEditor, defaultGridDivision, gridDivisionLabel } from './music-piano-editor'
 import type { Instrument, InstrumentPerformanceEdit } from '@/lib/music/model'
 import { instrumentFor } from '@/lib/music/model'
-import { addVariation, removeLastVariation, reverseVariation, randomizeVariation } from '@/lib/music/variation-edit'
-import { resizeRoll } from '@/lib/music/piano-roll'
+import { addVariation, removeLastVariation, reverseVariation, randomizeVariation, euclidPattern, euclidSteps, euclidVariation, type EuclidMode } from '@/lib/music/variation-edit'
+import { resizeRoll, type PianoRoll } from '@/lib/music/piano-roll'
 import { beatsPerBar, meterLabel } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
 import { variationPosition } from '@/lib/music/performance'
 import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music/arrangement'
-import { ArrowLeftRight, Dice5, Minus, Pin, Plus, RotateCw } from 'lucide-react'
+import { ArrowLeftRight, CircleDotDashed, Dice5, Minus, Pin, Plus, RotateCw } from 'lucide-react'
 import styles from './music-playback.module.css'
 import type { KnobUpdateMode } from './knob'
 
@@ -42,6 +42,39 @@ function DivisionPicker({ value, onChange, meter }: { value:number; onChange:(va
     <select aria-label="Grid subdivision" value={value} onChange={event=>onChange(Number(event.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,meter)}</option>)}</select>
   </label>
 }
+const EUCLID_MODES: { mode: EuclidMode; label: string; title: string }[] = [
+  { mode: 'notes', label: 'Notes', title: 'Rewrite the rhythm: one note per pulse, keeping the melody in order' },
+  { mode: 'accent', label: 'Accent', title: 'Full accent on the notes that land on a pulse, half on the others' },
+  { mode: 'ratchet', label: 'Ratchet', title: 'Notes that land on a pulse repeat ×2' },
+  { mode: 'chance', label: 'Chance', title: 'Notes off the pattern play 50% of the time' },
+]
+
+/** `source` is the roll Euclid edits from; `last` is what it produced. A roll that
+ * matches neither was edited by hand and becomes the new source. */
+interface EuclidState { tab: number; source: PianoRoll; sourceJson: string; last: string; mode: EuclidMode; pulses: number; rotate: number }
+
+/** Inline Euclid row under the variation actions: mode, Pulses and Rotate over
+ * the grid's steps, with the pattern drawn as dots. */
+function EuclidPanel({ state, steps, onChange }: { state: EuclidState; steps: number; onChange: (patch: Partial<Pick<EuclidState, 'mode' | 'pulses' | 'rotate'>>) => void }) {
+  const pattern = euclidPattern(state.pulses, steps, state.rotate)
+  const stepper = (label: string, value: number, min: number, max: number, key: 'pulses' | 'rotate', text: string) => <span className={styles.euclidField}>
+    <span>{label}</span>
+    <span className={styles.buttonPair}>
+      <button type="button" aria-label={`Fewer ${label.toLowerCase()}`} disabled={value <= min} onClick={() => onChange({ [key]: value - 1 })}><Minus size={12}/></button>
+      <output aria-label={label}>{text}</output>
+      <button type="button" aria-label={`More ${label.toLowerCase()}`} disabled={value >= max} onClick={() => onChange({ [key]: value + 1 })}><Plus size={12}/></button>
+    </span>
+  </span>
+  return <div className={styles.euclidPanel} role="group" aria-label="Euclidean pattern">
+    <div className={styles.euclidModes} role="radiogroup" aria-label="Euclidean mode">
+      {EUCLID_MODES.map(({ mode, label, title }) => <button key={mode} type="button" role="radio" aria-checked={state.mode === mode} data-on={state.mode === mode} title={title} onClick={() => onChange({ mode })}>{label}</button>)}
+    </div>
+    {stepper('Pulses', state.pulses, 0, steps, 'pulses', `${state.pulses}/${steps}`)}
+    {stepper('Rotate', state.rotate, 0, steps - 1, 'rotate', String(state.rotate))}
+    <span className={styles.euclidDots} aria-hidden="true">{pattern.map((hit, index) => <i key={index} data-on={hit} />)}</span>
+  </div>
+}
+
 export function MusicTransportReadout({ monitor, arrangement, activeCount, solo = false, showBeatUnit = false, showStatus = true }: { monitor: MusicMonitor; arrangement?: Arrangement; activeCount?: number; solo?: boolean; showBeatUnit?: boolean; showStatus?: boolean }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const position = arrangement ? arrangementPosition(arrangement, frame.cycle, beatsPerBar(frame.transport?.meter)) : undefined
@@ -99,6 +132,27 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     if(!instrument||!onInstrumentChange||!plan)return
     onInstrumentChange({arrangement:{restart:!restart,sections:Object.fromEntries(plan.sections.map((section,index)=>[section.id,pieceSection(instrument,plan,index)]))}})
   }
+  // Euclid works from the roll as it was when opened (or last edited by hand),
+  // so changing Pulses, Rotate or the mode never compounds earlier results.
+  const [euclid, setEuclid] = useState<EuclidState | null>(null)
+  // It acts on the variation on screen: when the arrangement moves to another tab,
+  // that roll becomes the source and the settings carry over.
+  if (euclid && !activeRoll) setEuclid(null)
+  else if (euclid && activeRoll) {
+    const json = JSON.stringify(activeRoll)
+    if (euclid.tab !== activeTab || (json !== euclid.last && json !== euclid.sourceJson)) setEuclid({ ...euclid, tab: activeTab, source: activeRoll, sourceJson: json, last: json })
+  }
+  const euclidStepCount = activeRoll ? euclidSteps(activeRoll, beatsPerBar(snapshot.meter), division) : 1
+  const toggleEuclid = () => setEuclid(current => current || !activeRoll ? null : { tab: activeTab, source: activeRoll, sourceJson: JSON.stringify(activeRoll), last: JSON.stringify(activeRoll), mode: 'notes', pulses: Math.max(1, Math.min(euclidStepCount, activeRoll.notes.length)), rotate: 0 })
+  const changeEuclid = (patch: Partial<Pick<EuclidState, 'mode' | 'pulses' | 'rotate'>>) => {
+    if (!euclid || !instrument || !onInstrumentChange) return
+    const next = { ...euclid, ...patch }
+    next.pulses = Math.max(0, Math.min(euclidStepCount, next.pulses))
+    next.rotate = Math.max(0, Math.min(euclidStepCount - 1, next.rotate))
+    const edit = euclidVariation(instrument, next.tab, next.source, { mode: next.mode, pulses: next.pulses, rotate: next.rotate, beatsPerBar: beatsPerBar(snapshot.meter), division })
+    setEuclid({ ...next, last: JSON.stringify(edit.pianoRolls?.[next.tab]) })
+    onInstrumentChange(edit)
+  }
   // The piano editor passes Delete note (only while a note is selected) as the first action.
   const variationActions = instrument && onInstrumentChange ? (leading: ReactNode) => <div className={styles.variationActions} aria-label="Variation actions">
     {leading}
@@ -106,6 +160,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     {snapshot.arrangement&&<button type="button" className={styles.restartToggle} aria-label="Restart MIDI when the global section starts" aria-pressed={restart} data-on={restart} title={restart ? 'Restart MIDI at each global section: on. The loop starts again when a section starts.' : 'Restart MIDI at each global section: off. The loop keeps its global phase across sections.'} onClick={toggleRestart}><RotateCw size={14}/></button>}
     <button type="button" aria-label="Reverse variation notes" title="Mirror the variation in time" onClick={() => onInstrumentChange(reverseVariation(instrument,activeTab))}><ArrowLeftRight size={14}/></button>
     <button type="button" aria-label="Randomize variation notes" title="Randomize notes" onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dice5 size={14}/></button>
+    <button type="button" className={styles.euclidToggle} aria-label="Euclidean pattern" aria-pressed={!!euclid} data-on={!!euclid} title="Euclidean pattern: spread pulses evenly over the grid to rewrite the rhythm, accents, ratchets or chance" onClick={toggleEuclid}><CircleDotDashed size={14}/></button>
     <span className={styles.buttonPair}><button type="button" aria-label={`Shorten variation ${activeTab+1}`} title="Remove one beat" disabled={!activeRoll||activeRoll.bars<=1/beatsPerBar(snapshot.meter)} onClick={()=>resizeActiveVariation(-.25)}><Minus size={14}/></button>
     <button type="button" aria-label={`Lengthen variation ${activeTab+1}`} title="Add one beat" disabled={!activeRoll||activeRoll.bars>=8} onClick={()=>resizeActiveVariation(.25)}><Plus size={14}/></button></span>
   </div> : null
@@ -130,6 +185,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
         {onSoloToggle&&<button type="button" className={styles.soloText} aria-label={soloOn ? 'Disable solo' : 'Enable solo'} title="Solo" aria-pressed={soloOn} data-on={soloOn} onClick={onSoloToggle}>S</button>}
       </div>
       <MusicPianoEditor compact actions={variationActions} onlyVariation={activeTab} division={division} onDivisionChange={setDivision} snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode} visualUpdatesEnabled={viewport.visualUpdatesEnabled}/>
+      {euclid && <EuclidPanel state={euclid} steps={euclidStepCount} onChange={changeEuclid} />}
       </>}
       {!variationTabs&&<>
       <div className={styles.variations} data-tabbed={variationTabs || undefined} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Saved piece variations">
