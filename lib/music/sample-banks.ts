@@ -15,19 +15,19 @@ export interface SampleBank {
   assets: SampleAsset[]
 }
 
-const variants = (id: string, names = ['Normal', 'Suave']) => names.map((name, i) => ({ name, file: `/samples/chicken-electro-v1/${id}-${i}.wav` }))
+const variants = (id: string, names = ['Normal', 'Suave']) => names.map((name, i) => ({ name, file: `/samples/chicken-electro-v1/${id}-${i}.ogg` }))
 const generatedBank = (id: string, name: string, assets: readonly (readonly [string, string, string?])[], generator = 'generate-timbre-samples.py'): SampleBank => ({
   id, name, credit: `ChickenChess · síntese original; scripts/${generator}`, license: 'CC0-1.0',
   assets: assets.map(([assetId, assetName, rootNote]) => ({ id: assetId, name: assetName, rootNote,
-    variants: [{ name: 'Original', file: `/samples/${id}/${assetId}-0.wav` }],
+    variants: [{ name: 'Original', file: `/samples/${id}/${assetId}-0.ogg` }],
   })),
 })
 const classicalVariant = (asset: string, name: string, revision: string, notes: string[]) => {
-  const keymap = Object.fromEntries(notes.map(note => [note, `/samples/chicken-classical-v1/${asset}-${revision}-${note}.wav`]))
+  const keymap = Object.fromEntries(notes.map(note => [note, `/samples/chicken-classical-v1/${asset}-${revision}-${note}.ogg`]))
   return { name, file: Object.values(keymap)[0], keymap }
 }
 const classicalHitVariant = (asset: string, name: string, revision: string) => ({
-  name, file: `/samples/chicken-classical-v1/${asset}-${revision}.wav`,
+  name, file: `/samples/chicken-classical-v1/${asset}-${revision}.ogg`,
 })
 const classicalBank: SampleBank = {
   id: 'chicken-classical-v1', name: 'Chicken Classical · instrumentos acústicos',
@@ -92,7 +92,7 @@ const classicalBank: SampleBank = {
   ],
 }
 export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken World · instrumentos',credit:'ChickenChess · síntese original; scripts/generate-world-samples.py',license:'CC0-1.0',assets:[
- ...[['guitar','Guitarra dedilhada sintética','c3'],['strings','Cordas sintéticas','c4'],['flute','Flauta sintética','c5'],['marimba','Marimba sintética','c4'],['conga','Conga sintética','c3'],['timpani','Tímpano sintético','c2'],['tambourine','Pandeiro sintético',undefined],['crash','Prato sintético',undefined]].map(([id,name,rootNote])=>({id:id!,name:name!,rootNote,variants:[{name:'Original',file:`/samples/chicken-world-v1/${id}-0.wav`}]})),
+ ...[['guitar','Guitarra dedilhada sintética','c3'],['strings','Cordas sintéticas','c4'],['flute','Flauta sintética','c5'],['marimba','Marimba sintética','c4'],['conga','Conga sintética','c3'],['timpani','Tímpano sintético','c2'],['tambourine','Pandeiro sintético',undefined],['crash','Prato sintético',undefined]].map(([id,name,rootNote])=>({id:id!,name:name!,rootNote,variants:[{name:'Original',file:`/samples/chicken-world-v1/${id}-0.ogg`}]})),
 ]},{
   id: 'chicken-electro-v1', name: 'Chicken Electro · 01',
   credit: 'ChickenChess · síntese original, gerada por scripts/generate-samples.py', license: 'CC0-1.0',
@@ -122,7 +122,7 @@ export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken 
       ['snare', 'Caixa breaks', undefined, ['Corpo', 'Ghost']],
       ['ride', 'Ride curto', undefined, ['Ponta']],
     ].map(([id, name, rootNote, names]) => ({ id: id as string, name: name as string, rootNote: rootNote as string | undefined,
-      variants: (names as string[]).map((name, i) => ({ name, file: `/samples/chicken-jazz-v1/${id}-${i}.wav` })),
+      variants: (names as string[]).map((name, i) => ({ name, file: `/samples/chicken-jazz-v1/${id}-${i}.ogg` })),
     })),
   ],
 }, generatedBank('chicken-strings-v1', 'Chicken Strings · cordas e guitarras', [
@@ -173,14 +173,14 @@ export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken 
       ['tarol', 'Tarol de corda'], ['repinique', 'Repinique gravado'],
       ['timbau', 'Resposta de mão (quinto acústico)'], ['agogo-grave', 'Agogô grave'],
       ['agogo-agudo', 'Agogô agudo'], ['chocalho', 'Chocalho'], ['pandeiro', 'Pandeiro gravado'],
-    ].map(([id, name]) => ({ id, name, variants: [{ name: 'Gravação', file: `/samples/chicken-samba-reggae-v2/${id}-0.wav` }] })),
+    ].map(([id, name]) => ({ id, name, variants: [{ name: 'Gravação', file: `/samples/chicken-samba-reggae-v2/${id}-0.ogg` }] })),
     { id: 'trompete', name: 'Trompete acústico', rootNote: 'f4',
-      variants: [{ name: 'Staccato', file: '/samples/chicken-samba-reggae-v2/trompete-f4-0.wav' }],
-      keymap: Object.fromEntries(['g3', 'f4', 'c5'].map(note => [note, `/samples/chicken-samba-reggae-v2/trompete-${note}-0.wav`])),
+      variants: [{ name: 'Staccato', file: '/samples/chicken-samba-reggae-v2/trompete-f4-0.ogg' }],
+      keymap: Object.fromEntries(['g3', 'f4', 'c5'].map(note => [note, `/samples/chicken-samba-reggae-v2/trompete-${note}-0.ogg`])),
     },
     { id: 'trombone', name: 'Trombone tenor acústico', rootNote: 'd3',
-      variants: [{ name: 'Staccato', file: '/samples/chicken-samba-reggae-v2/trombone-d3-0.wav' }],
-      keymap: Object.fromEntries([['a#2', 'as2'], ['d3', 'd3'], ['f3', 'f3']].map(([note, file]) => [note, `/samples/chicken-samba-reggae-v2/trombone-${file}-0.wav`])),
+      variants: [{ name: 'Staccato', file: '/samples/chicken-samba-reggae-v2/trombone-d3-0.ogg' }],
+      keymap: Object.fromEntries([['a#2', 'as2'], ['d3', 'd3'], ['f3', 'f3']].map(([note, file]) => [note, `/samples/chicken-samba-reggae-v2/trombone-${file}-0.ogg`])),
     },
   ],
 }, classicalBank, ...RECORDED_BANKS]
@@ -192,7 +192,8 @@ export function sampleAsset(source: SampleSource) {
 export function sampleSound(source: SampleSource) {
   return `cc_${source.bank.replace(/-/g, '_')}_${source.asset.replace(/-/g, '_')}_${source.variant}_${source.pitched ? 'pitched' : 'hit'}`
 }
-export const sampleUrl = (file: string) => encodeURI(file).replace(/#/g, '%23').replace(/\?/g, '%3F')
+export { SAMPLE_FORMAT, sampleUrl } from './sample-format'
+import { sampleUrl } from './sample-format'
 export function sampleRegistration(source: SampleSource) {
   const asset = sampleAsset(source)
   const variant = asset?.variants[source.variant]

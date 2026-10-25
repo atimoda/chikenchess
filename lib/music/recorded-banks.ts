@@ -4,12 +4,12 @@ const multisample = (bank: string, asset: string, name: string, notes: string[],
   id: asset, name, variants: layers.map((layer, index) => {
     // Source libraries use different octave conventions. Keys describe measured
     // sounding pitch; filenames retain the immutable source manifest identity.
-    const keymap = Object.fromEntries(notes.map(note => [note.replace(/\d$/, octave => String(Number(octave) + octaveShift)), `/samples/${bank}/${asset}-${index}-${note}.wav`]))
+    const keymap = Object.fromEntries(notes.map(note => [note.replace(/\d$/, octave => String(Number(octave) + octaveShift)), `/samples/${bank}/${asset}-${index}-${note}.ogg`]))
     return { name: layer, file: Object.values(keymap)[0], keymap }
   }),
 })
 const hit = (asset: string, name: string) => ({ id: asset, name,
-  variants: ['Tomada 1', 'Tomada 2'].map((name, index) => ({ name, file: `/samples/chicken-percussion-v1/${asset}-${index}.wav` })),
+  variants: ['Tomada 1', 'Tomada 2'].map((name, index) => ({ name, file: `/samples/chicken-percussion-v1/${asset}-${index}.ogg` })),
 })
 
 export const RECORDED_BANKS: SampleBank[] = [{

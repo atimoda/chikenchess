@@ -18,22 +18,26 @@ test('sample registry points to small valid local WAV files with explicit tuning
     for (const asset of bank.assets) for (const variant of asset.variants.keys()) {
     const registration = sampleRegistration({ kind: 'sample', bank: bank.id, asset: asset.id, variant, pitched: true })
     for (const sampleFile of registration.files) {
+      // Each sample ships as Ogg Opus plus an AAC twin; a browser downloads one of them.
+      assert.match(sampleFile, /\.ogg$/)
       const file = fs.readFileSync(path.resolve(fixtureDirectory, '../public', sampleFile.slice(1)))
-      total += file.length
-      bankBytes += file.length
-      assert.equal(file.toString('ascii', 0, 4), 'RIFF')
-      assert.equal(file.toString('ascii', 8, 12), 'WAVE')
-      assert.equal(file.readUInt16LE(22), 1)
+      const twin = fs.readFileSync(path.resolve(fixtureDirectory, '../public', sampleFile.slice(1).replace(/\.ogg$/, '.m4a')))
+      total += Math.max(file.length, twin.length)
+      bankBytes += Math.max(file.length, twin.length)
+      assert.equal(file.toString('ascii', 0, 4), 'OggS')
+      assert.equal(file.toString('ascii', 28, 36), 'OpusHead')
+      assert.equal(twin.toString('ascii', 4, 8), 'ftyp')
     }
     assert.ok(registration.map)
     }
-    const budgets = { 'chicken-classical-v1': 6_000_000, 'chicken-band-v1': 2_000_000,
-      'chicken-guitars-v1': 2_200_000, 'chicken-percussion-v1': 1_000_000 }
-    const bankLimit = budgets[bank.id] ?? 700_000
+    const budgets = { 'chicken-classical-v1': 1_500_000, 'chicken-band-v1': 500_000,
+      'chicken-guitars-v1': 550_000, 'chicken-percussion-v1': 250_000 }
+    const bankLimit = budgets[bank.id] ?? 200_000
     assert.ok(bankBytes < bankLimit, `${bank.id}: bank stays within its audio budget`)
   }
   assert.equal(SAMPLE_BANKS.length, 14)
   assert.ok(total < 15_000_000, 'recorded banks keep the lazy-loaded catalog below 15 MB')
+  assert.equal(fs.readdirSync(path.resolve(fixtureDirectory, '../public/samples'), { recursive: true }).filter(file => String(file).endsWith('.wav')).length, 0, 'no WAV left in the catalog')
 })
 
 test('Classical campaigns use recorded multisamples, articulations and dedicated mix profiles', () => {
