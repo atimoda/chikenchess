@@ -75,9 +75,16 @@ test('variation actions mirror time, invert slides, and affect only the selected
  const randomized=variationEdit.randomizeVariation(instrument,0,()=>values[cursor++])
  assert.deepEqual(randomized.pianoRolls[1],instrument.pianoRolls[1])
  assert.deepEqual(randomized.pianoRolls[0].notes.map(({degree,...note})=>note),instrument.pianoRolls[0].notes.map(({degree,...note})=>note))
- assert.deepEqual(randomized.pianoRolls[0].notes.map(note=>note.degree),[-1,0,4,2,1])
+ assert.deepEqual(randomized.pianoRolls[0].notes.map(note=>note.degree),[-7,-3,14,4,1])
  assert.notDeepEqual(randomized.pianoRolls[0].notes.map(note=>note.degree),instrument.pianoRolls[0].notes.map(note=>note.degree))
  assert.equal(JSON.stringify(instrument),before)
+ // Repeated clicks keep drawing from the editor's whole visible range instead of drifting.
+ let drifting=instrument,seed=1
+ const lcg=()=>(seed=(seed*16807)%2147483647)/2147483647
+ const seen=new Set()
+ for(let i=0;i<200;i++){drifting=variationEdit.randomizeVariation(drifting,0,lcg);drifting.pianoRolls[0].notes.forEach(note=>seen.add(note.degree))}
+ assert.ok([...seen].every(degree=>degree>=-7&&degree<=14))
+ assert.ok(Math.min(...seen)<=-5&&Math.max(...seen)>=12)
 })
 
 test('turning variations off silences the loop but preserves manual board notes', async () => {

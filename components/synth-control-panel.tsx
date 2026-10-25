@@ -10,7 +10,7 @@ import { Eye, EyeOff, LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
-import { KnobPanelTitle, NoteParamsHostContext, NoteParamsKnobs, type NoteParamsSelection } from "./music-note-params"
+import { KnobPanelTitle, NoteParamsHostContext, NoteParamsKnobs, SlideRamp, type NoteParamsSelection } from "./music-note-params"
 import type { Instrument, InstrumentPerformanceEdit, MusicPiece } from '@/lib/music/model'
 import { filterDialHertz, filterDialLabel, filterDialValue } from '@/lib/music/team-mixer'
 import type { MusicMonitor, TrackFrame } from '@/lib/music/monitor'
@@ -97,7 +97,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   const pitchSlideEnabled = isOn && !!selectedSquare && !!instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched)
 
   useEffect(() => {
-    if (isStatic || !isOn) {
+    // The song list renders its own editors; only the Piece Params editor is watched here.
+    if (isStatic || !isOn || songMode) {
       setMidiVisualUpdatesEnabled(true)
       return
     }
@@ -114,7 +115,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
     }, { root: viewport, threshold: 0 })
     if (editor) observer.observe(editor)
     return () => observer.disconnect()
-  }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined])
+  }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined, songMode])
 
   useEffect(() => {
     const viewport = contentViewportRef.current
@@ -139,7 +140,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       observer?.disconnect()
       window.removeEventListener('resize', updateMinimumHeight)
     }
-  }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined])
+  }, [isStatic, isOn, selectedSquare, selectedPiece?.id, instrument?.pianoRolls.length, playback !== undefined, songMode])
 
   const subscribeMonitor = useCallback((listener: () => void) => monitor?.subscribe(listener) ?? (() => {}), [monitor])
   const readMonitorValues = useCallback(() => monitor && monitorId
@@ -424,6 +425,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Length" value={instrument.clip ?? .7} min={.05} max={1} updateMode="on-release" formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} neon={pitchSlideEnabled} />
               <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} neon={pitchSlideEnabled} />
+              <SlideRamp slide={instrument.pitchEnvelope ?? 0} seconds={instrument.pitchAttack ?? .15} neon={pitchSlideEnabled} />
             </>}
               </>}
             </div>
