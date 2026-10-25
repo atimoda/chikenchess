@@ -10,6 +10,25 @@ O **kit** guarda só o que difere do global: a lista `overrides` de gatilhos que
 
 Migração: kits salvos sem `overrides` passam por `migrateKitReactions`. O antigo preset de fábrica completo (ou o preset legado de uma regra) vira "segue o global". Nos demais, cada gatilho igual ao preset de fábrica anterior (com ou sem as ações de harmonia) segue o global e cada gatilho diferente vira override. Um gatilho ausente num kit da revisão `reactions-2026-09-20-v3` foi apagado de propósito e vira override silencioso; em revisões mais antigas, ausente significa herdar. Limiar 4 (padrão antigo) passa a herdar.
 
+### Dinâmicas de jogo e novas influências — 25/10, v1.9.0
+
+O editor ganhou a lista **Game dynamics**, entre States e Board events, com seis gatilhos (`DYNAMICS_TRIGGERS`) que não fazem parte da migração de kits antigos:
+
+| Gatilho | Tipo | Critério |
+| --- | --- | --- |
+| Tensão (`tension`) | estado | A partir do meio-lance 30, avaliação dentro de ±limiar (padrão 50 centipeões), sem mate nem afogamento |
+| Seca de capturas (`captureDrought`) | estado | Depois da primeira captura, limiar de meios-lances seguidos sem captura (padrão 16) |
+| Roques opostos (`oppositeCastling`) | estado | Um rei rocou pequeno e o outro grande |
+| Virada de avaliação (`evalSwing`) | evento | A avaliação muda pelo menos o limiar (padrão 200 cp) em um lance, ou cruza de um lado ao outro do limiar de tensão; lado = quem ganhou |
+| Peça pendurada (`hangingPiece`) | evento | Depois do lance, uma peça (não peão) passa a estar atacada e sem defesa; lado = dono da peça |
+| Peão avançado (`advancedPawn`) | evento | Peão chega à 6ª ou 7ª fileira (3ª ou 2ª das pretas) |
+
+A avaliação vem do Stockfish da partida quando disponível (arredondada a 10 cp, limitada a ±1000); sem ela, usa o material × 100. Uma virada só conta quando os dois valores comparados têm a mesma origem. No Criativo esses gatilhos são simulados pelo ponto da linha, como os demais. Os limiares ficam em `thresholds` (`tension`, `swing`, `drought`) no global e, opcionalmente, no kit; aparecem no editor do gatilho correspondente, com botão para voltar ao global na aba do kit.
+
+Regras globais oficiais: Tensão fecha o LPF para 2400 Hz em 4 compassos com ganho −3%; Virada de avaliação troca para a variação C e soma +6% de ganho no lado que ganhou, por 2 meios-lances; Peça pendurada ativa a banda do lado que ficou com a peça pendurada e abre um HPF de 300 Hz por 1 meio-lance; Peão avançado sobe 2 semitons para ambos por 2 meios-lances (os dois lados, para não abrir tonalidades diferentes); Seca de capturas soma reverb 0,5, delay 0,35 e ganho −4%; Roques opostos troca para a escala paralela com BPM +3% em 8 compassos. Navegadores com o global editado recebem esses gatilhos com as regras oficiais.
+
+Novas influências: **High-pass filter** (20–20000 Hz), **Resonance** (0–30), **Reverb** e **Delay send** (0–1, substituem o envio da peça), **Drive** (0–10) e **Pan** (−1 a 1). Ganho, LPF e HPF aceitam **bar ramp** (0–16 compassos), como o BPM: a influência avança um passo por compasso na entrada e volta da mesma forma na saída; filtros deslizam em escala exponencial. Cada regra tem ainda **Instruments**: todos, ou só bateria, baixo, lead, pad ou FX. O papel vem do campo **Role** do instrumento; em **Auto**, é inferido (sample não afinado = bateria, ou FX se sustentado; sustentado = pad; oitava ≤ 2 = baixo; o resto = lead).
+
 ### Eventos do chickenchess e conjunto global oficial
 
 Além dos eventos do tabuleiro, há sete eventos de ações do jogo (`POWER_EVENTS`), que o histórico de lances não registra: **Freeze applied** e **Shield applied** (no meio-lance em que o poder é aplicado; lado = quem aplicou, inclusive o ChickenBot), **Mulligan** (no meio-lance para onde o Undo voltou; lado = quem pediu), **Best/Worst moves shown** (ao mostrar as setas; o modo Debug top-ten não conta) e **Best/Worst move played** (quando o lance jogado é classificado como Best/Worst, inclusive lances do ChickenBot). Na campanha, `chess-game.tsx` mantém esse registro e o Undo descarta as ocorrências de meios-lances desfeitos antes de registrar o Mulligan; o Redo não as restaura. No online, poderes e lances classificados vêm da lista de ações (`onlineActionEvents`), iguais para os dois navegadores; setas mostradas e Mulligan são registrados por cada navegador ao sincronizar a mudança. `withActionEvents` junta esse registro aos eventos do tabuleiro e ignora ocorrências posteriores ao meio-lance atual.
