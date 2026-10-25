@@ -1,7 +1,7 @@
 import { z } from 'zod'
 /** Longest variation in bars and the most notes it may hold. */
 export const MAX_ROLL_BARS=16, MAX_ROLL_NOTES=256
-export const pianoNoteSchema=z.object({start:z.number().finite().min(0).max(MAX_ROLL_BARS),duration:z.number().finite().min(1/64).max(MAX_ROLL_BARS),degree:z.number().int().min(-48).max(48),slide:z.number().finite().min(-24).max(24).optional(),slideSeconds:z.number().finite().min(.001).max(2).optional(),pan:z.number().finite().min(0).max(1).optional(),ratchet:z.number().int().min(1).max(4).optional(),chance:z.number().finite().min(0).max(1).optional(),velocity:z.number().finite().min(0).max(1)})
+export const pianoNoteSchema=z.object({start:z.number().finite().min(0).max(MAX_ROLL_BARS),duration:z.number().finite().min(1/64).max(MAX_ROLL_BARS),degree:z.number().int().min(-48).max(48),slide:z.number().finite().min(-24).max(24).optional(),slideSeconds:z.number().finite().min(.001).max(2).optional(),pan:z.number().finite().min(0).max(1).optional(),ratchet:z.number().int().min(1).max(4).optional(),chance:z.number().finite().min(0).max(1).optional(),cutoff:z.number().finite().min(-.5).max(.5).optional(),vibrato:z.boolean().optional(),velocity:z.number().finite().min(0).max(1)})
 export const pianoRollSchema=z.object({bars:z.number().finite().min(1/12).max(MAX_ROLL_BARS).refine(value=>Math.abs(value*420-Math.round(value*420))<1e-7,'Length must follow the 1/420-bar music grid.'),notes:z.array(pianoNoteSchema).max(MAX_ROLL_NOTES)}).superRefine((roll,ctx)=>{if(roll.notes.some(n=>n.start+n.duration>roll.bars+1e-8))ctx.addIssue({code:'custom',message:'Nota fora da duração da variação.'})})
 export type PianoNote=z.infer<typeof pianoNoteSchema>
 export type PianoRoll=z.infer<typeof pianoRollSchema>

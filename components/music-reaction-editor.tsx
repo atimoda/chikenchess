@@ -3,7 +3,7 @@ import { InfoTip } from './info-tip'
 import { CompactNumberInput } from './compact-number-input'
 import { useState } from 'react'
 import { ChevronDown, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react'
-import { ACTIONS, BOARD_EVENTS, POWER_EVENTS, STATES, TRIGGERS, SCALE_INTERVALS, SCALE_LABELS, actionSummary, inheritTrigger, overrideTrigger, resolveReactions, type Trigger, type KitReactions, type ReactionContext, type Reaction } from '@/lib/music/reactions'
+import { ACTIONS, BOARD_EVENTS, DEFAULT_THRESHOLDS, DYNAMICS_TRIGGERS, INSTRUMENT_FILTERS, RAMPED_ACTIONS, POWER_EVENTS, STATES, TRIGGERS, SCALE_INTERVALS, SCALE_LABELS, actionSummary, inheritTrigger, overrideTrigger, resolveReactions, type Trigger, type Thresholds, type KitReactions, type ReactionContext, type Reaction } from '@/lib/music/reactions'
 import { HARMONY_PLANS } from '@/lib/music/harmony'
 import { SCALE_SHIFTS } from '@/lib/music/scale-shift'
 import { saveOfficialReactions } from '@/lib/admin/reactions-file-client'
@@ -15,10 +15,18 @@ type Scope='kit'|'global'
 type Props={kit:KitReactions;onKitChange:(kit:KitReactions)=>void;kitName:string;context:ReactionContext;onContext:(context:ReactionContext)=>void;descriptions:string[];bpm:number;scale:string[]}
 
 const TARGETS:Record<Reaction['target'],string>={both:'Both sides',actor:'Trigger side',opponent:'Opponent',w:'White',b:'Black'}
-const RANGES:Partial<Record<Action['type'],{min:number;max:number;step?:number;unit:string}>>={transpose:{min:-12,max:12,unit:'st'},bpm:{min:-30,max:30,unit:'%'},mode:{min:0,max:11,unit:'steps'},gain:{min:-100,max:100,unit:'%'},lpf:{min:20,max:20000,step:100,unit:'Hz'}}
-const DEFAULT_VALUE:Partial<Record<Action['type'],number>>={gain:10,bpm:5,transpose:2,mode:1,lpf:4000,variation:1}
-const ACTION_HELP='Scale change moves from whatever scale and key the kit is in (relative, parallel, brighter or darker mode, neighbour key, chromatic mediant, key lift or a random choice), so it suits any style; Fixed scale always switches to the named scale. Random choices repeat for the same moment of the game. Tempo, scale, relative, modal rotation and harmony plan are global even when the rule targets one side. Transpose, gain, filter, inversion, variation and activation follow the target. Percentages multiply; the last scale, plan, filter or variation wins.'
+const RANGES:Partial<Record<Action['type'],{min:number;max:number;step?:number;unit:string}>>={transpose:{min:-12,max:12,unit:'st'},bpm:{min:-30,max:30,unit:'%'},mode:{min:0,max:11,unit:'steps'},gain:{min:-100,max:100,unit:'%'},lpf:{min:20,max:20000,step:100,unit:'Hz'},hpf:{min:20,max:20000,step:50,unit:'Hz'},resonance:{min:0,max:30,step:.5,unit:'Q'},reverb:{min:0,max:1,step:.05,unit:'send'},delay:{min:0,max:1,step:.05,unit:'send'},drive:{min:0,max:10,step:.1,unit:''},pan:{min:-1,max:1,step:.05,unit:'L–R'}}
+const DEFAULT_VALUE:Partial<Record<Action['type'],number>>={gain:10,bpm:5,transpose:2,mode:1,lpf:4000,variation:1,hpf:300,resonance:8,reverb:.5,delay:.35,drive:2,pan:0}
+const ACTION_HELP='Scale change moves from whatever scale and key the kit is in (relative, parallel, brighter or darker mode, neighbour key, chromatic mediant, key lift or a random choice), so it suits any style; Fixed scale always switches to the named scale. Random choices repeat for the same moment of the game. Tempo, scale, relative, modal rotation and harmony plan are global even when the rule targets one side. Transpose, gain, filters, resonance, reverb, delay, drive, pan, inversion, variation and activation follow the target and, when set, only the chosen instrument role. Tempo, gain and the filters can glide over a number of bars, entering and leaving. Percentages multiply; the last scale, plan, filter or variation wins.'
 const MINIMUM_TRIGGERS=new Set<Trigger>(['minimumOne','minimumBoth'])
+const DYNAMICS=new Set<string>(DYNAMICS_TRIGGERS)
+const INTEGER_ACTIONS=new Set<Action['type']>(['transpose','mode'])
+/** The threshold each game-dynamics trigger reads, with its range and unit. */
+const THRESHOLDS:Partial<Record<Trigger,{key:keyof Thresholds;label:string;min:number;max:number;step:number}>>={
+  tension:{key:'tension',label:'Balanced within (centipawns), from move 15',min:10,max:300,step:10},
+  evalSwing:{key:'swing',label:'Evaluation swing in one move (centipawns)',min:50,max:1000,step:10},
+  captureDrought:{key:'drought',label:'Plies without a capture',min:6,max:60,step:1},
+}
 
 /** Replace one trigger's rules in place, so the saved order of the others is kept. */
 function replaceTriggerRules(rules:Reaction[],trigger:Trigger,next:Reaction[]){
@@ -40,7 +48,7 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
   const [scope,setScope]=useState<Scope>('kit'),[open,setOpen]=useState<Trigger|null>(null),[color,setColor]=useState<'w'|'b'>('w')
   const resolved=resolveReactions(global,kit)
   const shown=scope==='kit'?resolved:global
-  const customized=kit.overrides.length+(kit.minimumPieces===undefined?0:1)
+  const customized=kit.overrides.length+(kit.minimumPieces===undefined?0:1)+Object.keys(kit.thresholds??{}).length
   const officialGlobal=isOfficialGlobalReactions(global)
   const [saving,setSaving]=useState<{busy:boolean;message?:string;error?:boolean}>({busy:false})
   const saveToGame=()=>{
@@ -67,6 +75,11 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
     if(scope==='global')saveGlobalReactions({...global,rules:replaceTriggerRules(global.rules,trigger,next)})
     else onKitChange({...kit,rules:replaceTriggerRules(kit.rules,trigger,next)})
   }
+  const setThreshold=(key:keyof Thresholds,value:number|undefined)=>{
+    const apply=(current:Thresholds|undefined)=>{const next={...current};if(value===undefined)delete next[key];else next[key]=value;return Object.keys(next).length?next:undefined}
+    if(scope==='global'){if(value!==undefined)saveGlobalReactions({...global,thresholds:apply(global.thresholds)})}
+    else{const {thresholds:_drop,...rest}=kit,thresholds=apply(kit.thresholds);onKitChange(thresholds?{...kit,thresholds}:rest as KitReactions)}
+  }
   const setMinimum=(value:number|undefined)=>{
     if(scope==='global'){if(value!==undefined)saveGlobalReactions({...global,minimumPieces:value})}
     else{const {minimumPieces:_drop,...rest}=kit;onKitChange(value===undefined?rest as KitReactions:{...kit,minimumPieces:value})}
@@ -89,6 +102,8 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
       </div>
       {expanded&&<TriggerPanel trigger={id} scope={scope} rules={rules} owned={owned} kitName={kitName}
         minimum={MINIMUM_TRIGGERS.has(id)?{value:shown.minimumPieces,custom:scope==='kit'&&kit.minimumPieces!==undefined,global:global.minimumPieces}:undefined}
+        threshold={THRESHOLDS[id]&&(()=>{const t=THRESHOLDS[id]!;return {...t,value:shown.thresholds?.[t.key]??global.thresholds?.[t.key]??DEFAULT_THRESHOLDS[t.key],custom:scope==='kit'&&kit.thresholds?.[t.key]!==undefined,global:global.thresholds?.[t.key]??DEFAULT_THRESHOLDS[t.key]}})()}
+        onThreshold={setThreshold}
         onRules={next=>setRules(id,next)} onMinimum={setMinimum}
         onCustomize={()=>onKitChange(overrideTrigger(kit,global,id))} onInherit={()=>onKitChange(inheritTrigger(kit,id))}/>}
     </li>
@@ -106,7 +121,7 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
     <p className={styles.scopeNote}>
       {scope==='kit'
         ?<><span><strong>{kitName}</strong> · {customized?`${kit.overrides.length} custom (marked KIT), the rest follow global`:'follows the global rules'}</span>
-          {customized>0&&<button type="button" className={styles.link} onClick={()=>onKitChange({overrides:[],rules:[]})}><RotateCcw size={12}/>Reset kit to global</button>}</>
+          {customized>0&&<button type="button" className={styles.link} onClick={()=>onKitChange({overrides:[],rules:[]} as KitReactions)}><RotateCcw size={12}/>Reset kit to global</button>}</>
         :<><span>Shared by every kit · {officialGlobal?'official set':'edited in this browser'}</span>
           <span className={styles.actionsRow}>
             {!officialGlobal&&<button type="button" className={styles.link} onClick={()=>saveGlobalReactions(null)}><RotateCcw size={12}/>Restore official</button>}
@@ -133,16 +148,18 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
     </div>
 
     <h3 className={styles.group}>States <span>continuous</span></h3>
-    <ul className={styles.list}>{(Object.keys(STATES) as Trigger[]).map(row)}</ul>
+    <ul className={styles.list}>{(Object.keys(STATES) as Trigger[]).filter(id=>!DYNAMICS.has(id)).map(row)}</ul>
+    <h3 className={styles.group}>Game dynamics <span>tension, swings and plans</span></h3>
+    <ul className={styles.list}>{(DYNAMICS_TRIGGERS as readonly Trigger[]).map(row)}</ul>
     <h3 className={styles.group}>Board events <span>timed</span></h3>
-    <ul className={styles.list}>{(Object.keys(BOARD_EVENTS) as Trigger[]).map(row)}</ul>
+    <ul className={styles.list}>{(Object.keys(BOARD_EVENTS) as Trigger[]).filter(id=>!DYNAMICS.has(id)).map(row)}</ul>
     <h3 className={styles.group}>Powers &amp; hints <span>timed, chickenchess actions</span></h3>
     <ul className={styles.list}>{(Object.keys(POWER_EVENTS) as Trigger[]).map(row)}</ul>
   </section>
 }
 
-type PanelProps={trigger:Trigger;scope:Scope;rules:Reaction[];owned:boolean;kitName:string;minimum?:{value:number;custom:boolean;global:number};onRules:(rules:Reaction[])=>void;onMinimum:(value:number|undefined)=>void;onCustomize:()=>void;onInherit:()=>void}
-function TriggerPanel({trigger,scope,rules,owned,kitName,minimum,onRules,onMinimum,onCustomize,onInherit}:PanelProps){
+type PanelProps={trigger:Trigger;scope:Scope;rules:Reaction[];owned:boolean;kitName:string;minimum?:{value:number;custom:boolean;global:number};threshold?:{key:keyof Thresholds;label:string;min:number;max:number;step:number;value:number;custom:boolean;global:number};onThreshold:(key:keyof Thresholds,value:number|undefined)=>void;onRules:(rules:Reaction[])=>void;onMinimum:(value:number|undefined)=>void;onCustomize:()=>void;onInherit:()=>void}
+function TriggerPanel({trigger,scope,rules,owned,kitName,minimum,threshold,onThreshold,onRules,onMinimum,onCustomize,onInherit}:PanelProps){
   const isState=trigger in STATES,editable=scope==='global'||owned
   const patch=(id:string,change:Partial<Reaction>)=>onRules(rules.map(rule=>rule.id===id?{...rule,...change}:rule))
   return <div className={styles.panelBody}>
@@ -155,6 +172,13 @@ function TriggerPanel({trigger,scope,rules,owned,kitName,minimum,onRules,onMinim
       <div className={styles.inline}>
         <CompactNumberInput ariaLabel="Minimum pieces" min={2} max={15} value={minimum.value} onChange={n=>{if(Number.isInteger(n))onMinimum(n)}}/>
         {scope==='kit'&&minimum.custom&&<button type="button" className={styles.link} onClick={()=>onMinimum(undefined)}><RotateCcw size={12}/>Global ({minimum.global})</button>}
+      </div>
+    </div>}
+    {threshold&&<div className={styles.field}>
+      <span>{threshold.label}</span>
+      <div className={styles.inline}>
+        <CompactNumberInput ariaLabel={threshold.label} min={threshold.min} max={threshold.max} step={threshold.step} value={threshold.value} onChange={n=>{if(Number.isInteger(n))onThreshold(threshold.key,n)}}/>
+        {scope==='kit'&&threshold.custom&&<button type="button" className={styles.link} onClick={()=>onThreshold(threshold.key,undefined)}><RotateCcw size={12}/>Global ({threshold.global})</button>}
       </div>
     </div>}
     {!editable
@@ -176,6 +200,7 @@ function RuleCard({rule,index,isState,onChange,onRemove}:{rule:Reaction;index:nu
     </div>
     <div className={styles.ruleMeta}>
       <label><span>Applies to</span><select value={rule.target} onChange={e=>onChange({target:e.target.value as Reaction['target']})}>{Object.entries(TARGETS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
+      <label><span>Instruments</span><select value={rule.instruments??'all'} onChange={e=>{const value=e.target.value as keyof typeof INSTRUMENT_FILTERS;onChange({instruments:value==='all'?undefined:value})}}>{Object.entries(INSTRUMENT_FILTERS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
       {!isState&&<label><span>Lasts (plies, 0 = to the end)</span><CompactNumberInput ariaLabel="Duration in plies" min={0} max={32} value={rule.duration} onChange={n=>{if(Number.isInteger(n))onChange({duration:n})}}/></label>}
       <label className={styles.toggle} title="Enter, change and leave on the next bar line instead of the next available attacks."><input type="checkbox" checked={rule.quantize} onChange={e=>onChange({quantize:e.target.checked})}/>Wait for bar line</label>
     </div>
@@ -184,12 +209,12 @@ function RuleCard({rule,index,isState,onChange,onRemove}:{rule:Reaction;index:nu
       const range=RANGES[action.type]
       return <li key={at}>
         <select aria-label="Influence" value={action.type} onChange={e=>{const type=e.target.value as Action['type'];setAction(at,{type,value:DEFAULT_VALUE[type]??0})}}>{Object.entries(ACTIONS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>
-        {range&&<span className={styles.value}><CompactNumberInput ariaLabel={ACTIONS[action.type]} min={range.min} max={range.max} step={range.step} value={action.value} onChange={n=>{if(action.type==='lpf'||action.type==='bpm'||action.type==='gain'||Number.isInteger(n))setAction(at,{value:n})}}/><small>{range.unit}</small></span>}
+        {range&&<span className={styles.value}><CompactNumberInput ariaLabel={ACTIONS[action.type]} min={range.min} max={range.max} step={range.step} value={action.value} onChange={n=>{if(!INTEGER_ACTIONS.has(action.type)||Number.isInteger(n))setAction(at,{value:n})}}/><small>{range.unit}</small></span>}
         {action.type==='variation'&&<select aria-label="Variation" value={action.value} onChange={e=>setAction(at,{value:Number(e.target.value)})}>{Array.from({length:8},(_,i)=><option key={i} value={i}>{String.fromCharCode(65+i)}</option>)}</select>}
         {action.type==='scale'&&<select aria-label="Target scale" value={action.scale} onChange={e=>setAction(at,{scale:e.target.value as Action['scale']})}>{(Object.keys(SCALE_INTERVALS) as (keyof typeof SCALE_INTERVALS)[]).map(name=><option key={name} value={name}>{SCALE_LABELS[name]}</option>)}</select>}
         {action.type==='scaleShift'&&<select aria-label="Scale change" value={action.shift??'relative'} onChange={e=>setAction(at,{shift:e.target.value as Action['shift']})}>{Object.entries(SCALE_SHIFTS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>}
         {action.type==='harmony'&&<select aria-label="Harmony plan" value={action.harmony} onChange={e=>setAction(at,{harmony:e.target.value as Action['harmony']})}><option value="random">Random plan</option>{Object.entries(HARMONY_PLANS).map(([id,plan])=><option key={id} value={id}>{plan.label}</option>)}</select>}
-        {action.type==='bpm'&&<span className={styles.value} title="Bars to reach the new tempo, also on the way back; 0 jumps."><CompactNumberInput ariaLabel="Tempo ramp in bars" min={0} max={16} value={action.rampBars??0} onChange={n=>{if(Number.isInteger(n))setAction(at,{rampBars:n})}}/><small>bar ramp</small></span>}
+        {(RAMPED_ACTIONS as readonly string[]).includes(action.type)&&<span className={styles.value} title={`Bars to reach the new ${action.type==='bpm'?'tempo':'level'}, also on the way back; 0 jumps.`}><CompactNumberInput ariaLabel={`${ACTIONS[action.type]} ramp in bars`} min={0} max={16} value={action.rampBars??0} onChange={n=>{if(Number.isInteger(n))setAction(at,{rampBars:n})}}/><small>bar ramp</small></span>}
         <button type="button" className={styles.icon} aria-label={`Remove ${ACTIONS[action.type]}`} title="Remove influence" onClick={()=>onChange({actions:rule.actions.filter((_,i)=>i!==at)})}><X size={13}/></button>
       </li>
     })}</ul>

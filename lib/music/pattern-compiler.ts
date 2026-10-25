@@ -6,7 +6,7 @@ import { loopOrdinal, loopRange } from './loop-ranges'
 import { eventRangeConfig, eventRangePattern } from './range-frequency'
 import type { ParameterRange } from './model'
 import type { Strudel, StrudelPattern, StrudelWithPick, VoiceSpec } from './runtime-types'
-import { LFO_SIGNALS } from './sound-design'
+import { LFO_SIGNALS, noteVibrato } from './sound-design'
 
 function rangePattern(api: Strudel, voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {
   const recipe = loopRange(voice, range, target)
@@ -82,6 +82,7 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       let pattern = (api as Strudel & {timeCat:(...chunks:[number,StrudelPattern][])=>StrudelPattern}).timeCat(...chunks).velocity(lane.velocity).slow(roll.bars)
       if (lane.slide && !voice.unpitched) pattern = pattern.withValue((v: object) => ({ ...v, ccSlide: lane.slide, ccSlideTime: lane.slideSeconds ?? .5 }))
       if (lane.pan !== undefined) pattern = pattern.withValue((v: object) => ({ ...v, ccPan: lane.pan }))
+      if (lane.cutoff || lane.vibrato) pattern = pattern.withValue((v: object) => ({ ...v, ...(lane.cutoff ? { ccCutoff: lane.cutoff } : {}), ...(lane.vibrato && !voice.unpitched ? { ccVib: true } : {}) }))
       if (lane.chance !== undefined && !voice.manual) pattern = pattern.degradeBy(1 - lane.chance)
       return pattern
     })
@@ -100,7 +101,8 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
   pattern = applyRanges(api, voice, pattern)
   const duck = voice.duck ? { duckorbit: voice.duck.orbits, duckdepth: voice.duck.depth, duckattack: voice.duck.release, duckonset: .004 } : {}
   return pattern.orbit(voice.orbit).withValue((value: any) => {
-    const {ccSlide,ccSlideTime,ccPan,...rest}=value
-    return {...rest,...(ccSlide!==undefined?{penv:ccSlide,pattack:ccSlideTime}:{}),...(ccPan!==undefined?{pan:ccPan}:{}),...duck,ccVoice:voice.key}
+    const {ccSlide,ccSlideTime,ccPan,ccCutoff,ccVib,...rest}=value
+    return {...rest,...(ccSlide!==undefined?{penv:ccSlide,pattack:ccSlideTime}:{}),...(ccPan!==undefined?{pan:ccPan}:{}),
+      ...(ccCutoff&&rest.cutoff!==undefined?{cutoff:Math.max(20,Math.min(20000,rest.cutoff*(1+ccCutoff)))}:{}),...(ccVib?noteVibrato(voice.instrument,rest):{}),...duck,ccVoice:voice.key}
   })
 }

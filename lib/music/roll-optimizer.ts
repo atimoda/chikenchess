@@ -13,6 +13,10 @@ export interface RollLane {
   ratchet?: number
   /** Probability (0–1) that each note of the lane plays. */
   chance?: number
+  /** Low-pass offset as a fraction of the piece's cutoff (−0.5…+0.5): a per-note filter accent. */
+  cutoff?: number
+  /** The notes take the piece's vibrato (or a gentle default). */
+  vibrato?: boolean
 }
 export function optimizeRoll(roll: PianoRoll): RollLane[] {
   type Event = { start: number; duration: number; notes: number[] }
@@ -21,7 +25,8 @@ export function optimizeRoll(roll: PianoRoll): RollLane[] {
   for (const note of roll.notes) {
     const controls = { velocity: note.velocity, slide: note.slide, slideSeconds: note.slideSeconds, pan: note.pan,
       ratchet: note.ratchet !== undefined && note.ratchet > 1 ? note.ratchet : undefined,
-      chance: note.chance !== undefined && note.chance < 1 ? note.chance : undefined }
+      chance: note.chance !== undefined && note.chance < 1 ? note.chance : undefined,
+      ...(note.cutoff ? { cutoff: note.cutoff } : {}), ...(note.vibrato ? { vibrato: true } : {}) }
     const key = JSON.stringify(controls)
     let group = groups.get(key)
     if (!group) { group = { controls, events: [] }; groups.set(key, group) }

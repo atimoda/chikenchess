@@ -63,6 +63,7 @@ import { loadEditableBotProfiles, saveBotProfile } from "@/lib/admin/bot-profile
 import { isAdminUser } from "@/lib/admin/access"
 import { useOnline } from "./online/online-provider"
 import type { Occurrence, Trigger } from "@/lib/music/reactions"
+import { duckSourceOptions } from "@/lib/music/sound-design"
 
 import {
   DropdownMenu,
@@ -1735,6 +1736,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             />}
 
             <SynthControlPanel
+                duckSources={duckSourceOptions(music.snapshot.pieces, music.snapshot.instruments, music.selected)}
                 instrument={music.instrument}
                 selectedPiece={music.selected}
                 onInstrumentChange={music.updateInstrument}

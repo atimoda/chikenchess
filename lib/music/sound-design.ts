@@ -71,3 +71,18 @@ export function instrumentRole(instrument: Instrument): InstrumentRole {
   if (instrument.behavior === 'sustain') return 'pad'
   return instrument.octave <= 2 ? 'bass' : 'lead'
 }
+
+/** Vibrato for notes marked VIB: the piece's own setting when it has one, else a gentle 5.5 Hz, 0.3 st. */
+export function noteVibrato(instrument: Instrument, value: { vib?: unknown }) {
+  if (value.vib !== undefined) return {}
+  return { vib: instrument.vibrato || 5.5, vibmod: instrument.vibratoDepth || .3 }
+}
+
+/** Sidechain sources offered to a piece: its teammates, named by instrument, addressed by white slot. */
+export function duckSourceOptions(pieces: readonly { id: string; color: 'w' | 'b'; origin: string }[], instruments: Readonly<Record<string, Instrument>> | undefined, selected: { id: string; color: 'w' | 'b' } | null | undefined) {
+  if (!selected) return []
+  return pieces.filter(piece => piece.color === selected.color && piece.id !== selected.id).map(piece => {
+    const slot = piece.color === 'w' ? piece.origin : `${piece.origin[0]}${9 - Number(piece.origin[1])}`
+    return { slot, name: `${instruments?.[piece.id]?.name ?? piece.origin} · ${piece.origin}` }
+  }).sort((a, b) => a.slot.localeCompare(b.slot))
+}

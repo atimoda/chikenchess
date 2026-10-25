@@ -93,6 +93,7 @@ import {
 } from "../ui/dialog";
 import { useOnline } from "./online-provider";
 import { AddFriendButton } from "./online-hub";
+import { duckSourceOptions } from "@/lib/music/sound-design"
 
 export function OnlineGame({
   matchId,
@@ -976,6 +977,7 @@ export function OnlineMatchBoard({
           />
         )}
         <SynthControlPanel
+                duckSources={duckSourceOptions(music.snapshot.pieces, music.snapshot.instruments, music.selected)}
           ref={knobsRef}
           handleRef={knobsHandleRef}
           toggleRef={knobsToggleRef}
