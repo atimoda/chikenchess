@@ -35,3 +35,50 @@ export function randomizeVariation(instrument: Instrument, variation: number, ra
     return {...roll,notes:roll.notes.map(n=>({...n,degree:low+Math.floor(random()*(high-low+1))}))}
   })
 }
+
+export type EuclidMode = 'notes' | 'accent' | 'ratchet' | 'chance'
+
+/** E(pulses, steps): `pulses` onsets spread as evenly as possible over `steps`
+ * (Bresenham form, a rotation of Bjorklund's when they differ),
+ * the first on step 0, then rotated right by `rotate` steps. */
+export function euclidPattern(pulses: number, steps: number, rotate = 0): boolean[] {
+  const n = Math.max(1, Math.floor(steps)), k = Math.max(0, Math.min(n, Math.floor(pulses)))
+  const shift = ((Math.floor(rotate) % n) + n) % n
+  return Array.from({ length: n }, (_, i) => ((i - shift + n) % n) * k % n < k)
+}
+
+/** Grid cells of a roll at a beat division: the steps the euclidean pattern spans. */
+export function euclidSteps(roll: PianoRoll, beatsPerBar: number, division: number) {
+  return Math.max(1, Math.round(roll.bars * beatsPerBar * division))
+}
+
+/** Applies E(pulses, steps) to a variation, always from `source` so repeated
+ * tweaks do not compound:
+ * - notes: rewrites the rhythm, one step-long note per onset, cycling the
+ *   source notes in time order so the melody and articulation survive;
+ * - accent: onsets play at full accent, the other notes at half;
+ * - ratchet: notes starting on an onset repeat ×2, the others play once;
+ * - chance: notes off the pattern play 50% of the time, the onsets always. */
+export function euclidVariation(instrument: Instrument, variation: number, source: PianoRoll, { mode, pulses, rotate, beatsPerBar, division }: { mode: EuclidMode; pulses: number; rotate: number; beatsPerBar: number; division: number }): InstrumentPerformanceEdit {
+  const steps = euclidSteps(source, beatsPerBar, division), quantum = source.bars / steps
+  const pattern = euclidPattern(pulses, steps, rotate)
+  const onset = (start: number) => pattern[Math.min(steps - 1, Math.floor(start / quantum + 1e-6))]
+  return edit(instrument, variation, () => {
+    if (mode === 'notes') {
+      const melody = [...source.notes].sort((a, b) => a.start - b.start || a.degree - b.degree)
+      let next = 0
+      const notes = pattern.flatMap((hit, step) => {
+        if (!hit) return []
+        const model = melody.length ? melody[next++ % melody.length] : { degree: 0, velocity: .8 }
+        return [{ ...model, start: step * quantum, duration: quantum }]
+      })
+      return { ...source, notes }
+    }
+    return { ...source, notes: source.notes.map(note => {
+      const hit = onset(note.start)
+      if (mode === 'accent') return { ...note, velocity: hit ? 1 : .5 }
+      if (mode === 'ratchet') return { ...note, ratchet: hit ? 2 : undefined }
+      return { ...note, chance: hit ? undefined : .5 }
+    }) }
+  })
+}

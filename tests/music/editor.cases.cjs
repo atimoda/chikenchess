@@ -235,3 +235,27 @@ test('per-note ratchet repeats inside the note and chance thins it out', async (
  assert.equal(thinned.length,1)
  assert.equal(Number(thinned[0].whole.begin),.5)
 })
+
+test('euclidean edits spread onsets evenly and always start from the source roll', () => {
+ const p=(k,n,r)=>variationEdit.euclidPattern(k,n,r).map(hit=>hit?'x':'.').join('')
+ assert.equal(p(3,8),'x..x..x.')
+ assert.equal(p(5,8),'x.x.xx.x','a rotation of Bjorklund x.xx.xx.')
+ assert.equal(p(3,8,1),'.x..x..x')
+ assert.equal(p(0,4),'....')
+ assert.equal(p(9,4),'xxxx')
+ const source={bars:1,notes:[{start:0,duration:.25,degree:2,velocity:.7,slide:3},{start:.25,duration:.25,degree:4,velocity:.8},{start:.5,duration:.25,degree:1,velocity:.6},{start:.75,duration:.25,degree:0,velocity:.9}]}
+ const instrument={...creative.createCreativeSession().instruments['w:b1'],pianoRolls:[source,source]}
+ const options={pulses:3,rotate:0,beatsPerBar:4,division:2}
+ const notes=variationEdit.euclidVariation(instrument,0,source,{...options,mode:'notes'}).pianoRolls[0].notes
+ assert.deepEqual(notes.map(n=>[n.start,n.duration,n.degree]),[[0,.125,2],[.375,.125,4],[.75,.125,1]])
+ assert.equal(notes[0].slide,3,'articulation follows the cycled note')
+ const accent=variationEdit.euclidVariation(instrument,0,source,{...options,mode:'accent'}).pianoRolls[0].notes
+ assert.deepEqual(accent.map(n=>n.velocity),[1,.5,.5,1])
+ const ratchet=variationEdit.euclidVariation(instrument,0,source,{...options,mode:'ratchet'}).pianoRolls[0].notes
+ assert.deepEqual(ratchet.map(n=>n.ratchet),[2,undefined,undefined,2])
+ const chance=variationEdit.euclidVariation(instrument,0,source,{...options,mode:'chance'}).pianoRolls[0].notes
+ assert.deepEqual(chance.map(n=>n.chance),[undefined,.5,.5,undefined])
+ const empty=variationEdit.euclidVariation(instrument,1,{bars:1,notes:[]},{...options,pulses:2,mode:'notes'})
+ assert.deepEqual(empty.pianoRolls[1].notes.map(n=>[n.start,n.degree]),[[0,0],[.5,0]])
+ assert.deepEqual(empty.pianoRolls[0],source,'other variations stay untouched')
+})

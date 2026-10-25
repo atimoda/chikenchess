@@ -99,3 +99,21 @@
 @media (prefers-reduced-motion: reduce) {
   .auditionBlink { animation-duration: 1ms; }
 }
+
+/* Euclid: toggle in the variation actions and the inline row it opens. */
+.voice .variationActions .euclidToggle[data-on='true'] { color: #e1eeac; border-color: #82a85f; }
+.euclidPanel { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; margin: -2px 0 8px; font: 9px monospace; color: #9eafa2; }
+.euclidModes { display: inline-flex; }
+.voice .euclidPanel button { min-width: 22px; height: 22px; padding: 0 5px; border: 1px solid #34463b; border-radius: 4px; color: #89988d; font: 9px monospace; background: #111a15; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.voice .euclidPanel button:not(:disabled):hover { color: #e1eeac; border-color: #82a85f; background: #26342a; }
+.voice .euclidPanel button:disabled { opacity: .3; cursor: default; }
+.voice .euclidModes button + button { margin-left: -1px; }
+.voice .euclidModes button:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.voice .euclidModes button:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.voice .euclidModes button[data-on='true'] { position: relative; z-index: 1; color: #c2db91; border-color: #82a85f; }
+.euclidField { display: inline-flex; align-items: center; gap: 4px; }
+.euclidField output { min-width: 30px; height: 22px; display: inline-flex; align-items: center; justify-content: center; margin: 0 -1px; border-top: 1px solid #34463b; border-bottom: 1px solid #34463b; color: #e0e9df; }
+.euclidDots { display: flex; flex-wrap: wrap; gap: 2px; flex: 1 0 100%; justify-content: flex-end; }
+.euclidDots i { width: 5px; height: 5px; border-radius: 9999px; border: 1px solid #4b5f4f; }
+.euclidDots i[data-on='true'] { background: #c2db91; border-color: #c2db91; }
+.voice .euclidPanel svg { width: 12px; height: 12px; background: transparent; border-radius: 0; }

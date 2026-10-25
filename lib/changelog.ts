@@ -39,6 +39,9 @@ export const CHANGELOG = [
         'No arranjo de cada peça, "Fill into the next section" escolhe uma variação para o último compasso da seção, como uma virada.',
         'Goa 1994 usa os recursos novos: baixo e pad abaixam a cada bumbo, os acids ganharam ressonância, o pad respira com um LFO e o arpejo FM ecoa em 3/16. Partidas equilibradas no fim fecham o filtro dos leads devagar.',
       ] },
+      { title: 'Piece Params', items: [
+        'Novo botão Euclid na linha de botões abaixo do MIDI, na partida e no Criativo: escolha Pulses e Rotate e o padrão euclidiano espalha os pulsos por igual na grade. No modo Notes ele reescreve o ritmo mantendo a melodia; em Accent, Ratchet e Chance ele só muda o acento, as repetições ou a chance das notas que caem (ou não) nos pulsos. Dá pra testar vários valores seguidos sem acumular mudanças.',
+      ] },
       { title: 'Carregamento', items: [
         'Todos os samples foram convertidos para Opus: de 14,8 MB para 2,9 MB. Navegadores sem Opus (Safari antigo) recebem uma versão AAC.',
       ] },
