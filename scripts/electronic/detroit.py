@@ -1,4 +1,4 @@
-"""Detroit 1987 · second-wave techno from the Belleville Three (original material).
+"""Detroit 1986 · second-wave techno from the Belleville Three (original material).
 
 125 BPM on a TR-909: four-on-the-floor kick, claps on two and four, sixteenth hats,
 offbeat open hat and ride; 808 congas over the top. Syncopated piano chords and
@@ -154,7 +154,7 @@ parts = [
 ]
 
 profile = {
-    'name': 'Transmat · techno 1987', 'bpm': 125, 'root': 'A', 'scale': 'Menor natural', 'harmony': 'static',
+    'name': 'Transmat · techno 1986', 'bpm': 125, 'root': 'A', 'scale': 'Menor natural', 'harmony': 'static',
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
     'parts': parts,
     'reactions': reactions([
@@ -171,7 +171,7 @@ profile = {
         rule('det-swing', 'evalSwing', 'actor', 2, True, [act('variation', 5), act('lpf', 4000, rampBars=4)], 'lead'),
         rule('det-promo', 'promotion', 'actor', 4, True, [act('variation', 5), act('transpose', 2)]),
     ]),
-    'reference': 'Techno de Detroit de 1987 (Derrick May, Juan Atkins, Kevin Saunderson, selo Transmat): referência de estilo; material original',
+    'reference': 'Techno de Detroit de 1986–87 (Derrick May, Juan Atkins, Kevin Saunderson, selo Transmat): referência de estilo; material original',
     'url': 'https://en.wikipedia.org/wiki/Detroit_techno',
 }
 write('detroit', profile)
