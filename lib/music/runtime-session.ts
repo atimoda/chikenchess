@@ -48,6 +48,8 @@ export class MusicRuntime {
   private readonly sharedReverbOrbits = new WeakSet<object>()
   private preparedManualOrbits = new WeakSet<object>()
   private connectedOrbits = new Set<number>()
+  // Sidechain targets: Superdough ducks the bus output gain, so their volume sits on a node after it.
+  private duckVolumes = new Map<number, GainNode>()
   private visualInterval = 1 / 15
   private effectBuses: 2 | 4 = 4
   private visualBuckets = new Map<number, { events: Map<string, MusicPulse>; timer: ReturnType<typeof setTimeout> }>()
@@ -209,7 +211,7 @@ export class MusicRuntime {
   private resolveState() {
     if(!this.sourceState)return
     const input=this.sourceState.reactionInput
-    const resolved=input?applyReactions(this.sourceState,input.config,input.context,this.reactionQueue.entries):undefined
+    const resolved=input?applyReactions(this.sourceState,input.config,input.context,this.reactionQueue.entries,this.reactionQueue.rampStates()):undefined
     this.state=resolved?{...resolved.snapshot,reactionDescriptions:resolved.descriptions}:this.sourceState
     if(input?.lockedBpm!==undefined){this.state={...this.state,bpm:input.lockedBpm};this.rampBars=0}
     const soloIds = this.sourceState.soloIds?.length ? this.sourceState.soloIds : this.sourceState.soloId ? [this.sourceState.soloId] : []
@@ -502,6 +504,8 @@ export class MusicRuntime {
     // voice leaves, so one capture never disconnects a surviving peer.
     controller?.nodes[orbit]?.disconnect()
     if (controller) delete controller.nodes[orbit]
+    this.duckVolumes.get(orbit)?.disconnect()
+    this.duckVolumes.delete(orbit)
     this.connectedOrbits.delete(orbit)
   }
 
@@ -517,12 +521,20 @@ export class MusicRuntime {
       this.preparedManualOrbits.add(orbit)
     }
     if (!this.connectedOrbits.has(voice.orbit) && this.analyser) {
-      if (this.teamMixer) this.teamMixer.connect(orbit.output, voice.piece.color)
-      else orbit.output.connect(this.analyser)
+      let output: AudioNode = orbit.output
+      if (voice.ownBus) {
+        const volume = this.api.getAudioContext().createGain()
+        orbit.output.connect(volume)
+        this.duckVolumes.set(voice.orbit, volume)
+        output = volume
+      }
+      if (this.teamMixer) this.teamMixer.connect(output, voice.piece.color)
+      else output.connect(this.analyser)
       this.connectedOrbits.add(voice.orbit)
     }
     const attenuation = Math.min(1, Math.sqrt(10 / Math.max(1, loopCount)))
-    orbit.output.gain.setTargetAtTime(this.state.volume * attenuation, this.api.getAudioContext().currentTime, .015)
+    const volume = this.duckVolumes.get(voice.orbit)?.gain ?? orbit.output.gain
+    volume.setTargetAtTime(this.state.volume * attenuation, this.api.getAudioContext().currentTime, .015)
     if (!voice.manual) this.sharedReverb?.setLevel(this.state.volume * attenuation)
   }
 

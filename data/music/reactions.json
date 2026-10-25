@@ -29,6 +29,12 @@
     {"id":"event-check-escape","trigger":"checkEscape","enabled":true,"quantize":false,"target":"actor","duration":1,"actions":[{"type":"gain","value":5}]},
     {"id":"power-freeze","trigger":"freeze","enabled":true,"quantize":true,"target":"both","duration":2,"actions":[{"type":"scaleShift","value":0,"shift":"darker"},{"type":"lpf","value":3000}]},
     {"id":"power-shield","trigger":"shield","enabled":true,"quantize":true,"target":"both","duration":2,"actions":[{"type":"scaleShift","value":0,"shift":"brighter"},{"type":"gain","value":6}]},
-    {"id":"power-mulligan","trigger":"mulligan","enabled":true,"quantize":false,"target":"both","duration":2,"actions":[{"type":"transpose","value":-1}]}
+    {"id":"power-mulligan","trigger":"mulligan","enabled":true,"quantize":false,"target":"both","duration":2,"actions":[{"type":"transpose","value":-1}]},
+    {"id":"dynamics-tension","trigger":"tension","enabled":true,"quantize":true,"target":"both","duration":1,"actions":[{"type":"lpf","value":2400,"rampBars":4},{"type":"gain","value":-3}]},
+    {"id":"dynamics-eval-swing","trigger":"evalSwing","enabled":true,"quantize":false,"target":"actor","duration":2,"actions":[{"type":"variation","value":2},{"type":"gain","value":6}]},
+    {"id":"dynamics-hanging-piece","trigger":"hangingPiece","enabled":true,"quantize":false,"target":"actor","duration":1,"actions":[{"type":"activate","value":0},{"type":"hpf","value":300}]},
+    {"id":"dynamics-advanced-pawn","trigger":"advancedPawn","enabled":true,"quantize":true,"target":"both","duration":2,"actions":[{"type":"transpose","value":2}]},
+    {"id":"dynamics-capture-drought","trigger":"captureDrought","enabled":true,"quantize":true,"target":"both","duration":1,"actions":[{"type":"reverb","value":0.5},{"type":"delay","value":0.35},{"type":"gain","value":-4}]},
+    {"id":"dynamics-opposite-castling","trigger":"oppositeCastling","enabled":true,"quantize":true,"target":"both","duration":1,"actions":[{"type":"scaleShift","value":0,"shift":"parallel"},{"type":"bpm","value":3,"rampBars":8}]}
   ]
 }

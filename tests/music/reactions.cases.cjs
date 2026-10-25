@@ -83,7 +83,7 @@ test('global preset covers the board, the powers and Mulligan with relational, s
   // Hints and ranked moves exist as triggers but stay silent in the global set.
   for(const trigger of ['seeBest','seeWorst','playBest','playWorst'])assert.ok(trigger in POWER_EVENTS&&!covered.has(trigger),trigger)
   const used=new Set(rules.flatMap(rule=>rule.actions.map(action=>action.type)))
-  assert.deepEqual(new Set(Object.keys(ACTIONS).filter(type=>!used.has(type))),new Set(['scale','relative']))
+  assert.deepEqual(new Set(Object.keys(ACTIONS).filter(type=>!used.has(type))),new Set(['scale','relative','resonance','drive','pan']))
   // No fixed scale and no named harmony plan: every global change is relative to the kit.
   assert.ok(rules.every(rule=>rule.actions.every(action=>action.type!=='harmony'||action.harmony==='random')))
   assert.deepEqual(rules.find(rule=>rule.trigger==='capture').actions.map(action=>[action.type,action.value]),[['gain',3]])

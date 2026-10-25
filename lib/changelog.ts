@@ -5,13 +5,30 @@ export const CHANGELOG = [
   {
     version: '1.9.0',
     date: '25/10/2026',
-    title: 'Goa 1994: psytrance na campanha Electronic World',
+    title: 'Goa 1994, engine musical expandida e samples 5× menores',
     groups: [
       { title: 'Nova fase · Goa 1994', items: [
         'Electronic World ganhou a 13ª cidade: Goa, 1994, trance psicodélico a 145 BPM em Mi frígio dominante, a escala "oriental" das festas de Anjuna.',
         'Kit próprio com 20 timbres novos: bumbo psy, baixo rolante (bumbo-baixo-baixo-baixo), dois acid 303 nos cavalos, lead serrilhado com vibrato na dama, cítara com ponte jawari, drone Om no rei, tablas, zaps de laser, riser e chimbais metálicos.',
         'A música cresce com o jogo: cada peça movida soma uma camada, o roque traz o drone Om e o riser, cada captura e cada xeque soltam o "drop" para quem jogou, 10 lances sem captura nem peão levam a um breakdown filtrado, e o final acelera para o pico.',
         'Na abertura a escala fica no frígio escuro; a segunda aumentada (Fá–Sol#) só aparece quando o meio-jogo começa.',
+      ] },
+      { title: 'Música reage a mais coisas do xadrez', items: [
+        'Novo grupo Game dynamics em States & Events: Tension (partida equilibrada a partir do lance 15), Evaluation swing (a avaliação vira de repente), Undefended piece attacked (uma peça fica atacada e sem defesa), Advanced pawn (peão na 6ª ou 7ª fileira), Capture drought (muitos lances sem captura) e Opposite-side castling (roques em lados opostos).',
+        'Cada um tem regra global: a tensão fecha o filtro aos poucos, a virada de avaliação solta a variação C para quem ganhou, a peça pendurada abre um filtro passa-altas, o peão avançado sobe um tom, a seca de capturas enche de eco e os roques opostos trocam para a escala paralela e aceleram em 8 compassos.',
+        'Os limites de tensão, virada e seca de capturas podem ser ajustados no global ou por kit.',
+        'Novas influências: passa-altas, ressonância, reverb, delay, drive e pan. Ganho e filtros podem deslizar ao longo de vários compassos, na entrada e na saída. Cada regra pode valer só para bateria, baixo, lead, pad ou FX.',
+      ] },
+      { title: 'Som das peças', items: [
+        'Piece Params ganhou as abas TOM e FX/MOD. Em FX/MOD: ressonância e envelope do filtro, delay com tempo próprio (1/16 a 3/8), LFO no filtro, volume, pan ou altura, vibrato, FM, supersaw com vozes e abertura, loop de samples, sidechain (escolha a peça que "abaixa" esta a cada batida) e papel do instrumento.',
+        'No Criativo, os mesmos controles ficam no bloco Modulation and synthesis.',
+        'Cada nota pode ter CUTOFF (abre ou fecha o filtro só naquela nota) e VIB (vibrato só naquela nota).',
+        'As variações MIDI podem ter até 16 compassos e 256 notas.',
+        'No arranjo de cada peça, "Fill into the next section" escolhe uma variação para o último compasso da seção, como uma virada.',
+        'Goa 1994 usa os recursos novos: baixo e pad abaixam a cada bumbo, os acids ganharam ressonância, o pad respira com um LFO e o arpejo FM ecoa em 3/16. Partidas equilibradas no fim fecham o filtro dos leads devagar.',
+      ] },
+      { title: 'Carregamento', items: [
+        'Todos os samples foram convertidos para Opus: de 14,8 MB para 2,9 MB. Navegadores sem Opus (Safari antigo) recebem uma versão AAC.',
       ] },
       { title: 'Criativo', items: [
         'Nova escala Phrygian dominant em Scale e nas regras de States & Events.',

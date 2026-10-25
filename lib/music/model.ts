@@ -47,7 +47,46 @@ export interface Instrument {
   pitchAttack?: number
   extraSwing?: number
   source?: { kind: 'synth' } | SampleSource
+  // Sound design (all optional; absent keeps the pre-expansion sound).
+  resonance?: number
+  filterEnv?: number
+  filterAttack?: number
+  filterDecay?: number
+  delayTime?: DelayTime
+  delayFeedback?: number
+  lfoTarget?: LfoTarget
+  lfoRate?: number
+  lfoUnit?: 'hz' | 'bars'
+  lfoDepth?: number
+  lfoShape?: LfoShape
+  vibrato?: number
+  vibratoDepth?: number
+  fmIndex?: number
+  fmRatio?: number
+  unison?: number
+  detune?: number
+  spread?: number
+  sampleLoop?: boolean
+  loopStart?: number
+  loopEnd?: number
+  /** White-slot origin (a1–h2) of the same team's piece whose hits duck this one. */
+  duckSource?: string
+  duckDepth?: number
+  duckRelease?: number
+  role?: InstrumentRole
 }
+export const DELAY_TIMES = { '1/16': .25, '1/8': .5, '3/16': .75, '1/4': 1, '3/8': 1.5 } as const
+export type DelayTime = keyof typeof DELAY_TIMES
+export const LFO_TARGETS = ['lpf', 'gain', 'pan', 'pitch'] as const
+export type LfoTarget = typeof LFO_TARGETS[number]
+export const LFO_SHAPES = ['sine', 'triangle', 'saw', 'square'] as const
+export type LfoShape = typeof LFO_SHAPES[number]
+export const INSTRUMENT_ROLES = ['drums', 'bass', 'lead', 'pad', 'fx'] as const
+export type InstrumentRole = typeof INSTRUMENT_ROLES[number]
+/** Sound-design fields that Piece Params and Creative edit directly. */
+export const SOUND_DESIGN_KEYS = ['resonance', 'filterEnv', 'filterAttack', 'filterDecay', 'delayTime', 'delayFeedback', 'lfoTarget', 'lfoRate', 'lfoUnit', 'lfoDepth', 'lfoShape',
+  'vibrato', 'vibratoDepth', 'fmIndex', 'fmRatio', 'unison', 'detune', 'spread', 'sampleLoop', 'loopStart', 'loopEnd', 'duckSource', 'duckDepth', 'duckRelease', 'role'] as const
+export type SoundDesignKey = typeof SOUND_DESIGN_KEYS[number]
 
 export interface MovementMapping {
   fileDegrees: number
@@ -56,7 +95,7 @@ export interface MovementMapping {
   previewFilter: boolean
 }
 
-export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'octaveRange' | 'driveRange' | 'reverbRange' | 'swingRange' | 'lpfRange' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'playChance' | 'pitchEnvelope' | 'pitchAttack' | 'extraSwing' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled' | 'arrangement'>>
+export type InstrumentPerformanceEdit = Partial<Pick<Instrument, 'octave' | 'octaveRange' | 'driveRange' | 'reverbRange' | 'swingRange' | 'lpfRange' | 'attack' | 'sustain' | 'release' | 'clip' | 'distortion' | 'playChance' | 'pitchEnvelope' | 'pitchAttack' | 'extraSwing' | 'pianoRolls' | 'selectedVariation' | 'loopEnabled' | 'arrangement' | SoundDesignKey>>
 
 export const DEFAULT_MOVEMENT: MovementMapping = {
   fileDegrees: 1, rankDegrees: 0.5, panWidth: 0.5, previewFilter: true,

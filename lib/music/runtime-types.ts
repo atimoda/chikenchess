@@ -1,4 +1,5 @@
 // Shared data contracts. This module has no browser or audio initialization.
+import type { DuckTrigger, PanLfo } from './sound-design'
 import type { Square } from 'chess.js'
 import type { SquareEffects } from '../types'
 import type { Performance } from './performance'
@@ -59,4 +60,10 @@ export interface VoiceSpec {
   controls: Record<string, number | string>
   instrument: Instrument
   unpitched: boolean
+  /** Pan LFO as a Strudel signal (the other LFO targets are plain controls). */
+  panLfo?: PanLfo
+  /** This voice's hits duck these buses. */
+  duck?: DuckTrigger
+  /** The voice owns its bus. Its output gain is left to sidechain ducking; volume sits on a node after it. */
+  ownBus?: boolean
 }

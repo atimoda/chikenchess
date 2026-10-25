@@ -33,6 +33,7 @@ import { SampleSourceControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
 import { VersionChangelog } from './version-changelog'
 import styles from './creative-studio.module.css'
+import { duckSourceOptions } from '@/lib/music/sound-design'
 
 const pieceNames = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' }
 const MOUTH_BREATHER_KIT = 'builtin:mouth-breather'
@@ -539,7 +540,8 @@ export function CreativeStudio() {
 
         <div className={styles.controlColumn}>
         <InstrumentParameters instrument={instrument} effects={effects} mapping={mapping}
-          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping} />
+          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
+          duckSources={duckSourceOptions(session.pieces, session.instruments, selected)} />
         </div>
         </div>
       </div>

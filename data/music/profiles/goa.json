@@ -120,6 +120,19 @@
       "effects": {
         "reverb": 0.42,
         "pan": -0.15
+      },
+      "design": {
+        "lfoTarget": "lpf",
+        "lfoRate": 8,
+        "lfoUnit": "bars",
+        "lfoDepth": 0.45,
+        "lfoShape": "sine",
+        "unison": 5,
+        "detune": 0.22,
+        "spread": 0.7,
+        "duckSource": "e2",
+        "duckDepth": 0.35,
+        "duckRelease": 0.18
       }
     },
     {
@@ -265,6 +278,12 @@
         "delay": 0.22,
         "reverb": 0.1,
         "pan": 0.3
+      },
+      "design": {
+        "resonance": 11,
+        "filterEnv": 3,
+        "filterAttack": 0.003,
+        "filterDecay": 0.12
       }
     },
     {
@@ -531,6 +550,10 @@
         "delay": 0.3,
         "reverb": 0.3,
         "pan": 0.12
+      },
+      "design": {
+        "vibrato": 5.5,
+        "vibratoDepth": 0.12
       }
     },
     {
@@ -609,6 +632,11 @@
           0,
           0
         ]
+      },
+      "design": {
+        "duckSource": "e2",
+        "duckDepth": 0.6,
+        "duckRelease": 0.1
       }
     },
     {
@@ -678,6 +706,14 @@
       "effects": {
         "reverb": 0.5,
         "pan": 0
+      },
+      "design": {
+        "lfoTarget": "pan",
+        "lfoRate": 16,
+        "lfoUnit": "bars",
+        "lfoDepth": 0.5,
+        "lfoShape": "sine",
+        "role": "pad"
       }
     },
     {
@@ -820,6 +856,10 @@
         "delay": 0.35,
         "reverb": 0.2,
         "pan": -0.4
+      },
+      "design": {
+        "delayTime": "3/16",
+        "delayFeedback": 0.5
       }
     },
     {
@@ -965,6 +1005,12 @@
           0,
           0
         ]
+      },
+      "design": {
+        "resonance": 15,
+        "filterEnv": 4,
+        "filterAttack": 0.002,
+        "filterDecay": 0.1
       }
     },
     {
@@ -1029,6 +1075,9 @@
       "effects": {
         "reverb": 0.12,
         "pan": 0.35
+      },
+      "design": {
+        "role": "drums"
       }
     },
     {
@@ -1095,6 +1144,9 @@
       "effects": {
         "reverb": 0.35,
         "pan": 0
+      },
+      "design": {
+        "role": "fx"
       }
     },
     {

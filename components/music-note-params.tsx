@@ -28,9 +28,21 @@ export function SlideRamp({ slide, seconds, neon = true }: { slide: number; seco
   </div>
 }
 
+/** On/off cell sized like a knob, for switches inside the knob grids. */
+export function ToggleCell({ label, ariaLabel, title, checked, onChange, neon = true, disabled = false }: { label: string; ariaLabel?: string; title?: string; checked: boolean; onChange: (checked: boolean) => void; neon?: boolean; disabled?: boolean }) {
+  return <div className="flex min-w-0 flex-col items-center gap-1" style={{ opacity: neon && !disabled ? 1 : .4 }}>
+    <button type="button" role="switch" aria-checked={checked} aria-label={ariaLabel ?? label} title={title} disabled={disabled} onClick={() => onChange(!checked)}
+      className="flex items-center justify-center rounded-full border font-mono text-[9px] transition-colors"
+      style={{ width: LARGE_KNOB_SIZE, height: LARGE_KNOB_SIZE, borderColor: checked ? '#b6ff3b' : '#425544', color: checked ? '#b6ff3b' : '#9eafa2', background: checked ? 'rgba(182,255,59,.12)' : 'transparent' }}>
+      {checked ? 'ON' : 'OFF'}
+    </button>
+    <span className="font-mono text-[9px] leading-none text-[#9eafa2]">{label}</span>
+  </div>
+}
+
 /** Knob cells for a selected note, laid out for the five-column Piece Params grid:
- * ACCENT, PAN, CHANCE, RATCHET on the first row; SLIDE ST, SLIDE SEC and the
- * slide graph on the second. */
+ * ACCENT, PAN, CHANCE, RATCHET, CUTOFF on the first row; SLIDE ST, SLIDE SEC, the
+ * slide graph and VIB on the second. */
 export function NoteParamsKnobs({ note, onChange, updateMode = 'immediate', neon = true }: { note: PianoNote; onChange: (patch: Partial<PianoNote>) => void; updateMode?: KnobUpdateMode; neon?: boolean }) {
   const slide = note.slide ?? 0, seconds = note.slideSeconds ?? .5, pan = note.pan ?? .5
   // The graph follows the knobs while they are dragged, before the release commits.
@@ -40,18 +52,27 @@ export function NoteParamsKnobs({ note, onChange, updateMode = 'immediate', neon
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="PAN" ariaLabel="Note pan" value={pan} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => n.toFixed(2)} onChange={pan => onChange({ pan })} neon={neon}/>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="CHANCE" ariaLabel="Note chance" value={note.chance ?? 1} min={0} max={1} step={.01} updateMode={updateMode} formatValue={n => `${Math.round(n * 100)}%`} onChange={chance => onChange({ chance: chance >= 1 ? undefined : chance })} neon={neon}/>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="RATCHET" ariaLabel="Note ratchet" value={note.ratchet ?? 1} min={1} max={4} step={1} updateMode={updateMode} formatValue={n => `×${n}`} onChange={ratchet => onChange({ ratchet: ratchet <= 1 ? undefined : ratchet })} neon={neon}/>
+    <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="CUTOFF" ariaLabel="Note filter accent" value={note.cutoff ?? 0} min={-.5} max={.5} step={.01} updateMode={updateMode} formatValue={n => `${n > 0 ? '+' : ''}${Math.round(n * 100)}%`} onChange={cutoff => onChange({ cutoff: Math.abs(cutoff) < .005 ? undefined : cutoff })} neon={neon}/>
     <div className="col-start-1"><Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Note slide" value={slide} min={-24} max={24} step={1} updateMode={updateMode} formatValue={n => `${n > 0 ? '+' : ''}${n} st`} onChange={slide => onChange({ slide })} onDraftChange={value => setDraft(d => ({ ...d, slide: value }))} neon={neon}/></div>
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Note slide time" value={seconds} min={.001} max={2} step={.001} updateMode={updateMode} formatValue={n => `${Number(n.toFixed(3))} s`} onChange={slideSeconds => onChange({ slideSeconds })} onDraftChange={value => setDraft(d => ({ ...d, seconds: value }))} neon={neon}/>
     <SlideRamp slide={draft.slide ?? slide} seconds={draft.seconds ?? seconds} neon={neon}/>
+    <ToggleCell label="VIB" ariaLabel="Note vibrato" title="Apply the piece's vibrato to this note (5.5 Hz, 0.3 st when the piece has none)" checked={!!note.vibrato} onChange={vibrato => onChange({ vibrato: vibrato || undefined })} neon={neon}/>
   </>
 }
 
-/** Small "Piece params / Note params" title; clicking Piece params leaves note mode. */
-export function KnobPanelTitle({ noteMode, onPieceParams }: { noteMode: boolean; onPieceParams?: () => void }) {
-  const className = 'm-0 font-mono text-[9px] leading-none text-[#9eafa2]'
+export type PieceParamsPage = 'tone' | 'fx'
+/** Small "Piece params / Note params" title; clicking Piece params leaves note mode.
+ * With `onPage`, TOM and FX/MOD tabs switch the piece's knob page. */
+export function KnobPanelTitle({ noteMode, onPieceParams, page, onPage }: { noteMode: boolean; onPieceParams?: () => void; page?: PieceParamsPage; onPage?: (page: PieceParamsPage) => void }) {
+  const className = 'm-0 flex items-center gap-2 font-mono text-[9px] leading-none text-[#9eafa2]'
   return <h3 className={className}>
-    {noteMode ? <button type="button" className="cursor-pointer bg-transparent p-0 font-mono text-[9px] leading-none text-[#9eafa2] underline-offset-2 hover:text-white hover:underline" title="Deselect the note and show Piece params" onClick={onPieceParams}>Piece params</button> : 'Piece params'}
-    {noteMode && <span className="text-white"> / Note params</span>}
+    <span>{noteMode ? <button type="button" className="cursor-pointer bg-transparent p-0 font-mono text-[9px] leading-none text-[#9eafa2] underline-offset-2 hover:text-white hover:underline" title="Deselect the note and show Piece params" onClick={onPieceParams}>Piece params</button> : 'Piece params'}
+    {noteMode && <span className="text-white"> / Note params</span>}</span>
+    {!noteMode && onPage && <span role="tablist" aria-label="Piece params page" className="ml-auto flex gap-1">
+      {([['tone', 'TOM'], ['fx', 'FX/MOD']] as const).map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={page === id} onClick={() => onPage(id)}
+        className="cursor-pointer rounded border px-1.5 py-0.5 font-mono text-[9px] leading-none"
+        style={{ borderColor: page === id ? '#b6dba1' : '#425544', color: page === id ? '#fff' : '#9eafa2', background: page === id ? 'rgba(182,219,161,.12)' : 'transparent' }}>{label}</button>)}
+    </span>}
   </h3>
 }
 

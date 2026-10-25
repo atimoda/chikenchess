@@ -3,7 +3,7 @@ import { arrangementSchema, pieceArrangementSchema, migrateGlobalArrangement, DE
 import { STYLE_PROFILES } from './kit-profiles/catalog'
 import { pianoRollSchema } from './piano-roll'
 import { z } from 'zod'
-import { DEFAULT_MOVEMENT, instrumentFor, piecesFromHistory } from './model'
+import { DEFAULT_MOVEMENT, DELAY_TIMES, INSTRUMENT_ROLES, LFO_SHAPES, LFO_TARGETS, instrumentFor, piecesFromHistory, type DelayTime } from './model'
 import type { MusicSnapshot } from './runtime-types'
 import { sampleAsset } from './sample-banks'
 import dusseldorfMidi from '../../public/presets/dusseldorf-original.json'
@@ -43,6 +43,14 @@ export const instrumentSchema = z.object({
   selectedVariation: z.number().int().min(0).max(7).optional(),
   loopEnabled: z.boolean().optional(),
   source: sourceSchema.optional(),
+  resonance: finite(0, 30).optional(), filterEnv: finite(-8, 8).optional(), filterAttack: finite(.001, 2).optional(), filterDecay: finite(.01, 2).optional(),
+  delayTime: z.enum(Object.keys(DELAY_TIMES) as [DelayTime, ...DelayTime[]]).optional(), delayFeedback: finite(0, .9).optional(),
+  lfoTarget: z.enum(LFO_TARGETS).optional(), lfoRate: finite(.05, 20).optional(), lfoUnit: z.enum(['hz', 'bars']).optional(), lfoDepth: finite(0, 1).optional(), lfoShape: z.enum(LFO_SHAPES).optional(),
+  vibrato: finite(0, 12).optional(), vibratoDepth: finite(0, 2).optional(), fmIndex: finite(0, 10).optional(), fmRatio: finite(.5, 8).optional(),
+  unison: finite(1, 7).int().optional(), detune: finite(0, 1).optional(), spread: finite(0, 1).optional(),
+  sampleLoop: z.boolean().optional(), loopStart: finite(0, 1).optional(), loopEnd: finite(0, 1).optional(),
+  duckSource: z.string().regex(/^[a-h][12]$/).optional(), duckDepth: finite(0, 1).optional(), duckRelease: finite(.02, .6).optional(),
+  role: z.enum(INSTRUMENT_ROLES).optional(),
 })
 export const effectsSchema = z.object({
   gain: finite(0, 2), pitch: finite(0.5, 2), pan: finite(-1, 1),

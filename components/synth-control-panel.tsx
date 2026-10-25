@@ -10,7 +10,8 @@ import { Eye, EyeOff, LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
-import { KnobPanelTitle, NoteParamsHostContext, NoteParamsKnobs, SlideRamp, type NoteParamsSelection } from "./music-note-params"
+import { KnobPanelTitle, NoteParamsHostContext, NoteParamsKnobs, SlideRamp, type NoteParamsSelection, type PieceParamsPage } from "./music-note-params"
+import { SoundDesignKnobs, type DuckSource } from "./music-sound-design"
 import type { Instrument, InstrumentPerformanceEdit, MusicPiece } from '@/lib/music/model'
 import { filterDialHertz, filterDialLabel, filterDialValue } from '@/lib/music/team-mixer'
 import type { MusicMonitor, TrackFrame } from '@/lib/music/monitor'
@@ -52,6 +53,8 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   sections?: React.ReactNode
   /** "midi" eye toggle for the list's MIDI strips. */
   songMidi?: { on: boolean; onToggle: () => void }
+  /** Teammates offered as sidechain sources on the FX/MOD page. */
+  duckSources?: readonly DuckSource[]
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -82,6 +85,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   sections,
   showSong = false,
   songMidi,
+  duckSources,
   ...props
 }, ref) => {
   const isStatic = props.style?.position === 'static'
@@ -92,6 +96,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
   const noteMode = !!noteSelection && !!playback
   // Slide graph values under the SLIDE ST / SLIDE SEC knobs while they are dragged.
+  const [page, setPage] = useState<PieceParamsPage>('tone')
   const [slideDraft, setSlideDraft] = useState<{ slide?: number | null; seconds?: number | null }>({})
   const songMode = !!song && (!selectedSquare || showSong)
   const panelStyle = {
@@ -269,7 +274,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
             </NoteParamsHostContext.Provider>
           </div>}
           {songMode ? song : <section aria-label={noteMode ? 'Note params' : 'Piece params'} className="flex flex-none flex-col">
-            <KnobPanelTitle noteMode={noteMode} onPieceParams={() => noteSelection?.onDeselect()} />
+            <KnobPanelTitle noteMode={noteMode} onPieceParams={() => noteSelection?.onDeselect()} page={page} onPage={instrument ? setPage : undefined} />
             <div
               ref={knobGridRef}
               className={cn(
@@ -278,7 +283,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
                 !isOn && "pointer-events-none"
               )}
           >
-              {noteMode && noteSelection ? <NoteParamsKnobs note={noteSelection.note} onChange={noteSelection.onChange} updateMode={noteSelection.updateMode} neon={isOn && !!selectedSquare} /> : <>
+              {noteMode && noteSelection ? <NoteParamsKnobs note={noteSelection.note} onChange={noteSelection.onChange} updateMode={noteSelection.updateMode} neon={isOn && !!selectedSquare} /> : page === 'fx' && instrument ? <SoundDesignKnobs instrument={instrument} onChange={patch => onInstrumentChange?.(patch)} neon={isOn && !!selectedSquare} duckSources={duckSources} /> : <>
             <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
               label="GAIN"
               value={effects.gain}

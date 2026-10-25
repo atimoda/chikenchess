@@ -14,7 +14,7 @@ import type { Instrument } from '@/lib/music/model'
 import type { InstrumentPerformanceEdit } from '@/lib/music/model'
 import { isLoopRunning, type MusicMonitor } from '@/lib/music/monitor'
 import type { MusicSnapshot } from '@/lib/music/runtime'
-import { resizeRoll, visibleDegreeRange, type PianoRoll, type PianoNote } from '@/lib/music/piano-roll'
+import { MAX_ROLL_BARS, MAX_ROLL_NOTES, resizeRoll, visibleDegreeRange, type PianoRoll, type PianoNote } from '@/lib/music/piano-roll'
 
 export const MUSIC_GRID_DIVISIONS = [
  {value:1,label:'1 part · beat'}, {value:2,label:'2 parts · eighths'},
@@ -132,7 +132,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
    return <div key={index} style={{border:compact?'none':`1px solid ${active?'#bedb90':'#3a4b40'}`,padding:compact?0:6,marginTop:8,borderRadius:5}}>
     {compact?null:<div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
      <div style={{display:'grid',gap:4}}><button style={{minWidth:98,whiteSpace:'nowrap',color:fixed?'#fff':undefined}} aria-pressed={fixed} onClick={()=>onChange({selectedVariation:fixed?undefined:index})}>Variation {String.fromCharCode(65+index)}</button>{sounding&&<span style={{fontSize:9}}>{present?'Playing':'Section rest'}</span>}</div>
-     <div style={{width:156,marginLeft:'auto'}}><div style={{position:'relative'}}><input aria-label={`Bars of variation ${index+1}`} inputMode="decimal" value={bars} readOnly style={{paddingRight:64}}/><button type="button" aria-label={`Shorten variation ${index+1}`} disabled={bars<=1/pulses} onClick={()=>save(index,resizeRoll(roll,Math.max(1/pulses,bars-1/pulses)))} style={{position:'absolute',right:32,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>−</button><button type="button" aria-label={`Lengthen variation ${index+1}`} disabled={bars>=8} onClick={()=>save(index,resizeRoll(roll,Math.min(8,bars+1/pulses)))} style={{position:'absolute',right:3,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>+</button></div><span style={{display:'block',marginTop:3,fontSize:9,color:'#9eafa2'}}>{bars} bars / {bars*pulses} beats</span></div>
+     <div style={{width:156,marginLeft:'auto'}}><div style={{position:'relative'}}><input aria-label={`Bars of variation ${index+1}`} inputMode="decimal" value={bars} readOnly style={{paddingRight:64}}/><button type="button" aria-label={`Shorten variation ${index+1}`} disabled={bars<=1/pulses} onClick={()=>save(index,resizeRoll(roll,Math.max(1/pulses,bars-1/pulses)))} style={{position:'absolute',right:32,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>−</button><button type="button" aria-label={`Lengthen variation ${index+1}`} disabled={bars>=MAX_ROLL_BARS} onClick={()=>save(index,resizeRoll(roll,Math.min(MAX_ROLL_BARS,bars+1/pulses)))} style={{position:'absolute',right:3,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>+</button></div><span style={{display:'block',marginTop:3,fontSize:9,color:'#9eafa2'}}>{bars} bars / {bars*pulses} beats</span></div>
     </div>}
      <svg preserveAspectRatio="none" viewBox="0 0 480 264" style={{display:'block',width:'100%',height:compact?142:264,background:'#101a14',userSelect:'none',touchAction:'pan-y',cursor:'crosshair'}} tabIndex={0} role="application" aria-label={`Piano roll of variation ${index+1}`}
       onKeyDown={e=>{if(e.key==='Escape')cancel();if((e.key==='Delete'||e.key==='Backspace')&&selectedNote?.index===index){e.preventDefault();removeNote(index,roll,selectedNote.note)}}}
@@ -147,7 +147,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
        e.preventDefault();e.currentTarget.focus({preventScroll:true});e.currentTarget.setPointerCapture(e.pointerId)
        const p=point(e,bars,low,high),notes=roll.notes.map(n=>({...n}))
        const copy=hit>=0&&e.altKey
-       if((hit<0||copy)&&notes.length>=128){setError('Limit of 128 notes per variation.');return}
+       if((hit<0||copy)&&notes.length>=MAX_ROLL_NOTES){setError(`Limit of ${MAX_ROLL_NOTES} notes per variation.`);return}
        const note=hit<0?notes.push({start:p.start,duration:quantum,degree:p.degree,velocity:.8,pan:.5})-1:copy?notes.push({...notes[hit]})-1:hit
        setSelectedNote({index,note});const mode=hit<0?'draw':copy?'move':target.dataset.mode==='resize'?'resize':'move'
        drag.current={index,note,sourceNote:hit,origin:{...notes[note]},start:p.start,degree:p.degree,mode,roll:{bars,notes},copy,moved:false};setDraft({index,roll:{bars,notes}})

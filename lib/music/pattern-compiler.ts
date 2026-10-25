@@ -6,6 +6,7 @@ import { loopOrdinal, loopRange } from './loop-ranges'
 import { eventRangeConfig, eventRangePattern } from './range-frequency'
 import type { ParameterRange } from './model'
 import type { Strudel, StrudelPattern, StrudelWithPick, VoiceSpec } from './runtime-types'
+import { LFO_SIGNALS, noteVibrato } from './sound-design'
 
 function rangePattern(api: Strudel, voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {
   const recipe = loopRange(voice, range, target)
@@ -57,13 +58,15 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       ...(voice.instrument.octaveRange ? { octaveRange: undefined } : {}),
       ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
     const compiled=new Map<string,StrudelPattern>()
-    const banks=plan.steps.map(step=>{
+    const bank=(step:{active:boolean;variation:number;transpose:number})=>{
       if(!step.active)return api.silence
       const key=`${step.variation}:${voice.unpitched?0:step.transpose}`
       let pattern=compiled.get(key)
       if(!pattern){pattern=compileVoice(api,{...baseVoice,performance:undefined,harmonic:undefined,sectionPattern:String(step.variation)});if(!voice.unpitched&&step.transpose)pattern=pattern.transpose(step.transpose);compiled.set(key,pattern)}
       return pattern
-    })
+    }
+    // Section banks by index, then one bank per fill (see performancePattern).
+    const banks=[...plan.steps.map(bank),...plan.steps.flatMap(step=>step.fill?[bank({...step,variation:step.fill.variation})]:[])]
     const selector=performancePattern(plan,true,voice.beatsPerBar)
     const picker=api as StrudelWithPick
     const pattern = plan.restart?picker.pickRestart(banks,selector):picker.pick(banks,selector)
@@ -79,6 +82,7 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
       let pattern = (api as Strudel & {timeCat:(...chunks:[number,StrudelPattern][])=>StrudelPattern}).timeCat(...chunks).velocity(lane.velocity).slow(roll.bars)
       if (lane.slide && !voice.unpitched) pattern = pattern.withValue((v: object) => ({ ...v, ccSlide: lane.slide, ccSlideTime: lane.slideSeconds ?? .5 }))
       if (lane.pan !== undefined) pattern = pattern.withValue((v: object) => ({ ...v, ccPan: lane.pan }))
+      if (lane.cutoff || lane.vibrato) pattern = pattern.withValue((v: object) => ({ ...v, ...(lane.cutoff ? { ccCutoff: lane.cutoff } : {}), ...(lane.vibrato && !voice.unpitched ? { ccVib: true } : {}) }))
       if (lane.chance !== undefined && !voice.manual) pattern = pattern.degradeBy(1 - lane.chance)
       return pattern
     })
@@ -89,9 +93,16 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
   // This is an additional live swing; catalog rolls already contain their authored timing.
   if (!voice.manual && !voice.instrument.swingRange && voice.instrument.extraSwing) pattern = pattern.swingBy(voice.instrument.extraSwing, voice.beatsPerBar ?? 4)
   for (const [key, value] of Object.entries(voice.controls)) pattern = pattern[key](value)
+  if (voice.panLfo) {
+    const { period, depth, shape, center } = voice.panLfo
+    const signal = (api as unknown as Record<string, StrudelPattern>)[LFO_SIGNALS[shape]]
+    pattern = pattern.pan(signal.range(Math.max(0, center - depth / 2), Math.min(1, center + depth / 2)).slow(period))
+  }
   pattern = applyRanges(api, voice, pattern)
+  const duck = voice.duck ? { duckorbit: voice.duck.orbits, duckdepth: voice.duck.depth, duckattack: voice.duck.release, duckonset: .004 } : {}
   return pattern.orbit(voice.orbit).withValue((value: any) => {
-    const {ccSlide,ccSlideTime,ccPan,...rest}=value
-    return {...rest,...(ccSlide!==undefined?{penv:ccSlide,pattack:ccSlideTime}:{}),...(ccPan!==undefined?{pan:ccPan}:{}),ccVoice:voice.key}
+    const {ccSlide,ccSlideTime,ccPan,ccCutoff,ccVib,...rest}=value
+    return {...rest,...(ccSlide!==undefined?{penv:ccSlide,pattack:ccSlideTime}:{}),...(ccPan!==undefined?{pan:ccPan}:{}),
+      ...(ccCutoff&&rest.cutoff!==undefined?{cutoff:Math.max(20,Math.min(20000,rest.cutoff*(1+ccCutoff)))}:{}),...(ccVib?noteVibrato(voice.instrument,rest):{}),...duck,ccVoice:voice.key}
   })
 }

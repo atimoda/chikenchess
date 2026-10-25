@@ -4,13 +4,20 @@ import { DEFAULT_ARRANGEMENT, arrangementPosition, pieceSection, pieceStep, type
 /** Compiler-only form derived from the global arrangement. Never persisted. */
 export interface Performance {
   restart: boolean
-  steps: {beats:number;variation:number;transpose:number;active:boolean}[]
+  steps: {beats:number;variation:number;transpose:number;active:boolean;fill?:{variation:number;beats:number}}[]
 }
 
 /** Square brackets preserve the intended total length, unlike slow angle groups. */
+/** Fill banks follow the section banks when indices are used: steps.length + n for the n-th fill. */
 export function performancePattern(performance: Performance, indices = false, beatsPerBar = 4) {
   const beats = performance.steps.reduce((sum, step) => sum + step.beats, 0)
-  const steps = performance.steps.map((step, index) => `${indices ? index : step.variation}@${step.beats}`)
+  let fills = 0
+  const steps = performance.steps.map((step, index) => {
+    const main = `${indices ? index : step.variation}`
+    if (!step.fill) return `${main}@${step.beats}`
+    const fill = indices ? performance.steps.length + fills++ : step.fill.variation
+    return `${main}@${step.beats - step.fill.beats} ${fill}@${step.fill.beats}`
+  })
   return `[${steps.join(' ')}]/${beats / beatsPerBar}`
 }
 

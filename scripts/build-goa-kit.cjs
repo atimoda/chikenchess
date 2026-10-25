@@ -77,11 +77,13 @@ for (const piece of kit.pieces) {
   kit.instruments[piece.id].pianoRolls.forEach((roll, index) => pass(roll, index))
 }
 
-const rule = (id, trigger, target, duration, quantize, actions) => ({ id, trigger, enabled: true, quantize, target, duration, actions })
+const rule = (id, trigger, target, duration, quantize, actions, instruments) => ({ id, trigger, enabled: true, quantize, target, duration, actions, ...(instruments ? { instruments } : {}) })
 const action = (type, value = 0, extra = {}) => ({ type, value, ...extra })
 // Goa reactions: the scale opens up as the game develops, captures drop, quiet play breaks down.
+// A balanced late game closes the acid filters slowly and lifts their resonance; a long run
+// without captures sends the leads into the delay and reverb, like a breakdown.
 kit.reactions = {
-  overrides: ['opening', 'middle', 'endgame', 'check', 'capture', 'quiet', 'queenCapture', 'noQueens', 'minimumBoth', 'freeze'],
+  overrides: ['opening', 'middle', 'endgame', 'check', 'capture', 'quiet', 'queenCapture', 'noQueens', 'minimumBoth', 'freeze', 'tension', 'captureDrought'],
   rules: [
     rule('goa-opening', 'opening', 'both', 1, true, [action('scale', 0, { scale: 'Phrygian' }), action('gain', -6)]),
     rule('goa-middle', 'middle', 'both', 1, true, [action('bpm', 2, { rampBars: 8 }), action('gain', 4)]),
@@ -92,6 +94,9 @@ kit.reactions = {
     rule('goa-queen-capture', 'queenCapture', 'both', 2, true, [action('variation', 2), action('lpf', 1200)]),
     rule('goa-no-queens', 'noQueens', 'both', 0, true, [action('scale', 0, { scale: 'Phrygian' }), action('bpm', 2, { rampBars: 8 })]),
     rule('goa-minimum-both', 'minimumBoth', 'both', 0, true, [action('bpm', 3, { rampBars: 8 }), action('variation', 5), action('gain', 10)]),
+    rule('goa-tension', 'tension', 'both', 1, true, [action('lpf', 1500, { rampBars: 8 }), action('resonance', 18), action('gain', -2, { rampBars: 4 })], 'lead'),
+    rule('goa-tension-bass', 'tension', 'both', 1, true, [action('lpf', 900, { rampBars: 8 })], 'bass'),
+    rule('goa-capture-drought', 'captureDrought', 'both', 1, true, [action('delay', .45), action('reverb', .55), action('gain', -3, { rampBars: 4 })], 'lead'),
     rule('goa-freeze', 'freeze', 'both', 2, true, [action('scale', 0, { scale: 'Phrygian' }), action('lpf', 900)]),
   ],
 }

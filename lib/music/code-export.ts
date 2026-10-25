@@ -5,6 +5,7 @@ import { harmonicPattern } from './harmonic-pattern'
 import { beatsPerBar, beatUnit } from './meter'
 import { sampleRegistration } from './sample-banks'
 import { voiceSpecs } from './voice-spec'
+import { LFO_SIGNALS, noteVibrato } from './sound-design'
 import { loopClockCode, loopRange } from './loop-ranges'
 import { eventRangeConfig, eventRangePattern } from './range-frequency'
 import type { ParameterRange } from './model'
@@ -36,9 +37,10 @@ function voiceCode(voice: VoiceSpec): string {
     const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined, playChance: undefined,
       ...(voice.instrument.octaveRange ? { octaveRange: undefined } : {}),
       ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
-    const variations = [...new Set(plan.steps.filter(step=>step.active).map(step=>step.variation))]
+    const variations = [...new Set(plan.steps.filter(step=>step.active).flatMap(step=>step.fill?[step.variation,step.fill.variation]:[step.variation]))]
     const declarations = variations.map(index=>`const part${index} = ${voiceCode({...baseVoice,performance:undefined,harmonic:undefined,sectionPattern:String(index)})};`).join('\n    ')
-    const banks = plan.steps.map(step=>step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence')
+    const part = (step: { active: boolean; variation: number; transpose: number }) => step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence'
+    const banks = [...plan.steps.map(part), ...plan.steps.flatMap(step => step.fill ? [part({ ...step, variation: step.fill.variation })] : [])]
     const selector = JSON.stringify(performancePattern(plan, true, voice.beatsPerBar))
     const form = `${plan.restart ? 'pickRestart' : 'pick'}([${banks.join(', ')}], mini(${selector}))`
     const source = `(() => {\n    ${declarations}\n    return ${form};\n  })()`
@@ -49,17 +51,24 @@ function voiceCode(voice: VoiceSpec): string {
   const banks = voice.pianoRolls.map((roll, i) => {
     if (fixed !== undefined && i !== fixed % voice.pianoRolls.length) return 'silence'
     return stackCode(optimizeRoll(roll).map(lane => {
-      const overrides = { ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .5 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}) }
+      const overrides = { ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .5 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}),
+        ...(lane.vibrato && !voice.unpitched ? noteVibrato(voice.instrument, voice.controls) : {}) }
+      const cutoff = lane.cutoff && voice.controls.lpf !== undefined ? `.withValue(v => ({...v, ccOverrides: {...v.ccOverrides, cutoff: ${Math.max(20, Math.min(20000, Number(voice.controls.lpf) * (1 + lane.cutoff)))}}}))` : ''
       const chance = lane.chance !== undefined && !voice.manual ? `.degradeBy(${Number((1 - lane.chance).toFixed(12))})` : ''
-      return `${event}(${JSON.stringify(rollLaneNotation(lane))}).velocity(${lane.velocity}).slow(${roll.bars})${chance}.withValue(v => ({...v, ccOverrides: ${JSON.stringify(overrides)}}))`
+      return `${event}(${JSON.stringify(rollLaneNotation(lane))}).velocity(${lane.velocity}).slow(${roll.bars})${chance}.withValue(v => ({...v, ccOverrides: ${JSON.stringify(overrides)}}))${cutoff}`
     }))
   })
   let source = fixed !== undefined ? banks[fixed % banks.length]
     : stackCode(banks.map((bank,i)=>`${bank}.mask(mini(${JSON.stringify(voice.sectionPattern)}).withValue(v => Number(v) % ${banks.length} === ${i}))`))
   if (!voice.manual && !voice.instrument.swingRange && voice.instrument.extraSwing) source += `.swingBy(${voice.instrument.extraSwing},${voice.beatsPerBar ?? 4})`
   source += Object.entries(voice.controls).map(([key,value])=>`.${key}(${JSON.stringify(value)})`).join('')
+  if (voice.panLfo) {
+    const { period, depth, shape, center } = voice.panLfo
+    source += `.pan(${LFO_SIGNALS[shape]}.range(${Math.max(0, center - depth / 2)},${Math.min(1, center + depth / 2)}).slow(${period}))`
+  }
   source = rangesCode(voice, source)
-  return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}))`
+  const duck = voice.duck ? `, duckorbit: ${JSON.stringify(voice.duck.orbits)}, duckdepth: ${JSON.stringify(voice.duck.depth)}, duckattack: ${JSON.stringify(voice.duck.release)}, duckonset: 0.004` : ''
+  return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides${duck}}))`
 }
 
 function rangeCode(voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {

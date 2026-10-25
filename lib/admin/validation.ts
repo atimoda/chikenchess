@@ -4,12 +4,14 @@ import { cities } from '../cities-data'
 import { CAMPAIGNS } from '../campaigns'
 import { RANK_TIERS } from '../game-progression'
 import moveMessages from '../../data/ui/move-messages.json'
-import { creativeSchema, SOUNDS, ROOTS, parseCreativeSession } from '../music/creative'
+import { creativeSchema, instrumentSchema, SOUNDS, ROOTS, parseCreativeSession } from '../music/creative'
+import { SOUND_DESIGN_KEYS, type SoundDesignKey } from '../music/model'
 import { SCALE_NAMES } from '../music/scales'
 import { HARMONY_PLAN_IDS } from '../music/harmony'
 import { METER_IDS } from '../music/meter'
 import { SECTION_TYPES } from '../music/arrangement'
 import { createStyledCityKit } from '../music/styled-kits'
+import { isProfileToken } from '../music/profile-tokens'
 import { prepareOfficialCityKit } from '../music/city-kits'
 import { reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
@@ -28,13 +30,14 @@ const partSchema = z.object({
     z.object({ kind: z.literal('synth'), sound: z.enum(SOUNDS) }).strict(),
     z.object({ kind: z.literal('sample'), bank: z.enum(['electro', 'jazz', 'world', 'strings', 'keys', 'synths', 'drums', 'sambaReggae', 'classical', 'band', 'percussion', 'guitars', 'psytrance']), asset: text, variant: z.number().int().min(0).max(127).optional(), pitched: z.boolean().optional() }).strict(),
   ]),
-  patterns: z.array(z.string().min(1).max(16000).refine(value => value.trim().split(/\s+/).every(token => token === '.' || /^-?\d+(,-?\d+)*$/.test(token)), 'Use graus inteiros, acordes separados por vírgula e ponto para pausas.')).min(1).max(8),
+  patterns: z.array(z.string().min(1).max(16000).refine(value => value.trim().split(/\s+/).every(isProfileToken), 'Use graus inteiros, acordes separados por vírgula, ponto para pausas e as marcas ! \' ? * ~ _ < >.')).min(1).max(8),
   bars: z.union([finite.positive().max(64), z.array(finite.positive().max(64)).min(1).max(8)]).optional(),
   ...optionalNumbers,
   lpfRange: range.optional(), driveRange: range.optional(), reverbRange: range.optional(), swingRange: range.optional(),
-  arrangement: z.object({ active: z.array(z.boolean()).max(24).optional(), variations: z.array(z.number().int().min(0).max(7)).max(24).optional(), transpose: z.array(finite).max(24).optional(), restart: z.boolean().optional() }).strict().optional(),
+  arrangement: z.object({ active: z.array(z.boolean()).max(24).optional(), variations: z.array(z.number().int().min(0).max(7)).max(24).optional(), transpose: z.array(finite).max(24).optional(), fills: z.array(z.number().int().min(0).max(7).nullable()).max(24).optional(), restart: z.boolean().optional() }).strict().optional(),
   effects: z.object(Object.fromEntries(['gain', 'pitch', 'pan', 'delay', 'reverb', 'decay'].map(key => [key, finite.optional()]))).strict().optional(),
   mapping: z.object({ fileDegrees: finite.optional(), rankDegrees: finite.optional(), panWidth: finite.optional(), previewFilter: z.boolean().optional() }).strict().optional(),
+  design: instrumentSchema.pick(Object.fromEntries(SOUND_DESIGN_KEYS.map(key => [key, true])) as Record<SoundDesignKey, true>).partial().strict().optional(),
 }).strict()
 export const styleProfileSchema = z.object({
   name: text, bpm: finite.min(30).max(240), meter: z.enum(METER_IDS).optional(), root: z.enum(ROOTS), scale: z.enum(SCALE_NAMES), harmony: z.enum(HARMONY_PLAN_IDS),

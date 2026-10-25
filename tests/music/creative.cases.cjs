@@ -113,7 +113,7 @@ test('invalid MIDI articulation or sample IDs cannot be saved as city kits', () 
     assert.throws(() => creative.parseCreativeSession(invalid({ pianoRolls: [roll] })))
   }
   assert.throws(() => creative.parseCreativeSession(invalid({ pianoRolls: Array.from({ length: 9 }, () => noteRoll([0])) })))
-  assert.throws(() => creative.parseCreativeSession(invalid({ pianoRolls: [{ bars: 1, notes: Array.from({ length: 129 }, () => ({ start: 0, duration: .25, degree: 0, velocity: .8 })) }] })))
+  assert.throws(() => creative.parseCreativeSession(invalid({ pianoRolls: [{ bars: 1, notes: Array.from({ length: 257 }, () => ({ start: 0, duration: .25, degree: 0, velocity: .8 })) }] })))
   const text = JSON.stringify(lab)
   assert.deepEqual(creative.parseCreativeSession(text.padEnd(2_000_000, ' ')), lab)
   assert.throws(() => creative.parseCreativeSession(text.padEnd(2_000_001, ' ')), /Kit file too large/)

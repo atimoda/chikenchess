@@ -10,7 +10,9 @@
       "queenCapture",
       "noQueens",
       "minimumBoth",
-      "freeze"
+      "freeze",
+      "tension",
+      "captureDrought"
     ],
     "rules": [
       {
@@ -240,6 +242,85 @@
         ]
       },
       {
+        "id": "goa-tension",
+        "trigger": "tension",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "instruments": "lead",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "lpf",
+            "rampBars": 8,
+            "value": 1500,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "resonance",
+            "value": 18,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "rampBars": 4,
+            "value": -2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "goa-tension-bass",
+        "trigger": "tension",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "instruments": "bass",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "lpf",
+            "rampBars": 8,
+            "value": 900,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "goa-capture-drought",
+        "trigger": "captureDrought",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "instruments": "lead",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "delay",
+            "value": 0.45,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "reverb",
+            "value": 0.55,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "rampBars": 4,
+            "value": -3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
         "id": "goa-freeze",
         "trigger": "freeze",
         "enabled": true,
@@ -265,7 +346,7 @@
   },
   "reactionPresetRevision": "reactions-2026-10-23-global-v2",
   "harmony": "kit",
-  "catalogRevision": "goa-2026-10-25-midi-v1",
+  "catalogRevision": "goa-2026-10-25-design-v2",
   "version": 7,
   "name": "Anjuna · trance psicodélico",
   "cityId": "goa",
@@ -1067,7 +1148,18 @@
       },
       "source": {
         "kind": "synth"
-      }
+      },
+      "lfoTarget": "lpf",
+      "lfoRate": 8,
+      "lfoUnit": "bars",
+      "lfoDepth": 0.45,
+      "lfoShape": "sine",
+      "unison": 5,
+      "detune": 0.22,
+      "spread": 0.7,
+      "duckSource": "e2",
+      "duckDepth": 0.35,
+      "duckRelease": 0.18
     },
     "b:b8": {
       "name": "Acid borracha",
@@ -1567,7 +1659,11 @@
         "asset": "acid-rubber",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "resonance": 11,
+      "filterEnv": 3,
+      "filterAttack": 0.003,
+      "filterDecay": 0.12
     },
     "b:c8": {
       "name": "Cítara de Anjuna",
@@ -2932,7 +3028,9 @@
         "asset": "lead-hallucinogen",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "vibrato": 5.5,
+      "vibratoDepth": 0.12
     },
     "b:e8": {
       "name": "Drone Om",
@@ -3086,7 +3184,13 @@
         "asset": "om-drone",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "lfoTarget": "pan",
+      "lfoRate": 16,
+      "lfoUnit": "bars",
+      "lfoDepth": 0.5,
+      "lfoShape": "sine",
+      "role": "pad"
     },
     "b:f8": {
       "name": "Arpejo FM",
@@ -3845,7 +3949,9 @@
         "asset": "fm-pluck",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "delayTime": "3/16",
+      "delayFeedback": 0.5
     },
     "b:g8": {
       "name": "Acid squelch",
@@ -4963,7 +5069,11 @@
         "asset": "acid-squelch",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "resonance": 15,
+      "filterEnv": 4,
+      "filterAttack": 0.002,
+      "filterDecay": 0.1
     },
     "b:h8": {
       "name": "Riser de ruído",
@@ -5081,7 +5191,8 @@
         "asset": "noise-riser",
         "variant": 0,
         "pitched": false
-      }
+      },
+      "role": "fx"
     },
     "b:a7": {
       "name": "Tabla bayan · Ge",
@@ -6875,7 +6986,10 @@
         "asset": "bass-roll",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "duckSource": "e2",
+      "duckDepth": 0.6,
+      "duckRelease": 0.1
     },
     "b:e7": {
       "name": "Bumbo psy",
@@ -7994,7 +8108,8 @@
         "asset": "tabla-na",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "role": "drums"
     },
     "b:h7": {
       "name": "Zap laser",
@@ -10023,7 +10138,10 @@
         "asset": "bass-roll",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "duckSource": "e2",
+      "duckDepth": 0.6,
+      "duckRelease": 0.1
     },
     "w:e2": {
       "name": "Bumbo psy",
@@ -11142,7 +11260,8 @@
         "asset": "tabla-na",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "role": "drums"
     },
     "w:h2": {
       "name": "Zap laser",
@@ -11820,7 +11939,18 @@
       },
       "source": {
         "kind": "synth"
-      }
+      },
+      "lfoTarget": "lpf",
+      "lfoRate": 8,
+      "lfoUnit": "bars",
+      "lfoDepth": 0.45,
+      "lfoShape": "sine",
+      "unison": 5,
+      "detune": 0.22,
+      "spread": 0.7,
+      "duckSource": "e2",
+      "duckDepth": 0.35,
+      "duckRelease": 0.18
     },
     "w:b1": {
       "name": "Acid borracha",
@@ -12320,7 +12450,11 @@
         "asset": "acid-rubber",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "resonance": 11,
+      "filterEnv": 3,
+      "filterAttack": 0.003,
+      "filterDecay": 0.12
     },
     "w:c1": {
       "name": "Cítara de Anjuna",
@@ -13685,7 +13819,9 @@
         "asset": "lead-hallucinogen",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "vibrato": 5.5,
+      "vibratoDepth": 0.12
     },
     "w:e1": {
       "name": "Drone Om",
@@ -13839,7 +13975,13 @@
         "asset": "om-drone",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "lfoTarget": "pan",
+      "lfoRate": 16,
+      "lfoUnit": "bars",
+      "lfoDepth": 0.5,
+      "lfoShape": "sine",
+      "role": "pad"
     },
     "w:f1": {
       "name": "Arpejo FM",
@@ -14598,7 +14740,9 @@
         "asset": "fm-pluck",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "delayTime": "3/16",
+      "delayFeedback": 0.5
     },
     "w:g1": {
       "name": "Acid squelch",
@@ -15716,7 +15860,11 @@
         "asset": "acid-squelch",
         "variant": 0,
         "pitched": true
-      }
+      },
+      "resonance": 15,
+      "filterEnv": 4,
+      "filterAttack": 0.002,
+      "filterDecay": 0.1
     },
     "w:h1": {
       "name": "Riser de ruído",
@@ -15834,7 +15982,8 @@
         "asset": "noise-riser",
         "variant": 0,
         "pitched": false
-      }
+      },
+      "role": "fx"
     }
   },
   "effects": {

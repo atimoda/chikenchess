@@ -63,6 +63,7 @@ import { loadEditableBotProfiles, saveBotProfile } from "@/lib/admin/bot-profile
 import { isAdminUser } from "@/lib/admin/access"
 import { useOnline } from "./online/online-provider"
 import type { Occurrence, Trigger } from "@/lib/music/reactions"
+import { duckSourceOptions } from "@/lib/music/sound-design"
 
 import {
   DropdownMenu,
@@ -507,7 +508,16 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const spectrogramHandleRef = useRef<HTMLDivElement | null>(null)
   const spectrogramToggleRef = useRef<HTMLButtonElement | null>(null)
 
-  const musicOptions = useMemo(() => ({ actionEvents: reactionLog }), [reactionLog])
+  // Engine scores by ply feed the music's tension and swing triggers; 10 cp steps avoid a re-render per search depth.
+  const [evaluationLog, setEvaluationLog] = useState<Record<number, number>>({})
+  useEffect(() => {
+    // Scores arrive for the position on the board; a new move resets the engine before the next one.
+    if (lastEvalScore === null) return
+    const ply = gameRef.current.history().length
+    const score = Math.round(Math.max(-1000, Math.min(1000, lastEvalScore)) / 10) * 10
+    setEvaluationLog(log => log[ply] === score ? log : { ...Object.fromEntries(Object.entries(log).filter(([at]) => Number(at) < ply)), [ply]: score })
+  }, [lastEvalScore])
+  const musicOptions = useMemo(() => ({ actionEvents: reactionLog, evaluations: evaluationLog }), [reactionLog, evaluationLog])
   const musicPositions = useMemo(() => powerTimelineRef.current.map(entry => entry.game), [game, matchPowers])
   const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn, musicPositions, musicOptions)
   if (paramsOpen && !music.selected) setParamsOpen(false)
@@ -1726,6 +1736,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             />}
 
             <SynthControlPanel
+                duckSources={duckSourceOptions(music.snapshot.pieces, music.snapshot.instruments, music.selected)}
                 instrument={music.instrument}
                 selectedPiece={music.selected}
                 onInstrumentChange={music.updateInstrument}

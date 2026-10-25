@@ -21,6 +21,7 @@ import styles from './world-map.module.css'
 import { Button } from "@/components/ui/button"
 import { Plus, Minus, Maximize, Minimize } from "lucide-react"
 import { useOnlineAvailability } from "@/hooks/use-online-availability"
+import { sampleUrl } from "@/lib/music/sample-format"
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
@@ -167,9 +168,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             hatCompressor.connect(ctx.destination)
             popupHatCompressorRef.current = hatCompressor
             void Promise.all([
-              '/samples/chicken-percussion-v1/kick-0.wav',
-              '/samples/chicken-percussion-v1/kick-1.wav',
-            ].map(async url => {
+              '/samples/chicken-percussion-v1/kick-0.ogg',
+              '/samples/chicken-percussion-v1/kick-1.ogg',
+            ].map(async file => {
+              const url = sampleUrl(file)
               const response = await fetch(url)
               if (!response.ok) throw new Error(`Failed to load ${url}`)
               return ctx.decodeAudioData(await response.arrayBuffer())
@@ -177,9 +179,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               if (audioContextRef.current === ctx) pinKickBuffersRef.current = buffers
             }).catch(() => {})
             void Promise.all([
-              '/samples/chicken-percussion-v1/open-hat-0.wav',
-              '/samples/chicken-percussion-v1/open-hat-1.wav',
-            ].map(async url => {
+              '/samples/chicken-percussion-v1/open-hat-0.ogg',
+              '/samples/chicken-percussion-v1/open-hat-1.ogg',
+            ].map(async file => {
+              const url = sampleUrl(file)
               const response = await fetch(url)
               if (!response.ok) throw new Error(`Failed to load ${url}`)
               return ctx.decodeAudioData(await response.arrayBuffer())
