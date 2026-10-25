@@ -6,6 +6,7 @@ import { loopOrdinal, loopRange } from './loop-ranges'
 import { eventRangeConfig, eventRangePattern } from './range-frequency'
 import type { ParameterRange } from './model'
 import type { Strudel, StrudelPattern, StrudelWithPick, VoiceSpec } from './runtime-types'
+import { LFO_SIGNALS } from './sound-design'
 
 function rangePattern(api: Strudel, voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {
   const recipe = loopRange(voice, range, target)
@@ -89,9 +90,15 @@ export function compileVoice(api: Strudel, voice: VoiceSpec):StrudelPattern {
   // This is an additional live swing; catalog rolls already contain their authored timing.
   if (!voice.manual && !voice.instrument.swingRange && voice.instrument.extraSwing) pattern = pattern.swingBy(voice.instrument.extraSwing, voice.beatsPerBar ?? 4)
   for (const [key, value] of Object.entries(voice.controls)) pattern = pattern[key](value)
+  if (voice.panLfo) {
+    const { period, depth, shape, center } = voice.panLfo
+    const signal = (api as unknown as Record<string, StrudelPattern>)[LFO_SIGNALS[shape]]
+    pattern = pattern.pan(signal.range(Math.max(0, center - depth / 2), Math.min(1, center + depth / 2)).slow(period))
+  }
   pattern = applyRanges(api, voice, pattern)
+  const duck = voice.duck ? { duckorbit: voice.duck.orbits, duckdepth: voice.duck.depth, duckattack: voice.duck.release, duckonset: .004 } : {}
   return pattern.orbit(voice.orbit).withValue((value: any) => {
     const {ccSlide,ccSlideTime,ccPan,...rest}=value
-    return {...rest,...(ccSlide!==undefined?{penv:ccSlide,pattack:ccSlideTime}:{}),...(ccPan!==undefined?{pan:ccPan}:{}),ccVoice:voice.key}
+    return {...rest,...(ccSlide!==undefined?{penv:ccSlide,pattack:ccSlideTime}:{}),...(ccPan!==undefined?{pan:ccPan}:{}),...duck,ccVoice:voice.key}
   })
 }

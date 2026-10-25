@@ -5,6 +5,7 @@ import { harmonicPattern } from './harmonic-pattern'
 import { beatsPerBar, beatUnit } from './meter'
 import { sampleRegistration } from './sample-banks'
 import { voiceSpecs } from './voice-spec'
+import { LFO_SIGNALS } from './sound-design'
 import { loopClockCode, loopRange } from './loop-ranges'
 import { eventRangeConfig, eventRangePattern } from './range-frequency'
 import type { ParameterRange } from './model'
@@ -58,8 +59,13 @@ function voiceCode(voice: VoiceSpec): string {
     : stackCode(banks.map((bank,i)=>`${bank}.mask(mini(${JSON.stringify(voice.sectionPattern)}).withValue(v => Number(v) % ${banks.length} === ${i}))`))
   if (!voice.manual && !voice.instrument.swingRange && voice.instrument.extraSwing) source += `.swingBy(${voice.instrument.extraSwing},${voice.beatsPerBar ?? 4})`
   source += Object.entries(voice.controls).map(([key,value])=>`.${key}(${JSON.stringify(value)})`).join('')
+  if (voice.panLfo) {
+    const { period, depth, shape, center } = voice.panLfo
+    source += `.pan(${LFO_SIGNALS[shape]}.range(${Math.max(0, center - depth / 2)},${Math.min(1, center + depth / 2)}).slow(${period}))`
+  }
   source = rangesCode(voice, source)
-  return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides}))`
+  const duck = voice.duck ? `, duckorbit: ${JSON.stringify(voice.duck.orbits)}, duckdepth: ${JSON.stringify(voice.duck.depth)}, duckattack: ${JSON.stringify(voice.duck.release)}, duckonset: 0.004` : ''
+  return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides${duck}}))`
 }
 
 function rangeCode(voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {
