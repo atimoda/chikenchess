@@ -5,8 +5,20 @@ export const CHANGELOG = [
   {
     version: '1.9.0',
     date: '25/10/2026',
-    title: 'Goa 1994, engine musical expandida e samples 5× menores',
+    title: 'Electronic World refeito, Goa, Bristol, Croydon e Durban, engine musical expandida e samples 5× menores',
     groups: [
+      { title: 'Electronic World refeito', items: [
+        'Os 12 kits da campanha foram recompostos para soar como os estilos que representam: baterias, timbres, melodias, ritmos, efeitos e a função de cada peça seguem o gênero e o ano de cada cidade.',
+        'Dois bancos novos de samples: baterias eletrônicas (TR-808, TR-909, LinnDrum, breakbeats, baterias empoeiradas e sintéticas) e vozes, stabs e efeitos (voz robótica, coro, "oh", "hey!", hoover, rave stab, órgão house, sirenes, apito, vinil, scratch, risers).',
+        'Düsseldorf 1978 se inspira no timbre e na forma de "The Model" (Kraftwerk): string machine, sequência Minimoog em oitavas, bateria sintética e a voz robótica na dama. As melodias são originais.',
+        'Nova York 1977 (disco), Chicago 1984 (house na TR-808), Detroit 1986 (techno com cordas e piano), Ibiza 1986 (balearic com violão espanhol), Manchester 1988 (acid house com a TB-303 na dama), Berlim 1991 (Tresor, hoover e eco dub), Tóquio 1991 (techno minimal com arpejador e pentatônica), Londres 1992 (breakbeat picado e hoover), São Paulo 1993 (hard techno com surdo, agogô, repique e chocalho), Joanesburgo 1994 (kwaito com canto de chamada e resposta) e Paris 1995 (French touch com sidechain e filtro).',
+        'Cada kit tem reações próprias ao xadrez: na abertura a música começa enxuta, o roque e o xeque soltam o refrão ou o drop, a captura da dama leva ao break, a tensão mexe no filtro do jeito do estilo (a 303 abre em Manchester, o loop inteiro fecha em Paris, a fita desacelera em Bristol) e o final vai ao pico.',
+      ] },
+      { title: 'Novas fases · Bristol, Croydon e Durban', items: [
+        'Bristol 1994: trip-hop a 90 BPM, breakbeat lento e empoeirado, vinil, scratches, Rhodes, órgão Hammond, cordas de cinema, trompa e um teremim na dama.',
+        'Croydon 2006: dubstep a 140 BPM em meio-tempo, sub-grave, wobble com LFO no filtro, chimbal de garage, sirene dub e uma melodia da meia-noite na dama.',
+        'Durban 2016: gqom a 126 BPM, tambores em tresillo sem bumbo no tempo um, baixo 808, coro sombrio, apitos, gritos e um canto grave na dama.',
+      ] },
       { title: 'Nova fase · Goa 1994', items: [
         'Electronic World ganhou a 13ª cidade: Goa, 1994, trance psicodélico a 145 BPM em Mi frígio dominante, a escala "oriental" das festas de Anjuna.',
         'Kit próprio com 20 timbres novos: bumbo psy, baixo rolante (bumbo-baixo-baixo-baixo), dois acid 303 nos cavalos, lead serrilhado com vibrato na dama, cítara com ponte jawari, drone Om no rei, tablas, zaps de laser, riser e chimbais metálicos.',
@@ -31,6 +43,7 @@ export const CHANGELOG = [
         'Todos os samples foram convertidos para Opus: de 14,8 MB para 2,9 MB. Navegadores sem Opus (Safari antigo) recebem uma versão AAC.',
       ] },
       { title: 'Criativo', items: [
+        'Novo grupo Legacy kits na lista de kits: as versões anteriores dos 12 kits do Electronic World continuam disponíveis para tocar e editar, sem ligação com as cidades.',
         'Nova escala Phrygian dominant em Scale e nas regras de States & Events.',
       ] },
       { title: 'Partida', items: [

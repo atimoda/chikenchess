@@ -128,7 +128,7 @@ parts = [
 
 profile = {
     'name': 'Tresor · techno 1991', 'bpm': 138, 'root': 'C', 'scale': 'Phrygian', 'harmony': 'static',
-    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
+    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
         rule('ber-opening', 'opening', 'both', 1, True, [act('variation', 0)]),

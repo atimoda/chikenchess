@@ -139,7 +139,7 @@ parts = [
 
 profile = {
     'name': 'Shibaura · techno minimal 1991', 'bpm': 130, 'root': 'E', 'scale': 'Maior', 'harmony': 'static',
-    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
+    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
         rule('tyo-opening', 'opening', 'both', 1, True, [act('variation', 0)]),

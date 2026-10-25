@@ -135,7 +135,7 @@ parts = [
 
 profile = {
     'name': 'Haçienda · acid house 1988', 'bpm': 128, 'root': 'G', 'scale': 'Menor natural', 'harmony': 'static',
-    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
+    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
         rule('mcr-opening', 'opening', 'both', 1, True, [act('variation', 0)]),

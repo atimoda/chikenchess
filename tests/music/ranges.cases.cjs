@@ -312,7 +312,7 @@ test('sample maps encode sharp filenames while preserving real local file paths'
   assert.deepEqual(Object.keys(Object.values(bass.map)[0]), ['c1', 'e1', 'g1', 'c2'])
 })
 
-test('all 61 city presets have six composed scenes and E/F harmony sequences are distinct', () => {
+test('all 64 city presets have six composed scenes and E/F harmony sequences are distinct', () => {
   const { cities } = loadTs('lib/cities-data.ts'), { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   for (const city of cities) {
     const kit = defaultCityKit(city.id)
@@ -324,6 +324,8 @@ test('all 61 city presets have six composed scenes and E/F harmony sequences are
     }
     if (city.id !== 'manchester-1999') {
       assert.equal(kit.arrangement.sections.length, 6)
+      // Electronic World kits voice their chords absolutely (static harmony), so they carry no section sequences.
+      if (kit.harmony === 'static' && kit.arrangement.sections.every(section => !section.harmony)) continue
       assert.equal(kit.arrangement.sections[4].harmony.length, 4)
       assert.notDeepEqual(kit.arrangement.sections[4].harmony, kit.arrangement.sections[5].harmony, `${city.id}: contrasting E/F harmonic paths`)
     }

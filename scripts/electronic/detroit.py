@@ -155,7 +155,7 @@ parts = [
 
 profile = {
     'name': 'Transmat · techno 1986', 'bpm': 125, 'root': 'A', 'scale': 'Menor natural', 'harmony': 'static',
-    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
+    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
         rule('det-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
