@@ -51,6 +51,10 @@ export const cityCoordinates: Record<string, { x: number; y: number }> = {
     "x": 42.91,
     "y": 27.36
   },
+  "goa": {
+    "x": 70.48,
+    "y": 41.35
+  },
   "vienna": {
     "x": 49.5,
     "y": 25.0

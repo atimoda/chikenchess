@@ -1,0 +1,1170 @@
+{
+  "name": "Anjuna · trance psicodélico",
+  "bpm": 145,
+  "root": "E",
+  "scale": "Phrygian dominant",
+  "harmony": "kit",
+  "harmonicSequences": [
+    [
+      0
+    ],
+    [
+      0
+    ],
+    [
+      5,
+      6,
+      0,
+      0
+    ],
+    [
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      6
+    ],
+    [
+      0,
+      0,
+      1,
+      0
+    ]
+  ],
+  "swing": 0,
+  "sections": [
+    32,
+    32,
+    16,
+    32,
+    16,
+    64
+  ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Break",
+    "Drop",
+    "Interlude",
+    "Drop"
+  ],
+  "parts": [
+    {
+      "role": "harmony",
+      "name": "Pad do nascer do sol",
+      "behavior": "sustain",
+      "source": {
+        "kind": "synth",
+        "sound": "supersaw"
+      },
+      "patterns": [
+        "0,2,4 . 0,2,4 .",
+        "0,2,4 0,2,4 0,2,4 0,2,4",
+        "0,2,4 0,2,4 0,2,4 0,2,4",
+        "0,2,4 . 0,2,4 .",
+        "0,2,4 0,2,4 0,2,4 0,2,4",
+        "0,2,4 . 0,2,4 . 0,2,4 . 0,2,5 ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        8
+      ],
+      "octave": 3,
+      "gain": 0.05,
+      "attack": 0.9,
+      "release": 1.2,
+      "decay": 0.6,
+      "sustain": 0.85,
+      "gate": 0.97,
+      "clip": 0.98,
+      "lpf": 2600,
+      "hpf": 180,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          false,
+          true,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "lpfRange": {
+        "first": 900,
+        "second": 4200,
+        "frequency": "section"
+      },
+      "effects": {
+        "reverb": 0.42,
+        "pan": -0.15
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tabla bayan · Ge",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "tabla-ge",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . . . . 0 . . . . . . . . 0 . . . . . 0 . . . 0 . . . . .",
+        ". . . 0 . . . . . . 0 . . . . . . . . 0 . . . . . . . 0 . . 0 .",
+        "0 . . . . . . . . . 0 . . . . . 0 . . . . . 0 . . . . . 0 . . .",
+        ". . . 0 . . . . . . 0 . . . . . . . . 0 . . . 0 . . 0 . . . . .",
+        "0 . . 0 . . 0 . . . 0 . . . . . 0 . . 0 . . 0 . . . 0 . 0 . 0 .",
+        ". . . 0 . . . . . . 0 . . . . . . . . 0 . . . 0 . . 0 . . 0 . ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "octave": 2,
+      "gain": 0.2,
+      "clip": 0.95,
+      "lpf": 1600,
+      "hpf": 30,
+      "effects": {
+        "reverb": 0.08,
+        "pan": -0.2
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "response",
+      "name": "Acid borracha",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "acid-rubber",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . 0 . 0 1 . 0 . . 7 . . 0 . . . .",
+        ". . . . . . . . . . . . 0 7 . 0 . . 1 0 . . 7 . 0 . 3 . 1 . 0 .",
+        ". . . . . . . . . . . . . . . . 0 . . . . . . . 6 . . . 7 . . .",
+        ". . . . . . . . 0 7 0 1 . 0 3 1 0 . 7 0 . 1 0 . 7 6 . 0 1 . 0 .",
+        ". . . . 0 . . 1 . . . . 0 . . 7 . . . . 6 . . 7 . . . . 0 . 1 .",
+        ". . . . . . . . 0 7 0 1 . 0 3 1 0 1 3 1 0 . 7 6 7 . 0 1 3 4 3 1"
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "octave": 3,
+      "gain": 0.075,
+      "attack": 0.003,
+      "release": 0.06,
+      "decay": 0.12,
+      "sustain": 0.5,
+      "clip": 0.85,
+      "lpf": 3400,
+      "hpf": 70,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "lpfRange": {
+        "first": 700,
+        "second": 4800,
+        "frequency": "note"
+      },
+      "driveRange": {
+        "first": 0.8,
+        "second": 2.4,
+        "frequency": "note"
+      },
+      "distortion": 1.2,
+      "distortionMix": 0.22,
+      "effects": {
+        "delay": 0.22,
+        "reverb": 0.1,
+        "pan": 0.3
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Palma psy",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "clap",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . . . . . . . . . . . . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . 0 .",
+        ". . . . 0 . . . . . . . 0 . . . . . . . 0 . . . . . . . 0 . . . . . . . 0 . . . . . . . 0 . . . . . . . 0 . . . 0 . 0 . 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        4
+      ],
+      "gain": 0.16,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 300,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.14,
+        "pan": 0.05
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Cítara de Anjuna",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "sitar",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . 1 2 . 1 0 . . . . . . . . 0 . 1 2 3 . 2 1 0 . . . . . . .",
+        "0 1 2 . 1 0 . . 4 . 5 4 2 1 0 .",
+        "4 . . . 5 . 4 . 2 . 1 . 2 . . . 0 . . 1 2 . 3 . 2 . 1 . 0 . . .",
+        "7 . 6 5 4 . 5 . 4 2 1 . 2 . 0 .",
+        "0 . 1 . 2 . . . 1 . 0 . . . . . 4 . 5 . 6 . 5 . 4 . 2 . 1 . 0 .",
+        "0 1 2 1 0 . 4 . 5 4 2 1 0 . . . 7 6 5 4 5 4 2 1 2 1 0 . 1 . 0 ."
+      ],
+      "bars": [
+        4,
+        2,
+        4,
+        2,
+        4,
+        4
+      ],
+      "octave": 4,
+      "gain": 0.13,
+      "attack": 0.002,
+      "release": 0.3,
+      "decay": 0.6,
+      "sustain": 0.35,
+      "clip": 0.95,
+      "gate": 0.9,
+      "lpf": 6500,
+      "hpf": 160,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          false,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "delay": 0.2,
+        "reverb": 0.26,
+        "pan": -0.3
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chimbal 16 avos",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "hat-closed",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . 0 0 . . 0 0 . . 0 0 . . 0",
+        "0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0",
+        "0 . . 0 0 . . 0 0 . . 0 0 . 0 0",
+        "0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        2
+      ],
+      "gain": 0.1,
+      "clip": 0.9,
+      "lpf": 12000,
+      "hpf": 5000,
+      "effects": {
+        "reverb": 0.03,
+        "pan": 0.25
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Lead Hallucinogen",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "lead-hallucinogen",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . .",
+        "0 . 1 2 . 1 0 . . . 2 3 4 3 2 1 2 . 1 0 . . . . 6 . 0 1 . 0 . .",
+        "4 . . . 3 . . . 2 . . . 1 . 2 .",
+        "7 . 6 5 4 5 6 7 8 . 7 . 6 5 4 . 5 . 4 2 1 2 4 5 4 . 2 1 0 . . .",
+        "0 . 1 2 . . . . 4 . . . 2 1 0 .",
+        "7 . 6 5 4 5 6 7 8 . 7 . 6 5 4 . 5 . 4 2 1 2 4 5 4 . 2 1 0 . . . 7 . 8 9 . 8 7 . 6 . 5 . 4 5 6 . 7 . 6 5 4 5 4 2 1 . 2 . 0 . . ."
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        8
+      ],
+      "octave": 4,
+      "gain": 0.095,
+      "attack": 0.012,
+      "release": 0.18,
+      "decay": 0.3,
+      "sustain": 0.75,
+      "clip": 0.95,
+      "gate": 0.8,
+      "lpf": 5200,
+      "hpf": 200,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "delay": 0.3,
+        "reverb": 0.3,
+        "pan": 0.12
+      }
+    },
+    {
+      "role": "bass",
+      "name": "Baixo rolante",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "bass-roll",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0",
+        ". 0 0 0 . 0 0 0 . 0 0 0 . 0 0 1",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0 0 0 . 0 0 0 . 0 0 0 . 0 7 0",
+        ". 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0",
+        ". 0 0 0 . 0 0 0 . 0 0 0 . 0 6 7",
+        ". 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 . 7 0 0 . 1 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        4,
+        1,
+        1,
+        4
+      ],
+      "octave": 2,
+      "gain": 0.36,
+      "attack": 0.002,
+      "release": 0.04,
+      "decay": 0.12,
+      "sustain": 0.4,
+      "clip": 0.92,
+      "gate": 0.9,
+      "lpf": 1400,
+      "hpf": 35,
+      "lpfRange": {
+        "first": 700,
+        "second": 1900,
+        "frequency": "note"
+      },
+      "effects": {
+        "reverb": 0.0,
+        "pan": 0
+      },
+      "mapping": {
+        "panWidth": 0.05,
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Drone Om",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "om-drone",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 0",
+        "0 0",
+        "0 0",
+        "0 0",
+        "0 0",
+        "0 0"
+      ],
+      "bars": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.085,
+      "attack": 0.6,
+      "release": 1.4,
+      "decay": 1,
+      "sustain": 1,
+      "clip": 1,
+      "gate": 0.98,
+      "lpf": 2400,
+      "hpf": 60,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.5,
+        "pan": 0
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Bumbo psy",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "kick-punch",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . . . . . . . . . . . . . . .",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . . . 0 . . . 0 . . . 0 . 0 .",
+        "0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . . . 0 . 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        4
+      ],
+      "gain": 0.52,
+      "attack": 0.001,
+      "release": 0.05,
+      "clip": 1,
+      "lpf": 14000,
+      "hpf": 20,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0,
+        "pan": 0
+      },
+      "mapping": {
+        "panWidth": 0
+      }
+    },
+    {
+      "role": "response",
+      "name": "Arpejo FM",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "fm-pluck",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . 4 . 7 . 4 . 0 . 4 . 7 . 4 .",
+        "0 4 7 4 0 4 7 4 1 4 7 4 0 4 7 4",
+        "0 . . . 4 . . . 7 . . . 9 . . . 7 . . . 4 . . . 2 . . . 1 . . .",
+        "0 4 7 9 7 4 0 4 7 9 11 9 7 4 2 1",
+        "0 . 4 . 7 . 4 . 2 . 4 . 6 . 4 . 1 . 4 . 6 . 4 . 0 . 4 . 7 . 4 .",
+        "0 4 7 4 0 4 7 4 1 4 7 4 0 4 7 4 0 4 7 9 7 4 0 4 7 9 11 9 7 4 2 1"
+      ],
+      "bars": [
+        1,
+        1,
+        2,
+        1,
+        2,
+        2
+      ],
+      "octave": 4,
+      "gain": 0.085,
+      "attack": 0.002,
+      "release": 0.08,
+      "decay": 0.15,
+      "sustain": 0.3,
+      "clip": 0.8,
+      "lpf": 4800,
+      "hpf": 250,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "lpfRange": {
+        "first": 1400,
+        "second": 6500,
+        "frequency": "note"
+      },
+      "effects": {
+        "delay": 0.35,
+        "reverb": 0.2,
+        "pan": -0.4
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chimbal aberto",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "hat-open",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . . . . . . . . . 0 . . . . .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 0",
+        ". . 0 . . . 0 . . . 0 . . . 0 ."
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.085,
+      "clip": 0.95,
+      "lpf": 13000,
+      "hpf": 4500,
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.06,
+        "pan": -0.25
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Acid squelch",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "acid-squelch",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0 . . 0 . . 0 . 1 . . 0 . . . . 0 . . 0 . . 7 . 1 . 0 . . . . .",
+        "0 0 7 0 1 0 0 6 0 0 7 0 1 . 3 1 0 0 7 0 1 0 0 6 0 . 3 1 0 . 7 6",
+        "0 . . . . . . . 1 . . . . . . . 0 . . . . . . . 6 . . . 7 . . .",
+        "0 7 0 1 0 7 0 3 0 7 0 1 3 1 0 . 0 7 0 1 0 7 0 3 1 3 4 3 1 0 7 6",
+        "0 . 1 . 0 . 7 . 6 . 7 . 0 . 1 . 3 . 1 . 0 . 7 . 6 . 4 . 3 . 1 .",
+        "0 7 0 1 0 7 0 3 0 7 0 1 3 1 0 . 0 7 0 1 0 7 0 3 1 3 4 3 1 0 7 6 0 7 0 1 0 7 0 3 0 7 0 1 3 1 0 . 0 1 3 4 5 4 3 1 0 1 3 4 7 6 5 4"
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        4
+      ],
+      "octave": 3,
+      "gain": 0.085,
+      "attack": 0.002,
+      "release": 0.05,
+      "decay": 0.14,
+      "sustain": 0.45,
+      "clip": 0.85,
+      "gate": 0.85,
+      "lpf": 3000,
+      "hpf": 60,
+      "lpfRange": {
+        "first": 500,
+        "second": 5600,
+        "frequency": "note"
+      },
+      "driveRange": {
+        "first": 1,
+        "second": 3.4,
+        "frequency": "note"
+      },
+      "distortion": 1.6,
+      "distortionMix": 0.25,
+      "effects": {
+        "delay": 0.12,
+        "reverb": 0.08,
+        "pan": -0.08
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tabla dayan · Na",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "tabla-na",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". 0 . 0 0 . 0 . . 0 . 4 0 . 7 . . 0 . 0 0 . 0 . . 0 0 4 . 7 0 .",
+        ". . . . . . 0 . . . . 4 . . . . . . . . . . 0 . . . . 4 . 0 . .",
+        "0 . 0 0 . 0 . . 0 . 4 . 7 . 4 0 0 . 0 0 . 0 . 0 0 4 0 4 7 4 7 7",
+        ". . . . . . 0 . . . . 4 . . . . . . . . . . 0 . . . 0 4 . . . .",
+        ". 0 . 0 0 . 0 . . 0 . 4 0 . 7 . . 0 . 0 0 . 0 . 0 0 7 4 0 . 7 .",
+        ". . . 0 . . 0 . . . . 4 . . 0 . . . . 0 . . 0 . . 0 . 4 . 7 0 ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "octave": 4,
+      "gain": 0.11,
+      "clip": 0.95,
+      "lpf": 8000,
+      "hpf": 150,
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.12,
+        "pan": 0.35
+      }
+    },
+    {
+      "role": "texture",
+      "name": "Riser de ruído",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "noise-riser",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 .",
+        ". . . . . . 0 .",
+        ". . 0 .",
+        ". . . . . . 0 .",
+        ". . 0 .",
+        ". . . . . . 0 ."
+      ],
+      "bars": [
+        8,
+        8,
+        4,
+        8,
+        4,
+        8
+      ],
+      "gain": 0.1,
+      "attack": 0.01,
+      "release": 0.2,
+      "clip": 1,
+      "gate": 1,
+      "lpf": 9000,
+      "hpf": 200,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.35,
+        "pan": 0
+      }
+    },
+    {
+      "role": "response",
+      "name": "Zap laser",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "psytrance",
+        "asset": "laser-zap",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . 0 . . . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . 0 . . . . . . . . . . . . . . . . . . . 4 .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . 0 . . . . . . .",
+        ". . 0 . . . . . . . 0 . . . . . . . 0 . . . . . . . 4 . . . 7 .",
+        ". . . . . . 0 . . . . . . . . . . . . . . . 4 . . . . . . . . .",
+        ". . 0 . . . . . . . 0 . . . . . . . 0 . . . 7 . . . 4 . . . 0 ."
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "octave": 3,
+      "gain": 0.065,
+      "attack": 0.002,
+      "release": 0.1,
+      "clip": 0.95,
+      "lpf": 9000,
+      "hpf": 120,
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "delay": 0.4,
+        "reverb": 0.3,
+        "pan": 0.45
+      }
+    }
+  ],
+  "reference": "Hallucinogen — LSD (1994), Dragonfly Records; Goa Gil e as festas de Anjuna",
+  "url": "https://en.wikipedia.org/wiki/Goa_trance"
+}

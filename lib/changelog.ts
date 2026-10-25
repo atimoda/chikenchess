@@ -3,10 +3,19 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '1.8.1',
+    version: '1.9.0',
     date: '25/10/2026',
-    title: 'Ovos de lances premiados não travam mais depois do teto',
+    title: 'Goa 1994: psytrance na campanha Electronic World',
     groups: [
+      { title: 'Nova fase · Goa 1994', items: [
+        'Electronic World ganhou a 13ª cidade: Goa, 1994, trance psicodélico a 145 BPM em Mi frígio dominante, a escala "oriental" das festas de Anjuna.',
+        'Kit próprio com 20 timbres novos: bumbo psy, baixo rolante (bumbo-baixo-baixo-baixo), dois acid 303 nos cavalos, lead serrilhado com vibrato na dama, cítara com ponte jawari, drone Om no rei, tablas, zaps de laser, riser e chimbais metálicos.',
+        'A música cresce com o jogo: cada peça movida soma uma camada, o roque traz o drone Om e o riser, cada captura e cada xeque soltam o "drop" para quem jogou, 10 lances sem captura nem peão levam a um breakdown filtrado, e o final acelera para o pico.',
+        'Na abertura a escala fica no frígio escuro; a segunda aumentada (Fá–Sol#) só aparece quando o meio-jogo começa.',
+      ] },
+      { title: 'Criativo', items: [
+        'Nova escala Phrygian dominant em Scale e nas regras de States & Events.',
+      ] },
       { title: 'Partida', items: [
         'Um Best ou Worst move feito com o contador cheio (12 ovos) não fica mais marcado como "já pago": se você voltar a jogada com Undo e repetir o mesmo lance com espaço no contador, os ovos entram normalmente. Vale para você, para os ChickenBots e para a partida online.',
         'O aviso do primeiro Best ou Worst move premiado não é mais gasto num lance que não rendeu ovos por causa do teto.',

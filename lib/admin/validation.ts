@@ -26,7 +26,7 @@ const partSchema = z.object({
   behavior: z.enum(['pulse', 'phrase', 'sustain']),
   source: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('synth'), sound: z.enum(SOUNDS) }).strict(),
-    z.object({ kind: z.literal('sample'), bank: z.enum(['electro', 'jazz', 'world', 'strings', 'keys', 'synths', 'drums', 'sambaReggae', 'classical', 'band', 'percussion', 'guitars']), asset: text, variant: z.number().int().min(0).max(127).optional(), pitched: z.boolean().optional() }).strict(),
+    z.object({ kind: z.literal('sample'), bank: z.enum(['electro', 'jazz', 'world', 'strings', 'keys', 'synths', 'drums', 'sambaReggae', 'classical', 'band', 'percussion', 'guitars', 'psytrance']), asset: text, variant: z.number().int().min(0).max(127).optional(), pitched: z.boolean().optional() }).strict(),
   ]),
   patterns: z.array(z.string().min(1).max(16000).refine(value => value.trim().split(/\s+/).every(token => token === '.' || /^-?\d+(,-?\d+)*$/.test(token)), 'Use graus inteiros, acordes separados por vírgula e ponto para pausas.')).min(1).max(8),
   bars: z.union([finite.positive().max(64), z.array(finite.positive().max(64)).min(1).max(8)]).optional(),

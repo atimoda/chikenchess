@@ -151,7 +151,18 @@ export const SAMPLE_BANKS: SampleBank[] = [{id:'chicken-world-v1',name:'Chicken 
   ['agogo-grave', 'Agogô grave'], ['agogo-agudo', 'Agogô agudo'],
   ['chocalho', 'Chocalho'], ['pandeiro', 'Pandeiro'],
   ['trompete', 'Trompete', 'c4'], ['trombone', 'Trombone', 'c3'],
-], 'generate-samba-reggae-samples.py'), {
+], 'generate-samba-reggae-samples.py'), generatedBank('chicken-psytrance-v1', 'Chicken Goa · psytrance', [
+  ['kick-punch', 'Bumbo psy · longo'], ['kick-tight', 'Bumbo psy · seco'],
+  ['bass-roll', 'Baixo rolante', 'c2'], ['bass-knock', 'Baixo rolante · knock', 'c2'],
+  ['acid-squelch', 'Acid squelch (serra ressonante)', 'c3'], ['acid-rubber', 'Acid borracha (quadrada)', 'c3'],
+  ['lead-hallucinogen', 'Lead serra desafinada com vibrato', 'c4'], ['fm-pluck', 'Pluck FM de arpejo', 'c4'],
+  ['sitar', 'Cítara com ponte jawari', 'c4'], ['om-drone', 'Drone Om formante', 'c3'],
+  ['laser-zap', 'Zap laser FM', 'c4'], ['noise-riser', 'Riser de ruído'],
+  ['hat-closed', 'Chimbal metálico fechado'], ['hat-soft', 'Chimbal metálico suave'], ['hat-open', 'Chimbal aberto do contratempo'],
+  ['clap', 'Palma psy'], ['tick', 'Tick de madeira'],
+  ['tabla-na', 'Tabla dayan · Na', 'c5'], ['tabla-ge', 'Tabla bayan · Ge'],
+  ['reverse-crash', 'Prato invertido'],
+], 'generate-psytrance-samples.py'), {
   id: 'chicken-samba-reggae-v2', name: 'Chicken Salvador · samba-reggae',
   credit: 'Gravações CC0: VSCO 2 CE e VCSL · Versilian Studios; Samba Percussion · plotzki/Freesound; preparo em scripts/prepare-samba-reggae-recordings.py',
   license: 'CC0-1.0',
