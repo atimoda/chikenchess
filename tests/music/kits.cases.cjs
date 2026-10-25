@@ -33,11 +33,13 @@ test('sample registry points to small valid local WAV files with explicit tuning
     const budgets = { 'chicken-classical-v1': 1_500_000, 'chicken-band-v1': 500_000,
       'chicken-guitars-v1': 550_000, 'chicken-percussion-v1': 250_000,
       // 46 drum-machine hits and 18 voices/stabs/effects for the Electronic World kits.
-      'chicken-machines-v1': 400_000, 'chicken-electronic-v1': 350_000 }
+      'chicken-machines-v1': 400_000, 'chicken-electronic-v1': 350_000,
+      // 24 synthesized Brazilian strings, accordion, voices and percussion.
+      'chicken-brasil-v1': 260_000 }
     const bankLimit = budgets[bank.id] ?? 200_000
     assert.ok(bankBytes < bankLimit, `${bank.id}: bank stays within its audio budget`)
   }
-  assert.equal(SAMPLE_BANKS.length, 16)
+  assert.equal(SAMPLE_BANKS.length, 17)
   assert.ok(total < 15_000_000, 'recorded banks keep the lazy-loaded catalog below 15 MB')
   assert.equal(fs.readdirSync(path.resolve(fixtureDirectory, '../public/samples'), { recursive: true }).filter(file => String(file).endsWith('.wav')).length, 0, 'no WAV left in the catalog')
 })
@@ -74,7 +76,9 @@ test('Salvador 1992 assigns brass to knights and rooks over complementary surdos
   assert.match(city.image, /^https:\/\//)
   for (const id of ['w:b1', 'w:g1']) assert.equal(kit.instruments[id].source.asset, 'trompete')
   for (const id of ['w:a1', 'w:h1']) assert.equal(kit.instruments[id].source.asset, 'trombone')
-  for (const instrument of Object.values(kit.instruments)) assert.equal(instrument.source.bank, 'chicken-samba-reggae-v2')
+  // The bloco's percussion and brass come from the samba-reggae bank; the coro, guitar and bass come from the Brazilian voices and band banks.
+  for (const [id, instrument] of Object.entries(kit.instruments)) if (!['w:d1', 'w:e1', 'w:f1'].includes(id) && id.startsWith('w:')) assert.equal(instrument.source.bank, 'chicken-samba-reggae-v2', id)
+  assert.equal(kit.instruments['w:d1'].source.bank, 'chicken-brasil-v1')
   const { sampleRegistration } = loadTs('lib/music/sample-banks.ts')
   assert.equal(sampleRegistration(kit.instruments['w:b1'].source).files.length, 3, 'trumpet uses three recorded notes')
   assert.equal(sampleRegistration(kit.instruments['w:a1'].source).files.length, 3, 'trombone uses three recorded notes')
@@ -303,7 +307,7 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 64)
+  assert.equal(cities.length, 65)
   assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 47)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
@@ -319,8 +323,8 @@ test('curated arrangements vary density, timbre and harmonic direction by city',
     assert.ok(new Set(density).size > 1, `${city.id}: section density changes`)
     assert.ok(new Set(instruments.map(instrument => instrument.name)).size >= 10, `${city.id}: authored roles`)
     assert.ok(timbres.size >= 4, `${city.id}: timbral palette`)
-    // Electronic World kits voice every chord absolutely; the rest follow a harmonic plan.
-    if (!city.campaigns.includes('electronic-history')) assert.notEqual(kit.harmony, 'static', `${city.id}: harmonic plan`)
+    // Electronic World and Brazilian kits voice every chord absolutely; the rest follow a harmonic plan.
+    if (!city.campaigns.includes('electronic-history') && !city.campaigns.includes('brazilian')) assert.notEqual(kit.harmony, 'static', `${city.id}: harmonic plan`)
   }
   const johannesburg = defaultCityKit('johannesburg')
   assert.equal(johannesburg.bpm, 108)
@@ -334,7 +338,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,3,14,9,4,12])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,3,14,10,4,12])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
@@ -385,7 +389,8 @@ test('every city voice produces bounded, in-scale Strudel events in every sectio
       // Random kits thin the band per section; a voice absent from a section is silent by design.
       const sectionId = kit.arrangement.sections[Number(section)]?.id
       if (sectionId && kit.instruments[voice.piece.id].arrangement.sections[sectionId]?.variation === null) continue
-      const events = compileVoice(api, { ...voice, performance: undefined, sectionPattern: section }).queryArc(0, 4)
+      // A random play chance can drop every hit of a one-note bar for four bars; audibility is about the written notes.
+      const events = compileVoice(api, { ...voice, instrument: { ...voice.instrument, playChance: undefined }, performance: undefined, sectionPattern: section }).queryArc(0, 4)
       const label = `${city.id}/${seed}/${voice.piece.id}/section${section}`
       assert.ok(events.length > 0 && events.length <= 128, `${label}: audible, bounded density (${events.length})`)
       for (const { value } of events) {
@@ -545,10 +550,11 @@ test('MIDI reset runs once and subsequent city saves survive repeated loads', ()
   finally { if (previous !== undefined) globalThis.window=previous }
 })
 
-test('legacy Electronic kits stay loadable in Creative without a city', () => {
+test('legacy Electronic and Brazilian kits stay loadable in Creative without a city', () => {
   const legacy = require('../../data/music/legacy-kits.json')
   const { cities } = loadTs('lib/cities-data.ts')
-  assert.deepEqual(legacy.map(entry => entry.id), ['dusseldorf', 'nyc', 'chicago', 'detroit', 'ibiza', 'manchester', 'berlin', 'tokyo', 'london', 'saopaulo', 'johannesburg', 'paris'])
+  assert.deepEqual(legacy.map(entry => entry.id), ['dusseldorf', 'nyc', 'chicago', 'detroit', 'ibiza', 'manchester', 'berlin', 'tokyo', 'london', 'saopaulo', 'johannesburg', 'paris',
+    'rio-1910', 'rio-1930', 'recife-1935', 'piracicaba-1940', 'recife-1950', 'rio-1960', 'recife-1975', 'salvador-1992', 'rio-1995'])
   for (const entry of legacy) {
     const raw = fs.readFileSync(path.resolve(fixtureDirectory, '../public/presets/legacy', `${entry.id}.json`), 'utf8')
     const kit = creative.parseCreativeSession(raw)
@@ -586,7 +592,34 @@ test('Electronic World profiles validate, author their reactions and use the mac
   assert.ok(Object.values(defaultCityKit('paris').instruments).filter(instrument => instrument.duckSource === 'e2').length >= 4)
 })
 
-test('Electronic World kits never pin a variation for a whole game phase', () => {
+test('Brazilian profiles validate, author their reactions and use the Brazilian bank', () => {
+  const { styleProfileSchema } = loadTs('lib/admin/validation.ts')
+  const { STYLE_PROFILES, CITY_STYLE_REVISIONS } = loadTs('lib/music/styled-kits.ts')
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const { cities } = loadTs('lib/cities-data.ts')
+  const brazilian = cities.filter(city => city.campaigns.includes('brazilian')).map(city => city.id)
+  assert.equal(brazilian.length, 10)
+  assert.ok(brazilian.includes('rio-1984'), 'the Mangueira rehearsal is a stage')
+  const banks = new Set()
+  for (const id of brazilian) {
+    const profile = styleProfileSchema.parse(STYLE_PROFILES[id])
+    assert.equal(CITY_STYLE_REVISIONS[id], `${id}-2026-10-25-brazilian-v1`)
+    assert.equal(profile.parts.length, 16)
+    assert.ok(profile.reactions.rules.length >= 10, `${id}: kit reactions`)
+    assert.ok(profile.reactions.rules.every(rule => profile.reactions.overrides.includes(rule.trigger)), `${id}: rules own their triggers`)
+    const kit = defaultCityKit(id)
+    assert.equal(kit.name, profile.name)
+    for (const instrument of Object.values(kit.instruments)) if (instrument.source?.kind === 'sample') banks.add(instrument.source.bank)
+  }
+  assert.ok(banks.has('chicken-brasil-v1'))
+  // The Mangueira rehearsal is a bateria: almost every piece is percussion, with the quadra singing on the queen.
+  const mangueira = defaultCityKit('rio-1984')
+  assert.equal(mangueira.meter, '2/4')
+  assert.equal(mangueira.instruments['w:d1'].source.asset, 'coro-laia')
+  assert.match(cities.find(city => city.id === 'rio-1984').image, /Mangueira/)
+})
+
+test('authored kits never pin a variation for a whole game phase', () => {
   const { STYLE_PROFILES } = loadTs('lib/music/styled-kits.ts')
   // States last for many moves; forcing a variation there freezes the song on one tab (the silent-intro bug).
   const lasting = new Set(['opening', 'middle', 'captureDrought', 'tension', 'advantage', 'oppositeCastling'])

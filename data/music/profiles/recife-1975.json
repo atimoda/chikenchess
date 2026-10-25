@@ -1,17 +1,17 @@
 {
   "name": "Recife 1975 · Maracatu de baque virado",
-  "meter": "4/4",
   "bpm": 108,
+  "meter": "4/4",
   "root": "D",
   "scale": "Mixolídia",
-  "harmony": "cadence",
+  "harmony": "static",
   "swing": 0,
   "sections": [
     16,
     32,
     16,
     32,
-    16,
+    32,
     32
   ],
   "sectionLabels": [
@@ -22,151 +22,45 @@
     "Interlude",
     "Chorus"
   ],
-  "reference": "Estudo original de maracatu de baque virado inspirado nas Nações tradicionais de Pernambuco (Porto Rico, Leão Coroado e Estrela Brilhante). Condução por alfaias (marcador, meador e virador), gonguê, tarol, caixa e toadas de mestre.",
-  "url": "https://fundaj.gov.br/",
   "parts": [
     {
       "role": "rhythm",
-      "name": "Alfaia Marcador · Fundo",
+      "name": "Alfaia marcante",
       "behavior": "pulse",
       "source": {
         "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "surdo-fundo",
+        "bank": "brasil",
+        "asset": "alfaia",
+        "variant": 0,
         "pitched": false
       },
       "patterns": [
-        "0 . . . . . 0 . 0 . . . . . . .",
-        "0 . . . . . 0 . 0 . . . . . . 0",
-        "0 . . . . . . . 0 . . . . . . .",
-        "0 . . . . . 0 . 0 . . . . 0 . 0",
-        "0 . . . . . 0 . 0 . . 0 . . . .",
-        "0 . . . . . 0 . 0 . . . 0 . 0 0"
+        "0! . . . . . . . 0! . . . . . . .",
+        "0! . . . . . 0! . 0! . . . . . 0! .",
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . 0 . . 0! . 0! . . 0 . 0 0! .",
+        "0! . . 0 . . 0! . 0! . . 0 . 0 0! .",
+        "0! . . 0 . . 0! . 0! . . 0 . 0 0! ."
       ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.28,
-      "attack": 0.002,
-      "release": 0.08,
-      "lpf": 5000,
-      "hpf": 20,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": -0.15,
-        "reverb": 0.05
-      }
-    },
-    {
-      "role": "rhythm",
-      "name": "Alfaia Meador · Contratempo",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "surdo-meio",
-        "pitched": false
-      },
-      "patterns": [
-        ". . . . 0 . . . . . 0 . . . 0 .",
-        ". . . . 0 . . . . . 0 . . 0 . .",
-        ". . . . 0 . . . . . . . . . 0 .",
-        ". . . . 0 . . . . . 0 . 0 . 0 .",
-        ". . . . 0 . . 0 . . 0 . . . 0 .",
-        ". . 0 . 0 . . . . . 0 . 0 0 . 0"
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
       ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.24,
-      "attack": 0.002,
-      "release": 0.07,
-      "lpf": 6000,
-      "hpf": 30,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.15,
-        "reverb": 0.05
-      }
-    },
-    {
-      "role": "response",
-      "name": "Trombone · Chamada cerimonial",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "trombone",
-        "pitched": true
-      },
-      "patterns": [
-        "0 . . . . . . 4 . . . . 2 . . .",
-        "0 . . . . . 6 . . . . . 4 . 0 .",
-        ". . . . . . . . . . . . 0 . . .",
-        "0 . . . 2 . . . 4 . . . 6 . 4 .",
-        "6 . . . 4 . . . 2 . . . 0 . . .",
-        "0 . . . 4 . . . 6 . 4 . 2 4 0 0"
-      ],
-      "bars": 1,
-      "octave": 3,
-      "gain": 0.16,
-      "attack": 0.015,
-      "release": 0.15,
-      "decay": 0.2,
-      "sustain": 0.55,
+      "gain": 0.349,
       "clip": 0.9,
-      "lpf": 6500,
-      "hpf": 80,
+      "lpf": 2500,
+      "hpf": 30,
+      "mapping": {
+        "panWidth": 0
+      },
+      "effects": {
+        "reverb": 0.1,
+        "pan": 0
+      },
       "arrangement": {
         "active": [
           false,
@@ -193,42 +87,174 @@
           0,
           0
         ]
-      },
-      "effects": {
-        "pan": -0.25,
-        "reverb": 0.12
       }
     },
     {
       "role": "rhythm",
-      "name": "Tarol · Esteira e rufos",
+      "name": "Tarol",
       "behavior": "pulse",
       "source": {
         "kind": "sample",
         "bank": "sambaReggae",
         "asset": "tarol",
+        "variant": 0,
         "pitched": false
       },
       "patterns": [
-        "0 0 0 . 0 0 0 . 0 0 0 . 0 0 0 0",
-        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
-        "0 . . . 0 . . . 0 . . . 0 . 0 .",
-        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
-        "0 0 0 . 0 0 0 0 0 0 0 . 0 0 0 0",
-        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+        "0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0",
+        "0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 0' 0 0! 0 0' 0 0! 0 0' 0 0! 0 0' 0 0!",
+        "0 . 0 0 0 . 0 0 0 . 0 0 0 . 0 0",
+        "0 0' 0 0! 0 0' 0 0! 0 0' 0 0! 0 0' 0 0!"
       ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.18,
-      "attack": 0.002,
-      "release": 0.04,
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.357,
+      "clip": 0.6,
+      "lpf": 10000,
+      "hpf": 300,
+      "effects": {
+        "reverb": 0.08,
+        "pan": -0.25
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Gonguê",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "gongue",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . 0 . . 0 . 0 0! . 0 . . 0 . .",
+        "0! . 0 . . 0 . 0 0! . 0 . . 0 . .",
+        "0! . 0 . . 0 . 0 0! . 0 . . 0 . .",
+        "0! . 0 . . 0 . 0 0! . 0 . . 0 0 0",
+        "0! . 0 . . 0 . 0 0! . 0 . . 0 . .",
+        "0! . 0 . . 0 . 0 0! . 0 . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.137,
+      "clip": 0.7,
+      "lpf": 7000,
+      "hpf": 300,
+      "effects": {
+        "reverb": 0.12,
+        "pan": 0.35
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Agbê",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "chocalho",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . 0 . 0 . 0 0! 0 . 0 . 0 . 0 0!",
+        "0 . . . 0 . . . 0 . . . 0 . . .",
+        "0 . 0 . 0 . 0 0! 0 . 0 . 0 . 0 0!",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0 . 0 0! 0 . 0 0! 0 . 0 0! 0 . 0 0!"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.151,
+      "clip": 0.6,
       "lpf": 11000,
-      "hpf": 120,
+      "hpf": 1500,
+      "effects": {
+        "reverb": 0.08,
+        "pan": 0.25
+      },
       "arrangement": {
         "active": [
-          true,
-          true,
           false,
+          true,
+          true,
           true,
           true,
           true
@@ -250,622 +276,43 @@
           0,
           0
         ]
-      },
-      "effects": {
-        "pan": -0.2,
-        "reverb": 0.04
-      }
-    },
-    {
-      "role": "melody",
-      "name": "Trompete · Fanfarra real",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "trompete",
-        "pitched": true
-      },
-      "patterns": [
-        ". . 4 . . . 5 . . . 6 . . . 4 .",
-        "4 . . . 6 . . 5 . . 4 . . . 2 .",
-        ". . 4 . . . . . . . 2 . . . . .",
-        "4 . . 5 . . 6 . 4 . . . 2 . 0 .",
-        "6 . . . 5 . . 4 . . 2 . . . 0 .",
-        "4 . . 6 . . 5 . 4 . 2 . 4 2 0 ."
-      ],
-      "bars": 1,
-      "octave": 4,
-      "gain": 0.18,
-      "attack": 0.01,
-      "release": 0.12,
-      "decay": 0.18,
-      "sustain": 0.6,
-      "clip": 0.9,
-      "lpf": 8500,
-      "hpf": 150,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          true,
-          true,
-          false,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.22,
-        "reverb": 0.1
       }
     },
     {
       "role": "rhythm",
-      "name": "Caixa de guerra · Acento sincopado",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "caixa",
-        "pitched": false
-      },
-      "patterns": [
-        ". . 0 . . . 0 . . . 0 . . 0 . .",
-        ". . 0 . . . 0 . . . 0 . . 0 0 .",
-        ". . 0 . . . . . . . 0 . . . . .",
-        ". . 0 . . 0 0 . . . 0 . . 0 0 0",
-        ". . 0 . . . 0 . . 0 0 . . 0 . .",
-        ". . 0 . . 0 0 . . . 0 . 0 0 0 0"
-      ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.2,
-      "attack": 0.002,
-      "release": 0.05,
-      "lpf": 10000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.2,
-        "reverb": 0.04
-      }
-    },
-    {
-      "role": "melody",
-      "name": "Sax tenor · Toada do Mestre",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "band",
-        "asset": "tenor-sax",
-        "pitched": true
-      },
-      "patterns": [
-        "0 . . 2 . . 4 . . . 2 . . . 0 .",
-        "0 . . 2 . . 4 . 6 . 4 . . 2 0 .",
-        "0 . . . . . 2 . . . . . 0 . . .",
-        "4 . . 6 . . 4 . 2 . 0 . . 2 4 .",
-        "6 . . 5 . . 4 . 2 . 4 . . 2 0 .",
-        "0 . 2 4 . 6 4 . 2 . 0 . 2 4 0 ."
-      ],
-      "bars": 1,
-      "octave": 4,
-      "gain": 0.19,
-      "attack": 0.02,
-      "release": 0.18,
-      "decay": 0.22,
-      "sustain": 0.65,
-      "clip": 0.9,
-      "lpf": 7500,
-      "hpf": 80,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.0,
-        "reverb": 0.14
-      }
-    },
-    {
-      "role": "texture",
-      "name": "Agbê / Xequerê · Balanço de contas",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "percussion",
-        "asset": "shaker",
-        "pitched": false
-      },
-      "patterns": [
-        ". 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0",
-        ". 0 . 0 . 0 0 0 . 0 . 0 . 0 0 0",
-        ". 0 . . . 0 . . . 0 . . . 0 . .",
-        ". 0 . 0 . 0 0 0 . 0 . 0 . 0 0 0",
-        ". 0 . 0 . 0 . 0 . 0 0 0 . 0 . 0",
-        ". 0 . 0 . 0 0 0 . 0 0 0 . 0 0 0"
-      ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.16,
-      "attack": 0.002,
-      "release": 0.03,
-      "lpf": 12000,
-      "hpf": 300,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.35,
-        "reverb": 0.05
-      }
-    },
-    {
-      "role": "harmony",
-      "name": "Coro da Nação · Resposta harmônica",
-      "behavior": "sustain",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "violin-sustain",
-        "pitched": true
-      },
-      "patterns": [
-        "0,4,7 . . . . . . . . . . . . . . .",
-        "0,4,7 . . . . . . . 6,2,4 . . . . . . .",
-        "0,4,7 . . . . . . . . . . . . . . .",
-        "0,4,7 . . . . . . . 3,0,4 . . . . . . .",
-        "6,2,4 . . . . . . . 3,0,4 . . . . . . .",
-        "0,4,7 . . . . . . . 6,2,4 . . 0,4,7 . ."
-      ],
-      "bars": 1,
-      "octave": 3,
-      "gain": 0.13,
-      "attack": 0.12,
-      "release": 0.35,
-      "decay": 0.25,
-      "sustain": 0.75,
-      "clip": 0.9,
-      "lpf": 5500,
-      "hpf": 90,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": -0.1,
-        "reverb": 0.22
-      }
-    },
-    {
-      "role": "rhythm",
-      "name": "Gonguê grave · Clave guia",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "agogo-grave",
-        "pitched": false
-      },
-      "patterns": [
-        "0 . . 0 . . 0 . . 0 . . 0 . . .",
-        "0 . . 0 . . 0 . . 0 . . 0 . 0 .",
-        "0 . . . . . 0 . . . . . 0 . . .",
-        "0 . . 0 . . 0 . . 0 . 0 0 . 0 .",
-        "0 . . 0 . 0 0 . . 0 . . 0 . . .",
-        "0 . . 0 . . 0 . . 0 . 0 0 0 0 ."
-      ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.22,
-      "attack": 0.001,
-      "release": 0.06,
-      "lpf": 9000,
-      "hpf": 200,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": -0.3,
-        "reverb": 0.08
-      }
-    },
-    {
-      "role": "response",
-      "name": "Trompete · Contraponto agudo",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "trompete",
-        "pitched": true
-      },
-      "patterns": [
-        ". . . . 2 . . . . . . . 0 . . .",
-        ". . . . 2 . . 4 . . . . 0 . . .",
-        ". . . . . . . . . . . . 0 . . .",
-        ". . . . 2 . 0 2 . . . . 0 . 2 .",
-        "4 . . . 2 . . . 0 . . . . . . .",
-        ". . . . 2 . 4 6 . 4 . 2 0 . 2 0"
-      ],
-      "bars": 1,
-      "octave": 4,
-      "gain": 0.16,
-      "attack": 0.012,
-      "release": 0.12,
-      "decay": 0.18,
-      "sustain": 0.6,
-      "clip": 0.9,
-      "lpf": 8000,
-      "hpf": 120,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          false,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.28,
-        "reverb": 0.12
-      }
-    },
-    {
-      "role": "rhythm",
-      "name": "Gonguê agudo · Contraponto metálico",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "agogo-agudo",
-        "pitched": false
-      },
-      "patterns": [
-        ". . 0 . . . . . . . 0 . . . 0 .",
-        ". . 0 . . 0 . . . . 0 . . . 0 .",
-        ". . . . . . . . . . 0 . . . . .",
-        ". . 0 . . 0 . . . . 0 . 0 . 0 .",
-        ". . 0 . . . 0 . . . 0 . . 0 . .",
-        ". . 0 . . 0 0 . . . 0 . 0 0 0 ."
-      ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.2,
-      "attack": 0.001,
-      "release": 0.05,
-      "lpf": 10000,
-      "hpf": 300,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.3,
-        "reverb": 0.08
-      }
-    },
-    {
-      "role": "bass",
-      "name": "Contrabaixo · Bordão de cortejo",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "guitars",
-        "asset": "bass",
-        "pitched": true
-      },
-      "patterns": [
-        "0 . . . . . 0 . 0 . . . . . . .",
-        "0 . . . . . 6 . 0 . . . . . . 0",
-        "0 . . . . . . . 0 . . . . . . .",
-        "0 . . . . . 3 . 0 . . . . 6 . 0",
-        "6 . . . . . 3 . 4 . . . . . 0 .",
-        "0 . . . . . 6 . 0 . . . 4 . 6 0"
-      ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.28,
-      "attack": 0.005,
-      "release": 0.12,
-      "decay": 0.2,
-      "sustain": 0.65,
-      "clip": 0.9,
-      "lpf": 3500,
-      "hpf": 25,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.0,
-        "reverb": 0.04
-      }
-    },
-    {
-      "role": "rhythm",
-      "name": "Timbau · Ataques e frases abertas",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "timbau",
-        "pitched": false
-      },
-      "patterns": [
-        ". . . . . . . . . 0 . . . . . .",
-        ". . . . . . . 0 . 0 . . . . 0 .",
-        ". . . . . . . . . . 0 . . . . .",
-        ". . . 0 . . . 0 . 0 . . . 0 0 .",
-        ". . . . . 0 . . . 0 . . . . . .",
-        ". . . 0 . 0 . 0 . 0 . 0 . 0 0 0"
-      ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.21,
-      "attack": 0.002,
-      "release": 0.06,
-      "lpf": 8500,
-      "hpf": 80,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": -0.2,
-        "reverb": 0.06
-      }
-    },
-    {
-      "role": "rhythm",
-      "name": "Alfaia Virador · Cortes e redobles",
+      "name": "Alfaia repique",
       "behavior": "pulse",
       "source": {
         "kind": "sample",
         "bank": "sambaReggae",
         "asset": "surdo-viradeira",
+        "variant": 0,
         "pitched": false
       },
       "patterns": [
-        "0 . . 0 . . 0 . . . 0 . 0 0 . 0",
-        "0 . . 0 . . 0 . . 0 0 . 0 0 . 0",
-        "0 . . . . . . . . . 0 . . . . .",
-        "0 . . 0 . 0 0 . . 0 0 . 0 0 0 0",
-        "0 . . 0 . . 0 . . . 0 . 0 . 0 .",
-        "0 . 0 0 . 0 0 . . 0 0 . 0 0 0 0"
+        ". . . . . . . . . . . . 0 . 0 0",
+        "0 . 0 0 . 0 . 0 0 . 0 0 . 0 . 0",
+        ". . . . . . . . . . . . 0 . 0 0",
+        "0 . 0 0 . 0 0 0 0 . 0 0 . 0 0! 0!",
+        "0 0 0 0 . 0 0 0 0 0 0 0 . 0! 0! 0!",
+        "0 . 0 0 . 0 0 0 0 . 0 0 . 0 0! 0!"
       ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.25,
-      "attack": 0.002,
-      "release": 0.06,
-      "lpf": 7000,
-      "hpf": 40,
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.262,
+      "clip": 0.8,
+      "lpf": 5000,
+      "hpf": 60,
+      "effects": {
+        "reverb": 0.08,
+        "pan": -0.2
+      },
       "arrangement": {
         "active": [
           false,
@@ -892,37 +339,374 @@
           0,
           0
         ]
-      },
-      "effects": {
-        "pan": 0.1,
-        "reverb": 0.06
       }
     },
     {
       "role": "rhythm",
-      "name": "Pandeiro · Platinelas de cortejo",
+      "name": "Mineiro",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "ganza",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0' 0 0' 0 0' 0 0' 0 0' 0 0' 0 0' 0 0' 0",
+        "0 . 0 . 0 . 0 . 0 . 0 . 0 . 0 .",
+        "0' 0 0' 0! 0' 0 0' 0! 0' 0 0' 0! 0' 0 0' 0!",
+        "0' 0 0' 0 0' 0 0' 0 0' 0 0' 0 0' 0 0' 0",
+        "0' 0! 0' 0! 0' 0! 0' 0! 0' 0! 0' 0! 0' 0! 0' 0!"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.282,
+      "clip": 0.6,
+      "lpf": 12000,
+      "hpf": 3500,
+      "effects": {
+        "reverb": 0.05,
+        "pan": -0.35
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Loa · mestre",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "coro-laia",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "4_ . . 4_ . . 5_ . 4_ . . 2_ . . 0_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "4_ . . 4_ . . 5_ . 4_ . . 2_ . . 0_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . 4_ . . 5_ . 4_ . . 2_ . . 0_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "4_ . . 4_ . . 5_ . 4_ . . 2_ . . 0_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . 7_ . . 6_ . 4_ . . 4_ . . 5_ . 4_ . . . . . . . . . . . . . . . 4?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . 4_ . . 5_ . 4_ . . 2_ . . 0_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "4_ . . 4_ . . 5_ . 4_ . . 2_ . . 0_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . 7_ . . 6_ . 4_ . . 4_ . . 5_ . 4_ . . . . . . . . . . . . . . . 4?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . 4_ . . 5_ . 4_ . . 2_ . . 0_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        4,
+        8,
+        4,
+        8,
+        4,
+        8
+      ],
+      "octave": 3,
+      "gain": 0.323,
+      "attack": 0.03,
+      "decay": 0.4,
+      "sustain": 0.75,
+      "release": 0.2,
+      "gate": 0.9,
+      "lpf": 5000,
+      "hpf": 120,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.3,
+        "pan": -0.05
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Caixa de guerra",
       "behavior": "pulse",
       "source": {
         "kind": "sample",
         "bank": "sambaReggae",
-        "asset": "pandeiro",
+        "asset": "caixa",
+        "variant": 0,
         "pitched": false
       },
       "patterns": [
-        ". 0 . . . 0 . . . 0 . . . 0 . .",
-        ". 0 . 0 . 0 . 0 . 0 . 0 . 0 . 0",
-        ". 0 . . . . . . . 0 . . . . . .",
-        ". 0 . 0 . 0 0 0 . 0 . 0 . 0 0 0",
-        ". 0 . . . 0 . 0 . 0 . . . 0 . 0",
-        ". 0 . 0 . 0 0 0 . 0 . 0 0 0 0 0"
+        ". . . . . . . . . . . . 0 . 0 0",
+        "0! 0' 0 0' 0 0' 0! 0' 0 0' 0 0' 0! 0' 0 0'",
+        ". . . . . . . . . . . . . . . 0",
+        "0! 0' 0 0! 0 0' 0! 0' 0 0' 0 0! 0! 0' 0 0*2",
+        "0! 0' 0 0' 0 0' 0! 0' 0 0' 0 0' 0! 0' 0 0'",
+        "0! 0' 0 0! 0 0' 0! 0' 0 0' 0 0! 0! 0' 0*3 0*2"
       ],
-      "bars": 1,
-      "octave": 2,
-      "gain": 0.17,
-      "attack": 0.002,
-      "release": 0.04,
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.145,
+      "clip": 0.6,
+      "lpf": 10000,
+      "hpf": 200,
+      "effects": {
+        "reverb": 0.1,
+        "pan": 0.15
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Coro da nação",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "coro-laia",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . 7_ . . 6_ . 4_ . . 2_ . . 4_ . 0_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . 7_ . . 6_ . 4_ . . 2_ . . 4_ . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . 7_ . . 6_ . 4_ . . 2_ . . 4_ . 0_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . 7_ . . 6_ . 4_ . . 2_ . . 4_ . 0_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . 4_ . . 5_ . 7_ . . 6_ . . 4_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . 7_ . . 6_ . 4_ . . 2_ . . 4_ . 0_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . 7_ . . 6_ . 4_ . . 2_ . . 4_ . 0_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . 4_ . . 5_ . 7_ . . 6_ . . 4_ . 2_ . . . . . . . . . . . . . . . 2?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . 7_ . . 6_ . 4_ . . 2_ . . 4_ . 0_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        4,
+        8,
+        4,
+        8,
+        4,
+        8
+      ],
+      "octave": 4,
+      "gain": 0.401,
+      "attack": 0.03,
+      "decay": 0.4,
+      "sustain": 0.75,
+      "release": 0.2,
+      "gate": 0.9,
+      "lpf": 6000,
+      "hpf": 150,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.3,
+        "pan": 0.05
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Agbê · contratempo",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "chocalho",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". 0 0 . . 0 0 . . 0 0 . . 0 0 .",
+        ". . 0 . . . 0 . . . 0 . . . 0 .",
+        ". 0 0 . . 0 0 . . 0 0 . . 0 0! ."
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.162,
+      "clip": 0.6,
       "lpf": 11000,
-      "hpf": 250,
+      "hpf": 1500,
+      "effects": {
+        "reverb": 0.08,
+        "pan": -0.15
+      },
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Alfaia virada",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "alfaia",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . 0 . 0 . 0 0!",
+        ". . . . . . . . . . . . . . 0 0!",
+        ". . . . . . . . . . 0 . 0 . 0 0!",
+        ". . . . . . 0 . . . . . 0 . 0 0!",
+        ". . 0 . 0 . 0 0! . . 0 . 0 . 0! 0!",
+        ". . . . . . 0 . . . 0 . 0 . 0 0!"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.28,
+      "clip": 0.9,
+      "lpf": 3500,
+      "hpf": 40,
+      "effects": {
+        "reverb": 0.1,
+        "pan": 0.2
+      },
       "arrangement": {
         "active": [
           true,
@@ -949,44 +733,586 @@
           0,
           0
         ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Caixa · rufo",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "caixa",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . 0'",
+        ". . . . . . . . . . . . . . . 0'",
+        ". . . . . . . . . . . . . . . 0'",
+        ". . . . . . . . . . . . . . . 0'",
+        ". . . . . . . . . . . . . . . 0'",
+        "0*2 0*2 0*2 0*2 0*2 0*2 0*2 0*2 0*3 0*3 0*3 0*3 0*3 0*3 0*3 0!"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.0749,
+      "clip": 0.6,
+      "lpf": 10000,
+      "hpf": 200,
+      "effects": {
+        "reverb": 0.12,
+        "pan": -0.1
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fills": [
+          5,
+          5,
+          5,
+          5,
+          5,
+          null
+        ]
+      }
+    },
+    {
+      "role": "response",
+      "name": "Apito do mestre",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "apito",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . . . 0! . . . 0! . 0! . 0! . . .",
+        ". . . . . . . . . . . . . . . 0",
+        "0! . . . . . . . 0! . . . . . . .",
+        ". . . . . . . . . . . . . . 0! .",
+        "0! . . . . . . . 0! . 0! . . . . .",
+        ". . . . . . . . . . . . . . 0! ."
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.196,
+      "clip": 1,
+      "lpf": 8000,
+      "hpf": 800,
+      "effects": {
+        "reverb": 0.25,
+        "pan": 0.3
+      },
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          false,
+          true,
+          false
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Caixa 2",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "caixa",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . 0 . 0 . . . . . 0 . 0 . . .",
+        ". . . . 0 . . . . . . . 0 . . .",
+        ". . 0 . 0 . 0 . . . 0 . 0 . 0 .",
+        ". . 0 . 0 . . . . . 0 . 0 . . .",
+        ". . 0 . 0 . 0 . . . 0 . 0 . 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.185,
+      "clip": 0.6,
+      "lpf": 10000,
+      "hpf": 300,
+      "effects": {
+        "reverb": 0.1,
+        "pan": 0.3
+      },
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Alfaia meião",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "surdo-meio",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 . . . . . . . 0 .",
+        ". . 0 . 0 . . . . . 0 . 0 . . 0",
+        ". . . . . . . . . . . . . . . 0",
+        ". . 0 . 0 . . 0 . . 0 . 0 . 0 0",
+        ". . 0 . 0 . . 0 . . 0 . 0 . 0 0",
+        ". . 0 . 0 . . 0 . . 0 . 0 . 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.3,
+      "clip": 0.8,
+      "lpf": 3000,
+      "hpf": 40,
+      "mapping": {
+        "panWidth": 0
       },
       "effects": {
-        "pan": -0.35,
-        "reverb": 0.04
+        "reverb": 0.08,
+        "pan": -0.05
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Agbê · balanço",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "chocalho",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . . . . . . 0! . . . . . . .",
+        "0! . . . . . . . . . . . . . . .",
+        "0! . . . . . . . 0! . . . . . . .",
+        "0! . . . . . . . 0! . . . . . . .",
+        "0! . . . 0! . . . 0! . . . 0! . . ."
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.144,
+      "clip": 0.9,
+      "lpf": 9000,
+      "hpf": 1000,
+      "effects": {
+        "reverb": 0.15,
+        "pan": 0.1
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
       }
     }
   ],
-  "harmonicSequences": [
-    [
-      0
+  "reactions": {
+    "overrides": [
+      "capture",
+      "captureDrought",
+      "check",
+      "endgame",
+      "evalSwing",
+      "firstCastle",
+      "hangingPiece",
+      "middle",
+      "opening",
+      "queenCapture",
+      "quiet",
+      "tension"
     ],
-    [
-      0,
-      6,
-      3,
-      0
-    ],
-    [
-      4,
-      0
-    ],
-    [
-      0,
-      3,
-      6,
-      0
-    ],
-    [
-      6,
-      3,
-      4,
-      0
-    ],
-    [
-      0,
-      4,
-      6,
-      0
+    "rules": [
+      {
+        "id": "mar-opening",
+        "trigger": "opening",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": -3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-middle",
+        "trigger": "middle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-endgame",
+        "trigger": "endgame",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "value": 6,
+            "scale": "Maior",
+            "harmony": "static",
+            "rampBars": 8
+          },
+          {
+            "type": "gain",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-castle",
+        "trigger": "firstCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 4,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-check",
+        "trigger": "check",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "activate",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-capture",
+        "trigger": "capture",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ],
+        "instruments": "drums"
+      },
+      {
+        "id": "mar-queen",
+        "trigger": "queenCapture",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 4,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "reverb",
+            "value": 0.35,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-quiet",
+        "trigger": "quiet",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-tension",
+        "trigger": "tension",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "drive",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "lpf",
+            "value": 4000,
+            "scale": "Maior",
+            "harmony": "static",
+            "rampBars": 4
+          }
+        ],
+        "instruments": "drums"
+      },
+      {
+        "id": "mar-swing",
+        "trigger": "evalSwing",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mar-hanging",
+        "trigger": "hangingPiece",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ],
+        "instruments": "lead"
+      },
+      {
+        "id": "mar-drought",
+        "trigger": "captureDrought",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "reverb",
+            "value": 0.3,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      }
     ]
-  ]
+  },
+  "reference": "Maracatu de baque virado das nações do Recife (Nação Porto Rico, Leão Coroado, Estrela Brilhante, Elefante): referência de estilo; material original",
+  "url": "https://pt.wikipedia.org/wiki/Maracatu"
 }

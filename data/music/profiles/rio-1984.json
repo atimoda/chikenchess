@@ -1,0 +1,1319 @@
+{
+  "name": "Rio de Janeiro 1984 · Ensaio da Mangueira",
+  "bpm": 138,
+  "meter": "2/4",
+  "root": "G",
+  "scale": "Maior",
+  "harmony": "static",
+  "swing": 0,
+  "sections": [
+    8,
+    32,
+    8,
+    32,
+    32,
+    32
+  ],
+  "sectionLabels": [
+    "Intro",
+    "Verse",
+    "Break",
+    "Chorus",
+    "Interlude",
+    "Chorus"
+  ],
+  "parts": [
+    {
+      "role": "rhythm",
+      "name": "Surdo de primeira",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "surdo-mangueira",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0! . . .",
+        ". . . . 0! . . .",
+        "0! . . . . . . . 0! . 0! . . . 0! . 0! . . . . . 0! . 0! . 0! . 0! . . .",
+        ". . . . 0! . . .",
+        ". . . . 0! . . 0",
+        ". . . . 0! . . 0"
+      ],
+      "bars": [
+        1,
+        1,
+        4,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.348,
+      "clip": 1,
+      "lpf": 2500,
+      "hpf": 28,
+      "mapping": {
+        "panWidth": 0
+      },
+      "effects": {
+        "reverb": 0.08,
+        "pan": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Surdo · abafado",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "surdo-abafado",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . . . . . . .",
+        "0! . . . . . . .",
+        "0! . . . . . . .",
+        "0! . . . . . . .",
+        "0! . . . . . 0 .",
+        "0! . . . . . 0 ."
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.33,
+      "clip": 0.8,
+      "lpf": 2500,
+      "hpf": 30,
+      "mapping": {
+        "panWidth": 0
+      },
+      "effects": {
+        "reverb": 0.06,
+        "pan": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Repique · chamada",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "repinique",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . 0! . 0! . 0! . 0! 0 0! 0 0! . . . 0! . 0! . 0! . 0! . 0! 0! 0! 0! 0! . . .",
+        "0 . 0 0! . 0 0 .",
+        "0! . 0 0 . 0 0! . 0! . 0 0 . 0! 0! 0! 0 . 0 0! . 0 0 . 0! 0! 0! 0! 0! . . .",
+        "0 . 0 0! . 0 0 .",
+        "0! . 0 0! . 0 0! .",
+        "0 . 0 0! . 0 0 0"
+      ],
+      "bars": [
+        4,
+        1,
+        4,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.317,
+      "clip": 0.8,
+      "lpf": 9000,
+      "hpf": 200,
+      "effects": {
+        "reverb": 0.1,
+        "pan": -0.25
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tamborim",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "tamborim",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . 0 . . 0 . 0 . 0 . 0 0 . 0 .",
+        "0! . 0 . . 0 . 0 . 0 . 0 0 . 0 .",
+        "0! 0' 0 0' 0! 0' 0 0' 0! 0' 0 0' 0! 0' 0 0!",
+        "0! . 0 . . 0 . 0 . 0 . 0 0 . 0 .",
+        "0! 0' 0 0' 0! 0' 0 0' 0! 0' 0 0' 0! 0' 0 0!",
+        "0! 0' 0 0' 0! 0' 0 0' 0! 0' 0 0' 0! 0' 0 0!"
+      ],
+      "bars": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.358,
+      "clip": 0.7,
+      "lpf": 9000,
+      "hpf": 300,
+      "effects": {
+        "reverb": 0.06,
+        "pan": 0.25
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "response",
+      "name": "Cuíca aguda",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "cuica-aguda",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . 0 . . 0 . 0",
+        ". . 0 . . 0 . 0",
+        ". . 0 . . . 0 .",
+        ". . 0 0 . 0 . 0",
+        ". 0 0 0 . 0 . 0",
+        ". . 0 0 . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.236,
+      "clip": 0.9,
+      "lpf": 6000,
+      "hpf": 200,
+      "effects": {
+        "reverb": 0.1,
+        "pan": 0.4
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Caixa de guerra",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "caixa",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 0",
+        "0 0! 0' 0 0 0! 0' 0",
+        "0! . . . . . . .",
+        "0 0! 0' 0 0 0! 0' 0",
+        "0 0! 0' 0 0 0! 0' 0!",
+        "0 0! 0' 0! 0 0! 0' 0!"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.142,
+      "clip": 0.6,
+      "lpf": 10000,
+      "hpf": 200,
+      "effects": {
+        "reverb": 0.08,
+        "pan": -0.15
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "melody",
+      "name": "Coro da quadra",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "coro-laia",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "5_ . 5_ . 5_ . 6_ . 5_ . 3_ . 1_ . . . 2_ . 2_ . 4_ . 2_ . 0_ . . . . . . .",
+        "4_ . 4_ . 4_ 5_ . 4_ . 2_ . 0_ 2_ . . . 1_ . 1_ . 1_ 2_ . 3_ . 4_ . 3_ 1_ . . . 4_ . 4_ . 7_ . 6_ 5_ 4_ . 2_ . . 0_ 2_ . 3_ . 3_ . 5_ . 3_ 1_ . 0_ . -1_ -3_ . . . 3_ . 3_ . 3_ 4_ . 5_ . 7_ . 5_ 3_ . . . 2_ . 2_ . 2_ 4_ . 6_ . 7_ . 6_ 4_ . . . 5_ . 5_ . 4_ 3_ . 1_ . 3_ . 1_ -1_ . . . 0_ . . . . . . . 0?0 . . . 4_ . 6_ .",
+        "7_ . 7_ . 7_ . 8_ . 7_ . 5_ . 3_ . . . 6_ . 6_ . 6_ . 7_ . 6_ . 4_ . 2_ . . .",
+        "7_ . 7_ . 7_ . 8_ . 7_ . 5_ . 3_ . . . 6_ . 6_ . 6_ . 7_ . 6_ . 4_ . 2_ . . . 5_ . 5_ . 5_ . 6_ . 5_ . 3_ . 1_ . . . 2_ . 2_ . 4_ . 2_ . 0_ . . . . . . . 7_ . 7_ . 7_ . 8_ . 7_ . 5_ . 3_ . . . 6_ . 6_ . 6_ . 7_ . 6_ . 4_ . 2_ . . . 5_ . 5_ . 5_ . 6_ . 5_ . 3_ . 1_ . . . 2_ . 2_ . 4_ . 2_ . 0_ . . . . . . .",
+        "7_ . 7_ . 7_ . 8_ . 7_ . 5_ . 3_ . . . 6_ . 6_ . 6_ . 7_ . 6_ . 4_ . 2_ . . . 5_ . 5_ . 5_ . 6_ . 5_ . 3_ . 1_ . . . 2_ . 2_ . 4_ . 2_ . 0_ . . . . . . . 7_ . 7_ . 7_ . 8_ . 7_ . 5_ . 3_ . . . 6_ . 6_ . 6_ . 7_ . 6_ . 4_ . 2_ . . . 5_ . 5_ . 5_ . 6_ . 5_ . 3_ . 1_ . . . 2_ . 2_ . 4_ . 2_ . 0_ . . . . . . .",
+        "7_ . 7_ . 7_ . 8_ . 7_ . 5_ . 3_ . . . 6_ . 6_ . 6_ . 7_ . 6_ . 4_ . 2_ . . . 5_ . 5_ . 5_ . 6_ . 5_ . 3_ . 1_ . . . 2_ . 2_ . 4_ . 2_ . 0_ . . . . . . . 7_ . 7_ . 7_ . 8_ . 7_ . 5_ . 3_ . . . 6_ . 6_ . 6_ . 7_ . 6_ . 4_ . 2_ . . . 5_ . 5_ . 5_ . 6_ . 5_ . 3_ . 1_ . . . 2_ . 2_ . 4_ . 2_ . 0_ . . . . . . ."
+      ],
+      "bars": [
+        4,
+        16,
+        4,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.443,
+      "attack": 0.03,
+      "decay": 0.4,
+      "sustain": 0.75,
+      "release": 0.2,
+      "gate": 0.9,
+      "lpf": 6000,
+      "hpf": 150,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.3,
+        "pan": 0
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tarol",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "tarol",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 0",
+        "0 . 0 0 0 . 0 0",
+        "0 . . . . . . .",
+        "0 . 0 0 0 . 0 0",
+        "0 0 0 0 0 . 0 0",
+        "0 0 0 0 0 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.371,
+      "clip": 0.6,
+      "lpf": 10000,
+      "hpf": 300,
+      "effects": {
+        "reverb": 0.08,
+        "pan": 0.15
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "harmony",
+      "name": "Cavaquinho",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "cavaquinho",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "1,3,5! . 1,3,5 1,3,5 . 1,3,5 . 1,3,5 -3,-1,1,3! . -3,-1,1,3 -3,-1,1,3 . -3,-1,1,3 . -3,-1,1,3 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4",
+        "0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 -2,0,2! . -2,0,2 -2,0,2 . -2,0,2 . -2,0,2 1,3,5! . 1,3,5 1,3,5 . 1,3,5 . 1,3,5 -3,-1,1,3! . -3,-1,1,3 -3,-1,1,3 . -3,-1,1,3 . -3,-1,1,3 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 -2,0,2! . -2,0,2 -2,0,2 . -2,0,2 . -2,0,2 1,3,5! . 1,3,5 1,3,5 . 1,3,5 . 1,3,5 -3,-1,1,3! . -3,-1,1,3 -3,-1,1,3 . -3,-1,1,3 . -3,-1,1,3 -4,-2,0! . -4,-2,0 -4,-2,0 . -4,-2,0 . -4,-2,0 -4,-2,0! . -4,-2,0 -4,-2,0 . -4,-2,0 . -4,-2,0 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 -2,0,2! . -2,0,2 -2,0,2 . -2,0,2 . -2,0,2 1,3,5! . 1,3,5 1,3,5 . 1,3,5 . 1,3,5 -3,-1,1,3! . -3,-1,1,3 -3,-1,1,3 . -3,-1,1,3 . -3,-1,1,3 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4",
+        "-4,-2,0! . . . . . . . -4,-2,0! . . . . . . . 0,2,4! . . . . . . . 0,2,4! . . . . . . .",
+        "-4,-2,0! . -4,-2,0 -4,-2,0 . -4,-2,0 . -4,-2,0 -4,-2,0! . -4,-2,0 -4,-2,0 . -4,-2,0 . -4,-2,0 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 1,3,5! . 1,3,5 1,3,5 . 1,3,5 . 1,3,5 -3,-1,1,3! . -3,-1,1,3 -3,-1,1,3 . -3,-1,1,3 . -3,-1,1,3 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 -4,-2,0! . -4,-2,0 -4,-2,0 . -4,-2,0 . -4,-2,0 -4,-2,0! . -4,-2,0 -4,-2,0 . -4,-2,0 . -4,-2,0 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 1,3,5! . 1,3,5 1,3,5 . 1,3,5 . 1,3,5 -3,-1,1,3! . -3,-1,1,3 -3,-1,1,3 . -3,-1,1,3 . -3,-1,1,3 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4 0,2,4! . 0,2,4 0,2,4 . 0,2,4 . 0,2,4",
+        "-4,-2,0! . . . . -4,-2,0 . -4,-2,0 -4,-2,0! . . . . -4,-2,0 . -4,-2,0 0,2,4! . . . . 0,2,4 . 0,2,4 0,2,4! . . . . 0,2,4 . 0,2,4 1,3,5! . . . . 1,3,5 . 1,3,5 -3,-1,1,3! . . . . -3,-1,1,3 . -3,-1,1,3 0,2,4! . . . . 0,2,4 . 0,2,4 0,2,4! . . . . 0,2,4 . 0,2,4 -4,-2,0! . . . . -4,-2,0 . -4,-2,0 -4,-2,0! . . . . -4,-2,0 . -4,-2,0 0,2,4! . . . . 0,2,4 . 0,2,4 0,2,4! . . . . 0,2,4 . 0,2,4 1,3,5! . . . . 1,3,5 . 1,3,5 -3,-1,1,3! . . . . -3,-1,1,3 . -3,-1,1,3 0,2,4! . . . . 0,2,4 . 0,2,4 0,2,4! . . . . 0,2,4 . 0,2,4",
+        "-4,-2,0! . -4,-2,0 . . -4,-2,0 -4,-2,0 -4,-2,0 -4,-2,0! . -4,-2,0 . . -4,-2,0 -4,-2,0 -4,-2,0 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4 1,3,5! . 1,3,5 . . 1,3,5 1,3,5 1,3,5 -3,-1,1,3! . -3,-1,1,3 . . -3,-1,1,3 -3,-1,1,3 -3,-1,1,3 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4 -4,-2,0! . -4,-2,0 . . -4,-2,0 -4,-2,0 -4,-2,0 -4,-2,0! . -4,-2,0 . . -4,-2,0 -4,-2,0 -4,-2,0 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4 1,3,5! . 1,3,5 . . 1,3,5 1,3,5 1,3,5 -3,-1,1,3! . -3,-1,1,3 . . -3,-1,1,3 -3,-1,1,3 -3,-1,1,3 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4 0,2,4! . 0,2,4 . . 0,2,4 0,2,4 0,2,4"
+      ],
+      "bars": [
+        4,
+        16,
+        4,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.25,
+      "attack": 0.002,
+      "decay": 0.25,
+      "sustain": 0.1,
+      "release": 0.08,
+      "gate": 0.4,
+      "lpf": 9000,
+      "hpf": 300,
+      "mapping": {
+        "fileDegrees": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "restart": false,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "effects": {
+        "reverb": 0.1,
+        "pan": 0.2
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Chocalho",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "chocalho",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . 0 . 0 . 0 .",
+        "0' 0 0' 0! 0' 0 0' 0!",
+        "0 . . . 0 . . .",
+        "0' 0 0' 0! 0' 0 0' 0!",
+        "0' 0 0' 0! 0' 0 0' 0!",
+        "0' 0! 0' 0! 0' 0! 0' 0!"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.184,
+      "clip": 0.6,
+      "lpf": 12000,
+      "hpf": 2500,
+      "effects": {
+        "reverb": 0.05,
+        "pan": -0.3
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "response",
+      "name": "Cuíca grave",
+      "behavior": "sustain",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "cuica-grave",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . . . 0 .",
+        "0 . . . . . 0 .",
+        "0 . . . . . . .",
+        "0 . . 0 . . 0 .",
+        "0 . 0 . . . 0 .",
+        "0 . . 0 . . 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.277,
+      "clip": 0.9,
+      "lpf": 5000,
+      "hpf": 120,
+      "effects": {
+        "reverb": 0.1,
+        "pan": -0.4
+      },
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Agogô",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "agogo-agudo",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0 . . . . . . .",
+        "0 . 0 . . 0 . 0 0 . 0 . 0 . 0 .",
+        "0 . . . . . . .",
+        "0 . 0 . . 0 . 0 0 . 0 . 0 . 0 .",
+        "0 . 0 . . 0 . 0 0 . 0 . 0 . 0 0",
+        "0 . 0 . . 0 . 0 0 . 0 . 0 . 0 0"
+      ],
+      "bars": [
+        1,
+        2,
+        1,
+        2,
+        2,
+        2
+      ],
+      "gain": 0.179,
+      "clip": 0.5,
+      "lpf": 9000,
+      "hpf": 800,
+      "effects": {
+        "reverb": 0.1,
+        "pan": 0.35
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "response",
+      "name": "Apito do mestre",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "apito",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0! . . . 0! . . . 0! . 0! . 0! . . . . . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . . 0! . 0! . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0! . . . . . . . 0! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        4,
+        16,
+        4,
+        16,
+        16,
+        16
+      ],
+      "gain": 0.154,
+      "clip": 1,
+      "lpf": 8000,
+      "hpf": 800,
+      "effects": {
+        "reverb": 0.25,
+        "pan": 0.3
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Reco-reco",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "reco-reco",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . 0 . . .",
+        "0 . 0 0 0 . 0 0",
+        ". . . . 0 . . .",
+        "0 . 0 0 0 . 0 0",
+        "0 . 0 0 0 . 0 0",
+        "0 . 0 0 0 . 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.258,
+      "clip": 0.6,
+      "lpf": 9000,
+      "hpf": 1500,
+      "effects": {
+        "reverb": 0.05,
+        "pan": 0.3
+      },
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Surdo de terceira · corte",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "sambaReggae",
+        "asset": "surdo-viradeira",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . 0 .",
+        ". . 0 . . . 0 0",
+        "0! . . . . . 0! .",
+        ". . 0 . . 0 0 0",
+        ". 0 0 . . . 0 0",
+        ". 0 0 . . 0 0 0"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.314,
+      "clip": 0.8,
+      "lpf": 3500,
+      "hpf": 40,
+      "effects": {
+        "reverb": 0.06,
+        "pan": 0.1
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rhythm",
+      "name": "Tamborim · virada",
+      "behavior": "pulse",
+      "source": {
+        "kind": "sample",
+        "bank": "brasil",
+        "asset": "tamborim-abafado",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        ". . . . . . . 0'",
+        ". . . . . . . 0'",
+        ". . . . . . . 0'",
+        ". . . . . . . 0'",
+        ". . . . . . . 0'",
+        "0! 0 0! 0 0! 0! 0! 0!"
+      ],
+      "bars": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "gain": 0.338,
+      "clip": 0.6,
+      "lpf": 9000,
+      "hpf": 300,
+      "effects": {
+        "reverb": 0.06,
+        "pan": -0.3
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "restart": true,
+        "variations": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fills": [
+          5,
+          5,
+          5,
+          5,
+          5,
+          null
+        ]
+      }
+    }
+  ],
+  "reactions": {
+    "overrides": [
+      "capture",
+      "captureDrought",
+      "check",
+      "endgame",
+      "evalSwing",
+      "firstCastle",
+      "middle",
+      "opening",
+      "promotion",
+      "queenCapture",
+      "quiet",
+      "tension"
+    ],
+    "rules": [
+      {
+        "id": "mng-opening",
+        "trigger": "opening",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": -3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mng-middle",
+        "trigger": "middle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mng-endgame",
+        "trigger": "endgame",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "bpm",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static",
+            "rampBars": 8
+          },
+          {
+            "type": "gain",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mng-castle",
+        "trigger": "firstCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 4,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mng-check",
+        "trigger": "check",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "activate",
+            "value": 0,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mng-capture",
+        "trigger": "capture",
+        "enabled": true,
+        "quantize": false,
+        "target": "actor",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ],
+        "instruments": "drums"
+      },
+      {
+        "id": "mng-queen",
+        "trigger": "queenCapture",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 4,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "reverb",
+            "value": 0.3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mng-quiet",
+        "trigger": "quiet",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "mng-tension",
+        "trigger": "tension",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "lpf",
+            "value": 2500,
+            "scale": "Maior",
+            "harmony": "static",
+            "rampBars": 4
+          }
+        ],
+        "instruments": "lead"
+      },
+      {
+        "id": "mng-swing",
+        "trigger": "evalSwing",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 4,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "drive",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ],
+        "instruments": "drums"
+      },
+      {
+        "id": "mng-promotion",
+        "trigger": "promotion",
+        "enabled": true,
+        "quantize": true,
+        "target": "actor",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "transpose",
+            "value": 12,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ],
+        "instruments": "lead"
+      },
+      {
+        "id": "mng-drought",
+        "trigger": "captureDrought",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "reverb",
+            "value": 0.3,
+            "scale": "Maior",
+            "harmony": "static"
+          },
+          {
+            "type": "gain",
+            "value": -2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      }
+    ]
+  },
+  "reference": "Ensaio da bateria Surdo Um e do samba-enredo na quadra da Estação Primeira de Mangueira; 1984 é ambientação (inauguração do Sambódromo): referência de estilo; material original",
+  "url": "https://pt.wikipedia.org/wiki/Esta%C3%A7%C3%A3o_Primeira_de_Mangueira"
+}
