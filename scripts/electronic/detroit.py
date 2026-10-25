@@ -158,8 +158,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
-        rule('det-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('det-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('det-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('det-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('det-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 5)]),
         rule('det-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('det-check', 'check', 'actor', 1, True, [act('activate'), act('variation', 3)]),

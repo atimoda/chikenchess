@@ -1172,8 +1172,8 @@
         "duration": 1,
         "actions": [
           {
-            "type": "variation",
-            "value": 0,
+            "type": "gain",
+            "value": -3,
             "scale": "Maior",
             "harmony": "static"
           }
@@ -1188,8 +1188,8 @@
         "duration": 1,
         "actions": [
           {
-            "type": "variation",
-            "value": 1,
+            "type": "gain",
+            "value": 2,
             "scale": "Maior",
             "harmony": "static"
           }
@@ -1350,8 +1350,8 @@
         "duration": 2,
         "actions": [
           {
-            "type": "variation",
-            "value": 2,
+            "type": "delay",
+            "value": 0.35,
             "scale": "Maior",
             "harmony": "static"
           }

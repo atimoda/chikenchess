@@ -149,8 +149,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
     'parts': parts,
     'reactions': reactions([
-        rule('par-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('par-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('par-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('par-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('par-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('lpf', 16000, rampBars=8)]),
         rule('par-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('par-check', 'check', 'actor', 1, True, [act('activate'), act('gain', 4)]),

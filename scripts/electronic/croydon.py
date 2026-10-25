@@ -141,8 +141,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Pre-Chorus', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
-        rule('cro-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('cro-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('cro-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('cro-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('cro-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 4)]),
         # Castling and checks are drops: the wobble comes in on the next bar.
         rule('cro-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
@@ -152,7 +152,7 @@ profile = {
         rule('cro-swing', 'evalSwing', 'actor', 2, True, [act('variation', 5), act('drive', 4)], 'bass'),
         rule('cro-queen', 'queenCapture', 'both', 4, True, [act('variation', 2), act('delay', .55)]),
         rule('cro-quiet', 'quiet', 'both', 2, True, [act('variation', 4)]),
-        rule('cro-drought', 'captureDrought', 'both', 2, True, [act('variation', 2)]),
+        rule('cro-drought', 'captureDrought', 'both', 2, True, [act('delay', .35)]),
     ]),
     'reference': 'Dubstep de Croydon/South London em 2005–06 (Skream, Benga, Digital Mystikz, noites DMZ e loja Big Apple): referência de estilo; material original',
     'url': 'https://en.wikipedia.org/wiki/Dubstep',

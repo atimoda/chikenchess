@@ -145,8 +145,8 @@ profile = {
     'swing': .14, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
     'parts': parts,
     'reactions': reactions([
-        rule('bri-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('bri-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('bri-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('bri-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('bri-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('reverb', .5)]),
         rule('bri-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('bri-check', 'check', 'actor', 1, True, [act('activate'), act('gain', 3)]),

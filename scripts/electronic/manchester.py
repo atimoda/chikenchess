@@ -138,8 +138,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
-        rule('mcr-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('mcr-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('mcr-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('mcr-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('mcr-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 5)]),
         rule('mcr-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('mcr-check', 'check', 'actor', 1, True, [act('activate'), act('variation', 3)]),
