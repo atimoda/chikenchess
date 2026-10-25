@@ -1,5 +1,5 @@
 import type { Instrument, InstrumentPerformanceEdit } from './model'
-import type { PianoRoll } from './piano-roll'
+import { visibleDegreeRange, type PianoRoll } from './piano-roll'
 
 /** New banks are explicit empty MIDI, never text placeholders. */
 export function addVariation(instrument: Instrument): InstrumentPerformanceEdit {
@@ -29,8 +29,9 @@ export function reverseVariation(instrument: Instrument, variation: number): Ins
 export function randomizeVariation(instrument: Instrument, variation: number, random: () => number = Math.random): InstrumentPerformanceEdit {
   return edit(instrument,variation,roll=>{
     if(!roll.notes.length)return roll
-    const min=Math.min(...roll.notes.map(n=>n.degree)),max=Math.max(...roll.notes.map(n=>n.degree))
-    const high=max===min?Math.min(48,min+6):max,low=high===min?Math.max(-48,min-6):min
+    // Draw from the whole range the editor shows, not the notes' own span:
+    // shrinking to that span made repeated clicks cluster and then drift upward.
+    const {low,high}=visibleDegreeRange(roll.notes)
     return {...roll,notes:roll.notes.map(n=>({...n,degree:low+Math.floor(random()*(high-low+1))}))}
   })
 }

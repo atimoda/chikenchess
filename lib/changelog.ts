@@ -22,7 +22,6 @@ export const CHANGELOG = [
       { title: 'Piece Params', items: [
         'Os knobs agora ficam abaixo do sequenciador MIDI, sob o título "Piece params".',
         'Selecionar uma nota no sequenciador troca os knobs pelos da nota (Accent, Pan, Slide ST e Slide sec, no mesmo tamanho dos knobs da peça) e o título vira "Piece params / Note params". Clicar em "Piece params" desmarca a nota e devolve os knobs da peça.',
-        'A rampa do slide da nota fica visível, ocupando o espaço de dois knobs, logo acima de Slide ST e Slide sec. Nos dois modos, Slide ST e Slide sec são os dois últimos knobs do painel.',
         'O botão de excluir nota foi para a linha de botões abaixo do sequenciador, como primeira opção, e só aparece com uma nota selecionada.',
         '"Restart MIDI when the global section starts" virou um botão com uma seta girando na linha de botões abaixo do sequenciador, na partida e no Criativo. Ligado, o ícone fica na cor normal; desligado, fica 50% mais apagado.',
         'O painel não mostra mais barras de rolagem; a rolagem continua funcionando.',
@@ -35,7 +34,13 @@ export const CHANGELOG = [
         'Com uma peça selecionada, o botão M virou a mesma bolinha de ligar/desligar da lista, no começo da linha de abas das variações, e o botão Solo deu lugar a um botão Voltar, que desmarca a peça e volta para a lista de instrumentos.',
         'O S de Solo voltou ao Piece Params, no fim da linha de abas das variações, e a bolinha de ligar/desligar ficou com o contorno visível quando a peça está desligada.',
         'Na lista de instrumentos, as peças ativas mostram uma faixa compacta do MIDI tocando; o botão "midi" com o olho, no canto do painel, liga ou desliga essas faixas.',
-        'Clicar no nome de uma peça (ou selecioná-la no tabuleiro) agora expande o MIDI completo dela na própria lista, com as abas e os botões. Duplo clique no nome, o novo link "Params" ou o duplo clique no tabuleiro que liga a peça abrem o Piece Params completo.',
+        'Clicar no nome de uma peça agora expande o MIDI completo dela na própria lista, com as abas e os botões. Duplo clique no nome, o novo link "Params" ou o duplo clique no tabuleiro que liga a peça abrem o Piece Params completo.',
+        'Na lista de instrumentos, selecionar uma peça (na lista ou no tabuleiro) agora só pinta o fundo do bloco dela. O MIDI completo abre só com um clique no nome da peça ou na faixa compacta do MIDI, e um novo clique no nome recolhe.',
+        'Abrir e fechar o MIDI na lista (fechado, compacto e completo) agora é animado: o bloco cresce e encolhe suavemente e o MIDI entra com fade-in.',
+        'A lista de instrumentos não mostra mais Note params, nem com o MIDI completo aberto: eles ficam só no Piece Params completo.',
+        'Corrigido: o cursor de reprodução voltou a andar no MIDI do Piece Params depois de abrir a peça pela lista.',
+        'Note params reorganizado: Accent, Pan, Chance e Ratchet na primeira linha; Slide ST, Slide sec e o gráfico do slide na segunda. O gráfico perdeu a moldura e o fundo e agora aparece também nos knobs da peça, à direita de Slide sec.',
+        '"Randomize notes" agora sorteia as notas em toda a altura visível do sequenciador. Antes elas se concentravam perto do meio e, depois de muitos cliques, subiam uma oitava.',
         'Note params ganhou os knobs Ratchet (repete a nota 2, 3 ou 4 vezes dentro da duração dela) e Chance (probabilidade de a nota tocar).',
       ] },
       { title: 'Admin', items: [

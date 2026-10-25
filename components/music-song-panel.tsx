@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Square } from 'chess.js'
 import type { Arrangement } from '@/lib/music/arrangement'
 import type { HarmonyPlanId } from '@/lib/music/harmony'
@@ -10,15 +10,52 @@ import { cn } from '@/lib/utils'
 import { MusicArrangementControls } from './music-arrangement-controls'
 import { MusicPlaybackViewport, MusicVoiceBadge } from './music-playback'
 import { MusicMiniRoll } from './music-piano-editor'
+import { NoteParamsHostContext } from './music-note-params'
 import type { MusicSnapshot } from '@/lib/music/runtime'
 
 export interface SongPanelHover { square: Square; anchor: HTMLElement }
 
+// Note params live only in the full Piece Params; the list's editors drop them.
+const ignoreNoteParams = () => {}
+
+/** Opens and closes its content with an ease-in-out height change; the content
+ * fades in whenever `mode` changes, so closed, compact and expanded all animate. */
+function Reveal({ open, mode, children }: { open: boolean; mode: string; children: ReactNode }) {
+  const inner = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(open)
+  const [height, setHeight] = useState(0)
+  const [animating, setAnimating] = useState(false)
+  if (open && !mounted) setMounted(true)
+  useEffect(() => {
+    const element = inner.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const observer = new window.ResizeObserver(() => setHeight(element.offsetHeight))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [mounted])
+  // Unmount after the closing transition so hidden rows keep no live strips.
+  useEffect(() => {
+    if (open) return
+    const timer = window.setTimeout(() => setMounted(false), 320)
+    return () => window.clearTimeout(timer)
+  }, [open])
+  if (!mounted) return null
+  return <div className="transition-[height] duration-300 ease-in-out motion-reduce:transition-none"
+    style={{ height: open ? height : 0, overflow: open && height > 0 && !animating ? 'visible' : 'hidden' }}
+    onTransitionRun={event => { if (event.target === event.currentTarget) setAnimating(true) }}
+    onTransitionEnd={event => { if (event.target === event.currentTarget) setAnimating(false) }}>
+    <div ref={inner} className="flow-root">
+      <div key={mode} className="animate-in fade-in duration-300 motion-reduce:animate-none">{children}</div>
+    </div>
+  </div>
+}
+
 /** Song & Instruments: the Piece Params list view. The Global Sections bar sits
  * on top; each row turns its piece on or off from the dot on the left. Active
- * pieces show a compact MIDI strip; a click on the name selects (or deselects)
- * the piece and expands its full sequencer in place, and a double click or
- * "Params" opens the full Piece Params. */
+ * pieces show a compact MIDI strip. Selecting a piece (here or on the board)
+ * only highlights its row; a click on the name or on the strip expands its full
+ * sequencer in place (a second click on the name collapses it), and a double
+ * click or "Params" opens the full Piece Params. */
 export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, onSelect, onToggle, onSolo, canToggle, onHover, ownColor = 'w', onAudition, snapshot, selectedId = null, selectedView, showMidi = true, onOpenParams }: {
   pieces: readonly MusicPiece[]
   snapshot?: MusicSnapshot
@@ -52,6 +89,14 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
     const anchor = piece && dots.current.get(piece.id)
     onHover?.(piece && anchor ? { square: piece.square, anchor } : null)
   }
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  // A different selection (from the board too) collapses the expanded row.
+  const [lastSelectedId, setLastSelectedId] = useState(selectedId)
+  if (lastSelectedId !== selectedId) {
+    setLastSelectedId(selectedId)
+    if (selectedId !== expandedId) setExpandedId(null)
+  }
+  const expand = (piece: MusicPiece) => { setExpandedId(piece.id); if (selectedId !== piece.id) onSelect(piece.square) }
   const teams = ownColor === 'w' ? ['w', 'b'] as const : ['b', 'w'] as const
   return <div className="flex min-w-0 flex-col gap-2">
     {arrangement && <section aria-label="Global Sections" className="min-w-0">
@@ -67,8 +112,10 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
           const toggleAllowed = canToggle?.(piece) ?? true
           const selected = selectedId === piece.id
           const instrument = snapshot?.instruments?.[piece.id]
-          return <div key={piece.id} className="min-w-0 border-b border-[#2e3b31]" data-selected={selected || undefined}>
-          <div data-piece-row={piece.id} className={cn('flex min-w-0 items-stretch rounded hover:bg-white/5', selected && 'bg-white/10')}
+          const expanded = selected && expandedId === piece.id && !!selectedView
+          const compact = showMidi && active && !!snapshot && !!instrument
+          return <div key={piece.id} className={cn('min-w-0 rounded border-b border-[#2e3b31] transition-colors', selected && 'bg-white/10')} data-selected={selected || undefined} data-expanded={expanded || undefined}>
+          <div data-piece-row={piece.id} className={cn('flex min-w-0 items-stretch rounded', !selected && 'hover:bg-white/5')}
             onPointerEnter={event => { hover(piece); if (event.pointerType === 'mouse') onAudition?.(piece.square) }} onFocus={() => hover(piece)} onBlur={() => hover(null)}>
             <button type="button" ref={element => { if (element) dots.current.set(piece.id, element); else dots.current.delete(piece.id) }}
               className={cn('w-6 shrink-0 cursor-pointer bg-transparent p-0 text-[12px] leading-none disabled:cursor-not-allowed disabled:opacity-40', active ? 'text-[#c0e494]' : 'text-white/45 hover:text-white/80')}
@@ -76,9 +123,9 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
               title={toggleAllowed ? (active ? 'Turn off' : 'Turn on') : 'This piece cannot be changed now'}
               onClick={() => onToggle(piece.square)}><span aria-hidden="true">{active ? '●' : '○'}</span></button>
             <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 bg-transparent py-1.5 pr-1 text-left font-mono text-[10px] text-[#e0e9df]"
-              aria-pressed={selected} title={`${selected ? 'Deselect' : 'Select'} ${name} (${piece.square}) · double-click opens Piece Params`}
+              aria-expanded={expanded} title={`${expanded ? 'Collapse' : 'Expand'} ${name} (${piece.square}) · double-click opens Piece Params`}
               // The second click of a double click is left to onDoubleClick.
-              onClick={event => { if (event.detail < 2) onSelect(selected ? null : piece.square) }}
+              onClick={event => { if (event.detail >= 2) return; if (expanded) { setExpandedId(null); onSelect(null) } else expand(piece) }}
               onDoubleClick={() => onOpenParams?.(piece.square)}>
               <span className="truncate">{name}</span><span className="shrink-0 scale-90"><MusicVoiceBadge monitor={monitor} id={piece.id} /></span>
             </button>
@@ -87,8 +134,11 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
             {onSolo && <button type="button" className={cn('w-5 shrink-0 cursor-pointer bg-transparent p-0 font-mono text-[10px] font-semibold leading-none', solo ? 'text-white' : 'text-[#849389] hover:text-white/80')}
               aria-label={`${solo ? 'Disable' : 'Enable'} solo ${name}`} title="Solo" aria-pressed={solo} onClick={() => onSolo(piece.id)}>S</button>}
           </div>
-          {selected && selectedView ? <div className="pb-2 pt-1"><MusicPlaybackViewport visualUpdatesEnabled pieceParamsLayout>{selectedView}</MusicPlaybackViewport></div>
-            : showMidi && active && snapshot && instrument && <div className="pb-1.5 pl-6 pr-1"><MusicMiniRoll snapshot={snapshot} id={piece.id} monitor={monitor} instrument={instrument}/></div>}
+          <Reveal open={expanded || compact} mode={expanded ? 'full' : 'compact'}>
+            {expanded ? <div className="pb-2 pt-1"><NoteParamsHostContext.Provider value={ignoreNoteParams}><MusicPlaybackViewport visualUpdatesEnabled pieceParamsLayout>{selectedView}</MusicPlaybackViewport></NoteParamsHostContext.Provider></div>
+              : snapshot && instrument && <button type="button" className="block w-full cursor-pointer bg-transparent pb-1.5 pl-6 pr-1 pt-0 text-left" aria-label={`Expand the MIDI of ${name}`} title="Expand the sequencer" onClick={() => expand(piece)}>
+                <MusicMiniRoll snapshot={snapshot} id={piece.id} monitor={monitor} instrument={instrument}/></button>}
+          </Reveal>
           </div>
         })}
       </div>)}

@@ -14,7 +14,7 @@ import type { Instrument } from '@/lib/music/model'
 import type { InstrumentPerformanceEdit } from '@/lib/music/model'
 import { isLoopRunning, type MusicMonitor } from '@/lib/music/monitor'
 import type { MusicSnapshot } from '@/lib/music/runtime'
-import { resizeRoll, type PianoRoll, type PianoNote } from '@/lib/music/piano-roll'
+import { resizeRoll, visibleDegreeRange, type PianoRoll, type PianoNote } from '@/lib/music/piano-roll'
 
 export const MUSIC_GRID_DIVISIONS = [
  {value:1,label:'1 part · beat'}, {value:2,label:'2 parts · eighths'},
@@ -125,7 +125,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
   {error&&<p role="alert">{error}</p>}
   {visibleVariations.map(({roll:savedRoll,index})=>{
    const roll=draft?.index===index?draft.roll:savedRoll, active=playback.variation===index, sounding=active&&playback.running
-   const low=Math.min(-7,...roll.notes.map(n=>n.degree)),high=Math.max(14,...roll.notes.map(n=>n.degree)),rowHeight=264/(high-low+1)
+   const {low,high}=visibleDegreeRange(roll.notes),rowHeight=264/(high-low+1)
    const present=playback.present
    const bars=roll.bars, quantum=1/(pulses*division)
    const fixed=instrument.selectedVariation===index

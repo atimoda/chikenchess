@@ -9,3 +9,8 @@ export function noteRoll(cells: readonly (number | readonly number[] | null)[], 
  return {bars,notes:cells.flatMap((cell,index)=>cell===null?[]:(typeof cell==='number'?[cell]:cell).map(degree=>({start:index*duration,duration:Math.max(1/64,duration*gate),degree,velocity:index%2?.7:1})))}
 }
 export function resizeRoll(roll:PianoRoll,bars:number):PianoRoll {return {bars,notes:roll.notes.filter(n=>n.start<bars).map(n=>({...n,duration:Math.min(n.duration,bars-n.start)})).filter(n=>n.duration>=1/64)}}
+
+/** Degrees the MIDI editor shows: −7…14 (three octaves of a 7-note scale), widened to fit the notes. */
+export function visibleDegreeRange(notes: readonly { degree: number }[]) {
+  return { low: Math.min(-7, ...notes.map(n => n.degree)), high: Math.max(14, ...notes.map(n => n.degree)) }
+}
