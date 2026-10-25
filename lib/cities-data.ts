@@ -444,7 +444,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     scale: ["G3", "A3", "Bb3", "C4", "D4", "Eb4", "F4"], // G natural minor
     geoCoordinates: { lat: 51.4545, lng: -2.5879 },
     color: "#8fa3b8", // Rain-washed slate
-    image: "/cities/bristol.svg",
+    // Photo: Clifton Suspension Bridge illuminated, 1994, by Rodhullandemu, CC BY-SA 3.0 (https://commons.wikimedia.org/wiki/File:CliftonSupensionLit.jpg)
+    image: "/cities/bristol.jpg",
     samples: { kick: "bd:0", snare: "sd:0", hihat: "hh:0", bass: "bass:0", pad: "pad:0", lead: "synth:0" },
     introPhrases: [
         "It is raining again.",
@@ -466,7 +467,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     scale: ["F3", "Gb3", "Ab3", "Bb3", "C4", "Db4", "Eb4"], // F Phrygian
     geoCoordinates: { lat: 51.3762, lng: -0.0982 },
     color: "#39ff88", // Sub-bass green
-    image: "/cities/croydon.svg",
+    // Photo: Tram 2536 at East Croydon, 2014, by train_photos, CC BY-SA 2.0 (https://commons.wikimedia.org/wiki/File:2536_at_East_Croydon_-_14918603355.jpg)
+    image: "/cities/croydon.jpg",
     samples: { kick: "bd:0", snare: "sd:0", hihat: "hh:0", bass: "bass:0", pad: "pad:0", lead: "synth:0" },
     introPhrases: [
         "Half the tempo, twice the weight.",
@@ -488,7 +490,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     scale: ["C4", "Db4", "Eb4", "F4", "G4", "Ab4", "Bb4"], // C Phrygian
     geoCoordinates: { lat: -29.8587, lng: 31.0218 },
     color: "#ff6a2b", // Indian Ocean sunrise
-    image: "/cities/durban.svg",
+    // Photo: Durban Beachfront At Night, 2009, by Marc Forrest, CC BY 2.0 (https://commons.wikimedia.org/wiki/File:Durban_Beachfront_At_Night.jpg)
+    image: "/cities/durban.jpg",
     samples: { kick: "bd:0", snare: "sd:0", hihat: "hh:0", bass: "bass:0", pad: "pad:0", lead: "synth:0" },
     introPhrases: [
         "No kick on the one.",
