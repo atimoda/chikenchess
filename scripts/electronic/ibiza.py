@@ -157,8 +157,8 @@ profile = {
     'swing': .08, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
     'parts': parts,
     'reactions': reactions([
-        rule('ibz-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('ibz-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('ibz-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('ibz-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         # The sun comes up at the endgame: full band, a little brighter.
         rule('ibz-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('lpf', 9000, rampBars=8)]),
         rule('ibz-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
@@ -167,7 +167,7 @@ profile = {
         rule('ibz-queen', 'queenCapture', 'both', 4, True, [act('variation', 4), act('delay', .35)]),
         rule('ibz-capture', 'capture', 'actor', 1, False, [act('gain', 3)], 'drums'),
         rule('ibz-tension', 'tension', 'both', 1, True, [act('reverb', .55), act('lpf', 2500, rampBars=8)], 'pad'),
-        rule('ibz-drought', 'captureDrought', 'both', 2, True, [act('variation', 2)]),
+        rule('ibz-drought', 'captureDrought', 'both', 2, True, [act('delay', .35)]),
         rule('ibz-swing', 'evalSwing', 'actor', 2, True, [act('variation', 3), act('transpose', 2)]),
     ]),
     'reference': 'Balearic beat de Ibiza (Alfredo no Amnesia, 1986–87): referência de estilo; material original',

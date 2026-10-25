@@ -131,8 +131,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
-        rule('ber-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('ber-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('ber-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('ber-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('ber-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('bpm', 4, rampBars=8)]),
         rule('ber-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('ber-check', 'check', 'actor', 1, True, [act('activate'), act('drive', 3)]),

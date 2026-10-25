@@ -1172,12 +1172,6 @@
         "duration": 1,
         "actions": [
           {
-            "type": "variation",
-            "value": 0,
-            "scale": "Maior",
-            "harmony": "static"
-          },
-          {
             "type": "lpf",
             "value": 2800,
             "scale": "Maior",
@@ -1195,8 +1189,8 @@
         "duration": 1,
         "actions": [
           {
-            "type": "variation",
-            "value": 1,
+            "type": "gain",
+            "value": 2,
             "scale": "Maior",
             "harmony": "static"
           }

@@ -155,8 +155,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
     'parts': parts,
     'reactions': reactions([
-        rule('nyc-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('nyc-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('nyc-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('nyc-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('nyc-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 6)]),
         # Castling brings the strings in: the chorus of the night.
         rule('nyc-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
@@ -165,7 +165,7 @@ profile = {
         # The disco breakdown: bass and drums alone, then the band crashes back.
         rule('nyc-queen', 'queenCapture', 'both', 2, True, [act('variation', 2)]),
         rule('nyc-quiet', 'quiet', 'both', 2, True, [act('variation', 2), act('lpf', 2200, rampBars=2)]),
-        rule('nyc-drought', 'captureDrought', 'both', 1, True, [act('variation', 4)]),
+        rule('nyc-drought', 'captureDrought', 'both', 1, True, [act('delay', .35)]),
         # The classic disco key change: a whole step up when the evaluation swings.
         rule('nyc-swing', 'evalSwing', 'both', 4, True, [act('transpose', 2)]),
         rule('nyc-promotion', 'promotion', 'both', 2, True, [act('scaleShift', 0, shift='lift'), act('variation', 5)]),

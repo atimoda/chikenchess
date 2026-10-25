@@ -163,8 +163,8 @@ profile = {
     'parts': parts,
     'reactions': reactions([
         # The song form follows the game: a thin intro, the verse in the middlegame, the chorus as the stakes rise.
-        rule('dus-opening', 'opening', 'both', 1, True, [act('variation', 0), act('lpf', 2800, rampBars=4)]),
-        rule('dus-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('dus-opening', 'opening', 'both', 1, True, [act('lpf', 2800, rampBars=4)]),
+        rule('dus-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('dus-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 6)]),
         rule('dus-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('dus-check', 'check', 'actor', 1, True, [act('variation', 3), act('activate')]),

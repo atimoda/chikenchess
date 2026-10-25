@@ -134,8 +134,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 64, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
     'parts': parts,
     'reactions': reactions([
-        rule('ldn-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('ldn-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('ldn-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('ldn-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('ldn-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 4)]),
         rule('ldn-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         # 'Rewind!': a check spins the record back to the drop.
@@ -145,7 +145,7 @@ profile = {
         rule('ldn-quiet', 'quiet', 'both', 2, True, [act('variation', 4)]),
         rule('ldn-tension', 'tension', 'both', 1, True, [act('lpf', 400, rampBars=8)], 'bass'),
         rule('ldn-swing', 'evalSwing', 'actor', 2, True, [act('variation', 5), act('delay', .4)], 'fx'),
-        rule('ldn-drought', 'captureDrought', 'both', 2, True, [act('variation', 2)]),
+        rule('ldn-drought', 'captureDrought', 'both', 2, True, [act('delay', .35)]),
     ]),
     'reference': 'Rave/breakbeat hardcore de Londres em 1992 na passagem para o jungle (The Prodigy, Shut Up and Dance, Rufige Kru): referência de estilo; material original',
     'url': 'https://en.wikipedia.org/wiki/Jungle_music',

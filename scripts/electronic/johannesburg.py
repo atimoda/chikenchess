@@ -146,8 +146,8 @@ profile = {
     'swing': .1, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
     'parts': parts,
     'reactions': reactions([
-        rule('jhb-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('jhb-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('jhb-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('jhb-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('jhb-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 4)]),
         rule('jhb-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         # Call and response: a check brings the crowd and the chant in for the attacker.

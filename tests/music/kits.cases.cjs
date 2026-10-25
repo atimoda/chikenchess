@@ -571,7 +571,7 @@ test('Electronic World profiles validate, author their reactions and use the mac
   const banks = new Set()
   for (const id of electronic) {
     const profile = styleProfileSchema.parse(STYLE_PROFILES[id])
-    assert.equal(CITY_STYLE_REVISIONS[id], `${id}-2026-10-25-electronic-v1`)
+    assert.equal(CITY_STYLE_REVISIONS[id], `${id}-2026-10-25-electronic-v2`)
     assert.equal(profile.parts.length, 16)
     assert.ok(profile.reactions.rules.length >= 10, `${id}: kit reactions`)
     assert.ok(profile.reactions.rules.every(rule => profile.reactions.overrides.includes(rule.trigger)), `${id}: rules own their triggers`)
@@ -584,4 +584,12 @@ test('Electronic World profiles validate, author their reactions and use the mac
   // The Düsseldorf queen carries the robot voice; Paris pumps its loop from the kick.
   assert.equal(defaultCityKit('dusseldorf').instruments['w:d1'].source.asset, 'robot-voice')
   assert.ok(Object.values(defaultCityKit('paris').instruments).filter(instrument => instrument.duckSource === 'e2').length >= 4)
+})
+
+test('Electronic World kits never pin a variation for a whole game phase', () => {
+  const { STYLE_PROFILES } = loadTs('lib/music/styled-kits.ts')
+  // States last for many moves; forcing a variation there freezes the song on one tab (the silent-intro bug).
+  const lasting = new Set(['opening', 'middle', 'captureDrought', 'tension', 'advantage', 'oppositeCastling'])
+  for (const [id, profile] of Object.entries(STYLE_PROFILES)) for (const rule of profile.reactions?.rules ?? [])
+    if (lasting.has(rule.trigger)) assert.ok(!rule.actions.some(action => action.type === 'variation'), `${id}/${rule.id}`)
 })

@@ -150,8 +150,8 @@ profile = {
     'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
     'parts': parts,
     'reactions': reactions([
-        rule('chi-opening', 'opening', 'both', 1, True, [act('variation', 0)]),
-        rule('chi-middle', 'middle', 'both', 1, True, [act('variation', 1)]),
+        rule('chi-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
+        rule('chi-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
         rule('chi-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 6)]),
         rule('chi-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         # Jack your body: a check throws the shout and the full groove at the attacker.
@@ -159,7 +159,7 @@ profile = {
         rule('chi-capture', 'capture', 'actor', 1, False, [act('gain', 5)], 'drums'),
         rule('chi-queen', 'queenCapture', 'both', 2, True, [act('variation', 2), act('lpf', 1200, rampBars=1)]),
         rule('chi-quiet', 'quiet', 'both', 2, True, [act('variation', 2)]),
-        rule('chi-drought', 'captureDrought', 'both', 1, True, [act('variation', 4), act('delay', .3)], 'lead'),
+        rule('chi-drought', 'captureDrought', 'both', 1, True, [act('delay', .3)], 'lead'),
         rule('chi-swing', 'evalSwing', 'actor', 2, True, [act('variation', 5), act('gain', 6)]),
         rule('chi-tension', 'tension', 'both', 1, True, [act('lpf', 900, rampBars=8), act('resonance', 14)], 'lead'),
     ]),
