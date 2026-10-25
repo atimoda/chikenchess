@@ -1247,9 +1247,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             botRankedMoveStreakRef.current = { kind: rewardKind, count: streakCount }
             if (rewardKind) recordReaction(rewardKind === 'best' ? 'playBest' : 'playWorst', 'b', gameCopy.history().length)
             if (rewardKind && !botRewardedMovesRef.current.has(rewardKey)) {
-              botRewardedMovesRef.current.add(rewardKey)
               const streak = streakCount >= 3
               const earnedEggs = cappedMatchEggs(opponentEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1))
+              // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
+              if (earnedEggs > 0) botRewardedMovesRef.current.add(rewardKey)
               opponentEggBalanceRef.current += earnedEggs
               setVisibleOpponentEggs(opponentEggBalanceRef.current)
               const id = ++rewardSerialRef.current
@@ -1316,11 +1317,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       const streakCount = streakKind ? (previousStreak.kind === streakKind ? previousStreak.count + 1 : 1) : 0
       rankedMoveStreakRef.current = { kind: streakKind, count: streakCount }
       if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
-        rewardedMovesRef.current.add(rewardKey)
         const streak = streakKind === rewardKind && streakCount >= 3
+        const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1))
+        // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
+        if (earnedEggs > 0) rewardedMovesRef.current.add(rewardKey)
         const reward = {
-          earnedEggs: cappedMatchEggs(playerEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1)),
-          firstNotice: markRankedMoveNotice(rewardKind),
+          earnedEggs,
+          firstNotice: earnedEggs > 0 && markRankedMoveNotice(rewardKind),
         }
         playerEggBalanceRef.current += reward.earnedEggs
         collectedMatchEggsRef.current += reward.earnedEggs

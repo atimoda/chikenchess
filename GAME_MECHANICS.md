@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 24/10/2026 — v1.8.0 (kits do Criativo salvos na conta, kit aleatório por papéis, kits oficiais por cidade e Criativo mais enxuto). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
+Atualizado em 25/10/2026 — v1.8.1 (lance premiado bloqueado pelo teto de ovos volta a pagar depois de Undo). Referência de comportamento atual para desenvolvimento e testes. Ideias futuras ficam em `docs/mechanics/maintenance.md` e em `MUSIC_ENGINE_PLAN.md`; não são comportamentos já implementados.
 
 ## Leitura por assunto
 

@@ -425,7 +425,8 @@ export function applyMatchCommand(
       const earned = rankedRewardEggs({ ...state, actions: state.actions.slice(0, -1) }, actor, reward);
       state.eggs[actor] += earned;
       state.collected[actor] += earned;
-      state.rewarded.push(rewardKey);
+      // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
+      if (earned > 0) state.rewarded.push(rewardKey);
     }
     state.redo = null;
     state.drawOffer = null;
