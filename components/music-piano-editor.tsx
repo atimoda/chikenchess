@@ -43,7 +43,7 @@ export function defaultGridDivision(meter:Meter='4/4') {
  return subdivisionsPerBeat(meter)===3?3:meter==='3/4'||beatUnit(meter)==='eighth'?2:4
 }
 
-function PianoRollPlayhead({monitor,snapshot,instrument,id,roll,high,rowHeight,enabled}:{monitor:MusicMonitor;snapshot:MusicSnapshot;instrument:Instrument;id:string;roll:PianoRoll;high:number;rowHeight:number;enabled:boolean}){
+export function PianoRollPlayhead({monitor,snapshot,instrument,id,roll,high,rowHeight,enabled}:{monitor:MusicMonitor;snapshot:MusicSnapshot;instrument:Instrument;id:string;roll:PianoRoll;high:number;rowHeight:number;enabled:boolean}){
  const pulses=beatsPerBar(snapshot.meter), bars=roll.bars
  const cursor=useMonitorSelector(monitor,frame=>{
   const globalPosition=snapshot.arrangement?arrangementPosition(snapshot.arrangement,frame.cycle,pulses):undefined
@@ -54,6 +54,26 @@ function PianoRollPlayhead({monitor,snapshot,instrument,id,roll,high,rowHeight,e
   <line data-playhead x1={cursor/bars*480} x2={cursor/bars*480} y1={0} y2={264} stroke="#fff1b7" strokeWidth={2}/>
  </g>
 }
+
+/** Read-only strip of the variation playing now, for the Song & Instruments list. */
+export const MusicMiniRoll = memo(function MusicMiniRoll({snapshot,id,monitor,instrument}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument}){
+ const pulses=beatsPerBar(snapshot.meter)
+ const playback=useMonitorSelector(monitor,frame=>{
+  const globalPosition=snapshot.arrangement?arrangementPosition(snapshot.arrangement,frame.cycle,pulses):undefined
+  const position=variationPosition(instrument,globalPosition?.index??frame.section,frame.cycle,pulses,snapshot.sectionOverrides?.[id],snapshot.arrangement)
+  return {variation:position.variation,present:position.present,running:isLoopRunning(frame,id,instrument.loopEnabled!==false)}
+ })
+ const roll=instrument.pianoRolls[playback.variation]??instrument.pianoRolls[0]
+ if(!roll)return null
+ // Fit the rows to the notes so they stay readable at strip height.
+ const degrees=roll.notes.map(n=>n.degree),top=degrees.length?Math.max(...degrees):3,bottom=degrees.length?Math.min(...degrees):-3
+ const high=Math.max(top+1,bottom+5),low=bottom-1,rowHeight=264/(high-low+1),bars=roll.bars
+ return <svg data-mini-roll={id} preserveAspectRatio="none" viewBox="0 0 480 264" role="img" aria-label={`MIDI of variation ${String.fromCharCode(65+playback.variation)}`} style={{display:'block',width:'100%',height:34,background:'#101a14',borderRadius:3,opacity:playback.present===false?.45:1}}>
+  {Array.from({length:Math.ceil(bars*pulses)+1},(_,i)=><line key={i} x1={i/(bars*pulses)*480} x2={i/(bars*pulses)*480} y1={0} y2={264} stroke={i%pulses===0?'#3a503e':'#1b2a21'} vectorEffect="non-scaling-stroke"/>)}
+  {roll.notes.map((n,j)=><rect key={j} x={n.start/bars*480} y={(high-n.degree)*rowHeight} width={Math.max(2,n.duration/bars*480-1)} height={Math.max(6,rowHeight)} rx={2} fill={n.slide?'#dfa67a':'#8fb987'} opacity={Math.max(.35,n.velocity)}/>)}
+  {playback.running&&playback.present!==false&&<PianoRollPlayhead monitor={monitor} snapshot={snapshot} instrument={instrument} id={id} roll={roll} high={high} rowHeight={rowHeight} enabled/>}
+ </svg>
+})
 
 export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate',visualUpdatesEnabled=true}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode|((leading:ReactNode)=>ReactNode);division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode;visualUpdatesEnabled?:boolean}){
  const [error,setError]=useState('')

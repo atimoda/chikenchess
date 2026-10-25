@@ -287,6 +287,9 @@ export function OnlineMatchBoard({
   const [paramsOn, setParamsOn] = useState(false);
   const [syncParams, setSyncParams] = useState(true);
   const [songHover, setSongHover] = useState<SongPanelHover | null>(null);
+  // Piece Params shows the Song & Instruments list until the full params are opened.
+  const [paramsOpen, setParamsOpen] = useState(false);
+  const [songMidiOn, setSongMidiOn] = useState(true);
   const [opponentOpen, setOpponentOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [resumedMatch] = useState(
@@ -674,6 +677,7 @@ export function OnlineMatchBoard({
     }
   };
   const selected = music.selected;
+  if (paramsOpen && !selected) setParamsOpen(false);
   const locked = !!selected && syncParams && selected.color !== color;
   const result = match.state.result;
   const won = result?.winner === color;
@@ -860,7 +864,7 @@ export function OnlineMatchBoard({
     // Connections are hidden on portrait phones; skip measuring them after every move.
     musicEngineOn: engineOn && !isPortraitMobile,
     selectedSquare: selected?.square ?? null,
-    hoveredPiece: paramsOn && !selected ? songHover : null,
+    hoveredPiece: paramsOn && (!selected || !paramsOpen) ? songHover : null,
     orientation: color === "w" ? "white" : "black",
     introPhase,
     activeWidgetOrder,
@@ -945,6 +949,9 @@ export function OnlineMatchBoard({
     const toggleSongPiece = (square: Square) => {
       if (music.togglePiece(square, false) && engineOn) setPlaying(true);
     };
+    const soloSongPiece = (id: string) => {
+      if (music.toggleSolo(id, false) && engineOn) setPlaying(true);
+    };
     return (
       <>
         {spectrogramMode === "widget" && (
@@ -1007,29 +1014,46 @@ export function OnlineMatchBoard({
                 arrangement={music.kit.arrangement}
                 harmony={music.kit.harmony}
                 onSeek={music.seekSection}
-                onSelect={(square) => {
+                onSelect={(square) => music.select(square)}
+                onOpenParams={(square) => {
                   setSongHover(null);
                   music.select(square);
+                  setParamsOpen(true);
                 }}
+                snapshot={music.snapshot}
+                selectedId={selected?.id ?? null}
+                selectedView={
+                  paramsOn && selected ? (
+                    <MusicVoiceReadout
+                      showStatus={false}
+                      monitor={music.monitor}
+                      id={selected.id}
+                      snapshot={music.snapshot}
+                      instrument={music.instrument ?? undefined}
+                      onInstrumentChange={
+                        locked || result ? undefined : music.updateInstrument
+                      }
+                      variationTabs
+                      knobUpdateMode="on-release"
+                    />
+                  ) : undefined
+                }
+                showMidi={songMidiOn}
                 canToggle={(piece) =>
                   !result && (piece.color === color || !syncParams)
                 }
                 onToggle={toggleSongPiece}
                 ownColor={color}
                 onAudition={music.tapAudition}
-                onSolo={
-                  result
-                    ? undefined
-                    : (id) => {
-                        if (music.toggleSolo(id, false) && engineOn)
-                          setPlaying(true);
-                      }
-                }
+                onSolo={result ? undefined : soloSongPiece}
                 onHover={setSongHover}
               />
             ) : undefined
           }
-          readOnly={locked || !!result}
+          // The list stays usable with an opponent's piece selected.
+          readOnly={(locked && paramsOpen) || !!result}
+          showSong={!paramsOpen}
+          songMidi={{ on: songMidiOn, onToggle: () => setSongMidiOn((on) => !on) }}
           readOnlyMessage={locked ? "Opponent’s Piece Params" : "Match ended"}
           instrument={music.instrument}
           onInstrumentChange={
@@ -1044,7 +1068,10 @@ export function OnlineMatchBoard({
                 ]
               : undefined
           }
-          onDeselect={() => music.select(null)}
+          onDeselect={() => {
+            setParamsOpen(false);
+            music.select(null);
+          }}
           playback={
             paramsOn && selected ? (
               <MusicVoiceReadout
@@ -1058,6 +1085,10 @@ export function OnlineMatchBoard({
                 }
                 loopOn={music.activeIds.has(selected.id)}
                 onLoopToggle={() => toggleSongPiece(selected.square)}
+                soloOn={music.soloIds.has(selected.id)}
+                onSoloToggle={
+                  result ? undefined : () => soloSongPiece(selected.id)
+                }
                 variationTabs
                 knobUpdateMode="on-release"
               />
@@ -1468,7 +1499,8 @@ export function OnlineMatchBoard({
                 const piece = music.snapshot.pieces.find(
                   (p) => p.square === square,
                 );
-                if (piece) music.togglePiece(square);
+                // Only the double tap that turns a piece on opens the full Piece Params.
+                if (piece && music.togglePiece(square)) setParamsOpen(true);
               }}
               onFrozenCaptureBlocked={() => toast("Não é possível capturar uma peça congelada.", { id: "frozen-capture-blocked", duration: 3000 })}
               onShieldCaptureBlocked={() =>

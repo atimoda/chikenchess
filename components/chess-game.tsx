@@ -452,6 +452,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
   const [songHover, setSongHover] = useState<SongPanelHover | null>(null)
+  // Piece Params shows the Song & Instruments list until the full params are opened.
+  const [paramsOpen, setParamsOpen] = useState(false)
+  const [songMidiOn, setSongMidiOn] = useState(true)
   const mixerManuallyClosedRef = useRef(false)
   const musicWidgetsBeforeMuteRef = useRef<{
     mixer: boolean
@@ -507,6 +510,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const musicOptions = useMemo(() => ({ actionEvents: reactionLog }), [reactionLog])
   const musicPositions = useMemo(() => powerTimelineRef.current.map(entry => entry.game), [game, matchPowers])
   const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn, musicPositions, musicOptions)
+  if (paramsOpen && !music.selected) setParamsOpen(false)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
   const { resumeAudio, playCheckmate, playVictoryFanfare, playDrawKalimba, playSquareSample, playDrum, engineRef } = useSfx()
@@ -1640,7 +1644,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     // Connections are hidden on portrait phones; skip measuring them after every move.
     rootRef, boardAreaRef, boardScale, musicEngineOn: musicEngineOn && !isPortraitMobile,
     selectedSquare: music.selected?.square ?? null,
-    hoveredPiece: knobsOn && !music.selected ? songHover : null,
+    hoveredPiece: knobsOn && (!music.selected || !paramsOpen) ? songHover : null,
     introPhase, activeWidgetOrder,
     widgets: {
       knobs: { ref: knobsRef, on: knobsOn, position: knobsPosition, setPosition: setKnobsPosition },
@@ -1688,6 +1692,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       void resumeAudio()
     }
   }
+  const soloSongPiece = (id: string) => {
+    const turnedOn = music.toggleSolo(id, false)
+    if (turnedOn && !isPlaying && music.engineActive) {
+      setHasPlaybackStarted(true)
+      setIsPlaying(true)
+      void resumeAudio()
+    }
+  }
   const widgetsContent = (mobileMode: boolean) => {
       const commonStyle = mobileMode ? { position: 'static' as const, width: '100%', zIndex: 10 } : undefined
       const togglePortalized = !mobileMode && widgetTogglesReady
@@ -1714,10 +1726,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 instrument={music.instrument}
                 selectedPiece={music.selected}
                 onInstrumentChange={music.updateInstrument}
-                onDeselect={() => music.select(null)}
+                onDeselect={() => { setParamsOpen(false); music.select(null) }}
+                showSong={!paramsOpen}
+                songMidi={{ on: songMidiOn, onToggle: () => setSongMidiOn(on => !on) }}
                 playback={knobsOn && music.selected ? <>
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
-                  <MusicVoiceReadout variationTabs showStatus={false} loopOn={music.activeIds.has(music.selected.id)} onLoopToggle={() => { if (music.selected) toggleSongPiece(music.selected.square) }} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
+                  <MusicVoiceReadout variationTabs showStatus={false} loopOn={music.activeIds.has(music.selected.id)} onLoopToggle={() => { if (music.selected) toggleSongPiece(music.selected.square) }} soloOn={music.soloIds.has(music.selected.id)} onSoloToggle={() => { if (music.selected) soloSongPiece(music.selected.id) }} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
                 </> : undefined}
                 song={music.kit ? <MusicSongPanel
                   pieces={music.snapshot.pieces}
@@ -1729,18 +1743,16 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   harmony={music.kit.harmony}
                   onArrangementChange={music.updateArrangement}
                   onSeek={music.seekSection}
-                  onSelect={square => { setSongHover(null); music.select(square) }}
+                  onSelect={square => music.select(square)}
+                  onOpenParams={square => { setSongHover(null); music.select(square); setParamsOpen(true) }}
+                  snapshot={music.snapshot}
+                  selectedId={music.selected?.id ?? null}
+                  selectedView={knobsOn && music.selected ? <MusicVoiceReadout variationTabs showStatus={false} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" /> : undefined}
+                  showMidi={songMidiOn}
                   onToggle={toggleSongPiece}
                   ownColor="w"
                   onAudition={music.tapAudition}
-                  onSolo={id => {
-                    const turnedOn = music.toggleSolo(id, false)
-                    if (turnedOn && !isPlaying && music.engineActive) {
-                      setHasPlaybackStarted(true)
-                      setIsPlaying(true)
-                      void resumeAudio()
-                    }
-                  }}
+                  onSolo={soloSongPiece}
                   onHover={setSongHover}
                 /> : undefined}
                 ref={knobsRef}
@@ -2197,6 +2209,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     const piece = game.get(square)
                     if (!piece) return
                     const turnedOn = music.togglePiece(square)
+                    // Only the double tap that turns a piece on opens the full Piece Params.
+                    if (turnedOn) setParamsOpen(true)
                     if (turnedOn && !isPlaying && music.engineActive) {
                       setHasPlaybackStarted(true)
                       setIsPlaying(true)

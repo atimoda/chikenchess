@@ -214,3 +214,17 @@ test('per-note slide uses canonical pattack and pan overrides after global contr
  assert.equal(events[2].value.penv,3);assert.equal(events[2].value.pattack,.5)
  assert.equal(events[0].value.ccSlide,undefined)
 })
+
+test('per-note ratchet repeats inside the note and chance thins it out', async () => {
+ const api=await strudel(),kit=creative.createCreativeSession()
+ kit.pieces.forEach(p=>p.active=p.id==='w:b1')
+ Object.assign(kit.instruments['w:b1'],{playChance:undefined,pianoRolls:[{bars:1,notes:[{start:0,duration:.5,degree:0,velocity:.7,ratchet:3},{start:.5,duration:.5,degree:2,velocity:1}]}]})
+ const onsets=()=>compileVoice(api,voiceSpecs(creative.creativeSnapshot(kit,true),null)[0]).queryArc(0,1).filter(h=>h.hasOnset())
+ const ratcheted=onsets()
+ assert.equal(ratcheted.length,4)
+ assert.deepEqual(ratcheted.map(h=>Number(h.whole.begin).toFixed(4)).sort(),['0.0000','0.1667','0.3333','0.5000'])
+ kit.instruments['w:b1'].pianoRolls[0].notes[0].chance=0
+ const thinned=onsets()
+ assert.equal(thinned.length,1)
+ assert.equal(Number(thinned[0].whole.begin),.5)
+})
