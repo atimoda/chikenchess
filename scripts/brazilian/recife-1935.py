@@ -85,7 +85,7 @@ parts = [
     # d2 · pawn: hand cymbals on the offbeats.
     part('rhythm', 'Pratos', 'pulse', recorded('percussion', 'crash', pitched=False), [
         drum('..x. ..x.'), drum('..x. ..x.'), drum('X... X...'), drum('..x. ..x.'), drum('..x. ..x.'), drum('X.x. X.x.'),
-    ], [1] * 6, gain=.06, clip=.7, lpf=10000, hpf=2500, effects={'reverb': .1, 'pan': -.35},
+    ], [1] * 6, gain=0.4, clip=.7, lpf=10000, hpf=2500, effects={'reverb': .1, 'pan': -.35},
         arrangement=arrangement((False, True, True, True, False, True))),
     # e1 · king: the high trumpet's long shouts in the refrains.
     part('melody', 'Trompete agudo · grito', 'sustain', samba('trompete', True), [
@@ -119,7 +119,7 @@ parts = [
     # g2 · pawn: hand cymbal choke on the 'a' of each beat.
     part('rhythm', 'Prato de choque', 'pulse', recorded('percussion', 'cymbal-tip', pitched=False), [
         drum('...x ...x'), drum('...x ...x'), drum('.x.x .x.x'), drum('...x ...x'), drum('...x ...x'), drum('.x.x .x.x'),
-    ], [1] * 6, gain=.06, clip=.6, lpf=11000, hpf=3000, effects={'reverb': .08, 'pan': .35},
+    ], [1] * 6, gain=0.35, clip=.6, lpf=11000, hpf=3000, effects={'reverb': .08, 'pan': .35},
         arrangement=arrangement((False, False, True, True, True, True))),
     # h1 · rook: low trombone as the band's tuba.
     part('bass', 'Tuba', 'phrase', samba('trombone', True), [

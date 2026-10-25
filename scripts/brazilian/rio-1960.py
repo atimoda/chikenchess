@@ -79,7 +79,7 @@ parts = [
         over(INTRO, lambda c: hits('.... .... x.x. x...', CHORD[c].split(',')[-1])), over(A, lambda c: hits('.... .... .... x.x.', CHORD[c].split(',')[-1])),
         over(INTRO, lambda c: hits('.... .... x.x. x...', CHORD[c].split(',')[-1])), over(B, lambda c: hits('.... .... .... x.x.', CHORD[c].split(',')[-1])),
         over(A, lambda c: hits('.... .... .... x...', CHORD[c].split(',')[-1])), over(B, lambda c: hits('.... .... x.x. x.x.', CHORD[c].split(',')[-1])),
-    ], [4, 8, 4, 8, 8, 8], octave=4, gain=0.6, attack=.002, decay=.5, sustain=.2, release=.2, gate=.6, lpf=7000, hpf=250,
+    ], [4, 8, 4, 8, 8, 8], octave=4, gain=1.0, attack=.002, decay=0.8, sustain=0.5, release=.2, gate=.6, lpf=7000, hpf=250,
         mapping={'fileDegrees': 0}, arrangement=arrangement((True, False, True, True, False, True)), effects={'reverb': .25, 'pan': .35}),
     # c2 · pawn: brushes on the snare, sixteenths with a swirl.
     part('rhythm', 'Vassourinha', 'pulse', sample('drums', 'brush', False), [
@@ -114,7 +114,7 @@ parts = [
     # f2 · pawn: ride cymbal under the solo.
     part('rhythm', 'Prato de condução', 'pulse', recorded('percussion', 'ride', pitched=False), [
         drum('x... x... x... x...'), drum('x..x x... x..x x...'), drum('x... x... x... x...'), drum('x..x x... x..x x...'), drum('x.xx x.xx x.xx x.xx'), drum('x..x x... x..x x...'),
-    ], [1] * 6, gain=0.35, clip=.5, lpf=11000, hpf=2500, effects={'reverb': .1, 'pan': -.35},
+    ], [1] * 6, gain=0.8, clip=.5, lpf=11000, hpf=1500, effects={'reverb': .1, 'pan': -.35},
         arrangement=arrangement((False, False, False, False, True, True))),
     # g1 · knight: strings in the last refrain.
     part('harmony', 'Cordas', 'sustain', recorded('classical', 'viola-sustain'), [

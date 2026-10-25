@@ -326,10 +326,10 @@
         8
       ],
       "octave": 4,
-      "gain": 0.6,
+      "gain": 1.0,
       "attack": 0.002,
-      "decay": 0.5,
-      "sustain": 0.2,
+      "decay": 0.8,
+      "sustain": 0.5,
       "release": 0.2,
       "gate": 0.6,
       "lpf": 7000,
@@ -798,10 +798,10 @@
         1,
         1
       ],
-      "gain": 0.35,
+      "gain": 0.8,
       "clip": 0.5,
       "lpf": 11000,
-      "hpf": 2500,
+      "hpf": 1500,
       "effects": {
         "reverb": 0.1,
         "pan": -0.35
