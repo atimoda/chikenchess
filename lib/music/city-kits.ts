@@ -1,5 +1,6 @@
 import { CREATIVE_STORAGE, parseCreativeSession, type CreativeSession } from './creative'
 import { cities } from '../cities-data'
+import { CAMPAIGNS, citiesInCampaign } from '../campaigns'
 import { createStyledCityKit } from './styled-kits'
 import { OFFICIAL_CITY_KITS } from './official-kits'
 
@@ -7,6 +8,15 @@ export const CITY_KIT_STORAGE_PREFIX = 'chickenchess:city-kit:v1:'
 export const KIT_LIBRARY_STORAGE = `${CREATIVE_STORAGE}:kits`
 
 export const EDITABLE_CITY_KITS = cities.map(({ id, name, year }) => ({ id, name: `${name} · ${year}` }))
+
+/** Creative's Default kits, one group per campaign in map order, labelled "year City - style". */
+export const DEFAULT_KIT_GROUPS = CAMPAIGNS.map(campaign => ({
+  id: campaign.id,
+  name: campaign.name,
+  kits: citiesInCampaign(cities, campaign.id)
+    .filter(city => city.campaigns[0] === campaign.id)
+    .map(city => ({ id: city.id, label: `${city.year} ${city.name} - ${city.genre}` })),
+})).filter(group => group.kits.length > 0)
 
 export type EditableCityKitId = typeof EDITABLE_CITY_KITS[number]['id']
 

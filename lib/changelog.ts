@@ -3,6 +3,16 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.9.1',
+    date: '26/10/2026',
+    title: 'Kits padrão do Criativo agrupados por campanha',
+    groups: [
+      { title: 'Criativo', items: [
+        'Na lista Current Creative kit, os kits padrão das cidades aparecem agrupados por campanha (Electronic World, Ballads, Classical, Harmonic songbook, Brazilian, World e Africa Cult), em ordem de ano, com nomes no formato "ANO Cidade - Estilo", como "1984 Chicago - Classic House".',
+      ] },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '25/10/2026',
     title: 'Electronic World e Brazilian refeitos, Goa, Bristol, Croydon, Durban e o ensaio da Mangueira, engine musical expandida e samples 5× menores',

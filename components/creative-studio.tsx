@@ -22,7 +22,7 @@ import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { identifyPitchCollection } from '@/lib/music/scales'
 import { CREATIVE_STORAGE, ROOTS, SCALES, SCALE_LABELS, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, moveCreativePiece, parseCreativeSession, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
-import { EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, prepareOfficialCityKit, resetLegacyMusicStorage, updateKitLibrary } from '@/lib/music/city-kits'
+import { DEFAULT_KIT_GROUPS, EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, prepareOfficialCityKit, resetLegacyMusicStorage, updateKitLibrary } from '@/lib/music/city-kits'
 import { cities, getCityById } from '@/lib/cities-data'
 import { STYLE_REVISION } from '@/lib/music/styled-kits'
 import { HARMONY_PLANS, type HarmonyPlanId } from '@/lib/music/harmony'
@@ -110,12 +110,8 @@ export function CreativeStudio() {
   const effects = session.effects[selectedId]
   const mapping = session.mappings[selectedId]
   const activeCount = session.pieces.filter(p => p.active).length
-  // Building a default kit composes and validates the whole kit; doing it for
-  // every city on each render made every click and drag frame pay for ~47 kits.
-  const defaultKitOptions = useMemo(() => EDITABLE_CITY_KITS.map(city => ({ ...city, kitName: defaultCityKit(city.id)?.name ?? city.name })), [])
   const cityName = (cityId?: string) => EDITABLE_CITY_KITS.find(city => city.id === cityId)?.name
   const kitLabel = (kit: CreativeSession) => `${kit.name}${cityName(kit.cityId) ? ` (${cityName(kit.cityId)})` : ''}`
-  const linkedUserCities = new Set(kits.flatMap(kit => kit.cityId ? [kit.cityId] : []))
   const admin = account?.admin === true
   // Account kits come first; browser-only kits with another name stay listed beside them.
   const libraryNames = [...new Set([...remoteKits.map(kit => kit.name), ...kits.map(kit => kit.name)])]
@@ -388,14 +384,14 @@ export function CreativeStudio() {
       <div className={styles.identity}><Link href="/" aria-label="Back to the world"><ArrowLeft size={18} /></Link><div><span className={styles.eyebrow}>CHICKENCHESS LAB<InfoTip label="Creative Mode">A workbench for composing with the pieces. No stage intro and no forced turns: try sounds, simulate states and save kits for your matches.</InfoTip><VersionChangelog /></span><h1><FlaskConical size={22} /> Creative Mode</h1></div></div>
       <fieldset disabled={!ready || busy} className={styles.kitHeader} aria-label="Current kit and library">
         <div className={styles.kitPick}>
-          <label><span className={styles.helpCaption}>Current Creative kit<InfoTip label="Load and try kits">My kits lists the kits saved {account ? 'in your account and in this browser' : 'in this browser'} and the standalone studies. The cities’ default kits are below, followed by Legacy kits: earlier versions of the Electronic World and Brazilian kits, kept for history and not linked to any city. Load asks first when the current kit has unsaved changes.</InfoTip></span><select aria-label="Current Creative kit" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
+          <label><span className={styles.helpCaption}>Current Creative kit<InfoTip label="Load and try kits">My kits lists the kits saved {account ? 'in your account and in this browser' : 'in this browser'} and the standalone studies. The cities’ default kits are below, grouped by campaign and named by year, city and style, followed by Legacy kits: earlier versions of the Electronic World and Brazilian kits, kept for history and not linked to any city. Load asks first when the current kit has unsaved changes.</InfoTip></span><select aria-label="Current Creative kit" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
             <option value="">Current draft</option>
             <optgroup label="My kits">
               {libraryNames.map(name => { const kit = kits.find(item => item.name === name); return <option key={name} value={`${USER_KIT_PREFIX}${name}`}>{kit ? kitLabel(kit) : name}</option> })}
               <option value={MOUTH_BREATHER_KIT}>Mouth Breather · eefano study</option>
               <option value={DUSSELDORF_ORIGINAL_KIT}>Düsseldorf · Electro 01</option>
             </optgroup>
-            <optgroup label="Default kits">{defaultKitOptions.map(city=><option key={city.id} value={`${DEFAULT_KIT_PREFIX}${city.id}`}>{city.kitName}{linkedUserCities.has(city.id)?'':` (${city.name})`}</option>)}</optgroup>
+            {DEFAULT_KIT_GROUPS.map(group=><optgroup key={group.id} label={`Default kits · ${group.name}`}>{group.kits.map(kit=><option key={kit.id} value={`${DEFAULT_KIT_PREFIX}${kit.id}`}>{kit.label}</option>)}</optgroup>)}
             <optgroup label="Legacy kits">{LEGACY_KITS.map(kit=><option key={kit.id} value={`${LEGACY_KIT_PREFIX}${kit.id}`}>{kit.name} ({kit.city})</option>)}</optgroup>
           </select></label>
           <button className={styles.primary} disabled={!selectedKit} onClick={() => void loadSelectedKit()}>Load</button>
