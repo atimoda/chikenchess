@@ -629,3 +629,19 @@ test('authored kits never pin a variation for a whole game phase', () => {
   for (const [id, profile] of Object.entries(STYLE_PROFILES)) for (const rule of profile.reactions?.rules ?? [])
     if (lasting.has(rule.trigger)) assert.ok(!rule.actions.some(action => action.type === 'variation'), `${id}/${rule.id}`)
 })
+
+test('Creative lists every default kit once, grouped by campaign and labelled "year City - style"', () => {
+  const { DEFAULT_KIT_GROUPS } = loadTs('lib/music/city-kits.ts')
+  const { cities } = loadTs('lib/cities-data.ts')
+  const { CAMPAIGNS } = loadTs('lib/campaigns.ts')
+  assert.deepEqual(DEFAULT_KIT_GROUPS.map(group => group.id), CAMPAIGNS.map(campaign => campaign.id))
+  const ids = DEFAULT_KIT_GROUPS.flatMap(group => group.kits.map(kit => kit.id))
+  assert.deepEqual([...ids].sort(), cities.map(city => city.id).sort())
+  for (const group of DEFAULT_KIT_GROUPS) for (const kit of group.kits) {
+    const city = cities.find(item => item.id === kit.id)
+    assert.ok(city.campaigns.includes(group.id), kit.id)
+    assert.equal(kit.label, `${city.year} ${city.name} - ${city.genre}`)
+  }
+  const chicago = DEFAULT_KIT_GROUPS.find(group => group.id === 'electronic-history').kits.find(kit => kit.id === 'chicago')
+  assert.equal(chicago.label, '1984 Chicago - Classic House')
+})
