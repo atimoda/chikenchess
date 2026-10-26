@@ -3,6 +3,18 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.9.1',
+    date: '26/10/2026',
+    title: 'Ensaio da Mangueira refeito com bateria gravada e batidão mais forte no funk carioca',
+    groups: [
+      { title: 'Brazilian', items: [
+        'Rio de Janeiro 1984 · Ensaio da Mangueira virou só bateria, com timbres gravados: surdo de primeira grave e aberto no segundo tempo, abafado com a mão no primeiro (sem surdo de segunda, como na Mangueira), surdo de terceira cortando, caixas de guerra em cima, tarol, tamborins em teleco-teco e desenhos, chocalho de platinelas, agogô, reco-reco, dois repiques, cuícas e o apito do mestre.',
+        'A fase começa no esquenta (apito, chamada do repique e a entrada da bateria), o xeque faz a paradinha com a convenção de toda a bateria e lances quietos levam à bossa, com surdos e caixas saindo e tamborins e repiques na frente.',
+        'Rio de Janeiro 1995 · Funk carioca: o bumbo 808 agora marca o batidão em 3+3+4+3+3, mais forte e à frente do kit, e o sub 808 bate junto com cada bumbo.',
+      ] },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '25/10/2026',
     title: 'Electronic World e Brazilian refeitos, Goa, Bristol, Croydon, Durban e o ensaio da Mangueira, engine musical expandida e samples 5× menores',

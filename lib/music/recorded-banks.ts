@@ -37,4 +37,13 @@ export const RECORDED_BANKS: SampleBank[] = [{
     multisample('chicken-guitars-v1', 'bass', 'Baixo hollowbody dedilhado', ['c2', 'e2', 'g2', 'c3'], ['Tomada 1', 'Tomada 2'], -1),
     multisample('chicken-guitars-v1', 'nylon', 'Violão clássico de nylon', ['e2', 'g2', 'c3', 'e3', 'g3', 'c4'], ['Gravação']),
   ],
+}, {
+  id: 'chicken-bateria-v1', name: 'Chicken Bateria · escola de samba',
+  credit: 'Versilian Community Sample Library · gravações CC0 afinadas e moldadas como surdos, caixa, tamborim, chocalho, reco-reco e apito; scripts/prepare-bateria-recordings.py', license: 'CC0-1.0',
+  assets: [
+    ['surdo-primeira', 'Surdo de primeira (aberto)'], ['surdo-primeira-leve', 'Surdo de primeira (leve)'], ['surdo-mao', 'Surdo abafado com a mão'],
+    ['surdo-terceira', 'Surdo de terceira'], ['caixa', 'Caixa de guerra'], ['caixa-leve', 'Caixa de guerra (leve)'],
+    ['tamborim', 'Tamborim'], ['tamborim-abafado', 'Tamborim abafado'], ['chocalho', 'Chocalho de platinelas'],
+    ['chocalho-acento', 'Chocalho (acento)'], ['reco-reco', 'Reco-reco'], ['apito', 'Apito do mestre'], ['apito-longo', 'Apito longo'],
+  ].map(([id, name]) => ({ id, name, variants: [{ name: 'Gravação', file: `/samples/chicken-bateria-v1/${id}-0.ogg` }] })),
 }]

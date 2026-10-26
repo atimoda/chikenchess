@@ -39,12 +39,12 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'recife-1950': 'recife-1950-2026-10-25-brazilian-v1',
   'rio-1960': 'rio-1960-2026-10-25-brazilian-v1',
   'recife-1975': 'recife-1975-2026-10-25-brazilian-v1',
-  'rio-1984': 'rio-1984-2026-10-25-brazilian-v1',
+  'rio-1984': 'rio-1984-2026-10-26-brazilian-v2',
   'salvador-1992': 'salvador-1992-2026-10-25-brazilian-v1',
-  'rio-1995': 'rio-1995-2026-10-25-brazilian-v1',
+  'rio-1995': 'rio-1995-2026-10-26-brazilian-v2',
 }
 
-const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', psytrance: 'chicken-psytrance-v1', machines: 'chicken-machines-v1', electronic: 'chicken-electronic-v1', brasil: 'chicken-brasil-v1' } as const
+const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', psytrance: 'chicken-psytrance-v1', machines: 'chicken-machines-v1', electronic: 'chicken-electronic-v1', brasil: 'chicken-brasil-v1', bateria: 'chicken-bateria-v1' } as const
 import { parseProfileToken } from './profile-tokens'
 const WHITE_SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2'] as const
 
