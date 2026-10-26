@@ -6,7 +6,7 @@ import type { Behavior, Instrument, MovementMapping, ParameterRange, SoundDesign
 
 export type PartRole = 'rhythm' | 'bass' | 'harmony' | 'melody' | 'response' | 'texture'
 export type SynthSound = 'sbd' | 'sine' | 'triangle' | 'square' | 'sawtooth' | 'supersaw' | 'white' | 'pink' | 'brown'
-export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae' | 'classical' | 'band' | 'percussion' | 'guitars' | 'psytrance' | 'machines' | 'electronic' | 'brasil'
+export type SampleBank = 'electro' | 'jazz' | 'world' | 'strings' | 'keys' | 'synths' | 'drums' | 'sambaReggae' | 'classical' | 'band' | 'percussion' | 'guitars' | 'psytrance' | 'machines' | 'electronic' | 'brasil' | 'bateria'
 
 export type ProfileSource =
   | { kind: 'synth'; sound: SynthSound }

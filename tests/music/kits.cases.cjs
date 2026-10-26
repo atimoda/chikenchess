@@ -39,7 +39,7 @@ test('sample registry points to small valid local WAV files with explicit tuning
     const bankLimit = budgets[bank.id] ?? 200_000
     assert.ok(bankBytes < bankLimit, `${bank.id}: bank stays within its audio budget`)
   }
-  assert.equal(SAMPLE_BANKS.length, 17)
+  assert.equal(SAMPLE_BANKS.length, 18)
   assert.ok(total < 15_000_000, 'recorded banks keep the lazy-loaded catalog below 15 MB')
   assert.equal(fs.readdirSync(path.resolve(fixtureDirectory, '../public/samples'), { recursive: true }).filter(file => String(file).endsWith('.wav')).length, 0, 'no WAV left in the catalog')
 })
@@ -603,7 +603,7 @@ test('Brazilian profiles validate, author their reactions and use the Brazilian 
   const banks = new Set()
   for (const id of brazilian) {
     const profile = styleProfileSchema.parse(STYLE_PROFILES[id])
-    assert.equal(CITY_STYLE_REVISIONS[id], `${id}-2026-10-25-brazilian-v1`)
+    assert.match(CITY_STYLE_REVISIONS[id], new RegExp(`^${id}-2026-10-2[56]-brazilian-v\\d$`))
     assert.equal(profile.parts.length, 16)
     assert.ok(profile.reactions.rules.length >= 10, `${id}: kit reactions`)
     assert.ok(profile.reactions.rules.every(rule => profile.reactions.overrides.includes(rule.trigger)), `${id}: rules own their triggers`)
@@ -612,10 +612,13 @@ test('Brazilian profiles validate, author their reactions and use the Brazilian 
     for (const instrument of Object.values(kit.instruments)) if (instrument.source?.kind === 'sample') banks.add(instrument.source.bank)
   }
   assert.ok(banks.has('chicken-brasil-v1'))
-  // The Mangueira rehearsal is a bateria: almost every piece is percussion, with the quadra singing on the queen.
+  // The Mangueira rehearsal is a bateria: every piece is percussion.
   const mangueira = defaultCityKit('rio-1984')
   assert.equal(mangueira.meter, '2/4')
-  assert.equal(mangueira.instruments['w:d1'].source.asset, 'coro-laia')
+  // Recorded bateria: the surdo de primeira on the rook, repique de chamada on the queen, no synthesized voice.
+  assert.equal(mangueira.instruments['w:a1'].source.bank, 'chicken-bateria-v1')
+  assert.equal(mangueira.instruments['w:d1'].source.asset, 'repinique')
+  assert.ok(Object.values(mangueira.instruments).every(instrument => instrument.source?.asset !== 'coro-laia'))
   assert.match(cities.find(city => city.id === 'rio-1984').image, /Mangueira/)
 })
 

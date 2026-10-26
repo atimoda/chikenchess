@@ -5,8 +5,13 @@ export const CHANGELOG = [
   {
     version: '1.9.1',
     date: '26/10/2026',
-    title: 'Kits padrão do Criativo agrupados por campanha',
+    title: 'Ensaio da Mangueira refeito com bateria gravada, batidão mais forte no funk carioca e kits padrão do Criativo agrupados por campanha',
     groups: [
+      { title: 'Brazilian', items: [
+        'Rio de Janeiro 1984 · Ensaio da Mangueira virou só bateria, com timbres gravados: surdo de primeira grave e aberto no segundo tempo, abafado com a mão no primeiro (sem surdo de segunda, como na Mangueira), surdo de terceira cortando, caixas de guerra em cima, tarol, tamborins em teleco-teco e desenhos, chocalho de platinelas, agogô, reco-reco, dois repiques, cuícas e o apito do mestre.',
+        'A fase começa no esquenta (apito, chamada do repique e a entrada da bateria), o xeque faz a paradinha com a convenção de toda a bateria e lances quietos levam à bossa, com surdos e caixas saindo e tamborins e repiques na frente.',
+        'Rio de Janeiro 1995 · Funk carioca: o bumbo 808 agora marca o batidão em 3+3+4+3+3, mais forte e à frente do kit, e o sub 808 bate junto com cada bumbo.',
+      ] },
       { title: 'Criativo', items: [
         'Na lista Current Creative kit, os kits padrão das cidades aparecem agrupados por campanha (Electronic World, Ballads, Classical, Harmonic songbook, Brazilian, World e Africa Cult), em ordem de ano, com nomes no formato "ANO Cidade - Estilo", como "1984 Chicago - Classic House".',
       ] },

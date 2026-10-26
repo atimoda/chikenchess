@@ -49,6 +49,11 @@ def brasil(asset, pitched=False):
     return sample('brasil', asset, pitched)
 
 
+def bateria(asset):
+    """Recorded escola de samba bank (chicken-bateria-v1): surdos, caixa, tamborim, chocalho, reco-reco, apito."""
+    return sample('bateria', asset, False)
+
+
 def samba(asset, pitched=False):
     """Recorded Salvador bank (surdos, caixa, tarol, repinique, timbau, agogôs, chocalho, pandeiro, metais)."""
     return sample('sambaReggae', asset, pitched)
