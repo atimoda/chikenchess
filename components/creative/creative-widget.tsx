@@ -32,7 +32,7 @@ const MIN_WIDTH = 240
 const MIN_HEIGHT = 96
 
 /**
- * Floating Creative panel, styled like the match widgets: drag by the title bar, power button on
+ * Floating Creative panel, styled like the match widgets: drag from any non-control part, power button on
  * the corner, resize grip at the bottom right. Turning it off collapses it to its title bar.
  */
 export function CreativeWidget({ id, title, on, onToggle, position, onPositionChange, size, onSizeChange, zIndex, onFront, cityColor, stacked, widgetRef, info, children }: CreativeWidgetProps) {
@@ -73,6 +73,7 @@ export function CreativeWidget({ id, title, on, onToggle, position, onPositionCh
     position={position}
     onDrag={next => onPositionChange({ x: Math.round(next.x), y: Math.max(0, Math.round(next.y)) })}
     handleRef={headerRef}
+    dragFromBackground
     className={`${styles.studio} ${styles.widget}`}
     style={style}
     data-creative-widget={id}

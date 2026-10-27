@@ -39,6 +39,7 @@ import { listRemoteKits, loadRemoteKit, remoteKitError, saveRemoteKit, watchCrea
 import { saveOfficialCityKit } from '@/lib/admin/official-kit-client'
 import { SampleSourceControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
+import { MusicSongPanel, type SongPanelHover } from './music-song-panel'
 import { VersionChangelog } from './version-changelog'
 import styles from './creative-studio.module.css'
 import { duckSourceOptions } from '@/lib/music/sound-design'
@@ -125,6 +126,7 @@ export function CreativeStudio() {
   const [widgetOrder, setWidgetOrder] = useState<CreativeWidgetId[]>(() => CREATIVE_WIDGETS.map(widget => widget.id))
   const [widgetRefs] = useState(() => Object.fromEntries(CREATIVE_WIDGETS.map(widget => [widget.id, createRef<HTMLDivElement>()])) as Record<CreativeWidgetId, RefObject<HTMLDivElement | null>>)
   const [connections, setConnections] = useState<WidgetConnection[]>([])
+  const [hoverConnections, setHoverConnections] = useState<WidgetConnection[]>([])
   const [layoutTick, setLayoutTick] = useState(0)
   const analysis = useCreativeAnalysis()
   const [analysisArrows, setAnalysisArrows] = useState<AnalysisArrow[]>([])
@@ -134,6 +136,7 @@ export function CreativeStudio() {
   const [historyLength, setHistoryLength] = useState(0)
   const [undoAnimationKey, setUndoAnimationKey] = useState(0)
   const [reactionScope, setReactionScope] = useState<ReactionScope>('kit')
+  const [songHover, setSongHover] = useState<SongPanelHover | null>(null)
   const [session, setSession] = useState(createCreativeSession)
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -174,6 +177,7 @@ export function CreativeStudio() {
   const effects = session.effects[selectedId]
   const mapping = session.mappings[selectedId]
   const activeCount = session.pieces.filter(p => p.active).length
+  const activeIds = useMemo(() => new Set(session.pieces.filter(piece => piece.active).map(piece => piece.id)), [session.pieces])
   const cityName = (cityId?: string) => EDITABLE_CITY_KITS.find(city => city.id === cityId)?.name
   const kitLabel = (kit: CreativeSession) => `${kit.name}${cityName(kit.cityId) ? ` (${cityName(kit.cityId)})` : ''}`
   const admin = account?.admin === true
@@ -542,7 +546,10 @@ export function CreativeStudio() {
       next.push(connectRects(element.getBoundingClientRect(), widget.link === 'piece' && pieceRect ? pieceRect : boardRect, rootRect))
     }
     setConnections(next)
-  }, [portraitPhone, widgetOn, widgetLayout, widgetRefs, boardPan.offset, boardResize.width, cardsResize.width, selectedSquareForLines, layoutTick])
+    // Hovering a row of 32 voices links its on/off dot to the piece, as in the match.
+    const hoverRect = songHover?.anchor.isConnected && widgetOn.band ? squareRect(songHover.square, boardRect, 'white') : null
+    setHoverConnections(hoverRect && songHover ? [connectRects(songHover.anchor.getBoundingClientRect(), hoverRect, rootRect)] : [])
+  }, [portraitPhone, widgetOn, widgetLayout, widgetRefs, boardPan.offset, boardResize.width, cardsResize.width, selectedSquareForLines, layoutTick, songHover])
 
   const kitWidget = <fieldset disabled={!ready || busy} className={styles.kitHeader} aria-label="Current kit and library">
     <div className={styles.kitPick}>
@@ -595,18 +602,37 @@ export function CreativeStudio() {
     </section>
   </fieldset>
 
+  // The match's Song & Instruments list, with White and Black side by side.
   const bandWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
+    <div data-match-ui><MusicSongPanel
+      columns
+      pieces={music.snapshot.pieces}
+      names={Object.fromEntries(session.pieces.map(piece => [piece.id, session.instruments[piece.id]?.name]))}
+      activeIds={activeIds}
+      soloIds={soloIds}
+      monitor={music.monitor}
+      arrangement={session.arrangement}
+      harmony={session.harmony}
+      onArrangementChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))}
+      onSeek={music.seekSection}
+      onSelect={square => {
+        const piece = square && session.pieces.find(item => item.square === square)
+        if (piece) select(piece.id)
+        else { music.endAudition(); setBoardSelected(false) }
+      }}
+      onToggle={square => { const piece = session.pieces.find(item => item.square === square); if (piece) toggleActive(piece.id) }}
+      onSolo={toggleSolo}
+      snapshot={music.snapshot}
+      selectedId={boardSelected ? selectedId : null}
+      selectedView={<MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />}
+      onAudition={square => { const piece = session.pieces.find(item => item.square === square); if (piece) { music.audition(piece.id, square); music.releaseAudition() } }}
+      onHover={setSongHover}
+    /></div>
     <div className={styles.actions}>
       <button onClick={() => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === 'w' })) })); setPlaying(true) }}>Activate white</button>
       <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }}>Mute all</button>
       <button onClick={() => { music.endAudition(); rememberPositions(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Reset positions</button>
     </div>
-    <div className={styles.voices}>{(['w', 'b'] as const).map(color => <div key={color}><h3>{color === 'w' ? 'White' : 'Black'}</h3>{session.pieces.filter(p => p.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(p =>
-      <div key={p.id} className={`${styles.voice} ${selectedId === p.id ? styles.chosenVoice : ''}`}>
-        <button className={styles.voiceName} onClick={() => select(p.id)} aria-pressed={selectedId === p.id}><span>{p.origin}</span><span>{session.instruments[p.id].name}<MusicVoiceBadge monitor={music.monitor} id={p.id} /></span></button>
-        <button className={styles.voiceSolo} aria-label={`${soloIds.has(p.id) ? 'Disable' : 'Enable'} solo ${p.id}`} title="Solo" aria-pressed={soloIds.has(p.id)} onClick={() => toggleSolo(p.id)}>S</button>
-        <button className={styles.voiceToggle} aria-label={`${p.active ? 'Deactivate' : 'Activate'} ${p.id}`} aria-pressed={p.active} onClick={() => toggleActive(p.id)}><span>{p.active ? '●' : '○'}</span></button>
-      </div>)}</div>)}</div>
   </fieldset>
 
   const instrumentWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
@@ -697,6 +723,7 @@ export function CreativeStudio() {
     </header>
 
     {!portraitPhone && <GameWidgetConnections visible pieceConnections={connections} />}
+    {!portraitPhone && <GameWidgetConnections overlay visible pieceConnections={hoverConnections} />}
 
     <div className={styles.stage}>
       <div className={styles.boardGroup} style={{ translate: boardPan.translate }}>

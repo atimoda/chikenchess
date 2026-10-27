@@ -9,10 +9,11 @@ export const CHANGELOG = [
     groups: [
       { title: 'Criativo 2.0', items: [
         'O Criativo ganhou o visual das partidas: fundo preto, tabuleiro no centro da tela e o título CHICKENCHESS LAB com o botão de voltar ao globo no canto superior esquerdo.',
-        'Os painéis viraram widgets flutuantes ligados ao tabuleiro (ou à peça selecionada, no caso de Instrument e Parameters) por linhas: Creative kit, Transport, States & Events, Strudel code, Instrument, Parameters e 32 voices. Arraste pelo título, redimensione pelo canto inferior direito e use o botão de energia para desligar: o widget desligado fica recolhido, só com o título.',
+        'Os painéis viraram widgets flutuantes ligados ao tabuleiro (ou à peça selecionada, no caso de Instrument e Parameters) por linhas: Creative kit, Transport, States & Events, Strudel code, Instrument, Parameters e 32 voices. Arraste por qualquer parte, redimensione pelo canto inferior direito e use o botão de energia para desligar: o widget desligado fica recolhido, só com o título.',
         'O Criativo agora tem as cartas e o contador de ovos das partidas. Os ovos são infinitos (∞). Best moves e Worst moves mostram as setas das melhores e piores jogadas do lado da peça selecionada, sem som e sem ovos nas casas. Mulligan desfaz o último movimento de peça. Freeze e Shield só funcionam nas partidas.',
         'As cartas do Criativo são silenciosas: passar o mouse ou clicar nelas não toca nenhum som.',
         'No widget States & Events, a chave This kit / Global fica à direita do título, e o conteúdo ocupa o próprio widget, sem a caixa interna.',
+        'O widget 32 voices virou o Song & Instruments das partidas: Global Sections no topo, brancas e pretas em duas colunas, MIDI das peças ativas, Solo e o ponto de liga/desliga ligado à peça por uma linha ao passar o mouse.',
       ] },
       { title: 'Partidas e Criativo', items: [
         'Arraste a partir de uma casa vazia para mover o tabuleiro pela tela, junto com os ovos, as peças capturadas e o status. Esc durante o arraste devolve o tabuleiro ao lugar.',
