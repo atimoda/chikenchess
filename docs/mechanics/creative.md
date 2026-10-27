@@ -27,7 +27,7 @@ Tônica, Escala, Harmonia e BPM do transporte mostram, destacados em dourado, os
 
 Kits salvos com login acompanham a conta; não há sincronização automática do rascunho nem dos slots locais de cidade entre dispositivos. Armazenamento do kit, rascunho criativo e ajustes temporários da partida são camadas distintas.
 
-**Criativo 2.0 (27/10, v2.0.0).** A página segue o visual das partidas: fundo preto em tela cheia, tabuleiro centralizado com o contador de ovos e as cartas abaixo, e o título “CHICKENCHESS LAB” (ajuda “Creative Mode”, número da versão `RELEASE_LABEL` que abre as notas de versão, rótulo Creative Mode com a ajuda do tabuleiro) junto do botão de voltar ao globo no canto superior esquerdo.
+**Criativo 2.0 (27/10, v1.9.2).** A página segue o visual das partidas: fundo preto em tela cheia, tabuleiro centralizado com o contador de ovos e as cartas abaixo, e o título “CHICKENCHESS LAB” (ajuda “Creative Mode”, número da versão `RELEASE_LABEL` que abre as notas de versão, rótulo Creative Mode com a ajuda do tabuleiro) junto do botão de voltar ao globo no canto superior esquerdo.
 
 | Widget | Conteúdo | Linha até | Começa |
 | --- | --- | --- | --- |

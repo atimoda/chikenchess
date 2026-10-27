@@ -3,7 +3,7 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '2.0.0',
+    version: '1.9.2',
     date: '27/10/2026',
     title: 'Criativo 2.0 com tabuleiro livre e widgets, tabuleiro arrastável e cartas com tamanho próprio nas partidas, e globo realista com nuvens que mudam a cada visita',
     groups: [
