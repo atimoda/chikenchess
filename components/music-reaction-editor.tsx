@@ -11,8 +11,11 @@ import { isOfficialGlobalReactions, saveGlobalReactions, useGlobalReactions } fr
 import styles from './music-reaction-editor.module.css'
 
 type Action=Reaction['actions'][number]
-type Scope='kit'|'global'
-type Props={kit:KitReactions;onKitChange:(kit:KitReactions)=>void;kitName:string;context:ReactionContext;onContext:(context:ReactionContext)=>void;descriptions:string[];bpm:number;scale:string[]}
+export type ReactionScope='kit'|'global'
+type Scope=ReactionScope
+type Props={kit:KitReactions;onKitChange:(kit:KitReactions)=>void;kitName:string;context:ReactionContext;onContext:(context:ReactionContext)=>void;descriptions:string[];bpm:number;scale:string[];
+  /** Inside a Creative widget: no own box or title; the scope switch lives in the widget header. */
+  embedded?:boolean;scope?:Scope;onScopeChange?:(scope:Scope)=>void}
 
 const TARGETS:Record<Reaction['target'],string>={both:'Both sides',actor:'Trigger side',opponent:'Opponent',w:'White',b:'Black'}
 const RANGES:Partial<Record<Action['type'],{min:number;max:number;step?:number;unit:string}>>={transpose:{min:-12,max:12,unit:'st'},bpm:{min:-30,max:30,unit:'%'},mode:{min:0,max:11,unit:'steps'},gain:{min:-100,max:100,unit:'%'},lpf:{min:20,max:20000,step:100,unit:'Hz'},hpf:{min:20,max:20000,step:50,unit:'Hz'},resonance:{min:0,max:30,step:.5,unit:'Q'},reverb:{min:0,max:1,step:.05,unit:'send'},delay:{min:0,max:1,step:.05,unit:'send'},drive:{min:0,max:10,step:.1,unit:''},pan:{min:-1,max:1,step:.05,unit:'L–R'}}
@@ -43,9 +46,22 @@ function ruleSummary(rule:Reaction,isState:boolean){
   return {actions,meta}
 }
 
-export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,descriptions,bpm,scale}:Props){
+const HOW_RULES_COMBINE='A global rule set applies to every kit. A kit can take over any state or event with its own rules; everything it does not customise keeps following the global set, including later global edits. States last while the position holds; events last the number of plies set in each rule.'
+
+/** This kit / Global switch, also used in the header of the Creative's States & Events widget. */
+export function ReactionScopeSwitch({scope,onChange}:{scope:Scope;onChange:(scope:Scope)=>void}){
+  return <span className={styles.headerTools}>
+    <InfoTip label="How rules combine">{HOW_RULES_COMBINE}</InfoTip>
+    <span className={styles.scope} role="tablist" aria-label="Rules being edited">
+      <button type="button" role="tab" aria-selected={scope==='kit'} onClick={()=>onChange('kit')}>This kit</button>
+      <button type="button" role="tab" aria-selected={scope==='global'} onClick={()=>onChange('global')}>Global</button>
+    </span>
+  </span>
+}
+
+export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,descriptions,bpm,scale,embedded=false,scope:scopeProp,onScopeChange}:Props){
   const global=useGlobalReactions()
-  const [scope,setScope]=useState<Scope>('kit'),[open,setOpen]=useState<Trigger|null>(null),[color,setColor]=useState<'w'|'b'>('w')
+  const [localScope,setLocalScope]=useState<Scope>('kit'),scope=scopeProp??localScope,setScope=onScopeChange??setLocalScope,[open,setOpen]=useState<Trigger|null>(null),[color,setColor]=useState<'w'|'b'>('w')
   const resolved=resolveReactions(global,kit)
   const shown=scope==='kit'?resolved:global
   const customized=kit.overrides.length+(kit.minimumPieces===undefined?0:1)+Object.keys(kit.thresholds??{}).length
@@ -109,14 +125,11 @@ export function MusicReactionEditor({kit,onKitChange,kitName,context,onContext,d
     </li>
   }
 
-  return <section aria-label="States and Events" className={styles.panel}>
-    <header className={styles.header}>
-      <h2>States &amp; Events<InfoTip label="How rules combine">A global rule set applies to every kit. A kit can take over any state or event with its own rules; everything it does not customise keeps following the global set, including later global edits. States last while the position holds; events last the number of plies set in each rule.</InfoTip></h2>
-      <div className={styles.scope} role="tablist" aria-label="Rules being edited">
-        <button type="button" role="tab" aria-selected={scope==='kit'} onClick={()=>setScope('kit')}>This kit</button>
-        <button type="button" role="tab" aria-selected={scope==='global'} onClick={()=>setScope('global')}>Global</button>
-      </div>
-    </header>
+  return <section aria-label="States and Events" className={styles.panel} data-embedded={embedded||undefined}>
+    {!embedded&&<header className={styles.header}>
+      <h2>States &amp; Events</h2>
+      <ReactionScopeSwitch scope={scope} onChange={setScope}/>
+    </header>}
 
     <p className={styles.scopeNote}>
       {scope==='kit'

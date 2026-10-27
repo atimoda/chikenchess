@@ -9,7 +9,7 @@ import { InfoTip, HelpLabel } from './info-tip'
 import { MusicBpmRamp, MusicHarmonyReadout, MusicPendingTransitions } from './music-transition-view'
 
 import Link from 'next/link'
-import { MusicReactionEditor } from './music-reaction-editor'
+import { MusicReactionEditor, ReactionScopeSwitch, type ReactionScope } from './music-reaction-editor'
 import type { ReactionContext } from '@/lib/music/reactions'
 import { createRef, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Chess, type Square } from 'chess.js'
@@ -133,6 +133,7 @@ export function CreativeStudio() {
   const positionHistoryRef = useRef<Record<string, string>[]>([])
   const [historyLength, setHistoryLength] = useState(0)
   const [undoAnimationKey, setUndoAnimationKey] = useState(0)
+  const [reactionScope, setReactionScope] = useState<ReactionScope>('kit')
   const [session, setSession] = useState(createCreativeSession)
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -646,7 +647,7 @@ export function CreativeStudio() {
   </fieldset>
 
   const reactionsWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
-    <MusicReactionEditor kit={session.reactions} onKitChange={reactions=>setSession(s=>({...s,reactions}))} kitName={session.name} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} />
+    <MusicReactionEditor kit={session.reactions} onKitChange={reactions=>setSession(s=>({...s,reactions}))} kitName={session.name} context={simulation} onContext={setSimulation} descriptions={music.reactionDescriptions} bpm={music.snapshot.bpm} scale={music.snapshot.scale} embedded scope={reactionScope} onScopeChange={setReactionScope} />
   </fieldset>
 
   const codeWidget = <div className={styles.code}>
@@ -656,6 +657,7 @@ export function CreativeStudio() {
 
   const widgetContent: Record<CreativeWidgetId, React.ReactNode> = { kit: kitWidget, transport: transportWidget, reactions: reactionsWidget, code: codeWidget, instrument: instrumentWidget, parameters: parametersWidget, band: bandWidget }
   const widgetInfo: Partial<Record<CreativeWidgetId, React.ReactNode>> = {
+    reactions: <ReactionScopeSwitch scope={reactionScope} onChange={setReactionScope} />,
     code: <InfoTip label="Running code">Generated from the active voices and the preview. To edit it, use the instrument controls.</InfoTip>,
     instrument: <InfoTip label="Selected instrument">The instrument of the selected piece. Its line goes to that piece on the board.</InfoTip>,
   }

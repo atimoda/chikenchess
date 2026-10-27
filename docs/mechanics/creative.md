@@ -33,7 +33,7 @@ Kits salvos com login acompanham a conta; não há sincronização automática d
 | --- | --- | --- | --- |
 | Creative kit | Seletor de kit com Load, Kit name (e Linked stage para admins), Save kit, Save DB (admin), Export, Import e New random kit | Tabuleiro | Ligado, coluna esquerda |
 | Transport | Play/Pause, Volume, BPM, Time signature, Root, Scale, Harmony, curva de BPM e faixa do arranjo | Tabuleiro | Ligado, coluna esquerda |
-| States & Events | Editor de reações (This kit/Global) e simulação | Tabuleiro | Recolhido, coluna esquerda |
+| States & Events | Editor de reações e simulação, direto no corpo do widget (sem caixa interna); a ajuda “How rules combine” e a chave This kit / Global ficam à direita do título do widget | Tabuleiro | Recolhido, coluna esquerda |
 | Strudel code | Métricas da exportação e o código em execução; o código só é gerado com o widget ligado | Tabuleiro | Recolhido, coluna esquerda |
 | Instrument | Peça selecionada: nome, loop, Solo, MIDI, arranjo da peça, fonte, comportamento e timbre | Peça selecionada (tabuleiro, se nenhuma estiver marcada) | Ligado, coluna direita |
 | Parameters | Knobs de som e movimento da peça selecionada | Peça selecionada (tabuleiro, se nenhuma estiver marcada) | Ligado, coluna direita |

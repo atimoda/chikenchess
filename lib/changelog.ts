@@ -12,6 +12,7 @@ export const CHANGELOG = [
         'Os painéis viraram widgets flutuantes ligados ao tabuleiro (ou à peça selecionada, no caso de Instrument e Parameters) por linhas: Creative kit, Transport, States & Events, Strudel code, Instrument, Parameters e 32 voices. Arraste pelo título, redimensione pelo canto inferior direito e use o botão de energia para desligar: o widget desligado fica recolhido, só com o título.',
         'O Criativo agora tem as cartas e o contador de ovos das partidas. Os ovos são infinitos (∞). Best moves e Worst moves mostram as setas das melhores e piores jogadas do lado da peça selecionada, sem som e sem ovos nas casas. Mulligan desfaz o último movimento de peça. Freeze e Shield só funcionam nas partidas.',
         'As cartas do Criativo são silenciosas: passar o mouse ou clicar nelas não toca nenhum som.',
+        'No widget States & Events, a chave This kit / Global fica à direita do título, e o conteúdo ocupa o próprio widget, sem a caixa interna.',
       ] },
       { title: 'Partidas e Criativo', items: [
         'Arraste a partir de uma casa vazia para mover o tabuleiro pela tela, junto com os ovos, as peças capturadas e o status. Esc durante o arraste devolve o tabuleiro ao lugar.',
