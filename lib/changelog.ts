@@ -3,13 +3,49 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '1.10.0',
+    version: '1.9.2',
     date: '27/10/2026',
-    title: 'Galinha jogável no globo, com chão no rodapé, plataformas, controles mobile e painel de controles',
+    title: 'Criativo 2.0 com tabuleiro livre e widgets, tabuleiro arrastável e cartas com tamanho próprio nas partidas, globo realista com nuvens que mudam a cada visita e galinha jogável no globo',
     groups: [
+      { title: 'Criativo 2.0', items: [
+        'O Criativo ganhou o visual das partidas: fundo preto, tabuleiro no centro da tela e o título CHICKENCHESS LAB com o botão de voltar ao globo no canto superior esquerdo.',
+        'Os painéis viraram widgets flutuantes ligados ao tabuleiro (ou à peça selecionada, no caso de Instrument e Sample source) por linhas: Creative kit, Transport, States & Events, Strudel code, Instrument, Sample source e 32 voices. Arraste por qualquer parte, redimensione pelo canto inferior direito e use o botão de energia para desligar: o widget desligado fica recolhido, só com o título.',
+        'O Criativo agora tem as cartas e o contador de ovos das partidas. Os ovos são infinitos (∞). Best moves e Worst moves mostram as setas das melhores e piores jogadas do lado da peça selecionada, sem som e sem ovos nas casas. Mulligan desfaz o último movimento de peça. Freeze e Shield só funcionam nas partidas.',
+        'As cartas do Criativo são silenciosas: passar o mouse ou clicar nelas não toca nenhum som.',
+        'No widget States & Events, a chave This kit / Global fica à direita do título, e o conteúdo ocupa o próprio widget, sem a caixa interna.',
+        'O widget 32 voices virou o Song & Instruments das partidas: Global Sections no topo, brancas e pretas em duas colunas, MIDI das peças ativas, Solo e o ponto de liga/desliga ligado à peça por uma linha ao passar o mouse.',
+      ] },
+      { title: 'Partidas e Criativo', items: [
+        'Arraste a partir de uma casa vazia para mover o tabuleiro pela tela, junto com os ovos, as peças capturadas e o status. Esc durante o arraste devolve o tabuleiro ao lugar.',
+        'As cartas ficaram independentes do tabuleiro: redimensionar o tabuleiro não muda mais o tamanho das cartas, e as cartas têm suas próprias alças de redimensionamento nos quatro cantos, no mesmo estilo das alças do tabuleiro.',
+        'As cartas também podem ser arrastadas pela tela pelo fundo do container delas, no Criativo e nas partidas, sem mover o tabuleiro.',
+      ] },
+      { title: 'Widgets do Criativo', items: [
+        'No 32 voices, Activate White / Black / Mute all virou texto com links no cabeçalho, à direita do título; Black é novo e liga só as peças pretas.',
+        'O Transport não repete mais as Global Sections, que ficam no 32 voices. Harmony ficou alinhado com os outros campos, e a linha de compasso e BPM fica por cima da curva de BPM, sem a ajuda da unidade do BPM.',
+        'Os knobs do antigo widget Parameters foram para o Instrument, em mini-abas como na partida: Tuning, Filters, Modulation, Movement e Note. Selecionar uma nota no MIDI abre a aba Note com os parâmetros dela.',
+        'Fonte do som, banco, articulação, afinação do sample, Behavior e Synth timbre ficam no novo widget Sample source.',
+        'O título do Criativo agora é só CHICKENCHESS LAB, sem a ajuda e sem o segundo título Creative Mode.',
+        'O título do 32 voices mostra quantas peças estão no tabuleiro e quantas estão ativas, como “32 VOICES (4 active)”, no lugar da legenda que ficava abaixo do tabuleiro.',
+        'O símbolo de infinito do contador de ovos ficou com o dobro do tamanho, e as cartas do Criativo não mostram mais o preço.',
+        'Acima e abaixo do tabuleiro, no lugar das peças capturadas da partida, fica uma peça de cada instrumento do kit. Arraste uma delas para uma casa para colocar ali essa peça com o instrumento dela, substituindo o que estiver na casa. Assim dá para montar o tabuleiro com quantas peças quiser, onde quiser.',
+        'Arrastar uma peça e soltar fora do tabuleiro tira ela do tabuleiro. Mulligan desfaz, e Reset positions volta as 32 peças às casas iniciais.',
+      ] },
+      { title: 'Mapa', items: [
+        'O globo ganhou um modo realista: superfície com imagens de satélite da NASA, oceanos com reflexo do sol, luzes das cidades no lado noturno, atmosfera azulada na borda e uma camada de nuvens com tempestades em espiral que é sorteada de novo a cada vez que o mapa abre.',
+        'O modo realista entra com um fade de 2 s logo depois da animação de abertura do globo, quando ele começa a girar sozinho.',
+        'Novo botão com ícone de globo à esquerda de Maximizar alterna entre o globo neon e o realista; o ícone mostra o modo atual e, no hover, o modo que o clique vai ativar. A escolha fica salva no navegador.',
+        'A lista de campanhas e cidades vai até o fim da tela, por trás dos botões do rodapé, e as linhas aparecem uma a uma ao abrir; ao recolher Campanhas ou entrar numa fase, elas somem uma a uma, da primeira à última. As fontes da lista ficaram 33% maiores.',
+        'No popup da cidade, a descrição ficou maior e os botões Campaign e Create lobby têm texto e ícone com o dobro do tamanho. Quando o modo online está fora do ar, o botão aparece desativado com "Online mode temporarily disabled" e o synth do hover fica um pouco mais grave.',
+        'Segurar o popup pelo botão de fechar ficou mais físico: o cartão pende do botão e balança com o peso conforme o movimento da mão; ao soltar, fica torto onde foi largado, mesmo com parte fora da tela, e a linha até o pin continua presa ao botão. Os sons desse gesto ficaram 40% mais baixos.',
+        'Os botões de ano do popup tocam um chimbal fechado no hover, alternando um toque normal e um mais fraco.',
+        'Os botões de ano ganharam hover com borda branca, e trocar de ano toca o chimbal mais baixo e mais curto.',
+        'O popup da cidade abriu 10% mais largo e ganhou uma alça para redimensionar no canto inferior direito; o botão online ocupa toda a largura do cartão.',
+        'Ao entrar numa fase pela campanha, todos os popups abertos, inclusive o da cidade escolhida, se soltam e flutuam para fora da tela, girando.',
+      ] },
       { title: 'Galinha no globo', items: [
         'Depois que o globo termina a aproximação inicial, uma galinha cai do céu num ponto aleatório da tela e fica numa camada acima de tudo. Ela anda, corre, pula, voa, choca, agacha, faz slide e cacareja.',
-        'O chão é uma faixa de grama no rodapé, por trás dos botões do rodapé. Os botões do rodapé, os botões de zoom e os popups das cidades viram plataformas flutuantes: dá para subir neles, atravessar pulando de baixo e descer com pra baixo + pulo.',
+        'O chão é uma faixa de grama no rodapé, por trás dos botões do rodapé. A lista de cidades continua até o fim da tela, por cima do chão. Os botões do rodapé, os botões de zoom, os popups das cidades e os botões Campaign e Create lobby viram plataformas flutuantes: dá para subir neles, atravessar pulando de baixo e descer com pra baixo + pulo.',
         'As laterais da tela são paredes rígidas: andando contra elas a galinha agarra e escala. Nas laterais dos popups ela agarra pulando perto. Também dá para pegar a galinha com o mouse ou o dedo e soltar.',
       ] },
       { title: 'Controles', items: [

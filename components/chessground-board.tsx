@@ -61,10 +61,14 @@ interface ChessgroundBoardProps {
     auditionPiece: { color: "w" | "b"; type: string }
     onMove: (from: Square, to: Square) => void
     onTogglePiece: (square: Square) => void
+    /** A piece dragged and released outside the board (Creative deletes it). */
+    onDropOutside?: (from: Square) => void
     squareLabel?: (square: Square) => string
   }
   entranceActive?: boolean
   mulliganPreviewMoves?: MulliganPreviewMove[] | null
+  /** Pointer down on an empty square that no gesture claims: the parent may start a board pan. */
+  onEmptySquarePointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void
 }
 
 export interface AnalysisArrow {
@@ -208,6 +212,7 @@ export function ChessgroundBoard({
   freeMode,
   entranceActive = false,
   mulliganPreviewMoves,
+  onEmptySquarePointerDown,
 }: ChessgroundBoardProps) {
   const columns = orientation === "black" ? [...COLUMNS].reverse() : COLUMNS
   const rows = orientation === "black" ? [...ROWS].reverse() : ROWS
@@ -752,6 +757,10 @@ export function ChessgroundBoard({
             freeMode.onTogglePiece(targetSquare)
           } else freeTapRef.current = { square: targetSquare, time: now }
         }
+      } else if (freeMode?.mode === 'move' && didDrag && freeMode.onDropOutside && (file < 0 || file >= 8 || rank < 0 || rank >= 8)) {
+        freeTapRef.current = null
+        freeMode.onDropOutside(dragPiece.from)
+        didMove = true
       } else if (didDrag && file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith(playerColor) && game.turn() === playerColor && !movesDisabled && !game.isGameOver()) {
         const targetSquare = `${columns[file]}${rows[rank]}` as Square
 
@@ -952,7 +961,7 @@ export function ChessgroundBoard({
                 )}
                 style={{
                   backgroundColor: displayedSquareBackgroundColor,
-                  touchAction: canDragFromSquare ? 'none' : 'pan-y',
+                  touchAction: canDragFromSquare || onEmptySquarePointerDown ? 'none' : 'pan-y',
                   zIndex: isKingInCheck ? 5 : isSynthSelected ? 4 : isSelected ? 3 : isActive ? 2 : undefined,
                   '--power-frost-angle': `${125 + (frostRotations[square] ?? 0)}deg`,
                   '--power-frost-x': `${50 - 25 * Math.cos((frostRotations[square] ?? 0) * Math.PI / 180) + 30 * Math.sin((frostRotations[square] ?? 0) * Math.PI / 180)}%`,
@@ -997,6 +1006,8 @@ export function ChessgroundBoard({
                     void getSfxEngine().resume()
                     return
                   }
+
+                  if (!canDragFromSquare) onEmptySquarePointerDown?.(e)
 
                   if (canDragFromSquare) {
                     const isSecondTap = !freeMode && hasPiece && lastTapRef.current?.square === square && Date.now() - lastTapRef.current.time < 350

@@ -62,3 +62,34 @@
 .flagIconActive .flagCloth {
   fill: var(--flag-color);
 }
+
+/* Rows appear one after another, campaign titles included, without sliding
+   or fading; when the list leaves they vanish in the same order. The step
+   (18 ms) matches ROW_STEP_MS in campaign-city-list.tsx. */
+.row {
+  animation: rowAppear 1ms step-end both;
+  animation-delay: calc(var(--row, 0) * 18ms);
+}
+
+.leaving {
+  pointer-events: none;
+}
+
+.leaving .row {
+  animation-name: rowVanish;
+}
+
+@keyframes rowAppear {
+  from { visibility: hidden; }
+  to { visibility: visible; }
+}
+
+@keyframes rowVanish {
+  from { visibility: visible; }
+  to { visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row { animation: none; }
+  .leaving .row { animation: none; visibility: hidden; }
+}

@@ -72,7 +72,7 @@ export function MusicSongSections({ arrangement, harmony, monitor, onChange, onS
  * sequencer in place, turning the piece on if it was off (a second click on the
  * name collapses it); hovering a row plays its note and blinks its dot. A double
  * click or "Params" opens the full Piece Params. */
-export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, onSelect, onToggle, onSolo, canToggle, onHover, ownColor = 'w', onAudition, snapshot, selectedId = null, selectedView, showMidi = true, onOpenParams }: {
+export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, onSelect, onToggle, onSolo, canToggle, onHover, ownColor = 'w', onAudition, snapshot, selectedId = null, selectedView, showMidi = true, onOpenParams, columns = false }: {
   pieces: readonly MusicPiece[]
   snapshot?: MusicSnapshot
   selectedId?: string | null
@@ -81,6 +81,8 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   /** Compact MIDI strips for the active pieces. */
   showMidi?: boolean
   onOpenParams?: (square: Square) => void
+  /** Creative: White and Black side by side instead of one column. */
+  columns?: boolean
   /** The player's team, listed first; the opponent's pieces follow in the same column. */
   ownColor?: 'w' | 'b'
   /** Plays the piece's note as a tap on the board would, when its row is hovered. */
@@ -118,7 +120,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   const teams = ownColor === 'w' ? ['w', 'b'] as const : ['b', 'w'] as const
   return <div className="flex min-w-0 flex-col gap-2">
     {arrangement && <MusicSongSections arrangement={arrangement} harmony={harmony} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} />}
-    <section aria-label="Instruments" className="flex min-w-0 flex-col gap-2.5" onPointerLeave={() => hover(null)}>
+    <section aria-label="Instruments" className={columns ? 'grid min-w-0 grid-cols-2 items-start gap-3' : 'flex min-w-0 flex-col gap-2.5'} onPointerLeave={() => hover(null)}>
       {teams.map(color => <div key={color} className="min-w-0">
         <h3 className="m-0 px-1 pb-1.5 font-mono text-[9px] uppercase leading-none tracking-[1px] text-[#96a79a]">{color === 'w' ? 'White' : 'Black'}</h3>
         {pieces.filter(piece => piece.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(piece => {

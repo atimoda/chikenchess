@@ -10,7 +10,6 @@ import { instrumentFor } from '@/lib/music/model'
 import { addVariation, removeLastVariation, reverseVariation, randomizeVariation, euclidPattern, euclidSteps, euclidVariation, type EuclidMode } from '@/lib/music/variation-edit'
 import { resizeRoll, type PianoRoll } from '@/lib/music/piano-roll'
 import { beatsPerBar, meterLabel } from '@/lib/music/meter'
-import { InfoTip } from './info-tip'
 import { variationPosition } from '@/lib/music/performance'
 import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music/arrangement'
 import { ArrowLeftRight, CircleDotDashed, Dice5, Minus, Pin, Plus, RotateCw } from 'lucide-react'
@@ -81,7 +80,7 @@ export function MusicTransportReadout({ monitor, arrangement, activeCount, solo 
   return <div className={styles.transport} aria-label="Music clock">
     {showStatus&&<span>{frame.running ? 'Playing' : 'Stopped'} · Section <b>{position?.section.label ?? frame.transport?.sectionLabel ?? String.fromCharCode(65 + Math.max(0, frame.section))}</b></span>}
     <span>Bar {Math.floor(frame.cycle) + 1}</span>
-    {showBeatUnit&&<span aria-label="BPM unit">{meterLabel(frame.transport?.meter).split(' · ').slice(1).join(' · ')}<InfoTip label="Beat unit">BPM counts beats per minute, not grid cells. A dotted quarter is a quarter plus half of it: three eighths. In 6/8, 9/8 and 12/8 each beat has three eighths; that is 2, 3 and 4 beats per bar. In the MIDI editor, “1 part” is a whole beat; “3 parts” splits that beat into three eighths. The menu picks the beat subdivision, not the BPM unit.</InfoTip></span>}
+    {showBeatUnit&&<span aria-label="BPM unit">{meterLabel(frame.transport?.meter).split(' · ').slice(1).join(' · ')}</span>}
     {frame.transport&&<span aria-label="Current BPM">{frame.transport.bpm.toFixed(1)} → {frame.transport.targetBpm.toFixed(1)} BPM {frame.transport.ramp&&frame.transport.ramp.progress<1&&<progress aria-label="Ramp progress" max={1} value={frame.transport.ramp.progress} style={{width:60}}/>}{frame.transport.pending.length>0&&` · ${frame.transport.pending.length} change(s) at the bar line`}</span>}
     <div className={styles.beats} aria-label={`Beat ${frame.beat} of ${beatsPerBar(frame.transport?.meter)}`}>{Array.from({length:beatsPerBar(frame.transport?.meter)},(_,index)=>index+1).map(beat => <i key={beat} data-on={frame.running && frame.beat === beat} />)}</div>
     {activeCount!==undefined&&<span className={styles.scale}>{activeCount}/32 active{solo?' · solo':''}</span>}
