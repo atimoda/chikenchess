@@ -2,9 +2,9 @@
 import { stableHtml } from '@/lib/utils'
 import { METER_IDS, meterLabel } from '@/lib/music/meter'
 import { Knob } from './knob'
-import { InstrumentParameters } from './creative/instrument-parameters'
+import { InstrumentParameters, type InstrumentParamsTab } from './creative/instrument-parameters'
+import { NoteParamsHostContext, type NoteParamsSelection } from './music-note-params'
 import { MusicPerformanceControls } from './music-performance-controls'
-import { MusicArrangementControls } from './music-arrangement-controls'
 import { InfoTip, HelpLabel } from './info-tip'
 import { MusicBpmRamp, MusicHarmonyReadout, MusicPendingTransitions } from './music-transition-view'
 
@@ -14,7 +14,7 @@ import type { ReactionContext } from '@/lib/music/reactions'
 import { createRef, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Chess, type Square } from 'chess.js'
 import { toast } from 'sonner'
-import { ArrowLeft, Database, Dice5, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
+import { ArrowLeft, Database, Dice5, Download, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
 import { ChessgroundBoard, PiecesSVG, type AnalysisArrow } from './chessground-board'
 import { BoardResizeHandles } from './board-resize-handles'
 import { BOARD_CARDS_RESIZE_RATIO, powerCardsResizeLimits, useBoardResize } from '@/hooks/use-board-resize'
@@ -74,7 +74,7 @@ function kitFingerprint(kit: CreativeSession) {
   return JSON.stringify({ ...kit, pieces: kit.pieces.map(({ active: _active, ...piece }) => piece) })
 }
 
-type CreativeWidgetId = 'kit' | 'transport' | 'reactions' | 'code' | 'instrument' | 'parameters' | 'band'
+type CreativeWidgetId = 'kit' | 'transport' | 'reactions' | 'code' | 'instrument' | 'source' | 'band'
 // Left column works on the kit and the session; right column on the selected piece.
 // `piece` widgets draw their line to the selected piece, the others to the board.
 const CREATIVE_WIDGETS: { id: CreativeWidgetId; title: string; side: 'left' | 'right'; width: number; on: boolean; link: 'board' | 'piece'; autoHeight?: number }[] = [
@@ -83,7 +83,7 @@ const CREATIVE_WIDGETS: { id: CreativeWidgetId; title: string; side: 'left' | 'r
   { id: 'reactions', title: 'States & Events', side: 'left', width: 420, on: false, link: 'board' },
   { id: 'code', title: 'Strudel code', side: 'left', width: 420, on: false, link: 'board' },
   { id: 'instrument', title: 'Instrument', side: 'right', width: 380, on: true, link: 'piece' },
-  { id: 'parameters', title: 'Parameters', side: 'right', width: 380, on: true, link: 'piece' },
+  { id: 'source', title: 'Sample source', side: 'right', width: 380, on: false, link: 'piece' },
   { id: 'band', title: '32 voices', side: 'right', width: 380, on: false, link: 'board' },
 ]
 const WIDGET_TOP = 76
@@ -145,6 +145,18 @@ export function CreativeStudio() {
   const [selectedId, setSelectedId] = useState('w:b1')
   const [soloIds, setSoloIds] = useState<Set<string>>(() => new Set())
   const soloMemoryRef = useRef<string[] | null>(null)
+  // A note picked in the Instrument's MIDI editor opens the Note tab; deselecting it goes back.
+  const [paramsTab, setParamsTab] = useState<InstrumentParamsTab>('tuning')
+  const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
+  const pieceParamsTabRef = useRef<InstrumentParamsTab>('tuning')
+  const hadNoteRef = useRef(false)
+  useEffect(() => {
+    const hasNote = !!noteSelection
+    if (hasNote === hadNoteRef.current) return
+    hadNoteRef.current = hasNote
+    if (hasNote) setParamsTab(tab => { if (tab !== 'note') pieceParamsTabRef.current = tab; return 'note' })
+    else setParamsTab(tab => tab === 'note' ? pieceParamsTabRef.current : tab)
+  }, [noteSelection])
   const soloCycleIdsRef = useRef<Set<string>>(new Set())
   const [boardSelected, setBoardSelected] = useState(true)
   const [account, setAccount] = useState<CreativeAccount | null>(null)
@@ -599,9 +611,13 @@ export function CreativeStudio() {
         setSession(s => ({ ...s, harmony }))
       }}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label></div>
       <div className={styles.rampSlot}><MusicBpmRamp monitor={music.monitor}/><MusicTransportReadout arrangement={session.arrangement} monitor={music.monitor} showStatus={false} showBeatUnit /><MusicPendingTransitions monitor={music.monitor}/></div>
-      <MusicArrangementControls arrangement={session.arrangement} harmony={session.harmony} monitor={music.monitor} onSeek={music.seekSection} onChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))} />
     </section>
   </fieldset>
+
+  const clearSolo = () => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }
+  const activateSide = (color: 'w' | 'b') => { clearSolo(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === color })) })); setPlaying(true) }
+  const muteAll = () => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); clearSolo() }
+  const bandLinks = <span className={styles.bandLinks}>Activate <button type="button" onClick={() => activateSide('w')} disabled={!ready || busy}>White</button> / <button type="button" onClick={() => activateSide('b')} disabled={!ready || busy}>Black</button> / <button type="button" onClick={muteAll} disabled={!ready || busy}>Mute</button> all</span>
 
   // The match's Song & Instruments list, with White and Black side by side.
   const bandWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
@@ -630,8 +646,6 @@ export function CreativeStudio() {
       onHover={setSongHover}
     /></div>
     <div className={styles.actions}>
-      <button onClick={() => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === 'w' })) })); setPlaying(true) }}>Activate white</button>
-      <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }}>Mute all</button>
       <button onClick={() => { music.endAudition(); rememberPositions(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Reset positions</button>
     </div>
   </fieldset>
@@ -653,24 +667,30 @@ export function CreativeStudio() {
           <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={selected.active ? 'Turn loop off' : 'Turn loop on'} title={selected.active ? 'Loop on' : music.preview?.id === selectedId ? 'Temporary preview' : 'Loop off'} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
           <button aria-pressed={soloIds.has(selectedId)} onClick={() => toggleSolo(selectedId)}>Solo</button>
         </div>
-        <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
+        <NoteParamsHostContext.Provider value={setNoteSelection}>
+          <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
+        </NoteParamsHostContext.Provider>
+        <InstrumentParameters instrument={instrument} effects={effects} mapping={mapping}
+          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
+          duckSources={duckSourceOptions(session.pieces, session.instruments, selected)}
+          tab={paramsTab} onTab={setParamsTab} noteSelection={noteSelection} />
         <MusicPerformanceControls key={selectedId} arrangement={session.arrangement} override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
-        <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
-        <div className={styles.pair}><label><span className={styles.helpCaption}>Behavior<InfoTip label="Instrument behavior">
-          <p><b>Pulse / percussion:</b> plays the written rhythm and notes without following the harmonic progression or the rank/file transposition. Without explicit settings, it uses short notes (0.12 fraction) and zero sustain.</p>
-          <p><b>Phrase / sequencer:</b> plays the written melody; pitched voices follow the harmony and the position’s degree map. Without an explicit length, it uses a 0.7 fraction.</p>
-          <p><b>Sustained / chords:</b> on pitched voices, a non-static harmony turns each attack into a chord with voice leading. With static harmony, it keeps the written notes/chords. Without an explicit length, it uses a 0.95 fraction; it never holds sound indefinitely.</p>
-          <p>All of them allow MIDI variations, per-piece arrangement, ADSR and effects. Pitch slides need a pitched voice; unpitched samples don’t follow degrees/chords. Changing the behavior doesn’t change the source/timbre or reset the saved parameters. The manual gesture plays one note per square, without running the sequence. The piece type doesn’t restrict the choice.</p>
-        </InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulse / percussion</option><option value="phrase">Phrase / sequencer</option><option value="sustain">Sustained / chords</option></select></label>
-          <label><HelpLabel label="Synth timbre">Waveform used by the Synthesis source. If the current source is a sample, picking a timbre switches the source to Synthesis. To go back to samples, choose Sample bank under Sound source.</HelpLabel><select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'], source: { kind: 'synth' } })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
       </section>
     </aside>
   </fieldset>
 
-  const parametersWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
-    <InstrumentParameters instrument={instrument} effects={effects} mapping={mapping}
-      updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
-      duckSources={duckSourceOptions(session.pieces, session.instruments, selected)} />
+  // Where the selected instrument's sound comes from: sample bank or synth, plus how it plays.
+  const sourceWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
+    <section className={styles.panel} aria-label="Sample source">
+        <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
+      <div className={styles.pair}><label><span className={styles.helpCaption}>Behavior<InfoTip label="Instrument behavior">
+        <p><b>Pulse / percussion:</b> plays the written rhythm and notes without following the harmonic progression or the rank/file transposition. Without explicit settings, it uses short notes (0.12 fraction) and zero sustain.</p>
+        <p><b>Phrase / sequencer:</b> plays the written melody; pitched voices follow the harmony and the position’s degree map. Without an explicit length, it uses a 0.7 fraction.</p>
+        <p><b>Sustained / chords:</b> on pitched voices, a non-static harmony turns each attack into a chord with voice leading. With static harmony, it keeps the written notes/chords. Without an explicit length, it uses a 0.95 fraction; it never holds sound indefinitely.</p>
+        <p>All of them allow MIDI variations, per-piece arrangement, ADSR and effects. Pitch slides need a pitched voice; unpitched samples don’t follow degrees/chords. Changing the behavior doesn’t change the source/timbre or reset the saved parameters. The manual gesture plays one note per square, without running the sequence. The piece type doesn’t restrict the choice.</p>
+      </InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulse / percussion</option><option value="phrase">Phrase / sequencer</option><option value="sustain">Sustained / chords</option></select></label>
+        <label><HelpLabel label="Synth timbre">Waveform used by the Synthesis source. If the current source is a sample, picking a timbre switches the source to Synthesis. To go back to samples, choose Sample bank under Sound source.</HelpLabel><select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'], source: { kind: 'synth' } })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
+    </section>
   </fieldset>
 
   const reactionsWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
@@ -682,11 +702,12 @@ export function CreativeStudio() {
     <pre>{music.code}</pre>
   </div>
 
-  const widgetContent: Record<CreativeWidgetId, React.ReactNode> = { kit: kitWidget, transport: transportWidget, reactions: reactionsWidget, code: codeWidget, instrument: instrumentWidget, parameters: parametersWidget, band: bandWidget }
+  const widgetContent: Record<CreativeWidgetId, React.ReactNode> = { kit: kitWidget, transport: transportWidget, reactions: reactionsWidget, code: codeWidget, instrument: instrumentWidget, source: sourceWidget, band: bandWidget }
   const widgetInfo: Partial<Record<CreativeWidgetId, React.ReactNode>> = {
     reactions: <ReactionScopeSwitch scope={reactionScope} onChange={setReactionScope} />,
     code: <InfoTip label="Running code">Generated from the active voices and the preview. To edit it, use the instrument controls.</InfoTip>,
-    instrument: <InfoTip label="Selected instrument">The instrument of the selected piece. Its line goes to that piece on the board.</InfoTip>,
+    instrument: <InfoTip label="Selected instrument">The instrument of the selected piece, with its knobs in tabs like the match’s Piece params. Selecting a note in the MIDI editor opens the Note tab. Its line goes to that piece on the board.</InfoTip>,
+    band: bandLinks,
   }
   const cardActions: Record<PowerCardKind, PowerCardAction> = {
     best: { disabled: analysis.busy, onClick: () => showRankedMoves('best'), title: `Best moves for ${selected.color === 'w' ? 'White' : 'Black'} (the selected piece’s side)` },
@@ -717,10 +738,7 @@ export function CreativeStudio() {
   return <main className={styles.lab} data-stacked={portraitPhone || undefined} ref={rootRef} style={{ '--game-board-width': boardResize.width === null ? CREATIVE_BOARD_WIDTH : `${boardResize.width}px`, '--power-cards-width': cardsResize.width === null ? CREATIVE_BOARD_WIDTH : `${cardsResize.width}px` } as React.CSSProperties}>
     <header className={`${styles.studio} ${styles.labHeader}`}>
       <Link href="/" aria-label="Back to the world" className={styles.back}><ArrowLeft size={18} /></Link>
-      <div>
-        <span className={styles.eyebrow}>CHICKENCHESS LAB<InfoTip label="Creative Mode">A workbench for composing with the pieces. No stage intro and no forced turns: try sounds, simulate states and save kits for your matches. Panels are widgets: drag them by the title, switch them off to fold them to the title, and resize them by the bottom-right corner.</InfoTip><VersionChangelog /></span>
-        <h1><FlaskConical size={18} /> Creative Mode<InfoTip label="Free board">Like in a match: hold a piece to hear its note and drag it to move. In Creative a piece can go to any square; moving activates it and an occupied square swaps the pieces. Clicking an empty square deselects the piece; dragging from an empty square moves the whole board around the screen. Double-click a piece to turn its loop on or off. Esc cancels the preview.</InfoTip></h1>
-      </div>
+      <h1 className={styles.labTitle}>Chickenchess Lab<VersionChangelog /></h1>
     </header>
 
     {!portraitPhone && <GameWidgetConnections visible pieceConnections={connections} />}
