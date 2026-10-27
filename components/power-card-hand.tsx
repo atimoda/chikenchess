@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react"
 import styles from "./power-card-hand.module.css"
 import { MULLIGAN_ANIMATION_MS } from "@/lib/power-presentation"
+import { BoardResizeHandles } from "./board-resize-handles"
+import type { BoardResizeCorner } from "@/hooks/use-board-resize"
 
 export type PowerCardKind = "best" | "worst" | "undo" | "freeze" | "shield"
 export type PowerCardAction = React.ButtonHTMLAttributes<HTMLButtonElement> & { ref?: React.Ref<HTMLButtonElement> }
@@ -14,7 +16,18 @@ const cards = [
   { kind: "shield", name: "Shield", cost: 3, color: "#ffc337", art: [638, 718, 368, 398] },
 ] as const
 
-export function PowerCardHand({ visible, actions, undoAnimationKey }: { visible: boolean; actions: Record<PowerCardKind, PowerCardAction>; undoAnimationKey?: number }) {
+export interface PowerCardResize {
+  enabled: boolean
+  onStart: (event: React.PointerEvent<HTMLButtonElement>, corner: BoardResizeCorner) => void
+  onResizeBy: (delta: number) => void
+  onCancel: () => void
+}
+
+/**
+ * The hand is sized by `--power-cards-width`, independent of the board: resizing the board never
+ * resizes the cards. `resize` adds the four corner handles of the board to the hand's container.
+ */
+export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resize }: { visible: boolean; actions: Record<PowerCardKind, PowerCardAction>; undoAnimationKey?: number; rowRef?: React.Ref<HTMLDivElement>; resize?: PowerCardResize }) {
   const [active, setActive] = useState<number | null>(null)
   const [angles, setAngles] = useState([-10, -5, 0, 5, 10])
   const [mulliganAnimating, setMulliganAnimating] = useState(false)
@@ -42,8 +55,9 @@ export function PowerCardHand({ visible, actions, undoAnimationKey }: { visible:
     const timeout = window.setTimeout(() => setMulliganAnimating(false), MULLIGAN_ANIMATION_MS)
     return () => window.clearTimeout(timeout)
   }, [undoAnimationKey])
-  return <div className={styles.row} style={{ opacity: visible ? 1 : 0, visibility: visible ? "visible" : "hidden" }}>
+  return <div ref={rowRef} className={styles.row} data-power-cards style={{ opacity: visible ? 1 : 0, visibility: visible ? "visible" : "hidden" }}>
     <div className={styles.hand} aria-label="Super-powers" onPointerLeave={() => setActive(null)}>
+      {resize && <BoardResizeHandles target="cards" enabled={resize.enabled && visible} onStart={resize.onStart} onResizeBy={resize.onResizeBy} onCancel={resize.onCancel} />}
       {cards.map((card, index) => {
         const action = actions[card.kind]
         const [x, y, width, height] = card.art

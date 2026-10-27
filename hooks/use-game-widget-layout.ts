@@ -34,8 +34,13 @@ export interface GameWidgetLayoutOptions {
   activeWidgetOrder: readonly string[]
   /** Piece row hovered in the Song & Instruments list, with its on/off dot. */
   hoveredPiece?: { square: Square; anchor: HTMLElement } | null
+  /** Board pan offset: a pan moves the board without resizing it, so connectors follow it here. */
+  boardOffset?: { x: number; y: number }
   widgets: Partial<Record<'knobs' | 'pieceDebug' | 'globalPanel' | 'mixer' | 'spectrogram' | 'liveCode' | 'botControl', GameWidgetLayoutItem>>
 }
+
+export { connectRects, squareRect }
+export type { ConnectionRect }
 
 const ignorePosition: Dispatch<SetStateAction<GameWidgetPosition | null>> = () => {}
 
@@ -97,6 +102,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
   const fallback: GameWidgetLayoutItem = { ref: emptyRef, on: false, position: null, setPosition: ignorePosition }
   const { rootRef, boardAreaRef, musicEngineOn, introPhase, activeWidgetOrder, orientation = 'white' } = options
   const selectedSquare = options.selectedSquare as Square | null
+  const boardOffsetKey = options.boardOffset ? `${options.boardOffset.x},${options.boardOffset.y}` : ''
   const knobs = options.widgets.knobs ?? fallback
   const knobsRef = knobs.ref
   const knobsOn = knobs.on
@@ -472,7 +478,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
     }
     setPieceWidgetConnections(directConnections)
 
-  }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, hasSpectrogramWidget, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
+  }, [musicEngineOn, selectedSquare, orientation, knobsPosition, pieceDebugPosition, botControlPosition, globalPanelPosition, mixerPosition, spectrogramPosition, liveCodePosition, knobsOn, pieceDebugOn, botControlOn, globalPanelOn, hasSpectrogramWidget, mixerOn, spectrogramOn, liveCodeOn, activeWidgetOrder, resizeTick, boardOffsetKey, rootRef, boardAreaRef, globalPanelRef, mixerRef, spectrogramHandleRef, liveCodeRef, knobsRef, pieceDebugRef, botControlRef])
 
   // Hovering a row of the Song & Instruments list links its on/off dot to the piece.
   const [hoverConnections, setHoverConnections] = useState<WidgetConnection[]>([])
@@ -482,7 +488,7 @@ export function useGameWidgetLayout(options: GameWidgetLayoutOptions) {
     const target = hoveredPiece && board ? squareRect(hoveredPiece.square, board.getBoundingClientRect(), orientation) : null
     if (!musicEngineOn || !root || !hoveredPiece?.anchor.isConnected || !target) { setHoverConnections([]); return }
     setHoverConnections([connectRects(hoveredPiece.anchor.getBoundingClientRect(), target, root.getBoundingClientRect())])
-  }, [hoveredPiece, musicEngineOn, orientation, rootRef, boardAreaRef, resizeTick, knobsPosition])
+  }, [hoveredPiece, musicEngineOn, orientation, rootRef, boardAreaRef, resizeTick, boardOffsetKey, knobsPosition])
 
   return { pieceConnections: pieceWidgetConnections, chainConnections, hoverConnections, resizeTick }
 }

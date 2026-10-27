@@ -36,12 +36,12 @@ import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/l
 import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, settleCityDraw, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
-import { EGG_REWARDS, cappedMatchEggs, limitRankedLists, squareEggsExtraMs } from "@/lib/egg-rewards"
+import { EGG_REWARDS, cappedMatchEggs, squareEggsExtraMs } from "@/lib/egg-rewards"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
 import { SpectrogramWidget } from "./spectrogram-widget"
 import { isConstrainedDevice } from "@/lib/performance"
-import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, formatEvaluation, rankedMoveLabelTone, rankedMoveRewardDetails, rememberMoveSuggestions, squareEggTargets, squareMoveRewardDetails, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
+import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, rankedMoveRewardDetails, rememberMoveSuggestions, squareEggTargets, squareMoveRewardDetails, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 import { WidgetToggleLayer } from "./widget-toggle-layer"
 import { OpponentMoveTimer } from "@/lib/opponent-move-timer"
 import { advanceMatchPowers, canUseMatchPower, createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
@@ -54,7 +54,9 @@ import { CapturedPieces } from "./match/captured-pieces"
 import { EggCounter, MatchStatus } from "./match/egg-counter"
 import { GameplayTipDialog, useGameplayTip } from "./match/gameplay-tip"
 import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "./match/match-view-controls"
-import { BOARD_CARDS_RESIZE_RATIO, useBoardResize } from "@/hooks/use-board-resize"
+import { BOARD_CARDS_RESIZE_RATIO, powerCardsResizeLimits, useBoardResize } from "@/hooks/use-board-resize"
+import { useBoardPan } from "@/hooks/use-board-pan"
+import { arrowsForAnalysis, type AnalysisArrowKind } from "@/lib/analysis-arrows"
 import { BoardResizeHandles } from "./board-resize-handles"
 import { GameActionCostHint, GameActionRow, GameBoardChanceBar, GameCityBackground, GameCityTitleIntro, GameFooter, GameWidgetConnections, GameWidgetEntranceStyles, GlobeGridIcon } from "./game-presentation"
 import { BotControlWidget } from "./bot-control-widget"
@@ -133,20 +135,6 @@ function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis
     <div className="text-white/40">{analysis.final ? 'Estimativa final' : 'Prévia em atualização'} · {analysis.side === 'w' ? 'brancas' : 'pretas'} a jogar · avaliação {analysis.quickMs} ms / prof. {analysis.quickDepth} · ranking {analysis.engineMs} ms / prof. {analysis.depth} · {(analysis.quickNodes + analysis.nodes).toLocaleString()} nós</div>
     {!analysis.complete&&<div className="text-white/40">Orçamento esgotado antes de comparar todas as jogadas.</div>}
   </div>
-}
-
-/** `top` is the Debug Moves shortcut: the ten best moves drawn like Best. */
-type AnalysisArrowKind = 'best' | 'worst' | 'top'
-
-function arrowsForAnalysis(analysis: ChessMoveAnalysis, kind: AnalysisArrowKind): AnalysisArrow[] {
-  const moves = kind === 'top' ? analysis.top ?? analysis.best : limitRankedLists(analysis)[kind]
-  return moves.map(move => ({
-    from: move.uci.slice(0, 2) as Square,
-    to: move.uci.slice(2, 4) as Square,
-    label: formatEvaluation(move.score, move.mate),
-    tone: kind === 'worst' ? 'worst' : 'best',
-    labelTone: rankedMoveLabelTone(move.score, move.mate),
-  }))
 }
 
 export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMoveMarks = false }: ChessGameProps) {
@@ -448,7 +436,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }
 
   const { isMobile, isPortraitMobile } = useMatchViewport(boardScale)
-  const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, controlHeightRatio: powerDisplay === "cards" ? BOARD_CARDS_RESIZE_RATIO : 0 })
+  const powerCardsRef = useRef<HTMLDivElement | null>(null)
+  const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, reservedHeight: powerDisplay === "cards" ? () => (powerCardsRef.current?.offsetWidth ?? 0) * BOARD_CARDS_RESIZE_RATIO : undefined })
+  const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits })
+  const boardPan = useBoardPan({ boardRef: boardAreaRef, enabled: !isPortraitMobile && introPhase >= 3 })
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
@@ -1658,7 +1649,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     rootRef, boardAreaRef, boardScale, musicEngineOn: musicEngineOn && !isPortraitMobile,
     selectedSquare: music.selected?.square ?? null,
     hoveredPiece: knobsOn && (!music.selected || !paramsOpen) ? songHover : null,
-    introPhase, activeWidgetOrder,
+    introPhase, activeWidgetOrder, boardOffset: boardPan.offset,
     widgets: {
       knobs: { ref: knobsRef, on: knobsOn, position: knobsPosition, setPosition: setKnobsPosition },
       pieceDebug: { ref: pieceDebugRef, on: pieceDebugOn, position: pieceDebugPosition, setPosition: setPieceDebugPosition },
@@ -2126,7 +2117,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       </header>
 
       <div className={cn("relative z-10 w-full flex flex-col lg:block justify-start pointer-events-none", isMobile ? "shrink-0 min-h-full pb-16 pt-4" : "h-full pt-4 lg:pt-0")}
-        style={{ "--game-board-width": boardResize.width !== null ? `${boardResize.width}px` : isMobile ? "min(calc(100vw - 16px),512px)" : powerDisplay === "cards" ? "min(90vw,calc(100dvh - 350px),512px)" : "min(90vw,calc(100dvh - 270px),512px)" } as React.CSSProperties}>
+        style={{
+          "--game-board-width": boardResize.width !== null ? `${boardResize.width}px` : isMobile ? "min(calc(100vw - 16px),512px)" : powerDisplay === "cards" ? "min(90vw,calc(100dvh - 350px),512px)" : "min(90vw,calc(100dvh - 270px),512px)",
+          // The cards keep their own size: resizing the board never resizes them.
+          "--power-cards-width": cardsResize.width !== null ? `${cardsResize.width}px` : isMobile ? "min(calc(100vw - 16px),512px)" : "min(90vw,calc(100dvh - 350px),512px)",
+        } as React.CSSProperties}>
         
         {/* Main Game Area (Board Container) stays in place while its squares fade in. */}
         <div 
@@ -2142,7 +2137,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             ref={centerContainerRef}
           >
 
-            <div className="relative min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none mb-2 sm:mb-3 flex items-center justify-between gap-1.5">
+            <div className="relative min-h-[2rem] h-8 w-[var(--game-board-width)] pointer-events-none mb-2 sm:mb-3 flex items-center justify-between gap-1.5" style={{ translate: boardPan.translate }}>
               {statusPlacement === "top" && <MatchStatus placement="top" text={statusText} color={statusColor} pulse={statusAlert} className={cn("transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")} />}
               <EggCounter
                 ref={opponentEggCounterRef}
@@ -2170,6 +2165,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 onClick={(e) => e.stopPropagation()}
                 style={{
                     transform: `scale(${boardScale})`,
+                    translate: boardPan.translate,
                     transition: 'transform 0.3s ease-out',
                     visibility: introPhase < 2 ? 'hidden' : 'visible',
                 }}
@@ -2239,6 +2235,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onDragOverSquare={(from, to) => {
                     if (music.engineActive) music.audition(from, to)
                   }}
+                  onEmptySquarePointerDown={boardPan.startPan}
                 />
                 {stockfishDebugOn && codeBackdropOn && introPhase === 3 && <StockfishDebugOverlay
                   cityColor={city.color}
@@ -2252,7 +2249,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 />}
               </div>
 
-              <div className="flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none">
+              <div className="flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none" style={{ translate: boardPan.translate }}>
                 <CapturedPieces
                   pieces={capturedPieces.white}
                   color="b"
@@ -2275,9 +2272,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 />
               </div>
 
-              <MatchStatus placement="bottom" text={statusPlacement === "bottom" ? statusText : ""} color={statusColor} pulse={statusAlert} className={cn("mb-1 sm:mb-2 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")} />
+              <MatchStatus placement="bottom" text={statusPlacement === "bottom" ? statusText : ""} color={statusColor} pulse={statusAlert} style={{ translate: boardPan.translate }} className={cn("mb-1 sm:mb-2 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")} />
 
-              {powerDisplay === "cards" ? <PowerCardHand visible={introPhase === 3} undoAnimationKey={undoAnimationKey} actions={{
+              {powerDisplay === "cards" ? <PowerCardHand visible={introPhase === 3} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} actions={{
                 best: {
                   disabled: playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best'),
                   onClick: event => { if (!matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best")) },

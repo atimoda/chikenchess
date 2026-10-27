@@ -65,6 +65,8 @@ interface ChessgroundBoardProps {
   }
   entranceActive?: boolean
   mulliganPreviewMoves?: MulliganPreviewMove[] | null
+  /** Pointer down on an empty square that no gesture claims: the parent may start a board pan. */
+  onEmptySquarePointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void
 }
 
 export interface AnalysisArrow {
@@ -208,6 +210,7 @@ export function ChessgroundBoard({
   freeMode,
   entranceActive = false,
   mulliganPreviewMoves,
+  onEmptySquarePointerDown,
 }: ChessgroundBoardProps) {
   const columns = orientation === "black" ? [...COLUMNS].reverse() : COLUMNS
   const rows = orientation === "black" ? [...ROWS].reverse() : ROWS
@@ -952,7 +955,7 @@ export function ChessgroundBoard({
                 )}
                 style={{
                   backgroundColor: displayedSquareBackgroundColor,
-                  touchAction: canDragFromSquare ? 'none' : 'pan-y',
+                  touchAction: canDragFromSquare || onEmptySquarePointerDown ? 'none' : 'pan-y',
                   zIndex: isKingInCheck ? 5 : isSynthSelected ? 4 : isSelected ? 3 : isActive ? 2 : undefined,
                   '--power-frost-angle': `${125 + (frostRotations[square] ?? 0)}deg`,
                   '--power-frost-x': `${50 - 25 * Math.cos((frostRotations[square] ?? 0) * Math.PI / 180) + 30 * Math.sin((frostRotations[square] ?? 0) * Math.PI / 180)}%`,
@@ -997,6 +1000,8 @@ export function ChessgroundBoard({
                     void getSfxEngine().resume()
                     return
                   }
+
+                  if (!canDragFromSquare) onEmptySquarePointerDown?.(e)
 
                   if (canDragFromSquare) {
                     const isSecondTap = !freeMode && hasPiece && lastTapRef.current?.square === square && Date.now() - lastTapRef.current.time < 350

@@ -3,6 +3,23 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '2.0.0',
+    date: '27/10/2026',
+    title: 'Criativo 2.0: tabuleiro livre com widgets, e tabuleiro arrastável e cartas com tamanho próprio nas partidas',
+    groups: [
+      { title: 'Criativo 2.0', items: [
+        'O Criativo ganhou o visual das partidas: fundo preto, tabuleiro no centro da tela e o título CHICKENCHESS LAB com o botão de voltar ao globo no canto superior esquerdo.',
+        'Os painéis viraram widgets flutuantes ligados ao tabuleiro (ou à peça selecionada, no caso de Instrument e Parameters) por linhas: Creative kit, Transport, States & Events, Strudel code, Instrument, Parameters e 32 voices. Arraste pelo título, redimensione pelo canto inferior direito e use o botão de energia para desligar: o widget desligado fica recolhido, só com o título.',
+        'O Criativo agora tem as cartas e o contador de ovos das partidas. Os ovos são infinitos (∞). Best moves e Worst moves mostram as setas das melhores e piores jogadas do lado da peça selecionada, sem som e sem ovos nas casas. Mulligan desfaz o último movimento de peça. Freeze e Shield só funcionam nas partidas.',
+        'As cartas do Criativo são silenciosas: passar o mouse ou clicar nelas não toca nenhum som.',
+      ] },
+      { title: 'Partidas e Criativo', items: [
+        'Arraste a partir de uma casa vazia para mover o tabuleiro pela tela, junto com os ovos, as peças capturadas e o status. Esc durante o arraste devolve o tabuleiro ao lugar.',
+        'As cartas ficaram independentes do tabuleiro: redimensionar o tabuleiro não muda mais o tamanho das cartas, e as cartas têm suas próprias alças de redimensionamento nos quatro cantos, no mesmo estilo das alças do tabuleiro.',
+      ] },
+    ],
+  },
+  {
     version: '1.9.1',
     date: '26/10/2026',
     title: 'Ensaio da Mangueira refeito com bateria gravada, batidão mais forte no funk carioca e kits padrão do Criativo agrupados por campanha',
