@@ -17,9 +17,11 @@ import { isAdminUser } from '@/lib/admin/access'
 import { useOnline } from './online/online-provider'
 import { AboutReleaseDialog } from './about-release-dialog'
 import styles from './world-map.module.css'
+import { ChickenGround, ChickenLayer } from './chicken/chicken-layer'
+import { ChickenControlsPanel } from './chicken/chicken-controls-panel'
 
 import { Button } from "@/components/ui/button"
-import { Plus, Minus, Maximize, Minimize } from "lucide-react"
+import { Plus, Minus, Maximize, Minimize, Gamepad2 } from "lucide-react"
 import { useOnlineAvailability } from "@/hooks/use-online-availability"
 import { sampleUrl } from "@/lib/music/sample-format"
 
@@ -102,6 +104,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [openPopups, setOpenPopups] = useState<Record<string, PopupState>>({})
   const [nextZIndex, setNextZIndex] = useState(100)
   const [showTitle, setShowTitle] = useState(false)
+  const [showChickenControls, setShowChickenControls] = useState(false)
   const [logoPhase, setLogoPhase] = useState<'intro' | 'fading' | 'header'>('intro')
   const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
   const [openingPhrase, setOpeningPhrase] = useState<string | null>(null)
@@ -1279,6 +1282,17 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Controles da galinha"
+            title="Controles da galinha"
+            onClick={() => setShowChickenControls(v => !v)}
+            className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
+          >
+            <Gamepad2 className="w-4 h-4 transition-transform duration-200 group-hover:scale-125" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleRealisticGlobe}
             aria-pressed={realisticGlobe}
             aria-label={realisticGlobe ? "Switch to the neon globe" : "Switch to the realistic globe"}
@@ -1346,12 +1360,18 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
       </header>
 
       <AboutReleaseDialog open={showAbout} onOpenChange={setShowAbout} tab={aboutTab} onTabChange={setAboutTab} />
+      <ChickenControlsPanel open={showChickenControls} onOpenChange={setShowChickenControls} />
+
+      {/* Player chicken: ground strip behind the footer buttons and the city list; the chicken drops in once the globe settles */}
+      <ChickenGround className="z-[35]" />
+      {showTitle && <ChickenLayer />}
 
       {/* UI OVERLAY LAYER */}
       <div className="absolute inset-0 z-[70] overflow-hidden pointer-events-none">
         
         {/* Bottom Right Info & Controls */}
         <div 
+          data-chicken-platforms
           className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
           {onOnlineMatch && <OnlineHub showMapRooms playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
@@ -1364,6 +1384,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
       {/* Zoom Controls (Fixed Bottom Right) */}
       <div className="flex fixed bottom-24 right-4 z-50 flex-col gap-2 pointer-events-auto">
           <Button
+              data-chicken-platform
               variant="outline"
               size="icon"
               onClick={() => handleZoom('in')}
@@ -1372,6 +1393,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               <Plus className="w-4 h-4" />
           </Button>
           <Button
+              data-chicken-platform
               variant="outline"
               size="icon"
               onClick={() => handleZoom('out')}
@@ -1380,6 +1402,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               <Minus className="w-4 h-4" />
           </Button>
           <Button
+              data-chicken-platform
               variant="outline"
               size="icon"
               onClick={() => handleZoom('reset')}

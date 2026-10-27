@@ -454,6 +454,7 @@ export const CityPopup = ({
         ref={containerRef}
         data-drag-handle="true" // Make the entire popup draggable
         data-popup-surface="true"
+        data-chicken-platform
         className="popup-scrollbar-hidden relative overflow-hidden rounded-lg border bg-card/[0.82] shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
         onClick={(e) => {
             e.stopPropagation()
@@ -528,6 +529,7 @@ export const CityPopup = ({
         <div className="space-y-3 animate-content-4">
           <div className="flex flex-col items-end gap-2 text-2xl font-mono">
               <button
+                data-chicken-platform
                 ref={enterButtonRef}
                 className={cn(
                    "order-1 inline-flex items-center gap-2 px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100] overflow-hidden group",
@@ -610,6 +612,7 @@ export const CityPopup = ({
                   onPointerLeave={(e) => { if (!isEntering) handleSmartPadLeave(e) }}
                 >
                   <button
+                    data-chicken-platform
                     type="button"
                     disabled={isEntering || isCreatingRoom || !onCreateRoom}
                     className={cn(

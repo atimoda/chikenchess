@@ -5,7 +5,7 @@ export const CHANGELOG = [
   {
     version: '1.9.2',
     date: '27/10/2026',
-    title: 'Criativo 2.0 com tabuleiro livre e widgets, tabuleiro arrastável e cartas com tamanho próprio nas partidas, e globo realista com nuvens que mudam a cada visita',
+    title: 'Criativo 2.0 com tabuleiro livre e widgets, tabuleiro arrastável e cartas com tamanho próprio nas partidas, globo realista com nuvens que mudam a cada visita e galinha jogável no globo',
     groups: [
       { title: 'Criativo 2.0', items: [
         'O Criativo ganhou o visual das partidas: fundo preto, tabuleiro no centro da tela e o título CHICKENCHESS LAB com o botão de voltar ao globo no canto superior esquerdo.',
@@ -42,6 +42,15 @@ export const CHANGELOG = [
         'Os botões de ano ganharam hover com borda branca, e trocar de ano toca o chimbal mais baixo e mais curto.',
         'O popup da cidade abriu 10% mais largo e ganhou uma alça para redimensionar no canto inferior direito; o botão online ocupa toda a largura do cartão.',
         'Ao entrar numa fase pela campanha, todos os popups abertos, inclusive o da cidade escolhida, se soltam e flutuam para fora da tela, girando.',
+      ] },
+      { title: 'Galinha no globo', items: [
+        'Depois que o globo termina a aproximação inicial, uma galinha cai do céu num ponto aleatório da tela e fica numa camada acima de tudo. Ela anda, corre, pula, voa, choca, agacha, faz slide e cacareja.',
+        'O chão é uma faixa de grama no rodapé, por trás dos botões do rodapé. A lista de cidades continua até o fim da tela, por cima do chão. Os botões do rodapé, os botões de zoom, os popups das cidades e os botões Campaign e Create lobby viram plataformas flutuantes: dá para subir neles, atravessar pulando de baixo e descer com pra baixo + pulo.',
+        'As laterais da tela são paredes rígidas: andando contra elas a galinha agarra e escala. Nas laterais dos popups ela agarra pulando perto. Também dá para pegar a galinha com o mouse ou o dedo e soltar.',
+      ] },
+      { title: 'Controles', items: [
+        'Novo botão de controle no canto superior direito do globo abre o painel de controles da galinha, o mesmo em todas as telas: teclado e gamepad com até três teclas ou botões por ação, controles na tela (automático, sempre ou nunca), cacarejos e restaurar padrão.',
+        'Em telas de toque aparecem controles mobile: analógico semitransparente à esquerda e botões redondos de pular, chocar e correr à direita.',
       ] },
     ],
   },
