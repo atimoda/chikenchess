@@ -30,7 +30,7 @@ export const CHANGELOG = [
         'Os botões de ano do popup tocam um chimbal fechado no hover, alternando um toque normal e um mais fraco.',
         'Os botões de ano ganharam hover com borda branca, e trocar de ano toca o chimbal mais baixo e mais curto.',
         'O popup da cidade abriu 10% mais largo e ganhou uma alça para redimensionar no canto inferior direito; o botão online ocupa toda a largura do cartão.',
-        'Ao entrar numa fase pela campanha, os outros popups abertos se soltam e flutuam para fora da tela, girando.',
+        'Ao entrar numa fase pela campanha, todos os popups abertos, inclusive o da cidade escolhida, se soltam e flutuam para fora da tela, girando.',
       ] },
     ],
   },

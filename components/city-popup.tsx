@@ -99,7 +99,6 @@ export const CityPopup = ({
   const popupWrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const enterButtonRef = useRef<HTMLButtonElement>(null)
-  const exitStyleRef = useRef<React.CSSProperties | null>(null)
   const lastDragAccent = useRef(0)
   const closeGestureRef = useRef<{
     pointerId: number
@@ -471,22 +470,15 @@ export const CityPopup = ({
             ? `0 0 35px ${city.color}40, 0 0 15px rgba(234, 179, 8, 0.35)`
             : `0 0 30px ${city.color}25`,
           borderColor: isConquered ? '#eab308' : city.color,
-          ...((isEntering && exitStyleRef.current) ? {
-              // Reset container transform to prevent scaling, just let the button handle it
-              transform: 'none',
-              transition: 'none',
-              zIndex: 1000
-          } : {
-              transform: popup.isClosing
-                ? undefined
-                : (isPressed ? 'scale(0.92)' : 'scale(1)'),
-              transformOrigin: transformOrigin || (popup.isClosing
-                ? '0px 3px'
-                : (isPressed ? '0px 40px' : 'center center')),
-              transition: popup.isClosing
-                ? undefined
-                : 'transform 0.2s ease-out'
-          })
+          transform: popup.isClosing
+            ? undefined
+            : (isPressed ? 'scale(0.92)' : 'scale(1)'),
+          transformOrigin: transformOrigin || (popup.isClosing
+            ? '0px 3px'
+            : (isPressed ? '0px 40px' : 'center center')),
+          transition: popup.isClosing
+            ? undefined
+            : 'transform 0.2s ease-out'
         }}
         onMouseDown={() => {
             bringToFront(city.id)
@@ -544,7 +536,6 @@ export const CityPopup = ({
                 style={{
                     borderColor: city.color,
                     color: city.color,
-                    ...(isEntering && exitStyleRef.current ? exitStyleRef.current : {})
                 }}
                 onMouseEnter={(e) => {
                     if (isEntering) return
@@ -578,30 +569,7 @@ export const CityPopup = ({
                   if (isEntering) return;
                   playMapSound("suction", true);
 
-                  // Calculate Exit Transform
-                  if (containerRef.current && enterButtonRef.current) {
-                      const buttonRect = enterButtonRef.current.getBoundingClientRect()
-
-                      const buttonCenter = {
-                          x: buttonRect.left + buttonRect.width / 2,
-                          y: buttonRect.top + buttonRect.height / 2
-                      }
-
-                      const viewportCenter = {
-                          x: window.innerWidth / 2,
-                          y: window.innerHeight / 2
-                      }
-
-                      const tx = viewportCenter.x - buttonCenter.x
-                      const ty = viewportCenter.y - buttonCenter.y
-
-                      exitStyleRef.current = {
-                          transform: `translate(${tx}px, ${ty}px) scale(30)`,
-                          zIndex: 9999,
-                          opacity: 0, // Restore fade out
-                      }
-                  }
-
+                  // The card drifts off with the others (driftAway), so the button no longer zooms.
                   onEnter();
                 }}
               >

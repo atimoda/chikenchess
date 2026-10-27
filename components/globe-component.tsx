@@ -1371,7 +1371,7 @@ const GlobeContent = ({
                           handleSmartPadLeave={handleSmartPadLeave}
                           stopPadSound={stopPadSound}
                           isEntering={enteringCityId === city.id}
-                          driftAway={!!enteringCityId && enteringCityId !== city.id}
+                          driftAway={!!enteringCityId}
                           setEnteringCityId={(id: string | null) => { if (!enteringCityId) setEnteringCityId(id) }}
                           setIsDraggingPopup={setIsDraggingPopup}
                           standbyRef={isStandby}
