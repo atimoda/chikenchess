@@ -330,6 +330,14 @@ const PopupContainer = ({
     const lastLineState = useRef<PopupLineState>({ startX: 0, startY: 0, cpX: 0, cpY: 0, endX: 0, endY: 0, handlePath: '' })
     const [isDraggingLocal, setIsDraggingLocal] = useState(false)
     const draggingRef = useRef(false)
+    // After a drop from the close button the card stays where and how it was
+    // left (even partly off screen) and the cable stays on the button, until
+    // the card is dragged by its body.
+    const [hangingFromClose, setHangingFromClose] = useState(false)
+    const hangingFromCloseRef = useRef(false)
+    const setHanging = (value: boolean) => { hangingFromCloseRef.current = value; setHangingFromClose(value) }
+    // A card held by its close button stays under the hand: no standby drift.
+    const heldByCloseRef = useRef(false)
 
     useFrame(({ camera, size }) => {
       if (!anchorRef.current || !lineRef.current) return
@@ -374,11 +382,11 @@ const PopupContainer = ({
         }
       }
       const previous = previousProjectedPin.current
-      if (standbyRef.current && previous && !popup.isClosing) {
+      if (standbyRef.current && previous && !popup.isClosing && !heldByCloseRef.current) {
         slowOffset.current.x += popupStandbyCompensation(screen.x - previous.x)
         slowOffset.current.y += popupStandbyCompensation(screen.y - previous.y)
       }
-      if (!popup.isClosing && !draggingRef.current && wrapperRef.current) {
+      if (!popup.isClosing && !draggingRef.current && (!hangingFromCloseRef.current || sizeChanged) && wrapperRef.current) {
         const panel = wrapperRef.current.querySelector<HTMLElement>('[data-popup-surface]')
         if (panel) {
           const rect = panel.getBoundingClientRect()
@@ -428,7 +436,7 @@ const PopupContainer = ({
       if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
       if (!popup.isClosing) {
         const visualPosition = { x: localPosRef.current.x + slowOffset.current.x, y: localPosRef.current.y + slowOffset.current.y }
-        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current, dragAnchor.current, lineStartOffset.current)
+        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current || hangingFromCloseRef.current, dragAnchor.current, lineStartOffset.current)
         lastLineState.current = nextLine
         cablePathRef.current?.setAttribute('d', `M ${nextLine.startX} ${nextLine.startY} Q ${nextLine.cpX} ${nextLine.cpY} ${nextLine.endX} ${nextLine.endY}`)
         lineStartRef.current?.setAttribute('cx', String(nextLine.startX))
@@ -497,7 +505,7 @@ const PopupContainer = ({
 
     const currentLine = popup.isClosing
       ? lastLineState.current
-      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal, dragAnchor.current, lineStartOffset.current)
+      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal || hangingFromClose, dragAnchor.current, lineStartOffset.current)
     if (!popup.isClosing) lastLineState.current = currentLine
     const { cpX, cpY, endX, endY, handlePath } = currentLine
 
@@ -593,6 +601,7 @@ const PopupContainer = ({
                         transformOrigin={isDraggingLocal ? `${dragAnchor.current.x}px ${dragAnchor.current.y}px` : undefined}
                         onDragStart={(e) => {
                             hasDragged.current = true
+                            setHanging(false)
                             setIsDraggingPopup(true)
                             setIsDraggingLocal(true)
                             draggingRef.current = true
@@ -632,6 +641,8 @@ const PopupContainer = ({
                         }}
                         onCloseButtonDragStart={(clientX, clientY) => {
                             hasDragged.current = true
+                            heldByCloseRef.current = true
+                            setHanging(false)
                             setIsDraggingPopup(true)
                             setIsDraggingLocal(true)
                             draggingRef.current = true
@@ -653,6 +664,8 @@ const PopupContainer = ({
                             }
                         }}
                         onCloseButtonDragEnd={() => {
+                            heldByCloseRef.current = false
+                            setHanging(true)
                             setIsDraggingPopup(false)
                             setIsDraggingLocal(false)
                             draggingRef.current = false

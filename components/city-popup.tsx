@@ -57,6 +57,10 @@ export interface CityPopupProps {
   onlineDisabled?: boolean
 }
 
+// Pendulum feel of a card held by its close button (px/s² and 1/s).
+const SWING_GRAVITY = 2600
+const SWING_DAMPING = 2.4
+
 export const CityPopup = ({
   city,
   popup,
@@ -110,9 +114,60 @@ export const CityPopup = ({
   const [closeDragResting, setCloseDragResting] = useState(false)
   const [closeGestureCancelled, setCloseGestureCancelled] = useState(false)
   const [hasEntered, setHasEntered] = useState(false)
+  // Pendulum held by the close button: the card hangs from the pressed point,
+  // gravity pulls its center down and the hand's acceleration swings it.
+  const swingRef = useRef<{ angle: number; velocity: number; pointer: { x: number; y: number }; last: { x: number; y: number }; handVelocity: { x: number; y: number }; handAcceleration: { x: number; y: number }; frame: number | null; time: number } | null>(null)
+
+  const stopSwing = (clearTransform: boolean) => {
+    const swing = swingRef.current
+    if (swing?.frame != null) cancelAnimationFrame(swing.frame)
+    swingRef.current = null
+    if (clearTransform && popupWrapperRef.current) popupWrapperRef.current.style.transform = ''
+  }
+
+  const startSwing = (startAngle: number, pointer: { x: number; y: number }, pivot: { x: number; y: number }) => {
+    stopSwing(false)
+    const width = popupWrapperRef.current?.offsetWidth ?? 288
+    const height = containerRef.current?.offsetHeight ?? 400
+    // Center of mass relative to the pivot, in the card's own (unrotated) frame.
+    const center = { x: width / 2 - pivot.x, y: height / 2 - pivot.y }
+    // Moment of inertia per unit mass of a flat card about the pivot.
+    const inertia = (width * width + height * height) / 12 + center.x * center.x + center.y * center.y
+    const swing = { angle: startAngle, velocity: 0, pointer: { ...pointer }, last: { ...pointer }, handVelocity: { x: 0, y: 0 }, handAcceleration: { x: 0, y: 0 }, frame: null as number | null, time: performance.now() }
+    swingRef.current = swing
+    const step = (now: number) => {
+      if (swingRef.current !== swing) return
+      const dt = Math.min(.034, Math.max(.001, (now - swing.time) / 1000))
+      swing.time = now
+      // Smoothed hand velocity and acceleration from the pointer path.
+      const velocity = { x: (swing.pointer.x - swing.last.x) / dt, y: (swing.pointer.y - swing.last.y) / dt }
+      swing.last = { ...swing.pointer }
+      const blend = 1 - Math.exp(-dt * 30)
+      const nextVelocity = { x: swing.handVelocity.x + (velocity.x - swing.handVelocity.x) * blend, y: swing.handVelocity.y + (velocity.y - swing.handVelocity.y) * blend }
+      const limit = 26000
+      swing.handAcceleration = {
+        x: Math.max(-limit, Math.min(limit, (nextVelocity.x - swing.handVelocity.x) / dt)),
+        y: Math.max(-limit, Math.min(limit, (nextVelocity.y - swing.handVelocity.y) / dt)),
+      }
+      swing.handVelocity = nextVelocity
+      // In the hand's frame the card feels gravity minus the hand's acceleration.
+      const radians = swing.angle * Math.PI / 180
+      const cos = Math.cos(radians), sin = Math.sin(radians)
+      const arm = { x: center.x * cos - center.y * sin, y: center.x * sin + center.y * cos }
+      const force = { x: -swing.handAcceleration.x, y: SWING_GRAVITY - swing.handAcceleration.y }
+      const torque = arm.x * force.y - arm.y * force.x
+      const acceleration = torque / inertia - SWING_DAMPING * swing.velocity
+      swing.velocity += acceleration * dt
+      swing.angle += swing.velocity * dt * 180 / Math.PI
+      if (popupWrapperRef.current) popupWrapperRef.current.style.transform = `rotate(${swing.angle}deg)`
+      swing.frame = requestAnimationFrame(step)
+    }
+    swing.frame = requestAnimationFrame(step)
+  }
 
   useEffect(() => () => {
     closeGestureRef.current?.cleanup()
+    stopSwing(false)
   }, [])
 
   const closeButtonPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -136,6 +191,7 @@ export const CityPopup = ({
     setCloseDragResting(false)
     setCloseRotation(readPopupRotation())
     setCloseGestureCancelled(false)
+    startSwing(readPopupRotation(), { x: e.clientX, y: e.clientY }, pivot)
 
     const gesture = {
       pointerId: e.pointerId,
@@ -148,6 +204,7 @@ export const CityPopup = ({
     }
     const onMove = (event: PointerEvent) => {
       if (event.pointerId !== gesture.pointerId) return
+      if (swingRef.current) swingRef.current.pointer = { x: event.clientX, y: event.clientY }
       const dx = (event.clientX - gesture.startX) / (scale || 1)
       const dy = (event.clientY - gesture.startY) / (scale || 1)
       if (!gesture.moved && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 4) {
@@ -184,11 +241,14 @@ export const CityPopup = ({
         onCloseButtonDragMove?.(event.clientX, event.clientY, popupX, popupY)
         updatePopupPosition(city.id, popupX, popupY, true)
       }
+      stopSwing(true)
       setCloseHeld(false)
       setCloseRotation(angle)
       playMapSound('popup_close_hold_end', true)
 
       if (gesture.moved) {
+        // The card keeps the tilt it was dropped with until it is dragged by its body.
+        setCloseRestRotation(angle)
         setCloseDragResting(true)
         setHasEntered(true)
         onCloseButtonDragEnd?.()
@@ -212,6 +272,7 @@ export const CityPopup = ({
       if (event && event.pointerId !== gesture.pointerId) return
       detach()
       closeGestureRef.current = null
+      stopSwing(true)
       setCloseHeld(false)
       setCloseGestureCancelled(true)
       if (gesture.moved) onCloseButtonDragEnd?.()
@@ -284,10 +345,6 @@ export const CityPopup = ({
         '--enter-rot': `${popup.enterRot || 0}deg`,
         '--close-held-rotation': `${popup.exitMotion?.fromRotation ?? closeRotation}deg`,
         '--close-rest-rotation': `${closeRestRotation}deg`,
-        '--close-rest-minus-9': `${closeRestRotation - 9}deg`,
-        '--close-rest-plus-5': `${closeRestRotation + 5}deg`,
-        '--close-rest-minus-2_5': `${closeRestRotation - 2.5}deg`,
-        '--close-rest-plus-1': `${closeRestRotation + 1}deg`,
         '--close-pivot-x': `${closePivot.x}px`,
         '--close-pivot-y': `${closePivot.y}px`,
         '--exit-x': `${popup.exitMotion?.translateX ?? 0}px`,

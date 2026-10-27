@@ -13,6 +13,7 @@ export const CHANGELOG = [
         'Novo botão com ícone de globo à esquerda de Maximizar alterna entre o globo neon e o realista; o ícone mostra o modo atual e, no hover, o modo que o clique vai ativar. A escolha fica salva no navegador.',
         'A lista de campanhas e cidades vai até o fim da tela, por trás dos botões do rodapé, e as linhas aparecem uma a uma ao abrir; ao recolher Campanhas ou entrar numa fase, elas somem uma a uma, da primeira à última. As fontes da lista ficaram 33% maiores.',
         'No popup da cidade, a descrição ficou maior e os botões Campaign e Create lobby têm texto e ícone com o dobro do tamanho. Quando o modo online está fora do ar, o botão aparece desativado com "Online mode temporarily disabled" e o synth do hover fica um pouco mais grave.',
+        'Segurar o popup pelo botão de fechar ficou mais físico: o cartão pende do botão e balança com o peso conforme o movimento da mão; ao soltar, fica torto onde foi largado, mesmo com parte fora da tela, e a linha até o pin continua presa ao botão. Os sons desse gesto ficaram 40% mais baixos.',
         'Os botões de ano do popup tocam um chimbal fechado no hover, alternando um toque normal e um mais fraco.',
       ] },
     ],

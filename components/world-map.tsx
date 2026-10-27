@@ -538,7 +538,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           }
           source.playbackRate.value = 0.98 + Math.random() * 0.04
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.95, t)
+          gain.gain.setValueAtTime(0.57, t)
           source.connect(gain)
           gain.connect(popupHatCompressorRef.current ?? ctx.destination)
           source.onended = () => {
@@ -758,8 +758,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.type = "highpass"
           filter.frequency.value = 8000 * pitchVar
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.2, t)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05)
+          gain.gain.setValueAtTime(0.12, t)
+          gain.gain.exponentialRampToValueAtTime(0.006, t + 0.05)
           noise.connect(filter)
           filter.connect(gain)
           gain.connect(ctx.destination)
@@ -775,8 +775,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.type = "highpass"
           filter.frequency.value = 8000 * pitchVar
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.14, t)
-          gain.gain.exponentialRampToValueAtTime(0.007, t + 0.05)
+          gain.gain.setValueAtTime(0.084, t)
+          gain.gain.exponentialRampToValueAtTime(0.0042, t + 0.05)
           noise.connect(filter)
           filter.connect(gain)
           gain.connect(ctx.destination)
@@ -1082,24 +1082,13 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           opacity: 1;
           transform-origin: var(--close-pivot-x, 6px) var(--close-pivot-y, 8px);
           will-change: transform;
-          animation: popupCloseHeldPendulum 1.15s cubic-bezier(.2, .7, .25, 1) both;
+          transform: rotate(var(--close-held-rotation, 0deg));
         }
         .popup-close-resting {
           opacity: 1;
           transform: rotate(var(--close-rest-rotation, 0deg));
           transform-origin: var(--close-pivot-x, 6px) var(--close-pivot-y, 8px);
           transition: transform 420ms ease-out;
-        }
-        @keyframes popupCloseHeldPendulum {
-          0% { transform: rotate(var(--close-held-rotation, 0deg)); }
-          14% { transform: rotate(var(--close-rest-rotation, 0deg)); }
-          30% { transform: rotate(var(--close-rest-minus-9, 0deg)); }
-          46% { transform: rotate(var(--close-rest-plus-5, 0deg)); }
-          60% { transform: rotate(var(--close-rest-minus-2_5, 0deg)); }
-          72% { transform: rotate(var(--close-rest-plus-1, 0deg)); }
-          82% { transform: rotate(var(--close-rest-minus-2_5, 0deg)); }
-          91% { transform: rotate(var(--close-rest-rotation, 0deg)); }
-          100% { transform: rotate(var(--close-rest-rotation, 0deg)); }
         }
         .popup-close-restored {
           opacity: 1;
