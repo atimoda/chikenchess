@@ -3,9 +3,9 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '2.0.0',
+    version: '1.9.2',
     date: '27/10/2026',
-    title: 'Criativo 2.0: tabuleiro livre com widgets, e tabuleiro arrastável e cartas com tamanho próprio nas partidas',
+    title: 'Criativo 2.0 com tabuleiro livre e widgets, tabuleiro arrastável e cartas com tamanho próprio nas partidas, e globo realista com nuvens que mudam a cada visita',
     groups: [
       { title: 'Criativo 2.0', items: [
         'O Criativo ganhou o visual das partidas: fundo preto, tabuleiro no centro da tela e o título CHICKENCHESS LAB com o botão de voltar ao globo no canto superior esquerdo.',
@@ -19,6 +19,18 @@ export const CHANGELOG = [
         'Arraste a partir de uma casa vazia para mover o tabuleiro pela tela, junto com os ovos, as peças capturadas e o status. Esc durante o arraste devolve o tabuleiro ao lugar.',
         'As cartas ficaram independentes do tabuleiro: redimensionar o tabuleiro não muda mais o tamanho das cartas, e as cartas têm suas próprias alças de redimensionamento nos quatro cantos, no mesmo estilo das alças do tabuleiro.',
         'As cartas também podem ser arrastadas pela tela pelo fundo do container delas, no Criativo e nas partidas, sem mover o tabuleiro.',
+      ] },
+      { title: 'Mapa', items: [
+        'O globo ganhou um modo realista: superfície com imagens de satélite da NASA, oceanos com reflexo do sol, luzes das cidades no lado noturno, atmosfera azulada na borda e uma camada de nuvens com tempestades em espiral que é sorteada de novo a cada vez que o mapa abre.',
+        'O modo realista entra com um fade de 2 s logo depois da animação de abertura do globo, quando ele começa a girar sozinho.',
+        'Novo botão com ícone de globo à esquerda de Maximizar alterna entre o globo neon e o realista; o ícone mostra o modo atual e, no hover, o modo que o clique vai ativar. A escolha fica salva no navegador.',
+        'A lista de campanhas e cidades vai até o fim da tela, por trás dos botões do rodapé, e as linhas aparecem uma a uma ao abrir; ao recolher Campanhas ou entrar numa fase, elas somem uma a uma, da primeira à última. As fontes da lista ficaram 33% maiores.',
+        'No popup da cidade, a descrição ficou maior e os botões Campaign e Create lobby têm texto e ícone com o dobro do tamanho. Quando o modo online está fora do ar, o botão aparece desativado com "Online mode temporarily disabled" e o synth do hover fica um pouco mais grave.',
+        'Segurar o popup pelo botão de fechar ficou mais físico: o cartão pende do botão e balança com o peso conforme o movimento da mão; ao soltar, fica torto onde foi largado, mesmo com parte fora da tela, e a linha até o pin continua presa ao botão. Os sons desse gesto ficaram 40% mais baixos.',
+        'Os botões de ano do popup tocam um chimbal fechado no hover, alternando um toque normal e um mais fraco.',
+        'Os botões de ano ganharam hover com borda branca, e trocar de ano toca o chimbal mais baixo e mais curto.',
+        'O popup da cidade abriu 10% mais largo e ganhou uma alça para redimensionar no canto inferior direito; o botão online ocupa toda a largura do cartão.',
+        'Ao entrar numa fase pela campanha, todos os popups abertos, inclusive o da cidade escolhida, se soltam e flutuam para fora da tela, girando.',
       ] },
     ],
   },

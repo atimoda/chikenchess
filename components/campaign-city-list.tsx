@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { CAMPAIGNS, citiesInCampaign } from '@/lib/campaigns'
 import { getCityEras, type CityData } from '@/lib/cities-data'
 import { cityFlagColor } from '@/lib/globe-flags'
 import styles from './campaign-city-list.module.css'
 
-export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [], onFocus, onOpen, focusedCityId, pinHoveredCityId }: {
+// Delay between rows when the list appears or vanishes; matches the CSS.
+const ROW_STEP_MS = 18
+
+export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [], onFocus, onOpen, focusedCityId, pinHoveredCityId, leaving = false }: {
   cities: CityData[]
   conqueredCities?: string[]
   openCityIds?: string[]
@@ -14,15 +17,34 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
   onOpen: (city: CityData) => void
   focusedCityId?: string | null
   pinHoveredCityId?: string | null
+  /** Entering a city: rows vanish one by one, first to last. */
+  leaving?: boolean
 }) {
   const viewport = useRef<HTMLDivElement>(null)
   const drag = useRef<{ id: number; y: number; scroll: number; moved: boolean } | null>(null)
   const suppressClick = useRef(false)
   const [expanded, setExpanded] = useState(false)
+  const [collapsing, setCollapsing] = useState(false)
   const lastHoveredCity = useRef<string | null>(null)
   const previousOpenCityIds = useRef<string[]>([])
   const previousExpanded = useRef(expanded)
   const openCityKey = openCityIds.join('\u0000')
+  // Rows slide in one after another, campaign titles included.
+  const rowIndex = useMemo(() => {
+    const order = new Map<string, number>()
+    for (const campaign of CAMPAIGNS) {
+      order.set(campaign.id, order.size)
+      for (const city of citiesInCampaign(cities, campaign.id)) order.set(city.id, order.size)
+    }
+    return order
+  }, [cities])
+  const hidingRows = leaving || collapsing
+  // Collapsing Campanhas lets the last row vanish before the list closes.
+  useEffect(() => {
+    if (!collapsing) return
+    const timeout = window.setTimeout(() => { setExpanded(false); setCollapsing(false) }, rowIndex.size * ROW_STEP_MS + 40)
+    return () => window.clearTimeout(timeout)
+  }, [collapsing, rowIndex])
   useEffect(() => {
     const wheelOverList = (event: WheelEvent) => {
       const container = viewport.current
@@ -94,19 +116,19 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
     window.setTimeout(() => { suppressClick.current = false }, 0)
   }
 
-  return <aside className="absolute left-3 md:left-6 top-16 md:top-24 bottom-20 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col pointer-events-none pl-2" aria-label="Campanhas e cidades">
-    <button type="button" className="pointer-events-auto md:hidden mb-2 self-start rounded-md border border-white/20 bg-[#10131c]/90 px-3 py-2 text-left text-[13px] text-white" onClick={() => setExpanded(value => !value)} aria-expanded={expanded}>Campanhas {expanded ? '−' : '+'}</button>
-    <div ref={viewport} className={`${expanded ? 'block' : 'hidden md:block'} ${styles.viewport} pointer-events-none min-h-0 flex-1 overflow-y-auto overscroll-contain text-[13px] select-none`}
+  return <aside className="absolute left-3 md:left-6 top-16 md:top-24 bottom-0 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col pointer-events-none pl-2" aria-label="Campanhas e cidades">
+    <button type="button" className="pointer-events-auto md:hidden mb-2 self-start rounded-md border border-white/20 bg-[#10131c]/90 px-3 py-2 text-left text-[13px] text-white" onClick={() => { if (collapsing) return; if (expanded) setCollapsing(true); else setExpanded(true) }} aria-expanded={expanded && !collapsing}>Campanhas {expanded && !collapsing ? '−' : '+'}</button>
+    <div ref={viewport} className={`${expanded ? 'block' : 'hidden md:block'} ${styles.viewport} ${hidingRows ? styles.leaving : ''} pointer-events-none min-h-0 flex-1 overflow-y-auto overscroll-contain pb-24 text-[13px] select-none`}
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onPointerLeave={() => onFocus(null)}
       onClickCapture={event => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation() } }}>
-      {CAMPAIGNS.map((campaign, index) => <section key={campaign.id} className={index === 0 ? undefined : 'mt-5'}>
-        <h2 style={{ fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' }} className="m-0 text-[11px] font-semibold uppercase leading-5 tracking-[0.025em] text-[#b6c9bb]/50 sm:text-xs md:text-sm">{campaign.name}</h2>
+      {CAMPAIGNS.map((campaign, index) => <section key={campaign.id} className={index === 0 ? undefined : 'mt-5 sm:mt-[22px] md:mt-[26px]'}>
+        <h2 style={{ fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums', '--row': rowIndex.get(campaign.id) } as CSSProperties} className={`${styles.row} m-0 text-[14.5px] font-semibold uppercase leading-5 tracking-[0.025em] text-[#b6c9bb]/50 sm:text-base sm:leading-[22px] md:text-[18.5px] md:leading-[26px]`}>{campaign.name}</h2>
         <ul className="space-y-0">
           {citiesInCampaign(cities, campaign.id).map(city => {
             const conquered = getCityEras(city).some(era => conqueredCities.includes(era.id))
             const active = focusedCityId === city.id || pinHoveredCityId === city.id || openCityIds.includes(city.id)
-            return <li key={city.id}>
-              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' } as CSSProperties} className={`${styles.cityButton} pointer-events-none inline-flex w-full max-w-full items-center gap-1.5 text-left text-[11px] font-semibold uppercase leading-5 tracking-[0.025em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer sm:text-xs md:text-sm`}
+            return <li key={city.id} className={styles.row} style={{ '--row': rowIndex.get(city.id) } as CSSProperties}>
+              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' } as CSSProperties} className={`${styles.cityButton} pointer-events-none inline-flex w-full max-w-full items-center gap-1.5 text-left text-[14.5px] font-semibold uppercase leading-5 tracking-[0.025em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer sm:text-base sm:leading-[22px] md:text-[18.5px] md:leading-[26px]`}
                 onPointerEnter={() => { onFocus(city.id); playHover(city.id) }} onFocus={() => { onFocus(city.id); playHover(city.id) }} onPointerLeave={() => { if (lastHoveredCity.current === city.id) lastHoveredCity.current = null; onFocus(null) }} onBlur={() => onFocus(null)}
                 onClick={() => { if (!suppressClick.current) { onFocus(city.id); onOpen(city) } }}>
                 <span className="pointer-events-auto shrink-0">{city.year} {city.name}</span>

@@ -31,10 +31,53 @@ interface WorldMapProps {
 
 
 
+const REALISTIC_GLOBE_KEY = 'chickenchess:globe-realistic'
+
+// Toggle icons: the neon outline globe and the realistic Earth. The button shows
+// the current look and, on hover, the look a click would switch to.
+function NeonGlobeIcon({ className }: { className?: string }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#39ff14" strokeWidth="1.5" strokeLinecap="round" className={className} style={{ filter: 'drop-shadow(0 0 2px rgb(57 255 20 / 70%))' }}>
+    <circle cx="12" cy="12" r="9" />
+    <ellipse cx="12" cy="12" rx="4" ry="9" />
+    <path d="M3 12h18M4.6 7.5h14.8M4.6 16.5h14.8" />
+  </svg>
+}
+
+function RealisticGlobeIcon({ className }: { className?: string }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+    <defs>
+      <radialGradient id="globe-toggle-ocean" cx="35%" cy="32%" r="75%">
+        <stop offset="0" stopColor="#4f9be8" />
+        <stop offset=".6" stopColor="#1d4f9a" />
+        <stop offset="1" stopColor="#0b1f45" />
+      </radialGradient>
+      <clipPath id="globe-toggle-clip"><circle cx="12" cy="12" r="9.5" /></clipPath>
+    </defs>
+    <circle cx="12" cy="12" r="9.5" fill="url(#globe-toggle-ocean)" />
+    <g clipPath="url(#globe-toggle-clip)">
+      <path d="M5.2 6.3c1.6-.9 3.6-.6 4.6.6.8 1-.2 2.1.9 3 1 .8.5 2.4-.7 2.6-1.4.2-1.6 1.6-2.6 2.2-1.2.7-2.9-.3-3.3-1.9-.5-2 .1-5.4 1.1-6.5Z" fill="#5f8f3c" />
+      <path d="M13.6 4.6c1.8-.4 4.5.6 5.6 2.4.5.9-.5 1.4-1.4 1.2-1-.2-1.6.7-1.1 1.6.6 1.1 2.3 1.2 2.6 2.6.3 1.6-1 3.4-2.3 3.2-1.1-.2-.9-1.9-2-2.4-1.2-.5-2.6.2-3-.9-.4-1.2 1.2-1.9.9-3.1-.3-1.4-1.3-3.5.7-4.6Z" fill="#b59a5b" />
+      <path d="M11.5 15.8c.9-.4 2 .1 2.3 1 .4 1.1-.3 2.7-1.4 3.2-.9.4-1.4-.6-1.4-1.6 0-1-.3-2.2.5-2.6Z" fill="#6c9a45" />
+      <path d="M3 9.2c2.6-1.1 5.6-.4 8.2-1.2M12.8 13.4c2.5-.9 5.4-.4 8-1.3M5.4 17.6c2-.6 4.1-.2 6-.8" stroke="#fff" strokeOpacity=".85" strokeWidth="1.1" strokeLinecap="round" fill="none" />
+      <path d="M12 2.5a9.5 9.5 0 0 1 0 19c4-2.4 5.6-6 5.6-9.5S16 4.9 12 2.5Z" fill="#000" fillOpacity=".38" />
+    </g>
+    <circle cx="12" cy="12" r="9.9" fill="none" stroke="#7cc4ff" strokeOpacity=".55" strokeWidth=".8" />
+  </svg>
+}
+
 export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapProps) {
   const online = useOnline()
   // Create lobby only appears in city popups while Supabase answers.
-  const onlineAvailable = useOnlineAvailability() === "available"
+  const onlineAvailability = useOnlineAvailability()
+  const onlineAvailable = onlineAvailability === "available"
+  const [realisticGlobe, setRealisticGlobe] = useState(true)
+  useEffect(() => {
+    try { if (localStorage.getItem(REALISTIC_GLOBE_KEY) === 'off') setRealisticGlobe(false) } catch { /* Storage blocked: keep the realistic default. */ }
+  }, [])
+  const toggleRealisticGlobe = () => setRealisticGlobe(current => {
+    try { localStorage.setItem(REALISTIC_GLOBE_KEY, current ? 'off' : 'on') } catch { /* Storage blocked: the choice lasts this visit. */ }
+    return !current
+  })
   const [createRoomRequest, setCreateRoomRequest] = useState<{ id: number; cityId: string } | null>(null)
   const createRoomSequence = useRef(0)
   const [unlockedCities, setUnlockedCities] = useState<string[]>([])
@@ -495,7 +538,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           }
           source.playbackRate.value = 0.98 + Math.random() * 0.04
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.95, t)
+          gain.gain.setValueAtTime(0.57, t)
           source.connect(gain)
           gain.connect(popupHatCompressorRef.current ?? ctx.destination)
           source.onended = () => {
@@ -715,8 +758,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.type = "highpass"
           filter.frequency.value = 8000 * pitchVar
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.2, t)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05)
+          gain.gain.setValueAtTime(0.12, t)
+          gain.gain.exponentialRampToValueAtTime(0.006, t + 0.05)
           noise.connect(filter)
           filter.connect(gain)
           gain.connect(ctx.destination)
@@ -732,8 +775,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.type = "highpass"
           filter.frequency.value = 8000 * pitchVar
           const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.14, t)
-          gain.gain.exponentialRampToValueAtTime(0.007, t + 0.05)
+          gain.gain.setValueAtTime(0.084, t)
+          gain.gain.exponentialRampToValueAtTime(0.0042, t + 0.05)
           noise.connect(filter)
           filter.connect(gain)
           gain.connect(ctx.destination)
@@ -781,7 +824,9 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.connect(gain)
           gain.connect(ctx.destination)
           noise.start(t)
-      } else if (type === "alesissr16_ch") {
+      } else if (type === "alesissr16_ch" || type === "alesissr16_ch_soft") {
+          // The soft variant marks odd era buttons in a city popup.
+          const peak = type === "alesissr16_ch_soft" ? .085 : .14
           const duration = .075
           const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate)
           const data = buffer.getChannelData(0)
@@ -793,24 +838,33 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.frequency.value = 8500 * pitchVar
           const gain = ctx.createGain()
           gain.gain.setValueAtTime(.001, t)
-          gain.gain.linearRampToValueAtTime(.14, t + .003)
+          gain.gain.linearRampToValueAtTime(peak, t + .003)
           gain.gain.exponentialRampToValueAtTime(.001, t + .065)
           noise.connect(filter)
           filter.connect(gain)
           gain.connect(popupHatCompressorRef.current ?? ctx.destination)
           noise.start(t)
           noise.stop(t + duration)
-      } else if (type === "alesissr16_oh") {
+      } else if (type === "alesissr16_oh" || type === "alesissr16_oh_era") {
+          // Switching eras in a popup uses the same hat, 20% quieter and 20% shorter.
+          const era = type === "alesissr16_oh_era"
+          const level = era ? .8 : 1
           const buffers = popupOpenHatBuffersRef.current
           if (buffers.length) {
               const source = ctx.createBufferSource()
               source.buffer = buffers[Math.floor(Math.random() * buffers.length)]
               source.playbackRate.value = 0.98 + Math.random() * 0.04
               const gain = ctx.createGain()
-              gain.gain.setValueAtTime(0.95, t)
+              gain.gain.setValueAtTime(0.95 * level, t)
               source.connect(gain)
               gain.connect(popupHatCompressorRef.current ?? ctx.destination)
               source.start(t)
+              if (era) {
+                  const end = t + source.buffer.duration / source.playbackRate.value * .8
+                  gain.gain.setValueAtTime(0.95 * level, end - .02)
+                  gain.gain.linearRampToValueAtTime(0, end)
+                  source.stop(end + .005)
+              }
           } else {
               const bufferSize = ctx.sampleRate * 0.5
               const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
@@ -822,8 +876,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               filter.type = "highpass"
               filter.frequency.value = 7000 * pitchVar
               const gain = ctx.createGain()
-              gain.gain.setValueAtTime(0.24, t)
-              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3)
+              gain.gain.setValueAtTime(0.24 * level, t)
+              gain.gain.exponentialRampToValueAtTime(0.01, t + (era ? 0.24 : 0.3))
               noise.connect(filter)
               filter.connect(gain)
               gain.connect(popupHatCompressorRef.current ?? ctx.destination)
@@ -951,10 +1005,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     }))
   }
 
-  const closePopup = (id: string, hat: 'open' | 'closed' | 'held' = 'open', exitMotion?: PopupExitMotion) => {
+  const closePopup = (id: string, hat: 'open' | 'closed' | 'held' | 'era' = 'open', exitMotion?: PopupExitMotion) => {
     const active = openPopups[id]
     if (!active || active.isClosing) return
-    if (hat !== 'held') playMapSound(hat === 'closed' ? "alesissr16_ch" : "alesissr16_oh", true)
+    if (hat !== 'held') playMapSound(hat === 'closed' ? "alesissr16_ch" : hat === 'era' ? "alesissr16_oh_era" : "alesissr16_oh", true)
     setOpenPopups(prev => {
       if (!prev[id] || prev[id].isClosing || prev[id].timestamp !== active.timestamp) return prev
       return {
@@ -1037,24 +1091,13 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           opacity: 1;
           transform-origin: var(--close-pivot-x, 6px) var(--close-pivot-y, 8px);
           will-change: transform;
-          animation: popupCloseHeldPendulum 1.15s cubic-bezier(.2, .7, .25, 1) both;
+          transform: rotate(var(--close-held-rotation, 0deg));
         }
         .popup-close-resting {
           opacity: 1;
           transform: rotate(var(--close-rest-rotation, 0deg));
           transform-origin: var(--close-pivot-x, 6px) var(--close-pivot-y, 8px);
           transition: transform 420ms ease-out;
-        }
-        @keyframes popupCloseHeldPendulum {
-          0% { transform: rotate(var(--close-held-rotation, 0deg)); }
-          14% { transform: rotate(var(--close-rest-rotation, 0deg)); }
-          30% { transform: rotate(var(--close-rest-minus-9, 0deg)); }
-          46% { transform: rotate(var(--close-rest-plus-5, 0deg)); }
-          60% { transform: rotate(var(--close-rest-minus-2_5, 0deg)); }
-          72% { transform: rotate(var(--close-rest-plus-1, 0deg)); }
-          82% { transform: rotate(var(--close-rest-minus-2_5, 0deg)); }
-          91% { transform: rotate(var(--close-rest-rotation, 0deg)); }
-          100% { transform: rotate(var(--close-rest-rotation, 0deg)); }
         }
         .popup-close-restored {
           opacity: 1;
@@ -1068,6 +1111,28 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
         .popup-entered {
           opacity: 1;
           transform: none;
+        }
+        .popup-drift-away {
+          opacity: 1;
+          pointer-events: none !important;
+          transform-origin: 50% 50%;
+          animation: popupDriftAway 1.3s cubic-bezier(.3, 0, .85, .9) forwards;
+        }
+        @keyframes popupDriftAway {
+          from { transform: translate(0, 0) rotate(var(--drift-from-rot, 0deg)); }
+          to { transform: translate(var(--drift-x, 0px), var(--drift-y, 0px)) rotate(var(--drift-rot, 0deg)); }
+        }
+        .popup-resize-grip {
+          position: absolute;
+          right: 0;
+          bottom: 0;
+          z-index: 60;
+          width: 16px;
+          height: 16px;
+          cursor: nwse-resize;
+          touch-action: none;
+          background: linear-gradient(135deg, transparent 55%, #ffffff55 55%, #ffffff55 62%, transparent 62%, transparent 72%, #ffffff55 72%, #ffffff55 79%, transparent 79%);
+          border-bottom-right-radius: 8px;
         }
         .animate-popup-exit {
           animation: popupExit 0.5s ease-in forwards;
@@ -1105,6 +1170,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             stopWhistleLoop={stopWhistleLoop}
             setPressedPopupState={setPressedPopupState}
             onCitySelect={onCitySelect}
+            onlineDisabled={!!onOnlineMatch && onlineAvailability === "unavailable"}
+            realistic={realisticGlobe}
             onCreateRoom={onOnlineMatch && onlineAvailable ? city => { if (!createRoomRequest) setCreateRoomRequest({ id: ++createRoomSequence.current, cityId: city.id }) } : undefined}
             creatingRoomCityId={createRoomRequest?.cityId ?? null}
             handleSmartPadSound={handleSmartPadSound}
@@ -1127,7 +1194,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
 
       <div ref={popupLayerRef} className="absolute inset-0 z-[45] pointer-events-none" />
 
-      {logoPhase === 'header' && <CampaignCityList cities={cities} conqueredCities={playerProfile?.conqueredCityIds || []} openCityIds={Object.keys(openPopups).filter(id => !openPopups[id].isClosing)} focusedCityId={focusedCityId} pinHoveredCityId={pinHoveredCityId} onFocus={setFocusedCityId} onOpen={city => { if (!openPopups[city.id] || openPopups[city.id].isClosing) zoomRef.current?.centerCity(city); handleCityClick(city) }} />}
+      {logoPhase === 'header' && <CampaignCityList leaving={!!enteringCityId} cities={cities} conqueredCities={playerProfile?.conqueredCityIds || []} openCityIds={Object.keys(openPopups).filter(id => !openPopups[id].isClosing)} focusedCityId={focusedCityId} pinHoveredCityId={pinHoveredCityId} onFocus={setFocusedCityId} onOpen={city => { if (!openPopups[city.id] || openPopups[city.id].isClosing) zoomRef.current?.centerCity(city); handleCityClick(city) }} />}
 
       <header
         className="absolute top-0 left-0 w-full z-60 flex flex-col md:flex-row items-center md:justify-between px-8 py-6 pointer-events-none gap-2"
@@ -1209,6 +1276,23 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             About
           </button>
           
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleRealisticGlobe}
+            aria-pressed={realisticGlobe}
+            aria-label={realisticGlobe ? "Switch to the neon globe" : "Switch to the realistic globe"}
+            title={realisticGlobe ? "Neon globe" : "Realistic globe"}
+            className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
+          >
+            {realisticGlobe ? <>
+              <RealisticGlobeIcon className="size-[18px] group-hover:hidden" />
+              <NeonGlobeIcon className="hidden size-[18px] group-hover:block" />
+            </> : <>
+              <NeonGlobeIcon className="size-[18px] group-hover:hidden" />
+              <RealisticGlobeIcon className="hidden size-[18px] group-hover:block" />
+            </>}
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 

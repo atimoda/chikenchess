@@ -5,33 +5,45 @@
 import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
-import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, type PerspectiveCamera, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute } from 'three'
+import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, type PerspectiveCamera, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute, type Points, type LineSegments } from 'three'
 import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup, type PopupExitMotion } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation, sphereFillDistance } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
+import { RealisticEarth } from './globe-realistic'
 import { constrainPopupPosition, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
 
-function GlobeGeography() {
+function GlobeGeography({ realisticMixRef }: { realisticMixRef: RefObject<number> }) {
   const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
   const coast = useMemo(() => coastlineSegments(svg), [svg])
   const grid = useMemo(() => globeGridPoints(), [])
-  const uniforms = useMemo(() => ({ color: { value: new Color('#39ff14') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
-  const gridUniforms = useMemo(() => ({ color: { value: new Color('#789386') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
+  const uniforms = useMemo(() => ({ color: { value: new Color('#39ff14') }, sun: { value: new Vector3(-6.2, 3.3, -10) }, fade: { value: 1 } }), [])
+  const gridUniforms = useMemo(() => ({ color: { value: new Color('#789386') }, sun: { value: new Vector3(-6.2, 3.3, -10) }, fade: { value: 1 } }), [])
+  const pointsRef = useRef<Points>(null)
+  const linesRef = useRef<LineSegments>(null)
+  // The neon drawing gives way while the realistic Earth fades in.
+  useFrame(() => {
+    const mix = realisticMixRef.current ?? 0
+    const fade = 1 - mix * mix * (3 - 2 * mix)
+    uniforms.fade.value = fade
+    gridUniforms.fade.value = fade
+    if (pointsRef.current) pointsRef.current.visible = fade > 0
+    if (linesRef.current) linesRef.current.visible = fade > 0
+  })
   return <>
-    <points raycast={() => {}}>
+    <points ref={pointsRef} raycast={() => {}}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[grid, 3]} /></bufferGeometry>
       <shaderMaterial transparent depthWrite={false} uniforms={gridUniforms}
         vertexShader="uniform vec3 sun; varying float lightAmount; void main() { vec4 worldPosition = modelMatrix * vec4(position, 1.0); vec3 worldPoint = worldPosition.xyz; lightAmount = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_Position = projectionMatrix * viewMatrix * worldPosition; gl_PointSize = 2.4; }"
-        fragmentShader="uniform vec3 color; varying float lightAmount; void main() { vec2 point = gl_PointCoord - vec2(0.5); if (dot(point, point) > 0.25) discard; float brightness = 0.5 + 0.5 * lightAmount; gl_FragColor = vec4(color * brightness, 0.55); }" />
+        fragmentShader="uniform vec3 color; uniform float fade; varying float lightAmount; void main() { vec2 point = gl_PointCoord - vec2(0.5); if (dot(point, point) > 0.25) discard; float brightness = 0.5 + 0.5 * lightAmount; gl_FragColor = vec4(color * brightness, 0.55 * fade); }" />
     </points>
-    <lineSegments raycast={() => {}}>
+    <lineSegments ref={linesRef} raycast={() => {}}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[coast, 3]} /></bufferGeometry>
       <shaderMaterial transparent depthWrite={false} uniforms={uniforms}
         vertexShader="varying vec3 worldPoint; void main() { vec4 p = modelMatrix * vec4(position, 1.0); worldPoint = p.xyz; gl_Position = projectionMatrix * viewMatrix * p; }"
-        fragmentShader="uniform vec3 color; uniform vec3 sun; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .7 * (.532 + .468 * light)); }" />
+        fragmentShader="uniform vec3 color; uniform vec3 sun; uniform float fade; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .7 * (.532 + .468 * light) * fade); }" />
     </lineSegments>
   </>
 }
@@ -42,7 +54,7 @@ interface GlobeProps {
   unlockedCities?: string[]
   openPopups: Record<string, any>
   onCityClick: (city: CityData, position?: { x: number; y: number }) => void
-  onPopupClose: (cityId: string, type?: 'open' | 'closed' | 'held', motion?: PopupExitMotion) => void
+  onPopupClose: (cityId: string, type?: 'open' | 'closed' | 'held' | 'era', motion?: PopupExitMotion) => void
   bringToFront: (id: string) => void
   updatePopupPosition: (id: string, x: number, y: number) => void
   playMapSound: (type: string, forceResume?: boolean) => void
@@ -65,6 +77,9 @@ interface GlobeProps {
   setFocusedCityId?: (cityId: string | null) => void
   onPinHover?: (cityId: string | null) => void
   popupLayerRef?: RefObject<HTMLDivElement | null>
+  onlineDisabled?: boolean
+  /** Realistic Earth instead of the neon outline; fades in once the intro zoom ends. */
+  realistic?: boolean
 }
 
 const GLOBE_RADIUS = 2
@@ -74,8 +89,8 @@ const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
 
 type PopupLineState = { startX: number; startY: number; cpX: number; cpY: number; endX: number; endY: number; handlePath: string }
 
-function popupLineState(position: { x: number; y: number }, jitter: number, dragging: boolean, dragAnchor: { x: number; y: number }, start = { x: 0, y: 0 }): PopupLineState {
-  const startX = start.x, startY = start.y, width = 288, height = 450
+function popupLineState(position: { x: number; y: number }, jitter: number, dragging: boolean, dragAnchor: { x: number; y: number }, start = { x: 0, y: 0 }, size = { width: 317, height: 450 }): PopupLineState {
+  const startX = start.x, startY = start.y, { width, height } = size
   const left = { x: position.x, y: position.y + height / 2 }
   const right = { x: position.x + width, y: position.y + height / 2 }
   const top = { x: position.x + width / 2, y: position.y }
@@ -281,6 +296,8 @@ const PopupContainer = ({
     onEraSelect,
     onCreateRoom,
     creatingRoomCityId,
+    onlineDisabled,
+    driftAway,
 }: any) => {
     // Local state for smooth dragging
     const [localPos, setLocalPos] = useState({ x: popup.x, y: popup.y })
@@ -314,6 +331,20 @@ const PopupContainer = ({
     const lastLineState = useRef<PopupLineState>({ startX: 0, startY: 0, cpX: 0, cpY: 0, endX: 0, endY: 0, handlePath: '' })
     const [isDraggingLocal, setIsDraggingLocal] = useState(false)
     const draggingRef = useRef(false)
+    // After a drop from the close button the card stays where and how it was
+    // left (even partly off screen) and the cable stays on the button, until
+    // the card is dragged by its body.
+    const [hangingFromClose, setHangingFromClose] = useState(false)
+    const hangingFromCloseRef = useRef(false)
+    const setHanging = (value: boolean) => { hangingFromCloseRef.current = value; setHangingFromClose(value) }
+    // A card held by its close button stays under the hand: no standby drift.
+    const heldByCloseRef = useRef(false)
+    const cardSize = useRef({ width: 317, height: 450 })
+    // Entering another city cuts the card loose: it keeps its screen position
+    // instead of following its pin during the camera dive, and the cable goes.
+    const driftAwayRef = useRef(false)
+    driftAwayRef.current = !!driftAway && !popup.isClosing
+    const driftOrigin = useRef<{ x: number; y: number } | null>(null)
 
     useFrame(({ camera, size }) => {
       if (!anchorRef.current || !lineRef.current) return
@@ -333,6 +364,13 @@ const PopupContainer = ({
 
       projectedPin.copy(worldPin).project(camera)
       const screen = { x: (projectedPin.x + 1) * size.width / 2, y: (1 - projectedPin.y) * size.height / 2 }
+      if (driftAwayRef.current) {
+        if (!driftOrigin.current) driftOrigin.current = screen
+        lineRef.current.style.opacity = '0'
+        if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x + driftOrigin.current.x - screen.x}px, ${slowOffset.current.y + driftOrigin.current.y - screen.y}px, 0)`
+        return
+      }
+      driftOrigin.current = null
       cameraPosition.setFromMatrixPosition(camera.matrixWorld)
       const cameraDistance = Math.max(cameraPosition.length(), GLOBE_RADIUS + 1e-4)
       cameraUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize()
@@ -358,11 +396,11 @@ const PopupContainer = ({
         }
       }
       const previous = previousProjectedPin.current
-      if (standbyRef.current && previous && !popup.isClosing) {
+      if (standbyRef.current && previous && !popup.isClosing && !heldByCloseRef.current) {
         slowOffset.current.x += popupStandbyCompensation(screen.x - previous.x)
         slowOffset.current.y += popupStandbyCompensation(screen.y - previous.y)
       }
-      if (!popup.isClosing && !draggingRef.current && wrapperRef.current) {
+      if (!popup.isClosing && !draggingRef.current && (!hangingFromCloseRef.current || sizeChanged) && wrapperRef.current) {
         const panel = wrapperRef.current.querySelector<HTMLElement>('[data-popup-surface]')
         if (panel) {
           const rect = panel.getBoundingClientRect()
@@ -412,7 +450,9 @@ const PopupContainer = ({
       if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
       if (!popup.isClosing) {
         const visualPosition = { x: localPosRef.current.x + slowOffset.current.x, y: localPosRef.current.y + slowOffset.current.y }
-        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current, dragAnchor.current, lineStartOffset.current)
+        const surface = wrapperRef.current?.querySelector<HTMLElement>('[data-popup-surface]')
+        if (surface) cardSize.current = { width: surface.offsetWidth, height: surface.offsetHeight }
+        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current || hangingFromCloseRef.current, dragAnchor.current, lineStartOffset.current, cardSize.current)
         lastLineState.current = nextLine
         cablePathRef.current?.setAttribute('d', `M ${nextLine.startX} ${nextLine.startY} Q ${nextLine.cpX} ${nextLine.cpY} ${nextLine.endX} ${nextLine.endY}`)
         lineStartRef.current?.setAttribute('cx', String(nextLine.startX))
@@ -481,7 +521,7 @@ const PopupContainer = ({
 
     const currentLine = popup.isClosing
       ? lastLineState.current
-      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal, dragAnchor.current, lineStartOffset.current)
+      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal || hangingFromClose, dragAnchor.current, lineStartOffset.current, cardSize.current)
     if (!popup.isClosing) lastLineState.current = currentLine
     const { cpX, cpY, endX, endY, handlePath } = currentLine
 
@@ -526,6 +566,8 @@ const PopupContainer = ({
                         })}
                         city={city}
                         onCreateRoom={onCreateRoom}
+                        onlineDisabled={onlineDisabled}
+                        driftAway={driftAway}
                         isCreatingRoom={creatingRoomCityId === city.id}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
                         isConquered={isConquered}
@@ -576,6 +618,7 @@ const PopupContainer = ({
                         transformOrigin={isDraggingLocal ? `${dragAnchor.current.x}px ${dragAnchor.current.y}px` : undefined}
                         onDragStart={(e) => {
                             hasDragged.current = true
+                            setHanging(false)
                             setIsDraggingPopup(true)
                             setIsDraggingLocal(true)
                             draggingRef.current = true
@@ -615,6 +658,8 @@ const PopupContainer = ({
                         }}
                         onCloseButtonDragStart={(clientX, clientY) => {
                             hasDragged.current = true
+                            heldByCloseRef.current = true
+                            setHanging(false)
                             setIsDraggingPopup(true)
                             setIsDraggingLocal(true)
                             draggingRef.current = true
@@ -636,6 +681,8 @@ const PopupContainer = ({
                             }
                         }}
                         onCloseButtonDragEnd={() => {
+                            heldByCloseRef.current = false
+                            setHanging(true)
                             setIsDraggingPopup(false)
                             setIsDraggingLocal(false)
                             draggingRef.current = false
@@ -664,6 +711,7 @@ const GlobeContent = ({
   onCitySelect,
   onCreateRoom,
   creatingRoomCityId,
+  onlineDisabled,
   handleSmartPadSound,
   handleSmartPadLeave,
   stopPadSound,
@@ -677,7 +725,9 @@ const GlobeContent = ({
   setFocusedCityId,
   onPinHover,
   popupLayerRef,
-}: GlobeProps) => {
+  realistic = false,
+  constrained = false,
+}: GlobeProps & { constrained?: boolean }) => {
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
   const [isDraggingPopup, setIsDraggingPopup] = useState(false)
@@ -691,6 +741,10 @@ const GlobeContent = ({
   const lastInteractionTime = useRef(Date.now())
   const [introZoomComplete, setIntroZoomComplete] = useState(false)
   const lastReportedZoom = useRef(100)
+  const realisticMix = useRef(0)
+  // Load the Earth maps only once realism has been asked for, then keep them.
+  const [realisticLoaded, setRealisticLoaded] = useState(realistic)
+  useEffect(() => { if (realistic) setRealisticLoaded(true) }, [realistic])
   
   // Standby Rotation State
   const standbyRotationAxis = useRef(new Vector3(0, 1, 0))
@@ -1168,7 +1222,11 @@ const GlobeContent = ({
           </Sphere>
 
           {/* Only coastlines: no borders or regional divisions. */}
-          <GlobeGeography />
+          <GlobeGeography realisticMixRef={realisticMix} />
+
+          {realisticLoaded && <Suspense fallback={null}>
+            <RealisticEarth radius={GLOBE_RADIUS} sunPosition={SUN_POSITION} target={realistic && introZoomComplete} mixRef={realisticMix} constrained={constrained} />
+          </Suspense>}
 
           {cities.map((city) => {
             const position = getSphericalCoordinates(city.pinCoordinates.lat, city.pinCoordinates.lng, GLOBE_RADIUS)
@@ -1292,10 +1350,11 @@ const GlobeContent = ({
 
                 {isOpen && (
                       <PopupContainer
-                          onEraSelect={(era: CityData, position: { x: number; y: number }) => { if (era.id !== city.id) { onPopupClose(city.id); centerCity(era); onCityClick(era, position) } }}
+                          onEraSelect={(era: CityData, position: { x: number; y: number }) => { if (era.id !== city.id) { onPopupClose(city.id, 'era'); centerCity(era); onCityClick(era, position) } }}
                           city={city}
                           onCreateRoom={onCreateRoom}
                           creatingRoomCityId={creatingRoomCityId}
+                          onlineDisabled={onlineDisabled}
                           popup={popup}
                           popupLayerRef={popupLayerRef}
                           isConquered={isConquered}
@@ -1312,6 +1371,7 @@ const GlobeContent = ({
                           handleSmartPadLeave={handleSmartPadLeave}
                           stopPadSound={stopPadSound}
                           isEntering={enteringCityId === city.id}
+                          driftAway={!!enteringCityId}
                           setEnteringCityId={(id: string | null) => { if (!enteringCityId) setEnteringCityId(id) }}
                           setIsDraggingPopup={setIsDraggingPopup}
                           standbyRef={isStandby}
@@ -1368,7 +1428,7 @@ export const GlobeComponent = (props: GlobeProps) => {
     return (
         <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={constrained ? 1 : [1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
             <Suspense fallback={null}>
-                <GlobeContent {...props} />
+                <GlobeContent {...props} constrained={constrained} />
             </Suspense>
         </Canvas>
     )
