@@ -63,18 +63,33 @@
   fill: var(--flag-color);
 }
 
-/* Opening: each row enters from the list's left edge after the previous one,
-   without fading. The viewport clips the rows until they arrive. */
+/* Rows appear one after another, campaign titles included, without sliding
+   or fading; when the list leaves they vanish in the same order. The step
+   (18 ms) matches ROW_STEP_MS in campaign-city-list.tsx. */
 .row {
-  animation: rowEnter 320ms cubic-bezier(.2, .8, .25, 1) both;
+  animation: rowAppear 1ms step-end both;
   animation-delay: calc(var(--row, 0) * 18ms);
 }
 
-@keyframes rowEnter {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+.leaving {
+  pointer-events: none;
+}
+
+.leaving .row {
+  animation-name: rowVanish;
+}
+
+@keyframes rowAppear {
+  from { visibility: hidden; }
+  to { visibility: visible; }
+}
+
+@keyframes rowVanish {
+  from { visibility: visible; }
+  to { visibility: hidden; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .row { animation: none; }
+  .leaving .row { animation: none; visibility: hidden; }
 }

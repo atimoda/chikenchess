@@ -1174,7 +1174,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
 
       <div ref={popupLayerRef} className="absolute inset-0 z-[45] pointer-events-none" />
 
-      {logoPhase === 'header' && <CampaignCityList cities={cities} conqueredCities={playerProfile?.conqueredCityIds || []} openCityIds={Object.keys(openPopups).filter(id => !openPopups[id].isClosing)} focusedCityId={focusedCityId} pinHoveredCityId={pinHoveredCityId} onFocus={setFocusedCityId} onOpen={city => { if (!openPopups[city.id] || openPopups[city.id].isClosing) zoomRef.current?.centerCity(city); handleCityClick(city) }} />}
+      {logoPhase === 'header' && <CampaignCityList leaving={!!enteringCityId} cities={cities} conqueredCities={playerProfile?.conqueredCityIds || []} openCityIds={Object.keys(openPopups).filter(id => !openPopups[id].isClosing)} focusedCityId={focusedCityId} pinHoveredCityId={pinHoveredCityId} onFocus={setFocusedCityId} onOpen={city => { if (!openPopups[city.id] || openPopups[city.id].isClosing) zoomRef.current?.centerCity(city); handleCityClick(city) }} />}
 
       <header
         className="absolute top-0 left-0 w-full z-60 flex flex-col md:flex-row items-center md:justify-between px-8 py-6 pointer-events-none gap-2"
