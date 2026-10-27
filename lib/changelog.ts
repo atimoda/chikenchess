@@ -45,12 +45,12 @@ export const CHANGELOG = [
       ] },
       { title: 'Galinha no globo', items: [
         'Depois que o globo termina a aproximação inicial, uma galinha cai do céu num ponto aleatório da tela e fica numa camada acima de tudo. Ela anda, corre, pula, voa, choca, agacha, faz slide e cacareja.',
-        'O chão é uma faixa de grama no rodapé, por trás dos botões do rodapé. A lista de cidades continua até o fim da tela, por cima do chão. Os botões do rodapé, os botões de zoom, os popups das cidades e os botões Campaign e Create lobby viram plataformas flutuantes: dá para subir neles, atravessar pulando de baixo e descer com pra baixo + pulo.',
+        'O chão é uma faixa de grama no rodapé, por trás dos botões do rodapé. A lista de cidades continua até o fim da tela, por trás do chão. Os botões do rodapé, os botões de zoom, os popups das cidades e os botões Campaign e Create lobby viram plataformas flutuantes: dá para subir neles, atravessar pulando de baixo e descer com pra baixo + pulo.',
         'As laterais da tela são paredes rígidas: andando contra elas a galinha agarra e escala. Nas laterais dos popups ela agarra pulando perto. Também dá para pegar a galinha com o mouse ou o dedo e soltar.',
       ] },
       { title: 'Controles', items: [
-        'Novo botão de controle no canto superior direito do globo abre o painel de controles da galinha, o mesmo em todas as telas: teclado e gamepad com até três teclas ou botões por ação, controles na tela (automático, sempre ou nunca), cacarejos e restaurar padrão.',
-        'Em telas de toque aparecem controles mobile: analógico semitransparente à esquerda e botões redondos de pular, chocar e correr à direita.',
+        'Novo botão de controle no canto superior direito do globo abre o painel de controles da galinha, o mesmo em todas as telas: teclado e gamepad com até três teclas ou botões por ação, controles na tela (automático, sempre ou nunca), cacarejos, link para o protótipo Pátio da Caipira e restaurar padrão.',
+        'Em telas de toque aparecem controles mobile: analógico semitransparente à esquerda e botões redondos de correr, chocar e pular à direita, os quatro alinhados pelo centro na parte de baixo da tela. No celular, os botões de zoom do globo ficam escondidos.',
       ] },
     ],
   },

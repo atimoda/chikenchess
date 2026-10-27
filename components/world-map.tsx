@@ -1362,8 +1362,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
       <AboutReleaseDialog open={showAbout} onOpenChange={setShowAbout} tab={aboutTab} onTabChange={setAboutTab} />
       <ChickenControlsPanel open={showChickenControls} onOpenChange={setShowChickenControls} />
 
-      {/* Player chicken: ground strip behind the footer buttons and the city list; the chicken drops in once the globe settles */}
-      <ChickenGround className="z-[35]" />
+      {/* Player chicken: ground strip over the city list, behind the footer buttons; the chicken drops in once the globe settles */}
+      <ChickenGround className="z-[65]" />
       {showTitle && <ChickenLayer />}
 
       {/* UI OVERLAY LAYER */}
@@ -1382,7 +1382,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
       </div>
 
       {/* Zoom Controls (Fixed Bottom Right) */}
-      <div className="flex fixed bottom-24 right-4 z-50 flex-col gap-2 pointer-events-auto">
+      <div className="hidden md:flex fixed bottom-24 right-4 z-50 flex-col gap-2 pointer-events-auto">
           <Button
               data-chicken-platform
               variant="outline"
