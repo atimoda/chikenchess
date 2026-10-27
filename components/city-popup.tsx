@@ -336,6 +336,7 @@ export const CityPopup = ({
         ref={containerRef}
         data-drag-handle="true" // Make the entire popup draggable
         data-popup-surface="true"
+        data-chicken-platform
         className="popup-scrollbar-hidden relative overflow-hidden rounded-lg border bg-card/[0.82] shadow-2xl transition-transform cursor-grab active:cursor-grabbing"
         onClick={(e) => {
             e.stopPropagation()

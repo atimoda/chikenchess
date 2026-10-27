@@ -3,6 +3,22 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.10.0',
+    date: '27/10/2026',
+    title: 'Galinha jogável no globo, com chão no rodapé, plataformas, controles mobile e painel de controles',
+    groups: [
+      { title: 'Galinha no globo', items: [
+        'Depois que o globo termina a aproximação inicial, uma galinha cai do céu num ponto aleatório da tela e fica numa camada acima de tudo. Ela anda, corre, pula, voa, choca, agacha, faz slide e cacareja.',
+        'O chão é uma faixa de grama no rodapé, por trás dos botões do rodapé. Os botões do rodapé, os botões de zoom e os popups das cidades viram plataformas flutuantes: dá para subir neles, atravessar pulando de baixo e descer com pra baixo + pulo.',
+        'As laterais da tela são paredes rígidas: andando contra elas a galinha agarra e escala. Nas laterais dos popups ela agarra pulando perto. Também dá para pegar a galinha com o mouse ou o dedo e soltar.',
+      ] },
+      { title: 'Controles', items: [
+        'Novo botão de controle no canto superior direito do globo abre o painel de controles da galinha, o mesmo em todas as telas: teclado e gamepad com até três teclas ou botões por ação, controles na tela (automático, sempre ou nunca), cacarejos e restaurar padrão.',
+        'Em telas de toque aparecem controles mobile: analógico semitransparente à esquerda e botões redondos de pular, chocar e correr à direita.',
+      ] },
+    ],
+  },
+  {
     version: '1.9.1',
     date: '26/10/2026',
     title: 'Ensaio da Mangueira refeito com bateria gravada, batidão mais forte no funk carioca e kits padrão do Criativo agrupados por campanha',

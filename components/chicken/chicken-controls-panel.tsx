@@ -1,0 +1,142 @@
+"use client"
+
+// Chicken controls panel: the same floating panel on every screen. Keyboard and gamepad binds
+// (3 slots per action), on-screen controls mode and clucking sound, saved in this browser.
+import { useEffect, useRef, useState } from "react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  CHICKEN_ACTIONS, chickenBindName, defaultChickenControls, loadChickenControls, readGamepadTokens, saveChickenControls,
+  setChickenControlsListening, subscribeChickenControls, type ChickenAction, type ChickenControls, type ChickenTouchMode,
+} from "@/lib/chicken/controls"
+import { cn } from "@/lib/utils"
+
+type Listen = { kind: "keys" | "pad"; action: ChickenAction; slot: number } | null
+
+const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
+  { value: "auto", label: "Automático" },
+  { value: "on", label: "Sempre" },
+  { value: "off", label: "Nunca" },
+]
+
+export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [controls, setControls] = useState<ChickenControls>(defaultChickenControls)
+  const [listen, setListen] = useState<Listen>(null)
+  const listenRef = useRef<Listen>(null)
+  listenRef.current = listen
+
+  useEffect(() => {
+    setControls(loadChickenControls())
+    return subscribeChickenControls(setControls)
+  }, [])
+
+  const update = (fn: (c: ChickenControls) => void) => {
+    const next: ChickenControls = structuredClone(loadChickenControls())
+    fn(next)
+    saveChickenControls(next)
+    setControls(next)
+  }
+  const assign = (token: string | null) => {
+    const l = listenRef.current
+    if (!l) return
+    update(c => {
+      // a key or button belongs to one action only
+      if (token) CHICKEN_ACTIONS.forEach(a => { c[l.kind][a.key] = c[l.kind][a.key].map(t => t === token ? null : t) })
+      c[l.kind][l.action][l.slot] = token
+    })
+    setListen(null)
+  }
+
+  useEffect(() => {
+    setChickenControlsListening(!!listen)
+    if (!listen) return
+    if (listen.kind === "keys") {
+      const onKey = (e: KeyboardEvent) => {
+        e.preventDefault(); e.stopPropagation()
+        if (e.code === "Escape") setListen(null)
+        else if (e.code === "Delete" || e.code === "Backspace") assign(null)
+        else assign(`Key:${e.code}`)
+      }
+      window.addEventListener("keydown", onKey, true)
+      return () => window.removeEventListener("keydown", onKey, true)
+    }
+    // gamepad: wait for a button or stick that was not already held when listening started
+    let prev = readGamepadTokens(), raf = 0
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Escape") { e.preventDefault(); setListen(null) }
+      else if (e.code === "Delete" || e.code === "Backspace") { e.preventDefault(); assign(null) }
+    }
+    const poll = () => {
+      const now = readGamepadTokens()
+      const fresh = [...now].find(t => !prev.has(t))
+      prev = now
+      if (fresh) { assign(fresh); return }
+      raf = requestAnimationFrame(poll)
+    }
+    raf = requestAnimationFrame(poll)
+    window.addEventListener("keydown", onKey, true)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", onKey, true) }
+  }, [listen])
+
+  useEffect(() => { if (!open) setListen(null) }, [open])
+  useEffect(() => () => setChickenControlsListening(false), [])
+
+  const grid = (kind: "keys" | "pad") => (
+    <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,4.5rem))] items-center gap-1.5 text-xs">
+      {CHICKEN_ACTIONS.map(a => (
+        <div key={a.key} className="contents">
+          <span className="truncate text-[#b9c7b9]" title={a.label}>{a.label}</span>
+          {[0, 1, 2].map(slot => {
+            const on = listen?.kind === kind && listen.action === a.key && listen.slot === slot
+            return (
+              <button
+                key={slot}
+                type="button"
+                onClick={() => setListen(on ? null : { kind, action: a.key, slot })}
+                className={cn("h-7 truncate rounded border px-1 font-mono text-[11px] transition-colors", on ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 text-[#dfe8df] hover:border-primary/60")}
+              >
+                {on ? (kind === "pad" ? "no controle…" : "aperte…") : chickenBindName(controls[kind][a.key][slot])}
+              </button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
+      <DialogContent floating closeOnInteractOutside closeLabel="Fechar controles" className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]">
+        <DialogHeader>
+          <DialogTitle className="font-mono text-sm uppercase tracking-widest">Controles da galinha</DialogTitle>
+          <DialogDescription className="text-xs text-[#9fb09f]">Os mesmos controles valem em todas as telas e ficam salvos só neste navegador. Clique num campo e aperte uma tecla ou botão. Esc cancela, Delete apaga.</DialogDescription>
+        </DialogHeader>
+        <section className="grid gap-2">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Teclado</h3>
+          {grid("keys")}
+          <p className="text-[11px] text-[#8a9a8a]">O navegador não deixa bloquear alguns atalhos com Ctrl: Ctrl junto com W fecha a aba.</p>
+        </section>
+        <section className="grid gap-2">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Gamepad</h3>
+          {grid("pad")}
+          <p className="text-[11px] text-[#8a9a8a]">Nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito.</p>
+        </section>
+        <section className="grid gap-2">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Na tela (celular)</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {TOUCH_MODES.map(m => (
+              <button key={m.value} type="button" onClick={() => update(c => { c.touch = m.value })} className={cn("h-7 rounded border px-3 text-xs transition-colors", controls.touch === m.value ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 hover:border-primary/60")}>{m.label}</button>
+            ))}
+          </div>
+          <p className="text-[11px] text-[#8a9a8a]">Analógico à esquerda e botões de pular, chocar e correr à direita. Automático mostra em telas de toque.</p>
+        </section>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={controls.sound} onChange={e => { const v = e.target.checked; update(c => { c.sound = v }) }} className="accent-[var(--primary)]" />
+            Cacarejos
+          </label>
+          <button type="button" onClick={() => { const d = defaultChickenControls(); saveChickenControls(d); setControls(d); setListen(null) }} className="h-8 rounded border border-white/20 px-3 text-xs hover:border-primary">Restaurar padrão</button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
