@@ -55,6 +55,8 @@ export interface CityPopupProps {
   isCreatingRoom?: boolean
   /** Online play exists but the server is unreachable: show the button, disabled. */
   onlineDisabled?: boolean
+  /** Another city is being entered: this card lets go and drifts off screen. */
+  driftAway?: boolean
 }
 
 // Pendulum feel of a card held by its close button (px/s² and 1/s).
@@ -91,6 +93,7 @@ export const CityPopup = ({
   onCreateRoom,
   isCreatingRoom = false,
   onlineDisabled = false,
+  driftAway = false,
 }: CityPopupProps) => {
   const dragHandleRef = useRef<HTMLButtonElement>(null)
   const popupWrapperRef = useRef<HTMLDivElement>(null)
@@ -114,6 +117,55 @@ export const CityPopup = ({
   const [closeDragResting, setCloseDragResting] = useState(false)
   const [closeGestureCancelled, setCloseGestureCancelled] = useState(false)
   const [hasEntered, setHasEntered] = useState(false)
+  // Card size chosen with the bottom-right grip; null keeps the default layout.
+  const [cardSize, setCardSize] = useState<{ width: number; height: number } | null>(null)
+  const [drift, setDrift] = useState<{ x: number; y: number; fromRotation: number; rotation: number } | null>(null)
+  useEffect(() => {
+    if (!driftAway || popup.isClosing) { setDrift(null); return }
+    const wrapper = popupWrapperRef.current
+    if (!wrapper) return
+    // Away from the screen center, a little off-axis, far enough to leave the viewport.
+    const rect = wrapper.getBoundingClientRect()
+    const fromX = rect.left + rect.width / 2 - window.innerWidth / 2
+    const fromY = rect.top + rect.height / 2 - window.innerHeight / 2
+    const base = Math.hypot(fromX, fromY) > 1 ? Math.atan2(fromY, fromX) : Math.random() * Math.PI * 2
+    const angle = base + (Math.random() - .5) * .7
+    const distance = Math.hypot(window.innerWidth, window.innerHeight) + Math.max(rect.width, rect.height)
+    const fromRotation = readPopupRotation()
+    setDrift({
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance,
+      fromRotation,
+      rotation: fromRotation + (Math.random() < .5 ? -1 : 1) * (60 + Math.random() * 200),
+    })
+  // readPopupRotation reads the DOM at the moment the drift starts.
+  }, [driftAway, popup.isClosing])
+
+  const startCardResize = (e: React.PointerEvent<HTMLSpanElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    e.preventDefault()
+    e.stopPropagation()
+    const surface = containerRef.current
+    if (!surface) return
+    const start = { x: e.clientX, y: e.clientY, width: surface.offsetWidth, height: surface.offsetHeight }
+    const grip = e.currentTarget
+    grip.setPointerCapture(e.pointerId)
+    const move = (event: PointerEvent) => {
+      const zoom = scale || 1
+      setCardSize({
+        width: Math.max(240, Math.min(window.innerWidth - 24, start.width + (event.clientX - start.x) / zoom)),
+        height: Math.max(220, Math.min(window.innerHeight - 24, start.height + (event.clientY - start.y) / zoom)),
+      })
+    }
+    const end = () => {
+      grip.removeEventListener('pointermove', move)
+      grip.removeEventListener('pointerup', end)
+      grip.removeEventListener('pointercancel', end)
+    }
+    grip.addEventListener('pointermove', move)
+    grip.addEventListener('pointerup', end)
+    grip.addEventListener('pointercancel', end)
+  }
   // Pendulum held by the close button: the card hangs from the pressed point,
   // gravity pulls its center down and the hand's acceleration swings it.
   const swingRef = useRef<{ angle: number; velocity: number; pointer: { x: number; y: number }; last: { x: number; y: number }; handVelocity: { x: number; y: number }; handAcceleration: { x: number; y: number }; frame: number | null; time: number } | null>(null)
@@ -333,11 +385,14 @@ export const CityPopup = ({
       handleRef={dragHandleRef}
       ref={popupWrapperRef}
       className={cn(
-        "absolute w-72 pointer-events-auto flex flex-col select-none",
-        popup.isClosing ? popup.exitMotion ? "animate-popup-exit-from-button" : "animate-popup-exit" : closeHeld ? "popup-close-held" : closeDragResting ? "popup-close-resting" : closeGestureCancelled ? "popup-close-restored" : hasEntered ? "popup-entered" : "animate-popup"
+        "absolute pointer-events-auto flex flex-col select-none",
+        // Default width: 10% wider than the former 288 px.
+        !cardSize && "w-[317px]",
+        drift ? "popup-drift-away" : popup.isClosing ? popup.exitMotion ? "animate-popup-exit-from-button" : "animate-popup-exit" : closeHeld ? "popup-close-held" : closeDragResting ? "popup-close-resting" : closeGestureCancelled ? "popup-close-restored" : hasEntered ? "popup-entered" : "animate-popup"
       )}
       style={{
         zIndex: popup.zIndex,
+        width: cardSize?.width,
         willChange: 'left, top',
         contain: 'layout',
         touchAction: 'none',
@@ -351,6 +406,10 @@ export const CityPopup = ({
         '--exit-y': `${popup.exitMotion?.translateY ?? 0}px`,
         '--exit-rot': `${popup.exitMotion?.rotation ?? 0}deg`,
         '--exit-origin': `${popup.exitMotion?.originX ?? 50}% ${popup.exitMotion?.originY ?? 50}%`,
+        '--drift-x': `${drift?.x ?? 0}px`,
+        '--drift-y': `${drift?.y ?? 0}px`,
+        '--drift-from-rot': `${drift?.fromRotation ?? 0}deg`,
+        '--drift-rot': `${drift?.rotation ?? 0}deg`,
         transformOrigin: closeHeld || popup.exitMotion ? `${closePivot.x}px ${closePivot.y}px` : undefined,
       } as React.CSSProperties}
       onMouseDown={(e) => {
@@ -403,6 +462,7 @@ export const CityPopup = ({
         style={{
           maxWidth: 'calc(100vw - 24px)',
           maxHeight: 'calc(100dvh - 24px)',
+          height: cardSize?.height,
           overflowY: 'auto',
           overflowX: 'hidden',
           scrollbarWidth: 'none',
@@ -468,7 +528,7 @@ export const CityPopup = ({
           {getCityEras(city).map((era, index) => <button key={era.id} type="button" disabled={isEntering}
             // Closed hat on hover: even positions (2nd, 4th…) full, odd ones softer.
             onMouseEnter={() => { if (!isEntering) playMapSound(index % 2 === 1 ? 'alesissr16_ch' : 'alesissr16_ch_soft', true) }} aria-label={`${era.name}, ${era.year}: ${era.genre.split('·')[0].trim()}`} aria-pressed={era.id === city.id}
-            onClick={() => onEraSelect?.(era)} className={cn('border rounded px-2 py-1 text-xs font-mono cursor-pointer', era.id === city.id ? 'text-white border-white/60' : 'text-white/50 border-white/20')}>
+            onClick={() => onEraSelect?.(era)} className={cn('border rounded px-2 py-1 text-xs font-mono cursor-pointer', era.id === city.id ? 'text-white border-white/60' : 'text-white/50 border-white/20 hover:border-white/60')}>
             {era.year}
           </button>)}
         </nav>}
@@ -575,7 +635,7 @@ export const CityPopup = ({
               {(onCreateRoom || onlineDisabled) && (
                 <div
                   data-no-drag
-                  className="order-2 inline-flex"
+                  className="order-2 flex w-full"
                   // Same synth when online is down, a bit lower in pitch.
                   onPointerEnter={(e) => { if (!isEntering) handleSmartPadSound(e, onCreateRoom ? 0.45 : 0.38) }}
                   onPointerMove={(e) => { if (!isEntering) handleSmartPadSound(e, onCreateRoom ? 0.45 : 0.38) }}
@@ -585,8 +645,8 @@ export const CityPopup = ({
                     type="button"
                     disabled={isEntering || isCreatingRoom || !onCreateRoom}
                     className={cn(
-                      "group relative inline-flex items-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 uppercase font-mono text-2xl text-primary transition-all",
-                      !onCreateRoom && "text-sm normal-case text-left",
+                      "group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 uppercase font-mono text-2xl text-primary transition-all",
+                      !onCreateRoom && "text-sm normal-case",
                       "hover:border-primary hover:shadow-[0_0_14px_rgba(16,185,129,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
                       "cursor-crosshair disabled:cursor-not-allowed disabled:opacity-50"
                     )}
@@ -616,6 +676,8 @@ export const CityPopup = ({
           </div>
         </div>
       </div>
+      {/* Resize grip, same look as the Creative widgets. */}
+      <span data-no-drag="true" aria-hidden="true" className="popup-resize-grip" onPointerDown={startCardResize} />
     </Draggable>
   )
 }

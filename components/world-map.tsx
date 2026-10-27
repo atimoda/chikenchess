@@ -845,17 +845,26 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           gain.connect(popupHatCompressorRef.current ?? ctx.destination)
           noise.start(t)
           noise.stop(t + duration)
-      } else if (type === "alesissr16_oh") {
+      } else if (type === "alesissr16_oh" || type === "alesissr16_oh_era") {
+          // Switching eras in a popup uses the same hat, 20% quieter and 20% shorter.
+          const era = type === "alesissr16_oh_era"
+          const level = era ? .8 : 1
           const buffers = popupOpenHatBuffersRef.current
           if (buffers.length) {
               const source = ctx.createBufferSource()
               source.buffer = buffers[Math.floor(Math.random() * buffers.length)]
               source.playbackRate.value = 0.98 + Math.random() * 0.04
               const gain = ctx.createGain()
-              gain.gain.setValueAtTime(0.95, t)
+              gain.gain.setValueAtTime(0.95 * level, t)
               source.connect(gain)
               gain.connect(popupHatCompressorRef.current ?? ctx.destination)
               source.start(t)
+              if (era) {
+                  const end = t + source.buffer.duration / source.playbackRate.value * .8
+                  gain.gain.setValueAtTime(0.95 * level, end - .02)
+                  gain.gain.linearRampToValueAtTime(0, end)
+                  source.stop(end + .005)
+              }
           } else {
               const bufferSize = ctx.sampleRate * 0.5
               const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
@@ -867,8 +876,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
               filter.type = "highpass"
               filter.frequency.value = 7000 * pitchVar
               const gain = ctx.createGain()
-              gain.gain.setValueAtTime(0.24, t)
-              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3)
+              gain.gain.setValueAtTime(0.24 * level, t)
+              gain.gain.exponentialRampToValueAtTime(0.01, t + (era ? 0.24 : 0.3))
               noise.connect(filter)
               filter.connect(gain)
               gain.connect(popupHatCompressorRef.current ?? ctx.destination)
@@ -996,10 +1005,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     }))
   }
 
-  const closePopup = (id: string, hat: 'open' | 'closed' | 'held' = 'open', exitMotion?: PopupExitMotion) => {
+  const closePopup = (id: string, hat: 'open' | 'closed' | 'held' | 'era' = 'open', exitMotion?: PopupExitMotion) => {
     const active = openPopups[id]
     if (!active || active.isClosing) return
-    if (hat !== 'held') playMapSound(hat === 'closed' ? "alesissr16_ch" : "alesissr16_oh", true)
+    if (hat !== 'held') playMapSound(hat === 'closed' ? "alesissr16_ch" : hat === 'era' ? "alesissr16_oh_era" : "alesissr16_oh", true)
     setOpenPopups(prev => {
       if (!prev[id] || prev[id].isClosing || prev[id].timestamp !== active.timestamp) return prev
       return {
@@ -1102,6 +1111,28 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
         .popup-entered {
           opacity: 1;
           transform: none;
+        }
+        .popup-drift-away {
+          opacity: 1;
+          pointer-events: none !important;
+          transform-origin: 50% 50%;
+          animation: popupDriftAway 1.3s cubic-bezier(.3, 0, .85, .9) forwards;
+        }
+        @keyframes popupDriftAway {
+          from { transform: translate(0, 0) rotate(var(--drift-from-rot, 0deg)); }
+          to { transform: translate(var(--drift-x, 0px), var(--drift-y, 0px)) rotate(var(--drift-rot, 0deg)); }
+        }
+        .popup-resize-grip {
+          position: absolute;
+          right: 0;
+          bottom: 0;
+          z-index: 60;
+          width: 16px;
+          height: 16px;
+          cursor: nwse-resize;
+          touch-action: none;
+          background: linear-gradient(135deg, transparent 55%, #ffffff55 55%, #ffffff55 62%, transparent 62%, transparent 72%, #ffffff55 72%, #ffffff55 79%, transparent 79%);
+          border-bottom-right-radius: 8px;
         }
         .animate-popup-exit {
           animation: popupExit 0.5s ease-in forwards;

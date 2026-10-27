@@ -54,7 +54,7 @@ interface GlobeProps {
   unlockedCities?: string[]
   openPopups: Record<string, any>
   onCityClick: (city: CityData, position?: { x: number; y: number }) => void
-  onPopupClose: (cityId: string, type?: 'open' | 'closed' | 'held', motion?: PopupExitMotion) => void
+  onPopupClose: (cityId: string, type?: 'open' | 'closed' | 'held' | 'era', motion?: PopupExitMotion) => void
   bringToFront: (id: string) => void
   updatePopupPosition: (id: string, x: number, y: number) => void
   playMapSound: (type: string, forceResume?: boolean) => void
@@ -89,8 +89,8 @@ const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
 
 type PopupLineState = { startX: number; startY: number; cpX: number; cpY: number; endX: number; endY: number; handlePath: string }
 
-function popupLineState(position: { x: number; y: number }, jitter: number, dragging: boolean, dragAnchor: { x: number; y: number }, start = { x: 0, y: 0 }): PopupLineState {
-  const startX = start.x, startY = start.y, width = 288, height = 450
+function popupLineState(position: { x: number; y: number }, jitter: number, dragging: boolean, dragAnchor: { x: number; y: number }, start = { x: 0, y: 0 }, size = { width: 317, height: 450 }): PopupLineState {
+  const startX = start.x, startY = start.y, { width, height } = size
   const left = { x: position.x, y: position.y + height / 2 }
   const right = { x: position.x + width, y: position.y + height / 2 }
   const top = { x: position.x + width / 2, y: position.y }
@@ -297,6 +297,7 @@ const PopupContainer = ({
     onCreateRoom,
     creatingRoomCityId,
     onlineDisabled,
+    driftAway,
 }: any) => {
     // Local state for smooth dragging
     const [localPos, setLocalPos] = useState({ x: popup.x, y: popup.y })
@@ -338,6 +339,12 @@ const PopupContainer = ({
     const setHanging = (value: boolean) => { hangingFromCloseRef.current = value; setHangingFromClose(value) }
     // A card held by its close button stays under the hand: no standby drift.
     const heldByCloseRef = useRef(false)
+    const cardSize = useRef({ width: 317, height: 450 })
+    // Entering another city cuts the card loose: it keeps its screen position
+    // instead of following its pin during the camera dive, and the cable goes.
+    const driftAwayRef = useRef(false)
+    driftAwayRef.current = !!driftAway && !popup.isClosing
+    const driftOrigin = useRef<{ x: number; y: number } | null>(null)
 
     useFrame(({ camera, size }) => {
       if (!anchorRef.current || !lineRef.current) return
@@ -357,6 +364,13 @@ const PopupContainer = ({
 
       projectedPin.copy(worldPin).project(camera)
       const screen = { x: (projectedPin.x + 1) * size.width / 2, y: (1 - projectedPin.y) * size.height / 2 }
+      if (driftAwayRef.current) {
+        if (!driftOrigin.current) driftOrigin.current = screen
+        lineRef.current.style.opacity = '0'
+        if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x + driftOrigin.current.x - screen.x}px, ${slowOffset.current.y + driftOrigin.current.y - screen.y}px, 0)`
+        return
+      }
+      driftOrigin.current = null
       cameraPosition.setFromMatrixPosition(camera.matrixWorld)
       const cameraDistance = Math.max(cameraPosition.length(), GLOBE_RADIUS + 1e-4)
       cameraUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize()
@@ -436,7 +450,9 @@ const PopupContainer = ({
       if (wrapperRef.current) wrapperRef.current.style.transform = `translate3d(${slowOffset.current.x}px, ${slowOffset.current.y}px, 0)`
       if (!popup.isClosing) {
         const visualPosition = { x: localPosRef.current.x + slowOffset.current.x, y: localPosRef.current.y + slowOffset.current.y }
-        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current || hangingFromCloseRef.current, dragAnchor.current, lineStartOffset.current)
+        const surface = wrapperRef.current?.querySelector<HTMLElement>('[data-popup-surface]')
+        if (surface) cardSize.current = { width: surface.offsetWidth, height: surface.offsetHeight }
+        const nextLine = popupLineState(visualPosition, topCurveJitter.current, draggingRef.current || hangingFromCloseRef.current, dragAnchor.current, lineStartOffset.current, cardSize.current)
         lastLineState.current = nextLine
         cablePathRef.current?.setAttribute('d', `M ${nextLine.startX} ${nextLine.startY} Q ${nextLine.cpX} ${nextLine.cpY} ${nextLine.endX} ${nextLine.endY}`)
         lineStartRef.current?.setAttribute('cx', String(nextLine.startX))
@@ -505,7 +521,7 @@ const PopupContainer = ({
 
     const currentLine = popup.isClosing
       ? lastLineState.current
-      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal || hangingFromClose, dragAnchor.current, lineStartOffset.current)
+      : popupLineState({ x: localPos.x + slowOffset.current.x, y: localPos.y + slowOffset.current.y }, topCurveJitter.current, isDraggingLocal || hangingFromClose, dragAnchor.current, lineStartOffset.current, cardSize.current)
     if (!popup.isClosing) lastLineState.current = currentLine
     const { cpX, cpY, endX, endY, handlePath } = currentLine
 
@@ -551,6 +567,7 @@ const PopupContainer = ({
                         city={city}
                         onCreateRoom={onCreateRoom}
                         onlineDisabled={onlineDisabled}
+                        driftAway={driftAway}
                         isCreatingRoom={creatingRoomCityId === city.id}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
                         isConquered={isConquered}
@@ -1333,7 +1350,7 @@ const GlobeContent = ({
 
                 {isOpen && (
                       <PopupContainer
-                          onEraSelect={(era: CityData, position: { x: number; y: number }) => { if (era.id !== city.id) { onPopupClose(city.id); centerCity(era); onCityClick(era, position) } }}
+                          onEraSelect={(era: CityData, position: { x: number; y: number }) => { if (era.id !== city.id) { onPopupClose(city.id, 'era'); centerCity(era); onCityClick(era, position) } }}
                           city={city}
                           onCreateRoom={onCreateRoom}
                           creatingRoomCityId={creatingRoomCityId}
@@ -1354,6 +1371,7 @@ const GlobeContent = ({
                           handleSmartPadLeave={handleSmartPadLeave}
                           stopPadSound={stopPadSound}
                           isEntering={enteringCityId === city.id}
+                          driftAway={!!enteringCityId && enteringCityId !== city.id}
                           setEnteringCityId={(id: string | null) => { if (!enteringCityId) setEnteringCityId(id) }}
                           setIsDraggingPopup={setIsDraggingPopup}
                           standbyRef={isStandby}
