@@ -18,6 +18,7 @@ export const CHANGELOG = [
       { title: 'Partidas e Criativo', items: [
         'Arraste a partir de uma casa vazia para mover o tabuleiro pela tela, junto com os ovos, as peças capturadas e o status. Esc durante o arraste devolve o tabuleiro ao lugar.',
         'As cartas ficaram independentes do tabuleiro: redimensionar o tabuleiro não muda mais o tamanho das cartas, e as cartas têm suas próprias alças de redimensionamento nos quatro cantos, no mesmo estilo das alças do tabuleiro.',
+        'As cartas também podem ser arrastadas pela tela pelo fundo do container delas, no Criativo e nas partidas, sem mover o tabuleiro.',
       ] },
     ],
   },

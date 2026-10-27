@@ -96,5 +96,5 @@ export function useBoardPan({ boardRef, enabled }: { boardRef: RefObject<HTMLEle
     gesture.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, origin: offsetRef.current, rect, moved: false }
   }, [boardRef, enabled])
 
-  return { offset, panning, startPan, translate: `${offset.x}px ${offset.y}px` }
+  return { offset, panning, startPan, enabled, translate: `${offset.x}px ${offset.y}px` }
 }

@@ -23,11 +23,19 @@ export interface PowerCardResize {
   onCancel: () => void
 }
 
+/** Drag from the hand's empty background moves the cards (session-only `translate`, see useBoardPan). */
+export interface PowerCardMove {
+  translate: string
+  moving: boolean
+  onPointerDown: (event: React.PointerEvent<HTMLElement>) => void
+}
+
 /**
  * The hand is sized by `--power-cards-width`, independent of the board: resizing the board never
- * resizes the cards. `resize` adds the four corner handles of the board to the hand's container.
+ * resizes the cards. `resize` adds the four corner handles of the board to the hand's container, and
+ * `move` lets the empty background of the container drag the whole hand.
  */
-export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resize }: { visible: boolean; actions: Record<PowerCardKind, PowerCardAction>; undoAnimationKey?: number; rowRef?: React.Ref<HTMLDivElement>; resize?: PowerCardResize }) {
+export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resize, move }: { visible: boolean; actions: Record<PowerCardKind, PowerCardAction>; undoAnimationKey?: number; rowRef?: React.Ref<HTMLDivElement>; resize?: PowerCardResize; move?: PowerCardMove }) {
   const [active, setActive] = useState<number | null>(null)
   const [angles, setAngles] = useState([-10, -5, 0, 5, 10])
   const [mulliganAnimating, setMulliganAnimating] = useState(false)
@@ -55,7 +63,15 @@ export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resi
     const timeout = window.setTimeout(() => setMulliganAnimating(false), MULLIGAN_ANIMATION_MS)
     return () => window.clearTimeout(timeout)
   }, [undoAnimationKey])
-  return <div ref={rowRef} className={styles.row} data-power-cards style={{ opacity: visible ? 1 : 0, visibility: visible ? "visible" : "hidden" }}>
+  return <div ref={rowRef} className={styles.row} data-power-cards
+    data-movable={move && visible ? "true" : undefined} data-moving={move?.moving ? "true" : undefined}
+    onPointerDown={move ? event => {
+      // Only the background: cards and resize handles keep their own gestures.
+      const target = event.target as HTMLElement
+      if (target.closest("button, [data-resize-target]")) return
+      move.onPointerDown(event)
+    } : undefined}
+    style={{ opacity: visible ? 1 : 0, visibility: visible ? "visible" : "hidden", translate: move?.translate }}>
     <div className={styles.hand} aria-label="Super-powers" onPointerLeave={() => setActive(null)}>
       {resize && <BoardResizeHandles target="cards" enabled={resize.enabled && visible} onStart={resize.onStart} onResizeBy={resize.onResizeBy} onCancel={resize.onCancel} />}
       {cards.map((card, index) => {

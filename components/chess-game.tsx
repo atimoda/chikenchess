@@ -440,6 +440,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, reservedHeight: powerDisplay === "cards" ? () => (powerCardsRef.current?.offsetWidth ?? 0) * BOARD_CARDS_RESIZE_RATIO : undefined })
   const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits })
   const boardPan = useBoardPan({ boardRef: boardAreaRef, enabled: !isPortraitMobile && introPhase >= 3 })
+  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isPortraitMobile && introPhase >= 3 && powerDisplay === "cards" })
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
@@ -2274,7 +2275,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
               <MatchStatus placement="bottom" text={statusPlacement === "bottom" ? statusText : ""} color={statusColor} pulse={statusAlert} style={{ translate: boardPan.translate }} className={cn("mb-1 sm:mb-2 transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")} />
 
-              {powerDisplay === "cards" ? <PowerCardHand visible={introPhase === 3} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} actions={{
+              {powerDisplay === "cards" ? <PowerCardHand visible={introPhase === 3} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={{
                 best: {
                   disabled: playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best'),
                   onClick: event => { if (!matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) spendEggForAction(event.currentTarget, 1, () => showAnalysisArrows("best")) },

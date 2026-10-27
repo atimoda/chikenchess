@@ -371,6 +371,7 @@ export function OnlineMatchBoard({
   const boardResize = useBoardResize({ boardRef, enabled: !isPortraitMobile, reservedHeight: powerDisplay === "cards" ? () => (powerCardsRef.current?.offsetWidth ?? 0) * BOARD_CARDS_RESIZE_RATIO : undefined });
   const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits });
   const boardPan = useBoardPan({ boardRef, enabled: !isPortraitMobile && introPhase >= 3 });
+  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isPortraitMobile && introPhase >= 3 && powerDisplay === "cards" });
   const queuedPieces = useRef(
     new Map<string, { instrument: Instrument; effects?: SquareEffects }>(),
   );
@@ -1574,7 +1575,7 @@ export function OnlineMatchBoard({
             style={{ translate: boardPan.translate }}
             className={cn("mb-1 sm:mb-2 transition-opacity duration-1000", intro ? "opacity-0" : "opacity-100")}
           />
-          {powerDisplay === "cards" ? <PowerCardHand visible={!intro} undoAnimationKey={mulliganAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} actions={{
+          {powerDisplay === "cards" ? <PowerCardHand visible={!intro} undoAnimationKey={mulliganAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={{
             best: { disabled: !canShowSuggestions("best"), onClick: () => show("best") },
             worst: { disabled: !canShowSuggestions("worst"), onClick: () => show("worst") },
             undo: {

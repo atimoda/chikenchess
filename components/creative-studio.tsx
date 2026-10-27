@@ -121,6 +121,7 @@ export function CreativeStudio() {
   const boardResize = useBoardResize({ boardRef, enabled: true, reservedHeight: () => (powerCardsRef.current?.offsetWidth ?? 0) * BOARD_CARDS_RESIZE_RATIO })
   const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: true, customLimits: powerCardsResizeLimits })
   const boardPan = useBoardPan({ boardRef, enabled: !portraitPhone })
+  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !portraitPhone })
   const [widgetOn, setWidgetOn] = useState(() => Object.fromEntries(CREATIVE_WIDGETS.map(widget => [widget.id, widget.on])) as Record<CreativeWidgetId, boolean>)
   const [widgetLayout, setWidgetLayout] = useState<WidgetLayout>(() => initialWidgetLayout(1440, 900))
   const [widgetOrder, setWidgetOrder] = useState<CreativeWidgetId[]>(() => CREATIVE_WIDGETS.map(widget => widget.id))
@@ -786,7 +787,7 @@ export function CreativeStudio() {
           <EggCounter tone="player" value={0} display="∞" widthFor={[0]} role="img" aria-label="Endless golden eggs in Creative" title="Creative has endless golden eggs" />
         </div>
       </div>
-      <PowerCardHand visible={ready} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} actions={cardActions} />
+      <PowerCardHand visible={ready} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={cardActions} />
     </div>
 
     {portraitPhone ? <div className={styles.widgetStack}>{widgets}</div> : widgets}
