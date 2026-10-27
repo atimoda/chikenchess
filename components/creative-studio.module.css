@@ -34,8 +34,16 @@
 .lab[data-stacked='true'] .stage { position: relative; inset: auto; padding-top: 84px; }
 .boardGroup { display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
 .lab .board { position: relative; width: var(--game-board-width); max-width: calc(100vw - 16px); aspect-ratio: 1; user-select: none; pointer-events: auto; }
-.boardFooter { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: var(--game-board-width); max-width: calc(100vw - 16px); pointer-events: auto; }
-.boardFooter .activeCount { margin-left: 0; }
+/* Rows above and below the board, in the place of a match's captured pieces and eggs. */
+.boardRow { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: var(--game-board-width); max-width: calc(100vw - 16px); min-height: 32px; pointer-events: auto; }
+.infinity { font-size: 24px; line-height: 12px; font-weight: 600; }
+.palette { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; gap: 2px; justify-content: flex-start; }
+.paletteEnd { justify-content: flex-end; }
+.lab .palettePiece { flex: 0 1 24px; width: 24px; min-width: 14px; aspect-ratio: 1; height: auto; padding: 2px; border: 0; border-radius: 4px; background: transparent; opacity: .9; cursor: grab; touch-action: none; }
+.lab .palettePiece:hover:not(:disabled) { background: #ffffff14; opacity: 1; }
+.lab .palettePiece:disabled { cursor: default; opacity: .4; }
+.lab .palettePiece :global(svg), .paletteGhost :global(svg) { display: block; width: 100%; height: 100%; }
+.paletteGhost { position: fixed; left: 0; top: 0; z-index: 1000; width: 48px; height: 48px; pointer-events: none; will-change: transform; filter: drop-shadow(0 0 10px #00ffaa88); }
 .widget { pointer-events: auto; display: flex; flex-direction: column; min-width: 0; border: 1px solid #ffffff4d; border-radius: 6px; background: #000000eb; box-shadow: 0 0 20px color-mix(in srgb, var(--city-neon, #b6e5ac) 25%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .widget:not([data-on]) { border-color: #ffffff1a; background: #0009; box-shadow: none; }
 .widgetHeader { position: relative; display: flex; align-items: center; gap: 8px; height: 34px; flex: 0 0 34px; padding: 0 10px 0 34px; cursor: grab; user-select: none; touch-action: none; }
@@ -228,3 +236,6 @@
 .pieceSectionIdentity { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; padding: 8px 0; font-size: 11px; color: #98aaa0; }
 .widget .code pre { max-height: none; padding-top: 8px; }
 .widgetStack .widgetHeader { padding-left: 48px; }
+/* Black pieces get a thin light outline so they read on the black page, like the match's outlined captures. */
+.paletteBlack { filter: drop-shadow(1px 0 0 #b9c7bc) drop-shadow(-1px 0 0 #b9c7bc) drop-shadow(0 1px 0 #b9c7bc) drop-shadow(0 -1px 0 #b9c7bc); }
+.widgetTitleNote { text-transform: none; letter-spacing: .02em; color: #9eafa2; }

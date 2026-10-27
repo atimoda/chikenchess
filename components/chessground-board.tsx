@@ -61,6 +61,8 @@ interface ChessgroundBoardProps {
     auditionPiece: { color: "w" | "b"; type: string }
     onMove: (from: Square, to: Square) => void
     onTogglePiece: (square: Square) => void
+    /** A piece dragged and released outside the board (Creative deletes it). */
+    onDropOutside?: (from: Square) => void
     squareLabel?: (square: Square) => string
   }
   entranceActive?: boolean
@@ -755,6 +757,10 @@ export function ChessgroundBoard({
             freeMode.onTogglePiece(targetSquare)
           } else freeTapRef.current = { square: targetSquare, time: now }
         }
+      } else if (freeMode?.mode === 'move' && didDrag && freeMode.onDropOutside && (file < 0 || file >= 8 || rank < 0 || rank >= 8)) {
+        freeTapRef.current = null
+        freeMode.onDropOutside(dragPiece.from)
+        didMove = true
       } else if (didDrag && file >= 0 && file < 8 && rank >= 0 && rank < 8 && dragPiece.piece.startsWith(playerColor) && game.turn() === playerColor && !movesDisabled && !game.isGameOver()) {
         const targetSquare = `${columns[file]}${rows[rank]}` as Square
 

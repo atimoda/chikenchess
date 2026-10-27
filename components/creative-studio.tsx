@@ -2,6 +2,7 @@
 import { stableHtml } from '@/lib/utils'
 import { METER_IDS, meterLabel } from '@/lib/music/meter'
 import { Knob } from './knob'
+import { PiecePalette, type PalettePiece } from './creative/piece-palette'
 import { InstrumentParameters, type InstrumentParamsTab } from './creative/instrument-parameters'
 import { NoteParamsHostContext, type NoteParamsSelection } from './music-note-params'
 import { MusicPerformanceControls } from './music-performance-controls'
@@ -28,7 +29,7 @@ import { GameWidgetConnections } from './game-presentation'
 import { CreativeWidget, type CreativeWidgetSize } from './creative/creative-widget'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { identifyPitchCollection } from '@/lib/music/scales'
-import { CREATIVE_STORAGE, ROOTS, SCALES, SCALE_LABELS, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, moveCreativePiece, parseCreativeSession, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
+import { CREATIVE_STORAGE, ROOTS, SCALES, SCALE_LABELS, SOUNDS, createCreativeSession, createDusseldorfSession, creativeBoardPieces, creativeSnapshot, mapCreativeBoardPieces, moveCreativePiece, parseCreativeSession, placeCreativePiece, removeCreativePiece, resetCreativePositions, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
 import { DEFAULT_KIT_GROUPS, EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, prepareOfficialCityKit, resetLegacyMusicStorage, updateKitLibrary } from '@/lib/music/city-kits'
 import { cities, getCityById } from '@/lib/cities-data'
@@ -71,7 +72,7 @@ function setNotice(message: string) {
 
 // What "unsaved changes" compares: which pieces are switched on is a listening choice, not a kit edit.
 function kitFingerprint(kit: CreativeSession) {
-  return JSON.stringify({ ...kit, pieces: kit.pieces.map(({ active: _active, ...piece }) => piece) })
+  return JSON.stringify({ ...kit, pieces: kit.pieces.map(({ active: _active, ...piece }) => piece), extras: kit.extras?.map(({ active: _active, ...piece }) => piece) })
 }
 
 type CreativeWidgetId = 'kit' | 'transport' | 'reactions' | 'code' | 'instrument' | 'source' | 'band'
@@ -89,7 +90,7 @@ const CREATIVE_WIDGETS: { id: CreativeWidgetId; title: string; side: 'left' | 'r
 const WIDGET_TOP = 76
 const WIDGET_GAP = 10
 const WIDGET_HEADER = 34
-const CREATIVE_BOARD_WIDTH = 'min(90vw, calc(100dvh - 350px), 512px)'
+const CREATIVE_BOARD_WIDTH = 'min(90vw, calc(100dvh - 390px), 512px)'
 type WidgetLayout = { positions: Record<CreativeWidgetId, { x: number; y: number }>; sizes: Record<CreativeWidgetId, CreativeWidgetSize> }
 
 /** Columns at both sides of the centered board; open widgets share the height left by the others. */
@@ -111,6 +112,7 @@ function initialWidgetLayout(width: number, height: number): WidgetLayout {
   return { positions, sizes }
 }
 
+const PALETTE_ORDER = ['p', 'r', 'n', 'b', 'q', 'k']
 const RULED = { borderColor: '#c9a85a', color: '#f0d48e', boxShadow: 'inset 0 0 0 1px #c9a85a55' } as const
 const RULED_TEXT = { color: '#f0d48e' } as const
 export function CreativeStudio() {
@@ -133,7 +135,7 @@ export function CreativeStudio() {
   const [analysisArrows, setAnalysisArrows] = useState<AnalysisArrow[]>([])
   const arrowTimerRef = useRef<number | null>(null)
   // Piece positions before each move, for the Mulligan card.
-  const positionHistoryRef = useRef<Record<string, string>[]>([])
+  const positionHistoryRef = useRef<Pick<CreativeSession, 'pieces' | 'extras'>[]>([])
   const [historyLength, setHistoryLength] = useState(0)
   const [undoAnimationKey, setUndoAnimationKey] = useState(0)
   const [reactionScope, setReactionScope] = useState<ReactionScope>('kit')
@@ -174,23 +176,27 @@ export function CreativeStudio() {
   const liveCollection = identifyPitchCollection(music.snapshot.scale, session.scale)
   const live = { root: liveCollection.root as CreativeSession['root'], scale: liveCollection.scale ?? session.scale, harmony: music.snapshot.harmony ?? session.harmony }
   const ruled = { bpm: Math.abs(music.snapshot.bpm - session.bpm) > .05, root: live.root !== session.root, scale: live.scale !== session.scale, harmony: live.harmony !== session.harmony }
-  const selected = session.pieces.find(p => p.id === selectedId)!
+  const boardPieces = useMemo(() => creativeBoardPieces(session), [session])
+  // A piece taken off the board stays selectable through its instrument (kit pieces keep their data).
+  const selected = boardPieces.find(p => p.id === selectedId) ?? { ...session.pieces.find(p => p.id === selectedId) ?? session.pieces[0], instrumentId: session.pieces.find(p => p.id === selectedId)?.id ?? session.pieces[0].id }
+  const selectedOnBoard = boardPieces.some(p => p.id === selected.id)
+  const instrumentId = selected.instrumentId
   const boardGame = useMemo(() => {
     const board = new Chess()
     board.clear()
-    for (const piece of session.pieces) board.put({ type: piece.type, color: piece.color }, piece.square as Square)
+    for (const piece of boardPieces) board.put({ type: piece.type, color: piece.color }, piece.square as Square)
     return board
-  }, [session.pieces])
+  }, [boardPieces])
   const boardColor = getCityById(session.cityId ?? '')?.color ?? '#00ffaa'
-  const boardActiveSquares = useMemo(() => new Set(session.pieces.filter(piece => piece.active).map(piece => piece.square)), [session.pieces])
-  const selectedInstrument = session.instruments[selectedId]
+  const boardActiveSquares = useMemo(() => new Set(boardPieces.filter(piece => piece.active).map(piece => piece.square)), [boardPieces])
+  const selectedInstrument = session.instruments[instrumentId]
   const instrument = soloIds.has(selectedId) && selectedInstrument.loopEnabled === false
     ? { ...selectedInstrument, loopEnabled: true }
     : selectedInstrument
-  const effects = session.effects[selectedId]
-  const mapping = session.mappings[selectedId]
-  const activeCount = session.pieces.filter(p => p.active).length
-  const activeIds = useMemo(() => new Set(session.pieces.filter(piece => piece.active).map(piece => piece.id)), [session.pieces])
+  const effects = session.effects[instrumentId]
+  const mapping = session.mappings[instrumentId]
+  const activeCount = boardPieces.filter(p => p.active).length
+  const activeIds = useMemo(() => new Set(boardPieces.filter(piece => piece.active).map(piece => piece.id)), [boardPieces])
   const cityName = (cityId?: string) => EDITABLE_CITY_KITS.find(city => city.id === cityId)?.name
   const kitLabel = (kit: CreativeSession) => `${kit.name}${cityName(kit.cityId) ? ` (${cityName(kit.cityId)})` : ''}`
   const admin = account?.admin === true
@@ -285,19 +291,23 @@ export function CreativeStudio() {
   useEffect(() => () => { toast.dismiss('creative-notice') }, [])
 
   const updateInstrument = useCallback((update: Partial<Instrument>) => {
-    setSession(s => ({ ...s, instruments: { ...s.instruments, [selectedId]: { ...s.instruments[selectedId], ...update } } }))
-  }, [selectedId])
+    setSession(s => ({ ...s, instruments: { ...s.instruments, [instrumentId]: { ...s.instruments[instrumentId], ...update } } }))
+  }, [instrumentId])
   function updateEffects(update: Partial<Effects>) {
-    setSession(s => ({ ...s, effects: { ...s.effects, [selectedId]: { ...s.effects[selectedId], ...update } } }))
+    setSession(s => ({ ...s, effects: { ...s.effects, [instrumentId]: { ...s.effects[instrumentId], ...update } } }))
   }
   function updateMapping(update: Partial<Mapping>) {
-    setSession(s => ({ ...s, mappings: { ...s.mappings, [selectedId]: { ...s.mappings[selectedId], ...update } } }))
+    setSession(s => ({ ...s, mappings: { ...s.mappings, [instrumentId]: { ...s.mappings[instrumentId], ...update } } }))
+  }
+  function setBoardActive(active: (piece: { id: string; color: string; active: boolean }) => boolean) {
+    setSession(s => mapCreativeBoardPieces(s, p => ({ active: active(p) })))
   }
   function toggleActive(id: string) {
-    const currentlyActive = session.pieces.find(p => p.id === id)?.active
-    if (!currentlyActive) setPlaying(true)
+    const piece = boardPieces.find(p => p.id === id)
+    if (!piece) return
+    if (!piece.active) setPlaying(true)
     else if (activeCount === 1) setPlaying(false)
-    setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: !p.active } : p) }))
+    setBoardActive(p => p.id === id ? !p.active : p.active)
   }
   function toggleSolo(id: string) {
     music.endAudition()
@@ -306,18 +316,18 @@ export function CreativeStudio() {
       nextSoloIds.delete(id)
       setSoloIds(nextSoloIds)
       if (nextSoloIds.size) {
-        setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: nextSoloIds.has(p.id) })) }))
+        setBoardActive(p => nextSoloIds.has(p.id))
       } else {
-        const restore = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current, ...session.pieces.filter(p => p.active).map(p => p.id)])
-        setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: restore.has(p.id) })) }))
+        const restore = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current, ...boardPieces.filter(p => p.active).map(p => p.id)])
+        setBoardActive(p => restore.has(p.id))
         soloMemoryRef.current = null
         soloCycleIdsRef.current = new Set()
       }
       return
     }
     if (!soloIds.size) {
-      soloMemoryRef.current = session.pieces
-        .filter(p => p.active && session.instruments[p.id]?.loopEnabled !== false)
+      soloMemoryRef.current = boardPieces
+        .filter(p => p.active && session.instruments[p.instrumentId]?.loopEnabled !== false)
         .map(p => p.id)
       soloCycleIdsRef.current = new Set()
     }
@@ -325,7 +335,7 @@ export function CreativeStudio() {
     soloCycleIdsRef.current.add(id)
     setSoloIds(nextSoloIds)
     setPlaying(true)
-    setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: nextSoloIds.has(p.id) })) }))
+    setBoardActive(p => nextSoloIds.has(p.id))
   }
   function stop() { setPlaying(false); music.endAudition() }
   function select(id: string) { music.endAudition(); setSelectedId(id); setBoardSelected(true) }
@@ -462,7 +472,7 @@ export function CreativeStudio() {
   }
 
   function rememberPositions() {
-    positionHistoryRef.current = [...positionHistoryRef.current.slice(-49), Object.fromEntries(session.pieces.map(piece => [piece.id, piece.square]))]
+    positionHistoryRef.current = [...positionHistoryRef.current.slice(-49), { pieces: session.pieces, extras: session.extras }]
     setHistoryLength(positionHistoryRef.current.length)
   }
   function undoPositions() {
@@ -471,7 +481,15 @@ export function CreativeStudio() {
     if (!previous) return
     music.endAudition()
     setUndoAnimationKey(key => key + 1)
-    setSession(s => ({ ...s, pieces: s.pieces.map(piece => ({ ...piece, square: previous[piece.id] ?? piece.square })) }))
+    // Positions, removals and extras come back; loops keep their current on/off state where they still exist.
+    setSession(s => {
+      const active = new Map(creativeBoardPieces(s).map(piece => [piece.id, piece.active]))
+      return {
+        ...s,
+        pieces: previous.pieces.map(piece => ({ ...piece, active: active.get(piece.id) ?? piece.active })),
+        extras: previous.extras?.map(piece => ({ ...piece, active: active.get(piece.id) ?? piece.active })),
+      }
+    })
   }
 
   // Best/Worst read the board from the selected piece's side. In Creative they stay silent and
@@ -615,8 +633,8 @@ export function CreativeStudio() {
   </fieldset>
 
   const clearSolo = () => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }
-  const activateSide = (color: 'w' | 'b') => { clearSolo(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === color })) })); setPlaying(true) }
-  const muteAll = () => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); clearSolo() }
+  const activateSide = (color: 'w' | 'b') => { clearSolo(); setBoardActive(p => p.color === color); setPlaying(true) }
+  const muteAll = () => { stop(); setBoardActive(() => false); clearSolo() }
   const bandLinks = <span className={styles.bandLinks}>Activate <button type="button" onClick={() => activateSide('w')} disabled={!ready || busy}>White</button> / <button type="button" onClick={() => activateSide('b')} disabled={!ready || busy}>Black</button> / <button type="button" onClick={muteAll} disabled={!ready || busy}>Mute</button> all</span>
 
   // The match's Song & Instruments list, with White and Black side by side.
@@ -624,7 +642,7 @@ export function CreativeStudio() {
     <div data-match-ui><MusicSongPanel
       columns
       pieces={music.snapshot.pieces}
-      names={Object.fromEntries(session.pieces.map(piece => [piece.id, session.instruments[piece.id]?.name]))}
+      names={Object.fromEntries(boardPieces.map(piece => [piece.id, session.instruments[piece.instrumentId]?.name]))}
       activeIds={activeIds}
       soloIds={soloIds}
       monitor={music.monitor}
@@ -633,20 +651,20 @@ export function CreativeStudio() {
       onArrangementChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))}
       onSeek={music.seekSection}
       onSelect={square => {
-        const piece = square && session.pieces.find(item => item.square === square)
+        const piece = square && boardPieces.find(item => item.square === square)
         if (piece) select(piece.id)
         else { music.endAudition(); setBoardSelected(false) }
       }}
-      onToggle={square => { const piece = session.pieces.find(item => item.square === square); if (piece) toggleActive(piece.id) }}
+      onToggle={square => { const piece = boardPieces.find(item => item.square === square); if (piece) toggleActive(piece.id) }}
       onSolo={toggleSolo}
       snapshot={music.snapshot}
       selectedId={boardSelected ? selectedId : null}
       selectedView={<MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />}
-      onAudition={square => { const piece = session.pieces.find(item => item.square === square); if (piece) { music.audition(piece.id, square); music.releaseAudition() } }}
+      onAudition={square => { const piece = boardPieces.find(item => item.square === square); if (piece) { music.audition(piece.id, square); music.releaseAudition() } }}
       onHover={setSongHover}
     /></div>
     <div className={styles.actions}>
-      <button onClick={() => { music.endAudition(); rememberPositions(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Reset positions</button>
+      <button onClick={() => { music.endAudition(); rememberPositions(); setSession(resetCreativePositions) }}>Reset positions</button>
     </div>
   </fieldset>
 
@@ -660,7 +678,7 @@ export function CreativeStudio() {
               {editingInstrumentName ? <input autoFocus aria-label="Instrument name" maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrument' })} onBlur={() => setEditingInstrumentName(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur() }} /> : <h2>{instrument.name}</h2>}
               <button type="button" className={styles.editName} aria-label="Edit instrument name" title="Edit name" onClick={() => setEditingInstrumentName(true)}><Pencil size={14} /></button>
             </div>
-            <span className={styles.instrumentMeta}>{pieceNames[selected.type]} - {selected.origin} - on {selected.square} - <MusicVoiceBadge monitor={music.monitor} id={selectedId} /></span>
+            <span className={styles.instrumentMeta}>{pieceNames[selected.type]} - {selected.origin} - {selectedOnBoard ? `on ${selected.square}` : 'off the board'} - <MusicVoiceBadge monitor={music.monitor} id={selectedId} /></span>
           </div>
         </div>
         <div className={styles.actions}>
@@ -709,6 +727,55 @@ export function CreativeStudio() {
     instrument: <InfoTip label="Selected instrument">The instrument of the selected piece, with its knobs in tabs like the match’s Piece params. Selecting a note in the MIDI editor opens the Note tab. Its line goes to that piece on the board.</InfoTip>,
     band: bandLinks,
   }
+  // Palette: one piece per kit instrument, pawns first, as listed under a match board.
+  const paletteFor = (color: 'w' | 'b'): PalettePiece[] => session.pieces
+    .filter(piece => piece.color === color)
+    .sort((a, b) => PALETTE_ORDER.indexOf(a.type) - PALETTE_ORDER.indexOf(b.type) || a.origin.localeCompare(b.origin))
+    .map(piece => ({ id: piece.id, type: piece.type, name: session.instruments[piece.id]?.name ?? pieceNames[piece.type] }))
+  const squareAt = (clientX: number, clientY: number) => {
+    const rect = boardRef.current?.getBoundingClientRect()
+    if (!rect) return null
+    const file = Math.floor((clientX - rect.left) / (rect.width / 8)), row = Math.floor((clientY - rect.top) / (rect.height / 8))
+    return file >= 0 && file < 8 && row >= 0 && row < 8 ? `${'abcdefgh'[file]}${8 - row}` as Square : null
+  }
+  // The palette sounds through a copy already on the board; an instrument with no piece placed stays silent.
+  const paletteVoice = (sourceId: string) => boardPieces.find(piece => piece.id === sourceId) ?? boardPieces.find(piece => piece.instrumentId === sourceId)
+  const paletteAudition = useRef<string | null>(null)
+  const palette = (color: 'w' | 'b', justify: 'start' | 'end') => <PiecePalette
+    color={color}
+    justify={justify}
+    pieces={paletteFor(color)}
+    disabled={!ready || busy}
+    onPress={id => { const voice = paletteVoice(id); paletteAudition.current = null; if (voice) { music.audition(voice.id, voice.square); music.releaseAudition() } }}
+    onDragOver={(id, x, y) => {
+      const square = squareAt(x, y), voice = paletteVoice(id)
+      if (!voice || !square || paletteAudition.current === square) return
+      paletteAudition.current = square
+      music.audition(voice.id, square)
+    }}
+    onDrop={(id, x, y) => {
+      paletteAudition.current = null
+      music.endAudition()
+      const square = squareAt(x, y)
+      if (!square) return
+      rememberPositions()
+      const placed = placeCreativePiece(session, id, square)
+      setSession(placed.session)
+      select(placed.id)
+      setPlaying(true)
+    }}
+    onCancel={() => { paletteAudition.current = null; music.releaseAudition() }}
+  />
+  function dropOffBoard(square: Square) {
+    const piece = boardPieces.find(item => item.square === square)
+    if (!piece) return
+    music.endAudition()
+    rememberPositions()
+    setSession(current => removeCreativePiece(current, piece.id))
+    if (soloIds.has(piece.id)) { const next = new Set(soloIds); next.delete(piece.id); setSoloIds(next) }
+    if (selectedId === piece.id && piece.id !== piece.instrumentId) setSelectedId(piece.instrumentId)
+  }
+
   const cardActions: Record<PowerCardKind, PowerCardAction> = {
     best: { disabled: analysis.busy, onClick: () => showRankedMoves('best'), title: `Best moves for ${selected.color === 'w' ? 'White' : 'Black'} (the selected piece’s side)` },
     worst: { disabled: analysis.busy, onClick: () => showRankedMoves('worst'), title: `Worst moves for ${selected.color === 'w' ? 'White' : 'Black'} (the selected piece’s side)` },
@@ -720,7 +787,8 @@ export function CreativeStudio() {
   const widgets = CREATIVE_WIDGETS.map(widget => <CreativeWidget
     key={widget.id}
     id={widget.id}
-    title={widget.title}
+    title={widget.id === 'band' ? `${boardPieces.length} voices` : widget.title}
+    titleNote={widget.id === 'band' ? `(${activeCount} active)` : undefined}
     on={widgetOn[widget.id]}
     onToggle={() => toggleWidget(widget.id)}
     position={widgetLayout.positions[widget.id]}
@@ -746,6 +814,7 @@ export function CreativeStudio() {
 
     <div className={styles.stage}>
       <div className={styles.boardGroup} style={{ translate: boardPan.translate }}>
+        <div className={styles.boardRow}>{palette('b', 'end')}</div>
         <div ref={boardRef} className={styles.board} role="group" aria-label="Creative board" aria-busy={!music.auditionReady}>
           <BoardResizeHandles enabled={boardResize.enabled} onStart={boardResize.startResize} onResizeBy={boardResize.resizeBy} onCancel={boardResize.cancelResize} />
           <fieldset className={styles.boardReadyGate} disabled={!music.auditionReady} onMouseDownCapture={music.unlock}>
@@ -760,18 +829,18 @@ export function CreativeStudio() {
             analysisArrows={analysisArrows}
             onEmptySquarePointerDown={boardPan.startPan}
             onBoardClick={square => {
-              const piece = session.pieces.find(item => item.square === square)
+              const piece = boardPieces.find(item => item.square === square)
               // Updating the instrument editors can compile every variation.
               // Let the gesture submit its sample before that lower-priority render.
               if (piece) startTransition(() => { setSelectedId(piece.id); setBoardSelected(true) })
               else { music.endAudition(); setBoardSelected(false) }
             }}
             onPieceHold={square => {
-              const id = session.pieces.find(item => item.square === square)?.id
+              const id = boardPieces.find(item => item.square === square)?.id
               if (id) music.audition(id, square)
             }}
             onDragOverSquare={(from, to) => {
-              const id = session.pieces.find(item => item.square === from)?.id
+              const id = boardPieces.find(item => item.square === from)?.id
               if (id) music.audition(id, to)
             }}
             onPieceRelease={music.releaseAudition}
@@ -780,32 +849,33 @@ export function CreativeStudio() {
               mode: 'move',
               auditionPiece: { color: selected.color, type: selected.type },
               onMove: (from, to) => {
-                const piece = session.pieces.find(item => item.square === from)
+                const piece = boardPieces.find(item => item.square === from)
                 if (!piece) return
                 setPlaying(true)
                 select(piece.id)
                 rememberPositions()
                 setSession(current => moveCreativePiece(current, piece.id, to))
               },
+              onDropOutside: dropOffBoard,
               onTogglePiece: square => {
-                const piece = session.pieces.find(item => item.square === square)
+                const piece = boardPieces.find(item => item.square === square)
                 if (piece) { select(piece.id); toggleActive(piece.id) }
               },
               squareLabel: square => {
-                const piece = session.pieces.find(item => item.square === square)
-                return `${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'white' : 'black'} · ${session.instruments[piece.id].name} · ${piece.active ? 'active' : 'inactive'}` : ' · empty'}`
+                const piece = boardPieces.find(item => item.square === square)
+                return `${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'white' : 'black'} · ${session.instruments[piece.instrumentId].name} · ${piece.active ? 'active' : 'inactive'}` : ' · empty'}`
               },
             }}
           />
           </fieldset>
           {!music.auditionReady && <div className={styles.boardLoading} role="status">Preparing kit sounds…</div>}
         </div>
-        <div className={styles.boardFooter}>
-          <span className={styles.activeCount} aria-label="Active voices">{activeCount}/32 active{soloIds.size > 0 ? ' · solo' : ''}</span>
-          <EggCounter tone="player" value={0} display="∞" widthFor={[0]} role="img" aria-label="Endless golden eggs in Creative" title="Creative has endless golden eggs" />
+        <div className={styles.boardRow}>
+          {palette('w', 'start')}
+          <EggCounter tone="player" value={0} display={<span className={styles.infinity}>∞</span>} widthFor={[0]} role="img" aria-label="Endless golden eggs in Creative" title="Creative has endless golden eggs" />
         </div>
       </div>
-      <PowerCardHand visible={ready} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={cardActions} />
+      <PowerCardHand hideCost visible={ready} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={cardActions} />
     </div>
 
     {portraitPhone ? <div className={styles.widgetStack}>{widgets}</div> : widgets}

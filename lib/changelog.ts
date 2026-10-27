@@ -26,6 +26,10 @@ export const CHANGELOG = [
         'Os knobs do antigo widget Parameters foram para o Instrument, em mini-abas como na partida: Tuning, Filters, Modulation, Movement e Note. Selecionar uma nota no MIDI abre a aba Note com os parâmetros dela.',
         'Fonte do som, banco, articulação, afinação do sample, Behavior e Synth timbre ficam no novo widget Sample source.',
         'O título do Criativo agora é só CHICKENCHESS LAB, sem a ajuda e sem o segundo título Creative Mode.',
+        'O título do 32 voices mostra quantas peças estão no tabuleiro e quantas estão ativas, como “32 VOICES (4 active)”, no lugar da legenda que ficava abaixo do tabuleiro.',
+        'O símbolo de infinito do contador de ovos ficou com o dobro do tamanho, e as cartas do Criativo não mostram mais o preço.',
+        'Acima e abaixo do tabuleiro, no lugar das peças capturadas da partida, fica uma peça de cada instrumento do kit. Arraste uma delas para uma casa para colocar ali essa peça com o instrumento dela, substituindo o que estiver na casa. Assim dá para montar o tabuleiro com quantas peças quiser, onde quiser.',
+        'Arrastar uma peça e soltar fora do tabuleiro tira ela do tabuleiro. Mulligan desfaz, e Reset positions volta as 32 peças às casas iniciais.',
       ] },
       { title: 'Mapa', items: [
         'O globo ganhou um modo realista: superfície com imagens de satélite da NASA, oceanos com reflexo do sol, luzes das cidades no lado noturno, atmosfera azulada na borda e uma camada de nuvens com tempestades em espiral que é sorteada de novo a cada vez que o mapa abre.',
