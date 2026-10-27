@@ -7,11 +7,18 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 export type BoardResizeCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 /**
- * Power cards are 30% of the board width tall (hand at 80%, card at 25%, 2:3). Reserving 10% lets
- * a manual resize grow the board until only a third of the cards stays in view; the fixed rows
- * between board and cards fit inside the 100 px bottom margin used by `limits`.
+ * Power cards are 30% of their own width tall (hand at 80%, card at 25%, 2:3). Reserving a third of
+ * that (10% of the cards' width) lets a manual resize grow the board until only a third of the
+ * cards stays in view; the fixed rows between board and cards fit inside the 100 px bottom margin
+ * used by `limits`.
  */
 export const BOARD_CARDS_RESIZE_RATIO = 0.1
+
+/** Power-card hand resized on its own: never wider than the viewport allows, never tiny. */
+export function powerCardsResizeLimits() {
+  const max = Math.max(160, Math.min(window.innerWidth - 32, 760))
+  return { min: Math.min(200, max), max }
+}
 
 interface BoardResizeOptions {
   boardRef: RefObject<HTMLDivElement | null>
@@ -19,28 +26,33 @@ interface BoardResizeOptions {
   scale?: number
   constrainToParent?: boolean
   controlHeightRatio?: number
+  /** Extra pixels kept free below the board, measured when a gesture starts (the cards' visible third). */
+  reservedHeight?: () => number
+  /** Replaces the board limits, for other square-free containers such as the power cards. */
+  customLimits?: () => { min: number; max: number }
 }
 
 /** Session-only square sizing; the existing responsive width remains the default. */
-export function useBoardResize({ boardRef, enabled, scale = 1, constrainToParent = false, controlHeightRatio = 0 }: BoardResizeOptions) {
+export function useBoardResize({ boardRef, enabled, scale = 1, constrainToParent = false, controlHeightRatio = 0, reservedHeight, customLimits }: BoardResizeOptions) {
   const [portraitPhone, setPortraitPhone] = useState(false)
   const resizeEnabled = enabled && !portraitPhone
   const [width, setWidth] = useState<number | null>(null)
   const [resizing, setResizing] = useState(false)
-  const latest = useRef({ boardRef, enabled: resizeEnabled, scale, constrainToParent, controlHeightRatio, width })
-  latest.current = { boardRef, enabled: resizeEnabled, scale, constrainToParent, controlHeightRatio, width }
+  const latest = useRef({ boardRef, enabled: resizeEnabled, scale, constrainToParent, controlHeightRatio, reservedHeight, customLimits, width })
+  latest.current = { boardRef, enabled: resizeEnabled, scale, constrainToParent, controlHeightRatio, reservedHeight, customLimits, width }
   const gesture = useRef<{
     pointerId: number; x: number; y: number; size: number; previousWidth: number | null
     corner: BoardResizeCorner; target: HTMLButtonElement; min: number; max: number
   } | null>(null)
 
   const limits = useCallback(() => {
-    const { boardRef, scale, constrainToParent, controlHeightRatio } = latest.current
+    const { boardRef, scale, constrainToParent, controlHeightRatio, reservedHeight, customLimits } = latest.current
+    if (customLimits) return customLimits()
     const board = boardRef.current
     const rect = board?.getBoundingClientRect()
     const parent = board?.parentElement
     const parentWidth = parent ? parent.clientWidth - parseFloat(window.getComputedStyle(parent).paddingLeft || '0') - parseFloat(window.getComputedStyle(parent).paddingRight || '0') : window.innerWidth - 32
-    const availableHeight = constrainToParent ? window.innerHeight - 32 : window.innerHeight - (rect?.top ?? 0) - 100
+    const availableHeight = (constrainToParent ? window.innerHeight - 32 : window.innerHeight - (rect?.top ?? 0) - 100) - (reservedHeight?.() ?? 0)
     const max = Math.max(64, Math.min(window.innerWidth - 32, availableHeight / (1 + controlHeightRatio), constrainToParent ? parentWidth : Infinity) / scale)
     return { min: Math.min(240, max), max }
   }, [])

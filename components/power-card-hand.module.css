@@ -1,5 +1,7 @@
-.row { position: relative; z-index: 50; width: var(--game-board-width); padding: 20px 0 22px; pointer-events: none; }
-.hand { display: flex; width: 80%; margin: 0 auto; container-type: inline-size; justify-content: center; align-items: flex-start; }
+.row { position: relative; z-index: 50; width: var(--power-cards-width, var(--game-board-width)); max-width: calc(100vw - 16px); padding: 20px 0 22px; pointer-events: none; }
+.row[data-movable="true"] { pointer-events: auto; cursor: grab; touch-action: none; }
+.row[data-moving="true"] { cursor: grabbing; }
+.hand { position: relative; display: flex; width: 80%; margin: 0 auto; container-type: inline-size; justify-content: center; align-items: flex-start; }
 .card { position: relative; flex: 0 0 25%; aspect-ratio: 2 / 3; border: 1px solid var(--card-color); border-radius: 7px; background: #080b0d; color: #fff9e7; box-shadow: 0 0 5px var(--card-color), 2px 4px 9px #000a; overflow: hidden; cursor: pointer; pointer-events: auto; transform-origin: 50% 85%; transform: translateX(var(--spread)) translateY(calc(var(--lift) + var(--arc-y))) rotate(var(--angle)); transition: transform 180ms ease, box-shadow 180ms ease; padding: 0; touch-action: manipulation; }
 .card + .card { margin-left: -6.25%; }
 .card:last-child { margin-left: -7.5%; }

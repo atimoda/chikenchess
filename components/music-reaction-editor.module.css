@@ -3,9 +3,13 @@
 .header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .header h2 { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 500; }
 
-.panel .scope { display: inline-flex; padding: 2px; border: 1px solid #3a493f; border-radius: 7px; background: #121a16; }
-.panel .scope button { border: 0; background: transparent; padding: 5px 12px; border-radius: 5px; color: #9fb0a5; }
-.panel .scope button[aria-selected='true'] { background: #344633; color: #d8f5cf; }
+.panel[data-embedded] { padding: 0; border: 0; background: transparent; border-radius: 0; }
+.headerTools { display: inline-flex; align-items: center; gap: 6px; }
+.headerTools > [data-info-tip] { margin: 0; }
+/* Doubled class: the switch also sits in the Creative widget header, outside .panel. */
+.scope.scope { display: inline-flex; padding: 2px; border: 1px solid #3a493f; border-radius: 7px; background: #121a16; }
+.scope.scope button { border: 0; background: transparent; padding: 3px 10px; min-height: 0; border-radius: 5px; color: #9fb0a5; font-size: 11px; }
+.scope.scope button[aria-selected='true'] { background: #344633; color: #d8f5cf; }
 
 .scopeNote { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0; font-size: 12px; color: #9fb0a5; }
 .scopeNote strong { color: #e0e9df; font-weight: 500; }

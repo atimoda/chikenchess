@@ -35,7 +35,8 @@ import { getSfxEngine } from "@/lib/sfx-engine";
 import { useMusic } from "@/hooks/use-music";
 import { useOnlineMatch } from "@/hooks/use-online-match";
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout";
-import { BOARD_CARDS_RESIZE_RATIO, useBoardResize } from "@/hooks/use-board-resize";
+import { BOARD_CARDS_RESIZE_RATIO, powerCardsResizeLimits, useBoardResize } from "@/hooks/use-board-resize";
+import { useBoardPan } from "@/hooks/use-board-pan";
 import { BoardResizeHandles } from "@/components/board-resize-handles";
 import { useOnlineAnalysis } from "@/hooks/use-online-analysis";
 import { usePowerTargetingGesture } from "@/hooks/use-power-targeting-gesture";
@@ -366,7 +367,11 @@ export function OnlineMatchBoard({
   const [arrows, setArrows] = useState<AnalysisArrow[]>([]);
   const [pieceSaveError, setPieceSaveError] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
-  const boardResize = useBoardResize({ boardRef, enabled: !isPortraitMobile, controlHeightRatio: powerDisplay === "cards" ? BOARD_CARDS_RESIZE_RATIO : 0 });
+  const powerCardsRef = useRef<HTMLDivElement | null>(null);
+  const boardResize = useBoardResize({ boardRef, enabled: !isPortraitMobile, reservedHeight: powerDisplay === "cards" ? () => (powerCardsRef.current?.offsetWidth ?? 0) * BOARD_CARDS_RESIZE_RATIO : undefined });
+  const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits });
+  const boardPan = useBoardPan({ boardRef, enabled: !isPortraitMobile && introPhase >= 3 });
+  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isPortraitMobile && introPhase >= 3 && powerDisplay === "cards" });
   const queuedPieces = useRef(
     new Map<string, { instrument: Instrument; effects?: SquareEffects }>(),
   );
@@ -869,6 +874,7 @@ export function OnlineMatchBoard({
     orientation: color === "w" ? "white" : "black",
     introPhase,
     activeWidgetOrder,
+    boardOffset: boardPan.offset,
     widgets: widgetDescriptors,
   });
   const toggles = [
@@ -1429,6 +1435,10 @@ export function OnlineMatchBoard({
             "--game-board-width": boardResize.width !== null ? `${boardResize.width}px` : isMobile
               ? "min(calc(100vw - 16px),512px)"
               : powerDisplay === "cards" ? "min(90vw,calc(100dvh - 350px),512px)" : "min(90vw,calc(100dvh - 270px),512px)",
+            // The cards keep their own size: resizing the board never resizes them.
+            "--power-cards-width": cardsResize.width !== null ? `${cardsResize.width}px` : isMobile
+              ? "min(calc(100vw - 16px),512px)"
+              : "min(90vw,calc(100dvh - 350px),512px)",
           } as React.CSSProperties
         }
       >
@@ -1438,6 +1448,7 @@ export function OnlineMatchBoard({
         >
           <div
             className="relative min-h-[2rem] h-8 w-[var(--game-board-width)] flex justify-between items-center mb-2 sm:mb-3 gap-1.5"
+            style={{ translate: boardPan.translate }}
             aria-label="Peças capturadas do adversário e ovos"
           >
             {statusPlacement === "top" && <MatchStatus placement="top" text={status} color={statusColor} className={cn("transition-opacity duration-1000", intro ? "opacity-0" : "opacity-100")} />}
@@ -1454,7 +1465,7 @@ export function OnlineMatchBoard({
           <div
             ref={boardRef}
             className="w-[var(--game-board-width)] aspect-square relative z-20 mb-2 sm:mb-3 pointer-events-auto"
-            style={{ visibility: introPhase < 2 ? "hidden" : "visible" }}
+            style={{ visibility: introPhase < 2 ? "hidden" : "visible", translate: boardPan.translate }}
           >
             {chancePosition === "board" && (
               <GameBoardChanceBar
@@ -1527,6 +1538,7 @@ export function OnlineMatchBoard({
               squareEggs={movePreview ? [] : squareEggs}
               squareEggsFadeAt={squareEggsFadeAt}
               showRankedMoveMarks={false}
+              onEmptySquarePointerDown={boardPan.startPan}
             />
           </div>
           <div
@@ -1534,6 +1546,7 @@ export function OnlineMatchBoard({
               "flex w-[var(--game-board-width)] items-start justify-between gap-1.5 pointer-events-none transition-opacity duration-1000",
               intro ? "opacity-0" : "opacity-100",
             )}
+            style={{ translate: boardPan.translate }}
           >
             <CapturedPieces
               pieces={playerCaptures}
@@ -1559,9 +1572,10 @@ export function OnlineMatchBoard({
             placement="bottom"
             text={statusPlacement === "bottom" ? status : ""}
             color={statusColor}
+            style={{ translate: boardPan.translate }}
             className={cn("mb-1 sm:mb-2 transition-opacity duration-1000", intro ? "opacity-0" : "opacity-100")}
           />
-          {powerDisplay === "cards" ? <PowerCardHand visible={!intro} undoAnimationKey={mulliganAnimationKey} actions={{
+          {powerDisplay === "cards" ? <PowerCardHand visible={!intro} undoAnimationKey={mulliganAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={{
             best: { disabled: !canShowSuggestions("best"), onClick: () => show("best") },
             worst: { disabled: !canShowSuggestions("worst"), onClick: () => show("worst") },
             undo: {

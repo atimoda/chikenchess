@@ -1,6 +1,6 @@
 "use client"
 
-import type { Ref } from "react"
+import type { CSSProperties, Ref } from "react"
 import { cn } from "@/lib/utils"
 
 interface EggCounterProps {
@@ -15,10 +15,12 @@ interface EggCounterProps {
   "aria-hidden"?: boolean | "true" | "false"
   role?: string
   title?: string
+  /** Text shown instead of the number, such as the Creative's endless "∞". */
+  display?: string
 }
 
 /** Golden-egg box used above (opponent) and below (player) the board in every match mode. */
-export function EggCounter({ ref, value, widthFor, tone, empty, className, ...rest }: EggCounterProps) {
+export function EggCounter({ ref, value, widthFor, tone, empty, className, display, ...rest }: EggCounterProps) {
   const digits = Math.max(...widthFor.map(n => n.toLocaleString().length))
   return <div
     ref={ref}
@@ -30,7 +32,7 @@ export function EggCounter({ ref, value, widthFor, tone, empty, className, ...re
     )}
     style={{ width: `max(3.5rem, calc(${digits}ch + 41px))` }}
   >
-    <span>{value.toLocaleString()}</span>
+    <span>{display ?? value.toLocaleString()}</span>
     <span
       aria-hidden="true"
       className={cn(
@@ -50,13 +52,14 @@ interface MatchStatusProps {
   placement: "top" | "bottom"
   pulse?: boolean
   className?: string
+  style?: CSSProperties
 }
 
 /**
  * Turn status line, centered on the board. The top slot floats above the opponent row so the
  * board never shifts; the bottom slot keeps its height to avoid moving the cards each turn.
  */
-export function MatchStatus({ text, color, placement, pulse, className }: MatchStatusProps) {
+export function MatchStatus({ text, color, placement, pulse, className, style }: MatchStatusProps) {
   return <div
     role="status"
     className={cn(
@@ -65,6 +68,6 @@ export function MatchStatus({ text, color, placement, pulse, className }: MatchS
       pulse && "animate-pulse",
       className,
     )}
-    style={{ color }}
+    style={{ ...style, color }}
   >{text}</div>
 }
