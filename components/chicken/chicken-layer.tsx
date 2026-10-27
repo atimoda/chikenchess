@@ -61,7 +61,8 @@ export function ChickenLayer({ dropIn = true }: { dropIn?: boolean }) {
 }
 
 // ---------- touch controls ----------
-const STICK = 112, KNOB = 48
+// above the footer buttons (bottom-4, 36 px tall)
+const STICK = 112, KNOB = 48, CONTROLS_BOTTOM = 64
 
 function TouchControls({ set }: { set: (action: ChickenAction, on: boolean) => void }) {
   const [knob, setKnob] = useState({ x: 0, y: 0 })
@@ -95,7 +96,7 @@ function TouchControls({ set }: { set: (action: ChickenAction, on: boolean) => v
         ref={stickRef}
         aria-label="Analógico"
         className="pointer-events-auto absolute rounded-full border-2 border-white/30 bg-white/10 backdrop-blur-[2px]"
-        style={{ width: STICK, height: STICK, left: 24, bottom: 24 + CHICKEN_GROUND_H, touchAction: "none" }}
+        style={{ width: STICK, height: STICK, left: 20, bottom: CONTROLS_BOTTOM, touchAction: "none" }}
         onPointerDown={e => { pointerId.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
         onPointerMove={e => { if (pointerId.current === e.pointerId) move(e) }}
         onPointerUp={release}
@@ -107,23 +108,24 @@ function TouchControls({ set }: { set: (action: ChickenAction, on: boolean) => v
           style={{ width: KNOB, height: KNOB, left: (STICK - KNOB) / 2 + knob.x, top: (STICK - KNOB) / 2 + knob.y }}
         />
       </div>
-      <div className="absolute" style={{ right: 72, bottom: 64 + CHICKEN_GROUND_H, width: 156, height: 150 }}>
-        <TouchButton label="Pular" action="jump" set={set} size={68} style={{ right: 0, bottom: 0 }}><ChevronsUp className="h-8 w-8" /></TouchButton>
-        <TouchButton label="Chocar" action="down" set={set} size={54} style={{ right: 80, bottom: 0 }}><Egg className="h-6 w-6" /></TouchButton>
-        <TouchButton label="Correr" action="run" set={set} size={54} style={{ right: 8, bottom: 80 }}><Footprints className="h-6 w-6" /></TouchButton>
+      {/* buttons in one row, centred on the stick's vertical centre */}
+      <div className="absolute flex items-center gap-3" style={{ right: 20, bottom: CONTROLS_BOTTOM, height: STICK }}>
+        <TouchButton label="Correr" action="run" set={set} size={54}><Footprints className="h-6 w-6" /></TouchButton>
+        <TouchButton label="Chocar" action="down" set={set} size={54}><Egg className="h-6 w-6" /></TouchButton>
+        <TouchButton label="Pular" action="jump" set={set} size={68}><ChevronsUp className="h-8 w-8" /></TouchButton>
       </div>
     </div>
   )
 }
 
-function TouchButton({ label, action, set, size, style, children }: { label: string; action: ChickenAction; set: (action: ChickenAction, on: boolean) => void; size: number; style: React.CSSProperties; children: ReactNode }) {
+function TouchButton({ label, action, set, size, style, children }: { label: string; action: ChickenAction; set: (action: ChickenAction, on: boolean) => void; size: number; style?: React.CSSProperties; children: ReactNode }) {
   const [down, setDown] = useState(false)
   const press = (on: boolean) => { setDown(on); set(action, on) }
   return (
     <button
       type="button"
       aria-label={label}
-      className={`pointer-events-auto absolute flex items-center justify-center rounded-full border-2 text-white/80 backdrop-blur-[2px] transition-colors ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/12"}`}
+      className={`pointer-events-auto relative flex shrink-0 items-center justify-center rounded-full border-2 text-white/80 backdrop-blur-[2px] transition-colors ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/12"}`}
       style={{ width: size, height: size, touchAction: "none", ...style }}
       onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); press(true) }}
       onPointerUp={() => press(false)}

@@ -10,6 +10,9 @@ import {
 } from "@/lib/chicken/controls"
 import { cn } from "@/lib/utils"
 
+// Prototype where the chicken's movement and look are tuned.
+const CHICKEN_PLAYGROUND_URL = "https://claude.ai/artifact/WxBWRJFUtcfTsfC7jGsSzc"
+
 type Listen = { kind: "keys" | "pad"; action: ChickenAction; slot: number } | null
 
 const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
@@ -134,6 +137,7 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
             <input type="checkbox" checked={controls.sound} onChange={e => { const v = e.target.checked; update(c => { c.sound = v }) }} className="accent-[var(--primary)]" />
             Cacarejos
           </label>
+          <a href={CHICKEN_PLAYGROUND_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline-offset-2 hover:underline">Pátio da Caipira ↗</a>
           <button type="button" onClick={() => { const d = defaultChickenControls(); saveChickenControls(d); setControls(d); setListen(null) }} className="h-8 rounded border border-white/20 px-3 text-xs hover:border-primary">Restaurar padrão</button>
         </div>
       </DialogContent>
