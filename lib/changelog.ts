@@ -9,7 +9,7 @@ export const CHANGELOG = [
     groups: [
       { title: 'Criativo 2.0', items: [
         'O Criativo ganhou o visual das partidas: fundo preto, tabuleiro no centro da tela e o título CHICKENCHESS LAB com o botão de voltar ao globo no canto superior esquerdo.',
-        'Os painéis viraram widgets flutuantes ligados ao tabuleiro (ou à peça selecionada, no caso de Instrument e Parameters) por linhas: Creative kit, Transport, States & Events, Strudel code, Instrument, Parameters e 32 voices. Arraste por qualquer parte, redimensione pelo canto inferior direito e use o botão de energia para desligar: o widget desligado fica recolhido, só com o título.',
+        'Os painéis viraram widgets flutuantes ligados ao tabuleiro (ou à peça selecionada, no caso de Instrument e Sample source) por linhas: Creative kit, Transport, States & Events, Strudel code, Instrument, Sample source e 32 voices. Arraste por qualquer parte, redimensione pelo canto inferior direito e use o botão de energia para desligar: o widget desligado fica recolhido, só com o título.',
         'O Criativo agora tem as cartas e o contador de ovos das partidas. Os ovos são infinitos (∞). Best moves e Worst moves mostram as setas das melhores e piores jogadas do lado da peça selecionada, sem som e sem ovos nas casas. Mulligan desfaz o último movimento de peça. Freeze e Shield só funcionam nas partidas.',
         'As cartas do Criativo são silenciosas: passar o mouse ou clicar nelas não toca nenhum som.',
         'No widget States & Events, a chave This kit / Global fica à direita do título, e o conteúdo ocupa o próprio widget, sem a caixa interna.',
@@ -19,6 +19,17 @@ export const CHANGELOG = [
         'Arraste a partir de uma casa vazia para mover o tabuleiro pela tela, junto com os ovos, as peças capturadas e o status. Esc durante o arraste devolve o tabuleiro ao lugar.',
         'As cartas ficaram independentes do tabuleiro: redimensionar o tabuleiro não muda mais o tamanho das cartas, e as cartas têm suas próprias alças de redimensionamento nos quatro cantos, no mesmo estilo das alças do tabuleiro.',
         'As cartas também podem ser arrastadas pela tela pelo fundo do container delas, no Criativo e nas partidas, sem mover o tabuleiro.',
+      ] },
+      { title: 'Widgets do Criativo', items: [
+        'No 32 voices, Activate White / Black / Mute all virou texto com links no cabeçalho, à direita do título; Black é novo e liga só as peças pretas.',
+        'O Transport não repete mais as Global Sections, que ficam no 32 voices. Harmony ficou alinhado com os outros campos, e a linha de compasso e BPM fica por cima da curva de BPM, sem a ajuda da unidade do BPM.',
+        'Os knobs do antigo widget Parameters foram para o Instrument, em mini-abas como na partida: Tuning, Filters, Modulation, Movement e Note. Selecionar uma nota no MIDI abre a aba Note com os parâmetros dela.',
+        'Fonte do som, banco, articulação, afinação do sample, Behavior e Synth timbre ficam no novo widget Sample source.',
+        'O título do Criativo agora é só CHICKENCHESS LAB, sem a ajuda e sem o segundo título Creative Mode.',
+        'O título do 32 voices mostra quantas peças estão no tabuleiro e quantas estão ativas, como “32 VOICES (4 active)”, no lugar da legenda que ficava abaixo do tabuleiro.',
+        'O símbolo de infinito do contador de ovos ficou com o dobro do tamanho, e as cartas do Criativo não mostram mais o preço.',
+        'Acima e abaixo do tabuleiro, no lugar das peças capturadas da partida, fica uma peça de cada instrumento do kit. Arraste uma delas para uma casa para colocar ali essa peça com o instrumento dela, substituindo o que estiver na casa. Assim dá para montar o tabuleiro com quantas peças quiser, onde quiser.',
+        'Arrastar uma peça e soltar fora do tabuleiro tira ela do tabuleiro. Mulligan desfaz, e Reset positions volta as 32 peças às casas iniciais.',
       ] },
       { title: 'Mapa', items: [
         'O globo ganhou um modo realista: superfície com imagens de satélite da NASA, oceanos com reflexo do sol, luzes das cidades no lado noturno, atmosfera azulada na borda e uma camada de nuvens com tempestades em espiral que é sorteada de novo a cada vez que o mapa abre.',

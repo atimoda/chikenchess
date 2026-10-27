@@ -2,9 +2,10 @@
 import { stableHtml } from '@/lib/utils'
 import { METER_IDS, meterLabel } from '@/lib/music/meter'
 import { Knob } from './knob'
-import { InstrumentParameters } from './creative/instrument-parameters'
+import { PiecePalette, type PalettePiece } from './creative/piece-palette'
+import { InstrumentParameters, type InstrumentParamsTab } from './creative/instrument-parameters'
+import { NoteParamsHostContext, type NoteParamsSelection } from './music-note-params'
 import { MusicPerformanceControls } from './music-performance-controls'
-import { MusicArrangementControls } from './music-arrangement-controls'
 import { InfoTip, HelpLabel } from './info-tip'
 import { MusicBpmRamp, MusicHarmonyReadout, MusicPendingTransitions } from './music-transition-view'
 
@@ -14,7 +15,7 @@ import type { ReactionContext } from '@/lib/music/reactions'
 import { createRef, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Chess, type Square } from 'chess.js'
 import { toast } from 'sonner'
-import { ArrowLeft, Database, Dice5, Download, FlaskConical, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
+import { ArrowLeft, Database, Dice5, Download, Pause, Pencil, Play, Power, Save, Upload } from 'lucide-react'
 import { ChessgroundBoard, PiecesSVG, type AnalysisArrow } from './chessground-board'
 import { BoardResizeHandles } from './board-resize-handles'
 import { BOARD_CARDS_RESIZE_RATIO, powerCardsResizeLimits, useBoardResize } from '@/hooks/use-board-resize'
@@ -28,7 +29,7 @@ import { GameWidgetConnections } from './game-presentation'
 import { CreativeWidget, type CreativeWidgetSize } from './creative/creative-widget'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
 import { identifyPitchCollection } from '@/lib/music/scales'
-import { CREATIVE_STORAGE, ROOTS, SCALES, SCALE_LABELS, SOUNDS, createCreativeSession, createDusseldorfSession, creativeSnapshot, moveCreativePiece, parseCreativeSession, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
+import { CREATIVE_STORAGE, ROOTS, SCALES, SCALE_LABELS, SOUNDS, createCreativeSession, createDusseldorfSession, creativeBoardPieces, creativeSnapshot, mapCreativeBoardPieces, moveCreativePiece, parseCreativeSession, placeCreativePiece, removeCreativePiece, resetCreativePositions, updateCreativeArrangement, type CreativeSession } from '@/lib/music/creative'
 import { validateMusicSnapshot } from '@/lib/music/runtime'
 import { DEFAULT_KIT_GROUPS, EDITABLE_CITY_KITS, KIT_LIBRARY_STORAGE, cityKitStorageKey, defaultCityKit, loadCityKit, prepareCityKitForCreative, prepareOfficialCityKit, resetLegacyMusicStorage, updateKitLibrary } from '@/lib/music/city-kits'
 import { cities, getCityById } from '@/lib/cities-data'
@@ -71,10 +72,10 @@ function setNotice(message: string) {
 
 // What "unsaved changes" compares: which pieces are switched on is a listening choice, not a kit edit.
 function kitFingerprint(kit: CreativeSession) {
-  return JSON.stringify({ ...kit, pieces: kit.pieces.map(({ active: _active, ...piece }) => piece) })
+  return JSON.stringify({ ...kit, pieces: kit.pieces.map(({ active: _active, ...piece }) => piece), extras: kit.extras?.map(({ active: _active, ...piece }) => piece) })
 }
 
-type CreativeWidgetId = 'kit' | 'transport' | 'reactions' | 'code' | 'instrument' | 'parameters' | 'band'
+type CreativeWidgetId = 'kit' | 'transport' | 'reactions' | 'code' | 'instrument' | 'source' | 'band'
 // Left column works on the kit and the session; right column on the selected piece.
 // `piece` widgets draw their line to the selected piece, the others to the board.
 const CREATIVE_WIDGETS: { id: CreativeWidgetId; title: string; side: 'left' | 'right'; width: number; on: boolean; link: 'board' | 'piece'; autoHeight?: number }[] = [
@@ -83,13 +84,13 @@ const CREATIVE_WIDGETS: { id: CreativeWidgetId; title: string; side: 'left' | 'r
   { id: 'reactions', title: 'States & Events', side: 'left', width: 420, on: false, link: 'board' },
   { id: 'code', title: 'Strudel code', side: 'left', width: 420, on: false, link: 'board' },
   { id: 'instrument', title: 'Instrument', side: 'right', width: 380, on: true, link: 'piece' },
-  { id: 'parameters', title: 'Parameters', side: 'right', width: 380, on: true, link: 'piece' },
+  { id: 'source', title: 'Sample source', side: 'right', width: 380, on: false, link: 'piece' },
   { id: 'band', title: '32 voices', side: 'right', width: 380, on: false, link: 'board' },
 ]
 const WIDGET_TOP = 76
 const WIDGET_GAP = 10
 const WIDGET_HEADER = 34
-const CREATIVE_BOARD_WIDTH = 'min(90vw, calc(100dvh - 350px), 512px)'
+const CREATIVE_BOARD_WIDTH = 'min(90vw, calc(100dvh - 390px), 512px)'
 type WidgetLayout = { positions: Record<CreativeWidgetId, { x: number; y: number }>; sizes: Record<CreativeWidgetId, CreativeWidgetSize> }
 
 /** Columns at both sides of the centered board; open widgets share the height left by the others. */
@@ -111,6 +112,7 @@ function initialWidgetLayout(width: number, height: number): WidgetLayout {
   return { positions, sizes }
 }
 
+const PALETTE_ORDER = ['p', 'r', 'n', 'b', 'q', 'k']
 const RULED = { borderColor: '#c9a85a', color: '#f0d48e', boxShadow: 'inset 0 0 0 1px #c9a85a55' } as const
 const RULED_TEXT = { color: '#f0d48e' } as const
 export function CreativeStudio() {
@@ -133,7 +135,7 @@ export function CreativeStudio() {
   const [analysisArrows, setAnalysisArrows] = useState<AnalysisArrow[]>([])
   const arrowTimerRef = useRef<number | null>(null)
   // Piece positions before each move, for the Mulligan card.
-  const positionHistoryRef = useRef<Record<string, string>[]>([])
+  const positionHistoryRef = useRef<Pick<CreativeSession, 'pieces' | 'extras'>[]>([])
   const [historyLength, setHistoryLength] = useState(0)
   const [undoAnimationKey, setUndoAnimationKey] = useState(0)
   const [reactionScope, setReactionScope] = useState<ReactionScope>('kit')
@@ -145,6 +147,18 @@ export function CreativeStudio() {
   const [selectedId, setSelectedId] = useState('w:b1')
   const [soloIds, setSoloIds] = useState<Set<string>>(() => new Set())
   const soloMemoryRef = useRef<string[] | null>(null)
+  // A note picked in the Instrument's MIDI editor opens the Note tab; deselecting it goes back.
+  const [paramsTab, setParamsTab] = useState<InstrumentParamsTab>('tuning')
+  const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
+  const pieceParamsTabRef = useRef<InstrumentParamsTab>('tuning')
+  const hadNoteRef = useRef(false)
+  useEffect(() => {
+    const hasNote = !!noteSelection
+    if (hasNote === hadNoteRef.current) return
+    hadNoteRef.current = hasNote
+    if (hasNote) setParamsTab(tab => { if (tab !== 'note') pieceParamsTabRef.current = tab; return 'note' })
+    else setParamsTab(tab => tab === 'note' ? pieceParamsTabRef.current : tab)
+  }, [noteSelection])
   const soloCycleIdsRef = useRef<Set<string>>(new Set())
   const [boardSelected, setBoardSelected] = useState(true)
   const [account, setAccount] = useState<CreativeAccount | null>(null)
@@ -162,23 +176,27 @@ export function CreativeStudio() {
   const liveCollection = identifyPitchCollection(music.snapshot.scale, session.scale)
   const live = { root: liveCollection.root as CreativeSession['root'], scale: liveCollection.scale ?? session.scale, harmony: music.snapshot.harmony ?? session.harmony }
   const ruled = { bpm: Math.abs(music.snapshot.bpm - session.bpm) > .05, root: live.root !== session.root, scale: live.scale !== session.scale, harmony: live.harmony !== session.harmony }
-  const selected = session.pieces.find(p => p.id === selectedId)!
+  const boardPieces = useMemo(() => creativeBoardPieces(session), [session])
+  // A piece taken off the board stays selectable through its instrument (kit pieces keep their data).
+  const selected = boardPieces.find(p => p.id === selectedId) ?? { ...session.pieces.find(p => p.id === selectedId) ?? session.pieces[0], instrumentId: session.pieces.find(p => p.id === selectedId)?.id ?? session.pieces[0].id }
+  const selectedOnBoard = boardPieces.some(p => p.id === selected.id)
+  const instrumentId = selected.instrumentId
   const boardGame = useMemo(() => {
     const board = new Chess()
     board.clear()
-    for (const piece of session.pieces) board.put({ type: piece.type, color: piece.color }, piece.square as Square)
+    for (const piece of boardPieces) board.put({ type: piece.type, color: piece.color }, piece.square as Square)
     return board
-  }, [session.pieces])
+  }, [boardPieces])
   const boardColor = getCityById(session.cityId ?? '')?.color ?? '#00ffaa'
-  const boardActiveSquares = useMemo(() => new Set(session.pieces.filter(piece => piece.active).map(piece => piece.square)), [session.pieces])
-  const selectedInstrument = session.instruments[selectedId]
+  const boardActiveSquares = useMemo(() => new Set(boardPieces.filter(piece => piece.active).map(piece => piece.square)), [boardPieces])
+  const selectedInstrument = session.instruments[instrumentId]
   const instrument = soloIds.has(selectedId) && selectedInstrument.loopEnabled === false
     ? { ...selectedInstrument, loopEnabled: true }
     : selectedInstrument
-  const effects = session.effects[selectedId]
-  const mapping = session.mappings[selectedId]
-  const activeCount = session.pieces.filter(p => p.active).length
-  const activeIds = useMemo(() => new Set(session.pieces.filter(piece => piece.active).map(piece => piece.id)), [session.pieces])
+  const effects = session.effects[instrumentId]
+  const mapping = session.mappings[instrumentId]
+  const activeCount = boardPieces.filter(p => p.active).length
+  const activeIds = useMemo(() => new Set(boardPieces.filter(piece => piece.active).map(piece => piece.id)), [boardPieces])
   const cityName = (cityId?: string) => EDITABLE_CITY_KITS.find(city => city.id === cityId)?.name
   const kitLabel = (kit: CreativeSession) => `${kit.name}${cityName(kit.cityId) ? ` (${cityName(kit.cityId)})` : ''}`
   const admin = account?.admin === true
@@ -273,19 +291,23 @@ export function CreativeStudio() {
   useEffect(() => () => { toast.dismiss('creative-notice') }, [])
 
   const updateInstrument = useCallback((update: Partial<Instrument>) => {
-    setSession(s => ({ ...s, instruments: { ...s.instruments, [selectedId]: { ...s.instruments[selectedId], ...update } } }))
-  }, [selectedId])
+    setSession(s => ({ ...s, instruments: { ...s.instruments, [instrumentId]: { ...s.instruments[instrumentId], ...update } } }))
+  }, [instrumentId])
   function updateEffects(update: Partial<Effects>) {
-    setSession(s => ({ ...s, effects: { ...s.effects, [selectedId]: { ...s.effects[selectedId], ...update } } }))
+    setSession(s => ({ ...s, effects: { ...s.effects, [instrumentId]: { ...s.effects[instrumentId], ...update } } }))
   }
   function updateMapping(update: Partial<Mapping>) {
-    setSession(s => ({ ...s, mappings: { ...s.mappings, [selectedId]: { ...s.mappings[selectedId], ...update } } }))
+    setSession(s => ({ ...s, mappings: { ...s.mappings, [instrumentId]: { ...s.mappings[instrumentId], ...update } } }))
+  }
+  function setBoardActive(active: (piece: { id: string; color: string; active: boolean }) => boolean) {
+    setSession(s => mapCreativeBoardPieces(s, p => ({ active: active(p) })))
   }
   function toggleActive(id: string) {
-    const currentlyActive = session.pieces.find(p => p.id === id)?.active
-    if (!currentlyActive) setPlaying(true)
+    const piece = boardPieces.find(p => p.id === id)
+    if (!piece) return
+    if (!piece.active) setPlaying(true)
     else if (activeCount === 1) setPlaying(false)
-    setSession(s => ({ ...s, pieces: s.pieces.map(p => p.id === id ? { ...p, active: !p.active } : p) }))
+    setBoardActive(p => p.id === id ? !p.active : p.active)
   }
   function toggleSolo(id: string) {
     music.endAudition()
@@ -294,18 +316,18 @@ export function CreativeStudio() {
       nextSoloIds.delete(id)
       setSoloIds(nextSoloIds)
       if (nextSoloIds.size) {
-        setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: nextSoloIds.has(p.id) })) }))
+        setBoardActive(p => nextSoloIds.has(p.id))
       } else {
-        const restore = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current, ...session.pieces.filter(p => p.active).map(p => p.id)])
-        setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: restore.has(p.id) })) }))
+        const restore = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current, ...boardPieces.filter(p => p.active).map(p => p.id)])
+        setBoardActive(p => restore.has(p.id))
         soloMemoryRef.current = null
         soloCycleIdsRef.current = new Set()
       }
       return
     }
     if (!soloIds.size) {
-      soloMemoryRef.current = session.pieces
-        .filter(p => p.active && session.instruments[p.id]?.loopEnabled !== false)
+      soloMemoryRef.current = boardPieces
+        .filter(p => p.active && session.instruments[p.instrumentId]?.loopEnabled !== false)
         .map(p => p.id)
       soloCycleIdsRef.current = new Set()
     }
@@ -313,7 +335,7 @@ export function CreativeStudio() {
     soloCycleIdsRef.current.add(id)
     setSoloIds(nextSoloIds)
     setPlaying(true)
-    setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: nextSoloIds.has(p.id) })) }))
+    setBoardActive(p => nextSoloIds.has(p.id))
   }
   function stop() { setPlaying(false); music.endAudition() }
   function select(id: string) { music.endAudition(); setSelectedId(id); setBoardSelected(true) }
@@ -450,7 +472,7 @@ export function CreativeStudio() {
   }
 
   function rememberPositions() {
-    positionHistoryRef.current = [...positionHistoryRef.current.slice(-49), Object.fromEntries(session.pieces.map(piece => [piece.id, piece.square]))]
+    positionHistoryRef.current = [...positionHistoryRef.current.slice(-49), { pieces: session.pieces, extras: session.extras }]
     setHistoryLength(positionHistoryRef.current.length)
   }
   function undoPositions() {
@@ -459,7 +481,15 @@ export function CreativeStudio() {
     if (!previous) return
     music.endAudition()
     setUndoAnimationKey(key => key + 1)
-    setSession(s => ({ ...s, pieces: s.pieces.map(piece => ({ ...piece, square: previous[piece.id] ?? piece.square })) }))
+    // Positions, removals and extras come back; loops keep their current on/off state where they still exist.
+    setSession(s => {
+      const active = new Map(creativeBoardPieces(s).map(piece => [piece.id, piece.active]))
+      return {
+        ...s,
+        pieces: previous.pieces.map(piece => ({ ...piece, active: active.get(piece.id) ?? piece.active })),
+        extras: previous.extras?.map(piece => ({ ...piece, active: active.get(piece.id) ?? piece.active })),
+      }
+    })
   }
 
   // Best/Worst read the board from the selected piece's side. In Creative they stay silent and
@@ -599,16 +629,20 @@ export function CreativeStudio() {
         setSession(s => ({ ...s, harmony }))
       }}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label></div>
       <div className={styles.rampSlot}><MusicBpmRamp monitor={music.monitor}/><MusicTransportReadout arrangement={session.arrangement} monitor={music.monitor} showStatus={false} showBeatUnit /><MusicPendingTransitions monitor={music.monitor}/></div>
-      <MusicArrangementControls arrangement={session.arrangement} harmony={session.harmony} monitor={music.monitor} onSeek={music.seekSection} onChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))} />
     </section>
   </fieldset>
+
+  const clearSolo = () => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }
+  const activateSide = (color: 'w' | 'b') => { clearSolo(); setBoardActive(p => p.color === color); setPlaying(true) }
+  const muteAll = () => { stop(); setBoardActive(() => false); clearSolo() }
+  const bandLinks = <span className={styles.bandLinks}>Activate <button type="button" onClick={() => activateSide('w')} disabled={!ready || busy}>White</button> / <button type="button" onClick={() => activateSide('b')} disabled={!ready || busy}>Black</button> / <button type="button" onClick={muteAll} disabled={!ready || busy}>Mute</button> all</span>
 
   // The match's Song & Instruments list, with White and Black side by side.
   const bandWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
     <div data-match-ui><MusicSongPanel
       columns
       pieces={music.snapshot.pieces}
-      names={Object.fromEntries(session.pieces.map(piece => [piece.id, session.instruments[piece.id]?.name]))}
+      names={Object.fromEntries(boardPieces.map(piece => [piece.id, session.instruments[piece.instrumentId]?.name]))}
       activeIds={activeIds}
       soloIds={soloIds}
       monitor={music.monitor}
@@ -617,22 +651,20 @@ export function CreativeStudio() {
       onArrangementChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))}
       onSeek={music.seekSection}
       onSelect={square => {
-        const piece = square && session.pieces.find(item => item.square === square)
+        const piece = square && boardPieces.find(item => item.square === square)
         if (piece) select(piece.id)
         else { music.endAudition(); setBoardSelected(false) }
       }}
-      onToggle={square => { const piece = session.pieces.find(item => item.square === square); if (piece) toggleActive(piece.id) }}
+      onToggle={square => { const piece = boardPieces.find(item => item.square === square); if (piece) toggleActive(piece.id) }}
       onSolo={toggleSolo}
       snapshot={music.snapshot}
       selectedId={boardSelected ? selectedId : null}
       selectedView={<MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />}
-      onAudition={square => { const piece = session.pieces.find(item => item.square === square); if (piece) { music.audition(piece.id, square); music.releaseAudition() } }}
+      onAudition={square => { const piece = boardPieces.find(item => item.square === square); if (piece) { music.audition(piece.id, square); music.releaseAudition() } }}
       onHover={setSongHover}
     /></div>
     <div className={styles.actions}>
-      <button onClick={() => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: p.color === 'w' })) })); setPlaying(true) }}>Activate white</button>
-      <button onClick={() => { stop(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, active: false })) })); setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }}>Mute all</button>
-      <button onClick={() => { music.endAudition(); rememberPositions(); setSession(s => ({ ...s, pieces: s.pieces.map(p => ({ ...p, square: p.origin })) })) }}>Reset positions</button>
+      <button onClick={() => { music.endAudition(); rememberPositions(); setSession(resetCreativePositions) }}>Reset positions</button>
     </div>
   </fieldset>
 
@@ -646,31 +678,37 @@ export function CreativeStudio() {
               {editingInstrumentName ? <input autoFocus aria-label="Instrument name" maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrument' })} onBlur={() => setEditingInstrumentName(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur() }} /> : <h2>{instrument.name}</h2>}
               <button type="button" className={styles.editName} aria-label="Edit instrument name" title="Edit name" onClick={() => setEditingInstrumentName(true)}><Pencil size={14} /></button>
             </div>
-            <span className={styles.instrumentMeta}>{pieceNames[selected.type]} - {selected.origin} - on {selected.square} - <MusicVoiceBadge monitor={music.monitor} id={selectedId} /></span>
+            <span className={styles.instrumentMeta}>{pieceNames[selected.type]} - {selected.origin} - {selectedOnBoard ? `on ${selected.square}` : 'off the board'} - <MusicVoiceBadge monitor={music.monitor} id={selectedId} /></span>
           </div>
         </div>
         <div className={styles.actions}>
           <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={selected.active ? 'Turn loop off' : 'Turn loop on'} title={selected.active ? 'Loop on' : music.preview?.id === selectedId ? 'Temporary preview' : 'Loop off'} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
           <button aria-pressed={soloIds.has(selectedId)} onClick={() => toggleSolo(selectedId)}>Solo</button>
         </div>
-        <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
+        <NoteParamsHostContext.Provider value={setNoteSelection}>
+          <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
+        </NoteParamsHostContext.Provider>
+        <InstrumentParameters instrument={instrument} effects={effects} mapping={mapping}
+          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
+          duckSources={duckSourceOptions(session.pieces, session.instruments, selected)}
+          tab={paramsTab} onTab={setParamsTab} noteSelection={noteSelection} />
         <MusicPerformanceControls key={selectedId} arrangement={session.arrangement} override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
-        <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
-        <div className={styles.pair}><label><span className={styles.helpCaption}>Behavior<InfoTip label="Instrument behavior">
-          <p><b>Pulse / percussion:</b> plays the written rhythm and notes without following the harmonic progression or the rank/file transposition. Without explicit settings, it uses short notes (0.12 fraction) and zero sustain.</p>
-          <p><b>Phrase / sequencer:</b> plays the written melody; pitched voices follow the harmony and the position’s degree map. Without an explicit length, it uses a 0.7 fraction.</p>
-          <p><b>Sustained / chords:</b> on pitched voices, a non-static harmony turns each attack into a chord with voice leading. With static harmony, it keeps the written notes/chords. Without an explicit length, it uses a 0.95 fraction; it never holds sound indefinitely.</p>
-          <p>All of them allow MIDI variations, per-piece arrangement, ADSR and effects. Pitch slides need a pitched voice; unpitched samples don’t follow degrees/chords. Changing the behavior doesn’t change the source/timbre or reset the saved parameters. The manual gesture plays one note per square, without running the sequence. The piece type doesn’t restrict the choice.</p>
-        </InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulse / percussion</option><option value="phrase">Phrase / sequencer</option><option value="sustain">Sustained / chords</option></select></label>
-          <label><HelpLabel label="Synth timbre">Waveform used by the Synthesis source. If the current source is a sample, picking a timbre switches the source to Synthesis. To go back to samples, choose Sample bank under Sound source.</HelpLabel><select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'], source: { kind: 'synth' } })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
       </section>
     </aside>
   </fieldset>
 
-  const parametersWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
-    <InstrumentParameters instrument={instrument} effects={effects} mapping={mapping}
-      updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
-      duckSources={duckSourceOptions(session.pieces, session.instruments, selected)} />
+  // Where the selected instrument's sound comes from: sample bank or synth, plus how it plays.
+  const sourceWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
+    <section className={styles.panel} aria-label="Sample source">
+        <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
+      <div className={styles.pair}><label><span className={styles.helpCaption}>Behavior<InfoTip label="Instrument behavior">
+        <p><b>Pulse / percussion:</b> plays the written rhythm and notes without following the harmonic progression or the rank/file transposition. Without explicit settings, it uses short notes (0.12 fraction) and zero sustain.</p>
+        <p><b>Phrase / sequencer:</b> plays the written melody; pitched voices follow the harmony and the position’s degree map. Without an explicit length, it uses a 0.7 fraction.</p>
+        <p><b>Sustained / chords:</b> on pitched voices, a non-static harmony turns each attack into a chord with voice leading. With static harmony, it keeps the written notes/chords. Without an explicit length, it uses a 0.95 fraction; it never holds sound indefinitely.</p>
+        <p>All of them allow MIDI variations, per-piece arrangement, ADSR and effects. Pitch slides need a pitched voice; unpitched samples don’t follow degrees/chords. Changing the behavior doesn’t change the source/timbre or reset the saved parameters. The manual gesture plays one note per square, without running the sequence. The piece type doesn’t restrict the choice.</p>
+      </InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulse / percussion</option><option value="phrase">Phrase / sequencer</option><option value="sustain">Sustained / chords</option></select></label>
+        <label><HelpLabel label="Synth timbre">Waveform used by the Synthesis source. If the current source is a sample, picking a timbre switches the source to Synthesis. To go back to samples, choose Sample bank under Sound source.</HelpLabel><select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'], source: { kind: 'synth' } })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
+    </section>
   </fieldset>
 
   const reactionsWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
@@ -682,12 +720,62 @@ export function CreativeStudio() {
     <pre>{music.code}</pre>
   </div>
 
-  const widgetContent: Record<CreativeWidgetId, React.ReactNode> = { kit: kitWidget, transport: transportWidget, reactions: reactionsWidget, code: codeWidget, instrument: instrumentWidget, parameters: parametersWidget, band: bandWidget }
+  const widgetContent: Record<CreativeWidgetId, React.ReactNode> = { kit: kitWidget, transport: transportWidget, reactions: reactionsWidget, code: codeWidget, instrument: instrumentWidget, source: sourceWidget, band: bandWidget }
   const widgetInfo: Partial<Record<CreativeWidgetId, React.ReactNode>> = {
     reactions: <ReactionScopeSwitch scope={reactionScope} onChange={setReactionScope} />,
     code: <InfoTip label="Running code">Generated from the active voices and the preview. To edit it, use the instrument controls.</InfoTip>,
-    instrument: <InfoTip label="Selected instrument">The instrument of the selected piece. Its line goes to that piece on the board.</InfoTip>,
+    instrument: <InfoTip label="Selected instrument">The instrument of the selected piece, with its knobs in tabs like the match’s Piece params. Selecting a note in the MIDI editor opens the Note tab. Its line goes to that piece on the board.</InfoTip>,
+    band: bandLinks,
   }
+  // Palette: one piece per kit instrument, pawns first, as listed under a match board.
+  const paletteFor = (color: 'w' | 'b'): PalettePiece[] => session.pieces
+    .filter(piece => piece.color === color)
+    .sort((a, b) => PALETTE_ORDER.indexOf(a.type) - PALETTE_ORDER.indexOf(b.type) || a.origin.localeCompare(b.origin))
+    .map(piece => ({ id: piece.id, type: piece.type, name: session.instruments[piece.id]?.name ?? pieceNames[piece.type] }))
+  const squareAt = (clientX: number, clientY: number) => {
+    const rect = boardRef.current?.getBoundingClientRect()
+    if (!rect) return null
+    const file = Math.floor((clientX - rect.left) / (rect.width / 8)), row = Math.floor((clientY - rect.top) / (rect.height / 8))
+    return file >= 0 && file < 8 && row >= 0 && row < 8 ? `${'abcdefgh'[file]}${8 - row}` as Square : null
+  }
+  // The palette sounds through a copy already on the board; an instrument with no piece placed stays silent.
+  const paletteVoice = (sourceId: string) => boardPieces.find(piece => piece.id === sourceId) ?? boardPieces.find(piece => piece.instrumentId === sourceId)
+  const paletteAudition = useRef<string | null>(null)
+  const palette = (color: 'w' | 'b', justify: 'start' | 'end') => <PiecePalette
+    color={color}
+    justify={justify}
+    pieces={paletteFor(color)}
+    disabled={!ready || busy}
+    onPress={id => { const voice = paletteVoice(id); paletteAudition.current = null; if (voice) { music.audition(voice.id, voice.square); music.releaseAudition() } }}
+    onDragOver={(id, x, y) => {
+      const square = squareAt(x, y), voice = paletteVoice(id)
+      if (!voice || !square || paletteAudition.current === square) return
+      paletteAudition.current = square
+      music.audition(voice.id, square)
+    }}
+    onDrop={(id, x, y) => {
+      paletteAudition.current = null
+      music.endAudition()
+      const square = squareAt(x, y)
+      if (!square) return
+      rememberPositions()
+      const placed = placeCreativePiece(session, id, square)
+      setSession(placed.session)
+      select(placed.id)
+      setPlaying(true)
+    }}
+    onCancel={() => { paletteAudition.current = null; music.releaseAudition() }}
+  />
+  function dropOffBoard(square: Square) {
+    const piece = boardPieces.find(item => item.square === square)
+    if (!piece) return
+    music.endAudition()
+    rememberPositions()
+    setSession(current => removeCreativePiece(current, piece.id))
+    if (soloIds.has(piece.id)) { const next = new Set(soloIds); next.delete(piece.id); setSoloIds(next) }
+    if (selectedId === piece.id && piece.id !== piece.instrumentId) setSelectedId(piece.instrumentId)
+  }
+
   const cardActions: Record<PowerCardKind, PowerCardAction> = {
     best: { disabled: analysis.busy, onClick: () => showRankedMoves('best'), title: `Best moves for ${selected.color === 'w' ? 'White' : 'Black'} (the selected piece’s side)` },
     worst: { disabled: analysis.busy, onClick: () => showRankedMoves('worst'), title: `Worst moves for ${selected.color === 'w' ? 'White' : 'Black'} (the selected piece’s side)` },
@@ -699,7 +787,8 @@ export function CreativeStudio() {
   const widgets = CREATIVE_WIDGETS.map(widget => <CreativeWidget
     key={widget.id}
     id={widget.id}
-    title={widget.title}
+    title={widget.id === 'band' ? `${boardPieces.length} voices` : widget.title}
+    titleNote={widget.id === 'band' ? `(${activeCount} active)` : undefined}
     on={widgetOn[widget.id]}
     onToggle={() => toggleWidget(widget.id)}
     position={widgetLayout.positions[widget.id]}
@@ -717,10 +806,7 @@ export function CreativeStudio() {
   return <main className={styles.lab} data-stacked={portraitPhone || undefined} ref={rootRef} style={{ '--game-board-width': boardResize.width === null ? CREATIVE_BOARD_WIDTH : `${boardResize.width}px`, '--power-cards-width': cardsResize.width === null ? CREATIVE_BOARD_WIDTH : `${cardsResize.width}px` } as React.CSSProperties}>
     <header className={`${styles.studio} ${styles.labHeader}`}>
       <Link href="/" aria-label="Back to the world" className={styles.back}><ArrowLeft size={18} /></Link>
-      <div>
-        <span className={styles.eyebrow}>CHICKENCHESS LAB<InfoTip label="Creative Mode">A workbench for composing with the pieces. No stage intro and no forced turns: try sounds, simulate states and save kits for your matches. Panels are widgets: drag them by the title, switch them off to fold them to the title, and resize them by the bottom-right corner.</InfoTip><VersionChangelog /></span>
-        <h1><FlaskConical size={18} /> Creative Mode<InfoTip label="Free board">Like in a match: hold a piece to hear its note and drag it to move. In Creative a piece can go to any square; moving activates it and an occupied square swaps the pieces. Clicking an empty square deselects the piece; dragging from an empty square moves the whole board around the screen. Double-click a piece to turn its loop on or off. Esc cancels the preview.</InfoTip></h1>
-      </div>
+      <h1 className={styles.labTitle}>Chickenchess Lab<VersionChangelog /></h1>
     </header>
 
     {!portraitPhone && <GameWidgetConnections visible pieceConnections={connections} />}
@@ -728,6 +814,7 @@ export function CreativeStudio() {
 
     <div className={styles.stage}>
       <div className={styles.boardGroup} style={{ translate: boardPan.translate }}>
+        <div className={styles.boardRow}>{palette('b', 'end')}</div>
         <div ref={boardRef} className={styles.board} role="group" aria-label="Creative board" aria-busy={!music.auditionReady}>
           <BoardResizeHandles enabled={boardResize.enabled} onStart={boardResize.startResize} onResizeBy={boardResize.resizeBy} onCancel={boardResize.cancelResize} />
           <fieldset className={styles.boardReadyGate} disabled={!music.auditionReady} onMouseDownCapture={music.unlock}>
@@ -742,18 +829,18 @@ export function CreativeStudio() {
             analysisArrows={analysisArrows}
             onEmptySquarePointerDown={boardPan.startPan}
             onBoardClick={square => {
-              const piece = session.pieces.find(item => item.square === square)
+              const piece = boardPieces.find(item => item.square === square)
               // Updating the instrument editors can compile every variation.
               // Let the gesture submit its sample before that lower-priority render.
               if (piece) startTransition(() => { setSelectedId(piece.id); setBoardSelected(true) })
               else { music.endAudition(); setBoardSelected(false) }
             }}
             onPieceHold={square => {
-              const id = session.pieces.find(item => item.square === square)?.id
+              const id = boardPieces.find(item => item.square === square)?.id
               if (id) music.audition(id, square)
             }}
             onDragOverSquare={(from, to) => {
-              const id = session.pieces.find(item => item.square === from)?.id
+              const id = boardPieces.find(item => item.square === from)?.id
               if (id) music.audition(id, to)
             }}
             onPieceRelease={music.releaseAudition}
@@ -762,32 +849,33 @@ export function CreativeStudio() {
               mode: 'move',
               auditionPiece: { color: selected.color, type: selected.type },
               onMove: (from, to) => {
-                const piece = session.pieces.find(item => item.square === from)
+                const piece = boardPieces.find(item => item.square === from)
                 if (!piece) return
                 setPlaying(true)
                 select(piece.id)
                 rememberPositions()
                 setSession(current => moveCreativePiece(current, piece.id, to))
               },
+              onDropOutside: dropOffBoard,
               onTogglePiece: square => {
-                const piece = session.pieces.find(item => item.square === square)
+                const piece = boardPieces.find(item => item.square === square)
                 if (piece) { select(piece.id); toggleActive(piece.id) }
               },
               squareLabel: square => {
-                const piece = session.pieces.find(item => item.square === square)
-                return `${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'white' : 'black'} · ${session.instruments[piece.id].name} · ${piece.active ? 'active' : 'inactive'}` : ' · empty'}`
+                const piece = boardPieces.find(item => item.square === square)
+                return `${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'white' : 'black'} · ${session.instruments[piece.instrumentId].name} · ${piece.active ? 'active' : 'inactive'}` : ' · empty'}`
               },
             }}
           />
           </fieldset>
           {!music.auditionReady && <div className={styles.boardLoading} role="status">Preparing kit sounds…</div>}
         </div>
-        <div className={styles.boardFooter}>
-          <span className={styles.activeCount} aria-label="Active voices">{activeCount}/32 active{soloIds.size > 0 ? ' · solo' : ''}</span>
-          <EggCounter tone="player" value={0} display="∞" widthFor={[0]} role="img" aria-label="Endless golden eggs in Creative" title="Creative has endless golden eggs" />
+        <div className={styles.boardRow}>
+          {palette('w', 'start')}
+          <EggCounter tone="player" value={0} display={<span className={styles.infinity}>∞</span>} widthFor={[0]} role="img" aria-label="Endless golden eggs in Creative" title="Creative has endless golden eggs" />
         </div>
       </div>
-      <PowerCardHand visible={ready} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={cardActions} />
+      <PowerCardHand hideCost visible={ready} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={cardActions} />
     </div>
 
     {portraitPhone ? <div className={styles.widgetStack}>{widgets}</div> : widgets}

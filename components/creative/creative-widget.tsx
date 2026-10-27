@@ -12,6 +12,8 @@ export interface CreativeWidgetSize { width: number; height?: number }
 interface CreativeWidgetProps {
   id: string
   title: string
+  /** Shown after the title in normal case, such as the 32 voices' active count. */
+  titleNote?: string
   on: boolean
   onToggle: () => void
   position: { x: number; y: number }
@@ -35,7 +37,7 @@ const MIN_HEIGHT = 96
  * Floating Creative panel, styled like the match widgets: drag from any non-control part, power button on
  * the corner, resize grip at the bottom right. Turning it off collapses it to its title bar.
  */
-export function CreativeWidget({ id, title, on, onToggle, position, onPositionChange, size, onSizeChange, zIndex, onFront, cityColor, stacked, widgetRef, info, children }: CreativeWidgetProps) {
+export function CreativeWidget({ id, title, titleNote, on, onToggle, position, onPositionChange, size, onSizeChange, zIndex, onFront, cityColor, stacked, widgetRef, info, children }: CreativeWidgetProps) {
   const headerRef = useRef<HTMLDivElement | null>(null)
   const bodyRef = useRef<HTMLDivElement | null>(null)
 
@@ -83,7 +85,7 @@ export function CreativeWidget({ id, title, on, onToggle, position, onPositionCh
   >
     <div ref={headerRef} className={styles.widgetHeader}>
       <button type="button" data-no-drag className={styles.widgetPower} aria-pressed={on} aria-label={`${on ? 'Turn off' : 'Turn on'} ${title}`} title={`${on ? 'Turn off' : 'Turn on'} ${title}`} onClick={event => { event.stopPropagation(); onToggle() }}><Power size={15} /></button>
-      <span className={styles.widgetTitle}>{title}</span>
+      <span className={styles.widgetTitle}>{title}{titleNote && <span className={styles.widgetTitleNote}> {titleNote}</span>}</span>
       {info && <span data-no-drag className={styles.widgetInfo}>{info}</span>}
     </div>
     {on && <div ref={bodyRef} className={styles.widgetBody} style={stacked ? undefined : size.height ? { height: size.height } : { maxHeight: `max(${MIN_HEIGHT}px, calc(100dvh - ${position.y + 56}px))` }}>

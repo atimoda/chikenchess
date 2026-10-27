@@ -1,6 +1,6 @@
 "use client"
 
-import type { CSSProperties, Ref } from "react"
+import type { CSSProperties, ReactNode, Ref } from "react"
 import { cn } from "@/lib/utils"
 
 interface EggCounterProps {
@@ -16,7 +16,7 @@ interface EggCounterProps {
   role?: string
   title?: string
   /** Text shown instead of the number, such as the Creative's endless "∞". */
-  display?: string
+  display?: ReactNode
 }
 
 /** Golden-egg box used above (opponent) and below (player) the board in every match mode. */

@@ -37,6 +37,44 @@ test('creative movement activates a voice and swaps occupied squares without los
   assert.equal(new Set(swapped.pieces.map(p => p.square)).size, 32)
 })
 
+test('creative board places palette copies, replaces occupants and takes pieces off the board', () => {
+  const lab = creative.createCreativeSession()
+  // A copy of the queen's instrument on an empty square plays under its own id.
+  const copy = creative.placeCreativePiece(lab, 'w:d1', 'e4')
+  assert.equal(copy.id, 'x:1')
+  assert.deepEqual(copy.session.extras, [{ id: 'x:1', source: 'w:d1', square: 'e4', active: true }])
+  let snapshot = creative.creativeSnapshot(copy.session, true)
+  assert.equal(snapshot.pieces.length, 33)
+  assert.equal(snapshot.instruments['x:1'], copy.session.instruments['w:d1'])
+  assert.equal(snapshot.pieces.find(p => p.id === 'x:1').type, 'q')
+  // Dropping on an occupied square replaces it: the kit piece leaves the board, its instrument stays.
+  const replaced = creative.placeCreativePiece(copy.session, 'w:b1', 'e7')
+  assert.equal(replaced.session.pieces.find(p => p.id === 'b:e7').removed, true)
+  assert.ok(replaced.session.instruments['b:e7'])
+  snapshot = creative.creativeSnapshot(replaced.session, true)
+  assert.equal(snapshot.pieces.some(p => p.id === 'b:e7'), false)
+  assert.equal(snapshot.pieces.length, 33)
+  // The removed kit piece comes back from the palette instead of a copy.
+  const back = creative.placeCreativePiece(replaced.session, 'b:e7', 'a5')
+  assert.equal(back.id, 'b:e7')
+  assert.equal(back.session.pieces.find(p => p.id === 'b:e7').square, 'a5')
+  assert.equal(back.session.pieces.find(p => p.id === 'b:e7').removed, false)
+  // A king from the palette moves that side's king: one king per side.
+  const king = creative.placeCreativePiece(back.session, 'w:e1', 'h5')
+  assert.equal(king.id, 'w:e1')
+  assert.equal(creative.creativeBoardPieces(king.session).filter(p => p.type === 'k' && p.color === 'w').length, 1)
+  // Removing an extra drops it; removing a kit piece keeps it out of the snapshot; both round-trip.
+  const removed = creative.removeCreativePiece(creative.removeCreativePiece(king.session, 'x:1'), 'w:a2')
+  assert.deepEqual(removed.extras.map(p => p.id), ['x:2'])
+  assert.equal(creative.creativeSnapshot(removed, true).pieces.length, 32)
+  assert.equal(creative.creativeSnapshot(removed, true).pieces.some(p => p.id === 'w:a2'), false)
+  assert.deepEqual(creative.parseCreativeSession(JSON.stringify(removed)), JSON.parse(JSON.stringify(removed)))
+  const reset = creative.resetCreativePositions(removed)
+  assert.equal(creative.creativeBoardPieces(reset).length, 32)
+  assert.deepEqual(reset.extras, [])
+  assert.ok(reset.pieces.every(p => p.square === p.origin))
+})
+
 test('creative global sections require bounded musical time while banks require explicit MIDI', () => {
   assert.ok(arrangementSchema.safeParse({ sections: [{ id: 'intro', label: 'Intro', beats: 3 }, { id: 'theme', label: 'Theme', beats: 5 }] }).success)
   for (const beats of [0, -1, Infinity, NaN]) assert.equal(arrangementSchema.safeParse({ sections: [{ id: 'a', label: 'A', beats }] }).success, false)

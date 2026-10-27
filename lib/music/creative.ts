@@ -63,6 +63,13 @@ const pieceSchema = z.object({
   id: z.string().regex(/^[wb]:[a-h][1-8]$/), slot: finite(0, 31).int(),
   origin: z.string().regex(/^[a-h][1-8]$/), square: z.string().regex(/^[a-h][1-8]$/),
   type: z.enum(['p', 'n', 'b', 'r', 'q', 'k']), color: z.enum(['w', 'b']), active: z.boolean(),
+  /** Taken off the Creative board: the instrument stays in the kit, the piece is not drawn nor played. */
+  removed: z.boolean().optional(),
+})
+/** Extra Creative board piece that plays the instrument of `source` (one of the 32 kit pieces). */
+const extraPieceSchema = z.object({
+  id: z.string().regex(/^x:\d{1,5}$/), source: z.string().regex(/^[wb]:[a-h][1-8]$/),
+  square: z.string().regex(/^[a-h][1-8]$/), active: z.boolean(),
 })
 export const creativeSchema = z.object({
   reactions: kitReactionsSchema,
@@ -75,11 +82,17 @@ export const creativeSchema = z.object({
   scale: z.enum(SCALE_NAMES),
   arrangement: arrangementSchema,
   pieces: z.array(pieceSchema).length(32),
+  extras: z.array(extraPieceSchema).max(64).optional(),
   instruments: z.record(instrumentSchema), effects: z.record(effectsSchema), mappings: z.record(mappingSchema),
 }).superRefine((data, ctx) => {
   const initial = piecesFromHistory([])
-  if (new Set(data.pieces.map(p => p.square)).size !== 32 || new Set(data.pieces.map(p => p.id)).size !== 32) {
+  const placed = [...data.pieces.filter(p => !p.removed).map(p => p.square), ...(data.extras ?? []).map(p => p.square)]
+  if (new Set(placed).size !== placed.length || new Set(data.pieces.map(p => p.id)).size !== 32) {
     ctx.addIssue({ code: 'custom', message: 'Each piece needs a unique id and square.' })
+  }
+  const extraIds = (data.extras ?? []).map(p => p.id)
+  if (new Set(extraIds).size !== extraIds.length || (data.extras ?? []).some(p => !data.pieces.some(base => base.id === p.source))) {
+    ctx.addIssue({ code: 'custom', message: 'Each extra piece needs a unique id and one of the kit pieces as source.' })
   }
   for (const p of data.pieces) {
     const original = initial.find(x => x.id === p.id)
@@ -110,8 +123,36 @@ export function createCreativeSession(): CreativeSession {
   })
 }
 
+export type CreativeBoardPiece = Omit<CreativeSession['pieces'][number], 'removed'> & { /** Kit piece whose instrument this piece plays. */ instrumentId: string }
+
+/** Pieces on the Creative board: the kit pieces still placed, then the extras placed from the palette. */
+export function creativeBoardPieces(session: CreativeSession): CreativeBoardPiece[] {
+  const placed = session.pieces.filter(p => !p.removed).map(({ removed: _removed, ...p }) => ({ ...p, instrumentId: p.id }))
+  const extras = (session.extras ?? []).flatMap(extra => {
+    const source = session.pieces.find(p => p.id === extra.source)
+    if (!source) return []
+    const { removed: _removed, ...base } = source
+    return [{ ...base, id: extra.id, square: extra.square, active: extra.active, instrumentId: source.id }]
+  })
+  return [...placed, ...extras]
+}
+
+/** Updates square/active of the placed pieces, whether kit pieces or extras. */
+export function mapCreativeBoardPieces(session: CreativeSession, update: (piece: CreativeBoardPiece) => { square?: string; active?: boolean } | null): CreativeSession {
+  const board = new Map(creativeBoardPieces(session).map(piece => [piece.id, piece]))
+  const apply = <T extends { id: string }>(item: T) => {
+    const piece = board.get(item.id)
+    const patch = piece && update(piece)
+    return patch ? { ...item, ...patch } : item
+  }
+  return { ...session, pieces: session.pieces.map(p => p.removed ? p : apply(p)), extras: session.extras?.map(apply) }
+}
+
 export function creativeSnapshot(session: CreativeSession, playing: boolean, solo: string | readonly string[] | null = null): MusicSnapshot {
   const soloIds = typeof solo === 'string' ? [solo] : [...(solo ?? [])]
+  const board = creativeBoardPieces(session)
+  // Extras share their source's instrument, effects and movement map under their own id.
+  const borrow = <T,>(map: Record<string, T>) => session.extras?.length ? { ...map, ...Object.fromEntries(session.extras.map(extra => [extra.id, map[extra.source]])) } : map
   return {
     title: session.name, bpm: session.bpm, meter: session.meter, volume: session.volume, playing,
     arrangement: session.arrangement,
@@ -119,17 +160,47 @@ export function creativeSnapshot(session: CreativeSession, playing: boolean, sol
     soloId: soloIds.length === 1 ? soloIds[0] : null,
     soloIds: soloIds.length ? soloIds : undefined,
     scale: scaleForCreativeSession(session),
-    pieces: session.pieces.map(p => ({ ...p, origin: p.origin as MusicSnapshot['pieces'][number]['origin'], square: p.square as MusicSnapshot['pieces'][number]['square'], active: p.active && (!soloIds.length || soloIds.includes(p.id)) })),
-    instruments: session.instruments, effects: session.effects, mappings: session.mappings,
+    pieces: board.map(({ instrumentId: _instrumentId, ...p }) => ({ ...p, origin: p.origin as MusicSnapshot['pieces'][number]['origin'], square: p.square as MusicSnapshot['pieces'][number]['square'], active: p.active && (!soloIds.length || soloIds.includes(p.id)) })),
+    instruments: borrow(session.instruments), effects: borrow(session.effects), mappings: borrow(session.mappings),
   }
 }
 
 export function moveCreativePiece(session: CreativeSession, id: string, square: string): CreativeSession {
   if (!/^[a-h][1-8]$/.test(square)) return session
-  const piece = session.pieces.find(p => p.id === id)
+  const piece = creativeBoardPieces(session).find(p => p.id === id)
   if (!piece || piece.square === square) return session
-  // Occupied destinations swap pieces: experiments never lose a configured voice.
-  return { ...session, pieces: session.pieces.map(p => p.id === id ? { ...p, square, active: true } : p.square === square ? { ...p, square: piece.square } : p) }
+  // Occupied destinations swap pieces: moving never loses a piece.
+  return mapCreativeBoardPieces(session, p => p.id === id ? { square, active: true } : p.square === square ? { square: piece.square } : null)
+}
+
+/** Takes a piece off the board. A kit piece keeps its instrument for the palette; an extra is dropped. */
+export function removeCreativePiece(session: CreativeSession, id: string): CreativeSession {
+  if (session.extras?.some(extra => extra.id === id)) return { ...session, extras: session.extras.filter(extra => extra.id !== id) }
+  return { ...session, pieces: session.pieces.map(p => p.id === id && !p.removed ? { ...p, removed: true, active: false } : p) }
+}
+
+/**
+ * Drops a palette piece (the instrument of kit piece `sourceId`) on `square`, replacing whatever is
+ * there. The kit piece itself comes back if it was off the board; otherwise an extra copy is added.
+ * A side keeps a single king, so a king from the palette moves that side's king instead.
+ */
+export function placeCreativePiece(session: CreativeSession, sourceId: string, square: string): { session: CreativeSession; id: string } {
+  const source = session.pieces.find(p => p.id === sourceId)
+  if (!source || !/^[a-h][1-8]$/.test(square)) return { session, id: sourceId }
+  const board = creativeBoardPieces(session)
+  const king = source.type === 'k' ? board.find(p => p.type === 'k' && p.color === source.color) : undefined
+  const occupant = board.find(p => p.square === square)
+  let next = occupant && occupant.id !== king?.id ? removeCreativePiece(session, occupant.id) : session
+  if (king) return { session: mapCreativeBoardPieces(next, p => p.id === king.id ? { square, active: true } : null), id: king.id }
+  if (source.removed) return { session: { ...next, pieces: next.pieces.map(p => p.id === sourceId ? { ...p, removed: false, square, active: true } : p) }, id: sourceId }
+  const id = `x:${Math.max(0, ...(next.extras ?? []).map(extra => Number(extra.id.slice(2)))) + 1}`
+  next = { ...next, extras: [...(next.extras ?? []), { id, source: sourceId, square, active: true }] }
+  return { session: next, id }
+}
+
+/** Every kit piece back on its starting square; extras leave the board. */
+export function resetCreativePositions(session: CreativeSession): CreativeSession {
+  return { ...session, pieces: session.pieces.map(({ removed: _removed, ...p }) => ({ ...p, square: p.origin })), extras: [] }
 }
 
 export function parseCreativeSession(text: string): CreativeSession {

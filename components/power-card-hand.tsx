@@ -35,7 +35,7 @@ export interface PowerCardMove {
  * resizes the cards. `resize` adds the four corner handles of the board to the hand's container, and
  * `move` lets the empty background of the container drag the whole hand.
  */
-export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resize, move }: { visible: boolean; actions: Record<PowerCardKind, PowerCardAction>; undoAnimationKey?: number; rowRef?: React.Ref<HTMLDivElement>; resize?: PowerCardResize; move?: PowerCardMove }) {
+export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resize, move, hideCost = false }: { visible: boolean; actions: Record<PowerCardKind, PowerCardAction>; undoAnimationKey?: number; rowRef?: React.Ref<HTMLDivElement>; resize?: PowerCardResize; move?: PowerCardMove; /** Creative cards are free: no egg price. */ hideCost?: boolean }) {
   const [active, setActive] = useState<number | null>(null)
   const [angles, setAngles] = useState([-10, -5, 0, 5, 10])
   const [mulliganAnimating, setMulliganAnimating] = useState(false)
@@ -79,7 +79,7 @@ export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resi
         const [x, y, width, height] = card.art
         const focused = active === index
         return <button key={card.kind} {...action} type="button" className={styles.card}
-          aria-label={`${card.name} · ${card.cost} golden egg${card.cost === 1 ? "" : "s"}`}
+          aria-label={hideCost ? card.name : `${card.name} · ${card.cost} golden egg${card.cost === 1 ? "" : "s"}`}
           data-power-card={card.kind} data-match-power-action={card.kind === "freeze" || card.kind === "shield" ? card.kind : undefined}
           data-ranked-move-action={card.kind === "best" || card.kind === "worst" ? card.kind : undefined}
           onPointerDown={event => {
@@ -119,7 +119,7 @@ export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resi
           data-visible={visible ? "true" : undefined}
           data-mulligan-animating={mulliganAnimating && card.kind === "undo" ? "true" : undefined}>
           <span className={styles.title}>{card.name}</span>
-          <span className={styles.cost} aria-hidden="true">{card.cost}<span className={styles.egg} /></span>
+          {!hideCost && <span className={styles.cost} aria-hidden="true">{card.cost}<span className={styles.egg} /></span>}
           <span className={styles.art} aria-hidden="true" style={{ aspectRatio: `${width}/${height}` }}>
             <img src="/power-cards/powers-art.png" alt="" draggable={false} style={{ width: `${1254 / width * 100}%`, left: `${-x / width * 100}%`, top: `${-y / height * 100}%` }} />
           </span>
