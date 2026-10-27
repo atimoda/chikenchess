@@ -408,7 +408,9 @@ export const CityPopup = ({
         </div>
 
         {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-end gap-2 mb-3">
-          {getCityEras(city).map(era => <button key={era.id} type="button" disabled={isEntering} aria-label={`${era.name}, ${era.year}: ${era.genre.split('·')[0].trim()}`} aria-pressed={era.id === city.id}
+          {getCityEras(city).map((era, index) => <button key={era.id} type="button" disabled={isEntering}
+            // Closed hat on hover: even positions (2nd, 4th…) full, odd ones softer.
+            onMouseEnter={() => { if (!isEntering) playMapSound(index % 2 === 1 ? 'alesissr16_ch' : 'alesissr16_ch_soft', true) }} aria-label={`${era.name}, ${era.year}: ${era.genre.split('·')[0].trim()}`} aria-pressed={era.id === city.id}
             onClick={() => onEraSelect?.(era)} className={cn('border rounded px-2 py-1 text-xs font-mono cursor-pointer', era.id === city.id ? 'text-white border-white/60' : 'text-white/50 border-white/20')}>
             {era.year}
           </button>)}

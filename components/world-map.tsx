@@ -824,7 +824,9 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.connect(gain)
           gain.connect(ctx.destination)
           noise.start(t)
-      } else if (type === "alesissr16_ch") {
+      } else if (type === "alesissr16_ch" || type === "alesissr16_ch_soft") {
+          // The soft variant marks odd era buttons in a city popup.
+          const peak = type === "alesissr16_ch_soft" ? .085 : .14
           const duration = .075
           const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate)
           const data = buffer.getChannelData(0)
@@ -836,7 +838,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           filter.frequency.value = 8500 * pitchVar
           const gain = ctx.createGain()
           gain.gain.setValueAtTime(.001, t)
-          gain.gain.linearRampToValueAtTime(.14, t + .003)
+          gain.gain.linearRampToValueAtTime(peak, t + .003)
           gain.gain.exponentialRampToValueAtTime(.001, t + .065)
           noise.connect(filter)
           filter.connect(gain)
