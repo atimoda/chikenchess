@@ -202,7 +202,8 @@ void main() {
 
   // City lights fade in past the terminator and dim under clouds.
   float lights = texture2D(nightMap, vUv).r;
-  vec3 night = vec3(1.0, 0.72, 0.42) * pow(lights, 1.6) * 1.6 * (1.0 - 0.7 * cloud) + albedo * 0.018;
+  // The shaded half stays readable (earthshine), as the neon globe's does.
+  vec3 night = vec3(1.0, 0.72, 0.42) * pow(lights, 1.6) * 1.6 * (1.0 - 0.7 * cloud) + albedo * vec3(0.16, 0.18, 0.24) * (1.0 - 0.3 * cloud);
   vec3 color = mix(night, lit, day);
 
   // Thin atmospheric haze toward the limb.
@@ -227,7 +228,7 @@ void main() {
   float ndl = dot(n, l);
   float cloud = texture2D(cloudMap, vec2(vUv.x + cloudOffset, vUv.y)).r;
   float light = smoothstep(-0.18, 0.4, ndl);
-  vec3 color = mix(vec3(0.05, 0.06, 0.09), mix(vec3(1.0, 0.86, 0.72), vec3(1.0), smoothstep(0.0, 0.45, ndl)), light);
+  vec3 color = mix(vec3(0.17, 0.19, 0.25), mix(vec3(1.0, 0.86, 0.72), vec3(1.0), smoothstep(0.0, 0.45, ndl)), light);
   gl_FragColor = vec4(color, cloud * 0.92 * opacity);
   #include <colorspace_fragment>
 }
@@ -262,10 +263,10 @@ function configureColorMap(texture: Texture, anisotropy: number) {
   texture.needsUpdate = true
 }
 
-export function RealisticEarth({ radius, lightDirection, target, mixRef, constrained }: {
+export function RealisticEarth({ radius, sunPosition, target, mixRef, constrained }: {
   radius: number
-  /** Light direction in view space (x right, y up, z toward the viewer). */
-  lightDirection: [number, number, number]
+  /** World position of the scene's sun, shared with the neon globe's shading. */
+  sunPosition: [number, number, number]
   target: boolean
   mixRef: RefObject<number>
   constrained: boolean
@@ -284,8 +285,7 @@ export function RealisticEarth({ radius, lightDirection, target, mixRef, constra
   const surfaceRef = useRef<Mesh>(null)
   const cloudRef = useRef<Mesh>(null)
   const atmosphereRef = useRef<Mesh>(null)
-  const sun = useMemo(() => new Vector3(), [])
-  const viewLight = useMemo(() => new Vector3(...lightDirection).normalize(), [lightDirection])
+  const sun = useMemo(() => new Vector3(...sunPosition), [sunPosition])
   const uniforms = useMemo(() => {
     // Surface and clouds share the drift and fade so cloud shadows stay under their clouds.
     const cloudOffset = { value: Math.random() }
@@ -297,10 +297,7 @@ export function RealisticEarth({ radius, lightDirection, target, mixRef, constra
     }
   }, [dayMap, nightMap, waterMap, cloudMap, sun, radius])
 
-  useFrame(({ camera }, delta) => {
-    // The light follows the view so the face turned to the player stays in
-    // daylight wherever the camera orbits; the night side keeps to one limb.
-    sun.copy(viewLight).applyQuaternion(camera.quaternion).multiplyScalar(100)
+  useFrame((_, delta) => {
     const goal = target ? 1 : 0
     const current = mixRef.current ?? 0
     const next = current < goal ? Math.min(goal, current + delta / FADE_SECONDS) : Math.max(goal, current - delta / FADE_SECONDS)

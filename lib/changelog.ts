@@ -12,7 +12,7 @@ export const CHANGELOG = [
         'O modo realista entra com um fade de 2 s logo depois da animação de abertura do globo, quando ele começa a girar sozinho.',
         'Novo botão com ícone de globo à esquerda de Maximizar alterna entre o globo neon e o realista; o ícone mostra o modo atual e, no hover, o modo que o clique vai ativar. A escolha fica salva no navegador.',
         'A lista de campanhas e cidades vai até o fim da tela, por trás dos botões do rodapé, e abre com as linhas entrando uma a uma. As fontes da lista ficaram 33% maiores.',
-        'No popup da cidade, a descrição ficou maior e os botões Campaign e Create lobby têm texto e ícone com o dobro do tamanho. Quando o modo online está fora do ar, o botão aparece desativado com "Online mode temporarily disabled".',
+        'No popup da cidade, a descrição ficou maior e os botões Campaign e Create lobby têm texto e ícone com o dobro do tamanho. Quando o modo online está fora do ar, o botão aparece desativado com "Online mode temporarily disabled" e o synth do hover fica um pouco mais grave.',
       ] },
     ],
   },

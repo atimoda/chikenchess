@@ -517,8 +517,9 @@ export const CityPopup = ({
                 <div
                   data-no-drag
                   className="order-2 inline-flex"
-                  onPointerEnter={(e) => { if (!isEntering && onCreateRoom) handleSmartPadSound(e, 0.45) }}
-                  onPointerMove={(e) => { if (!isEntering && onCreateRoom) handleSmartPadSound(e, 0.45) }}
+                  // Same synth when online is down, a bit lower in pitch.
+                  onPointerEnter={(e) => { if (!isEntering) handleSmartPadSound(e, onCreateRoom ? 0.45 : 0.38) }}
+                  onPointerMove={(e) => { if (!isEntering) handleSmartPadSound(e, onCreateRoom ? 0.45 : 0.38) }}
                   onPointerLeave={(e) => { if (!isEntering) handleSmartPadLeave(e) }}
                 >
                   <button

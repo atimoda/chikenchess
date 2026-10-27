@@ -86,10 +86,6 @@ const GLOBE_RADIUS = 2
 const PIN_RADIUS = .04
 const CAMERA_NEAR = .1
 const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
-// The realistic Earth is lit from the front-left, on the sun's side of the
-// screen, so most of the visible face is in daylight and the night side with
-// its city lights shows along the right limb.
-const REALISTIC_LIGHT_DIRECTION: [number, number, number] = [-.62, .36, .7]
 
 type PopupLineState = { startX: number; startY: number; cpX: number; cpY: number; endX: number; endY: number; handlePath: string }
 
@@ -1199,7 +1195,7 @@ const GlobeContent = ({
           <GlobeGeography realisticMixRef={realisticMix} />
 
           {realisticLoaded && <Suspense fallback={null}>
-            <RealisticEarth radius={GLOBE_RADIUS} lightDirection={REALISTIC_LIGHT_DIRECTION} target={realistic && introZoomComplete} mixRef={realisticMix} constrained={constrained} />
+            <RealisticEarth radius={GLOBE_RADIUS} sunPosition={SUN_POSITION} target={realistic && introZoomComplete} mixRef={realisticMix} constrained={constrained} />
           </Suspense>}
 
           {cities.map((city) => {
