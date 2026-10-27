@@ -62,3 +62,19 @@
 .flagIconActive .flagCloth {
   fill: var(--flag-color);
 }
+
+/* Opening: each row enters from the list's left edge after the previous one,
+   without fading. The viewport clips the rows until they arrive. */
+.row {
+  animation: rowEnter 320ms cubic-bezier(.2, .8, .25, 1) both;
+  animation-delay: calc(var(--row, 0) * 18ms);
+}
+
+@keyframes rowEnter {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row { animation: none; }
+}

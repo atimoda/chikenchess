@@ -3,6 +3,20 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.10.0',
+    date: '27/10/2026',
+    title: 'Globo realista com nuvens que mudam a cada visita, lista de cidades maior e popup com botões maiores',
+    groups: [
+      { title: 'Mapa', items: [
+        'O globo ganhou um modo realista: superfície com imagens de satélite da NASA, oceanos com reflexo do sol, luzes das cidades no lado noturno, atmosfera azulada na borda e uma camada de nuvens com tempestades em espiral que é sorteada de novo a cada vez que o mapa abre.',
+        'O modo realista entra com um fade de 2 s logo depois da animação de abertura do globo, quando ele começa a girar sozinho.',
+        'Novo botão com ícone de globo à esquerda de Maximizar alterna entre o globo neon e o realista; o ícone mostra o modo atual e, no hover, o modo que o clique vai ativar. A escolha fica salva no navegador.',
+        'A lista de campanhas e cidades vai até o fim da tela, por trás dos botões do rodapé, e abre com as linhas entrando uma a uma. As fontes da lista ficaram 33% maiores.',
+        'No popup da cidade, a descrição ficou maior e os botões Campaign e Create lobby têm texto e ícone com o dobro do tamanho. Quando o modo online está fora do ar, o botão aparece desativado com "Online mode temporarily disabled".',
+      ] },
+    ],
+  },
+  {
     version: '1.9.1',
     date: '26/10/2026',
     title: 'Ensaio da Mangueira refeito com bateria gravada, batidão mais forte no funk carioca e kits padrão do Criativo agrupados por campanha',

@@ -53,6 +53,8 @@ export interface CityPopupProps {
   onEraSelect?: (city: CityData) => void
   onCreateRoom?: (city: CityData) => void
   isCreatingRoom?: boolean
+  /** Online play exists but the server is unreachable: show the button, disabled. */
+  onlineDisabled?: boolean
 }
 
 export const CityPopup = ({
@@ -84,6 +86,7 @@ export const CityPopup = ({
   onEraSelect,
   onCreateRoom,
   isCreatingRoom = false,
+  onlineDisabled = false,
 }: CityPopupProps) => {
   const dragHandleRef = useRef<HTMLButtonElement>(null)
   const popupWrapperRef = useRef<HTMLDivElement>(null)
@@ -401,7 +404,7 @@ export const CityPopup = ({
 
         <div className="mb-4 animate-content-3">
           <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{city.genre}</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">{city.description}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{city.description}</p>
         </div>
 
         {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-end gap-2 mb-3">
@@ -412,7 +415,7 @@ export const CityPopup = ({
         </nav>}
 
         <div className="space-y-3 animate-content-4">
-          <div className="flex flex-col items-end gap-2 text-xs font-mono">
+          <div className="flex flex-col items-end gap-2 text-2xl font-mono">
               <button
                 ref={enterButtonRef}
                 className={cn(
@@ -483,7 +486,7 @@ export const CityPopup = ({
                   onEnter();
                 }}
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-3.5 shrink-0">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-7 shrink-0">
                   <path d="M12 15v-12M12 3l7 3-7 3M2 21l4.2-4.4 2.4 2.4L12 15l3.4 4 2.4-2.4L22 21" />
                   <path d="m6.2 16.6 3.3 3.8 2.5-2.1 2.5 2.1 2.9-3.4" />
                 </svg>
@@ -510,41 +513,42 @@ export const CityPopup = ({
                     CAMPAIGN
                 </span>
               </button>
-              {onCreateRoom && (
+              {(onCreateRoom || onlineDisabled) && (
                 <div
                   data-no-drag
                   className="order-2 inline-flex"
-                  onPointerEnter={(e) => { if (!isEntering) handleSmartPadSound(e, 0.45) }}
-                  onPointerMove={(e) => { if (!isEntering) handleSmartPadSound(e, 0.45) }}
+                  onPointerEnter={(e) => { if (!isEntering && onCreateRoom) handleSmartPadSound(e, 0.45) }}
+                  onPointerMove={(e) => { if (!isEntering && onCreateRoom) handleSmartPadSound(e, 0.45) }}
                   onPointerLeave={(e) => { if (!isEntering) handleSmartPadLeave(e) }}
                 >
                   <button
                     type="button"
-                    disabled={isEntering || isCreatingRoom}
+                    disabled={isEntering || isCreatingRoom || !onCreateRoom}
                     className={cn(
-                      "group relative inline-flex items-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 uppercase font-mono text-xs text-primary transition-all",
+                      "group relative inline-flex items-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 uppercase font-mono text-2xl text-primary transition-all",
+                      !onCreateRoom && "text-sm normal-case text-left",
                       "hover:border-primary hover:shadow-[0_0_14px_rgba(16,185,129,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
                       "cursor-crosshair disabled:cursor-not-allowed disabled:opacity-50"
                     )}
                     onClick={() => {
-                      if (!isEntering && !isCreatingRoom) onCreateRoom(city)
+                      if (!isEntering && !isCreatingRoom) onCreateRoom?.(city)
                     }}
                   >
                     <span aria-hidden="true" className="absolute inset-0 rounded-sm opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-active:opacity-100" style={{ background: 'linear-gradient(115deg, rgb(16 185 129 / 22%), rgb(167 139 250 / 25%), rgb(16 185 129 / 22%)), radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgb(167 139 250 / 45%), transparent 68%)' }} />
                     {isCreatingRoom ? (
-                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="relative z-10 size-4 shrink-0 text-primary">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="relative z-10 size-8 shrink-0 text-primary">
                         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 4" className="origin-center animate-spin" style={{ animationDuration: '3s' }} />
                         <path d="M12 6a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="origin-center animate-spin" style={{ animationDuration: '1.1s' }} />
                         <circle cx="12" cy="12" r="2.2" fill="currentColor" className="animate-pulse" />
                       </svg>
                     ) : (
-                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-4 shrink-0">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-8 shrink-0">
                         <path d="M4 21V4a1 1 0 0 1 1-1h9" />
                         <path d="M14 3l6 3v14l-6-3V3Z" />
                         <path d="M4 21h16" />
                       </svg>
                     )}
-                    <span className="relative z-10">{isCreatingRoom ? 'Waiting response' : 'Create lobby'}</span>
+                    <span className="relative z-10">{!onCreateRoom ? 'Online mode temporarily disabled' : isCreatingRoom ? 'Waiting response' : 'Create lobby'}</span>
                   </button>
                 </div>
               )}

@@ -31,10 +31,53 @@ interface WorldMapProps {
 
 
 
+const REALISTIC_GLOBE_KEY = 'chickenchess:globe-realistic'
+
+// Toggle icons: the neon outline globe and the realistic Earth. The button shows
+// the current look and, on hover, the look a click would switch to.
+function NeonGlobeIcon({ className }: { className?: string }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#39ff14" strokeWidth="1.5" strokeLinecap="round" className={className} style={{ filter: 'drop-shadow(0 0 2px rgb(57 255 20 / 70%))' }}>
+    <circle cx="12" cy="12" r="9" />
+    <ellipse cx="12" cy="12" rx="4" ry="9" />
+    <path d="M3 12h18M4.6 7.5h14.8M4.6 16.5h14.8" />
+  </svg>
+}
+
+function RealisticGlobeIcon({ className }: { className?: string }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+    <defs>
+      <radialGradient id="globe-toggle-ocean" cx="35%" cy="32%" r="75%">
+        <stop offset="0" stopColor="#4f9be8" />
+        <stop offset=".6" stopColor="#1d4f9a" />
+        <stop offset="1" stopColor="#0b1f45" />
+      </radialGradient>
+      <clipPath id="globe-toggle-clip"><circle cx="12" cy="12" r="9.5" /></clipPath>
+    </defs>
+    <circle cx="12" cy="12" r="9.5" fill="url(#globe-toggle-ocean)" />
+    <g clipPath="url(#globe-toggle-clip)">
+      <path d="M5.2 6.3c1.6-.9 3.6-.6 4.6.6.8 1-.2 2.1.9 3 1 .8.5 2.4-.7 2.6-1.4.2-1.6 1.6-2.6 2.2-1.2.7-2.9-.3-3.3-1.9-.5-2 .1-5.4 1.1-6.5Z" fill="#5f8f3c" />
+      <path d="M13.6 4.6c1.8-.4 4.5.6 5.6 2.4.5.9-.5 1.4-1.4 1.2-1-.2-1.6.7-1.1 1.6.6 1.1 2.3 1.2 2.6 2.6.3 1.6-1 3.4-2.3 3.2-1.1-.2-.9-1.9-2-2.4-1.2-.5-2.6.2-3-.9-.4-1.2 1.2-1.9.9-3.1-.3-1.4-1.3-3.5.7-4.6Z" fill="#b59a5b" />
+      <path d="M11.5 15.8c.9-.4 2 .1 2.3 1 .4 1.1-.3 2.7-1.4 3.2-.9.4-1.4-.6-1.4-1.6 0-1-.3-2.2.5-2.6Z" fill="#6c9a45" />
+      <path d="M3 9.2c2.6-1.1 5.6-.4 8.2-1.2M12.8 13.4c2.5-.9 5.4-.4 8-1.3M5.4 17.6c2-.6 4.1-.2 6-.8" stroke="#fff" strokeOpacity=".85" strokeWidth="1.1" strokeLinecap="round" fill="none" />
+      <path d="M12 2.5a9.5 9.5 0 0 1 0 19c4-2.4 5.6-6 5.6-9.5S16 4.9 12 2.5Z" fill="#000" fillOpacity=".38" />
+    </g>
+    <circle cx="12" cy="12" r="9.9" fill="none" stroke="#7cc4ff" strokeOpacity=".55" strokeWidth=".8" />
+  </svg>
+}
+
 export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapProps) {
   const online = useOnline()
   // Create lobby only appears in city popups while Supabase answers.
-  const onlineAvailable = useOnlineAvailability() === "available"
+  const onlineAvailability = useOnlineAvailability()
+  const onlineAvailable = onlineAvailability === "available"
+  const [realisticGlobe, setRealisticGlobe] = useState(true)
+  useEffect(() => {
+    try { if (localStorage.getItem(REALISTIC_GLOBE_KEY) === 'off') setRealisticGlobe(false) } catch { /* Storage blocked: keep the realistic default. */ }
+  }, [])
+  const toggleRealisticGlobe = () => setRealisticGlobe(current => {
+    try { localStorage.setItem(REALISTIC_GLOBE_KEY, current ? 'off' : 'on') } catch { /* Storage blocked: the choice lasts this visit. */ }
+    return !current
+  })
   const [createRoomRequest, setCreateRoomRequest] = useState<{ id: number; cityId: string } | null>(null)
   const createRoomSequence = useRef(0)
   const [unlockedCities, setUnlockedCities] = useState<string[]>([])
@@ -1105,6 +1148,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             stopWhistleLoop={stopWhistleLoop}
             setPressedPopupState={setPressedPopupState}
             onCitySelect={onCitySelect}
+            onlineDisabled={!!onOnlineMatch && onlineAvailability === "unavailable"}
+            realistic={realisticGlobe}
             onCreateRoom={onOnlineMatch && onlineAvailable ? city => { if (!createRoomRequest) setCreateRoomRequest({ id: ++createRoomSequence.current, cityId: city.id }) } : undefined}
             creatingRoomCityId={createRoomRequest?.cityId ?? null}
             handleSmartPadSound={handleSmartPadSound}
@@ -1209,6 +1254,23 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             About
           </button>
           
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleRealisticGlobe}
+            aria-pressed={realisticGlobe}
+            aria-label={realisticGlobe ? "Switch to the neon globe" : "Switch to the realistic globe"}
+            title={realisticGlobe ? "Neon globe" : "Realistic globe"}
+            className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
+          >
+            {realisticGlobe ? <>
+              <RealisticGlobeIcon className="size-[18px] group-hover:hidden" />
+              <NeonGlobeIcon className="hidden size-[18px] group-hover:block" />
+            </> : <>
+              <NeonGlobeIcon className="size-[18px] group-hover:hidden" />
+              <RealisticGlobeIcon className="hidden size-[18px] group-hover:block" />
+            </>}
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 

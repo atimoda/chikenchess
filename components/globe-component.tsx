@@ -5,33 +5,45 @@
 import { useRef, useState, useEffect, useMemo, Suspense, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Sphere, Stars, TrackballControls } from '@react-three/drei'
-import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, type PerspectiveCamera, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute } from 'three'
+import { TextureLoader, FileLoader, Color, Mesh, Group, Vector3, MathUtils, DoubleSide, Quaternion, AdditiveBlending, type PerspectiveCamera, SRGBColorSpace, Float32BufferAttribute, type BufferAttribute, type Points, type LineSegments } from 'three'
 import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup, type PopupExitMotion } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation, sphereFillDistance } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
+import { RealisticEarth } from './globe-realistic'
 import { constrainPopupPosition, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
 
-function GlobeGeography() {
+function GlobeGeography({ realisticMixRef }: { realisticMixRef: RefObject<number> }) {
   const svg = useLoader(FileLoader, '/world_map_contours.svg') as string
   const coast = useMemo(() => coastlineSegments(svg), [svg])
   const grid = useMemo(() => globeGridPoints(), [])
-  const uniforms = useMemo(() => ({ color: { value: new Color('#39ff14') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
-  const gridUniforms = useMemo(() => ({ color: { value: new Color('#789386') }, sun: { value: new Vector3(-6.2, 3.3, -10) } }), [])
+  const uniforms = useMemo(() => ({ color: { value: new Color('#39ff14') }, sun: { value: new Vector3(-6.2, 3.3, -10) }, fade: { value: 1 } }), [])
+  const gridUniforms = useMemo(() => ({ color: { value: new Color('#789386') }, sun: { value: new Vector3(-6.2, 3.3, -10) }, fade: { value: 1 } }), [])
+  const pointsRef = useRef<Points>(null)
+  const linesRef = useRef<LineSegments>(null)
+  // The neon drawing gives way while the realistic Earth fades in.
+  useFrame(() => {
+    const mix = realisticMixRef.current ?? 0
+    const fade = 1 - mix * mix * (3 - 2 * mix)
+    uniforms.fade.value = fade
+    gridUniforms.fade.value = fade
+    if (pointsRef.current) pointsRef.current.visible = fade > 0
+    if (linesRef.current) linesRef.current.visible = fade > 0
+  })
   return <>
-    <points raycast={() => {}}>
+    <points ref={pointsRef} raycast={() => {}}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[grid, 3]} /></bufferGeometry>
       <shaderMaterial transparent depthWrite={false} uniforms={gridUniforms}
         vertexShader="uniform vec3 sun; varying float lightAmount; void main() { vec4 worldPosition = modelMatrix * vec4(position, 1.0); vec3 worldPoint = worldPosition.xyz; lightAmount = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_Position = projectionMatrix * viewMatrix * worldPosition; gl_PointSize = 2.4; }"
-        fragmentShader="uniform vec3 color; varying float lightAmount; void main() { vec2 point = gl_PointCoord - vec2(0.5); if (dot(point, point) > 0.25) discard; float brightness = 0.5 + 0.5 * lightAmount; gl_FragColor = vec4(color * brightness, 0.55); }" />
+        fragmentShader="uniform vec3 color; uniform float fade; varying float lightAmount; void main() { vec2 point = gl_PointCoord - vec2(0.5); if (dot(point, point) > 0.25) discard; float brightness = 0.5 + 0.5 * lightAmount; gl_FragColor = vec4(color * brightness, 0.55 * fade); }" />
     </points>
-    <lineSegments raycast={() => {}}>
+    <lineSegments ref={linesRef} raycast={() => {}}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[coast, 3]} /></bufferGeometry>
       <shaderMaterial transparent depthWrite={false} uniforms={uniforms}
         vertexShader="varying vec3 worldPoint; void main() { vec4 p = modelMatrix * vec4(position, 1.0); worldPoint = p.xyz; gl_Position = projectionMatrix * viewMatrix * p; }"
-        fragmentShader="uniform vec3 color; uniform vec3 sun; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .7 * (.532 + .468 * light)); }" />
+        fragmentShader="uniform vec3 color; uniform vec3 sun; uniform float fade; varying vec3 worldPoint; void main() { float light = max(0.0, dot(normalize(worldPoint), normalize(sun - worldPoint))); gl_FragColor = vec4(color, .7 * (.532 + .468 * light) * fade); }" />
     </lineSegments>
   </>
 }
@@ -65,12 +77,19 @@ interface GlobeProps {
   setFocusedCityId?: (cityId: string | null) => void
   onPinHover?: (cityId: string | null) => void
   popupLayerRef?: RefObject<HTMLDivElement | null>
+  onlineDisabled?: boolean
+  /** Realistic Earth instead of the neon outline; fades in once the intro zoom ends. */
+  realistic?: boolean
 }
 
 const GLOBE_RADIUS = 2
 const PIN_RADIUS = .04
 const CAMERA_NEAR = .1
 const SUN_POSITION: [number, number, number] = [-6.2, 3.3, -10]
+// The realistic Earth is lit from the front-left, on the sun's side of the
+// screen, so most of the visible face is in daylight and the night side with
+// its city lights shows along the right limb.
+const REALISTIC_LIGHT_DIRECTION: [number, number, number] = [-.62, .36, .7]
 
 type PopupLineState = { startX: number; startY: number; cpX: number; cpY: number; endX: number; endY: number; handlePath: string }
 
@@ -281,6 +300,7 @@ const PopupContainer = ({
     onEraSelect,
     onCreateRoom,
     creatingRoomCityId,
+    onlineDisabled,
 }: any) => {
     // Local state for smooth dragging
     const [localPos, setLocalPos] = useState({ x: popup.x, y: popup.y })
@@ -526,6 +546,7 @@ const PopupContainer = ({
                         })}
                         city={city}
                         onCreateRoom={onCreateRoom}
+                        onlineDisabled={onlineDisabled}
                         isCreatingRoom={creatingRoomCityId === city.id}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
                         isConquered={isConquered}
@@ -664,6 +685,7 @@ const GlobeContent = ({
   onCitySelect,
   onCreateRoom,
   creatingRoomCityId,
+  onlineDisabled,
   handleSmartPadSound,
   handleSmartPadLeave,
   stopPadSound,
@@ -677,7 +699,9 @@ const GlobeContent = ({
   setFocusedCityId,
   onPinHover,
   popupLayerRef,
-}: GlobeProps) => {
+  realistic = false,
+  constrained = false,
+}: GlobeProps & { constrained?: boolean }) => {
   const controlsRef = useRef<any>(null)
   const globeRef = useRef<Group>(null)
   const [isDraggingPopup, setIsDraggingPopup] = useState(false)
@@ -691,6 +715,10 @@ const GlobeContent = ({
   const lastInteractionTime = useRef(Date.now())
   const [introZoomComplete, setIntroZoomComplete] = useState(false)
   const lastReportedZoom = useRef(100)
+  const realisticMix = useRef(0)
+  // Load the Earth maps only once realism has been asked for, then keep them.
+  const [realisticLoaded, setRealisticLoaded] = useState(realistic)
+  useEffect(() => { if (realistic) setRealisticLoaded(true) }, [realistic])
   
   // Standby Rotation State
   const standbyRotationAxis = useRef(new Vector3(0, 1, 0))
@@ -1168,7 +1196,11 @@ const GlobeContent = ({
           </Sphere>
 
           {/* Only coastlines: no borders or regional divisions. */}
-          <GlobeGeography />
+          <GlobeGeography realisticMixRef={realisticMix} />
+
+          {realisticLoaded && <Suspense fallback={null}>
+            <RealisticEarth radius={GLOBE_RADIUS} lightDirection={REALISTIC_LIGHT_DIRECTION} target={realistic && introZoomComplete} mixRef={realisticMix} constrained={constrained} />
+          </Suspense>}
 
           {cities.map((city) => {
             const position = getSphericalCoordinates(city.pinCoordinates.lat, city.pinCoordinates.lng, GLOBE_RADIUS)
@@ -1296,6 +1328,7 @@ const GlobeContent = ({
                           city={city}
                           onCreateRoom={onCreateRoom}
                           creatingRoomCityId={creatingRoomCityId}
+                          onlineDisabled={onlineDisabled}
                           popup={popup}
                           popupLayerRef={popupLayerRef}
                           isConquered={isConquered}
@@ -1368,7 +1401,7 @@ export const GlobeComponent = (props: GlobeProps) => {
     return (
         <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={constrained ? 1 : [1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
             <Suspense fallback={null}>
-                <GlobeContent {...props} />
+                <GlobeContent {...props} constrained={constrained} />
             </Suspense>
         </Canvas>
     )
