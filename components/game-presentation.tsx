@@ -298,7 +298,9 @@ export function GameBoardChanceBar({
         visible ? (dimmed ? "opacity-25" : "opacity-100") : "opacity-0"
       )}
       style={{
-        right: "calc(100% + 8px)",
+        // Keep the 8px gap, but on narrow screens (board almost as wide as the
+        // viewport) shrink it so the bar stays inside the visible area.
+        right: "calc(100% + clamp(2px, (100vw - 100%) / 2 - 6px, 8px))",
       }}
     >
       <div
