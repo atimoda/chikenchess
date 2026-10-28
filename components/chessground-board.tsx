@@ -165,8 +165,8 @@ function IceCrystal({ releasing = false }: { releasing?: boolean }) {
   </span>
 }
 
-function GoldenShield({ releasing = false, preview = false }: { releasing?: boolean; preview?: boolean }) {
-  return <svg aria-hidden="true" data-power-shield={preview ? undefined : true} viewBox="0 0 64 72" className={cn(rewardStyles.powerShield, releasing && rewardStyles.powerRelease)} fill="#ffbd24" fillOpacity=".2" stroke="#ffcf48" strokeWidth="3">
+function GoldenShield({ releasing = false, preview = false, shaking = false }: { releasing?: boolean; preview?: boolean; shaking?: boolean }) {
+  return <svg aria-hidden="true" data-power-shield={preview ? undefined : true} viewBox="0 0 64 72" className={cn(rewardStyles.powerShield, releasing && rewardStyles.powerRelease, shaking && rewardStyles.frozenAttemptPiece)} fill="#ffbd24" fillOpacity=".2" stroke="#ffcf48" strokeWidth="3">
     <path d="M32 3 57 13v20c0 16-11 28-25 36C18 61 7 49 7 33V13L32 3Z" />
     <path d="M32 9 51 17v16c0 13-8 23-19 30C21 56 13 46 13 33V17L32 9Z" fill="none" stroke="#fff0a6" strokeWidth="1" />
     <path d="M32 10v51M14 19l18 9 18-9" fill="none" stroke="#ffe08b" strokeOpacity=".45" strokeWidth="1" />
@@ -263,22 +263,22 @@ export function ChessgroundBoard({
     setFrozenFeedbackSquare(null)
   }, [])
 
-  const [rejectedAttackerSquare, setRejectedAttackerSquare] = useState<{ square: Square; key: number } | null>(null)
-  const rejectedAttackerTimeoutRef = useRef<number | null>(null)
-  const rejectedAttackerKeyRef = useRef(0)
-  const clearRejectedAttacker = useCallback(() => {
-    if (rejectedAttackerTimeoutRef.current !== null) window.clearTimeout(rejectedAttackerTimeoutRef.current)
-    rejectedAttackerTimeoutRef.current = null
-    setRejectedAttackerSquare(null)
+  const [rejectedPieceSquare, setRejectedPieceSquare] = useState<{ square: Square; key: number } | null>(null)
+  const rejectedPieceTimeoutRef = useRef<number | null>(null)
+  const rejectedPieceKeyRef = useRef(0)
+  const clearRejectedPiece = useCallback(() => {
+    if (rejectedPieceTimeoutRef.current !== null) window.clearTimeout(rejectedPieceTimeoutRef.current)
+    rejectedPieceTimeoutRef.current = null
+    setRejectedPieceSquare(null)
   }, [])
-  const triggerAttackerShake = useCallback((square: Square) => {
-    if (rejectedAttackerTimeoutRef.current !== null) window.clearTimeout(rejectedAttackerTimeoutRef.current)
-    const nextKey = rejectedAttackerKeyRef.current + 1
-    rejectedAttackerKeyRef.current = nextKey
-    setRejectedAttackerSquare({ square, key: nextKey })
-    rejectedAttackerTimeoutRef.current = window.setTimeout(() => {
-      rejectedAttackerTimeoutRef.current = null
-      setRejectedAttackerSquare(null)
+  const triggerRejectedShake = useCallback((square: Square) => {
+    if (rejectedPieceTimeoutRef.current !== null) window.clearTimeout(rejectedPieceTimeoutRef.current)
+    const nextKey = rejectedPieceKeyRef.current + 1
+    rejectedPieceKeyRef.current = nextKey
+    setRejectedPieceSquare({ square, key: nextKey })
+    rejectedPieceTimeoutRef.current = window.setTimeout(() => {
+      rejectedPieceTimeoutRef.current = null
+      setRejectedPieceSquare(null)
     }, 280)
   }, [])
 
@@ -286,12 +286,12 @@ export function ChessgroundBoard({
   const positionFen = game.fen()
   useEffect(() => {
     clearFrozenFeedback()
-    clearRejectedAttacker()
+    clearRejectedPiece()
     return () => {
       clearFrozenFeedback()
-      clearRejectedAttacker()
+      clearRejectedPiece()
     }
-  }, [positionFen, frozenSquaresKey, orientation, freeMode, clearFrozenFeedback, clearRejectedAttacker])
+  }, [positionFen, frozenSquaresKey, orientation, freeMode, clearFrozenFeedback, clearRejectedPiece])
 
   useEffect(() => {
     const release = (event: PointerEvent) => {
@@ -309,7 +309,7 @@ export function ChessgroundBoard({
     }
     const cancel = () => {
       clearFrozenFeedback()
-      clearRejectedAttacker()
+      clearRejectedPiece()
       tapStartRef.current = null
       lastTapRef.current = null
       heldSquareRef.current = null
@@ -511,16 +511,21 @@ export function ChessgroundBoard({
     if (!enPassant && (!target || target.color === attacker.color)) return false
     const capture = { from, to, color: attacker.color, flags: enPassant ? 'e' : 'c', captured: enPassant ? 'p' : target?.type }
     if (frozenCaptureBlock(capture, matchPowers)) {
-      triggerAttackerShake(from)
+      triggerRejectedShake(from)
       void getSfxEngine().playBlockedCue()
       onFrozenCaptureBlocked?.()
       return true
     }
     const reason = shieldCaptureBlock(capture, matchPowers)
     if (!reason) return false
+    if (reason === 'protected-target') {
+      // The protected piece (and its shield) shrugs off the attempt with a metallic ring.
+      triggerRejectedShake(to)
+      void getSfxEngine().playShieldBlockedCue()
+    }
     onShieldCaptureBlocked?.(reason)
     return true
-  }, [game, matchPowers, onShieldCaptureBlocked, onFrozenCaptureBlocked, triggerAttackerShake])
+  }, [game, matchPowers, onShieldCaptureBlocked, onFrozenCaptureBlocked, triggerRejectedShake])
 
   const handleSquareClick = useCallback(
     (square: Square) => {
@@ -1155,16 +1160,16 @@ export function ChessgroundBoard({
                   : <span aria-hidden="true" data-power-preview className={cn(rewardStyles.powerFrost, "pointer-events-none absolute inset-0 z-[2]")} style={{ opacity: 0 }} />)}
                 {piece && (!isDragging || freeMode?.mode === 'play') && !isAnimatingTo && (
                   <div
-                    key={rejectedAttackerSquare?.square === square ? `rejected-${rejectedAttackerSquare.key}` : undefined}
+                    key={rejectedPieceSquare?.square === square ? `rejected-${rejectedPieceSquare.key}` : undefined}
                     data-pending-move={pendingSquares.includes(square) ? square : undefined}
                     data-frozen-feedback={frozenFeedbackSquare === square || undefined}
-                    data-rejected-attacker={rejectedAttackerSquare?.square === square || undefined}
+                    data-rejected-piece={rejectedPieceSquare?.square === square || undefined}
                     className={cn(
                       "relative z-10 w-[85%] h-[85%] transition-transform duration-150",
                       freeMode && "w-[90%] h-[90%] [&_svg]:w-full [&_svg]:h-full",
                       piece.color === 'b' && "black-piece-outline",
                       isSelected && "scale-105",
-                      (frozenFeedbackSquare === square || rejectedAttackerSquare?.square === square) && rewardStyles.frozenAttemptPiece
+                      (frozenFeedbackSquare === square || rejectedPieceSquare?.square === square) && rewardStyles.frozenAttemptPiece
                     )}
                     style={{
                       opacity: pendingSquares.includes(square) ? 0.45 : undefined,
@@ -1179,7 +1184,7 @@ export function ChessgroundBoard({
                   />
                 )}
                 {frozen && <IceCrystal />}
-                {shielded && <GoldenShield />}
+                {shielded && <GoldenShield key={rejectedPieceSquare?.square === square ? `rejected-shield-${rejectedPieceSquare.key}` : undefined} shaking={rejectedPieceSquare?.square === square} />}
                 {fadingPowers.filter(power => power.square === square).map(power => power.kind === 'freeze'
                   ? <span key={power.id} data-power-releasing="freeze" className={cn(rewardStyles.powerFrost, rewardStyles.powerRelease, "pointer-events-none absolute inset-0 z-[12]")}><IceCrystal releasing /></span>
                   : <span key={power.id} data-power-releasing="shield" className="pointer-events-none absolute inset-0 z-[12]"><GoldenShield releasing /></span>)}

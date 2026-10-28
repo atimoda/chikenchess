@@ -11,6 +11,9 @@ export const CHANGELOG = [
         'Andando, quando a canela ou o pé da galinha encosta na borda de uma plataforma (um botão do rodapé, um popup), ela sobe nela sozinha; se encostar em mais de uma, sobe na mais alta.',
         'Point-and-click: clique ou toque em qualquer ponto da tela e a galinha anda até ele. Ela para e volta ao normal quando chega embaixo do ponto, quando algo a impede de seguir ou quando você usa qualquer controle dela. Arrastar (o globo, um popup) não conta como clique.',
       ] },
+      { title: 'Partidas', items: [
+        'Tentar comer uma peça protegida pelo Shield não abre mais um popup: aparece o aviso temporário “Nem tente. Essa peça está protegida.”, a peça protegida dá uma tremidinha junto com o escudo e toca um som de escudo metálico. Vale também no 1v1 online.',
+      ] },
     ],
   },
   {

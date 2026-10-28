@@ -40,7 +40,7 @@ import { useBoardPan } from "@/hooks/use-board-pan";
 import { BoardResizeHandles } from "@/components/board-resize-handles";
 import { useOnlineAnalysis } from "@/hooks/use-online-analysis";
 import { usePowerTargetingGesture } from "@/hooks/use-power-targeting-gesture";
-import { createMatchPower, type MatchPowerKind } from "@/lib/chess-powers";
+import { createMatchPower, shieldCaptureBlockMessage, type MatchPowerKind } from "@/lib/chess-powers";
 import { freezeApplicationError } from "@/lib/powered-chess";
 import { formatEvaluation, rankedMoveLabelTone } from "@/lib/chess-evaluation";
 import {
@@ -1526,9 +1526,7 @@ export function OnlineMatchBoard({
                 if (piece && music.togglePiece(square)) setParamsOpen(true);
               }}
               onFrozenCaptureBlocked={() => toast("Não é possível capturar uma peça congelada.", { id: "frozen-capture-blocked", duration: 3000 })}
-              onShieldCaptureBlocked={() =>
-                toast.info("Shield prevents this capture")
-              }
+              onShieldCaptureBlocked={(reason) => toast(shieldCaptureBlockMessage(reason), { id: "shield-capture-blocked", duration: 3000 })}
               musicEffectsEnabled={engineOn}
               musicPulseMonitor={music.pulseMonitor}
               synthSelectedSquare={selected?.square as Square | undefined}
