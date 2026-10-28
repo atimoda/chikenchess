@@ -11,6 +11,9 @@ export const CHANGELOG = [
         'Andando, quando a canela ou o pé da galinha encosta na borda de uma plataforma (um botão do rodapé, um popup), ela sobe nela sozinha; se encostar em mais de uma, sobe na mais alta.',
         'Point-and-click: clique ou toque em qualquer ponto da tela e a galinha anda até ele. Ela para e volta ao normal quando chega embaixo do ponto, quando algo a impede de seguir ou quando você usa qualquer controle dela. Arrastar (o globo, um popup) não conta como clique.',
       ] },
+      { title: 'Partidas', items: [
+        'Recolher os ovos de Best/Worst com outra peça (que não a da seta) mostra frases próprias em cima da peça: depois de Worst, elogios como “So clever!” e “You\'re the goat.”; depois de Best, sarcasmo como “Not so smart.” e “What u doing bro?”.',
+      ] },
     ],
   },
   {

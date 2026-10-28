@@ -84,7 +84,7 @@ interface ChessGameProps {
   showRankedMoveMarks?: boolean
 }
 
-const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
+const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, OTHER_PIECE_BEST_MESSAGES, OTHER_PIECE_WORST_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
 
 function randomMessage(messages: string[]) {
   return messages[Math.floor(Math.random() * messages.length)]
@@ -1334,8 +1334,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         setRankedMoveMark({ square: move.to, kind: rewardKind, id })
         const legalMoveCount = currentAnalysis?.legalMoves ?? 0
         const comeback = rewardDetails?.comeback ?? false
+        const otherPiece = rewardDetails && 'otherPiece' in rewardDetails ? rewardDetails.otherPiece : null
         const headline = legalMoveCount === 1
           ? randomMessage(SINGLE_LEGAL_MOVE_MESSAGES)
+          : otherPiece
+            ? randomMessage(otherPiece === 'worst' ? OTHER_PIECE_WORST_MESSAGES : OTHER_PIECE_BEST_MESSAGES)
           : comeback
             ? randomMessage(BEST_MOVES_WITH_WORST_SCORES_MESSAGES)
           : streak
