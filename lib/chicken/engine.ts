@@ -204,7 +204,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const jumpPressed = (J && !prevJump) || (tapped('jump') && !(J && prevJump))
     const crouchPressed = tapped('crouch') || (C && !S.prevCrouch)
     prevJump = J; S.prevCrouch = C; pressed.clear(); virtTapped.clear()
-    const dir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
+    let dir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
+    // point-and-click: any control of her own cancels the walk to the clicked spot
+    if (goal && (dir !== 0 || J || D || C || U || S.held || S.cl)) goal = null
+    const auto = !!goal && goalStep(dt)
+    if (auto) dir = Math.sign(goal!.x - S.x)
     buildSegs(); heldDir = dir
     S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt); S.grabT = Math.max(0, (S.grabT || 0) - dt)
     if (S.held) { heldStep(dt); return }
@@ -301,7 +305,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (S.x < margin) { S.x = margin; S.vx = 0 }
     if (S.x > W - margin) { S.x = W - margin; S.vx = 0 }
 
-    if (tryCling(dir)) return
+    if (S.grounded && !S.sliding && !brooding && !crouching && dir !== 0) stepUp()
+    // walking to a clicked spot never grabs the screen walls
+    if (tryCling(auto ? 0 : dir)) return
     const speed = Math.abs(S.vx)
     let st: string
     if (!S.grounded) st = mode || 'jump'
@@ -520,6 +526,62 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.state = 'cling'
     updateFeet(dt, 'cling', speed)
     animate(dt, 'cling', false, speed)
+  }
+
+  // ---------- step up: a platform edge touching her shin or foot while walking lifts her onto it ----------
+  // knee height above the ground (hip minus most of the thigh), in rig units
+  const STEP_UP = -HIP_Y - LF * 0.85
+  function stepUp() {
+    const s = R.scale, xs = [S.x, feet.F.x ?? S.x, feet.B.x ?? S.x]
+    // the legs plus the toes reaching forward
+    const x0 = Math.min(...xs) - 6 * s + Math.min(0, S.face * 18 * s), x1 = Math.max(...xs) + 6 * s + Math.max(0, S.face * 18 * s)
+    let best: Seg | null = null, bestY = S.y
+    SEGS.forEach(sg => {
+      if (sg.wall || !sg.id.endsWith(':top') || sg.id === S.plat) return
+      const fy = Math.min(sg.ay, sg.by)
+      if (fy >= S.y - 2 || fy < S.y - STEP_UP * s) return
+      if (Math.max(sg.ax, sg.bx) < x0 || Math.min(sg.ax, sg.bx) > x1) return
+      if (fy < bestY) { best = sg; bestY = fy }
+    })
+    if (!best) return
+    const sg = best as Seg
+    S.x = clamp(S.x, Math.min(sg.ax, sg.bx) + 4 * s, Math.max(sg.ax, sg.bx) - 4 * s)
+    land(bestY, sg); S.squash = 0.35
+  }
+
+  // ---------- point-and-click: a click or tap sends her walking to that spot ----------
+  // She gives up (back to idle) on arriving under it, when something stops her, or on any input of her own.
+  let goal: { x: number; y: number; checkT: number; checkX: number } | null = null
+  let tap: { id: number; x: number; y: number; t: number } | null = null
+  const ignoreTap = (t: EventTarget | null) => {
+    const n = t as Element | null
+    return !!n && (el.root.contains(n) || !!n.closest?.('[data-chicken-ignore], [role="dialog"], [role="alertdialog"]'))
+  }
+  const onTapDown = (e: PointerEvent) => {
+    tap = e.button === 0 && !ignoreTap(e.target) ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null
+  }
+  const onTapUp = (e: PointerEvent) => {
+    if (!tap || tap.id !== e.pointerId) return
+    const t = tap; tap = null
+    if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 8 || performance.now() - t.t > 600 || S.held) return
+    const m = 40 * R.scale
+    goal = { x: clamp(e.clientX, m, W - m), y: e.clientY, checkT: 0.3, checkX: S.x }
+  }
+  window.addEventListener('pointerdown', onTapDown, true)
+  window.addEventListener('pointerup', onTapUp, true)
+  // true while she should keep walking to the goal
+  function goalStep(dt: number) {
+    const g = goal!
+    if (Math.abs(g.x - S.x) < 6 * R.scale) { goal = null; return false }
+    if (S.grounded) {
+      g.checkT -= dt
+      if (g.checkT <= 0) {
+        // stuck: barely moved in the last 0.3 s
+        if (Math.abs(S.x - g.checkX) < 4 * R.scale) { goal = null; return false }
+        g.checkT = 0.3; g.checkX = S.x
+      }
+    }
+    return true
   }
 
   // ---------- drag and drop: pick her up with the pointer; let go and she falls ----------
@@ -814,6 +876,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerdown', onTapDown, true)
+      window.removeEventListener('pointerup', onTapUp, true)
       window.removeEventListener('pointerup', endDrag)
       window.removeEventListener('pointercancel', endDrag)
       window.removeEventListener('resize', resize)

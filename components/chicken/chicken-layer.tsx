@@ -91,7 +91,7 @@ function TouchControls({ set }: { set: (action: ChickenAction, on: boolean) => v
   useEffect(() => () => apply({}), [])
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
+    <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
       <div
         ref={stickRef}
         aria-label="Analógico"

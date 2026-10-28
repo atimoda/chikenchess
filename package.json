@@ -1,6 +1,6 @@
 {
   "name": "chikenchess",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "private": true,
   "scripts": {
     "prebuild": "npm run admin:check && npm run build:powered-analysis",

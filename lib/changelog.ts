@@ -3,6 +3,17 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.10.0',
+    date: '28/10/2026',
+    title: 'Galinha sobe sozinha em degraus e anda até onde você clicar',
+    groups: [
+      { title: 'Galinha no globo', items: [
+        'Andando, quando a canela ou o pé da galinha encosta na borda de uma plataforma (um botão do rodapé, um popup), ela sobe nela sozinha; se encostar em mais de uma, sobe na mais alta.',
+        'Point-and-click: clique ou toque em qualquer ponto da tela e a galinha anda até ele. Ela para e volta ao normal quando chega embaixo do ponto, quando algo a impede de seguir ou quando você usa qualquer controle dela. Arrastar (o globo, um popup) não conta como clique.',
+      ] },
+    ],
+  },
+  {
     version: '1.9.2',
     date: '27/10/2026',
     title: 'Criativo 2.0 com tabuleiro livre e widgets, tabuleiro arrastável e cartas com tamanho próprio nas partidas, globo realista com nuvens que mudam a cada visita e galinha jogável no globo',
