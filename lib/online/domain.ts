@@ -1,7 +1,7 @@
 import { Chess, type Square } from "chess.js";
 import { z } from "zod";
 import { HARMONY_PLAN_IDS } from "../music/harmony";
-import { cappedMatchEggs, rankedMovesPerList, squareEggsExtraMs } from "../egg-rewards";
+import { cappedMatchEggs, rankedMoveEggsForPosition, rankedMovesPerList, squareEggsExtraMs } from "../egg-rewards";
 import { ROOTS, SCALE_NAMES } from "../music/scales";
 import {
   advanceMatchPowers,
@@ -112,11 +112,12 @@ export function createMatchState(): MatchState {
   };
 }
 
-/** Eggs a ranked move of `actor` earns now: x2 from the third in a row, never past the match cap. */
+/** Eggs a ranked move of `actor` earns now: x2 from the third in a row (at most 3 with a single Best/Worst move), never past the match cap. */
 export function rankedRewardEggs(
   state: Pick<MatchState, "actions" | "eggs">,
   actor: OnlineColor,
   reward: "best" | "worst",
+  legalMoves = Infinity,
 ): number {
   let streak = 1;
   for (const action of [...state.actions].reverse()) {
@@ -124,7 +125,7 @@ export function rankedRewardEggs(
     if (action.reward !== reward) break;
     streak++;
   }
-  return cappedMatchEggs(state.eggs[actor], (reward === "best" ? 1 : 3) * (streak >= 3 ? 2 : 1));
+  return cappedMatchEggs(state.eggs[actor], rankedMoveEggsForPosition((reward === "best" ? 1 : 3) * (streak >= 3 ? 2 : 1), legalMoves));
 }
 
 /** Destination squares of the actor's shared suggestions keep their eggs until this time. */
@@ -402,8 +403,9 @@ export function applyMatchCommand(
   } else if (command.kind === "move") {
     if (state.actions.length >= 768) reject("Match action limit reached");
     const uci = `${command.from}${command.to}${command.promotion ?? ""}`;
+    const legalMoves = game.moves().length;
     const reward =
-      (game.moves().length > 1 ? squareReward(state, actor, key, uci, now) : null) ??
+      (legalMoves > 1 ? squareReward(state, actor, key, uci, now) : null) ??
       rewardFor(state, game, key, uci, command.analysis);
     // Powered adapter validates castling, en passant, frozen movement and protected captures.
     game.move({
@@ -422,7 +424,7 @@ export function applyMatchCommand(
     const rewardKey = `${actor}|${key}|${uci}`;
     if (reward && !state.rewarded.includes(rewardKey)) {
       // The move was already pushed: count the streak before it.
-      const earned = rankedRewardEggs({ ...state, actions: state.actions.slice(0, -1) }, actor, reward);
+      const earned = rankedRewardEggs({ ...state, actions: state.actions.slice(0, -1) }, actor, reward, legalMoves);
       state.eggs[actor] += earned;
       state.collected[actor] += earned;
       // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.

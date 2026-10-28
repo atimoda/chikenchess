@@ -7,6 +7,9 @@ export const CHANGELOG = [
     date: '28/10/2026',
     title: 'Galinha sobe sozinha em degraus e anda até onde você clicar',
     groups: [
+      { title: 'Ovos nas partidas', items: [
+        'Em posições com um só Best e um só Worst move (menos de 8 lances possíveis), uma jogada premiada passa a pagar no máximo 3 ovos: a sequência de Worst que antes dava 6 ovos agora dá 3.',
+      ] },
       { title: 'Galinha no globo', items: [
         'Andando, quando a canela ou o pé da galinha encosta na borda de uma plataforma (um botão do rodapé, um popup), ela sobe nela sozinha; se encostar em mais de uma, sobe na mais alta.',
         'Point-and-click: clique ou toque em qualquer ponto da tela e a galinha anda até ele. Ela para e volta ao normal quando chega embaixo do ponto, quando algo a impede de seguir ou quando você usa qualquer controle dela. Arrastar (o globo, um popup) não conta como clique.',

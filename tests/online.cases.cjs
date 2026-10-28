@@ -320,3 +320,14 @@ test('untrusted command shape, nonfinite scores and unbounded suggestions are re
   assert.throws(() => command(createMatchState(), 'w', { kind: 'undo' }))
   assert.throws(() => command(createMatchState(), 'w', { kind: 'power', power: 'shield', square: 'e1' }), /more golden/)
 })
+test('A ranked streak pays at most 3 eggs when only one Best/Worst move is on offer', () => {
+  const { rankedRewardEggs } = loadTs('lib/online/domain.ts')
+  const state = { eggs: { w: 1, b: 1 }, actions: [
+    { kind: 'move', color: 'w', reward: 'worst' }, { kind: 'move', color: 'b', reward: null },
+    { kind: 'move', color: 'w', reward: 'worst' }, { kind: 'move', color: 'b', reward: null },
+  ] }
+  assert.equal(rankedRewardEggs(state, 'w', 'worst', 20), 6, 'the third Worst in a row doubles with several moves per list')
+  assert.equal(rankedRewardEggs(state, 'w', 'worst', 7), 3, 'one Worst move on offer caps the streak at 3')
+  assert.equal(rankedRewardEggs(state, 'w', 'worst'), 6, 'without a move count the streak is unchanged')
+  assert.equal(rankedRewardEggs({ ...state, actions: state.actions.map(a => a.color === 'w' ? { ...a, reward: 'best' } : a) }, 'w', 'best', 7), 2)
+})
