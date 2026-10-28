@@ -11,6 +11,10 @@ export const CHANGELOG = [
         'Andando, quando a canela ou o pé da galinha encosta na borda de uma plataforma (um botão do rodapé, um popup), ela sobe nela sozinha; se encostar em mais de uma, sobe na mais alta.',
         'Point-and-click: clique ou toque em qualquer ponto da tela e a galinha anda até ele. Ela para e volta ao normal quando chega embaixo do ponto, quando algo a impede de seguir ou quando você usa qualquer controle dela. Arrastar (o globo, um popup) não conta como clique.',
       ] },
+      { title: 'Vitória', items: [
+        'Na animação de vitória, os ovos voando para a cesta passam na frente do popup da cesta, em vez de sumirem por trás dele.',
+        'O botão Return to map do popup da cesta agora se chama Return to lobby.',
+      ] },
     ],
   },
   {

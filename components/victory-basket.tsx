@@ -138,6 +138,6 @@ export function VictoryBasket({ result, collected, sources, draw = false, onLaun
     <p>You now have <strong>{result.profile.goldenEggs.toLocaleString()} golden eggs.</strong></p>
     <p className={styles.history}>Plus {collected} {collected === 1 ? 'egg' : 'eggs'} collected during the game added to your all-time points.</p>
     <div className={styles.rank}>{result.rankedUp ? 'Promoted to ' : 'Rank: '}{result.newRank}<span>{result.profile.points.toLocaleString()} all-time points</span></div>
-    <button className={styles.returnButton} onClick={onReturn}>Return to map <span aria-hidden="true">→</span></button>
+    <button className={styles.returnButton} onClick={onReturn}>Return to lobby <span aria-hidden="true">→</span></button>
   </section>
 }
