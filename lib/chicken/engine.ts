@@ -206,13 +206,17 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const Lh = input('left'), Rh = input('right'), U = input('up'), Dk = input('down'), C = input('crouch'), J = input('jump'), RUN = input('run')
     const jumpPressed = (J && !prevJump) || (tapped('jump') && !(J && prevJump))
     const crouchPressed = tapped('crouch') || (C && !S.prevCrouch)
+    const downPressed = (Dk && !S.prevD) || tapped('down')
     prevJump = J; S.prevCrouch = C; pressed.clear(); virtTapped.clear()
     // letting go of brood with nothing else held keeps her brooding until another control is used
     const others = Lh || Rh || U || C || J || RUN
     if (S.broodLatch && (others || S.held || S.cl || !S.grounded)) S.broodLatch = false
-    if (S.prevD && !Dk && !others && S.grounded && !S.held && !S.cl) S.broodLatch = true
+    // pressing brood again while latched gets her up into the normal idle (until brood is released)
+    if (S.broodLatch && downPressed) { S.broodLatch = false; S.broodOff = true }
+    if (S.prevD && !Dk && !others && S.grounded && !S.held && !S.cl && !S.broodOff) S.broodLatch = true
+    if (!Dk) S.broodOff = false
     S.prevD = Dk
-    const D = Dk || S.broodLatch
+    const D = (Dk && !S.broodOff) || S.broodLatch
     let dir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
     // point-and-click: any control of her own cancels the walk to the clicked spot
     if (goal && (dir !== 0 || J || Dk || C || U || S.held || S.cl)) goal = null
@@ -222,6 +226,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt); S.grabT = Math.max(0, (S.grabT || 0) - dt)
     if (S.held) { heldStep(dt); return }
     if (S.cl) { clingStep(dt, dir, (U ? 1 : 0) - (D || C ? 1 : 0), jumpPressed, RUN); return }
+    // holding down keeps a jump from grabbing floating walls, like it skips floating floors
+    S.noGrab = Dk || D || C
     // standing on a floating edge: ride along when it moves, fall when walking off its end
     if (S.grounded && S.plat) {
       const sg = segById(S.plat), fy = sg ? floorY(sg, S.x) : null
@@ -469,7 +475,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (Math.abs(dx) > reach) continue
       const toward = Math.sign(dx) || 1
       if (sg.solid) { if (!(dir === toward || (!S.grounded && S.vx * toward > 60))) continue }
-      else if (!(S.grabT > 0)) continue
+      else if (!(S.grabT > 0) || S.noGrab) continue
       attach(sg, wx, py)
       return true
     }

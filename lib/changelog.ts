@@ -26,7 +26,8 @@ export const CHANGELOG = [
       { title: 'Galinha no globo', items: [
         'A galinha usa a classe Leve e os cacarejos revisados no Pátio da Caipira.',
         'Novas combinações: chocar e andar ao mesmo tempo, agachar correndo, e pulos com impulso para o lado próprio: agachada, chocando, agachada correndo e o super pulo agachada correndo e chocando. O empurrão para o lado ao pular agora dura até ela pousar.',
-        'Soltar o botão de chocar sem segurar mais nada deixa a galinha chocando; qualquer outro controle a faz levantar.',
+        'Soltar o botão de chocar sem segurar mais nada deixa a galinha chocando; qualquer outro controle a faz levantar, e apertar chocar de novo a deixa parada normal.',
+        'Segurando baixo, o pulo não agarra mais nas laterais das plataformas flutuantes, como já acontecia com os chões flutuantes.',
         'Cada movimento tem seu próprio tipo de cacarejo, ou nenhum.',
         'Arrastada pelo mouse ou toque, ela bate as asas no ritmo da classe (ou fica com as asas paradas).',
         'No gamepad, o X passa a ser chocar. Correr fica em RB e RT.',
