@@ -16,20 +16,20 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "ChiKenChess - Play Chess, Compose Music",
+  title: "ChicKenChess - Play Chess, Compose Music",
   description:
     "An immersive audiovisual experience that fuses chess strategy with generative electronic music. Each board state composes a real-time soundtrack.",
   generator: "v0.app",
   openGraph: {
     type: "website",
-    siteName: "ChiKenChess",
-    title: "ChiKenChess - Play Chess, Compose Music",
+    siteName: "ChicKenChess",
+    title: "ChicKenChess - Play Chess, Compose Music",
     description: "An immersive audiovisual experience that fuses chess strategy with generative electronic music.",
     images: [{ url: "/social-card.png", width: 1200, height: 630, alt: "ChickenChess logo and audiovisual chess experience" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ChiKenChess - Play Chess, Compose Music",
+    title: "ChicKenChess - Play Chess, Compose Music",
     description: "An immersive audiovisual experience that fuses chess strategy with generative electronic music.",
     images: ["/twitter-card.png"],
   },
@@ -42,6 +42,9 @@ export const metadata: Metadata = {
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    title: "ChicKenChess",
   },
 }
 

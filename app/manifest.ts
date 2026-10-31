@@ -3,8 +3,8 @@ export const dynamic = 'force-static'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ChiKenChess",
-    short_name: "ChickenChess",
+    name: "ChicKenChess",
+    short_name: "ChicKenChess",
     description: "Play chess and compose music.",
     start_url: "/",
     display: "standalone",
