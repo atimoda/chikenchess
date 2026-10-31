@@ -119,13 +119,23 @@ export function rankedRewardEggs(
   reward: "best" | "worst",
   legalMoves = Infinity,
 ): number {
+  return cappedMatchEggs(state.eggs[actor], rankedRewardTotal(state, actor, reward, legalMoves));
+}
+
+/** Whole reward of a ranked move, before the match cap: x2 from the third in a row, at most 3 with a single Best/Worst move. */
+export function rankedRewardTotal(
+  state: Pick<MatchState, "actions">,
+  actor: OnlineColor,
+  reward: "best" | "worst",
+  legalMoves = Infinity,
+): number {
   let streak = 1;
   for (const action of [...state.actions].reverse()) {
     if (action.kind !== "move" || action.color !== actor) continue;
     if (action.reward !== reward) break;
     streak++;
   }
-  return cappedMatchEggs(state.eggs[actor], rankedMoveEggsForPosition((reward === "best" ? 1 : 3) * (streak >= 3 ? 2 : 1), legalMoves));
+  return rankedMoveEggsForPosition((reward === "best" ? 1 : 3) * (streak >= 3 ? 2 : 1), legalMoves);
 }
 
 /** Destination squares of the actor's shared suggestions keep their eggs until this time. */
@@ -424,11 +434,12 @@ export function applyMatchCommand(
     const rewardKey = `${actor}|${key}|${uci}`;
     if (reward && !state.rewarded.includes(rewardKey)) {
       // The move was already pushed: count the streak before it.
-      const earned = rankedRewardEggs({ ...state, actions: state.actions.slice(0, -1) }, actor, reward, legalMoves);
+      const total = rankedRewardTotal({ actions: state.actions.slice(0, -1) }, actor, reward, legalMoves);
+      const earned = cappedMatchEggs(state.eggs[actor], total);
       state.eggs[actor] += earned;
-      state.collected[actor] += earned;
-      // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
-      if (earned > 0) state.rewarded.push(rewardKey);
+      // `collected` holds the eggs earned with a full counter: the settlement adds them as historic points.
+      state.collected[actor] += total - earned;
+      state.rewarded.push(rewardKey);
     }
     state.redo = null;
     state.drawOffer = null;

@@ -4,9 +4,19 @@ export { RELEASE_LABEL } from './release'
 export const CHANGELOG = [
   {
     version: '1.11.0',
-    date: '30/10/2026',
-    title: 'Galinha com combinações de pulo, chocar andando e som próprio para cada movimento',
+    date: '31/10/2026',
+    title: 'Pontos históricos só com o contador cheio, galinha com novas combinações de pulo e piscada no “Your move”',
     groups: [
+      { title: 'Ovos e pontos históricos', items: [
+        'Os ovos ganhos na partida só viram pontos históricos quando o seu contador já está cheio (12 ovos). Esses ovos extras somem numa nuvenzinha ao bater no contador, ficam cinza, caem um pouco girando e desaparecem, e aparece “+X historic points” em cinza embaixo do contador por 2 segundos.',
+        'No fim da partida você leva os golden eggs que estão nos contadores (como antes), e os pontos históricos ganham, além desses ovos, só os ovos extras ganhos com o contador cheio. Um lance premiado com o contador cheio não paga de novo depois de Undo.',
+        'Os ovos nas casas das setas mostram o prêmio inteiro, mesmo com o contador cheio.',
+        'No online, os ovos ganhos agora também voam da casa até o contador, nos dois lados, com a nuvenzinha quando o contador está cheio.',
+      ] },
+      { title: 'Partida', items: [
+        '“Your move” dá uma piscada rápida quando aparece, para chamar atenção para a sua vez.',
+        'O histórico de jogadas no rodapé não bloqueia mais o mouse: dá para passar o mouse e clicar no que está atrás dele.',
+      ] },
       { title: 'Galinha no globo', items: [
         'A galinha usa a classe Leve e os cacarejos revisados no Pátio da Caipira.',
         'Novas combinações: chocar e andar ao mesmo tempo, agachar correndo, e pulos com impulso para o lado próprio: agachada, chocando, agachada correndo e o super pulo agachada correndo e chocando. O empurrão para o lado ao pular agora dura até ela pousar.',

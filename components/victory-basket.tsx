@@ -136,7 +136,7 @@ export function VictoryBasket({ result, collected, sources, draw = false, onLaun
     <EggBasketTransfer earnedEggs={result.earnedEggs} accountEggs={result.profile.goldenEggs} sources={sources} onLaunch={onLaunch} onLand={onLand} onComplete={onComplete}/>
     <p className={styles.takeHome}>You took home <strong>{result.earnedEggs} golden {result.earnedEggs === 1 ? 'egg' : 'eggs'}!</strong></p>
     <p>You now have <strong>{result.profile.goldenEggs.toLocaleString()} golden eggs.</strong></p>
-    <p className={styles.history}>Plus {collected} {collected === 1 ? 'egg' : 'eggs'} collected during the game added to your all-time points.</p>
+    <p className={styles.history}>Plus {collected} historic {collected === 1 ? 'point' : 'points'} from eggs earned with a full egg counter.</p>
     <div className={styles.rank}>{result.rankedUp ? 'Promoted to ' : 'Rank: '}{result.newRank}<span>{result.profile.points.toLocaleString()} all-time points</span></div>
     <button className={styles.returnButton} onClick={onReturn}>Return to lobby <span aria-hidden="true">→</span></button>
   </section>
