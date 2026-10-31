@@ -17,6 +17,9 @@ export const CHANGELOG = [
         '“Your move” dá uma piscada rápida quando aparece, para chamar atenção para a sua vez.',
         'O histórico de jogadas no rodapé não bloqueia mais o mouse: dá para passar o mouse e clicar no que está atrás dele.',
       ] },
+      { title: 'Sequenciador MIDI', items: [
+        'O aviso “A game rule forces only variation…” (e o de limite de notas) aparece pequeno, em branco, logo abaixo do “X bars / Y beats” do sequenciador, em vez de em cima dele.',
+      ] },
       { title: 'Galinha no globo', items: [
         'A galinha usa a classe Leve e os cacarejos revisados no Pátio da Caipira.',
         'Novas combinações: chocar e andar ao mesmo tempo, agachar correndo, e pulos com impulso para o lado próprio: agachada, chocando, agachada correndo e o super pulo agachada correndo e chocando. O empurrão para o lado ao pular agora dura até ela pousar.',
