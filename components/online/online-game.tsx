@@ -625,12 +625,12 @@ export function OnlineMatchBoard({
     }
     setSquareEggs(
       [...targets]
-        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardEggs(match.state, color, kind) }))
+        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardEggs(match.state, color, kind, replay.game.moves().length) }))
         .filter((target) => target.eggs > 0),
     );
     const timer = setTimeout(() => setSquareEggs([]), Math.max(0, squareEggsUntil(shared) - Date.now()));
     return () => clearTimeout(timer);
-  }, [match.state, position, color]);
+  }, [match.state, position, color, replay]);
   const onMove = (move: Move) => {
     if (!ownTurn || disabled) return;
     const currentAnalysis =

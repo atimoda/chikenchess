@@ -308,6 +308,18 @@ test('suggestions are temporary copied snapshots scoped to a valid player positi
   assert.deepEqual(rememberMoveSuggestions(seen, { kind: 'best', analysis: { ...seen[0].analysis, complete: false } }), seen)
 })
 
+test('a single Best/Worst move on offer never pays more than 3 eggs', () => {
+  const { rankedMoveEggsForPosition, SINGLE_RANKED_MOVE_MAX_EGGS } = loadTs('lib/egg-rewards.ts')
+  assert.equal(SINGLE_RANKED_MOVE_MAX_EGGS, 3)
+  assert.equal(rankedMoveEggsForPosition(6, 7), 3, 'a Worst streak with one move per list pays 3, not 6')
+  assert.equal(rankedMoveEggsForPosition(6, 2), 3)
+  assert.equal(rankedMoveEggsForPosition(3, 5), 3, 'the base Worst reward is unchanged')
+  assert.equal(rankedMoveEggsForPosition(2, 5), 2, 'a Best streak stays at 2')
+  assert.equal(rankedMoveEggsForPosition(6, 8), 6, 'two or more moves per list keep the doubled streak')
+  assert.equal(rankedMoveEggsForPosition(6, 40), 6)
+  assert.equal(rankedMoveEggsForPosition(6, Number.NaN), 6, 'snapshots without a move count keep their reward')
+})
+
 test('rewarded Best/Worst lists shrink with the number of legal moves and eggs never pass the match cap', () => {
   const { rankedMovesPerList, limitRankedLists, cappedMatchEggs, EGG_REWARDS } = loadTs('lib/egg-rewards.ts')
   assert.deepEqual([40, 12, 11, 8, 7, 4, 3, 2].map(count => rankedMovesPerList(count)), [3, 3, 2, 2, 1, 1, 1, 1])

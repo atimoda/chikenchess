@@ -36,7 +36,7 @@ import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/l
 import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, settleCityDraw, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
-import { EGG_REWARDS, cappedMatchEggs, squareEggsExtraMs } from "@/lib/egg-rewards"
+import { EGG_REWARDS, cappedMatchEggs, rankedMoveEggsForPosition, squareEggsExtraMs } from "@/lib/egg-rewards"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
 import { SpectrogramWidget } from "./spectrogram-widget"
@@ -845,7 +845,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const squareEggs = useMemo(() => squareEggTargets(squareEggGroup).map(({ square, kind }) => {
     const streak = rankedMoveStreakRef.current
     const count = streak.kind === kind ? streak.count + 1 : 1
-    return { square: square as Square, kind, eggs: cappedMatchEggs(visibleEggs, rankedMoveEggReward(kind, count >= 3 ? 2 : 1)) }
+    const eggs = rankedMoveEggsForPosition(rankedMoveEggReward(kind, count >= 3 ? 2 : 1), squareEggGroup?.analysis.legalMoves ?? Infinity)
+    return { square: square as Square, kind, eggs: cappedMatchEggs(visibleEggs, eggs) }
   }).filter(target => target.eggs > 0), [squareEggGroup, visibleEggs])
 
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
@@ -1250,7 +1251,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             if (rewardKind) recordReaction(rewardKind === 'best' ? 'playBest' : 'playWorst', 'b', gameCopy.history().length)
             if (rewardKind && !botRewardedMovesRef.current.has(rewardKey)) {
               const streak = streakCount >= 3
-              const earnedEggs = cappedMatchEggs(opponentEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1))
+              const earnedEggs = cappedMatchEggs(opponentEggBalanceRef.current, rankedMoveEggsForPosition(rankedMoveEggReward(rewardKind, streak ? 2 : 1), botAnalysis.legalMoves))
               // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
               if (earnedEggs > 0) botRewardedMovesRef.current.add(rewardKey)
               opponentEggBalanceRef.current += earnedEggs
@@ -1320,7 +1321,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       rankedMoveStreakRef.current = { kind: streakKind, count: streakCount }
       if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
         const streak = streakKind === rewardKind && streakCount >= 3
-        const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1))
+        // With a single Best/Worst move on offer, the streak's x2 pays at most 3 eggs.
+        const rewardLegalMoves = [currentAnalysis, squareEggGroupRef.current?.analysis, ...shownSuggestionsRef.current.map(entry => entry.analysis)]
+          .find(analysis => analysis?.complete && analysis.fen === move.before)?.legalMoves ?? Infinity
+        const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, rankedMoveEggsForPosition(rankedMoveEggReward(rewardKind, streak ? 2 : 1), rewardLegalMoves))
         // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
         if (earnedEggs > 0) rewardedMovesRef.current.add(rewardKey)
         const reward = {
