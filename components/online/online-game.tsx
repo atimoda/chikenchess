@@ -16,7 +16,8 @@ import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
 import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
-import { replayMatch, matchPosition, onlineActionEvents, powerUsedThisTurn, rankedRewardEggs, squareEggsUntil } from "@/lib/online/domain";
+import { replayMatch, matchPosition, onlineActionEvents, powerUsedThisTurn, rankedRewardTotal, squareEggsUntil } from "@/lib/online/domain";
+import { showHistoricPointsLabel } from "@/lib/egg-flight";
 import { EGG_REWARDS, limitRankedLists } from "@/lib/egg-rewards";
 import type { Occurrence } from "@/lib/music/reactions";
 import { pendingMovePreview } from "@/lib/online/pending-move";
@@ -625,12 +626,25 @@ export function OnlineMatchBoard({
     }
     setSquareEggs(
       [...targets]
-        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardEggs(match.state, color, kind) }))
+        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardTotal(match.state, color, kind) }))
         .filter((target) => target.eggs > 0),
     );
     const timer = setTimeout(() => setSquareEggs([]), Math.max(0, squareEggsUntil(shared) - Date.now()));
     return () => clearTimeout(timer);
   }, [match.state, position, color]);
+  // Eggs earned with a full counter do not enter it: a grey "+X historic points" shows under it.
+  const historicPointsRef = useRef<number | null>(null);
+  const historicLabelCleanupsRef = useRef(new Set<() => void>());
+  useEffect(() => {
+    const total = match.state.collected[color];
+    const previous = historicPointsRef.current;
+    historicPointsRef.current = total;
+    if (previous !== null && total > previous) showHistoricPointsLabel(ownEggCounterRef.current, total - previous, historicLabelCleanupsRef.current);
+  }, [match.state.collected, color]);
+  useEffect(() => () => {
+    historicLabelCleanupsRef.current.forEach((cleanup) => cleanup());
+    historicLabelCleanupsRef.current.clear();
+  }, []);
   const onMove = (move: Move) => {
     if (!ownTurn || disabled) return;
     const currentAnalysis =

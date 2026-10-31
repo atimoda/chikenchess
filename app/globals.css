@@ -149,3 +149,16 @@ html[data-power-targeting-cursor="grabbing"],
 html[data-power-targeting-cursor="grabbing"] * {
   cursor: grabbing !important;
 }
+
+/* "Your move" blinks twice when it appears in the match status line. */
+@keyframes match-status-blink {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  20%, 60% { opacity: 0.1; filter: brightness(1); }
+  40%, 80% { opacity: 1; filter: brightness(1.8); }
+}
+.match-status-your-move {
+  animation: match-status-blink 700ms ease-in-out 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .match-status-your-move { animation: none; }
+}

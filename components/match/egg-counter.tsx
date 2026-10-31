@@ -60,6 +60,8 @@ interface MatchStatusProps {
  * board never shifts; the bottom slot keeps its height to avoid moving the cards each turn.
  */
 export function MatchStatus({ text, color, placement, pulse, className, style }: MatchStatusProps) {
+  // "Your move" blinks once each time it shows up, so the player notices their turn.
+  const yourMove = text.startsWith("Your move")
   return <div
     role="status"
     className={cn(
@@ -69,5 +71,5 @@ export function MatchStatus({ text, color, placement, pulse, className, style }:
       className,
     )}
     style={{ ...style, color }}
-  >{text}</div>
+  ><span key={yourMove ? "your-move" : "status"} className={cn(yourMove && "match-status-your-move")}>{text}</span></div>
 }

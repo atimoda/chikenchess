@@ -234,6 +234,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const botLastPowerTurnRef = useRef<Record<MatchPowerKind, number | null>>({ freeze: null, shield: null })
   const debugEggClicksRef = useRef(0)
   const collectedMatchEggsRef = useRef(0)
+  /** Eggs earned while the player's counter was full: the only match eggs that add historic points. */
+  const historicMatchPointsRef = useRef(0)
   const victoryToastRef = useRef<string | number | null>(null)
   useEffect(() => () => { if (victoryToastRef.current !== null) toast.dismiss(victoryToastRef.current) }, [])
   const victorySettledRef = useRef(false)
@@ -845,8 +847,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const squareEggs = useMemo(() => squareEggTargets(squareEggGroup).map(({ square, kind }) => {
     const streak = rankedMoveStreakRef.current
     const count = streak.kind === kind ? streak.count + 1 : 1
-    return { square: square as Square, kind, eggs: cappedMatchEggs(visibleEggs, rankedMoveEggReward(kind, count >= 3 ? 2 : 1)) }
-  }).filter(target => target.eggs > 0), [squareEggGroup, visibleEggs])
+    return { square: square as Square, kind, eggs: rankedMoveEggReward(kind, count >= 3 ? 2 : 1) }
+  }).filter(target => target.eggs > 0), [squareEggGroup])
 
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
   const showAnalysisArrows = useCallback((kind: AnalysisArrowKind) => {
@@ -1001,7 +1003,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     ]
     setVisibleEggs(eggs.w)
     setVisibleOpponentEggs(eggs.b)
-    const collected = collectedMatchEggsRef.current
+    const collected = historicMatchPointsRef.current
     const result = draw ? settleCityDraw(city.id, earnedEggs, collected) : conquerCity(city.id, earnedEggs, collected)
     playerEggBalanceRef.current = 0
     opponentEggBalanceRef.current = 0
@@ -1320,15 +1322,18 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       rankedMoveStreakRef.current = { kind: streakKind, count: streakCount }
       if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
         const streak = streakKind === rewardKind && streakCount >= 3
-        const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1))
-        // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
-        if (earnedEggs > 0) rewardedMovesRef.current.add(rewardKey)
+        const fullReward = rankedMoveEggReward(rewardKind, streak ? 2 : 1)
+        const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, fullReward)
+        // Eggs past the full counter (12) do not enter the match balance: they become historic points.
+        const overflowEggs = fullReward - earnedEggs
+        rewardedMovesRef.current.add(rewardKey)
         const reward = {
           earnedEggs,
           firstNotice: earnedEggs > 0 && markRankedMoveNotice(rewardKind),
         }
         playerEggBalanceRef.current += reward.earnedEggs
         collectedMatchEggsRef.current += reward.earnedEggs
+        historicMatchPointsRef.current += overflowEggs
         setVisibleEggs(playerEggBalanceRef.current)
         const id = ++rewardSerialRef.current
         setRankedMoveMark({ square: move.to, kind: rewardKind, id })
@@ -1343,8 +1348,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               ? rewardKind === 'best' ? BEST_STREAK_6_PLUS_MESSAGES : WORST_STREAK_6_PLUS_MESSAGES
               : rewardKind === 'best' ? BEST_STREAK_MESSAGES : WORST_STREAK_MESSAGES)
             : randomMessage(rewardKind === 'best' ? BEST_MOVE_MESSAGES : WORST_MOVE_MESSAGES)
-        setRankedMoveAnnouncement({ square: move.to, kind: rewardKind, id, headline, earnedEggs: reward.earnedEggs, streak, comeback })
-        if (reward.earnedEggs > 0) setEggFlight({ sourceSquare: move.to, amount: reward.earnedEggs, direction: 'earn', id })
+        setRankedMoveAnnouncement({ square: move.to, kind: rewardKind, id, headline, earnedEggs: fullReward, streak, comeback })
+        setEggFlight({ sourceSquare: move.to, amount: fullReward, overflow: overflowEggs, direction: 'earn', id })
         if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
         rewardMarkTimerRef.current = window.setTimeout(() => {
           setRankedMoveMark(null)
