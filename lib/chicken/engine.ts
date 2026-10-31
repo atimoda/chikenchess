@@ -163,15 +163,18 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       fetch(`/audio/chicken/${name}.mp3`).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { buffers[name] = buf }).catch(() => {})
     })
   }
-  function cluck() {
-    if (!actx || !controls.sound) return
-    let pool = Object.values(CHICKEN_CLUCKS).flat().filter(n => buffers[n])
+  // the cluck chosen for a movement in the class: '' none, 'all' any switched-on type, or one type
+  function sfx(ev: string) {
+    const v = (R as any)['sfx_' + ev] as string | undefined
+    if (!v || !actx || !controls.sound) return
+    const cats = v === 'all' ? Object.keys(CHICKEN_CLUCKS).filter(c => (R as any)['snd_' + c]) : [v]
+    let pool = cats.flatMap(c => CHICKEN_CLUCKS[c] || []).filter(n => buffers[n])
     if (pool.length > 1) pool = pool.filter(n => n !== lastName)
     const name = pool[Math.floor(Math.random() * pool.length)]
     if (!name) return
     lastName = name
     const t = actx.currentTime
-    if (lastVoice) {
+    if (R.choke && lastVoice) {
       try { lastVoice.gain.gain.cancelScheduledValues(t); lastVoice.gain.gain.setTargetAtTime(0, t, 0.015); lastVoice.src.stop(t + 0.08) } catch { /* already stopped */ }
     }
     const src = actx.createBufferSource(); src.buffer = buffers[name]
@@ -200,13 +203,19 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let prevJump = false
   function step(dt: number) {
     pollPad()
-    const Lh = input('left'), Rh = input('right'), U = input('up'), D = input('down'), C = input('crouch'), J = input('jump'), RUN = input('run')
+    const Lh = input('left'), Rh = input('right'), U = input('up'), Dk = input('down'), C = input('crouch'), J = input('jump'), RUN = input('run')
     const jumpPressed = (J && !prevJump) || (tapped('jump') && !(J && prevJump))
     const crouchPressed = tapped('crouch') || (C && !S.prevCrouch)
     prevJump = J; S.prevCrouch = C; pressed.clear(); virtTapped.clear()
+    // letting go of brood with nothing else held keeps her brooding until another control is used
+    const others = Lh || Rh || U || C || J || RUN
+    if (S.broodLatch && (others || S.held || S.cl || !S.grounded)) S.broodLatch = false
+    if (S.prevD && !Dk && !others && S.grounded && !S.held && !S.cl) S.broodLatch = true
+    S.prevD = Dk
+    const D = Dk || S.broodLatch
     let dir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
     // point-and-click: any control of her own cancels the walk to the clicked spot
-    if (goal && (dir !== 0 || J || D || C || U || S.held || S.cl)) goal = null
+    if (goal && (dir !== 0 || J || Dk || C || U || S.held || S.cl)) goal = null
     const auto = !!goal && goalStep(dt)
     if (auto) dir = Math.sign(goal!.x - S.x)
     buildSegs(); heldDir = dir
@@ -225,6 +234,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     const speed0 = Math.abs(S.vx)
     const brooding = S.grounded && D
+    // walking while brooding: a share of the walk speed (0 keeps her still)
+    const broodWalking = brooding && dir !== 0 && R.broodWalk > 0
     // slide starts when crouching out of a run
     if (S.grounded && crouchPressed && !brooding && speed0 > R.walkSpeed * 1.1) S.sliding = true
     if (S.sliding && (!C || !S.grounded || speed0 < R.slideMinSpeed || brooding)) S.sliding = false
@@ -234,7 +245,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (runIntent && !S.runIntent) {
       S.boostT = R.runBoostTime
       S.vx += dir * R.runBoost
-      if (R.runCluck) cluck()
+      sfx('runStart')
     }
     S.runIntent = runIntent
     S.boostT = Math.max(0, S.boostT - dt)
@@ -243,40 +254,52 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (S.sliding && dir !== 0 && dir * S.vx < 0) {
       // turning back mid-slide: she kicks off the other way, faster than the slide was going
       S.vx = dir * Math.min(R.maxSpeed, Math.max(R.walkSpeed, Math.abs(S.vx) * R.slideTurnBoost))
-      S.sliding = false; S.face = dir; S.squash = 0.6; cluck()
+      S.sliding = false; S.face = dir; S.squash = 0.6; sfx('slideTurn')
     } else if (S.sliding) {
       S.vx = approach(S.vx, 0, R.slideFriction * dt)
     } else {
       let target = 0
-      if (!brooding) {
+      if (broodWalking) target = dir * R.walkSpeed * R.broodWalk
+      else if (!brooding) {
         let mult = RUN ? R.runMultiplier : 1
-        if (crouching) mult = R.crouchSpeed
+        if (crouching) mult = R.crouchSpeed * (RUN ? R.crouchRunSpeed : 1)
         if (!S.grounded) mult *= R.airSpeed * (D ? R.fallSideSpeed : 1)
         target = dir * R.walkSpeed * mult
         if (runIntent && S.boostT > 0) target += dir * R.runBoost * (S.boostT / Math.max(0.01, R.runBoostTime))
+        // the jump's sideways kick lasts until she lands, instead of fading into the air speed
+        if (!S.grounded) target += S.airBoost || 0
       }
-      let rate = (dir !== 0 && !brooding) ? R.acceleration : R.deceleration
+      let rate = (dir !== 0 && (!brooding || broodWalking)) ? R.acceleration : R.deceleration
       if (!S.grounded) rate *= R.airControl
       S.vx = approach(S.vx, target, rate * dt)
-      if (!S.grounded && D) { const cap = R.walkSpeed * (RUN ? R.runMultiplier : 1) * R.airSpeed * R.fallSideSpeed + R.jumpPush * R.fallSideSpeed; S.vx = clamp(S.vx, -cap, cap) }
-      if (dir !== 0 && !brooding) S.face = dir
+      if (!S.grounded && D) { const cap = R.walkSpeed * (RUN ? R.runMultiplier : 1) * R.airSpeed * R.fallSideSpeed + Math.abs(S.airBoost || 0); S.vx = clamp(S.vx, -cap, cap) }
+      if (dir !== 0 && (!brooding || broodWalking)) S.face = dir
     }
 
     // down + jump on a floating floor: drop through it instead of jumping
     const plat = S.grounded && S.plat ? segById(S.plat) : null
     if (jumpPressed && plat && !plat.solid && (C || D)) {
       S.dropId = plat.id; S.dropT = 0.3; S.grounded = false; S.plat = null; S.sliding = false
-      S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet()
+      S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
     } else if (jumpPressed) {
+      const fromGround = S.grounded
       S.grabT = 0.3 // a jump next to a floating wall grabs it
       S.jumpIndex = S.grounded ? 0 : S.jumpIndex + 1
       S.vy = -jumpVelocity(S.jumpIndex)
       // super jump: holding crouch scales the jump height (air jumps too); negative pushes her down
       if (C) S.vy *= Math.sign(R.superJump) * Math.sqrt(Math.abs(R.superJump))
       S.grounded = false; S.sliding = false; S.plat = null
-      if (dir !== 0) S.vx += dir * R.jumpPush
-      S.burst = R.jumpFlaps / Math.max(1, R.jumpFlapRate)
-      cluck()
+      // each button combination has its own sideways boost (towards where she faces) and sound
+      const hd = dir || S.face
+      let kind = fromGround ? 'jump' : 'airJump', boost = 0, flaps = R.jumpFlaps
+      if (dir !== 0 && C && RUN && D) { kind = 'crouchRunBroodJump'; boost = R.crouchRunBroodJumpBoost }
+      else if (dir !== 0 && C && RUN) { kind = 'crouchRunJump'; boost = R.crouchRunJumpBoost }
+      else if (D) { kind = 'broodJump'; boost = R.broodJumpBoost; flaps = R.broodJumpFlaps }
+      else if (C) { kind = 'superJump'; boost = R.crouchJumpBoost }
+      S.airBoost = (dir !== 0 ? dir * R.jumpPush : 0) + hd * boost
+      S.vx += S.airBoost
+      S.burst = flaps / Math.max(1, R.jumpFlapRate)
+      sfx(kind)
     }
 
     // vertical
@@ -305,7 +328,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (S.x < margin) { S.x = margin; S.vx = 0 }
     if (S.x > W - margin) { S.x = W - margin; S.vx = 0 }
 
-    if (S.grounded && !S.sliding && !brooding && !crouching && dir !== 0) stepUp()
+    if (S.grounded && !S.sliding && (!brooding || broodWalking) && !crouching && dir !== 0) stepUp()
     // walking to a clicked spot never grabs the screen walls
     if (tryCling(auto ? 0 : dir)) return
     const speed = Math.abs(S.vx)
@@ -317,6 +340,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     else if (speed > 5) st = (RUN && speed > R.walkSpeed * 1.1) ? 'run' : 'walk'
     else if (U) st = 'lookUp'
     else st = 'idle'
+    if (st !== S.prevState) sfx('st_' + st)
+    S.prevState = st
     S.state = st
     updateFeet(dt, st, speed)
     animate(dt, st, U, speed)
@@ -324,7 +349,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // feet stay planted in the world; a foot steps when the hip runs ahead of it
   function updateFeet(dt: number, st: string, speed: number) {
-    if (!S.grounded || st === 'brood' || st === 'slide') return
+    if (!S.grounded || (st === 'brood' && speed <= 5) || st === 'slide') return
     const running = st === 'run'
     const dur = Math.max(0.04, R.stepTime / (running ? 1.5 : 1))
     const moving = speed > 5
@@ -417,9 +442,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return best
   }
   function land(y: number, sg: Seg | null) {
-    S.y = y; S.vy = 0; S.grounded = true; S.jumpIndex = -1; S.squash = 1
+    S.y = y; S.vy = 0; S.grounded = true; S.jumpIndex = -1; S.squash = 1; S.airBoost = 0
     S.plat = sg ? sg.id : null; S.platAx = sg ? sg.ax : 0
-    plantFeet()
+    plantFeet(); sfx('land')
   }
   function standAt(x: number, y: number, sg: Seg | null, face: number) {
     if (S.cl) startTurn()
@@ -429,7 +454,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function fallFrom(x: number, y: number, vx: number, vy: number) {
     if (S.cl && !S.held) startTurn()
     if (S.cl) { S.clLast = S.cl.id; S.clCool = 0.35 }
-    S.cl = null; S.plat = null; S.grounded = false; S.jumpIndex = 0
+    S.cl = null; S.plat = null; S.grounded = false; S.jumpIndex = 0; S.airBoost = 0
     S.x = x; S.y = y; S.vx = vx; S.vy = vy; plantFeet(); headAnchor.x = null
   }
 
@@ -466,7 +491,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const ux = (sg.bx - sg.ax) / sg.len, uy = (sg.by - sg.ay) / sg.len
     let n = [-uy, ux]
     if (n[0] * (S.x - px) + n[1] * (S.y - 40 * R.scale - py) < 0) n = [uy, -ux]
-    clingFrame(sg, n, px, py)
+    clingFrame(sg, n, px, py); sfx('grab')
     S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5
   }
   function clingStep(dt: number, dir: number, vup: number, jumpPressed: boolean, RUN: boolean) {
@@ -477,7 +502,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       // wall jump: away from the surface
       fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), c.n[0] * (R.jumpPush + 220) * R.wallJump, -jumpVelocity(0) * R.wallJump)
       if (Math.abs(S.vx) > 1) S.face = Math.sign(S.vx)
-      S.burst = R.jumpFlaps / Math.max(1, R.jumpFlapRate); cluck()
+      S.burst = R.jumpFlaps / Math.max(1, R.jumpFlapRate); sfx('wallJump')
       S.state = 'jump'; animate(dt, 'jump', false, Math.abs(S.vx)); return
     }
     // up/down count more the steeper the surface, left/right the flatter it is; on steep walls
@@ -565,7 +590,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const t = tap; tap = null
     if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 8 || performance.now() - t.t > 600 || S.held) return
     const m = 40 * R.scale
-    goal = { x: clamp(e.clientX, m, W - m), y: e.clientY, checkT: 0.3, checkX: S.x }
+    goal = { x: clamp(e.clientX, m, W - m), y: e.clientY, checkT: 0.3, checkX: S.x }; S.broodLatch = false
   }
   window.addEventListener('pointerdown', onTapDown, true)
   window.addEventListener('pointerup', onTapUp, true)
@@ -605,7 +630,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       drag.on = true
       if (S.cl) { startTurn(); S.x = S.cl.px + S.cl.n[0] * 40 * R.scale; S.y = Math.min(groundY, S.cl.py + 30 * R.scale); S.cl = null }
       drag.ox = drag.x0 - S.x; drag.oy = drag.y0 - S.y
-      S.held = true; S.vx = 0; S.vy = 0; S.burst = 0; el.root.style.cursor = 'grabbing'; cluck()
+      S.held = true; S.vx = 0; S.vy = 0; S.burst = 0; el.root.style.cursor = 'grabbing'; S.broodLatch = false; sfx('pickUp')
     }
   }
   const endDrag = (e: PointerEvent) => {
@@ -666,8 +691,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const t: any = { bob: 0, body: 0, neck: 0, head: 0, wing: 0, wingBack: 0, tail: 0, sink: 0, legSink: 0, puff: 1, ik: 1, sway: 0 }
     let k = 16
     S.burst = Math.max(0, S.burst - dt)
-    const flapping = S.burst > 0 || st === 'fly' || st === 'held'
-    if (flapping) S.flapPhase += dt * (S.burst > 0 ? R.jumpFlapRate : R.flapRate) * Math.PI * 2
+    const flapping = S.burst > 0 || st === 'fly' || (st === 'held' && R.heldFlapRate > 0)
+    if (flapping) S.flapPhase += dt * (S.burst > 0 ? R.jumpFlapRate : st === 'held' ? R.heldFlapRate : R.flapRate) * Math.PI * 2
     const walking = st === 'walk' || st === 'run' || ((st === 'crouch' || st === 'cling') && speed > 5)
     if (walking) {
       // the body rocks and shifts a little with each step

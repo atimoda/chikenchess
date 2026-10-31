@@ -3,6 +3,21 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.11.0',
+    date: '30/10/2026',
+    title: 'Galinha com combinações de pulo, chocar andando e som próprio para cada movimento',
+    groups: [
+      { title: 'Galinha no globo', items: [
+        'A galinha usa a classe Leve e os cacarejos revisados no Pátio da Caipira.',
+        'Novas combinações: chocar e andar ao mesmo tempo, agachar correndo, e pulos com impulso para o lado próprio: agachada, chocando, agachada correndo e o super pulo agachada correndo e chocando. O empurrão para o lado ao pular agora dura até ela pousar.',
+        'Soltar o botão de chocar sem segurar mais nada deixa a galinha chocando; qualquer outro controle a faz levantar.',
+        'Cada movimento tem seu próprio tipo de cacarejo, ou nenhum.',
+        'Arrastada pelo mouse ou toque, ela bate as asas no ritmo da classe (ou fica com as asas paradas).',
+        'No gamepad, o X passa a ser chocar. Correr fica em RB e RT.',
+      ] },
+    ],
+  },
+  {
     version: '1.10.0',
     date: '28/10/2026',
     title: 'Galinha sobe sozinha em degraus e anda até onde você clicar',
