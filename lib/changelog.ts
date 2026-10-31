@@ -18,6 +18,7 @@ export const CHANGELOG = [
         'O histórico de jogadas no rodapé não bloqueia mais o mouse: dá para passar o mouse e clicar no que está atrás dele.',
         'Nova preferência Award animations: com “No flying eggs and sounds”, os lances premiados não tocam o som de Best/Worst e os ovos não voam; as frases e o total de ovos acima da peça continuam.',
         'Levar xeque-mate de um bot (campanha ou partida livre) não encerra mais a partida nem zera os ovos: aparece um aviso no canto inferior direito com “Return to lobby”, e, se você tiver ovos, um Mulligan desfaz o mate e a partida continua (o aviso some sozinho). Partidas online contra outros jogadores continuam terminando no xeque-mate.',
+        'No hover do Mulligan, se a jogada que seria desfeita “comeu” uma peça, essa peça reaparece na casa onde estava, com a mesma transparência das peças fantasma (campanha, partida livre e online).',
       ] },
       { title: 'Sequenciador MIDI', items: [
         'O aviso “A game rule forces only variation…” (e o de limite de notas) aparece pequeno, em branco, logo abaixo do “X bars / Y beats” do sequenciador, em vez de em cima dele.',
