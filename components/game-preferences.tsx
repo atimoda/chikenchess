@@ -17,6 +17,8 @@ export function GamePreferences({
   onSpectrogramModeChange,
   crossfaderSync = true,
   onCrossfaderSyncChange,
+  awardAnimations = true,
+  onAwardAnimationsChange,
   className,
 }: {
   display: PowerDisplay
@@ -27,6 +29,9 @@ export function GamePreferences({
   onSpectrogramModeChange?: (value: SpectrogramMode) => void
   crossfaderSync?: boolean
   onCrossfaderSyncChange?: (value: boolean) => void
+  /** Flying eggs and the Best/Worst whistle when a move earns golden eggs. */
+  awardAnimations?: boolean
+  onAwardAnimationsChange?: (value: boolean) => void
   className?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -35,6 +40,7 @@ export function GamePreferences({
   const chanceLabelId = useId()
   const spectrogramLabelId = useId()
   const crossfaderLabelId = useId()
+  const awardLabelId = useId()
   return <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
     <Popover.Trigger asChild>
       <Button variant="outline" size="icon" aria-label="Preferências" title="Preferências" className={className}>
@@ -87,6 +93,17 @@ export function GamePreferences({
             className="relative h-6 w-11 shrink-0 cursor-pointer rounded-full border border-white/25 transition-colors data-[checked=true]:bg-green-600 bg-zinc-700"
             data-checked={crossfaderSync}>
             <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: crossfaderSync ? "translateX(20px)" : undefined }} />
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
+          <div><div className="text-sm font-medium" id={awardLabelId}>Award animations</div>
+            <div className="text-xs text-muted-foreground">{awardAnimations ? "Flying eggs and sounds" : "No flying eggs and sounds"}</div>
+          </div>
+          <button type="button" role="switch" aria-checked={awardAnimations} aria-labelledby={awardLabelId}
+            onClick={() => onAwardAnimationsChange?.(!awardAnimations)}
+            className="relative h-6 w-11 shrink-0 cursor-pointer rounded-full border border-white/25 transition-colors data-[checked=true]:bg-green-600 bg-zinc-700"
+            data-checked={awardAnimations}>
+            <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: awardAnimations ? "translateX(20px)" : undefined }} />
           </button>
         </div>
       </Popover.Content>

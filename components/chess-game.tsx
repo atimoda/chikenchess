@@ -7,6 +7,7 @@ import { usePowerDisplay } from "@/hooks/use-power-display"
 import { useChancePosition } from "@/hooks/use-chance-position"
 import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode"
 import { useCrossfaderSync } from "@/hooks/use-crossfader-sync"
+import { useAwardAnimations } from "@/hooks/use-award-animations"
 
 import moveMessages from "@/data/ui/move-messages.json"
 
@@ -146,6 +147,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [chancePosition, setChancePosition] = useChancePosition()
   const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode()
   const [crossfaderSync, setCrossfaderSync] = useCrossfaderSync()
+  // Off: rewarded moves keep their phrases and egg totals, without flying eggs or the Best/Worst whistle.
+  const [awardAnimations, setAwardAnimations] = useAwardAnimations()
+  const awardAnimationsRef = useRef(awardAnimations)
+  awardAnimationsRef.current = awardAnimations
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false)
   const [tabVisible, setTabVisible] = useState(true)
@@ -555,7 +560,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   useEffect(() => {
     if (!eggFlight) return
     const counterEl = eggFlight.owner === 'b' ? opponentEggCounterRef.current : eggCounterRef.current
-    launchEggFlight(eggFlight, counterEl, boardAreaRef.current, flightCleanupsRef.current)
+    launchEggFlight(eggFlight, counterEl, boardAreaRef.current, flightCleanupsRef.current, { still: eggFlight.direction === 'earn' && !awardAnimationsRef.current })
   }, [eggFlight])
 
   // One single-thread engine, shared by evaluation and opponent play.
@@ -1264,7 +1269,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 owner: 'b',
                 sourceSquare: move.to,
               })
-              void engineRef.current?.playRankedMoveWhistle(rewardKind)
+              if (awardAnimationsRef.current) void engineRef.current?.playRankedMoveWhistle(rewardKind)
             }
           }
 
@@ -1365,7 +1370,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           setRankedMoveAnnouncement(null)
           rewardAnnouncementTimerRef.current = null
         }, 5500)
-        void engineRef.current?.playRankedMoveWhistle(rewardKind)
+        if (awardAnimationsRef.current) void engineRef.current?.playRankedMoveWhistle(rewardKind)
         if (reward.firstNotice && reward.earnedEggs > 0) {
           toast.success(rewardKind === 'worst'
             ? `You made one of the worst available moves! Here are ${reward.earnedEggs} golden eggs as a reward :)`
@@ -2119,7 +2124,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onToggleCode={toggleCodeBackdrop}
                   musicOn={musicEngineOn}
                   onToggleMusic={handleToggleMusicEngine}
-                  preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className={MATCH_HEADER_BUTTON_CLASS} />}
+                  preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} awardAnimations={awardAnimations} onAwardAnimationsChange={setAwardAnimations} className={MATCH_HEADER_BUTTON_CLASS} />}
                 />
               </div>
             </div>

@@ -56,6 +56,7 @@ import { usePowerDisplay } from "@/hooks/use-power-display";
 import { useChancePosition } from "@/hooks/use-chance-position";
 import { useSpectrogramMode } from "@/hooks/use-spectrogram-mode";
 import { useCrossfaderSync } from "@/hooks/use-crossfader-sync";
+import { useAwardAnimations } from "@/hooks/use-award-animations";
 import { useCapturedPiecesScale, useMatchViewport } from "@/hooks/use-match-layout";
 import { CapturedPieces } from "../match/captured-pieces";
 import { EggCounter, MatchStatus } from "../match/egg-counter";
@@ -284,6 +285,9 @@ export function OnlineMatchBoard({
   const [chancePosition, setChancePosition] = useChancePosition();
   const [spectrogramMode, setSpectrogramMode] = useSpectrogramMode();
   const [crossfaderSync, setCrossfaderSync] = useCrossfaderSync();
+  const [awardAnimations, setAwardAnimations] = useAwardAnimations();
+  const awardAnimationsRef = useRef(awardAnimations);
+  awardAnimationsRef.current = awardAnimations;
   const [playing, setPlaying] = useState(false);
   const [engineOn, setEngineOn] = useState(true);
   const [mixerOn, setMixerOn] = useState(false);
@@ -656,6 +660,7 @@ export function OnlineMatchBoard({
       counterEl,
       boardRef.current,
       eggFlightCleanupsRef.current,
+      { still: !awardAnimationsRef.current },
     );
   }, [match.state, color]);
   useEffect(() => () => {
@@ -1449,7 +1454,7 @@ export function OnlineMatchBoard({
                 }}
                 musicOn={engineOn}
                 onToggleMusic={toggleEngine}
-                preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} className={MATCH_HEADER_BUTTON_CLASS} />}
+                preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} awardAnimations={awardAnimations} onAwardAnimationsChange={setAwardAnimations} className={MATCH_HEADER_BUTTON_CLASS} />}
               />
             </div>
           </div>

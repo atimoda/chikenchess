@@ -17,7 +17,7 @@ export interface EggFlight {
  * Each egg is a fixed-position element animated outside React; its cleanup is
  * registered in `cleanups` so the match can cancel flights in progress.
  */
-export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null, board: HTMLElement | null, cleanups: Set<() => void>) {
+export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null, board: HTMLElement | null, cleanups: Set<() => void>, { still = false }: { still?: boolean } = {}) {
   const source = flight.direction === 'earn' && flight.sourceSquare
     ? board?.querySelector<HTMLButtonElement>(`[data-square="${flight.sourceSquare}"]`)
     : counterEl
@@ -43,7 +43,8 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
     labelShown = true
     showHistoricPointsLabel(counterEl, overflow, cleanups)
   }
-  if ((!source && flight.direction === 'earn') || !fromRect || !toRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if ((!source && flight.direction === 'earn') || !fromRect || !toRect || still || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // `still`: the player turned Award animations off, so eggs skip the flight like reduced motion.
     for (let i = 0; i < firstOverflow; i++) finishEgg()
     showLabel()
     return

@@ -16,6 +16,7 @@ export const CHANGELOG = [
       { title: 'Partida', items: [
         '“Your move” dá uma piscada rápida quando aparece, para chamar atenção para a sua vez.',
         'O histórico de jogadas no rodapé não bloqueia mais o mouse: dá para passar o mouse e clicar no que está atrás dele.',
+        'Nova preferência Award animations: com “No flying eggs and sounds”, os lances premiados não tocam o som de Best/Worst e os ovos não voam; as frases e o total de ovos acima da peça continuam.',
       ] },
       { title: 'Galinha no globo', items: [
         'A galinha usa a classe Leve e os cacarejos revisados no Pátio da Caipira.',
