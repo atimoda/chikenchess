@@ -38,6 +38,11 @@ export function shieldCaptureBlock(move: PowerMove, powers: MatchPower[]): Shiel
   return null
 }
 
+/** Short toast copy shown when a Shield blocks a capture attempt, in every mode. */
+export function shieldCaptureBlockMessage(reason: ShieldCaptureBlock): string {
+  return reason === 'protected-target' ? 'Nem tente. Essa peça está protegida.' : 'Peças protegidas não podem comer outras peças.'
+}
+
 export function frozenCaptureBlock(move: PowerMove, powers: MatchPower[]): boolean {
   if (!move.captured) return false
   const capturedSquare = move.flags.includes('e') ? `${move.to[0]}${move.from[1]}` : move.to

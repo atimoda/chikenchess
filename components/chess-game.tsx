@@ -31,7 +31,6 @@ import { matchEggPayout, matchEggSources } from '@/lib/match-eggs'
 import { trackMatchCompleted, trackMatchStarted } from '@/lib/game-analytics'
 import { useSfx } from "@/hooks/use-sfx"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
 import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
@@ -44,7 +43,7 @@ import { isConstrainedDevice } from "@/lib/performance"
 import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, rankedMoveRewardDetails, rememberMoveSuggestions, squareEggTargets, squareMoveRewardDetails, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 import { WidgetToggleLayer } from "./widget-toggle-layer"
 import { OpponentMoveTimer } from "@/lib/opponent-move-timer"
-import { advanceMatchPowers, canUseMatchPower, createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
+import { advanceMatchPowers, canUseMatchPower, createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, permitsPowerMove, shieldCaptureBlockMessage, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
 import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, stockfishSupportsPosition, syncPoweredMoveSan } from "@/lib/powered-chess"
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
@@ -245,7 +244,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
-  const [shieldCaptureNoticeOpen, setShieldCaptureNoticeOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
   const costHintHideTimerRef = useRef<number | null>(null)
   const [mulliganPreviewActive, setMulliganPreviewActive] = useState(false)
@@ -2201,10 +2199,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onPowerTarget={targetPower}
                   matchPowers={matchPowers}
                   onFrozenCaptureBlocked={() => toast('Não é possível capturar uma peça congelada.', { id: 'frozen-capture-blocked', duration: 3000 })}
-                  onShieldCaptureBlocked={reason => {
-                    if (reason === 'protected-target') setShieldCaptureNoticeOpen(true)
-                    else toast('Peças protegidas não podem comer outras peças.', { id: 'shield-capture-blocked', duration: 3000 })
-                  }}
+                  onShieldCaptureBlocked={reason => toast(shieldCaptureBlockMessage(reason), { id: 'shield-capture-blocked', duration: 3000 })}
                   isMoveAllowed={move => permitsPowerMove(move, matchPowersRef.current, game.history().length + 1)}
                   cityColor={city.color} 
                   isThinking={isThinking} 
@@ -2497,15 +2492,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         chancePosition={chancePosition}
       />
 
-
-      <Dialog open={shieldCaptureNoticeOpen} onOpenChange={setShieldCaptureNoticeOpen}>
-        <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-amber-100">Nem tente. Essa peça está protegida.</DialogTitle>
-          </DialogHeader>
-          <Button onClick={() => setShieldCaptureNoticeOpen(false)} className="mt-2">Entendi</Button>
-        </DialogContent>
-      </Dialog>
 
       <GameplayTipDialog tip={gameplayTip.tip} open={gameplayTip.open} onOpenChange={gameplayTip.setOpen} />
 

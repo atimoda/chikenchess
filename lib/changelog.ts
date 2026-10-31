@@ -21,6 +21,9 @@ export const CHANGELOG = [
       { title: 'Partidas', items: [
         'Recolher os ovos de Best/Worst com outra peça (que não a da seta) mostra frases próprias em cima da peça: depois de Worst, elogios como “So clever!” e “You\'re the goat.”; depois de Best, sarcasmo como “Not so smart.” e “What u doing bro?”.',
       ] },
+      { title: 'Partidas', items: [
+        'Tentar comer uma peça protegida pelo Shield não abre mais um popup: aparece o aviso temporário “Nem tente. Essa peça está protegida.”, a peça protegida dá uma tremidinha junto com o escudo e toca um som de escudo metálico. Vale também no 1v1 online.',
+      ] },
     ],
   },
   {
