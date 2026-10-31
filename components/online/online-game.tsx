@@ -16,7 +16,8 @@ import { matchEggPayout, matchEggSources } from "@/lib/match-eggs";
 import { trackMatchCompleted, trackMatchStarted } from "@/lib/game-analytics";
 import { EggBasketTransfer } from "../victory-basket";
 import { getCityById, cities } from "@/lib/cities-data";
-import { replayMatch, matchPosition, onlineActionEvents, powerUsedThisTurn, rankedRewardEggs, squareEggsUntil } from "@/lib/online/domain";
+import { replayMatch, matchPosition, onlineActionEvents, powerUsedThisTurn, rankedRewardTotal, squareEggsUntil } from "@/lib/online/domain";
+import { launchEggFlight } from "@/lib/egg-flight";
 import { EGG_REWARDS, limitRankedLists } from "@/lib/egg-rewards";
 import type { Occurrence } from "@/lib/music/reactions";
 import { pendingMovePreview } from "@/lib/online/pending-move";
@@ -40,7 +41,7 @@ import { useBoardPan } from "@/hooks/use-board-pan";
 import { BoardResizeHandles } from "@/components/board-resize-handles";
 import { useOnlineAnalysis } from "@/hooks/use-online-analysis";
 import { usePowerTargetingGesture } from "@/hooks/use-power-targeting-gesture";
-import { createMatchPower, type MatchPowerKind } from "@/lib/chess-powers";
+import { createMatchPower, shieldCaptureBlockMessage, type MatchPowerKind } from "@/lib/chess-powers";
 import { freezeApplicationError } from "@/lib/powered-chess";
 import { formatEvaluation, rankedMoveLabelTone } from "@/lib/chess-evaluation";
 import {
@@ -625,12 +626,42 @@ export function OnlineMatchBoard({
     }
     setSquareEggs(
       [...targets]
-        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardEggs(match.state, color, kind) }))
+        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardTotal(match.state, color, kind, replay.game.moves().length) }))
         .filter((target) => target.eggs > 0),
     );
     const timer = setTimeout(() => setSquareEggs([]), Math.max(0, squareEggsUntil(shared) - Date.now()));
     return () => clearTimeout(timer);
-  }, [match.state, position, color]);
+  }, [match.state, position, color, replay]);
+  // Ranked-move eggs fly from the destination square to the earner's counter, as in the campaign.
+  // The server computes the reward, so the flight is rebuilt from the confirmed state:
+  // eggs that entered the counter plus those past the full counter (historic points, in a puff).
+  const eggSnapshotRef = useRef<{ actions: number; eggs: Record<"w" | "b", number>; collected: Record<"w" | "b", number> } | null>(null);
+  const eggFlightCleanupsRef = useRef(new Set<() => void>());
+  const eggFlightSerialRef = useRef(0);
+  useEffect(() => {
+    const { actions, eggs, collected } = match.state;
+    const previous = eggSnapshotRef.current;
+    eggSnapshotRef.current = { actions: actions.length, eggs: { ...eggs }, collected: { ...collected } };
+    // The final move hands over to the victory basket, which flies the counters' eggs itself.
+    if (!previous || actions.length !== previous.actions + 1 || match.state.result) return;
+    const last = actions.at(-1);
+    if (last?.kind !== "move" || !last.reward) return;
+    const owner = last.color;
+    const earned = Math.max(0, eggs[owner] - previous.eggs[owner]);
+    const overflow = Math.max(0, collected[owner] - previous.collected[owner]);
+    if (earned + overflow <= 0) return;
+    const counterEl = owner === color ? ownEggCounterRef.current : opponentEggCounterRef.current;
+    launchEggFlight(
+      { id: ++eggFlightSerialRef.current, amount: earned + overflow, overflow, direction: "earn", owner, sourceSquare: last.to as Square },
+      counterEl,
+      boardRef.current,
+      eggFlightCleanupsRef.current,
+    );
+  }, [match.state, color]);
+  useEffect(() => () => {
+    eggFlightCleanupsRef.current.forEach((cleanup) => cleanup());
+    eggFlightCleanupsRef.current.clear();
+  }, []);
   const onMove = (move: Move) => {
     if (!ownTurn || disabled) return;
     const currentAnalysis =
@@ -1526,9 +1557,7 @@ export function OnlineMatchBoard({
                 if (piece && music.togglePiece(square)) setParamsOpen(true);
               }}
               onFrozenCaptureBlocked={() => toast("Não é possível capturar uma peça congelada.", { id: "frozen-capture-blocked", duration: 3000 })}
-              onShieldCaptureBlocked={() =>
-                toast.info("Shield prevents this capture")
-              }
+              onShieldCaptureBlocked={(reason) => toast(shieldCaptureBlockMessage(reason), { id: "shield-capture-blocked", duration: 3000 })}
               musicEffectsEnabled={engineOn}
               musicPulseMonitor={music.pulseMonitor}
               synthSelectedSquare={selected?.square as Square | undefined}

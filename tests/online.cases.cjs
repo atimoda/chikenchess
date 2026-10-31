@@ -268,23 +268,20 @@ test('Suggested destination squares pay any own piece until the eggs fade, and m
   capped = move(capped, 'b', 'e7', 'e5')
   capped = move(capped, 'w', 'g1', 'f3', 'worst')
   assert.equal(capped.eggs.w, 12, 'a 3-egg reward fills the balance only up to 12')
-  assert.equal(capped.collected.w, 4)
+  assert.equal(capped.collected.w, 2, 'only the 2 eggs past the full counter become historic points')
 
-  // A ranked move blocked by the cap is not spent: after Undo frees room, replaying it pays.
+  // With a full counter the whole reward becomes historic points, and the move is spent.
   let full = createMatchState()
   full.eggs.w = 12
   full = move(full, 'w', 'e2', 'e4', 'worst')
-  assert.equal(full.eggs.w, 12, 'a full balance earns nothing')
+  assert.equal(full.eggs.w, 12, 'a full balance earns no match eggs')
+  assert.equal(full.collected.w, 3, 'the eggs past the full counter count as historic points')
   full = move(full, 'b', 'e7', 'e5')
   full = command(full, 'w', { kind: 'undo' })
   assert.equal(full.eggs.w, 10)
   full = move(full, 'w', 'e2', 'e4', 'worst')
-  assert.equal(full.eggs.w, 12, 'the capped move pays once there is room')
-  full = move(full, 'b', 'e7', 'e5')
-  full.eggs.w = 4
-  full = command(full, 'w', { kind: 'undo' })
-  full = move(full, 'w', 'e2', 'e4', 'worst')
-  assert.equal(full.eggs.w, 2, 'a move that already paid never pays again')
+  assert.equal(full.eggs.w, 10, 'a move that already paid never pays again')
+  assert.equal(full.collected.w, 3)
 })
 test('streaks double from the third eligible own move, opponent does not interrupt', () => {
   let s = move(createMatchState(), 'w', 'e2', 'e4', 'best')
@@ -292,7 +289,8 @@ test('streaks double from the third eligible own move, opponent does not interru
   s = move(s, 'w', 'g1', 'f3', 'best')
   s = move(s, 'b', 'b8', 'c6')
   s = move(s, 'w', 'f1', 'c4', 'best')
-  assert.equal(s.collected.w, 4)
+  assert.equal(s.eggs.w, 5, '1 + 1 + 2 eggs over the starting egg')
+  assert.equal(s.collected.w, 0, 'eggs that fit in the counter add no historic points')
 })
 test('draw requires opponent acceptance, results are final, rematch requires acceptance', () => {
   let s = command(createMatchState(), 'w', { kind: 'offer-draw' })
@@ -319,4 +317,15 @@ test('untrusted command shape, nonfinite scores and unbounded suggestions are re
   assert.throws(() => parseMatchCommand({ kind: 'suggest', group: 'best', position: '', moves: [{ uci: 'e2e4', score: Infinity }] }))
   assert.throws(() => command(createMatchState(), 'w', { kind: 'undo' }))
   assert.throws(() => command(createMatchState(), 'w', { kind: 'power', power: 'shield', square: 'e1' }), /more golden/)
+})
+test('A ranked streak pays at most 3 eggs when only one Best/Worst move is on offer', () => {
+  const { rankedRewardEggs } = loadTs('lib/online/domain.ts')
+  const state = { eggs: { w: 1, b: 1 }, actions: [
+    { kind: 'move', color: 'w', reward: 'worst' }, { kind: 'move', color: 'b', reward: null },
+    { kind: 'move', color: 'w', reward: 'worst' }, { kind: 'move', color: 'b', reward: null },
+  ] }
+  assert.equal(rankedRewardEggs(state, 'w', 'worst', 20), 6, 'the third Worst in a row doubles with several moves per list')
+  assert.equal(rankedRewardEggs(state, 'w', 'worst', 7), 3, 'one Worst move on offer caps the streak at 3')
+  assert.equal(rankedRewardEggs(state, 'w', 'worst'), 6, 'without a move count the streak is unchanged')
+  assert.equal(rankedRewardEggs({ ...state, actions: state.actions.map(a => a.color === 'w' ? { ...a, reward: 'best' } : a) }, 'w', 'best', 7), 2)
 })

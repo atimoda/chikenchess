@@ -107,7 +107,7 @@ export function squareMoveRewardDetails(
   startingFen: string,
   uci: string,
   side: EvaluationSide = 'w',
-): { kind: 'best' | 'worst'; comeback: boolean } | null {
+): { kind: 'best' | 'worst'; comeback: boolean; otherPiece: 'best' | 'worst' | null } | null {
   if (!shown) return null
   const snapshot = limitRankedLists(shown.analysis)
   if (!snapshot.complete || snapshot.fen !== startingFen || snapshot.side !== side || snapshot.legalMoves === 1) return null
@@ -118,6 +118,8 @@ export function squareMoveRewardDetails(
   return {
     kind: shown.kind === 'best' && rankedMoveLabelTone(move.score, move.mate) !== 'worst' ? 'best' : 'worst',
     comeback: shown.kind === 'best' && move.score < -100,
+    // A move outside the shown group that only shares its square: names that group.
+    otherPiece: moves.some(candidate => candidate.uci === uci) ? null : shown.kind,
   }
 }
 

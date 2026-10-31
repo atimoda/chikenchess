@@ -45,6 +45,30 @@
     "This is critical.",
     "\"Not bad\" at all"
   ],
+  "OTHER_PIECE_WORST_MESSAGES": [
+    "So clever!",
+    "You're the goat.",
+    "Big brain cluck!",
+    "Loophole found!",
+    "Same eggs, less pain.",
+    "Galaxy-brained!",
+    "The coop salutes you.",
+    "Sneaky chicken!",
+    "Rules? You read them.",
+    "Eggs-ploit unlocked!"
+  ],
+  "OTHER_PIECE_BEST_MESSAGES": [
+    "Not so smart.",
+    "What u doing bro?",
+    "Close enough… not.",
+    "Right square, wrong chicken.",
+    "Same eggs, worse move.",
+    "Bold of you.",
+    "The arrow was right there.",
+    "Wrong piece, buddy.",
+    "Eggs-cuse me?",
+    "Technically counts."
+  ],
   "BEST_STREAK_MESSAGES": [
     "Unstoppable!",
     "On fire!",

@@ -31,12 +31,11 @@ import { matchEggPayout, matchEggSources } from '@/lib/match-eggs'
 import { trackMatchCompleted, trackMatchStarted } from '@/lib/game-analytics'
 import { useSfx } from "@/hooks/use-sfx"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/lib/types"
 import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, settleCityDraw, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
-import { EGG_REWARDS, cappedMatchEggs, squareEggsExtraMs } from "@/lib/egg-rewards"
+import { EGG_REWARDS, cappedMatchEggs, rankedMoveEggsForPosition, squareEggsExtraMs } from "@/lib/egg-rewards"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
 import { SpectrogramWidget } from "./spectrogram-widget"
@@ -44,7 +43,7 @@ import { isConstrainedDevice } from "@/lib/performance"
 import { ChessEvaluationQueue, STOCKFISH_WORKER_URL, rankedMoveRewardDetails, rememberMoveSuggestions, squareEggTargets, squareMoveRewardDetails, type ShownMoveSuggestions, type ChessMoveAnalysis, type StockfishTrace } from "@/lib/chess-evaluation"
 import { WidgetToggleLayer } from "./widget-toggle-layer"
 import { OpponentMoveTimer } from "@/lib/opponent-move-timer"
-import { advanceMatchPowers, canUseMatchPower, createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, permitsPowerMove, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
+import { advanceMatchPowers, canUseMatchPower, createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, permitsPowerMove, shieldCaptureBlockMessage, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
 import { clonePoweredChess, freezeApplicationError, makePoweredChess, setPoweredChessPowers, stockfishSupportsPosition, syncPoweredMoveSan } from "@/lib/powered-chess"
 import { analyzePoweredMovesInWorker } from "@/lib/powered-analysis-client"
 import { useGameWidgetLayout } from "@/hooks/use-game-widget-layout"
@@ -84,7 +83,7 @@ interface ChessGameProps {
   showRankedMoveMarks?: boolean
 }
 
-const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
+const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, OTHER_PIECE_BEST_MESSAGES, OTHER_PIECE_WORST_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
 
 function randomMessage(messages: string[]) {
   return messages[Math.floor(Math.random() * messages.length)]
@@ -234,6 +233,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const botLastPowerTurnRef = useRef<Record<MatchPowerKind, number | null>>({ freeze: null, shield: null })
   const debugEggClicksRef = useRef(0)
   const collectedMatchEggsRef = useRef(0)
+  /** Eggs earned while the player's counter was full: the only match eggs that add historic points. */
+  const historicMatchPointsRef = useRef(0)
   const victoryToastRef = useRef<string | number | null>(null)
   useEffect(() => () => { if (victoryToastRef.current !== null) toast.dismiss(victoryToastRef.current) }, [])
   const victorySettledRef = useRef(false)
@@ -245,7 +246,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [rankedMoveAnnouncement, setRankedMoveAnnouncement] = useState<{ square: Square; kind: RankedMoveReward | 'neutral'; id: number; headline: string; earnedEggs: number; streak: boolean; comeback?: boolean } | null>(null)
   const [eggFlight, setEggFlight] = useState<EggFlight | null>(null)
   const [hoveredCostAction, setHoveredCostAction] = useState<'best' | 'undo' | 'redo' | 'worst' | 'freeze' | 'shield' | null>(null)
-  const [shieldCaptureNoticeOpen, setShieldCaptureNoticeOpen] = useState(false)
   const costHintTimerRef = useRef<number | null>(null)
   const costHintHideTimerRef = useRef<number | null>(null)
   const [mulliganPreviewActive, setMulliganPreviewActive] = useState(false)
@@ -845,8 +845,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const squareEggs = useMemo(() => squareEggTargets(squareEggGroup).map(({ square, kind }) => {
     const streak = rankedMoveStreakRef.current
     const count = streak.kind === kind ? streak.count + 1 : 1
-    return { square: square as Square, kind, eggs: cappedMatchEggs(visibleEggs, rankedMoveEggReward(kind, count >= 3 ? 2 : 1)) }
-  }).filter(target => target.eggs > 0), [squareEggGroup, visibleEggs])
+    const eggs = rankedMoveEggsForPosition(rankedMoveEggReward(kind, count >= 3 ? 2 : 1), squareEggGroup?.analysis.legalMoves ?? Infinity)
+    return { square: square as Square, kind, eggs }
+  }).filter(target => target.eggs > 0), [squareEggGroup])
 
   const displayedAnalysis = moveAnalysis?.fen === game.fen() ? moveAnalysis : liveMoveAnalysis?.fen === game.fen() ? liveMoveAnalysis : null
   const showAnalysisArrows = useCallback((kind: AnalysisArrowKind) => {
@@ -1001,7 +1002,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     ]
     setVisibleEggs(eggs.w)
     setVisibleOpponentEggs(eggs.b)
-    const collected = collectedMatchEggsRef.current
+    const collected = historicMatchPointsRef.current
     const result = draw ? settleCityDraw(city.id, earnedEggs, collected) : conquerCity(city.id, earnedEggs, collected)
     playerEggBalanceRef.current = 0
     opponentEggBalanceRef.current = 0
@@ -1250,7 +1251,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             if (rewardKind) recordReaction(rewardKind === 'best' ? 'playBest' : 'playWorst', 'b', gameCopy.history().length)
             if (rewardKind && !botRewardedMovesRef.current.has(rewardKey)) {
               const streak = streakCount >= 3
-              const earnedEggs = cappedMatchEggs(opponentEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1))
+              const earnedEggs = cappedMatchEggs(opponentEggBalanceRef.current, rankedMoveEggsForPosition(rankedMoveEggReward(rewardKind, streak ? 2 : 1), botAnalysis.legalMoves))
               // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
               if (earnedEggs > 0) botRewardedMovesRef.current.add(rewardKey)
               opponentEggBalanceRef.current += earnedEggs
@@ -1320,22 +1321,31 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       rankedMoveStreakRef.current = { kind: streakKind, count: streakCount }
       if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
         const streak = streakKind === rewardKind && streakCount >= 3
-        const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, rankedMoveEggReward(rewardKind, streak ? 2 : 1))
-        // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
-        if (earnedEggs > 0) rewardedMovesRef.current.add(rewardKey)
+        // With a single Best/Worst move on offer, the streak's x2 pays at most 3 eggs.
+        const rewardLegalMoves = [currentAnalysis, squareEggGroupRef.current?.analysis, ...shownSuggestionsRef.current.map(entry => entry.analysis)]
+          .find(analysis => analysis?.complete && analysis.fen === move.before)?.legalMoves ?? Infinity
+        const fullReward = rankedMoveEggsForPosition(rankedMoveEggReward(rewardKind, streak ? 2 : 1), rewardLegalMoves)
+        const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, fullReward)
+        // Eggs past the full counter (12) do not enter the match balance: they become historic points.
+        const overflowEggs = fullReward - earnedEggs
+        rewardedMovesRef.current.add(rewardKey)
         const reward = {
           earnedEggs,
           firstNotice: earnedEggs > 0 && markRankedMoveNotice(rewardKind),
         }
         playerEggBalanceRef.current += reward.earnedEggs
         collectedMatchEggsRef.current += reward.earnedEggs
+        historicMatchPointsRef.current += overflowEggs
         setVisibleEggs(playerEggBalanceRef.current)
         const id = ++rewardSerialRef.current
         setRankedMoveMark({ square: move.to, kind: rewardKind, id })
         const legalMoveCount = currentAnalysis?.legalMoves ?? 0
         const comeback = rewardDetails?.comeback ?? false
+        const otherPiece = rewardDetails && 'otherPiece' in rewardDetails ? rewardDetails.otherPiece : null
         const headline = legalMoveCount === 1
           ? randomMessage(SINGLE_LEGAL_MOVE_MESSAGES)
+          : otherPiece
+            ? randomMessage(otherPiece === 'worst' ? OTHER_PIECE_WORST_MESSAGES : OTHER_PIECE_BEST_MESSAGES)
           : comeback
             ? randomMessage(BEST_MOVES_WITH_WORST_SCORES_MESSAGES)
           : streak
@@ -1343,8 +1353,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               ? rewardKind === 'best' ? BEST_STREAK_6_PLUS_MESSAGES : WORST_STREAK_6_PLUS_MESSAGES
               : rewardKind === 'best' ? BEST_STREAK_MESSAGES : WORST_STREAK_MESSAGES)
             : randomMessage(rewardKind === 'best' ? BEST_MOVE_MESSAGES : WORST_MOVE_MESSAGES)
-        setRankedMoveAnnouncement({ square: move.to, kind: rewardKind, id, headline, earnedEggs: reward.earnedEggs, streak, comeback })
-        if (reward.earnedEggs > 0) setEggFlight({ sourceSquare: move.to, amount: reward.earnedEggs, direction: 'earn', id })
+        setRankedMoveAnnouncement({ square: move.to, kind: rewardKind, id, headline, earnedEggs: fullReward, streak, comeback })
+        setEggFlight({ sourceSquare: move.to, amount: fullReward, overflow: overflowEggs, direction: 'earn', id })
         if (rewardMarkTimerRef.current !== null) window.clearTimeout(rewardMarkTimerRef.current)
         rewardMarkTimerRef.current = window.setTimeout(() => {
           setRankedMoveMark(null)
@@ -2194,10 +2204,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onPowerTarget={targetPower}
                   matchPowers={matchPowers}
                   onFrozenCaptureBlocked={() => toast('Não é possível capturar uma peça congelada.', { id: 'frozen-capture-blocked', duration: 3000 })}
-                  onShieldCaptureBlocked={reason => {
-                    if (reason === 'protected-target') setShieldCaptureNoticeOpen(true)
-                    else toast('Peças protegidas não podem comer outras peças.', { id: 'shield-capture-blocked', duration: 3000 })
-                  }}
+                  onShieldCaptureBlocked={reason => toast(shieldCaptureBlockMessage(reason), { id: 'shield-capture-blocked', duration: 3000 })}
                   isMoveAllowed={move => permitsPowerMove(move, matchPowersRef.current, game.history().length + 1)}
                   cityColor={city.color} 
                   isThinking={isThinking} 
@@ -2490,15 +2497,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         chancePosition={chancePosition}
       />
 
-
-      <Dialog open={shieldCaptureNoticeOpen} onOpenChange={setShieldCaptureNoticeOpen}>
-        <DialogContent aria-describedby={undefined} className="z-[140] max-w-md border-amber-300/40 bg-[#101713] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-amber-100">Nem tente. Essa peça está protegida.</DialogTitle>
-          </DialogHeader>
-          <Button onClick={() => setShieldCaptureNoticeOpen(false)} className="mt-2">Entendi</Button>
-        </DialogContent>
-      </Dialog>
 
       <GameplayTipDialog tip={gameplayTip.tip} open={gameplayTip.open} onOpenChange={gameplayTip.setOpen} />
 

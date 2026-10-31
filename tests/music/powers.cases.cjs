@@ -3,7 +3,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { Chess } = require('chess.js')
 const { loadTs } = require('../helpers/music.cjs')
-const { canUseMatchPower, createMatchPower, permitsPowerMove, permittedPowerMoves, advanceMatchPowers, shieldCaptureBlock, frozenCaptureBlock } = loadTs('lib/chess-powers.ts')
+const { canUseMatchPower, createMatchPower, permitsPowerMove, permittedPowerMoves, advanceMatchPowers, shieldCaptureBlock, shieldCaptureBlockMessage, frozenCaptureBlock } = loadTs('lib/chess-powers.ts')
 const { makePoweredChess, clonePoweredChess, freezeApplicationError, setPoweredChessPowers, syncPoweredMoveSan, poweredChessSnapshot, restorePoweredChess, stockfishSupportsPosition } = loadTs('lib/powered-chess.ts')
 const { analyzePoweredMoves } = loadTs('lib/powered-analysis.ts')
 const { releasedPowers, MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, mulliganGhostEaseInOut, getOfflineMulliganPreviewMoves, getOnlineMulliganPreviewMoves } = loadTs('lib/power-presentation.ts')
@@ -133,6 +133,41 @@ test('blocked negative cue starts bounded sweep and disconnects nodes', async ()
   oscillators[0].onended()
   assert.ok(oscillators[0].disconnected)
   assert.ok(gains[0].disconnected)
+})
+
+test('blocked Shield capture uses short toast copy for each reason', () => {
+  assert.equal(shieldCaptureBlockMessage('protected-target'), 'Nem tente. Essa peça está protegida.')
+  assert.equal(shieldCaptureBlockMessage('protected-attacker'), 'Peças protegidas não podem comer outras peças.')
+})
+
+test('shield blocked cue is a short metallic ring that disconnects every node', async () => {
+  const { SfxEngine } = loadTs('lib/sfx-engine.ts')
+  const engine = new SfxEngine()
+  const sources = [], gains = [], filters = []
+  const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} })
+  const node = extra => ({ ...extra, disconnected: false, connect() { return this }, disconnect() { this.disconnected = true } })
+  const source = extra => {
+    const value = node({ ...extra, starts: [], stops: [], start(t) { this.starts.push(t) }, stop(t) { this.stops.push(t) } })
+    sources.push(value)
+    return value
+  }
+  engine.audioContext = {
+    state: 'running', currentTime: 3, sampleRate: 1000,
+    resume: async () => {},
+    createOscillator: () => source({ type: 'sine', frequency: param() }),
+    createBufferSource: () => source({ buffer: null }),
+    createBuffer: (_channels, length) => { const data = new Float32Array(length); return { getChannelData: () => data } },
+    createBiquadFilter: () => { const filter = node({ type: 'lowpass', frequency: param(), Q: param() }); filters.push(filter); return filter },
+    createGain: () => { const gain = node({ gain: param() }); gains.push(gain); return gain },
+  }
+  engine.masterGain = node({})
+  await engine.playShieldBlockedCue()
+  const oscillators = sources.filter(value => value.frequency)
+  assert.ok(oscillators.length >= 3, 'several inharmonic partials make it metallic')
+  assert.equal(filters[0].type, 'bandpass', 'strike click is band-limited')
+  assert.ok(sources.every(value => value.starts[0] === 3 && value.stops[0] - 3 <= .45), 'the ring stays under half a second')
+  sources.forEach(value => value.onended())
+  assert.ok([...sources, ...gains, ...filters].every(value => value.disconnected))
 })
 
 test('shipped powered Worker is bundled JavaScript and preserves the analysis protocol', async () => {

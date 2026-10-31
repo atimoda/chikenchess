@@ -3,13 +3,51 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.11.0',
+    date: '31/10/2026',
+    title: 'Pontos históricos só com o contador cheio, galinha com novas combinações de pulo e piscada no “Your move”',
+    groups: [
+      { title: 'Ovos e pontos históricos', items: [
+        'Os ovos ganhos na partida só viram pontos históricos quando o seu contador já está cheio (12 ovos). Esses ovos extras somem numa nuvenzinha ao bater no contador, ficam cinza, caem um pouco girando e desaparecem, e aparece “+X historic points” em cinza embaixo do contador por 2 segundos.',
+        'No fim da partida você leva os golden eggs que estão nos contadores (como antes), e os pontos históricos ganham, além desses ovos, só os ovos extras ganhos com o contador cheio. Um lance premiado com o contador cheio não paga de novo depois de Undo.',
+        'Os ovos nas casas das setas mostram o prêmio inteiro, mesmo com o contador cheio.',
+        'No online, os ovos ganhos agora também voam da casa até o contador, nos dois lados, com a nuvenzinha quando o contador está cheio.',
+      ] },
+      { title: 'Partida', items: [
+        '“Your move” dá uma piscada rápida quando aparece, para chamar atenção para a sua vez.',
+        'O histórico de jogadas no rodapé não bloqueia mais o mouse: dá para passar o mouse e clicar no que está atrás dele.',
+      ] },
+      { title: 'Galinha no globo', items: [
+        'A galinha usa a classe Leve e os cacarejos revisados no Pátio da Caipira.',
+        'Novas combinações: chocar e andar ao mesmo tempo, agachar correndo, e pulos com impulso para o lado próprio: agachada, chocando, agachada correndo e o super pulo agachada correndo e chocando. O empurrão para o lado ao pular agora dura até ela pousar.',
+        'Soltar o botão de chocar sem segurar mais nada deixa a galinha chocando; qualquer outro controle a faz levantar.',
+        'Cada movimento tem seu próprio tipo de cacarejo, ou nenhum.',
+        'Arrastada pelo mouse ou toque, ela bate as asas no ritmo da classe (ou fica com as asas paradas).',
+        'No gamepad, o X passa a ser chocar. Correr fica em RB e RT.',
+      ] },
+    ],
+  },
+  {
     version: '1.10.0',
     date: '28/10/2026',
     title: 'Galinha sobe sozinha em degraus e anda até onde você clicar',
     groups: [
+      { title: 'Ovos nas partidas', items: [
+        'Em posições com um só Best e um só Worst move (menos de 8 lances possíveis), uma jogada premiada passa a pagar no máximo 3 ovos: a sequência de Worst que antes dava 6 ovos agora dá 3.',
+      ] },
       { title: 'Galinha no globo', items: [
         'Andando, quando a canela ou o pé da galinha encosta na borda de uma plataforma (um botão do rodapé, um popup), ela sobe nela sozinha; se encostar em mais de uma, sobe na mais alta.',
         'Point-and-click: clique ou toque em qualquer ponto da tela e a galinha anda até ele. Ela para e volta ao normal quando chega embaixo do ponto, quando algo a impede de seguir ou quando você usa qualquer controle dela. Arrastar (o globo, um popup) não conta como clique.',
+      ] },
+      { title: 'Vitória', items: [
+        'Na animação de vitória, os ovos voando para a cesta passam na frente do popup da cesta, em vez de sumirem por trás dele.',
+        'O botão Return to map do popup da cesta agora se chama Return to lobby.',
+      ] },
+      { title: 'Partidas', items: [
+        'Recolher os ovos de Best/Worst com outra peça (que não a da seta) mostra frases próprias em cima da peça: depois de Worst, elogios como “So clever!” e “You\'re the goat.”; depois de Best, sarcasmo como “Not so smart.” e “What u doing bro?”.',
+      ] },
+      { title: 'Partidas', items: [
+        'Tentar comer uma peça protegida pelo Shield não abre mais um popup: aparece o aviso temporário “Nem tente. Essa peça está protegida.”, a peça protegida dá uma tremidinha junto com o escudo e toca um som de escudo metálico. Vale também no 1v1 online.',
       ] },
     ],
   },

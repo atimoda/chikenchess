@@ -298,7 +298,9 @@ export function GameBoardChanceBar({
         visible ? (dimmed ? "opacity-25" : "opacity-100") : "opacity-0"
       )}
       style={{
-        right: "calc(100% + 8px)",
+        // Keep the 8px gap, but on narrow screens (board almost as wide as the
+        // viewport) shrink it so the bar stays inside the visible area.
+        right: "calc(100% + clamp(2px, (100vw - 100%) / 2 - 6px, 8px))",
       }}
     >
       <div
@@ -350,7 +352,7 @@ export function GameFooter({
 
   return (
     <div className={cn("fixed inset-x-0 bottom-0 z-[40] w-full pointer-events-none transition-opacity duration-1000", !visible ? "opacity-0" : "opacity-100", className)}>
-      <div aria-label="Histórico de jogadas" className="flex h-6 w-full items-center overflow-hidden bg-transparent px-3 md:px-6 pointer-events-auto">
+      <div aria-label="Histórico de jogadas" className="flex h-6 w-full items-center overflow-hidden bg-transparent px-3 md:px-6 pointer-events-none">
         <div ref={tickerRef} className="flex w-full items-center justify-start gap-3 overflow-x-auto whitespace-nowrap font-mono text-xs scrollbar-hide" style={{ textShadow: "1px 1px 1px black" }}>
           {moves.map((move, i) => <span key={i} className={i % 2 === 0 ? "text-white" : "text-muted-foreground"}>
             {i % 2 === 0 ? `${Math.floor(i / 2) + 1}.` : ""} {move}

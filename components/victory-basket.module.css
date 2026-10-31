@@ -2,7 +2,7 @@
 .heading { font-size: 13px; letter-spacing: .15em; font-weight: 800; color: #ffe1a0; }
 .stage { position: relative; height: 155px; overflow: hidden; }
 .basket { position: absolute; width: 200px; height: 135px; left: 50%; bottom: 0; transform: translateX(-50%); }
-.flyingEgg { position: fixed; z-index: 200; pointer-events: none; left: 0; top: 0; width: 17px; height: 23px; border-radius: 52% 52% 45% 45%; background: radial-gradient(at 35% 25%, #fff5bc, #e4b22b 60%, #a36d0e); box-shadow: 0 0 8px #fbbf2466; }
+.flyingEgg { position: fixed; z-index: 2147483647; pointer-events: none; left: 0; top: 0; width: 17px; height: 23px; border-radius: 52% 52% 45% 45%; background: radial-gradient(at 35% 25%, #fff5bc, #e4b22b 60%, #a36d0e); box-shadow: 0 0 8px #fbbf2466; }
 .basketCount { position: absolute; bottom: 23px; left: 50%; transform: translateX(-50%); padding: 1px 9px; border-radius: 12px; background: #251708cc; color: #ffe8ac; font-weight: 700; }
 .card p { margin: 5px 0; }
 .takeHome { font-size: 17px; }

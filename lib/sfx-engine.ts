@@ -240,6 +240,45 @@ export class SfxEngine {
     oscillator.stop(time + 0.2)
   }
 
+  /** Light metallic "tink" of a struck shield: inharmonic plate partials over a short strike click. */
+  async playShieldBlockedCue() {
+    if (!this.audioContext || !this.masterGain) await this.init()
+    await this.resume()
+    const ctx = this.audioContext, master = this.masterGain
+    if (!ctx || !master) return
+
+    const time = ctx.currentTime
+    const pitch = .98 + Math.random() * .04
+    // Plate-like ratios; upper partials ring shorter so the tail stays soft.
+    const partials: [number, number, number][] = [[620, .07, .42], [626, .035, .42], [1438, .045, .3], [2635, .028, .2], [4111, .016, .12]]
+    for (const [frequency, peak, decay] of partials) {
+      const tone = ctx.createOscillator(), envelope = ctx.createGain()
+      tone.type = 'sine'
+      tone.frequency.setValueAtTime(frequency * pitch, time)
+      envelope.gain.setValueAtTime(.001, time)
+      envelope.gain.exponentialRampToValueAtTime(peak, time + .002)
+      envelope.gain.exponentialRampToValueAtTime(.001, time + decay)
+      tone.connect(envelope).connect(master)
+      tone.onended = () => { tone.disconnect(); envelope.disconnect() }
+      tone.start(time)
+      tone.stop(time + decay + .02)
+    }
+    const click = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), clickEnvelope = ctx.createGain()
+    const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * .03), ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length)
+    click.buffer = buffer
+    filter.type = 'bandpass'
+    filter.frequency.value = 3400
+    filter.Q.value = 1.4
+    clickEnvelope.gain.setValueAtTime(.06, time)
+    clickEnvelope.gain.exponentialRampToValueAtTime(.001, time + .03)
+    click.connect(filter).connect(clickEnvelope).connect(master)
+    click.onended = () => { click.disconnect(); filter.disconnect(); clickEnvelope.disconnect() }
+    click.start(time)
+    click.stop(time + .03)
+  }
+
   async playAnalysisWhistle(direction: 'up' | 'down') {
     if (!this.audioContext || !this.masterGain) await this.init()
     await this.resume()

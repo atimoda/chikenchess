@@ -3,6 +3,8 @@ import type { Square } from "chess.js"
 export interface EggFlight {
   id: number
   amount: number
+  /** The last `overflow` eggs of an earn flight hit a full counter: they puff away and only add historic points. */
+  overflow?: number
   direction: 'earn' | 'spend'
   owner?: 'w' | 'b'
   sourceSquare?: Square
@@ -33,8 +35,17 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
       { transform: 'scale(1)', boxShadow: '0 0 0 rgba(251,191,36,0)' },
     ], { duration: 370, easing: 'ease-out' })
   }
+  const overflow = flight.direction === 'earn' ? Math.max(0, Math.min(flight.amount, flight.overflow ?? 0)) : 0
+  const firstOverflow = flight.amount - overflow
+  let labelShown = false
+  const showLabel = () => {
+    if (labelShown || overflow <= 0) return
+    labelShown = true
+    showHistoricPointsLabel(counterEl, overflow, cleanups)
+  }
   if ((!source && flight.direction === 'earn') || !fromRect || !toRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    for (let i = 0; i < flight.amount; i++) finishEgg()
+    for (let i = 0; i < firstOverflow; i++) finishEgg()
+    showLabel()
     return
   }
   const { x: x0, y: y0 } = rectPoint(fromRect)
@@ -104,6 +115,11 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
 
         if (p < 1) {
           frame = window.requestAnimationFrame(tick)
+        } else if (index >= firstOverflow) {
+          // The counter is full: the egg vanishes in a puff, turns grey and drops away.
+          showLabel()
+          puffAt(curX, curY, cleanups)
+          dropGreyEgg(egg, curX, curY, rotation, cleanup)
         } else {
           cleanup()
           finishEgg()
@@ -127,4 +143,78 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
       timer = window.setTimeout(() => { frame = window.requestAnimationFrame(tick) }, index * 110)
     }
   }
+}
+
+/** Grey egg left after the puff: falls 30 px, turning a random 0–50°, and fades out. */
+function dropGreyEgg(egg: HTMLElement, x: number, y: number, rotation: number, cleanup: () => void) {
+  egg.style.background = 'radial-gradient(circle at 32% 25%,#f4f4f5 0%,#a1a1aa 43%,#52525b 100%)'
+  egg.style.boxShadow = 'none'
+  const start = `translate3d(${x - 11}px,${y - 14}px,0) scale(.7) rotate(-${rotation}deg)`
+  const turn = Math.random() * 50 * (Math.random() < .5 ? -1 : 1)
+  const end = `translate3d(${x - 11}px,${y + 16}px,0) scale(.7) rotate(${-rotation + turn}deg)`
+  const animation = egg.animate([
+    { transform: start, opacity: 1 },
+    { transform: end, opacity: 0 },
+  ], { duration: 650, easing: 'cubic-bezier(.45,0,.75,.6)', fill: 'forwards' })
+  animation.onfinish = cleanup
+  animation.oncancel = cleanup
+}
+
+/** Small cloud of grey-white puffs where an overflow egg touched the counter. */
+function puffAt(x: number, y: number, cleanups: Set<() => void>) {
+  const cloud = document.createElement('span')
+  cloud.setAttribute('aria-hidden', 'true')
+  cloud.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:0;height:0;pointer-events:none;z-index:101;`
+  const puffs = 7
+  for (let i = 0; i < puffs; i++) {
+    const puff = document.createElement('span')
+    const size = 10 + Math.random() * 8
+    const angle = (i / puffs) * Math.PI * 2 + Math.random() * .5
+    const distance = 12 + Math.random() * 8
+    puff.style.cssText = `position:absolute;left:${-size / 2}px;top:${-size / 2}px;width:${size}px;height:${size}px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ffffff 0%,#e4e4e7 55%,rgba(212,212,216,.6) 100%);`
+    puff.animate([
+      { transform: 'translate(0,0) scale(.3)', opacity: .95 },
+      { transform: `translate(${Math.cos(angle) * distance}px,${Math.sin(angle) * distance}px) scale(1.15)`, opacity: 0 },
+    ], { duration: 480, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' })
+    cloud.appendChild(puff)
+  }
+  document.body.appendChild(cloud)
+  let timer = 0
+  const cleanup = () => {
+    window.clearTimeout(timer)
+    cloud.remove()
+    cleanups.delete(cleanup)
+  }
+  cleanups.add(cleanup)
+  timer = window.setTimeout(cleanup, 520)
+}
+
+/** Grey "+X historic points" under an egg counter for 2 s; a newer label replaces the one shown there. */
+export function showHistoricPointsLabel(counterEl: HTMLElement | null, amount: number, cleanups: Set<() => void>) {
+  if (!counterEl || amount <= 0) return
+  const rect = counterEl.getBoundingClientRect()
+  document.querySelectorAll<HTMLElement>('[data-historic-points-label]').forEach(label => {
+    if (label.dataset.historicPointsLabel === `${Math.round(rect.left)}:${Math.round(rect.top)}`) label.remove()
+  })
+  const label = document.createElement('span')
+  label.dataset.historicPointsLabel = `${Math.round(rect.left)}:${Math.round(rect.top)}`
+  label.textContent = `+${amount} historic ${amount === 1 ? 'point' : 'points'}`
+  label.setAttribute('role', 'status')
+  label.style.cssText = `position:fixed;left:${rect.left + rect.width / 2}px;top:${rect.bottom + 4}px;transform:translateX(-50%);white-space:nowrap;font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a1a1aa;text-shadow:1px 1px 1px #000;pointer-events:none;z-index:101;`
+  document.body.appendChild(label)
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!reduced) label.animate([
+    { opacity: 0, offset: 0 },
+    { opacity: 1, offset: .1 },
+    { opacity: 1, offset: .85 },
+    { opacity: 0, offset: 1 },
+  ], { duration: 2000, fill: 'forwards' })
+  let timer = 0
+  const cleanup = () => {
+    window.clearTimeout(timer)
+    label.remove()
+    cleanups.delete(cleanup)
+  }
+  cleanups.add(cleanup)
+  timer = window.setTimeout(cleanup, 2000)
 }
