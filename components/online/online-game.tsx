@@ -701,7 +701,7 @@ export function OnlineMatchBoard({
     const moves = limitRankedLists(analysis.analysis)[group]
       .map(({ uci, score, mate }) => ({ uci, score, mate }));
     perform({ kind: "suggest", group, moves, position });
-    void getSfxEngine().playAnalysisWhistle(group === "best" ? "up" : "down");
+    if (awardAnimationsRef.current) void getSfxEngine().playAnalysisWhistle(group === "best" ? "up" : "down");
   };
   const changeSync = (enabled: boolean) => {
     setSyncParams(enabled);
