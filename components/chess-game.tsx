@@ -241,7 +241,16 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   /** Eggs earned while the player's counter was full: the only match eggs that add historic points. */
   const historicMatchPointsRef = useRef(0)
   const victoryToastRef = useRef<string | number | null>(null)
-  useEffect(() => () => { if (victoryToastRef.current !== null) toast.dismiss(victoryToastRef.current) }, [])
+  // Bot checkmate keeps the match open for a Mulligan; this notice offers the way back to the globe.
+  const defeatToastRef = useRef<string | number | null>(null)
+  const dismissDefeatToast = useCallback(() => {
+    if (defeatToastRef.current !== null) toast.dismiss(defeatToastRef.current)
+    defeatToastRef.current = null
+  }, [])
+  useEffect(() => () => {
+    if (victoryToastRef.current !== null) toast.dismiss(victoryToastRef.current)
+    if (defeatToastRef.current !== null) toast.dismiss(defeatToastRef.current)
+  }, [])
   const victorySettledRef = useRef(false)
   const reportedMatchResultRef = useRef<string | null>(null)
   const reportedMatchStartRef = useRef(false)
@@ -1120,14 +1129,19 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           settleCityVictory()
         }
       } else {
-        playCheckmate()
-        playerEggBalanceRef.current = 0
-        opponentEggBalanceRef.current = 0
-        setVisibleEggs(0)
-        setVisibleOpponentEggs(0)
-        toast.error("DEFEAT!", {
-          description: "The opponent takes the match eggs. Try again to conquer this city."
-        })
+        if (defeatToastRef.current === null) {
+          playCheckmate()
+          // Against a bot the match eggs stay in play: the player may Mulligan the mate away.
+          const canMulligan = playerEggBalanceRef.current >= 2
+          defeatToastRef.current = toast.error("CHECKMATE!", {
+            id: 'bot-checkmate',
+            duration: Infinity,
+            description: canMulligan
+              ? "Use a Mulligan (2 golden eggs) to keep playing, or return to the lobby."
+              : "You need 2 golden eggs to use a Mulligan. Return to the lobby.",
+            action: { label: "Return to lobby", onClick: () => { defeatToastRef.current = null; onBack() } },
+          })
+        }
       }
     } else if (game.isDraw() || game.isStalemate()) {
       setGameStatus("DRAW!")
@@ -1140,7 +1154,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "Bot thinking...")
     }
-  }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase])
+  }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase, onBack])
 
   useEffect(() => {
     if (introPhase !== 3 || panelsFollowPlayerTurn) return
@@ -1442,6 +1456,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const removedSnapshots = powerTimelineRef.current.slice(targetPly + 1).reverse()
     const restoredSnapshot = powerTimelineRef.current[targetPly]
     if (!restoredSnapshot) return
+    if (undoingCheckmate) dismissDefeatToast()
     matchUsageRef.current.undo++
     setReactionLog(log => [...log.filter(entry => entry.ply <= targetPly), { trigger: 'mulligan' as const, color: 'w' as const, ply: targetPly }].slice(-128))
     redoTimelineRef.current = [...redoTimelineRef.current, ...removedSnapshots]
@@ -1491,7 +1506,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     // Re-evaluate the reconstructed position with its repetition history.
     console.log("Undo to FEN:", newGame.fen())
     requestEvaluation(newGame)
-  }, [panelsFollowPlayerTurn, requestEvaluation, resumeAudio])
+  }, [dismissDefeatToast, panelsFollowPlayerTurn, requestEvaluation, resumeAudio])
 
   const redoMove = useCallback(() => {
     const pendingRedo = redoStackRef.current

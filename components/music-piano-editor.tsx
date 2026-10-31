@@ -118,11 +118,16 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
   noteParamsHost(selectedValue?{note:selectedValue,updateMode:knobUpdateMode,onChange:patch=>noteHandlers.current.change(patch),onDeselect:()=>noteHandlers.current.deselect()}:null)
  },[noteParamsHost,selectedValue,knobUpdateMode])
  useEffect(()=>()=>noteParamsHost?.(null),[noteParamsHost])
+ // Editor notices sit small and white right under the "X bars / Y beats" label.
+ const noticeStyle={margin:'3px 0 0',fontSize:9,lineHeight:1.3,color:'#fff'} as const
+ const notices=<>
+  {snapshot.sectionOverrides?.[id]!==undefined&&<p style={noticeStyle}>A game rule forces only variation {String.fromCharCode(65+playback.variation)} and overrides the pinned tab. Timing, presence and transposition keep following the global section.</p>}
+  {error&&<p role="alert" style={noticeStyle}>{error}</p>}
+ </>
+ const noticeIndex=visibleVariations.some(({index})=>index===playback.variation)?playback.variation:visibleVariations[0]?.index
  return <section aria-label="Variation editor" data-midi-visual-panel data-compact={compact||undefined}>
   {!compact&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}><label><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>Beat subdivision<InfoTip label="How to edit notes">The subdivision sets the rhythmic points inside each beat: 3 parts show the eighths in 6/8, 9/8 and 12/8. Click an empty area and drag to draw. Drag a note to move it; hold Alt while dragging to duplicate it with its parameters. Drag its right edge to lengthen or shorten it. Double-click a note to delete it. You can also select it and use Delete note, Delete or Backspace.</InfoTip></span><select value={division} onChange={e=>setDivision(Number(e.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,snapshot.meter)}</option>)}</select></label></div>}
   
-  {snapshot.sectionOverrides?.[id]!==undefined&&<p>A game rule forces only variation {String.fromCharCode(65+playback.variation)} and overrides the pinned tab. Timing, presence and transposition keep following the global section.</p>}
-  {error&&<p role="alert">{error}</p>}
   {visibleVariations.map(({roll:savedRoll,index})=>{
    const roll=draft?.index===index?draft.roll:savedRoll, active=playback.variation===index, sounding=active&&playback.running
    const {low,high}=visibleDegreeRange(roll.notes),rowHeight=264/(high-low+1)
@@ -134,6 +139,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
      <div style={{display:'grid',gap:4}}><button style={{minWidth:98,whiteSpace:'nowrap',color:fixed?'#fff':undefined}} aria-pressed={fixed} onClick={()=>onChange({selectedVariation:fixed?undefined:index})}>Variation {String.fromCharCode(65+index)}</button>{sounding&&<span style={{fontSize:9}}>{present?'Playing':'Section rest'}</span>}</div>
      <div style={{width:156,marginLeft:'auto'}}><div style={{position:'relative'}}><input aria-label={`Bars of variation ${index+1}`} inputMode="decimal" value={bars} readOnly style={{paddingRight:64}}/><button type="button" aria-label={`Shorten variation ${index+1}`} disabled={bars<=1/pulses} onClick={()=>save(index,resizeRoll(roll,Math.max(1/pulses,bars-1/pulses)))} style={{position:'absolute',right:32,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>−</button><button type="button" aria-label={`Lengthen variation ${index+1}`} disabled={bars>=MAX_ROLL_BARS} onClick={()=>save(index,resizeRoll(roll,Math.min(MAX_ROLL_BARS,bars+1/pulses)))} style={{position:'absolute',right:3,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>+</button></div><span style={{display:'block',marginTop:3,fontSize:9,color:'#9eafa2'}}>{bars} bars / {bars*pulses} beats</span></div>
     </div>}
+    {!compact&&index===noticeIndex&&<div style={{textAlign:'right'}}>{notices}</div>}
      <svg preserveAspectRatio="none" viewBox="0 0 480 264" style={{display:'block',width:'100%',height:compact?142:264,background:'#101a14',userSelect:'none',touchAction:'pan-y',cursor:'crosshair'}} tabIndex={0} role="application" aria-label={`Piano roll of variation ${index+1}`}
       onKeyDown={e=>{if(e.key==='Escape')cancel();if((e.key==='Delete'||e.key==='Backspace')&&selectedNote?.index===index){e.preventDefault();removeNote(index,roll,selectedNote.note)}}}
       onPointerDown={e=>{
@@ -170,6 +176,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       const row=typeof actions==='function'?actions(deleteNote):<>{deleteNote}{actions}</>
       return <>
        {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,minHeight:41}}><span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{bars} bars / {bars*pulses} beats</span>{row}</div>:row}
+       {compact&&index===noticeIndex&&notices}
        {!noteParamsHost&&selected>=0&&<MusicNoteParams note={roll.notes[selected]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selected?{...note,...patch}:note)})}/>}
       </>
      })()}
