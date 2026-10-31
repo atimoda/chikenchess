@@ -9,6 +9,25 @@ export interface MulliganPreviewMove {
   piece: string
   currentSquare: Square
   targetSquare: Square
+  /** Piece captured by this move, shown back on its square while previewing. */
+  captured?: { piece: string; square: Square }
+}
+
+type PreviewSourceMove = { color: string; piece: string; from: Square; to: Square; promotion?: string; captured?: string; flags: string }
+
+function toPreviewMove(move: PreviewSourceMove): MulliganPreviewMove {
+  const preview: MulliganPreviewMove = {
+    piece: `${move.color}${(move.promotion ?? move.piece).toUpperCase()}`,
+    currentSquare: move.to,
+    targetSquare: move.from,
+  }
+  if (move.captured) {
+    const capturedColor = move.color === 'w' ? 'b' : 'w'
+    // En passant removes the pawn beside the mover, not the one on the destination square.
+    const square = (move.flags.includes('e') ? `${move.to[0]}${move.from[1]}` : move.to) as Square
+    preview.captured = { piece: `${capturedColor}${move.captured.toUpperCase()}`, square }
+  }
+  return preview
 }
 
 /** Ease-in-out (cubic easing) for the Mulligan ghost preview, providing a distinct, smooth acceleration from rest and deceleration into destination. */
@@ -28,11 +47,7 @@ export function getOfflineMulliganPreviewMoves(game: Chess): MulliganPreviewMove
   const stepsToUndo = isAiThinking ? 1 : 2
   if (history.length < stepsToUndo) return []
   const undoneMoves = history.slice(-stepsToUndo)
-  return undoneMoves.map(move => ({
-    piece: `${move.color}${(move.promotion ?? move.piece).toUpperCase()}`,
-    currentSquare: move.to,
-    targetSquare: move.from,
-  }))
+  return undoneMoves.map(toPreviewMove)
 }
 
 /** Resolves moves to undo and their ghost copies for online match from player's last move onward. */
@@ -47,11 +62,7 @@ export function getOnlineMulliganPreviewMoves(
   const history = game.history({ verbose: true })
   if (history.length < moveActionsCount) return []
   const undoneMoves = history.slice(-moveActionsCount)
-  return undoneMoves.map(move => ({
-    piece: `${move.color}${(move.promotion ?? move.piece).toUpperCase()}`,
-    currentSquare: move.to,
-    targetSquare: move.from,
-  }))
+  return undoneMoves.map(toPreviewMove)
 }
 
 export function animateInsufficientEggs(counter: HTMLElement | null) {

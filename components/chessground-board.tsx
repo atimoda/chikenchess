@@ -104,6 +104,13 @@ interface MulliganGhostPiece {
   targetY: number
 }
 
+interface MulliganCapturedGhost {
+  piece: string
+  square: Square
+  x: number
+  y: number
+}
+
 // mulliganProgress and mulliganGhostEaseInOut expressed as CSS timing functions.
 const MULLIGAN_EASING = "cubic-bezier(.42, 0, .58, 1)"
 const MULLIGAN_GHOST_EASING = "cubic-bezier(.65, 0, .35, 1)"
@@ -367,6 +374,7 @@ export function ChessgroundBoard({
   const [animatingPieces, setAnimatingPieces] = useState<PieceAnimation[]>([])
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mulliganGhostPieces, setMulliganGhostPieces] = useState<MulliganGhostPiece[]>([])
+  const [mulliganCapturedGhosts, setMulliganCapturedGhosts] = useState<MulliganCapturedGhost[]>([])
 
   const justDraggedRef = useRef(false)
 
@@ -397,8 +405,15 @@ export function ChessgroundBoard({
   useEffect(() => {
     if (!mulliganPreviewMoves || mulliganPreviewMoves.length === 0) {
       setMulliganGhostPieces([])
+      setMulliganCapturedGhosts([])
       return
     }
+
+    setMulliganCapturedGhosts(mulliganPreviewMoves.flatMap(move => {
+      if (!move.captured) return []
+      const { x, y } = getCoords(move.captured.square)
+      return [{ piece: move.captured.piece, square: move.captured.square, x, y }]
+    }))
 
     setMulliganGhostPieces(mulliganPreviewMoves.map(move => {
       const start = getCoords(move.currentSquare)
@@ -444,6 +459,7 @@ export function ChessgroundBoard({
           }
       } else if (history.length < previousHistory.length && undoAnimationKey !== prevUndoAnimationKey.current) {
           setMulliganGhostPieces([])
+          setMulliganCapturedGhosts([])
           const undoneMoves = previousHistory.slice(history.length).reverse()
           const reverseAnimations = undoneMoves.map(move => {
             const from = getCoords(move.to)
@@ -1348,6 +1364,25 @@ export function ChessgroundBoard({
                 dangerouslySetInnerHTML={stableHtml(PiecesSVG[animation.piece as PieceKey] || "")}
               />
         </GlidingSquare>
+      ))}
+
+      {/* Mulligan Ghost Preview: pieces captured by the moves that would be undone */}
+      {mulliganCapturedGhosts.map((ghost, index) => (
+        <div
+          key={`mulligan-captured-${ghost.piece}-${ghost.square}-${index}`}
+          data-mulligan-captured-ghost={ghost.square}
+          className="absolute pointer-events-none z-30 w-[12.5%] h-[12.5%] flex items-center justify-center"
+          style={{ left: `${ghost.x}%`, top: `${ghost.y}%` }}
+        >
+          <div
+            className={cn("w-[85%] h-[85%]", ghost.piece.startsWith('b') && "black-piece-outline")}
+            style={{
+              opacity: 0.5,
+              filter: musicEffectsEnabled ? `drop-shadow(0 0 12px ${cityColor})` : undefined,
+            }}
+            dangerouslySetInnerHTML={stableHtml(PiecesSVG[ghost.piece as PieceKey] || "")}
+          />
+        </div>
       ))}
 
       {/* Mulligan Ghost Preview Pieces */}

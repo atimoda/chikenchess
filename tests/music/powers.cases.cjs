@@ -681,6 +681,22 @@ test('Mulligan hover preview generates ghost moves at half speed for offline and
 
   // Online: Black perspective before Black has made any moves
   assert.deepEqual(getOnlineMulliganPreviewMoves(game, [{ kind: 'move', color: 'w' }], 'b'), [])
+
+  // Captures: the captured piece comes back as a ghost on the square it occupied
+  const captureGame = new Chess()
+  for (const san of ['e4', 'd5', 'exd5']) captureGame.move(san)
+  assert.deepEqual(getOfflineMulliganPreviewMoves(captureGame), [
+    { piece: 'wP', currentSquare: 'd5', targetSquare: 'e4', captured: { piece: 'bP', square: 'd5' } },
+  ])
+  captureGame.move('Qxd5')
+  const recapture = getOfflineMulliganPreviewMoves(captureGame)
+  assert.deepEqual(recapture.map(move => move.captured), [{ piece: 'bP', square: 'd5' }, { piece: 'wP', square: 'd5' }])
+  assert.deepEqual(getOnlineMulliganPreviewMoves(captureGame, [{ kind: 'move', color: 'b' }], 'b')[0].captured, { piece: 'wP', square: 'd5' })
+
+  // En passant: the captured pawn returns beside the destination square
+  const enPassant = new Chess()
+  for (const san of ['e4', 'a6', 'e5', 'd5', 'exd6']) enPassant.move(san)
+  assert.deepEqual(getOnlineMulliganPreviewMoves(enPassant, [{ kind: 'move', color: 'w' }], 'w')[0].captured, { piece: 'bP', square: 'd5' })
 })
 
 
