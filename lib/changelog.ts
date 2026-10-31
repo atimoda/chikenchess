@@ -15,6 +15,9 @@ export const CHANGELOG = [
         'Na animação de vitória, os ovos voando para a cesta passam na frente do popup da cesta, em vez de sumirem por trás dele.',
         'O botão Return to map do popup da cesta agora se chama Return to lobby.',
       ] },
+      { title: 'Partidas', items: [
+        'Recolher os ovos de Best/Worst com outra peça (que não a da seta) mostra frases próprias em cima da peça: depois de Worst, elogios como “So clever!” e “You\'re the goat.”; depois de Best, sarcasmo como “Not so smart.” e “What u doing bro?”.',
+      ] },
     ],
   },
   {

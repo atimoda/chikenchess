@@ -336,8 +336,10 @@ test('eggs on a shown destination square pay any piece that lands there', () => 
     worst: [{ uci: 'h2h4', score: -300, mate: null }] }
   const shown = { kind: 'best', analysis }
   assert.deepEqual(squareEggTargets(shown), [{ square: 'f3', kind: 'best' }, { square: 'e4', kind: 'worst' }])
-  assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'g2f3'), { kind: 'best', comeback: false }, 'another piece on f3 earns the Best eggs')
-  assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'd3e4'), { kind: 'worst', comeback: true })
+  assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'g2f3'), { kind: 'best', comeback: false, otherPiece: 'best' }, 'another piece on f3 earns the Best eggs')
+  assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'g1f3'), { kind: 'best', comeback: false, otherPiece: null }, 'the suggested move itself is not another piece')
+  assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'd3e4'), { kind: 'worst', comeback: true, otherPiece: 'best' })
+  assert.deepEqual(squareMoveRewardDetails({ kind: 'worst', analysis }, 'before', 'g2h4'), { kind: 'worst', comeback: false, otherPiece: 'worst' })
   assert.equal(squareMoveRewardDetails(shown, 'before', 'h2h4'), null, 'a square from the other, unseen group pays nothing here')
   assert.equal(squareMoveRewardDetails(shown, 'after', 'g2f3'), null)
   assert.equal(squareMoveRewardDetails(null, 'before', 'g2f3'), null)

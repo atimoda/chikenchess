@@ -17,7 +17,7 @@ export const ADMIN_ENTRIES: AdminEntry[] = [
   ui('opening-phrases', 'Abertura do globo', 'Frase sorteada ao entrar no mapa.', 'strings'),
   ui('match-tips', 'Tips de abertura', 'Dicas exibidas sequencialmente na abertura das primeiras partidas.', 'strings'),
   ui('city-intros', 'Introduções das fases', 'Frases de abertura por cidade e época.', 'string-groups'),
-  ui('move-messages', 'Jogadas e sequências', 'Mensagens de Best, Worst, sequências e jogada única.', 'string-groups'),
+  ui('move-messages', 'Jogadas e sequências', 'Mensagens de Best, Worst, ovos recolhidos com outra peça, sequências e jogada única.', 'string-groups'),
   ui('city-descriptions', 'Descrições das fases', 'Textos culturais exibidos nos cartões do globo.', 'text-map'),
   ui('campaigns', 'Campanhas', 'Nomes das campanhas; os IDs são preservados.', 'campaigns'),
   ui('rank-titles', 'Títulos dos ranks', 'Nomes dos níveis; os limites de pontuação são preservados.', 'ranks'),

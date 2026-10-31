@@ -17,6 +17,7 @@ export function ListEditor({ entry, value, onChange }: { entry: AdminEntry; valu
   const labels: Record<string, string> = {
     title: 'Tratamentos e títulos', adjective: 'Adjetivos', noun: 'Substantivos', epithet: 'Epítetos',
     BEST_MOVE_MESSAGES: 'Melhores jogadas', BEST_MOVES_WITH_WORST_SCORES_MESSAGES: 'Boas escolhas em posições difíceis', WORST_MOVE_MESSAGES: 'Piores jogadas',
+    OTHER_PIECE_WORST_MESSAGES: 'Ovos de Worst com outra peça', OTHER_PIECE_BEST_MESSAGES: 'Ovos de Best com outra peça',
     BEST_STREAK_MESSAGES: 'Sequências de boas jogadas', WORST_STREAK_MESSAGES: 'Sequências de más jogadas',
     BEST_STREAK_6_PLUS_MESSAGES: 'Boas sequências de seis ou mais', WORST_STREAK_6_PLUS_MESSAGES: 'Más sequências de seis ou mais', SINGLE_LEGAL_MOVE_MESSAGES: 'Jogada única',
   }
