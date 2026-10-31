@@ -11,6 +11,7 @@ export const CHANGELOG = [
         'Os ovos ganhos na partida só viram pontos históricos quando o seu contador já está cheio (12 ovos). Esses ovos extras somem numa nuvenzinha ao bater no contador, ficam cinza, caem um pouco girando e desaparecem, e aparece “+X historic points” em cinza embaixo do contador por 2 segundos.',
         'No fim da partida você leva os golden eggs que estão nos contadores (como antes), e os pontos históricos ganham, além desses ovos, só os ovos extras ganhos com o contador cheio. Um lance premiado com o contador cheio não paga de novo depois de Undo.',
         'Os ovos nas casas das setas mostram o prêmio inteiro, mesmo com o contador cheio.',
+        'No online, os ovos ganhos agora também voam da casa até o contador, nos dois lados, com a nuvenzinha quando o contador está cheio.',
       ] },
       { title: 'Partida', items: [
         '“Your move” dá uma piscada rápida quando aparece, para chamar atenção para a sua vez.',
