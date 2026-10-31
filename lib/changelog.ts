@@ -16,6 +16,7 @@ export const CHANGELOG = [
       { title: 'Partida', items: [
         '“Your move” dá uma piscada rápida quando aparece, para chamar atenção para a sua vez.',
         'O histórico de jogadas no rodapé não bloqueia mais o mouse: dá para passar o mouse e clicar no que está atrás dele.',
+        'Levar xeque-mate de um bot (campanha ou partida livre) não encerra mais a partida nem zera os ovos: aparece um aviso no canto inferior direito com “Return to lobby”, e, se você tiver ovos, um Mulligan desfaz o mate e a partida continua (o aviso some sozinho). Partidas online contra outros jogadores continuam terminando no xeque-mate.',
       ] },
       { title: 'Galinha no globo', items: [
         'A galinha usa a classe Leve e os cacarejos revisados no Pátio da Caipira.',
