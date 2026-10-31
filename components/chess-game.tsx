@@ -872,7 +872,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       recordReaction(kind === 'best' ? 'seeBest' : 'seeWorst', 'w', gameRef.current.history().length)
     }
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
-    void engineRef.current?.playAnalysisWhistle(kind === 'worst' ? 'down' : 'up')
+    if (awardAnimationsRef.current) void engineRef.current?.playAnalysisWhistle(kind === 'worst' ? 'down' : 'up')
     analysisArrowKindRef.current = kind
     pendingShownSuggestionsRef.current = kind === 'top' ? null : { kind, analysis: displayedAnalysis }
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
