@@ -4,7 +4,8 @@
 // (3 slots per action), on-screen controls mode and clucking sound, saved in this browser.
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { X } from "lucide-react"
+import { FloatingPanel } from "@/components/ui/floating-panel"
 import {
   CHICKEN_ACTIONS, chickenBindName, defaultChickenControls, loadChickenControls, readGamepadTokens, saveChickenControls,
   setChickenControlsListening, subscribeChickenControls, type ChickenAction, type ChickenControls, type ChickenTouchMode,
@@ -82,12 +83,22 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
   }, [listen])
 
   useEffect(() => { if (!open) setListen(null) }, [open])
+  // Esc closes the panel (while waiting for a key, Esc only cancels that)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.code === "Escape" && !listenRef.current) onOpenChange(false) }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [open, onOpenChange])
   useEffect(() => () => setChickenControlsListening(false), [])
 
   const grid = (kind: "keys" | "pad") => (
     <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,4.5rem))] items-center gap-1.5 text-xs">
-      {CHICKEN_ACTIONS.map(a => (
+      {CHICKEN_ACTIONS.map((a, i) => (
         <div key={a.key} className="contents">
+          {a.group === "items" && CHICKEN_ACTIONS[i - 1]?.group !== "items" && (
+            <span className="col-span-4 pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
+          )}
           <span className="truncate text-[#b9c7b9]" title={a.label}>{a.label}</span>
           {[0, 1, 2].map(slot => {
             const on = listen?.kind === kind && listen.action === a.key && listen.slot === slot
@@ -107,13 +118,19 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
     </div>
   )
 
+  if (!open) return null
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
-      <DialogContent floating closeOnInteractOutside closeLabel="Fechar controles" className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]">
-        <DialogHeader>
-          <DialogTitle className="font-mono text-sm uppercase tracking-widest">Controles da galinha</DialogTitle>
-          <DialogDescription className="text-xs text-[#9fb09f]">Os mesmos controles valem em todas as telas e ficam salvos só neste navegador. Clique num campo e aperte uma tecla ou botão. Esc cancela, Delete apaga.</DialogDescription>
-        </DialogHeader>
+    <FloatingPanel
+      id="chicken-controls" role="dialog" aria-label="Controles da galinha"
+      initial={(vw, vh) => { const w = Math.min(576, vw - 32); return { x: (vw - w) / 2, y: 16, w, h: Math.min(820, vh - 32) } }}
+      minW={300} className="z-[230] rounded-lg border border-primary/30 bg-[#101713] text-[#dfe8df] shadow-lg"
+    >
+      <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2 border-b border-white/10 px-6 py-3">
+        <h2 className="flex-1 font-mono text-sm uppercase tracking-widest">Controles da galinha</h2>
+        <button type="button" aria-label="Fechar controles" onClick={() => onOpenChange(false)} className="rounded p-1 text-white/70 hover:text-white"><X className="h-4 w-4" /></button>
+      </div>
+      <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto p-6">
+        <p className="text-xs text-[#9fb09f]">Os mesmos controles valem em todas as telas e ficam salvos só neste navegador. Clique num campo e aperte uma tecla ou botão. Esc cancela, Delete apaga.</p>
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Teclado</h3>
           {grid("keys")}
@@ -122,7 +139,27 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Gamepad</h3>
           {grid("pad")}
-          <p className="text-[11px] text-[#8a9a8a]">Nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito.</p>
+          <p className="text-[11px] text-[#8a9a8a]">Nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito. O analógico direito mira.</p>
+        </section>
+        <section className="grid gap-2">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Analógicos</h3>
+          {([["deadzoneL", "Zona morta do esquerdo"], ["deadzoneR", "Zona morta do direito"]] as const).map(([k, label]) => (
+            <label key={k} className="grid gap-1 text-xs">
+              <span className="flex justify-between"><span>{label}</span><output className="tabular-nums">{Math.round(controls.analog[k] * 100)}%</output></span>
+              <input type="range" min={0} max={90} step={1} value={Math.round(controls.analog[k] * 100)} onChange={e => { const v = Number(e.target.value) / 100; update(c => { c.analog[k] = v }) }} className="accent-[var(--primary)]" />
+            </label>
+          ))}
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={controls.analog.magnet} onChange={e => { const v = e.target.checked; update(c => { c.analog.magnet = v }) }} className="accent-[var(--primary)]" />
+            Ímã dos 8 ângulos na mira do analógico esquerdo
+          </label>
+          {controls.analog.magnet && (
+            <label className="grid gap-1 text-xs">
+              <span className="flex justify-between"><span>Força do ímã</span><output className="tabular-nums">{controls.analog.magnetDeg}°</output></span>
+              <input type="range" min={1} max={22.5} step={0.5} value={controls.analog.magnetDeg} onChange={e => { const v = Number(e.target.value); update(c => { c.analog.magnetDeg = v }) }} className="accent-[var(--primary)]" />
+            </label>
+          )}
+          <p className="text-[11px] text-[#8a9a8a]">No mouse: clique esquerdo atira, clique direito dá o golpe, a rodinha troca o item. As teclas 1 a 9 escolhem o item.</p>
         </section>
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Na tela (celular)</h3>
@@ -141,7 +178,7 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
           <Link href={CHICKEN_PATIO_PATH} onClick={() => onOpenChange(false)} className="text-xs text-primary underline-offset-2 hover:underline">Pátio da Galinha</Link>
           <button type="button" onClick={() => { const d = defaultChickenControls(); saveChickenControls(d); setControls(d); setListen(null) }} className="h-8 rounded border border-white/20 px-3 text-xs hover:border-primary">Restaurar padrão</button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </FloatingPanel>
   )
 }
