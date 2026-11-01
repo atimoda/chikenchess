@@ -1,8 +1,14 @@
-// PigChicKen items: weapons and (later) instruments share one sheet of numbers. The Parquinho's item popup
-// edits these sheets; they are saved in this browser for now.
+// PigChicKen items: weapons and instruments share one sheet of numbers. An instrument is its weapon family's
+// sheet with a music block: the projectile is a note, and notes convert (fill the harmony bar) instead of
+// destroying. The Parquinho's item popup edits these sheets; they are saved in this browser for now.
+import type { PitchSet } from './music'
+import type { VoiceId } from './synth'
 
 export type FireMode = 'semi' | 'auto' | 'burst' | 'charge'
 export type ItemId = 'wing' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
+  | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp'
+// how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
+export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // each family's reticle shows what matters for it
 export type Reticle = 'dot' | 'circle' | 'cross' | 'cone' | 'laser' | 'impact' | 'grenade' | 'bow'
 
@@ -66,6 +72,30 @@ export type ItemDef = {
   throwMin: number // px/s with no charge (a tap)
   throwSpeed: number // px/s at full charge
   throwCharge: number // s to full charge
+  // music (instruments only): damage above is the harmony each note adds
+  instrument: boolean
+  voice: VoiceId
+  pitchSet: PitchSet // notes from the chord playing now, or from the whole scale
+  octave: number // register: 0 = around middle C
+  span: number // octaves the aim covers, from pointing down to pointing up
+  arp: Arp
+  arpRate: number // notes per second of the arpeggio / phrase on one press (burst and auto)
+  noteLen: number // s each note sounds
+  wave: number // px the note sways sideways as it flies
+  quantize: boolean // pull the sound to the next sixteenth (at most quantWindow)
+  quantWindow: number // ms
+  beatBonus: number // harmony multiplier for a shot on the beat
+  beam: boolean // a held, sustained note in a beam (violin): the magazine is seconds of bow
+  stun: number // s an enemy stays still after a note (the beam keeps it still while it plays)
+  strum: number // s between the notes of a chord (pellets)
+  ringNotes: number // notes it lets out in a circle when it bursts (with a fuse or on impact)
+  gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
+}
+
+// defaults that keep weapons out of the music block
+const NO_MUSIC = {
+  instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false,
 }
 
 const PISTOL: ItemDef = {
@@ -77,6 +107,7 @@ const PISTOL: ItemDef = {
   muzzleX: 54, muzzleY: -7, length: 56,
   meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, meleeTime: 0.2, durability: 40, meleePush: 260,
   throwDamage: 25, throwMin: 275, throwSpeed: 1100, throwCharge: 1,
+  ...NO_MUSIC,
 }
 
 const SMG: ItemDef = {
@@ -149,9 +180,78 @@ const WING: ItemDef = {
   meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeCooldown: 0.35, durability: 0, meleePush: 180, throwDamage: 0,
 }
 
-export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = { wing: WING, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW }
-export const ITEM_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow', 'wing']
-export const WEAPON_IDS = ITEM_IDS.filter(id => id !== 'wing')
+// ---------- instruments: one per family for now, on its weapon family's sheet ----------
+// melee is the same for all of them (Y): instruments break much sooner than weapons
+const MUSIC_MELEE = { meleeDamage: 10, durability: 12, throwDamage: 10, recoilPush: 0 }
+
+// Flautas → pistol: one short note per press
+const FLUTE: ItemDef = {
+  ...PISTOL, ...MUSIC_MELEE, id: 'flute', name: 'Flauta', family: 'Flautas', reticle: 'dot',
+  mag: 16, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
+  recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
+  instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7,
+}
+// Palhetas → SMG: holding plays a fast arpeggio of the chord
+const SAX: ItemDef = {
+  ...SMG, ...MUSIC_MELEE, id: 'sax', name: 'Sax', family: 'Palhetas', reticle: 'circle',
+  rate: 8, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
+  recoilKick: 2, muzzleX: 32, muzzleY: 18, length: 50,
+  instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9,
+}
+// Metais → rifle: a phrase of 3 notes per press, going through one enemy
+const TRUMPET: ItemDef = {
+  ...RIFLE, ...MUSIC_MELEE, id: 'trumpet', name: 'Trompete', family: 'Metais', reticle: 'cross',
+  fireMode: 'burst', burst: 3, rate: 9, mag: 24, speed: 1300, damage: 10, size: 10, pierce: 1,
+  recoilKick: 3, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
+  instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4,
+}
+// Cordas → pump: a strummed chord in a fan, each pellet one note of the chord
+const GUITAR: ItemDef = {
+  ...PUMP, ...MUSIC_MELEE, id: 'guitar', name: 'Violão', family: 'Cordas', reticle: 'cone',
+  rate: 1.6, mag: 6, reloadTime: 0.35, pellets: 5, speed: 900, damage: 9, size: 10, range: 480,
+  spreadBase: 24, spreadMax: 30, recoilKick: 5, muzzleX: 87, muzzleY: 0, length: 87,
+  instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022,
+}
+// Cordas friccionadas → sniper: a held note in a beam; it keeps the enemy still while it plays
+const VIOLIN: ItemDef = {
+  ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser',
+  fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
+  spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, turnRate: 240, muzzleX: 78, muzzleY: 0, length: 78,
+  instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4,
+}
+// Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
+const KEYS: ItemDef = {
+  ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: 'Teclado', family: 'Teclas', reticle: 'impact',
+  rate: 1.2, mag: 3, reloadTime: 1.4, speed: 650, size: 14, explodeRadius: 150, explodeDamage: 45, damage: 0,
+  recoilKick: 6, muzzleX: 82, muzzleY: -9, length: 82,
+  instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6,
+}
+// Percussão → grenade: a tambourine thrown with a fuse; it jingles and lets out notes in a circle
+const TAMBOURINE: ItemDef = {
+  ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade',
+  mag: 3, fuse: 1.6, explodeRadius: 120, explodeDamage: 20, size: 14, muzzleX: 14, muzzleY: 0, length: 20,
+  instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10,
+}
+// Harpas → bow: the charge is a glissando, the note rises with the charge and flies far and precise
+const HARP: ItemDef = {
+  ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa', family: 'Harpas', reticle: 'bow',
+  damage: 40, size: 12, speed: 1500, drop: 700, muzzleX: 21, muzzleY: -10, length: 30,
+  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true,
+}
+
+export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = {
+  wing: WING, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
+  flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP,
+}
+export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
+export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']
+export const ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, 'wing']
+// the voices an instrument can use (checked when loading)
+const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true }
+export const ARPS: { value: Arp; label: string }[] = [
+  { value: 'off', label: 'Desligado (a mira escolhe)' }, { value: 'up', label: 'Subindo' }, { value: 'down', label: 'Descendo' },
+  { value: 'updown', label: 'Sobe e desce' }, { value: 'random', label: 'Aleatório' }, { value: 'phrase', label: 'Frase (passos da escala)' },
+]
 
 type Meta = { key: keyof ItemDef; label: string; min: number; max: number; step: number; unit?: string; group: string; hint?: string }
 export const ITEM_PARAM_META: Meta[] = [
@@ -198,6 +298,16 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'throwMin', label: 'Força mínima', min: 0, max: 2500, step: 25, unit: 'px/s', group: 'Arremesso', hint: 'Só tocar no botão' },
   { key: 'throwSpeed', label: 'Força máxima', min: 200, max: 2500, step: 50, unit: 'px/s', group: 'Arremesso' },
   { key: 'throwCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.1, unit: 's', group: 'Arremesso' },
+  { key: 'octave', label: 'Registro (oitava)', min: -3, max: 3, step: 1, group: 'Música', hint: '0 = perto do Dó central' },
+  { key: 'span', label: 'Extensão da mira', min: 0.5, max: 4, step: 0.5, unit: 'oitavas', group: 'Música', hint: 'De apontar pra baixo até pra cima' },
+  { key: 'arpRate', label: 'Velocidade do arpejo', min: 2, max: 24, step: 1, unit: 'notas/s', group: 'Música' },
+  { key: 'noteLen', label: 'Duração da nota', min: 0.05, max: 2, step: 0.05, unit: 's', group: 'Música' },
+  { key: 'wave', label: 'Onda da nota', min: 0, max: 30, step: 1, unit: 'px', group: 'Música', hint: 'Quanto a nota balança voando' },
+  { key: 'quantWindow', label: 'Janela da quantização', min: 0, max: 150, step: 5, unit: 'ms', group: 'Música', hint: 'Até quanto o som espera a próxima semicolcheia' },
+  { key: 'beatBonus', label: 'Bônus na batida', min: 1, max: 3, step: 0.1, unit: '×', group: 'Música', hint: 'Harmonia extra para tiro no tempo' },
+  { key: 'stun', label: 'Paralisa', min: 0, max: 3, step: 0.1, unit: 's', group: 'Música', hint: 'O inimigo fica parado depois da nota' },
+  { key: 'strum', label: 'Rasgueado', min: 0, max: 0.1, step: 0.002, unit: 's', group: 'Música', hint: 'Intervalo entre as notas do acorde' },
+  { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },
 ]
 export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]
 
@@ -217,7 +327,10 @@ export function loadItems(): Record<ItemId, ItemDef> {
         if (typeof v === 'number' && Number.isFinite(v)) (out[id] as Record<string, unknown>)[m.key] = Math.min(m.max, Math.max(m.min, v))
       })
       if (['semi', 'auto', 'burst', 'charge'].includes(s.fireMode)) out[id].fireMode = s.fireMode
-      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+      if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
+      if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
+      if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
     })
   } catch { /* storage unavailable */ }
   return out

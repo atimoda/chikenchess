@@ -12,7 +12,8 @@ export function setWeaponVolume(v: number) {
   if (master) master.gain.value = volume
 }
 
-function audio() {
+// the shared audio context (the instruments' synth plays on it too)
+export function audio() {
   if (typeof window === 'undefined') return null
   if (!ac) {
     const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext

@@ -86,8 +86,10 @@ export function stepEnemy(t: Target, dt: number, env: EnemyEnv): boolean {
     return true
   }
   // zombie
-  if (t.state === 'dead') { t.deadT -= dt; return t.deadT > 0 }
+  if (t.state === 'dead' || t.state === 'converted') { t.deadT -= dt; return t.deadT > 0 }
   t.x += t.vx * dt; t.vx *= Math.pow(0.02, dt)
+  // held still by a note (the violin keeps it still while it plays)
+  if ((t.stun ?? 0) > 0) return true
   const dx = env.playerX - t.x
   if (t.state === 'hurt') { if (t.animT > ZOMBIE_TIMES.hurt) { t.state = 'walk'; t.animT = 0 } return true }
   if (t.state === 'attack') {

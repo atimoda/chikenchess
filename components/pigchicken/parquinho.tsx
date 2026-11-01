@@ -9,11 +9,13 @@ import { loadChickenControls, readStick, subscribeChickenControls, type ChickenA
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
 import { createCombat, SLOTS, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
-import { loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { INSTRUMENT_IDS, loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { ALIEN_FRAMES, ALIEN_PATTERNS, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData } from "@/lib/pigchicken/enemies"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
+import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
+import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { useTouchControls } from "@/components/chicken/chicken-layer"
 
 // floating boxes per screen (percent of the screen), so every screen has something to climb
@@ -56,7 +58,7 @@ export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRe
     <div ref={worldRef} className="pointer-events-none absolute inset-y-0 left-0 will-change-transform" style={{ width: `${screens * 100}vw` }}>
       {Array.from({ length: screens }, (_, s) => (
         <div key={`m${s}`} className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: `${s * 100}vw` }}>
-          <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1}</span>
+          <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1} <span style={{ color: ZONES[s % ZONES.length].color, opacity: 0.6 }}>· {zoneLabel(ZONES[s % ZONES.length])}</span></span>
         </div>
       ))}
       <div data-chicken-platforms className="absolute inset-0">
@@ -132,15 +134,26 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
     const combat = createCombat()
     combat.setItems(loadItems())
+    // instruments, the enemies' answers and the zone's ambience play on PigChicKen's own synth
+    combat.setMusicOut({
+      note: (voice, midi, at, dur, vel) => { playNote(voice, midi, { at, dur, vel }) },
+      hold: (voice, midi) => playNote(voice, midi, { sustain: true, vel: 0.8 }),
+      drum: (kind, at) => playDrum(kind, at),
+    })
+    // dev only: lets the test scripts reach the combat
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __pigchicken?: Combat }).__pigchicken = combat
+    const drone = createDrone()
+    let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
     let placed = false
     const place = (viewW: number, groundY: number) => {
       // the creative mode: a row of racks with every weapon on the first screen, targets further in
       WEAPON_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id))
-      // horde buttons on the second screen: shoot them
+      // horde buttons on the second screen: shoot them; the instruments right after them
       ;(["aliens", "pattern", "zombies", "zcount"] as const).forEach((id, i) => combat.addButton(viewW * (1.06 + i * 0.09), groundY - 46, id))
-      ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach(f => combat.addTarget(viewW * f, groundY))
+      INSTRUMENT_IDS.forEach((id, i) => combat.addRack(viewW * (1.42 + i * 0.075), id))
+      ;[2.15, 2.45, 2.8, 3.2, 3.55].forEach(f => combat.addTarget(viewW * f, groundY))
       placed = true
     }
     const fit = () => {
@@ -232,6 +245,20 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y }, aim.angle, input, boxes, st.groundY, (vx, vy) => engine.impulse(vx, vy))
 
+      // ---------- music: the zone of the scene she is in sets key, scale and tempo; ambience on its beat ----------
+      const zone = ZONES[Math.max(0, Math.floor(worldX / viewW)) % ZONES.length]
+      combat.music.setZone(zone)
+      combat.setQuantize(S.quantize)
+      setMusicVolumes(S.noteVolume, S.ambienceVolume)
+      if (combat.music.zone !== zoneShown) { zoneShown = combat.music.zone; zoneBanner = 2.5 }
+      zoneBanner = Math.max(0, zoneBanner - dt)
+      combat.music.events.splice(0).forEach(e => {
+        if (S.ambienceVolume <= 0) return
+        if (e.kind === "bar") drone.set(combat.music.chord()[0])
+        if (e.kind === "step") ambience(combat.music.zone, e.n % 16, combat.music.secondsPerBeat())
+      })
+      if (S.ambienceVolume <= 0) drone.set(null)
+
       // ---------- sound ----------
       setWeaponVolume(S.weaponVolume)
       combat.sounds.splice(0).forEach(e => playWeaponSound(e.kind, e.item))
@@ -259,13 +286,18 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
         const power = d.fireMode === "charge" ? d.chargeMin + (1 - d.chargeMin) * combat.fireCharge : 1
         path = combat.predict({ x: muzzle.x + camX, y: muzzle.y }, ang, power, { boxes, groundY: st.groundY }).points.map(p => ({ x: p.x - camX, y: p.y }))
       }
+      drawBeam(ctx, combat, camX)
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path)
+      if (zoneBanner > 0) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       drawInventory(ctx, combat)
       if (hudRef.current) {
         const h = combat.inventory[combat.current]
         const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
-        const k = combat.kills
-        hudRef.current.textContent = `${item}${combat.enemies || k.aliens || k.zombies ? ` · inimigos: ${combat.enemies} · aliens ${k.aliens} · zumbis ${k.zombies} · mordidas ${k.bites}` : ""} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
+        const k = combat.kills, cv = combat.converted
+        const shown = h && d.mag > 0 ? Math.ceil(h.ammo) : 0
+        const item2 = h ? item.replace(`${h.ammo}/`, `${shown}/`) : item
+        const m = combat.music
+        hudRef.current.textContent = `${item2} · ${m.zone.name} ${chordName(m.chord())} ${[0, 1, 2, 3].map(i => (Math.floor(m.beat) % 4 === i ? "●" : "·")).join("")}${combat.enemies || k.aliens || k.zombies || cv.birds || cv.people ? ` · inimigos: ${combat.enemies} · aliens ${k.aliens} · zumbis ${k.zombies} · passarinhos ${cv.birds} · curados ${cv.people} · mordidas ${k.bites}` : ""} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
       }
       raf = requestAnimationFrame(frame)
     }
@@ -285,6 +317,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       engine.setHeld(null)
       engine.setSwing(null)
       engine.setBounds(null)
+      drone.set(null)
       if (camX) engine.shift(camX)
       if (worldRef.current) worldRef.current.style.transform = ""
     }
@@ -374,6 +407,136 @@ function drawItem(ctx: Ctx, item: ItemId, maxW: number, maxH: number, atGrip = f
   else ctx.drawImage(im.img, -w * k / 2, -h * k / 2, w * k, h * k)
 }
 
+// ---------- the zone's ambience: percussion on the sixteenths (the drone follows the bars) ----------
+function ambience(zone: Zone, step: number, spb: number) {
+  const sw = zone.feel === "swing" && step % 4 === 2 ? (spb / 4) * 0.33 : 0
+  if (zone.feel === "half") {
+    if (step === 0) playDrum("kick")
+    if (step === 8) playDrum("snare")
+    if (step % 4 === 0) playDrum("hat", 0, 0.7)
+    if (step === 14) playDrum("openHat", 0, 0.6)
+    return
+  }
+  if (zone.id === "ceu") {
+    // the sky: only a soft shaker and a kick per bar
+    if (step === 0) playDrum("kick", 0, 0.6)
+    if (step % 2 === 0) playDrum("shaker", sw, step % 4 === 0 ? 0.8 : 0.5)
+    return
+  }
+  if (step === 0 || step === 8 || (zone.feel === "swing" && step === 10)) playDrum("kick")
+  if (step === 4 || step === 12) playDrum(zone.feel === "swing" ? "clap" : "snare")
+  if (step % 2 === 0) playDrum("hat", sw, step % 4 === 0 ? 0.9 : 0.6)
+  else if (zone.id === "feira") playDrum("shaker", 0, 0.4)
+}
+
+// a note in flight: its symbol in the colour of its scale degree, swaying, with a short trail, pulsing on the beat
+function drawNote(ctx: Ctx, b: Combat["bullets"][number], x: number, pulse: number) {
+  const n = b.note!
+  const len = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / len, uy = b.vy / len
+  const sway = (t: number) => Math.sin(t * Math.PI * 5 + n.phase) * n.wave
+  const size = b.size * 2.8 * (1 + 0.25 * pulse)
+  ctx.font = `bold ${Math.round(size)}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"
+  for (let k = 3; k >= 0; k--) {
+    const back = k * 0.025, o = sway(b.t - back)
+    const px = x - b.vx * back - uy * o, py = b.y - b.vy * back + ux * o
+    ctx.globalAlpha = k === 0 ? 1 : 0.35 - k * 0.09
+    if (k === 0) { ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.strokeText(n.sym, px, py) }
+    ctx.fillStyle = n.color; ctx.fillText(n.sym, px, py)
+  }
+  ctx.globalAlpha = 1; ctx.textBaseline = "alphabetic"
+}
+
+// the violin's beam: a vibrating string of light from the muzzle, with notes running along it
+function drawBeam(ctx: Ctx, combat: Combat, camX: number) {
+  const b = combat.beam
+  if (!b) return
+  const x1 = b.x1 - camX, x2 = b.x2 - camX, len = Math.hypot(x2 - x1, b.y2 - b.y1) || 1
+  const ux = (x2 - x1) / len, uy = (b.y2 - b.y1) / len, t = performance.now() / 1000
+  ctx.save()
+  ctx.shadowColor = b.color; ctx.shadowBlur = 12
+  ;[[5, 0.25], [2, 0.9]].forEach(([w, a]) => {
+    ctx.strokeStyle = b.color; ctx.globalAlpha = a; ctx.lineWidth = w
+    ctx.beginPath()
+    for (let s = 0; s <= len; s += 8) {
+      const o = Math.sin(s * 0.08 - t * 40) * 3 * Math.sin((s / len) * Math.PI)
+      const px = x1 + ux * s - uy * o, py = b.y1 + uy * s + ux * o
+      if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py)
+    }
+    ctx.stroke()
+  })
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0
+  ctx.font = "bold 16px ui-sans-serif, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = b.color
+  for (let k = 0; k < 4; k++) { const s = ((t * 260 + k * len / 4) % len); ctx.fillText(k % 2 ? "♪" : "♩", x1 + ux * s, b.y1 + uy * s - 8) }
+  ctx.restore()
+}
+
+function drawZoneBanner(ctx: Ctx, zone: Zone, life: number) {
+  ctx.save()
+  ctx.globalAlpha = Math.min(1, life, (2.5 - life) * 4)
+  ctx.font = "bold 15px ui-monospace, monospace"; ctx.textAlign = "center"
+  const text = `♪ ${zoneLabel(zone)}`, w = ctx.measureText(text).width + 28
+  const x = window.innerWidth / 2, y = 158
+  ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, y - 20, w, 30)
+  ctx.fillStyle = zone.color; ctx.fillText(text, x, y)
+  ctx.restore()
+}
+
+// the bird an alien becomes: original pixel art, two flaps. '#' body, 'o' eye, '>' beak
+const BIRD_FRAMES = [
+  [
+    "..#......#.",
+    "..##....##.",
+    "...##..##..",
+    "....####...",
+    "..#####o#>>",
+    ".########..",
+    "...####....",
+    "....#.#....",
+  ],
+  [
+    "...........",
+    "...........",
+    "....####...",
+    "..#####o#>>",
+    "##########.",
+    "#.######...",
+    "...####....",
+    "....#.#....",
+  ],
+]
+function drawBird(ctx: Ctx, c: Combat["critters"][number], x: number) {
+  const f = BIRD_FRAMES[Math.floor(c.t / 0.12) % 2], p = 4
+  ctx.save(); ctx.translate(x, c.y); ctx.scale(c.face < 0 ? -1 : 1, 1)
+  f.forEach((row, r) => { for (let i = 0; i < row.length; i++) {
+    const ch = row[i]; if (ch === ".") continue
+    ctx.fillStyle = ch === "o" ? "#101018" : ch === ">" ? "#ffb347" : c.color
+    ctx.fillRect((i - 5.5) * p, (r - 4) * p, p, p)
+  } })
+  ctx.restore()
+}
+
+// the person a zombie becomes (the zombie art with its colour back), running away happy
+const PERSON_RUN = { w: 182, h: 208, n: 10, ax: 91 }
+let personImg: HTMLImageElement | null = null
+function drawPerson(ctx: Ctx, c: Combat["critters"][number], x: number) {
+  if (!personImg) { personImg = new Image(); personImg.src = "/pigchicken/person/run.webp" }
+  if (!personImg.complete || !personImg.naturalWidth) return
+  const f = Math.floor(c.t / 0.06) % PERSON_RUN.n, k = ZOMBIE_HEIGHT / ZOMBIE_SHEETS.walk.h
+  ctx.save(); ctx.translate(x, c.y); ctx.scale(c.face < 0 ? -k : k, k)
+  ctx.drawImage(personImg, f * PERSON_RUN.w, 0, PERSON_RUN.w, PERSON_RUN.h, -PERSON_RUN.ax, -PERSON_RUN.h, PERSON_RUN.w, PERSON_RUN.h)
+  ctx.restore()
+}
+
+// the harmony bar (instruments fill it; full converts)
+function harmonyBar(ctx: Ctx, g: Combat["targets"][number], x: number, y: number, w: number) {
+  const v = g.harmony ?? 0
+  if (v <= 0) return
+  const grad = ctx.createLinearGradient(x - w / 2, 0, x + w / 2, 0)
+  grad.addColorStop(0, "#7b8cff"); grad.addColorStop(0.5, "#c77dff"); grad.addColorStop(1, "#ff6b9a")
+  ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x - w / 2, y, w, 5)
+  ctx.fillStyle = grad; ctx.fillRect(x - w / 2, y, w * Math.min(1, v / g.maxHp), 5)
+}
+
 // where the blow is now: it sweeps across its arc in sw.time, downward in front of her
 function swingAngle(sw: Swing) {
   return sw.angle + sw.dir * (-sw.arc / 2 + sw.arc * Math.min(1, sw.t / sw.time))
@@ -418,10 +581,11 @@ function drawAlien(ctx: Ctx, g: Combat["targets"][number], x: number) {
   frame.forEach((row, r) => { for (let c = 0; c < row.length; c++) {
     const ch = row[c]
     if (ch === ".") continue
-    ctx.fillStyle = g.flash > 0 ? "#ffffff" : ch === "w" ? (Math.floor(g.animT * 2) % 9 === 0 ? d.color : "#f4f1e8") : ch === "o" ? "#101018" : d.color
+    ctx.fillStyle = g.flash > 0 ? (g.tint ?? "#ffffff") : ch === "w" ? (Math.floor(g.animT * 2) % 9 === 0 ? d.color : "#f4f1e8") : ch === "o" ? "#101018" : d.color
     ctx.fillRect(left + c * p, top + r * p, p, p)
   } })
   ctx.restore()
+  if (g.deadT <= 0) harmonyBar(ctx, g, x, top - 9, g.w)
 }
 
 // the zombie sprite sheets (Craftpix free zombie pack), one strip per animation
@@ -445,13 +609,15 @@ function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
   ctx.translate(x, g.y)
   ctx.scale(g.face < 0 ? -k : k, k)
   if (g.state === "dead") ctx.globalAlpha = Math.min(1, g.deadT / ZOMBIE_TIMES.fade)
-  if (g.flash > 0) ctx.filter = "brightness(2.2)"
+  if (g.flash > 0) ctx.filter = g.tint ? `drop-shadow(0 0 10px ${g.tint}) brightness(1.5)` : "brightness(2.2)"
+  else if ((g.stun ?? 0) > 0 && g.tint) ctx.filter = `drop-shadow(0 0 6px ${g.tint})`
   ctx.drawImage(img, f * sheet.w, 0, sheet.w, sheet.h, -sheet.ax, -sheet.h, sheet.w, sheet.h)
   ctx.restore()
   if (g.state !== "dead" && g.hp < g.maxHp) {
     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x - 22, g.y - g.h - 16, 44, 5)
     ctx.fillStyle = "#7bd88f"; ctx.fillRect(x - 22, g.y - g.h - 16, 44 * Math.max(0, g.hp / g.maxHp), 5)
   }
+  if (g.state !== "dead") harmonyBar(ctx, g, x, g.y - g.h - 9, 44)
 }
 
 function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
@@ -472,8 +638,10 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   combat.thrown.forEach(o => {
     ctx.save(); ctx.translate(X(o.x), o.y); ctx.rotate(o.angle); drawItem(ctx, o.owned.item, 64, 34); ctx.restore()
   })
+  combat.critters.forEach(c => { if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
   combat.targets.forEach(g => {
     const x = X(g.x)
+    if (g.state === "converted") return
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }
     if (g.kind === "button") { drawButton(ctx, g, x); return }
@@ -482,7 +650,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     if (g.deadT > 0) { ctx.globalAlpha = Math.min(1, g.deadT); ctx.rotate(Math.sign(g.wobble || 1) * Math.PI / 2 * Math.min(1, (2.5 - g.deadT) * 4)) }
     else ctx.rotate(g.wobble)
     ctx.fillStyle = "#5b4630"; ctx.fillRect(-3, -g.h * 0.35, 6, g.h * 0.35)
-    ctx.fillStyle = g.flash > 0 ? "#ffffff" : "#d9cfb8"
+    ctx.fillStyle = g.flash > 0 ? (g.tint ?? "#ffffff") : "#d9cfb8"
     ctx.beginPath(); ctx.roundRect(-g.w / 2, -g.h, g.w, g.h * 0.68, 14); ctx.fill()
     ;[17, 11, 5].forEach((r, i) => { ctx.fillStyle = g.flash > 0 ? "#ffffff" : i % 2 ? "#f4f1e8" : "#d6453d"; ctx.beginPath(); ctx.arc(0, -g.h * 0.68, r, 0, Math.PI * 2); ctx.fill() })
     ctx.restore()
@@ -490,11 +658,16 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x - 24, g.y - g.h - 14, 48, 5)
       ctx.fillStyle = g.hp > 50 ? "#7bd88f" : g.hp > 25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x - 24, g.y - g.h - 14, 48 * Math.max(0, g.hp / g.maxHp), 5)
     }
+    if (g.deadT <= 0) harmonyBar(ctx, g, x, g.y - g.h - 7, 48)
   })
+  const pulse = Math.pow(1 - combat.music.beatPhase, 3)
   combat.bullets.forEach(b => {
     const len = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / len, uy = b.vy / len, x = X(b.x)
     ctx.lineCap = "round"
-    if (b.item === "grenade") {
+    if (b.item === "tambourine" && b.fuse > 0) {
+      ctx.save(); ctx.translate(x, b.y); ctx.rotate(b.t * 9); drawItem(ctx, "tambourine", 34, 34); ctx.restore()
+    } else if (b.note) drawNote(ctx, b, x, pulse)
+    else if (b.item === "grenade") {
       ctx.fillStyle = "#4b5320"; ctx.beginPath(); ctx.arc(x, b.y, b.size, 0, Math.PI * 2); ctx.fill()
       // the fuse blinks faster as it runs out
       if (Math.sin(b.t * (6 + b.t * 10)) > 0) { ctx.fillStyle = "#ff6b5b"; ctx.beginPath(); ctx.arc(x, b.y - b.size, 2.5, 0, Math.PI * 2); ctx.fill() }
@@ -517,6 +690,14 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     ctx.beginPath(); ctx.moveTo(X(t.x1), t.y1); ctx.lineTo(X(t.x2), t.y2); ctx.stroke()
   })
   combat.booms.forEach(b => {
+    if (b.color) {
+      // an instrument's burst: rings of colour opening out
+      const k = 1 - b.life / 0.5
+      ctx.lineWidth = 3
+      ;[1, 0.7, 0.4].forEach((f, i) => { ctx.strokeStyle = b.color!; ctx.globalAlpha = (1 - k) * (0.9 - i * 0.25); ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * f * (0.2 + 0.8 * k), 0, Math.PI * 2); ctx.stroke() })
+      ctx.globalAlpha = 1
+      return
+    }
     const k = 1 - b.life / 0.35
     ctx.fillStyle = `rgba(255,170,70,${0.45 * (1 - k)})`; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = `rgba(255,240,200,${0.8 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * k, 0, Math.PI * 2); ctx.stroke()
@@ -524,7 +705,10 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   combat.sparks.forEach(s => { ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
   ctx.globalAlpha = 1
   ctx.font = "bold 13px ui-monospace, monospace"; ctx.textAlign = "center"
-  combat.texts.forEach(tx => { ctx.globalAlpha = Math.min(1, tx.life * 2); ctx.fillStyle = "#000"; ctx.fillText(tx.text, X(tx.x) + 1, tx.y + 1); ctx.fillStyle = tx.color; ctx.fillText(tx.text, X(tx.x), tx.y) })
+  combat.texts.forEach(tx => {
+    ctx.font = tx.size ? `bold ${tx.size}px ui-sans-serif, system-ui, sans-serif` : "bold 13px ui-monospace, monospace"
+    ctx.globalAlpha = Math.min(1, tx.life * 2); ctx.fillStyle = "#000"; ctx.fillText(tx.text, X(tx.x) + 1, tx.y + 1); ctx.fillStyle = tx.color; ctx.fillText(tx.text, X(tx.x), tx.y)
+  })
   ctx.globalAlpha = 1
 }
 

@@ -2,7 +2,25 @@
 // `box` is the art's bounding box [x, y, width, height], used to draw it on the canvas (pickups, inventory).
 import type { ItemId } from './items'
 
-type Art = { svg: string; box: [number, number, number, number] }
+type Art = { svg: string; box: [number, number, number, number]; pic?: Pic }
+// a drawing (PNG) placed in rig units: `len` along its height, the point (gx, gy) of the picture (0..1) at the grip,
+// then turned `rot` degrees around the grip (90 turns its top to point forward, -90 its bottom)
+type Pic = { src: string; iw: number; ih: number; len: number; gx: number; gy: number; rot: number }
+
+function picture(p: Pic): Art {
+  const h = p.len, w = (p.len * p.iw) / p.ih
+  const x = -p.gx * w, y = -p.gy * h
+  const r = (p.rot * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r)
+  const pts = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].map(([px, py]) => [px * c - py * s, px * s + py * c])
+  const xs = pts.map(q => q[0]), ys = pts.map(q => q[1])
+  const l = Math.floor(Math.min(...xs)), t = Math.floor(Math.min(...ys))
+  return {
+    pic: p,
+    box: [l, t, Math.ceil(Math.max(...xs)) - l, Math.ceil(Math.max(...ys)) - t],
+    svg: `<g transform="rotate(${p.rot})"><image href="${p.src}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" preserveAspectRatio="none"/></g>`,
+  }
+}
+const I = '/pigchicken/instruments/'
 
 const ART: Partial<Record<ItemId, Art>> = {
   pistol: {
@@ -81,15 +99,45 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M-12 -52 Q12 0 -12 52" fill="none" stroke="#8b5a2b" stroke-width="5" stroke-linecap="round"/>
     <rect x="-3" y="-7" width="6" height="14" rx="2" fill="#3b2a1a"/>`,
   },
+  // instruments: the drawings, held like their weapon family
+  flute: picture({ src: `${I}flute.png`, iw: 58, ih: 363, len: 110, gx: 0.5, gy: 0.45, rot: -90 }),
+  sax: picture({ src: `${I}sax.png`, iw: 136, ih: 262, len: 120, gx: 0.45, gy: 0.45, rot: 0 }),
+  trumpet: picture({ src: `${I}trumpet.png`, iw: 110, ih: 349, len: 120, gx: 0.5, gy: 0.55, rot: 90 }),
+  guitar: picture({ src: `${I}guitar.png`, iw: 136, ih: 375, len: 150, gx: 0.5, gy: 0.6, rot: 90 }),
+  violin: picture({ src: `${I}violin.png`, iw: 123, ih: 320, len: 135, gx: 0.5, gy: 0.6, rot: 90 }),
+  keys: picture({ src: `${I}keys.png`, iw: 119, ih: 375, len: 150, gx: 0.7, gy: 0.55, rot: 90 }),
+  harp: picture({ src: `${I}harp.png`, iw: 162, ih: 229, len: 100, gx: 0.2, gy: 0.55, rot: 0 }),
+  tambourine: {
+    box: [-8, -24, 46, 48],
+    svg: `<circle cx="14" cy="0" r="20" fill="#e8d3a6" stroke="#9a5b2e" stroke-width="5"/>
+    <circle cx="14" cy="0" r="14" fill="#f4e6c4"/>
+    ${[0, 60, 120, 180, 240, 300].map(a => { const r = (a * Math.PI) / 180; return `<rect x="${(14 + Math.cos(r) * 20 - 4).toFixed(1)}" y="${(Math.sin(r) * 20 - 2.5).toFixed(1)}" width="8" height="5" rx="2" fill="#c9ced6" stroke="#8a8f98" stroke-width="1" transform="rotate(${a + 90} ${(14 + Math.cos(r) * 20).toFixed(1)} ${(Math.sin(r) * 20).toFixed(1)})"/>` }).join('')}
+    <path d="M6 -4 Q14 -10 22 -4" stroke="#d6453d" stroke-width="2" fill="none"/>`,
+  },
 }
 
 export const ITEM_SVG: Partial<Record<ItemId, string>> = Object.fromEntries(Object.entries(ART).map(([k, a]) => [k, a!.svg]))
 
-// canvas images of the same art, built once per item
+// canvas images of the same art, built once per item (drawings are turned into a canvas the size of the box)
 const images: Partial<Record<ItemId, HTMLImageElement>> = {}
-export function itemImage(item: ItemId): { img: HTMLImageElement; box: Art['box'] } | null {
+const pics: Partial<Record<ItemId, HTMLCanvasElement>> = {}
+export function itemImage(item: ItemId): { img: CanvasImageSource; box: Art['box'] } | null {
   const art = ART[item]
   if (!art || typeof window === 'undefined') return null
+  if (art.pic) {
+    if (pics[item]) return { img: pics[item]!, box: art.box }
+    let img = images[item]
+    if (!img) { img = new Image(); img.src = art.pic.src; images[item] = img }
+    if (!img.complete || !img.naturalWidth) return null
+    const p = art.pic, [bx, by, bw, bh] = art.box, k = 2
+    const c = document.createElement('canvas'); c.width = Math.ceil(bw * k); c.height = Math.ceil(bh * k)
+    const g = c.getContext('2d')!
+    g.scale(k, k); g.translate(-bx, -by); g.rotate((p.rot * Math.PI) / 180)
+    const h = p.len, w = (p.len * p.iw) / p.ih
+    g.drawImage(img, -p.gx * w, -p.gy * h, w, h)
+    pics[item] = c
+    return { img: c, box: art.box }
+  }
   let img = images[item]
   if (!img) {
     const [x, y, w, h] = art.box

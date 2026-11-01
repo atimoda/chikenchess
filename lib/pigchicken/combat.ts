@@ -3,14 +3,29 @@
 import { DEFAULT_ITEMS, type ItemDef, type ItemId } from './items'
 import type { WeaponSound } from './sfx'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
+import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS } from './music'
+import type { Drum, Held, VoiceId } from './synth'
+
+// where the instruments' sound goes (the Parquinho plugs the synth in)
+export type MusicOut = {
+  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number) => void
+  hold: (voice: VoiceId, midi: number) => Held | null
+  drum: (kind: Drum, at: number) => void
+}
+const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
+// a note in flight: its pitch, colour and how it sways
+export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
+// a converted enemy leaving the scene: aliens become birds, zombies become happy people
+export type Critter = { kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number }
 
 export type Box = { l: number; t: number; r: number; b: number }
 export type Owned = { item: ItemId; ammo: number; durability: number }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
+  note?: NoteInfo; ring?: number // instruments: the note it carries; notes it lets out when it bursts
 }
-export type Boom = { x: number; y: number; r: number; life: number }
+export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
 // x: centre, y: bottom. dummy targets come back after falling; aliens and zombies are removed; buttons never fall
@@ -18,10 +33,12 @@ export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button'
 export type Target = {
   id: number; kind: TargetKind; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number
   face: number; state: string; animT: number; label?: string; data?: unknown
+  // instruments: the harmony bar (full at maxHp converts), how long it stays still, its answer's cooldown, the tint of the last note
+  harmony?: number; stun?: number; answerCool?: number; tint?: string
 }
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
-export type FloatText = { x: number; y: number; text: string; life: number; color: string }
+export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
 // range: wing reach; reach: wing plus the item's length (the hit area); dir: which way it sweeps (1 = clockwise on screen)
 // time: seconds the sweep takes
 export type Swing = { angle: number; arc: number; range: number; reach: number; t: number; time: number; wing: boolean; dir: number }
@@ -49,7 +66,20 @@ export function createCombat() {
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
   const sounds: { kind: WeaponSound; item: ItemId | null }[] = []
-  const sound = (kind: WeaponSound, item: ItemId | null = held()?.item ?? null) => { sounds.push({ kind, item }) }
+  const sound = (kind: WeaponSound, item: ItemId | null = held()?.item ?? null) => {
+    const d = item ? items[item] : null
+    // instruments make musical sounds instead of the mechanical ones
+    if (d?.instrument) {
+      const root = music.noteFor(-Math.PI / 2, 'chord', d.octave, 0.5)
+      if (kind === 'equip') { out.note(d.voice, root, 0, 0.12, 0.5); out.note(d.voice, music.walk(root, 2, 'chord'), 0.09, 0.18, 0.5) }
+      else if (kind === 'reloadDone' || kind === 'shell') out.note(d.voice, music.walk(root, 1, 'chord'), 0, 0.1, 0.35)
+      else if (kind === 'dry') out.note('chip', root - 24, 0, 0.05, 0.25)
+      else if (kind === 'bounce') out.drum('jingle', 0)
+      else if (kind === 'throw' || kind === 'swing' || kind === 'button' || kind === 'bite' || kind === 'alienDie' || kind === 'zombieDie' || kind === 'explode') sounds.push({ kind, item })
+      return
+    }
+    sounds.push({ kind, item })
+  }
   let pumpT = 0
   // buttons hit this frame, bites she took, enemies down
   const pressed: string[] = []
@@ -58,6 +88,15 @@ export function createCombat() {
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   const racks: { x: number; item: ItemId; t: number; label: string }[] = []
   let swing: Swing | null = null
+  // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
+  const music = createConductor()
+  let out: MusicOut = SILENT
+  let arpStep = 0, arpIdle = 0, phraseBase = 0, glissNext = 0, glissSteps = 0, bonusTextT = 0
+  let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null = null
+  let beamHeld: Held | null = null, beamMidi = 0
+  const critters: Critter[] = []
+  let quantizeAll = true
+  const conv = { birds: 0, people: 0, harmonized: 0 }
 
   const held = () => inv[cur]
   const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
@@ -85,11 +124,66 @@ export function createCombat() {
     } else { t.deadT = 2.5; burst(t.x, t.y - t.h / 2, 22, '#e8e2d0', 320, 4); addText(t.x, t.y - t.h - 16, 'derrubado!', '#ff8c69') }
   }
 
+  // a note lands: it fills the harmony bar instead of hurting; the enemy answers with a note of its own
+  function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number) {
+    if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
+    if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
+    t.harmony = (t.harmony ?? 0) + amount; t.flash = 0.12; t.tint = note.color; t.vx += pushX * 0.3
+    t.stun = Math.max(t.stun ?? 0, stun)
+    if (t.kind === 'zombie' && t.state === 'walk' && stun > 0) { t.state = 'hurt'; t.animT = 0 }
+    texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
+    burst(x, y, 4, note.color, 120, 3)
+    // question and answer: an eighth later the enemy sings a chord note above (aliens chirp, zombies hum)
+    if ((t.answerCool ?? 0) <= 0 && t.kind !== 'dummy') {
+      t.answerCool = 0.35
+      const ans = music.walk(note.midi, 2, 'chord')
+      const at = music.toGrid() + music.secondsPerBeat() / 2
+      if (t.kind === 'alien') out.note('chip', ans + 12, at, 0.12, 0.5)
+      else out.note('hum', ans - 12, at, 0.35, 0.6)
+    }
+    if (t.harmony >= t.maxHp) convert(t)
+  }
+
+  // full harmony: aliens become birds and fly away, zombies become happy people and run off
+  function convert(t: Target) {
+    const chord = music.chord(true)
+    const top = t.y - t.h / 2
+    if (t.kind === 'dummy') {
+      t.harmony = 0; conv.harmonized++
+      chord.forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
+      addText(t.x, t.y - t.h - 24, 'harmonizado!', '#c77dff')
+      return
+    }
+    t.state = 'converted'; t.deadT = 0.001
+    const away = Math.sign(t.x - (lastBody?.x ?? t.x)) || 1
+    if (t.kind === 'alien') {
+      const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
+      critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160), vy: -rand(140, 220), t: 0, color, face: away, groundY: 0 })
+      conv.birds++
+      chord.forEach((m, i) => out.note('bird', m + 12, i * 0.06, 0.1, 0.6))
+      burst(t.x, top, 16, color, 200, 4)
+    } else {
+      critters.push({ kind: 'person', x: t.x, y: t.y, vx: away * rand(230, 290), vy: 0, t: 0, color: '#ff6b9a', face: away, groundY: t.y })
+      conv.people++
+      chord.concat(chord[0] + 12).forEach((m, i) => out.note('keys', m, i * 0.08, 0.25, 0.6))
+      texts.push({ x: t.x, y: top - 40, text: '♥', life: 1.2, color: '#ff6b9a', size: 26 })
+    }
+    addText(t.x, top - 60, t.kind === 'alien' ? 'virou passarinho!' : 'curado!', '#7bdff2')
+  }
+  let lastBody: Body | null = null
+
   function pickUp(p: Pickup) {
     // one of each item: walking past the rack again does not fill every slot with the same weapon
     if (inv.some(o => o && o.item === p.owned.item)) return false
     let slot = inv.findIndex(s => s === null)
-    if (slot < 0) return false
+    // full: what she picks up takes the place of what she holds, which goes back to its rack (or falls to the floor)
+    if (slot < 0) {
+      const old = held()
+      if (!old) return false
+      stopBeam()
+      if (!racks.some(r => r.item === old.item)) pickups.push({ id: nextId++, owned: old, x: p.x, y: p.y - 30, vy: -200, resting: false, noPick: 1.5 })
+      slot = cur; reloadT = 0; chargeT = 0; burstLeft = 0
+    }
     // hands empty: she holds what she picks up
     if (!held()) slot = cur
     inv[slot] = p.owned
@@ -100,6 +194,7 @@ export function createCombat() {
 
   function equip(i: number) {
     if (i === cur) return
+    stopBeam()
     cur = (i + SLOTS) % SLOTS; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; cooldown = Math.max(cooldown, 0.15)
     if (held()) sound('equip')
   }
@@ -111,18 +206,51 @@ export function createCombat() {
   }
 
   // one shot: `power` (0..1) scales speed in charge mode; pellets spread evenly across the cone
+  // the notes of one shot: the aim picks the note inside the chord (or scale); the arpeggiator, the phrase,
+  // the strum and the glissando walk from there
+  function shotNotes(d: ItemDef, n: number) {
+    const base = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
+    if (n > 1) return Array.from({ length: n }, (_, i) => music.walk(base, Math.floor(n / 2) - i, 'chord'))
+    if (d.gliss) return [music.walk(base, glissSteps, d.pitchSet)]
+    let off = 0
+    const k = arpStep++
+    if (d.arp === 'up') off = k % 4
+    else if (d.arp === 'down') off = -(k % 4)
+    else if (d.arp === 'updown') { const c = k % 6; off = c <= 3 ? c : 6 - c }
+    else if (d.arp === 'random') off = Math.floor(rand(-2, 4))
+    else if (d.arp === 'phrase') { if (burstLeft === d.burst || burstLeft <= 0) phraseBase = base; return [music.walk(phraseBase, d.burst - Math.max(1, burstLeft), d.pitchSet)] }
+    return [music.walk(base, off, d.arp === 'off' ? d.pitchSet : 'chord')]
+  }
+
   function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void, power = 1, ctx?: StepCtx) {
     const h = held()!, d = items[h.item]
     const mx = muzzle.x, my = muzzle.y
     const n = Math.max(1, Math.round(d.pellets))
+    // instruments: the sound waits for the next sixteenth (within the window), and a shot on the beat converts more
+    let notes: number[] = [], at = 0, bonus = 1
+    if (d.instrument) {
+      notes = shotNotes(d, n)
+      const g = music.toGrid()
+      at = d.quantize && quantizeAll && g * 1000 <= d.quantWindow ? g : 0
+      if (music.offBeat() < 0.07) {
+        bonus = d.beatBonus
+        if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+      }
+      notes.forEach((m, i) => out.note(d.voice, m, at + i * d.strum, d.noteLen, 0.75))
+    }
     const speed = d.speed * power
     const damage = d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
     for (let i = 0; i < n; i++) {
       const u = n === 1 ? rand(-0.5, 0.5) : i / (n - 1) - 0.5 + rand(-0.3, 0.3) / n
       const a = aimAngle + u * spreadDeg * DEG
       const b: Bullet = {
-        x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
-        item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage, fuse: d.fuse, bounce: d.bounce,
+        x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage: damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+        item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, fuse: d.fuse, bounce: d.bounce,
+      }
+      if (d.instrument) {
+        const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
+        b.note = { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }
+        b.ring = d.ringNotes
       }
       // instant shots travel their whole way now and leave a tracer
       if (d.hitscan && ctx) {
@@ -131,15 +259,16 @@ export function createCombat() {
         tracers.push({ x1: mx, y1: my, x2: b.x, y2: b.y, life: 0.12 })
       } else bullets.push(b)
     }
-    burst(mx, my, 3 + n, '#fff3b0', 140, 2)
-    sound('shot', h.item)
+    if (d.instrument) burst(mx, my, 2 + n, DEGREE_COLORS[music.degreeOf(notes[0]) % DEGREE_COLORS.length], 110, 3)
+    else { burst(mx, my, 3 + n, '#fff3b0', 140, 2); sound('shot', h.item) }
     if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
     h.ammo--; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
     onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
     if (h.ammo <= 0 && d.autoReload) startReload()
   }
 
-  function explode(x: number, y: number, r: number, damage: number) {
+  function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
+    if (b?.note) { musicBurst(x, y, r, damage, b); return }
     booms.push({ x, y, r, life: 0.35 })
     sound('explode', null)
     burst(x, y, 26, '#ffb347', 380, 4); burst(x, y, 14, '#fff3b0', 220, 3)
@@ -152,6 +281,31 @@ export function createCombat() {
     })
   }
 
+  // an instrument bursting: the chord rings out, everything around takes harmony and a push, and notes fly out in a circle
+  function musicBurst(x: number, y: number, r: number, amount: number, b: Bullet) {
+    const note = b.note!
+    booms.push({ x, y, r, life: 0.5, color: note.color })
+    const chord = music.chord(true).map(m => m + 12 * Math.round((note.midi - 60) / 12))
+    if (b.item === 'tambourine') out.drum('jingle', 0)
+    chord.forEach((m, i) => out.note(note.voice, m, i * 0.03, 0.5, 0.6))
+    targets.forEach(t => {
+      if (t.deadT > 0) return
+      const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
+      const dist = Math.hypot(cx - x, cy - y)
+      if (dist > r) return
+      harmonize(t, amount * (1 - 0.5 * dist / r), Math.sign(t.x - x || 1) * 500 * (1 - dist / r), cx, cy, note, items[b.item].stun)
+    })
+    const n = Math.round(b.ring ?? 0)
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 - Math.PI / 2, m = chord[i % chord.length] + (i >= chord.length ? 12 : 0)
+      bullets.push({
+        x, y: y - 6, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, dist: 0, damage: Math.max(5, amount * 0.35), pierce: 0, hits: new Set(), size: 9, drop: 0, range: r * 1.6,
+        item: b.item, t: 0, explode: 0, explodeDamage: 0, fuse: 0, bounce: 0,
+        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0,
+      })
+    }
+  }
+
   type StepCtx = { boxes: Box[]; groundY: number }
   const boxAt = (boxes: Box[], x: number, y: number) => boxes.find(b => x >= b.l && x <= b.r && y >= b.t && y <= b.b)
   // moves a projectile one step; true when it is gone
@@ -161,7 +315,7 @@ export function createCombat() {
     b.vy += b.drop * dt
     b.x += b.vx * dt; b.y += b.vy * dt
     b.dist += Math.hypot(b.x - px, b.y - py)
-    const gone = (x: number, y: number) => { if (b.explode > 0 && !dry) explode(x, y, b.explode, b.explodeDamage); return true }
+    const gone = (x: number, y: number) => { if (b.explode > 0 && !dry) explode(x, y, b.explode, b.explodeDamage, b); return true }
     if (b.fuse > 0 && b.t >= b.fuse) return gone(b.x, b.y)
     if (b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
@@ -173,7 +327,9 @@ export function createCombat() {
         const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
         if (x >= l && x <= r && y >= top && y <= bot) {
           if (b.explode > 0 || dry) { b.x = x; b.y = y; return gone(x, y) }
-          hitTarget(t, b.damage, Math.sign(b.vx) * 40, x, y); b.hits.add(t.id)
+          if (b.note) harmonize(t, b.damage, Math.sign(b.vx) * 40, x, y, b.note, items[b.item].stun)
+          else hitTarget(t, b.damage, Math.sign(b.vx) * 40, x, y)
+          b.hits.add(t.id)
           if (b.hits.size > b.pierce) return true
           break
         }
@@ -195,7 +351,7 @@ export function createCombat() {
       }
       b.x = x; b.y = Math.min(y, groundY)
       if (b.explode > 0) return gone(b.x, b.y)
-      if (!dry) burst(b.x, b.y, 4, floor ? '#8a6d4b' : '#9fd3a8', 120, 2)
+      if (!dry) burst(b.x, b.y, 4, b.note ? b.note.color : floor ? '#8a6d4b' : '#9fd3a8', 120, 2)
       return true
     }
     return false
@@ -222,6 +378,8 @@ export function createCombat() {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
     sound('swing', null)
+    // an instrument hit with Y still sounds: a quick strum of the chord
+    if (!wing && d.instrument) music.chord().forEach((m, i) => out.note(d.voice, m + 12 * d.octave, i * 0.02, 0.15, 0.5))
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
     // the blow comes down in front of her: clockwise facing right, counterclockwise facing left
@@ -250,6 +408,38 @@ export function createCombat() {
     }
   }
 
+  // the violin: a held note in a beam from the muzzle to the first thing it meets; its pitch follows the aim and the chord
+  function stepBeam(d: ItemDef, h: Owned, dt: number, muzzle: { x: number; y: number }, ctx: StepCtx) {
+    const dx = Math.cos(aimAngle), dy = Math.sin(aimAngle)
+    let x = muzzle.x, y = muzzle.y, hit: Target | null = null
+    for (let s = 0; s < d.range; s += 6) {
+      x = muzzle.x + dx * s; y = muzzle.y + dy * s
+      if (y >= ctx.groundY || boxAt(ctx.boxes, x, y)) break
+      hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
+      if (hit) break
+    }
+    const midi = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
+    const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    if (!beamHeld) { beamHeld = out.hold(d.voice, midi); beamMidi = midi }
+    else if (midi !== beamMidi) { beamHeld.setPitch(midi); beamMidi = midi }
+    beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null }
+    h.ammo = Math.max(0, h.ammo - dt * d.rate)
+    bloom = 0
+    if (hit) {
+      const note: NoteInfo = { midi, color, sym: '♩', wave: 0, phase: 0, voice: d.voice }
+      // harmony flows while it plays; the target stays still; it answers every so often
+      hit.stun = Math.max(hit.stun ?? 0, d.stun)
+      hit.harmony = (hit.harmony ?? 0) + d.damage * dt
+      hit.tint = color
+      if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
+      if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun)
+      if (hit.kind === 'button' && hit.flash <= 0) hitTarget(hit, 1, 0, x, y)
+      if (hit.harmony >= hit.maxHp) convert(hit)
+    }
+    if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
+  }
+  function stopBeam() { beamHeld?.stop(); beamHeld = null; beam = null }
+
   const env = (groundY: number, playerX: number, playerY: number): EnemyEnv => ({
     playerX, playerY, groundY, viewL: view.l, viewR: view.r,
     onBite: t => { kills.bites++; addText(playerX, playerY - 150, 'mordida!', '#ff6b5b'); burst(playerX + (t.face > 0 ? -20 : 20), playerY - 80, 10, '#ff6b5b', 200, 3); sound('bite', null) },
@@ -265,9 +455,15 @@ export function createCombat() {
     get aimAngle() { return aimAngle },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
-    booms, tracers, sounds,
+    booms, tracers, sounds, critters, music,
+    get beam() { return beam },
+    get converted() { return conv },
+    setMusicOut(o: MusicOut) { out = o },
+    setQuantize(v: boolean) { quantizeAll = v },
     bullets, thrown, targets, pickups, sparks, texts, racks,
     def,
+    // creative mode / tests: put an item straight into a slot
+    give(slot: number, item: ItemId) { inv[slot] = fresh(item); if (slot === cur) sound('equip', item) },
     setItems(next: Record<ItemId, ItemDef>) {
       items = next
       inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
@@ -303,6 +499,11 @@ export function createCombat() {
         aimAngle += diff
       } else aimAngle = targetAngle
 
+      lastBody = body
+      music.step(dt)
+      bonusTextT = Math.max(0, bonusTextT - dt)
+      // the arpeggio starts over after a pause
+      if (!input.fire) { arpIdle += dt; if (arpIdle > 0.6) arpStep = 0 } else arpIdle = 0
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
       kick = Math.max(0, kick - dt * 60)
       bloom = Math.max(0, bloom - d.spreadRecover * dt)
@@ -311,6 +512,8 @@ export function createCombat() {
       // switching items
       if (input.slot) equip(input.slot - 1)
       else if (input.pick) equip(cur + input.pick)
+      const dNow = def()
+      if (beam && (!input.fire || !dNow.beam)) stopBeam()
 
       // reload
       if (reloadT > 0) {
@@ -334,21 +537,39 @@ export function createCombat() {
         const ctx = { boxes, groundY }
         // shell by shell: firing with something loaded stops the reload
         if (reloadT > 0 && d.shellReload && h.ammo > 0 && input.firePressed) reloadT = 0
-        if (reloadT > 0) { if (input.firePressed) sound('dry') }
+        if (d.beam) { if (reloadT <= 0 && h.ammo > 0 && input.fire) stepBeam(d, h, dt, muzzle, ctx); else if (beam) stopBeam(); if (input.firePressed && (reloadT > 0 || h.ammo <= 0)) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() } }
+        else if (reloadT > 0) { if (input.firePressed) sound('dry') }
         else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
         else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
         else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
         else if (d.fireMode === 'charge') {
           // hold to charge, let go to shoot; force and precision grow with the charge
-          if (input.fire && cooldown <= 0) { if (chargeT === 0) sound('charge'); chargeT += dt }
+          if (input.fire && cooldown <= 0) {
+            if (chargeT === 0) { sound('charge'); glissSteps = 0; glissNext = 0 }
+            chargeT += dt
+            // the harp: the charge runs up the scale, faster as it fills
+            if (d.gliss && d.instrument) {
+              const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
+              glissNext -= dt
+              if (glissNext <= 0 && glissSteps < 7) {
+                out.note(d.voice, music.walk(music.noteFor(aimAngle, d.pitchSet, d.octave, d.span), glissSteps, d.pitchSet), 0, 0.25, 0.35 + 0.3 * p)
+                glissSteps++; glissNext = Math.max(0.04, 0.16 - 0.12 * p)
+              }
+            }
+          }
           if (!input.fire && prevFire && chargeT > 0) {
             const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
+            if (d.gliss) glissSteps = Math.max(0, glissSteps - 1)
             shoot(muzzle, spreadDeg * (1 - 0.7 * p), onRecoil, d.chargeMin + (1 - d.chargeMin) * p, ctx)
-            chargeT = 0
+            chargeT = 0; glissSteps = 0
           }
         } else {
           if (input.firePressed && burstLeft <= 0 && cooldown <= 0) burstLeft = d.burst
-          if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) { shoot(muzzle, spreadDeg, onRecoil, 1, ctx); burstLeft--; if (burstLeft <= 0) cooldown = 3 / d.rate }
+          if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) {
+            shoot(muzzle, spreadDeg, onRecoil, 1, ctx); burstLeft--
+            if (burstLeft <= 0) cooldown = 3 / d.rate
+            else if (d.instrument) cooldown = 1 / Math.max(1, d.arpRate) // a phrase plays at the arpeggio's speed
+          }
         }
       }
       prevFire = input.fire
@@ -442,6 +663,17 @@ export function createCombat() {
         if (t.deadT > 0) { t.deadT -= dt; if (t.deadT <= 0) { t.hp = t.maxHp; t.x = t.home; burst(t.x, t.y - t.h / 2, 10, '#7bdff2', 160, 3) } }
       })
 
+      // every target: the stillness of a note wears off; answers cool down
+      targets.forEach(t => { if (t.stun) t.stun = Math.max(0, t.stun - dt); if (t.answerCool) t.answerCool = Math.max(0, t.answerCool - dt) })
+      // converted enemies leave: birds flap up and away, people run off with little hops
+      for (let i = critters.length - 1; i >= 0; i--) {
+        const c = critters[i]
+        c.t += dt
+        if (c.kind === 'bird') { c.vy = Math.max(-260, c.vy - 40 * dt); c.x += c.vx * dt + Math.sin(c.t * 9) * 0.6; c.y += c.vy * dt + Math.sin(c.t * 14) * 1.2 }
+        else { c.x += c.vx * dt; c.vy += 1600 * dt; c.y += c.vy * dt; if (c.y >= c.groundY) { c.y = c.groundY; c.vy = Math.random() < 0.02 ? -380 : 0 } }
+        if (c.t > 1.2 && c.kind === 'person' && Math.random() < dt * 1.5) texts.push({ x: c.x, y: c.y - 190, text: Math.random() < 0.5 ? '♥' : '♪', life: 0.9, color: '#ff6b9a', size: 18 })
+        if (c.y < -120 || c.t > 9 || c.x < view.l - 500 || c.x > view.r + 500) critters.splice(i, 1)
+      }
       for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.life <= 0) sparks.splice(i, 1) }
       for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1) }
     },
