@@ -185,7 +185,8 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       }
       const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
-        moveLock: aimLock,
+        // brooding does not freeze her: "frente + chocar" walks at its own speed (0 keeps her still), aiming with the item
+        moveLock: false,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
         backpedal: S.backpedal,
         speedMult: d.weight,
