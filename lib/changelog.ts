@@ -10,6 +10,7 @@ export const CHANGELOG = [
       { title: 'Galinha', items: [
         'O Pátio da Galinha agora é uma seção do jogo: abra pelo link “Pátio da Galinha” no painel Controles da galinha (botão do gamepad no globo).',
         'No Pátio dá para pular nas caixas e ajustar tudo da galinha (movimento, pulo, voo, animação, cacarejos e o visual de cada parte) vendo o resultado na hora.',
+        'A galinha não agarra mais as laterais das plataformas flutuantes ao pular: ela agarra quando os pés encostam numa lateral no ar sem nenhum botão de movimento apertado.',
         'Com a conta admin, “Salvar padrão” grava os ajustes para todo mundo, e o globo (e qualquer outra tela com a galinha) passa a usar essa mesma versão. Sem a conta admin, os ajustes ficam só no seu navegador, como rascunho.',
       ] },
     ],
