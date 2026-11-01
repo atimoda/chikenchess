@@ -5,11 +5,12 @@
 // arrows > facing, drawn as a reticle. Firing, hitting and throwing only flash for now; the items come next.
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { loadChickenControls, readGamepadTokens, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
 import { createCombat, SLOTS, type Box, type Combat } from "@/lib/pigchicken/combat"
 import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { ITEM_SVG } from "@/lib/pigchicken/art"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { useTouchControls } from "@/components/chicken/chicken-layer"
 
@@ -65,11 +66,6 @@ export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRe
   )
 }
 
-// the gamepad's aim lock button still works as hold while Caps Lock is a switch
-function readPadLock(controls: ChickenControls) {
-  const on = readGamepadTokens(controls.analog.deadzoneL)
-  return controls.pad.aimLock.some(t => t && on.has(t))
-}
 
 export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -94,12 +90,8 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     let mouse: { x: number; y: number } | null = null
     const mouseBtn = { fire: false, melee: false }
     let wheel = 0, slotPick = 0
-    // Caps Lock locks the aim as a switch on every system (the Mac only reports it turning on and off)
-    let capsOn = false
-    const readCaps = (e: KeyboardEvent | PointerEvent) => { if (typeof e.getModifierState === "function") capsOn = e.getModifierState("CapsLock") }
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
     const onMove = (e: PointerEvent) => {
-      readCaps(e)
       if (e.pointerType !== "mouse") return
       if (mouse) owner.moved(Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y), performance.now())
       mouse = { x: e.clientX, y: e.clientY }
@@ -116,7 +108,6 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     const onMenu = (e: MouseEvent) => { if (!isUi(e.target)) e.preventDefault() }
     const onWheel = (e: WheelEvent) => { if (!isUi(e.target)) wheel += Math.sign(e.deltaY) }
     const onKey = (e: KeyboardEvent) => {
-      readCaps(e)
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
       const m = /^Digit([1-9])$/.exec(e.code)
@@ -128,7 +119,6 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     window.addEventListener("contextmenu", onMenu)
     window.addEventListener("wheel", onWheel, { passive: true })
     window.addEventListener("keydown", onKey)
-    window.addEventListener("keyup", readCaps)
     engine.setGame({ gameMode: true })
 
     let camX = 0, last = performance.now(), raf = 0
@@ -169,14 +159,12 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
 
       // ---------- aim ----------
       const act = engine.getActions()
-      if (controls.keys.aimLock.includes("Key:CapsLock")) act.aimLock = capsOn || !!readPadLock(controls)
       const an = controls.analog
       const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL)
       const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || act.down ? 1 : 0) - (act.up ? 1 : 0) }
       if (leftStick || keys.x || keys.y) owner.otherAim(now, S.mouseIdle)
-      // her shoulder, turned with her body (on a wall she is drawn rotated)
-      const lx = st.face * 14 * st.scale, ly = -112 * st.scale, ca = Math.cos(st.angle), sa = Math.sin(st.angle)
-      const origin = { x: st.x + lx * ca - ly * sa, y: st.y + lx * sa + ly * ca }
+      // her shoulder as drawn (it turns with her body on walls)
+      const origin = st.shoulder
       aim = resolveAim({
         rightStick, mouse: owner.owns ? mouse : null, touch: touchAim.current, leftStick, keys, origin,
         face: st.face, grounded: st.grounded, aimLock: act.aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
@@ -215,11 +203,22 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
       drawWorld(ctx, combat, camX)
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
-      drawHeld(ctx, combat, origin, ang, st.scale)
+      drawSwing(ctx, combat, origin)
+      // the item itself is drawn inside her rig, in front of her body and behind the wing
+      const h = combat.inventory[combat.current], sw = combat.swing
+      const art = h ? ITEM_SVG[h.item] : undefined
+      engine.setHeld(art ? { svg: art, angle: sw && !sw.wing ? sw.angle - sw.arc / 2 + sw.arc * Math.min(1, sw.t / 0.2) : ang, kick: combat.kick } : null)
       const dist = aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
       const rx = d.turnRate > 0 || !aim.target ? origin.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? origin.y + ady * dist : aim.target.y
       drawReticle(ctx, combat, origin, rx, ry, dist, combat.spread(body), act.aimLock, st.scale)
       drawInventory(ctx, combat)
+      if (act.aimLock) {
+        // aim lock only while held: show it right above her
+        ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
+        const label = "MIRA TRAVADA"
+        ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(st.x - 110, origin.y - 120 * st.scale - 34, 220, 18)
+        ctx.fillStyle = "#ffd166"; ctx.fillText(label, st.x, origin.y - 120 * st.scale - 21)
+      }
       if (hudRef.current) {
         const h = combat.inventory[combat.current]
         const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
@@ -238,9 +237,9 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       window.removeEventListener("contextmenu", onMenu)
       window.removeEventListener("wheel", onWheel)
       window.removeEventListener("keydown", onKey)
-      window.removeEventListener("keyup", readCaps)
       window.removeEventListener("resize", fit)
       engine.setGame({ gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1 })
+      engine.setHeld(null)
       engine.setBounds(null)
       if (camX) engine.shift(camX)
       if (worldRef.current) worldRef.current.style.transform = ""
@@ -336,27 +335,17 @@ function drawItemShape(ctx: Ctx, item: ItemId, s: number) {
   ctx.restore()
 }
 
-function drawHeld(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, ang: number, scale: number) {
-  const h = combat.inventory[combat.current]
+function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
   const sw = combat.swing
+  if (!sw) return
+  // the swing: a fan in front of her
+  const k = 1 - sw.t / 0.2
   ctx.save()
   ctx.translate(origin.x, origin.y)
-  if (sw) {
-    // the swing: a fan in front of her
-    const k = 1 - sw.t / 0.2
-    ctx.fillStyle = sw.wing ? `rgba(255,236,179,${0.35 * k})` : `rgba(255,209,102,${0.4 * k})`
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle + sw.arc / 2); ctx.closePath(); ctx.fill()
-    ctx.strokeStyle = `rgba(255,255,255,${0.7 * k})`; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle - sw.arc / 2 + sw.arc * (sw.t / 0.2)); ctx.stroke()
-  }
-  if (h) {
-    // during a swing the item sweeps across the arc
-    const a = sw && !sw.wing ? sw.angle - sw.arc / 2 + sw.arc * Math.min(1, sw.t / 0.2) : ang
-    ctx.rotate(a)
-    if (Math.cos(a) < 0) ctx.scale(1, -1)
-    ctx.translate(14 * scale - combat.kick * scale, 0)
-    drawItemShape(ctx, h.item, 1.7 * scale)
-  }
+  ctx.fillStyle = sw.wing ? `rgba(255,236,179,${0.35 * k})` : `rgba(255,209,102,${0.4 * k})`
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle + sw.arc / 2); ctx.closePath(); ctx.fill()
+  ctx.strokeStyle = `rgba(255,255,255,${0.7 * k})`; ctx.lineWidth = 3
+  ctx.beginPath(); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle - sw.arc / 2 + sw.arc * (sw.t / 0.2)); ctx.stroke()
   ctx.restore()
 }
 

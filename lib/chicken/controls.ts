@@ -22,7 +22,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyE', null, null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: ['Key:KeyQ', null, null], pad: [null, null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], pad: ['Pad:b11', null, null], group: 'items' },
-  { key: 'aimLock', label: 'Travar mira', keys: ['Key:CapsLock', null, null], pad: ['Pad:b6', null, null], group: 'items' },
+  { key: 'aimLock', label: 'Travar mira (segurar)', keys: ['Key:AltLeft', null, null], pad: ['Pad:b6', null, null], group: 'items' },
 ]
 
 // Analog sticks: dead zones (0..0.9 of the travel) and the optional magnet that pulls the left stick's aim to 8 angles
@@ -87,12 +87,14 @@ export function loadChickenControls(): ChickenControls {
         base.pad.run = ['Pad:b2', null, null]
       }
     }
+    // Caps Lock cannot be held on the Mac (it only reports turning on and off): the aim lock moves to Option / Alt
+    if (!saved?.itemsV2) base.keys.aimLock = base.keys.aimLock.map(t => t === 'Key:CapsLock' ? 'Key:AltLeft' : t)
   } catch { /* storage unavailable: defaults */ }
   return base
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, itemsV1: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, itemsV1: true, itemsV2: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
@@ -108,7 +110,7 @@ let listening = false
 export const isChickenControlsListening = () => listening
 export const setChickenControlsListening = (value: boolean) => { listening = value }
 
-const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', AltLeft: 'Alt esq.', AltRight: 'Alt dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab' }
+const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: 'Alt/Option esq.', AltRight: 'Alt/Option dir.', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab' }
 // Xbox names; LS / RS are the left / right sticks
 const PAD_BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'Home']
 const PAD_AXES = ['LS ←', 'LS →', 'LS ↑', 'LS ↓', 'RS ←', 'RS →', 'RS ↑', 'RS ↓']
