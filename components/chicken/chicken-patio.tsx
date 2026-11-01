@@ -15,6 +15,7 @@ import {
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { ChickenGround, ChickenLayer } from "./chicken-layer"
+import { ChickenPortalArrival } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 import type { ChickenEngine } from "@/lib/chicken/engine"
@@ -150,13 +151,14 @@ export function ChickenPatio() {
       </header>
 
       <p className="pointer-events-none absolute left-1/2 top-16 z-10 w-full -translate-x-1/2 px-4 text-center font-mono text-xs text-[#93a79a]">
-        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular · mouse ou setas miram · clique/X atira · clique direito/Z golpe · V arremessa · Q/E/1–9 itens · chocar com item trava a mira
+        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular · mouse ou setas miram · clique/X atira · clique direito/Z golpe · V arremessa · Q/1–9 trocam o item · E pega (troca com o da mão) · chocar com item trava a mira
       </p>
 
       <ParquinhoWorld screens={pq.screens} worldRef={worldRef} />
 
       <ChickenGround />
       <ChickenLayer dropIn={false} onEngine={setEngine} />
+      <ChickenPortalArrival engine={engine} />
       <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
