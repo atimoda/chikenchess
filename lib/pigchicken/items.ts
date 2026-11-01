@@ -37,6 +37,10 @@ export type ItemDef = {
   recoilPush: number // px/s pushing her away from the shot, only in the air
   weight: number // walking speed multiplier
   turnRate: number // deg/s the aim can turn (0 = instant)
+  // art (rig units, on the item's drawing: x forward from the grip, y down)
+  muzzleX: number // where the shot leaves and the aim line starts
+  muzzleY: number
+  length: number // how far the item reaches past the wing tip in a melee swing
   // melee (Y / right click)
   meleeDamage: number
   meleeRange: number // px
@@ -56,6 +60,7 @@ const PISTOL: ItemDef = {
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
+  muzzleX: 54, muzzleY: -7, length: 56,
   meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, durability: 40, meleePush: 260,
   throwDamage: 25, throwSpeed: 1100, throwCharge: 1,
 }
@@ -63,7 +68,7 @@ const PISTOL: ItemDef = {
 // no item: firing and hitting are both a wing slap
 const WING: ItemDef = {
   ...PISTOL, id: 'wing', name: 'Asa (sem item)', family: 'Sem item',
-  mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0,
+  mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
   meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeCooldown: 0.35, durability: 0, meleePush: 180, throwDamage: 0,
 }
 
@@ -94,8 +99,11 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'recoilPush', label: 'Recuo no ar', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Manuseio' },
   { key: 'weight', label: 'Peso (velocidade)', min: 0.3, max: 1.2, step: 0.05, unit: '×', group: 'Manuseio' },
   { key: 'turnRate', label: 'Giro da mira', min: 0, max: 1440, step: 30, unit: '°/s', group: 'Manuseio', hint: '0 = instantâneo' },
+  { key: 'muzzleX', label: 'Saída do tiro X', min: -20, max: 160, step: 1, unit: 'u', group: 'Desenho', hint: 'Ponto de onde sai o tiro e começa a mira, a partir da empunhadura' },
+  { key: 'muzzleY', label: 'Saída do tiro Y', min: -60, max: 60, step: 0.5, unit: 'u', group: 'Desenho', hint: 'Negativo sobe' },
+  { key: 'length', label: 'Comprimento no golpe', min: 0, max: 200, step: 1, unit: 'u', group: 'Desenho', hint: 'Quanto a arma estende o golpe além da ponta da asa' },
   { key: 'meleeDamage', label: 'Dano do golpe', min: 0, max: 100, step: 1, group: 'Golpe' },
-  { key: 'meleeRange', label: 'Alcance do golpe', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
+  { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
   { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe' },
   { key: 'meleeCooldown', label: 'Intervalo', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Golpe' },
   { key: 'meleePush', label: 'Empurrão', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Golpe' },

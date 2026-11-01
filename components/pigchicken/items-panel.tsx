@@ -2,6 +2,7 @@
 
 // Popup with every number of the PigChicKen items (weapons now, instruments later), one item at a time
 // picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
+import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { DEFAULT_ITEMS, ITEM_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, loadItems, saveItems, subscribeItems, type FireMode, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
@@ -14,7 +15,7 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
 ]
 
 // what each item uses; the wing has no ammo, projectile or throw
-const HIDDEN: Partial<Record<ItemId, string[]>> = { wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso"] }
+const HIDDEN: Partial<Record<ItemId, string[]>> = { wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho"] }
 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
@@ -32,8 +33,8 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
     setItems(next)
   }
   return (
-    <aside data-chicken-ignore aria-label="Itens" className="absolute bottom-10 left-3 top-16 z-[210] flex w-[min(380px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+    <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <select aria-label="Item" value={sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
           {ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}
         </select>
@@ -79,6 +80,6 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           </details>
         ))}
       </div>
-    </aside>
+    </FloatingPanel>
   )
 }

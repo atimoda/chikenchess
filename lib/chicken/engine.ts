@@ -27,6 +27,12 @@ export type ChickenEngine = {
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and behind the wing, turned to `angle` (screen radians), pulled back by `kick` rig units
   setHeld: (held: { svg: string; angle: number; kick: number } | null) => void
+  // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
+  // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in.
+  setSwing: (swing: { angle: number; reach: number; t: number } | null) => void
+  // a point on the held item's drawing (rig units, x forward from the grip, y down) on the screen when the
+  // item points at `angle` (screen radians); her shoulder for (0, 0)
+  heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
   // a push (px/s), e.g. a weapon's recoil; only while she is in the air
   impulse: (vx: number, vy: number) => void
   destroy: () => void
@@ -44,6 +50,8 @@ const PIV: Record<string, [number, number]> = {
   legB: [-26, -88], tibB: [-26, -58], shinB: [-26, -26], toeB: [-26, 14],
   body: [0, -62], neck: [24, -124], head: [40, -178], wing: [14, -120], tail: [-52, -110],
 }
+// the wing's tip (its far back corner) seen from its pivot at the shoulder, in rig units: the swing aims it
+const WING_TIP_DEG = Math.atan2(28, -58) * 180 / Math.PI, WING_TIP_LEN = Math.hypot(58, 28)
 const rot = (k: string, a: number) => `rotate(${a.toFixed(2)} ${PIV[k][0]} ${PIV[k][1]})`
 const legMarkup = (k: 'Front' | 'Back', x: number) => `
   <g data-part="leg${k}Wrap"><g data-part="leg${k}">
@@ -210,6 +218,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- game hooks ----------
   let heldItem: { svg: string; angle: number; kick: number } | null = null, heldSvg = ''
+  let swingNow: { angle: number; reach: number; t: number } | null = null
+  // screen angle (degrees) -> her rig: undo the root's turn, the mirror when facing left, and the body's lean
+  const rigAngle = (screenDeg: number) => {
+    let a = screenDeg - vis.a
+    if (S.face < 0) a = 180 - a
+    a -= pose.body
+    return ((a % 360) + 540) % 360 - 180
+  }
   let bounds: { lo: number; hi: number } | null = null
   const game: Required<ChickenGame> = { gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1 }
   const wallLo = () => bounds ? bounds.lo : 0, wallHi = () => bounds ? bounds.hi : W
@@ -896,15 +912,26 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.body.setAttribute('transform', `translate(${pose.sway.toFixed(2)} ${(pose.bob + pose.sink + R.legBend - 2).toFixed(2)}) ${rot('body', pose.body)} translate(0 -62) scale(${pose.puff.toFixed(3)}) translate(0 62)`)
     el.neck.setAttribute('transform', rot('neck', pose.neck))
     el.head.setAttribute('transform', rot('head', pose.head))
-    el.wing.setAttribute('transform', rot('wing', pose.wing))
+    // the swing: the wing tip points along the blow and the wing stretches out to the end of its reach
+    let tipRig = 0, wingLen = 0
+    if (swingNow) {
+      const e = smooth(clamp(swingNow.t, 0, 1))
+      const rest = WING_TIP_DEG + pose.wing
+      const target = rigAngle(swingNow.angle * DEG)
+      const b = rest + ((((target - rest) % 360) + 540) % 360 - 180) * e
+      const full = Math.max(WING_TIP_LEN, swingNow.reach / Math.max(0.01, R.scale * pose.puff))
+      wingLen = WING_TIP_LEN + (full - WING_TIP_LEN) * e
+      tipRig = b
+      const [px, py] = PIV.wing
+      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / WING_TIP_LEN).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+    } else el.wing.setAttribute('transform', rot('wing', pose.wing))
     if (heldItem) {
-      // screen angle -> her rig: undo the root's turn, the mirror when facing left, and the body's lean
-      let a = heldItem.angle * DEG - va
-      if (S.face < 0) a = 180 - a
-      a -= pose.body
-      a = ((a % 360) + 540) % 360 - 180
+      let a: number, at = ''
+      // swinging: the item rides on the wing tip and turns with it
+      if (swingNow) { a = tipRig; at = ` translate(${wingLen.toFixed(1)} 0)`; a = ((a % 360) + 540) % 360 - 180 }
+      else a = rigAngle(heldItem.angle * DEG)
       const flip = Math.abs(a) > 90 ? ' scale(1 -1)' : ''
-      el.held.setAttribute('transform', `rotate(${a.toFixed(1)})${flip} translate(${(-heldItem.kick).toFixed(1)} 0)`)
+      el.held.setAttribute('transform', `rotate(${a.toFixed(1)})${at}${flip} translate(${(-heldItem.kick).toFixed(1)} 0)`)
     }
     el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
     el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
@@ -980,6 +1007,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     setBounds(next) { bounds = next },
     setGame(next) { Object.assign(game, next) },
+    setSwing(next) { swingNow = next },
+    heldPoint(angle, x, y) {
+      const p = shoulder(), k = R.scale * pose.puff
+      const flip = Math.abs(rigAngle(angle * DEG)) > 90 ? -1 : 1
+      const c = Math.cos(angle), sn = Math.sin(angle)
+      // the item's "down" on the screen: a quarter turn from where it points, mirrored when she faces left
+      const yy = y * flip * (S.face < 0 ? -1 : 1)
+      return { x: p.x + k * (x * c - yy * sn), y: p.y + k * (x * sn + yy * c) }
+    },
     setHeld(next) {
       heldItem = next
       const svgArt = next ? next.svg : ''

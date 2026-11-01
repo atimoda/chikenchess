@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
+import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 
@@ -155,8 +156,8 @@ export function ChickenPatio() {
       <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
-        <aside data-chicken-ignore aria-label="Ajustes do Parquinho" className="absolute left-3 top-16 z-[210] grid w-[min(320px,calc(100vw-1.5rem))] gap-3 rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center gap-2">
+        <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+          <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
             <h2 className="flex-1 text-sm text-white">Parquinho</h2>
             <button type="button" onClick={() => { setPq(DEFAULT_PARQUINHO); saveParquinho(DEFAULT_PARQUINHO) }} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
             <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -168,13 +169,13 @@ export function ChickenPatio() {
           <PqRange label="Mouse parado devolve a mira" unit="s" min={0} max={5} step={0.25} value={pq.mouseIdle} onChange={v => setPqValue("mouseIdle", v)} />
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
           <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
-        </aside>
+        </FloatingPanel>
       )}
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} />
 
       {panelOpen && (
-        <aside data-chicken-ignore aria-label="Ajustes da galinha" className="absolute bottom-10 right-3 top-16 z-[210] flex w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+        <FloatingPanel id="chicken-tuning" aria-label="Ajustes da galinha" initial={(vw, vh) => { const w = Math.min(400, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+          <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Ajustes</h2>
             {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
             <button type="button" aria-label="Fechar ajustes" onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -222,7 +223,7 @@ export function ChickenPatio() {
               </Group>
             ))}
           </div>
-        </aside>
+        </FloatingPanel>
       )}
     </main>
   )

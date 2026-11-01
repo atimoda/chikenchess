@@ -10,7 +10,9 @@ export type Target = { id: number; home: number; x: number; y: number; w: number
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 export type FloatText = { x: number; y: number; text: string; life: number; color: string }
-export type Swing = { angle: number; arc: number; range: number; t: number; wing: boolean }
+// range: wing reach; reach: wing plus the item's length (the hit area); dir: which way it sweeps (1 = clockwise on screen)
+export type Swing = { angle: number; arc: number; range: number; reach: number; t: number; wing: boolean; dir: number }
+export const SWING_TIME = 0.2
 
 export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
 export type FrameInput = {
@@ -76,11 +78,10 @@ export function createCombat() {
     if (d.mag > 0 && h.ammo < d.mag && reloadT <= 0) reloadT = d.reloadTime
   }
 
-  function shoot(body: Body, origin: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void) {
+  function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void) {
     const h = held()!, d = items[h.item]
     const a = aimAngle + rand(-spreadDeg / 2, spreadDeg / 2) * DEG
-    const muzzle = 34 * body.scale
-    const mx = origin.x + Math.cos(aimAngle) * muzzle, my = origin.y + Math.sin(aimAngle) * muzzle
+    const mx = muzzle.x, my = muzzle.y
     bullets.push({ x: mx, y: my, vx: Math.cos(a) * d.speed, vy: Math.sin(a) * d.speed, dist: 0, damage: d.damage, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range })
     burst(mx, my, 3, '#fff3b0', 140, 2)
     h.ammo--; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
@@ -88,16 +89,19 @@ export function createCombat() {
     if (h.ammo <= 0 && d.autoReload) startReload()
   }
 
-  function melee(origin: { x: number; y: number }, wing: boolean) {
+  function melee(origin: { x: number; y: number }, wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
-    swing = { angle: aimAngle, arc: d.meleeArc * DEG, range: d.meleeRange, t: 0, wing }
+    // an item in the wing rides on its tip: the blow reaches its length further
+    const reach = d.meleeRange + (wing ? 0 : d.length * scale)
+    // the blow comes down in front of her: clockwise facing right, counterclockwise facing left
+    swing = { angle: aimAngle, arc: d.meleeArc * DEG, range: d.meleeRange, reach, t: 0, wing, dir: Math.cos(aimAngle) >= 0 ? 1 : -1 }
     let hits = 0
     targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = t.x, cy = t.y - t.h / 2
       const dx = cx - origin.x, dy = cy - origin.y, dist = Math.hypot(dx, dy) - t.w / 2
-      if (dist > d.meleeRange) return
+      if (dist > reach) return
       let diff = Math.atan2(dy, dx) - aimAngle
       diff = Math.atan2(Math.sin(diff), Math.cos(diff))
       if (Math.abs(diff) > (d.meleeArc * DEG) / 2 && dist > 10) return
@@ -143,7 +147,7 @@ export function createCombat() {
       return Math.min(s, d.spreadMax + d.spreadAir + d.spreadMove)
     },
 
-    step(dt: number, body: Body, origin: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void) {
+    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void) {
       const d = def()
       // aim turns at the item's speed
       if (d.turnRate > 0) {
@@ -156,7 +160,7 @@ export function createCombat() {
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
       kick = Math.max(0, kick - dt * 60)
       bloom = Math.max(0, bloom - d.spreadRecover * dt)
-      if (swing) { swing.t += dt; if (swing.t > 0.2) swing = null }
+      if (swing) { swing.t += dt; if (swing.t > SWING_TIME) swing = null }
 
       // switching items
       if (input.slot) equip(input.slot - 1)
@@ -173,18 +177,18 @@ export function createCombat() {
       const h = held()
       const canFire = body.state !== 'slide' || d.slideFire
       if (!h || d.mag === 0) {
-        if (input.firePressed && meleeCool <= 0) melee(origin, true)
+        if (input.firePressed && meleeCool <= 0) melee(origin, true, body.scale)
       } else if (canFire && reloadT <= 0) {
         const spreadDeg = this.spread(body)
         if (h.ammo <= 0) { if (input.firePressed) { if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
-        else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(body, origin, spreadDeg, onRecoil) }
-        else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(body, origin, spreadDeg, onRecoil) }
+        else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil) }
+        else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil) }
         else {
           if (input.firePressed && burstLeft <= 0 && cooldown <= 0) burstLeft = d.burst
-          if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) { shoot(body, origin, spreadDeg, onRecoil); burstLeft--; if (burstLeft <= 0) cooldown = 3 / d.rate }
+          if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) { shoot(muzzle, spreadDeg, onRecoil); burstLeft--; if (burstLeft <= 0) cooldown = 3 / d.rate }
         }
       }
-      if (input.melee && meleeCool <= 0) melee(origin, !h)
+      if (input.melee && meleeCool <= 0) melee(origin, !h, body.scale)
 
       // throw: hold to charge, let go to throw what she holds
       if (input.throwHeld) throwT += dt

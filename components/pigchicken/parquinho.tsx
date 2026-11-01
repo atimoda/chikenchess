@@ -8,7 +8,7 @@ import type { ChickenEngine } from "@/lib/chicken/engine"
 import { loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
-import { createCombat, SLOTS, type Box, type Combat } from "@/lib/pigchicken/combat"
+import { createCombat, SLOTS, SWING_TIME, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
 import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
@@ -173,6 +173,17 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
         face: st.face, grounded: st.grounded, aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
       })
       const d = combat.def()
+      // the aim starts at the muzzle: with the cursor, turn the item until the line through its muzzle
+      // (not her shoulder) passes over the cursor
+      const tgt = aim.target
+      if (armed && tgt && d.muzzleY) {
+        for (let i = 0; i < 3; i++) {
+          const o = engine.heldPoint(aim.angle, 0, d.muzzleY)
+          const a = Math.atan2(tgt.y - o.y, tgt.x - o.x)
+          aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
+        }
+      }
+      const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
         moveLock: aimLock,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
@@ -200,20 +211,24 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       })
       const body = { x: st.x + camX, y: st.y, face: st.face, scale: st.scale, grounded: st.grounded, state: st.state, vx: st.vx }
       const worldOrigin = { x: origin.x + camX, y: origin.y }
-      combat.step(dt, body, worldOrigin, aim.angle, input, boxes, st.groundY, (vx, vy) => engine.impulse(vx, vy))
+      const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
+      combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y }, aim.angle, input, boxes, st.groundY, (vx, vy) => engine.impulse(vx, vy))
 
       // ---------- draw ----------
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
       drawWorld(ctx, combat, camX)
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
-      // the item itself is drawn inside her rig, in front of her body and behind the wing
+      // the item itself is drawn inside her rig, in front of her body and behind the wing; in a swing the wing
+      // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.inventory[combat.current], sw = combat.swing
       const art = h ? ITEM_SVG[h.item] : undefined
-      engine.setHeld(art ? { svg: art, angle: sw && !sw.wing ? sw.angle - sw.arc / 2 + sw.arc * Math.min(1, sw.t / 0.2) : ang, kick: combat.kick } : null)
-      const dist = aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
-      const rx = d.turnRate > 0 || !aim.target ? origin.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? origin.y + ady * dist : aim.target.y
-      drawReticle(ctx, combat, origin, rx, ry, dist, combat.spread(body), aimLock, st.scale)
+      engine.setHeld(art ? { svg: art, angle: ang, kick: combat.kick } : null)
+      engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (SWING_TIME * 0.3), (SWING_TIME - sw.t) / (SWING_TIME * 0.3)) } : null)
+      const muzzle = muzzleAt(ang)
+      const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
+      const rx = d.turnRate > 0 || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? muzzle.y + ady * dist : aim.target.y
+      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale)
       drawInventory(ctx, combat)
       if (hudRef.current) {
         const h = combat.inventory[combat.current]
@@ -236,6 +251,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       window.removeEventListener("resize", fit)
       engine.setGame({ gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1 })
       engine.setHeld(null)
+      engine.setSwing(null)
       engine.setBounds(null)
       if (camX) engine.shift(camX)
       if (worldRef.current) worldRef.current.style.transform = ""
@@ -331,17 +347,23 @@ function drawItemShape(ctx: Ctx, item: ItemId, s: number) {
   ctx.restore()
 }
 
+// where the blow is now: it sweeps across its arc in SWING_TIME, downward in front of her
+function swingAngle(sw: Swing) {
+  return sw.angle + sw.dir * (-sw.arc / 2 + sw.arc * Math.min(1, sw.t / SWING_TIME))
+}
+
 function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
   const sw = combat.swing
   if (!sw) return
-  // the swing: a fan in front of her
-  const k = 1 - sw.t / 0.2
+  // the swing: a faint fan over the whole hit area, and a trail behind the wing tip
+  const k = 1 - sw.t / SWING_TIME
+  const a0 = sw.angle - sw.dir * sw.arc / 2, now = swingAngle(sw)
   ctx.save()
   ctx.translate(origin.x, origin.y)
-  ctx.fillStyle = sw.wing ? `rgba(255,236,179,${0.35 * k})` : `rgba(255,209,102,${0.4 * k})`
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle + sw.arc / 2); ctx.closePath(); ctx.fill()
+  ctx.fillStyle = sw.wing ? `rgba(255,236,179,${0.18 * k})` : `rgba(255,209,102,${0.2 * k})`
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, sw.reach, a0, now, sw.dir < 0); ctx.closePath(); ctx.fill()
   ctx.strokeStyle = `rgba(255,255,255,${0.7 * k})`; ctx.lineWidth = 3
-  ctx.beginPath(); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle - sw.arc / 2 + sw.arc * (sw.t / 0.2)); ctx.stroke()
+  ctx.beginPath(); ctx.arc(0, 0, sw.reach, a0, now, sw.dir < 0); ctx.stroke()
   ctx.restore()
 }
 
