@@ -124,6 +124,8 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     window.addEventListener("wheel", onWheel, { passive: true })
     window.addEventListener("keydown", onKey)
     engine.setGame({ gameMode: true })
+    // only the reticle: the mouse arrow hides over the game (panels and buttons keep it)
+    document.body.classList.add("pigchicken-play")
 
     let camX = 0, last = performance.now(), raf = 0
     let prev: Partial<Record<ChickenAction, boolean>> = {}
@@ -292,7 +294,9 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
         path = combat.predict({ x: muzzle.x + camX, y: muzzle.y }, ang, power, { boxes, groundY: st.groundY }).points.map(p => ({ x: p.x - camX, y: p.y }))
       }
       drawBeam(ctx, combat, camX)
-      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path)
+      // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
+      const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
+      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
       if (zoneBanner > 0) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       drawInventory(ctx, combat)
       if (hudRef.current) {
@@ -323,6 +327,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       engine.setSwing(null)
       engine.setBounds(null)
       drone.set(null)
+      document.body.classList.remove("pigchicken-play")
       if (camX) engine.shift(camX)
       if (worldRef.current) worldRef.current.style.transform = ""
     }
@@ -330,6 +335,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
 
   return (
     <>
+      <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
       <div ref={hudRef} className="pointer-events-none absolute bottom-10 left-3 z-[120] font-mono text-[11px] text-[#93a79a]" />
       {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} />}
@@ -717,7 +723,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   ctx.globalAlpha = 1
 }
 
-function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null) {
+function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean) {
   const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
   const t = performance.now() / 1000
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
@@ -727,7 +733,7 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
   const end = path ? path[path.length - 1] : null
   ctx.save()
   // the faint aim line (the families that draw their own path skip it)
-  if (!path && d.reticle !== "cone") {
+  if (showPath && !path && d.reticle !== "cone") {
     ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
     line(origin.x, origin.y, rx, ry)
     ctx.setLineDash([])
@@ -744,27 +750,37 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     // rifle: a cross with a gap in the middle that opens with walking and firing
     ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => line(rx + ux * (gap + 3), ry + uy * (gap + 3), rx + ux * (gap + 15), ry + uy * (gap + 15)))
   } else if (d.reticle === "cone") {
-    // pump: the cone of the pellets, fading with distance
-    const half = (spreadDeg / 2) * Math.PI / 180, reach = Math.min(d.range, 900)
-    const grad = ctx.createRadialGradient(origin.x, origin.y, 0, origin.x, origin.y, reach)
-    grad.addColorStop(0, combat.reloading ? "rgba(138,143,152,0.8)" : "rgba(255,255,255,0.8)"); grad.addColorStop(1, "rgba(255,255,255,0)")
-    ctx.strokeStyle = grad
-    ;[-half, half].forEach(a => line(origin.x, origin.y, origin.x + Math.cos(ang + a) * reach, origin.y + Math.sin(ang + a) * reach))
+    // pump: the reticle is as wide as the pellets' spread at the aim's distance (small near the gun, wide far away),
+    // and fades past the pellets' range; the cone's sides are its path
+    const half = (spreadDeg / 2) * Math.PI / 180, reach = d.range
+    if (showPath) {
+      const grad = ctx.createRadialGradient(origin.x, origin.y, 0, origin.x, origin.y, reach)
+      grad.addColorStop(0, combat.reloading ? "rgba(138,143,152,0.8)" : "rgba(255,255,255,0.8)"); grad.addColorStop(1, "rgba(255,255,255,0)")
+      ctx.strokeStyle = grad
+      ;[-half, half].forEach(a => line(origin.x, origin.y, origin.x + Math.cos(ang + a) * reach, origin.y + Math.sin(ang + a) * reach))
+    }
+    ctx.globalAlpha = dist <= reach ? 0.95 : 0.3
     ctx.strokeStyle = color
-    ctx.beginPath(); ctx.arc(origin.x, origin.y, Math.min(dist, reach * 0.6), ang - half, ang + half); ctx.stroke()
+    ctx.beginPath(); ctx.arc(origin.x, origin.y, dist, ang - half, ang + half); ctx.stroke()
+    ;[-half, half].forEach(a => {
+      const cx = origin.x + Math.cos(ang + a) * dist, cy = origin.y + Math.sin(ang + a) * dist
+      line(cx - Math.cos(ang) * 6, cy - Math.sin(ang) * 6, cx + Math.cos(ang) * 6, cy + Math.sin(ang) * 6)
+    })
+    ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill()
+    ctx.globalAlpha = 1
   } else if (d.reticle === "laser" && end) {
     // sniper: a thin laser from the muzzle to whatever it hits, and a circle with a cross that closes while still
-    ctx.strokeStyle = "rgba(255,80,80,0.75)"; ctx.lineWidth = 1
-    line(origin.x, origin.y, end.x, end.y)
+    if (showPath) { ctx.strokeStyle = "rgba(255,80,80,0.75)"; ctx.lineWidth = 1; line(origin.x, origin.y, end.x, end.y) }
     ctx.strokeStyle = color; ctx.lineWidth = 1.5
     const r = 10 + gap
     ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke()
     line(rx - r - 6, ry, rx - 4, ry); line(rx + 4, ry, rx + r + 6, ry); line(rx, ry - r - 6, rx, ry - 4); line(rx, ry + 4, rx, ry + r + 6)
-    ctx.fillStyle = "#ff5050"; ctx.beginPath(); ctx.arc(end.x, end.y, 2.5, 0, Math.PI * 2); ctx.fill()
+    if (showPath) { ctx.fillStyle = "#ff5050"; ctx.beginPath(); ctx.arc(end.x, end.y, 2.5, 0, Math.PI * 2); ctx.fill() }
   } else if ((d.reticle === "impact" || d.reticle === "grenade") && path && end) {
     // launchers and grenades: the path (dotted for the grenade) and where it lands, with the blast's radius
     ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5
-    if (d.reticle === "grenade") {
+    if (!showPath) { /* path hidden: only where it lands */ }
+    else if (d.reticle === "grenade") {
       path.forEach((p, i) => { if (i % 3 === 0) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fill() } })
     } else { ctx.setLineDash([3, 5]); line(origin.x, origin.y, end.x, end.y); ctx.setLineDash([]) }
     ctx.strokeStyle = color; ctx.lineWidth = 2
@@ -777,14 +793,16 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     // bow: a half moon that fills with the charge, and a short path that gets longer
     const c = combat.fireCharge
     const n = Math.max(2, Math.round(path.length * (0.25 + 0.75 * c)))
-    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4])
-    ctx.beginPath(); path.slice(0, n).forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([])
+    if (showPath) {
+      ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4])
+      ctx.beginPath(); path.slice(0, n).forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([])
+    }
     const r = 26 * scale + 10
     ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 4
     ctx.beginPath(); ctx.arc(origin.x, origin.y, r, ang - Math.PI / 2, ang + Math.PI / 2); ctx.stroke()
     ctx.strokeStyle = c >= 1 ? "#ffd166" : color
     ctx.beginPath(); ctx.arc(origin.x, origin.y, r, ang - Math.PI / 2 * c, ang + Math.PI / 2 * c); ctx.stroke()
-    const tip = path[n - 1]
+    const tip = showPath ? path[n - 1] : { x: rx, y: ry }
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2); ctx.stroke()
   } else {
     // pistol: a dot and four short ticks that open a little with the spread

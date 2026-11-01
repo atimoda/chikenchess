@@ -540,6 +540,8 @@ export function createCombat() {
         else if (reloadT > 0) { if (input.firePressed) sound('dry') }
         else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
         else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
+        // on release: aim with the button held, the shot leaves when it is let go
+        else if (d.fireMode === 'release') { if (!input.fire && prevFire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
         else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
         else if (d.fireMode === 'charge') {
           // hold to charge, let go to shoot; force and precision grow with the charge

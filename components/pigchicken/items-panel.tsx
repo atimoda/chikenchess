@@ -5,7 +5,7 @@
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ARPS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, WEAPON_IDS, loadItems, saveItems, subscribeItems, type Arp, type FireMode, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
+import { ARPS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, WEAPON_IDS, loadItems, saveItems, subscribeItems, type Arp, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
 import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +14,7 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "auto", label: "Automático" },
   { value: "burst", label: "Rajada" },
   { value: "charge", label: "Carga (segura e solta)" },
+  { value: "release", label: "Ao soltar o botão" },
 ]
 
 // what each item uses; the wing has no ammo, projectile or throw
@@ -57,6 +58,12 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     <span>Modo de disparo</span>
                     <select value={it.fireMode} onChange={e => { const v = e.target.value as FireMode; update(d => { d.fireMode = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {FIRE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex items-center justify-between gap-3">
+                    <span>Caminho do projétil</span>
+                    <select value={it.pathShow} onChange={e => { const v = e.target.value as PathShow; update(d => { d.pathShow = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                      {PATH_SHOWS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </label>
                   <label className="flex items-center justify-between gap-3"><span>Recarga automática</span><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
