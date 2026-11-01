@@ -169,3 +169,13 @@ export function readStick(stick: 0 | 1, deadzone: number): { x: number; y: numbe
   const mag = Math.min(1, (len - deadzone) / Math.max(0.01, 1 - deadzone))
   return { x: x / len, y: y / len, mag }
 }
+
+// The on-screen left stick as an analog vector (the movement stick of the touch controls), so the aim can follow
+// it in any direction. Same shape as readStick; null at rest or inside the dead zone.
+let touchMove: { x: number; y: number; len: number } | null = null
+export const setTouchMoveStick = (v: { x: number; y: number; len: number } | null) => { touchMove = v }
+export function readTouchMoveStick(deadzone: number): { x: number; y: number; mag: number } | null {
+  if (!touchMove || touchMove.len <= deadzone || touchMove.len === 0) return null
+  const mag = Math.min(1, (touchMove.len - deadzone) / Math.max(0.01, 1 - deadzone))
+  return { x: touchMove.x, y: touchMove.y, mag }
+}

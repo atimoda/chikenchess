@@ -108,6 +108,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [showTitle, setShowTitle] = useState(false)
   const [chickenEngine, setChickenEngine] = useState<ChickenEngine | null>(null)
   const [showChickenControls, setShowChickenControls] = useState(false)
+  // the globe's on-screen chicken controls start off; the footer gamepad button turns them on (remembered in this browser)
+  const [globeTouch, setGlobeTouch] = useState(false)
+  useEffect(() => { try { setGlobeTouch(window.localStorage.getItem('chickenchess:globe-touch') === 'on') } catch { /* storage unavailable */ } }, [])
+  const toggleGlobeTouch = () => setGlobeTouch(v => { try { window.localStorage.setItem('chickenchess:globe-touch', v ? 'off' : 'on') } catch { /* storage unavailable */ } return !v })
   const [logoPhase, setLogoPhase] = useState<'intro' | 'fading' | 'header'>('intro')
   const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
   const [openingPhrase, setOpeningPhrase] = useState<string | null>(null)
@@ -1367,7 +1371,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
 
       {/* Player chicken: ground strip over the city list, behind the footer buttons; the chicken drops in once the globe settles */}
       <ChickenGround className="z-[65]" />
-      {showTitle && <ChickenLayer onEngine={setChickenEngine} />}
+      {showTitle && <ChickenLayer onEngine={setChickenEngine} touch={globeTouch} />}
       {/* Electric portal to the Pátio, in the right corner of the ground */}
       {showTitle && <ChickenPortal engine={chickenEngine} />}
 
@@ -1380,8 +1384,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
           {/* touch screens: show / hide the chicken's on-screen controls, left of Friends */}
-          {!onOnlineMatch && <ChickenTouchToggle />}
-          {onOnlineMatch && <OnlineHub showMapRooms friendsLeading={<ChickenTouchToggle />} playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
+          {!onOnlineMatch && <ChickenTouchToggle active={globeTouch} onToggle={toggleGlobeTouch} />}
+          {onOnlineMatch && <OnlineHub showMapRooms friendsLeading={<ChickenTouchToggle active={globeTouch} onToggle={toggleGlobeTouch} />} playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
           <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Creative</Link>
           {isAdminUser(online.user) && <Link href="/admin" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Admin</Link>}
           <VersionChangelog mapButton onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />

@@ -197,7 +197,7 @@ export function ChickenPatio() {
           <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
         </FloatingPanel>
       )}
-      <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} />
+      <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} editLayout />
 
       {vestOpen && <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} />}
 

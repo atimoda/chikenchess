@@ -2,11 +2,12 @@
 
 // Player chicken layer: mounts the chicken engine above everything on the screen and, on touch
 // devices, the on-screen controls (stick on the left, round jump / brood / run buttons on the right).
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { ChevronsUp, Egg, Footprints, Gamepad2 } from "lucide-react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { refreshChickenConfig } from "@/lib/chicken/config"
-import { loadChickenControls, saveChickenControls, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
+import { loadChickenControls, setTouchMoveStick, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
+import { clampDelta, finishTouchLayoutEdit, getServerTouchLayout, getTouchLayout, resetTouchLayout, setTouchOffset, subscribeTouchLayout, type TouchControlId } from "@/lib/chicken/touch-layout"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
 export const CHICKEN_GROUND_H = 30
@@ -34,29 +35,80 @@ export function useCoarsePointer() {
   return coarse
 }
 
+export const useTouchLayout = () => useSyncExternalStore(subscribeTouchLayout, getTouchLayout, getServerTouchLayout)
+
+// edit mode always shows the controls, so they can be placed
 export function useTouchControls(mode: ChickenTouchMode) {
   const coarse = useCoarsePointer()
-  return mode === "on" || (mode === "auto" && coarse)
+  const { editing } = useTouchLayout()
+  return editing || mode === "on" || (mode === "auto" && coarse)
 }
 
-// Footer button (touch screens): shows / hides the chicken's on-screen controls, saved like the panel's setting.
-export function ChickenTouchToggle({ className = "" }: { className?: string }) {
+// A touch control that sits at its default place plus the saved offset. In edit mode a dashed layer over it takes
+// the drag (so the control itself does not react) and the offset follows the finger.
+export function Movable({ id, className = "", style, children }: { id: TouchControlId; className?: string; style?: CSSProperties; children: ReactNode }) {
+  const { offsets, editing } = useTouchLayout()
+  const off = offsets[id]
+  const ref = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ pid: number; sx: number; sy: number; ox: number; oy: number; rect: DOMRect } | null>(null)
+  const down = (e: ReactPointerEvent) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, ox: off?.x ?? 0, oy: off?.y ?? 0, rect: ref.current!.getBoundingClientRect() }
+  }
+  const move = (e: ReactPointerEvent) => {
+    const d = drag.current
+    if (!d || d.pid !== e.pointerId) return
+    const c = clampDelta(d.rect, e.clientX - d.sx, e.clientY - d.sy, window.innerWidth, window.innerHeight)
+    setTouchOffset(id, { x: Math.round(d.ox + c.x), y: Math.round(d.oy + c.y) })
+  }
+  const up = () => { drag.current = null }
+  return (
+    <div ref={ref} className={className} style={{ ...style, transform: off ? `translate(${off.x}px, ${off.y}px)` : undefined }}>
+      {children}
+      {editing && (
+        <div
+          aria-label="Arrastar para mudar a posição"
+          className="pointer-events-auto absolute inset-0 z-10 cursor-move rounded-[inherit] border-2 border-dashed border-[#ffd166] bg-[#ffd166]/10"
+          style={{ touchAction: "none", borderRadius: 16 }}
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+        />
+      )}
+    </div>
+  )
+}
+
+// top of the screen while placing the controls
+function TouchLayoutBar() {
+  return (
+    <div data-chicken-ignore className="pointer-events-auto fixed left-1/2 z-[320] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#ffd166]/60 bg-black/80 px-3 py-2 font-mono text-xs text-white backdrop-blur" style={{ top: 64 }}>
+      <span className="hidden sm:inline">Arraste os controles</span>
+      <button type="button" onClick={resetTouchLayout} className="h-8 rounded-md border border-white/25 px-3 hover:border-primary">Padrão</button>
+      <button type="button" onClick={finishTouchLayoutEdit} className="h-8 rounded-md border border-primary bg-primary/25 px-5 font-bold hover:bg-primary/40">Ok</button>
+    </div>
+  )
+}
+
+// Footer button (touch screens): shows / hides the chicken's on-screen controls. The globe keeps its own choice
+// (off at first), apart from the "Na tela (celular)" setting of the controls panel.
+export function ChickenTouchToggle({ active, onToggle, className = "" }: { active: boolean; onToggle: () => void; className?: string }) {
   const coarse = useCoarsePointer()
-  const showing = useChickenTouch()
   if (!coarse) return null
-  const toggle = () => saveChickenControls({ ...loadChickenControls(), touch: showing ? "off" : "on" })
-  const label = showing ? "Esconder controles da galinha" : "Mostrar controles da galinha"
+  const label = active ? "Esconder controles da galinha" : "Mostrar controles da galinha"
   return (
     <button
       type="button"
       aria-label={label}
-      aria-pressed={showing}
+      aria-pressed={active}
       title={label}
-      onClick={toggle}
-      className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background/80 backdrop-blur-sm transition-colors ${showing ? "border-primary/60 text-primary" : "border-white/30 text-white/45"} ${className}`}
+      onClick={onToggle}
+      className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background/80 backdrop-blur-sm transition-colors ${active ? "border-primary/60 text-primary" : "border-white/30 text-white/45"} ${className}`}
     >
       <Gamepad2 className="h-4 w-4" />
-      {!showing && <span aria-hidden="true" className="pointer-events-none absolute h-[1.5px] w-5 rotate-45 rounded bg-current" />}
+      {!active && <span aria-hidden="true" className="pointer-events-none absolute h-[1.5px] w-5 rotate-45 rounded bg-current" />}
     </button>
   )
 }
@@ -85,10 +137,13 @@ export function usePortrait() {
 }
 
 // groundHeight: how high the ground reaches from the bottom of the screen; controlsBottom: where the touch controls sit
-export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number }) {
+// touch: forces the on-screen controls on or off (the globe has its own switch); left out, the saved setting decides
+export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM, touch }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number; touch?: boolean }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<ChickenEngine | null>(null)
-  const showTouch = useChickenTouch()
+  const savedTouch = useChickenTouch()
+  const { editing } = useTouchLayout()
+  const showTouch = editing || (touch ?? savedTouch)
   const onEngineRef = useRef(onEngine)
   onEngineRef.current = onEngine
   const groundRef = useRef(groundHeight)
@@ -112,6 +167,7 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
   return (
     <>
       {showTouch && <TouchControls set={set} bottom={controlsBottom} />}
+      {editing && <TouchLayoutBar />}
       <div ref={hostRef} className="pointer-events-none fixed inset-0 z-[200]" />
     </>
   )
@@ -143,18 +199,22 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
     setKnob({ x: dx, y: dy })
     const nx = dx / max, ny = dy / max
     apply({ left: nx < -0.35, right: nx > 0.35, up: ny < -0.6, crouch: ny > 0.6 })
+    // the aim follows the stick in any direction, not only the 8 the actions give
+    const l = Math.hypot(nx, ny)
+    setTouchMoveStick(l > 0 ? { x: nx / l, y: ny / l, len: Math.min(1, l) } : null)
   }
-  const release = () => { pointerId.current = null; setKnob({ x: 0, y: 0 }); apply({}) }
+  const release = () => { pointerId.current = null; setKnob({ x: 0, y: 0 }); apply({}); setTouchMoveStick(null) }
 
-  useEffect(() => () => apply({}), [])
+  useEffect(() => () => { apply({}); setTouchMoveStick(null) }, [])
 
   return (
     <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
+      <Movable id="move" className="absolute" style={{ width: STICK, height: STICK, left: 20, bottom }}>
       <div
         ref={stickRef}
         aria-label="Analógico"
-        className="pointer-events-auto absolute rounded-full border-2 border-white/30 bg-white/10 backdrop-blur-[2px]"
-        style={{ width: STICK, height: STICK, left: 20, bottom, touchAction: "none" }}
+        className="pointer-events-auto absolute inset-0 rounded-full border-2 border-white/30 bg-white/10 backdrop-blur-[2px]"
+        style={{ touchAction: "none" }}
         onPointerDown={e => { pointerId.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
         onPointerMove={e => { if (pointerId.current === e.pointerId) move(e) }}
         onPointerUp={release}
@@ -166,12 +226,13 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
           style={{ width: KNOB, height: KNOB, left: (STICK - KNOB) / 2 + knob.x, top: (STICK - KNOB) / 2 + knob.y }}
         />
       </div>
+      </Movable>
       {/* buttons in one row, centred on the stick's vertical centre */}
-      <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
+      <Movable id="actions" className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
         <TouchButton label="Correr" action="run" set={set} size={54}><Footprints className="h-6 w-6" /></TouchButton>
         <TouchButton label="Chocar" action="down" set={set} size={54}><Egg className="h-6 w-6" /></TouchButton>
         <TouchButton label="Pular" action="jump" set={set} size={68}><ChevronsUp className="h-8 w-8" /></TouchButton>
-      </div>
+      </Movable>
     </div>
   )
 }

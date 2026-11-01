@@ -5,7 +5,7 @@
 // arrows > facing, drawn as a reticle. Firing, hitting and throwing only flash for now; the items come next.
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
 import { createCombat, SLOTS, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
@@ -16,7 +16,8 @@ import { ALIEN_FRAMES, ALIEN_PATTERNS, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
 import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
-import { useTouchControls } from "@/components/chicken/chicken-layer"
+import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
+import { getTouchLayout } from "@/lib/chicken/touch-layout"
 
 // floating boxes per screen (percent of the screen), so every screen has something to climb
 const SCREENS: { left: number; bottom: number; width: number; height: number }[][] = [
@@ -78,6 +79,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const settingsRef = useRef(settings)
   settingsRef.current = settings
   const touchAim = useRef<Stick | null>(null)
+  // time of the last quick tap on the right stick: shoots the nearest enemy
+  const tapShot = useRef(0)
   // what the on-screen grab button offers: '' hidden, 'take' an item to pick up, 'equip' one she already carries
   const [grabOffer, setGrabOffer] = useState<"" | "take" | "equip">("")
   const [controls, setControls] = useState<ChickenControls | null>(null)
@@ -86,6 +89,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     return subscribeChickenControls(setControls)
   }, [])
   const showTouch = useTouchControls(controls?.touch ?? "auto")
+  const { editing } = useTouchLayout()
 
   useEffect(() => {
     if (!engine) return
@@ -133,7 +137,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let camX = 0, last = performance.now(), raf = 0
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
-    let wasLocked = false
+    let wasLocked = false, autoUntil = 0
     // horde settings, changed by shooting their buttons
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
@@ -200,7 +204,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- aim ----------
       const act = engine.getActions()
       const an = controls.analog
-      const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL)
+      const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
       // brooding with an item in the wing is aiming: she stays put and the aim is locked while brood is held
       const armed = !!combat.inventory[combat.current]
       const aimLock = act.down && armed && st.grounded
@@ -208,8 +212,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (leftStick || keys.x || keys.y) owner.otherAim(now, S.mouseIdle)
       // her shoulder as drawn (it turns with her body on walls)
       const origin = st.shoulder
+      // a quick tap on the on-screen right stick: aim at the nearest enemy (dummies when none is left) and fire for a moment
+      if (tapShot.current) { autoUntil = now + 260; tapShot.current = 0 }
+      let autoAt: { x: number; y: number } | null = null
+      if (now < autoUntil) {
+        let best = Infinity
+        const pick = (kinds: string[]) => combat.targets.forEach(t => {
+          if (!kinds.includes(t.kind) || t.deadT > 0 || t.state === "dead" || t.state === "converted") return
+          const cx = t.x - camX, cy = t.y - t.h / 2, dd = Math.hypot(cx - origin.x, cy - origin.y)
+          if (dd < best) { best = dd; autoAt = { x: cx, y: cy } }
+        })
+        pick(["alien", "zombie"])
+        if (!autoAt) pick(["dummy"])
+      }
       aim = resolveAim({
-        rightStick, mouse: owner.owns ? mouse : null, touch: touchAim.current, leftStick, keys, origin,
+        rightStick, mouse: autoAt ?? (owner.owns ? mouse : null), touch: touchAim.current, leftStick, keys, origin,
         face: st.face, grounded: st.grounded, aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
       })
       const d = combat.def()
@@ -233,7 +250,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
 
       // ---------- combat (world coordinates) ----------
-      const fire = act.fire || mouseBtn.fire, melee = act.melee || mouseBtn.melee
+      const fire = act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil), melee = act.melee || mouseBtn.melee
       grabKey = controls.keys.grab.find(Boolean)?.replace("Key:Key", "").replace("Key:", "") ?? "E"
       let pick = 0
       if (act.nextItem && !prev.nextItem) pick = 1
@@ -311,7 +328,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
       if (zoneBanner > 0) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
-      drawInventory(ctx, combat)
+      drawInventory(ctx, combat, getTouchLayout().offsets.inventory)
       if (hudRef.current) {
         const h = combat.inventory[combat.current]
         const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
@@ -351,7 +368,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
       <div ref={hudRef} className="pointer-events-none absolute left-3 z-[120] font-mono text-[11px] text-[#93a79a]" style={{ bottom: groundHeight + 10 }} />
-      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
+      {editing && (
+        <Movable id="inventory" className="fixed z-[190]" style={{ left: `calc(50% - ${INV_W() / 2}px)`, top: INV_TOP, width: INV_W(), height: INV_SIZE }}>{null}</Movable>
+      )}
+      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
     </>
   )
 }
@@ -359,7 +379,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 // ---------- on-screen right stick (twin-stick): pushing aims, pushing to the edge fires ----------
 const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 
-function TouchAimStick({ engine, aimRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; bottom: number; grabOffer: "" | "take" | "equip" }) {
+function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; bottom: number; grabOffer: "" | "take" | "equip" }) {
+  const { editing } = useTouchLayout()
+  const press = useRef<{ t: number; x: number; y: number; far: boolean } | null>(null)
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const ref = useRef<HTMLDivElement>(null)
   const pid = useRef<number | null>(null)
@@ -372,10 +394,16 @@ function TouchAimStick({ engine, aimRef, bottom, grabOffer }: { engine: ChickenE
     if (len > max) { dx *= max / len; dy *= max / len }
     setKnob({ x: dx, y: dy })
     const mag = Math.min(1, len / max)
+    if (press.current && Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) > 10) press.current.far = true
     aimRef.current = mag > 0.15 ? { x: dx / (len || 1), y: dy / (len || 1), mag } : null
     setFire(mag >= FIRE_AT)
   }
-  const release = () => { pid.current = null; setKnob({ x: 0, y: 0 }); aimRef.current = null; setFire(false) }
+  const release = (e?: ReactPointerEvent) => {
+    // a quick touch that did not drag is a tap: shoot the nearest enemy
+    const p = press.current; press.current = null
+    if (e && e.type === "pointerup" && p && !p.far && performance.now() - p.t < 250) tapRef.current = performance.now()
+    pid.current = null; setKnob({ x: 0, y: 0 }); aimRef.current = null; setFire(false)
+  }
   useEffect(() => () => { aimRef.current = null; if (firing.current) engine.setVirtual("fire", false) }, [engine, aimRef])
   const button = (label: string, action: ChickenAction, tone = "border-white/30 bg-white/10 text-white/80") => (
     <button
@@ -395,17 +423,18 @@ function TouchAimStick({ engine, aimRef, bottom, grabOffer }: { engine: ChickenE
     <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
       <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
         {/* standing on an item: grab it (blue) or equip the one she already carries (grey) */}
-        {grabOffer && button(grabOffer === "take" ? "Pegar" : "Equipar", "grab", grabOffer === "take" ? "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white" : "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white")}
-        <div className="flex flex-col gap-2">
+        {(grabOffer || editing) && <Movable id="grab" className="relative">{button((grabOffer || "take") === "take" ? "Pegar" : "Equipar", "grab", (grabOffer || "take") === "take" ? "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white" : "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white")}</Movable>}
+        <Movable id="items" className="relative flex flex-col gap-2">
           {button("Punch", "melee")}
           {button("Throw", "throw")}
-        </div>
+        </Movable>
+        <Movable id="aim" className="relative">
         <div
           ref={ref}
           aria-label="Analógico de mira"
           className="pointer-events-auto relative rounded-full border-2 border-[#ffd166]/50 bg-white/10 backdrop-blur-[2px]"
           style={{ width: STICK, height: STICK, touchAction: "none" }}
-          onPointerDown={e => { pid.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
+          onPointerDown={e => { pid.current = e.pointerId; press.current = { t: performance.now(), x: e.clientX, y: e.clientY, far: false }; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
           onPointerMove={e => { if (pid.current === e.pointerId) move(e) }}
           onPointerUp={release}
           onPointerCancel={release}
@@ -414,6 +443,7 @@ function TouchAimStick({ engine, aimRef, bottom, grabOffer }: { engine: ChickenE
           <div className="absolute rounded-full border-2 border-white/40" style={{ inset: (STICK - STICK * FIRE_AT) / 2 - 4, opacity: 0.35 }} />
           <div className="absolute rounded-full border-2 border-white/50 bg-white/30" style={{ width: KNOB, height: KNOB, left: (STICK - KNOB) / 2 + knob.x, top: (STICK - KNOB) / 2 + knob.y }} />
         </div>
+        </Movable>
       </div>
     </div>
   )
@@ -856,9 +886,12 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
   ctx.restore()
 }
 
-function drawInventory(ctx: Ctx, combat: Combat) {
-  const size = 30, gap = 4, w = SLOTS * size + (SLOTS - 1) * gap
-  const x0 = (window.innerWidth - w) / 2, y = 100
+const INV_SIZE = 30, INV_GAP = 4, INV_TOP = 100
+const INV_W = () => SLOTS * INV_SIZE + (SLOTS - 1) * INV_GAP
+// the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls)
+function drawInventory(ctx: Ctx, combat: Combat, offset?: { x: number; y: number }) {
+  const size = INV_SIZE, gap = INV_GAP, w = INV_W()
+  const x0 = (window.innerWidth - w) / 2 + (offset?.x ?? 0), y = INV_TOP + (offset?.y ?? 0)
   ctx.save()
   ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "left"
   for (let i = 0; i < SLOTS; i++) {
