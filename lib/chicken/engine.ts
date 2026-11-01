@@ -340,9 +340,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (game.aimFace && !brooding && !S.sliding) S.face = game.aimFace
     }
 
-    // brood + jump on a floating floor: drop through it instead of jumping (crouch + jump is a super jump everywhere)
+    // on a floating floor, brood + jump drops through it; so does down (crouch) + jump with no sideways direction
+    // held (with a direction it is the normal super jump up)
     const plat = S.grounded && S.plat ? segById(S.plat) : null
-    if (jumpPressed && plat && !plat.solid && D) {
+    if (jumpPressed && plat && !plat.solid && (D || (C && dir === 0))) {
       S.dropId = plat.id; S.dropT = 0.3; S.grounded = false; S.plat = null; S.sliding = false
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
     } else if (jumpPressed) {
