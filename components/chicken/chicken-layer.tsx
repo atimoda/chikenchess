@@ -21,7 +21,7 @@ export function ChickenGround({ className = "" }: { className?: string }) {
   )
 }
 
-function useTouchControls(mode: ChickenTouchMode) {
+export function useTouchControls(mode: ChickenTouchMode) {
   const [coarse, setCoarse] = useState(false)
   useEffect(() => {
     const mq = window.matchMedia("(pointer: coarse)")
@@ -33,11 +33,13 @@ function useTouchControls(mode: ChickenTouchMode) {
   return mode === "on" || (mode === "auto" && coarse)
 }
 
-export function ChickenLayer({ dropIn = true }: { dropIn?: boolean }) {
+export function ChickenLayer({ dropIn = true, onEngine }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<ChickenEngine | null>(null)
   const [touchMode, setTouchMode] = useState<ChickenTouchMode>("auto")
   const showTouch = useTouchControls(touchMode)
+  const onEngineRef = useRef(onEngine)
+  onEngineRef.current = onEngine
 
   useEffect(() => {
     setTouchMode(loadChickenControls().touch)
@@ -51,7 +53,8 @@ export function ChickenLayer({ dropIn = true }: { dropIn?: boolean }) {
     if (!hostRef.current) return
     const engine = createChickenEngine(hostRef.current, { groundHeight: CHICKEN_GROUND_H, dropIn })
     engineRef.current = engine
-    return () => { engine.destroy(); engineRef.current = null }
+    onEngineRef.current?.(engine)
+    return () => { onEngineRef.current?.(null); engine.destroy(); engineRef.current = null }
   }, [dropIn])
 
   const set = (action: ChickenAction, on: boolean) => engineRef.current?.setVirtual(action, on)
