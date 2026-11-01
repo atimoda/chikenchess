@@ -23,6 +23,8 @@ export type ChickenEngine = {
   shift: (dx: number) => void
   // left and right walls in screen pixels; null = the screen edges
   setBounds: (bounds: { lo: number; hi: number } | null) => void
+  // the ground's height from the bottom of the screen (the Pátio raises it on a phone held upright)
+  setGroundHeight: (h: number) => void
   setGame: (game: ChickenGame) => void
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and behind the wing, turned to `angle` (screen radians), pulled back by `kick` rig units
@@ -981,6 +983,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   return {
+    setGroundHeight(h) { if (h !== opts.groundHeight) { opts.groundHeight = h; resize() } },
     setVirtual(action, on) {
       ensureAudio()
       if (on && !virt[action]) virtTapped.add(action)

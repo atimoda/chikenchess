@@ -14,7 +14,7 @@ import {
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
-import { ChickenGround, ChickenLayer } from "./chicken-layer"
+import { CHICKEN_GROUND_H, ChickenGround, ChickenLayer, STICK, useChickenTouch, usePortrait } from "./chicken-layer"
 import { ChickenPortalArrival } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
@@ -51,8 +51,13 @@ export function ChickenPatio() {
   // same first render on the server and in the browser; the cached and saved versions come in the effect
   const [saved, setSaved] = useState<SavedChickenConfig>(() => ({ config: defaultChickenConfig(), revision: 0, updatedAt: null }))
   const [draft, setDraft] = useState<ChickenConfig>(defaultChickenConfig)
-  const [panelOpen, setPanelOpen] = useState(true)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [controlsOpen, setControlsOpen] = useState(false)
+  // a phone held upright: the whole scene moves up and the touch controls get the ground below it to themselves
+  const showTouch = useChickenTouch(), portrait = usePortrait()
+  const lifted = showTouch && portrait
+  const controlsBottom = lifted ? 16 : undefined
+  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : CHICKEN_GROUND_H
   // tela cheia: segue o estado real do navegador (Esc também sai)
   const [fullscreen, setFullscreen] = useState(false)
   useEffect(() => {
@@ -164,16 +169,13 @@ export function ChickenPatio() {
         </button>
       </header>
 
-      <p className="pointer-events-none absolute left-1/2 top-16 z-10 w-full -translate-x-1/2 px-4 text-center font-mono text-xs text-[#93a79a]">
-        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular · mouse ou setas miram · clique/X atira · clique direito/Z golpe · V arremessa · Q/1–9 trocam o item · E pega (troca com o da mão) · chocar com item trava a mira
-      </p>
 
-      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} />
+      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} groundHeight={groundHeight} />
 
-      <ChickenGround />
-      <ChickenLayer dropIn={false} onEngine={setEngine} />
+      <ChickenGround height={groundHeight} />
+      <ChickenLayer dropIn={false} onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortalArrival engine={engine} />
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">

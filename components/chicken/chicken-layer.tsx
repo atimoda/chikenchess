@@ -11,12 +11,12 @@ import { loadChickenControls, subscribeChickenControls, type ChickenAction, type
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
 export const CHICKEN_GROUND_H = 30
 
-export function ChickenGround({ className = "" }: { className?: string }) {
+export function ChickenGround({ className = "", height = CHICKEN_GROUND_H }: { className?: string; height?: number }) {
   return (
     <div
       aria-hidden="true"
       className={`pointer-events-none fixed inset-x-0 bottom-0 ${className}`}
-      style={{ height: CHICKEN_GROUND_H, background: "linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 100%)", boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }}
+      style={{ height, background: `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b ${CHICKEN_GROUND_H}px, #2a1e13 100%)`, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }}
     />
   )
 }
@@ -33,35 +33,57 @@ export function useTouchControls(mode: ChickenTouchMode) {
   return mode === "on" || (mode === "auto" && coarse)
 }
 
-export function ChickenLayer({ dropIn = true, onEngine }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void }) {
-  const hostRef = useRef<HTMLDivElement>(null)
-  const engineRef = useRef<ChickenEngine | null>(null)
+// whether the on-screen controls are showing, following the saved touch setting
+export function useChickenTouch() {
   const [touchMode, setTouchMode] = useState<ChickenTouchMode>("auto")
-  const showTouch = useTouchControls(touchMode)
-  const onEngineRef = useRef(onEngine)
-  onEngineRef.current = onEngine
-
   useEffect(() => {
     setTouchMode(loadChickenControls().touch)
     return subscribeChickenControls(c => setTouchMode(c.touch))
   }, [])
+  return useTouchControls(touchMode)
+}
+
+// a phone held upright: the screen is taller than wide
+export function usePortrait() {
+  const [portrait, setPortrait] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: portrait)")
+    const update = () => setPortrait(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+  return portrait
+}
+
+// groundHeight: how high the ground reaches from the bottom of the screen; controlsBottom: where the touch controls sit
+export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const engineRef = useRef<ChickenEngine | null>(null)
+  const showTouch = useChickenTouch()
+  const onEngineRef = useRef(onEngine)
+  onEngineRef.current = onEngine
+  const groundRef = useRef(groundHeight)
+  groundRef.current = groundHeight
 
   // the central configuration: cached copy right away, the saved version as soon as it arrives
   useEffect(() => { void refreshChickenConfig() }, [])
 
   useEffect(() => {
     if (!hostRef.current) return
-    const engine = createChickenEngine(hostRef.current, { groundHeight: CHICKEN_GROUND_H, dropIn })
+    const engine = createChickenEngine(hostRef.current, { groundHeight: groundRef.current, dropIn })
     engineRef.current = engine
     onEngineRef.current?.(engine)
     return () => { onEngineRef.current?.(null); engine.destroy(); engineRef.current = null }
   }, [dropIn])
 
+  useEffect(() => { engineRef.current?.setGroundHeight(groundHeight) }, [groundHeight])
+
   const set = (action: ChickenAction, on: boolean) => engineRef.current?.setVirtual(action, on)
 
   return (
     <>
-      {showTouch && <TouchControls set={set} />}
+      {showTouch && <TouchControls set={set} bottom={controlsBottom} />}
       <div ref={hostRef} className="pointer-events-none fixed inset-0 z-[200]" />
     </>
   )
@@ -69,9 +91,10 @@ export function ChickenLayer({ dropIn = true, onEngine }: { dropIn?: boolean; on
 
 // ---------- touch controls ----------
 // above the footer buttons (bottom-4, 36 px tall)
-const STICK = 112, KNOB = 48, CONTROLS_BOTTOM = 64
+export const STICK = 112, CONTROLS_BOTTOM = 64
+const KNOB = 48
 
-function TouchControls({ set }: { set: (action: ChickenAction, on: boolean) => void }) {
+function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boolean) => void; bottom: number }) {
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const stickRef = useRef<HTMLDivElement>(null)
   const active = useRef<Partial<Record<ChickenAction, boolean>>>({})
@@ -103,7 +126,7 @@ function TouchControls({ set }: { set: (action: ChickenAction, on: boolean) => v
         ref={stickRef}
         aria-label="Analógico"
         className="pointer-events-auto absolute rounded-full border-2 border-white/30 bg-white/10 backdrop-blur-[2px]"
-        style={{ width: STICK, height: STICK, left: 20, bottom: CONTROLS_BOTTOM, touchAction: "none" }}
+        style={{ width: STICK, height: STICK, left: 20, bottom, touchAction: "none" }}
         onPointerDown={e => { pointerId.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
         onPointerMove={e => { if (pointerId.current === e.pointerId) move(e) }}
         onPointerUp={release}
@@ -116,7 +139,7 @@ function TouchControls({ set }: { set: (action: ChickenAction, on: boolean) => v
         />
       </div>
       {/* buttons in one row, centred on the stick's vertical centre */}
-      <div className="absolute flex items-center gap-3" style={{ right: 20, bottom: CONTROLS_BOTTOM, height: STICK }}>
+      <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
         <TouchButton label="Correr" action="run" set={set} size={54}><Footprints className="h-6 w-6" /></TouchButton>
         <TouchButton label="Chocar" action="down" set={set} size={54}><Egg className="h-6 w-6" /></TouchButton>
         <TouchButton label="Pular" action="jump" set={set} size={68}><ChevronsUp className="h-8 w-8" /></TouchButton>
