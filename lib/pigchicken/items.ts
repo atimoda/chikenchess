@@ -46,10 +46,12 @@ export type ItemDef = {
   meleeRange: number // px
   meleeArc: number // degrees
   meleeCooldown: number // s
+  meleeTime: number // s the swing takes to sweep its arc
   durability: number // melee hits on a target before it breaks (0 = never)
   meleePush: number // knockback px/s
   // throw (RB)
   throwDamage: number
+  throwMin: number // px/s with no charge (a tap)
   throwSpeed: number // px/s at full charge
   throwCharge: number // s to full charge
 }
@@ -61,8 +63,8 @@ const PISTOL: ItemDef = {
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
-  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, durability: 40, meleePush: 260,
-  throwDamage: 25, throwSpeed: 1100, throwCharge: 1,
+  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, meleeTime: 0.2, durability: 40, meleePush: 260,
+  throwDamage: 25, throwMin: 275, throwSpeed: 1100, throwCharge: 1,
 }
 
 // no item: firing and hitting are both a wing slap
@@ -106,9 +108,11 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
   { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe' },
   { key: 'meleeCooldown', label: 'Intervalo', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Golpe' },
+  { key: 'meleeTime', label: 'Duração do giro', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Menos = giro mais rápido' },
   { key: 'meleePush', label: 'Empurrão', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Golpe' },
   { key: 'durability', label: 'Quebra depois de', min: 0, max: 200, step: 1, unit: 'golpes', group: 'Golpe', hint: '0 = nunca quebra' },
   { key: 'throwDamage', label: 'Dano do arremesso', min: 0, max: 100, step: 1, group: 'Arremesso' },
+  { key: 'throwMin', label: 'Força mínima', min: 0, max: 2500, step: 25, unit: 'px/s', group: 'Arremesso', hint: 'Só tocar no botão' },
   { key: 'throwSpeed', label: 'Força máxima', min: 200, max: 2500, step: 50, unit: 'px/s', group: 'Arremesso' },
   { key: 'throwCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.1, unit: 's', group: 'Arremesso' },
 ]

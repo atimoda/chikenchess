@@ -11,8 +11,8 @@ export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: numbe
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 export type FloatText = { x: number; y: number; text: string; life: number; color: string }
 // range: wing reach; reach: wing plus the item's length (the hit area); dir: which way it sweeps (1 = clockwise on screen)
-export type Swing = { angle: number; arc: number; range: number; reach: number; t: number; wing: boolean; dir: number }
-export const SWING_TIME = 0.2
+// time: seconds the sweep takes
+export type Swing = { angle: number; arc: number; range: number; reach: number; t: number; time: number; wing: boolean; dir: number }
 
 export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
 export type FrameInput = {
@@ -95,7 +95,7 @@ export function createCombat() {
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
     // the blow comes down in front of her: clockwise facing right, counterclockwise facing left
-    swing = { angle: aimAngle, arc: d.meleeArc * DEG, range: d.meleeRange, reach, t: 0, wing, dir: Math.cos(aimAngle) >= 0 ? 1 : -1 }
+    swing = { angle: aimAngle, arc: d.meleeArc * DEG, range: d.meleeRange, reach, t: 0, time: Math.max(0.02, d.meleeTime), wing, dir: Math.cos(aimAngle) >= 0 ? 1 : -1 }
     let hits = 0
     targets.forEach(t => {
       if (t.deadT > 0) return
@@ -160,7 +160,7 @@ export function createCombat() {
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
       kick = Math.max(0, kick - dt * 60)
       bloom = Math.max(0, bloom - d.spreadRecover * dt)
-      if (swing) { swing.t += dt; if (swing.t > SWING_TIME) swing = null }
+      if (swing) { swing.t += dt; if (swing.t > swing.time) swing = null }
 
       // switching items
       if (input.slot) equip(input.slot - 1)
@@ -195,8 +195,8 @@ export function createCombat() {
       if (input.throwReleased) {
         const t = held()
         if (t) {
-          const p = Math.max(0.25, Math.min(1, throwT / Math.max(0.05, d.throwCharge)))
-          const v = d.throwSpeed * p
+          const p = Math.min(1, throwT / Math.max(0.05, d.throwCharge))
+          const v = d.throwMin + (Math.max(d.throwMin, d.throwSpeed) - d.throwMin) * p
           thrown.push({ x: origin.x, y: origin.y, vx: Math.cos(aimAngle) * v + body.vx * 0.5, vy: Math.sin(aimAngle) * v, spin: (Math.cos(aimAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: aimAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
           inv[cur] = null; reloadT = 0
           const next = inv.findIndex(o => o !== null)
