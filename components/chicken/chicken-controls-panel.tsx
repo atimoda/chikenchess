@@ -3,6 +3,7 @@
 // Chicken controls panel: the same floating panel on every screen. Keyboard and gamepad binds
 // (3 slots per action), on-screen controls mode and clucking sound, saved in this browser.
 import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   CHICKEN_ACTIONS, chickenBindName, defaultChickenControls, loadChickenControls, readGamepadTokens, saveChickenControls,
@@ -10,8 +11,8 @@ import {
 } from "@/lib/chicken/controls"
 import { cn } from "@/lib/utils"
 
-// Prototype where the chicken's movement and look are tuned.
-const CHICKEN_PLAYGROUND_URL = "https://claude.ai/artifact/WxBWRJFUtcfTsfC7jGsSzc"
+// Game section where the chicken's movement and look are tuned and saved for every screen.
+const CHICKEN_PATIO_PATH = "/patio"
 
 type Listen = { kind: "keys" | "pad"; action: ChickenAction; slot: number } | null
 
@@ -137,7 +138,7 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
             <input type="checkbox" checked={controls.sound} onChange={e => { const v = e.target.checked; update(c => { c.sound = v }) }} className="accent-[var(--primary)]" />
             Cacarejos
           </label>
-          <a href={CHICKEN_PLAYGROUND_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline-offset-2 hover:underline">Pátio da Caipira ↗</a>
+          <Link href={CHICKEN_PATIO_PATH} onClick={() => onOpenChange(false)} className="text-xs text-primary underline-offset-2 hover:underline">Pátio da Galinha</Link>
           <button type="button" onClick={() => { const d = defaultChickenControls(); saveChickenControls(d); setControls(d); setListen(null) }} className="h-8 rounded border border-white/20 px-3 text-xs hover:border-primary">Restaurar padrão</button>
         </div>
       </DialogContent>

@@ -785,3 +785,27 @@ test('creative kits are private to the signed-in owner, upsert by name and refus
   try { await assert.rejects(rpc(other,'creative_kit_save',['Guest',kit('Guest',1)]),/ACCOUNT_REQUIRED/) }
   finally { await db.query("select set_config('request.jwt.claims','',false)") }
 })
+test('chicken config: anyone reads, only the admin saves, with revision check and history',async()=>{
+  const [owner,other]=[ids[3],ids[4]]
+  const claims=value=>db.query("select set_config('request.jwt.claims',$1,false)",[value?JSON.stringify(value):''])
+  const cfg=walkSpeed=>({params:{walkSpeed},look:{comb:'caipira'}})
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
+  assert.equal((await db.query('select public.chicken_config() as result')).rows[0].result,null)
+  await assert.rejects(db.query('select public.chicken_config_save($1,0)',[cfg(1)]),/permission denied/)
+  await assert.rejects(rpc(other,'chicken_config_save',[cfg(1),0]),/ADMIN_REQUIRED/)
+  try {
+    await claims({is_anonymous:true,app_metadata:{access_level:'admin'}})
+    await assert.rejects(rpc(other,'chicken_config_save',[cfg(1),0]),/ADMIN_REQUIRED/)
+    await claims({app_metadata:{access_level:'admin'}})
+    await assert.rejects(rpc(owner,'chicken_config_save',[{params:{}},0]),/INVALID_CONFIG/)
+    const first=await rpc(owner,'chicken_config_save',[cfg(200),0])
+    assert.equal(first.revision,1)
+    await assert.rejects(rpc(owner,'chicken_config_save',[cfg(210),0]),/CONFIG_CONFLICT/)
+    assert.equal((await rpc(owner,'chicken_config_save',[cfg(220),1])).revision,2)
+  } finally { await claims(null) }
+  const read=await rpc(other,'chicken_config')
+  assert.equal(read.revision,2)
+  assert.equal(read.config.params.walkSpeed,220)
+  await assert.rejects(asUser(other,'select * from online_private.chicken_config'),/permission denied/)
+  assert.equal((await admin('select count(*)::int as n from online_private.chicken_config_history')).rows[0].n,2)
+})

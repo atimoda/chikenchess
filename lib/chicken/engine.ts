@@ -7,7 +7,8 @@
 // next to them. The screen sides are solid (rigid) walls she climbs by pushing into them, and the
 // ground sits `groundHeight` px above the bottom of the viewport.
 import { LOOK_ART, type ChickenLook } from './look-art'
-import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
+import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
+import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 
 export type ChickenEngine = {
@@ -102,18 +103,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.lid.setAttribute('fill', A.face[look.face].lid ?? '#f7b21b')
     tailSwing = A.tail[look.tail].swing ?? 1
   }
-  paintLook(opts.look ?? LOOK_ART.breedLook('caipira'))
+  // central configuration (config.ts): params and look follow it live, including the Pátio's draft
+  let config: ChickenConfig = getChickenConfig()
+  paintLook(opts.look ?? config.look)
 
   // ---------- params (scaled down on small screens) ----------
-  const R = { ...CHICKEN_PARAMS } as ChickenParams
+  const R = { ...config.params } as ChickenParams
   let W = window.innerWidth, H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     W = window.innerWidth; H = window.innerHeight; groundY = H - opts.groundHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     const vf = clamp(Math.min(W, H) / 800, 0.55, 1)
-    Object.assign(R, CHICKEN_PARAMS)
-    CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (CHICKEN_PARAMS as any)[k] * vf })
-    R.scale = CHICKEN_PARAMS.scale * vf
+    const P = config.params
+    Object.assign(R, P)
+    CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
+    R.scale = P.scale * vf
     if (S.grounded && !S.plat && !S.cl) S.y = groundY
     S.x = clamp(S.x, 40 * R.scale, W - 40 * R.scale)
   }
@@ -168,8 +172,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const v = (R as any)['sfx_' + ev] as string | undefined
     if (!v || !actx || !controls.sound) return
     const cats = v === 'all' ? Object.keys(CHICKEN_CLUCKS).filter(c => (R as any)['snd_' + c]) : [v]
-    let pool = cats.flatMap(c => CHICKEN_CLUCKS[c] || []).filter(n => buffers[n])
-    if (pool.length > 1) pool = pool.filter(n => n !== lastName)
+    const ready = (c: string) => (CHICKEN_CLUCKS[c] || []).filter(n => buffers[n])
+    // byType: draw the type first, so every type has the same chance however many samples it has
+    const types = R.byType ? cats.filter(c => ready(c).length) : cats
+    let pool = R.byType ? ready(types[Math.floor(Math.random() * types.length)] ?? '') : cats.flatMap(ready)
+    if (R.avoidRepeat && pool.length > 1) pool = pool.filter(n => n !== lastName)
     const name = pool[Math.floor(Math.random() * pool.length)]
     if (!name) return
     lastName = name
@@ -198,6 +205,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const jumpVelocity = (index: number) => Math.sqrt(2 * R.gravity * R.jumpHeight * Math.pow(R.jumpDecay, Math.min(index, Math.max(1, R.stableJump) - 1)))
   function plantFeet() { Object.values(feet).forEach((f: any) => { f.x = hipWorld(f); f.stepping = false; f.lift = 0 }) }
   resize(); S.y = groundY; plantFeet()
+  const unsubscribeConfig = subscribeChickenConfig(next => {
+    const lookChanged = JSON.stringify(next.look) !== JSON.stringify(config.look)
+    config = next
+    resize()
+    if (lookChanged && !opts.look) paintLook(next.look)
+  })
   window.addEventListener('resize', resize)
 
   let prevJump = false
@@ -903,6 +916,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     destroy() {
       cancelAnimationFrame(raf)
       unsubscribe()
+      unsubscribeConfig()
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)

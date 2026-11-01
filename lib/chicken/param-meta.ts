@@ -1,0 +1,103 @@
+// Editor metadata for every chicken setting shown in the Pátio da Galinha: group, label, unit and slider
+// range (ported from the "Pátio da Caipira" prototype). Defaults live in params.ts.
+import type { ChickenParams } from './params'
+
+export type ChickenParamKey = keyof ChickenParams
+export type ChickenParamMeta =
+  | { group: string; key: ChickenParamKey; label: string; unit?: string; min: number; max: number; step: number; hint?: string; type?: undefined }
+  | { group: string; key: ChickenParamKey; label: string; type: 'bool'; hint?: string }
+  | { group: string; key: ChickenParamKey; label: string; type: 'select' }
+
+// every movement can cluck: '' = no sound, 'all' = any enabled type, or one type
+export const CHICKEN_SFX_EVENTS: [string, string][] = [
+  ['runStart', 'Começar a correr'], ['jump', 'Pulo'], ['airJump', 'Pulo no ar'], ['superJump', 'Super pulo (baixo + pulo)'],
+  ['broodJump', 'Pular chocando'], ['crouchRunJump', 'Frente + baixo + corrida + pulo'], ['crouchRunBroodJump', 'Frente + baixo + corrida + chocar + pulo'],
+  ['wallJump', 'Pulo da parede'], ['slideTurn', 'Virada no slide'], ['pickUp', 'Ser pega com o mouse'],
+  ['grab', 'Agarrar na parede'], ['land', 'Aterrissar'], ['dropThrough', 'Atravessar plataforma'],
+  ['st_idle', 'Ficar parada'], ['st_walk', 'Começar a andar'], ['st_lookUp', 'Olhar pra cima'], ['st_brood', 'Chocar'],
+  ['st_crouch', 'Agachar'], ['st_slide', 'Começar o slide'], ['st_fly', 'Começar a voar'], ['st_fastFall', 'Queda rápida'],
+]
+
+export const CHICKEN_SOUND_TYPES: [string, string][] = [['cot_forte', 'cot forte'], ['cot_suave', 'cot suave'], ['medio', 'có-ó'], ['grito', 'grito'], ['murmurio', 'murmúrio']]
+
+const RAW: ChickenParamMeta[] = [
+  { group: 'Movimento', key: 'walkSpeed', label: 'Velocidade de caminhada', unit: 'px/s', min: 40, max: 500, step: 5},
+  { group: 'Movimento', key: 'runMultiplier', label: 'Multiplicador da corrida', unit: '×', min: 1, max: 4, step: 0.05},
+  { group: 'Movimento', key: 'acceleration', label: 'Aceleração', unit: 'px/s²', min: 100, max: 5000, step: 50},
+  { group: 'Movimento', key: 'deceleration', label: 'Desaceleração', unit: 'px/s²', min: 100, max: 6000, step: 50},
+  { group: 'Movimento', key: 'airSpeed', label: 'Velocidade no ar', unit: '×', min: 0.5, max: 4, step: 0.05},
+  { group: 'Movimento', key: 'jumpPush', label: 'Empurrão para o lado ao pular', unit: 'px/s', min: 0, max: 1500, step: 5},
+  { group: 'Agarrar', key: 'climbSpeed', label: 'Velocidade agarrada', unit: 'px/s', min: 20, max: 500, step: 5},
+  { group: 'Agarrar', key: 'clingTilt', label: 'Corpo de lado agarrada', unit: '°', min: 0, max: 60, step: 1},
+  { group: 'Agarrar', key: 'clingTurnTime', label: 'Tempo do giro ao agarrar', unit: 's', min: 0, max: 0.6, step: 0.01},
+  { group: 'Agarrar', key: 'clingBend', label: 'Dobra das pernas agarrada', unit: 'px', min: -12, max: 40, step: 1},
+  { group: 'Agarrar', key: 'wallJump', label: 'Pulo da parede', unit: '×', min: 0.3, max: 2, step: 0.05},
+  { group: 'Movimento', key: 'maxSpeed', label: 'Velocidade máxima (virada no slide)', unit: 'px/s', min: 100, max: 5000, step: 25},
+  { group: 'Movimento', key: 'fallSideSpeed', label: 'Lateral no ar segurando chocar', unit: '×', min: 0, max: 1.5, step: 0.05},
+  { group: 'Movimento', key: 'airControl', label: 'Controle no ar', unit: '×', min: 0, max: 1, step: 0.05},
+  { group: 'Corrida', key: 'runBoost', label: 'Impulso inicial', unit: 'px/s', min: 0, max: 600, step: 5},
+  { group: 'Corrida', key: 'runBoostTime', label: 'Duração do impulso', unit: 's', min: 0.05, max: 1.5, step: 0.05},
+  { group: 'Corrida', key: 'runHeadTilt', label: 'Inclinação da cabeça', unit: '°', min: -10, max: 45, step: 1},
+  { group: 'Corrida', key: 'runLean', label: 'Inclinação do corpo', unit: '°', min: 0, max: 30, step: 1},
+  { group: 'Andar (rig das pernas)', key: 'stepTime', label: 'Duração do passo', unit: 's', min: 0.06, max: 0.6, step: 0.01},
+  { group: 'Andar (rig das pernas)', key: 'stepGap', label: 'Intervalo entre as passadas', unit: 's', min: 0.06, max: 0.8, step: 0.01},
+  { group: 'Andar (rig das pernas)', key: 'foldPortion', label: 'Parte do passo dobrando a perna', unit: '×', min: 0.1, max: 0.7, step: 0.05},
+  { group: 'Andar (rig das pernas)', key: 'foldAnkle', label: 'Tornozelo sobe ao dobrar', unit: '°', min: 120, max: 185, step: 1},
+  { group: 'Andar (rig das pernas)', key: 'reachAngle', label: 'Canela esticada à frente', unit: '°', min: 0, max: 80, step: 1},
+  { group: 'Andar (rig das pernas)', key: 'legBend', label: 'Pernas dobradas (+ baixa, − alta)', unit: 'px', min: -12, max: 30, step: 1},
+  { group: 'Andar (rig das pernas)', key: 'femurAngle', label: 'Ângulo da coxa (quadril → joelho)', unit: '°', min: 10, max: 80, step: 1},
+  { group: 'Andar (rig das pernas)', key: 'femurSwing', label: 'Coxa acompanha o pé', unit: '°/px', min: 0, max: 1, step: 0.05},
+  { group: 'Andar (rig das pernas)', key: 'toeCurl', label: 'Dedos encolhidos ao dobrar', unit: '°', min: 0, max: 130, step: 1},
+  { group: 'Andar (corpo e cabeça)', key: 'bodyBob', label: 'Sobe e desce do corpo', unit: 'px', min: 0, max: 10, step: 0.5},
+  { group: 'Andar (corpo e cabeça)', key: 'bodyRock', label: 'Balanço do corpo a cada passo', unit: '°', min: 0, max: 12, step: 0.5},
+  { group: 'Andar (corpo e cabeça)', key: 'bodySway', label: 'Vai e vem do corpo a cada passo', unit: 'px', min: 0, max: 8, step: 0.5},
+  { group: 'Andar (corpo e cabeça)', key: 'headLead', label: 'Cabeça adianta (× do passo)', unit: '×', min: 0, max: 2, step: 0.05},
+  { group: 'Andar (corpo e cabeça)', key: 'headSnapTime', label: 'Duração do bote da cabeça', unit: 's', min: 0.02, max: 0.3, step: 0.01},
+  { group: 'Agachar e slide', key: 'crouchDepth', label: 'Profundidade do agachar', unit: 'px', min: 4, max: 34, step: 1},
+  { group: 'Agachar e slide', key: 'crouchSpeed', label: 'Velocidade agachada', unit: '×', min: 0, max: 1, step: 0.05},
+  { group: 'Agachar e slide', key: 'crouchSwing', label: 'Amplitude do passo agachada', unit: '×', min: 0.1, max: 1, step: 0.05},
+  { group: 'Agachar e slide', key: 'slideFriction', label: 'Atrito do slide', unit: 'px/s²', min: 50, max: 3000, step: 25},
+  { group: 'Agachar e slide', key: 'slideTurnBoost', label: 'Impulso da virada no slide', unit: '×', min: 0, max: 3, step: 0.05},
+  { group: 'Agachar e slide', key: 'slideMinSpeed', label: 'Velocidade mínima do slide', unit: 'px/s', min: 10, max: 300, step: 5},
+  { group: 'Chocar', key: 'broodDepth', label: 'Descida do corpo ao chocar', unit: 'px', min: 10, max: 90, step: 1},
+  { group: 'Chocar', key: 'broodSpeed', label: 'Velocidade da descida', unit: '×', min: 1, max: 40, step: 0.5},
+  { group: 'Chocar', key: 'broodEyeDelay', label: 'Fecha os olhos depois de', unit: 's', min: 0, max: 5, step: 0.1},
+  { group: 'Pulo e queda', key: 'superJump', label: 'Super pulo (agachar + pular)', unit: '×', min: -1, max: 2, step: 0.05},
+  { group: 'Pulo e queda', key: 'jumpHeight', label: 'Altura do pulo', unit: 'px', min: 20, max: 400, step: 5},
+  { group: 'Pulo e queda', key: 'jumpDecay', label: 'Fator de cada pulo no ar', unit: '×', min: 0.1, max: 1, step: 0.05},
+  { group: 'Pulo e queda', key: 'stableJump', label: 'Altura estabiliza no pulo nº', unit: '', min: 2, max: 10, step: 1},
+  { group: 'Pulo e queda', key: 'gravity', label: 'Gravidade', unit: 'px/s²', min: 300, max: 6000, step: 50},
+  { group: 'Pulo e queda', key: 'terminalVelocity', label: 'Velocidade máxima de queda', unit: 'px/s', min: 200, max: 3000, step: 50},
+  { group: 'Pulo e queda', key: 'fastFall', label: 'Multiplicador da queda rápida', unit: '×', min: 1, max: 5, step: 0.1},
+  { group: 'Combinações', key: 'broodWalk', label: 'Frente + chocar: velocidade andando', unit: '× caminhada', min: 0, max: 2, step: 0.05, hint: '0 = fica parada chocando' },
+  { group: 'Combinações', key: 'crouchRunSpeed', label: 'Frente + baixo + corrida: velocidade', unit: '× agachada', min: 0, max: 4, step: 0.05},
+  { group: 'Combinações', key: 'crouchJumpBoost', label: 'Baixo + pulo: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
+  { group: 'Combinações', key: 'broodJumpBoost', label: 'Pular chocando: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
+  { group: 'Combinações', key: 'broodJumpFlaps', label: 'Pular chocando: batidas de asa', unit: '', min: 0, max: 12, step: 1},
+  { group: 'Combinações', key: 'crouchRunJumpBoost', label: 'Frente + baixo + corrida + pulo: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
+  { group: 'Combinações', key: 'crouchRunBroodJumpBoost', label: 'Frente + baixo + corrida + chocar + pulo: impulso lateral', unit: 'px/s', min: 0, max: 3000, step: 10},
+  { group: 'Voo', key: 'flyFallDivisor', label: 'Queda voando (divisor)', unit: '÷', min: 1, max: 10, step: 0.1},
+  { group: 'Voo', key: 'flapRate', label: 'Batidas de asa voando', unit: '/s', min: 2, max: 20, step: 0.5},
+  { group: 'Voo', key: 'jumpFlaps', label: 'Batidas de asa por pulo', unit: '', min: 0, max: 6, step: 1},
+  { group: 'Voo', key: 'heldFlapRate', label: 'Batidas de asa sendo arrastada', unit: '/s', min: 0, max: 20, step: 0.5, hint: '0 = asas paradas' },
+  { group: 'Voo', key: 'jumpFlapRate', label: 'Velocidade das batidas do pulo', unit: '/s', min: 4, max: 24, step: 0.5},
+  { group: 'Idle', key: 'idleMin', label: 'Balanço de cabeça: intervalo mín.', unit: 's', min: 0.2, max: 6, step: 0.1},
+  { group: 'Idle', key: 'idleMax', label: 'Balanço de cabeça: intervalo máx.', unit: 's', min: 0.5, max: 10, step: 0.1},
+  { group: 'Idle', key: 'blinkMin', label: 'Piscada: intervalo mín.', unit: 's', min: 0.5, max: 8, step: 0.1},
+  { group: 'Idle', key: 'blinkMax', label: 'Piscada: intervalo máx.', unit: 's', min: 1, max: 12, step: 0.1},
+  { group: 'Cacarejo', key: 'choke', label: 'Novo cacarejo corta o anterior', type: 'bool'},
+  { group: 'Cacarejo', key: 'snd_cot_forte', label: 'Usar "cot" forte', type: 'bool'},
+  { group: 'Cacarejo', key: 'snd_cot_suave', label: 'Usar "cot" suave', type: 'bool'},
+  { group: 'Cacarejo', key: 'snd_medio', label: 'Usar "có-ó" médio', type: 'bool'},
+  { group: 'Cacarejo', key: 'snd_grito', label: 'Usar grito', type: 'bool'},
+  { group: 'Cacarejo', key: 'snd_murmurio', label: 'Usar murmúrio', type: 'bool'},
+  { group: 'Sorteio do cacarejo', key: 'pitchJitter', label: 'Variação de tom (±)', unit: '%', min: 0, max: 25, step: 1},
+  { group: 'Sorteio do cacarejo', key: 'volJitter', label: 'Variação de volume (±)', unit: '%', min: 0, max: 50, step: 1},
+  { group: 'Sorteio do cacarejo', key: 'byType', label: 'Sortear o tipo antes do sample', type: 'bool', hint: 'ligado: cada tipo tem a mesma chance, mesmo com poucos samples' },
+  { group: 'Sorteio do cacarejo', key: 'avoidRepeat', label: 'Não repetir o último sample', type: 'bool'},
+  ...CHICKEN_SFX_EVENTS.map(([ev, label]) => ({ group: 'Som de cada movimento', key: ('sfx_' + ev) as ChickenParamKey, label, type: 'select' as const })),
+  { group: 'Visual', key: 'scale', label: 'Tamanho da galinha', unit: '×', min: 0.5, max: 3, step: 0.05 },
+]
+
+export const CHICKEN_PARAM_META: ChickenParamMeta[] = RAW
+export const CHICKEN_PARAM_GROUPS = [...new Set(RAW.map(p => p.group))]

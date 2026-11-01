@@ -3,6 +3,18 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.12.0',
+    date: '01/11/2026',
+    title: 'Pátio da Galinha dentro do jogo e uma configuração da galinha para todas as telas',
+    groups: [
+      { title: 'Galinha', items: [
+        'O Pátio da Galinha agora é uma seção do jogo: abra pelo link “Pátio da Galinha” no painel Controles da galinha (botão do gamepad no globo).',
+        'No Pátio dá para pular nas caixas e ajustar tudo da galinha (movimento, pulo, voo, animação, cacarejos e o visual de cada parte) vendo o resultado na hora.',
+        'Com a conta admin, “Salvar padrão” grava os ajustes para todo mundo, e o globo (e qualquer outra tela com a galinha) passa a usar essa mesma versão. Sem a conta admin, os ajustes ficam só no seu navegador, como rascunho.',
+      ] },
+    ],
+  },
+  {
     version: '1.11.0',
     date: '31/10/2026',
     title: 'Pontos históricos só com o contador cheio, galinha com novas combinações de pulo e piscada no “Your move”',
