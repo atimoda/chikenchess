@@ -27,7 +27,7 @@ export type ChickenEngine = {
   setGroundHeight: (h: number) => void
   setGame: (game: ChickenGame) => void
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
-  // her body and behind the wing, turned to `angle` (screen radians), pulled back by `kick` rig units
+  // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units
   setHeld: (held: { svg: string; angle: number; kick: number } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in.
@@ -83,8 +83,8 @@ const SVG_MARKUP = `
           <ellipse data-part="lid" cx="51" cy="-197.4" rx="5.4" ry="0" fill="#f7b21b"/>
         </g>
       </g>
-      <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"></g></g>
       <g data-part="wing"><g data-part="artWing"></g></g>
+      <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"></g></g>
     </g>
   </g>`
 

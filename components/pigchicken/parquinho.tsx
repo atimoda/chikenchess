@@ -291,7 +291,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawWorld(ctx, combat, camX)
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
-      // the item itself is drawn inside her rig, in front of her body and behind the wing; in a swing the wing
+      // the item itself is drawn inside her rig, in front of her body and of the wing; in a swing the wing
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.inventory[combat.current], sw = combat.swing
       const art = h ? ITEM_SVG[h.item] : undefined
