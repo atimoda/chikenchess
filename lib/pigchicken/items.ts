@@ -4,7 +4,12 @@
 import type { PitchSet } from './music'
 import type { VoiceId } from './synth'
 
-export type FireMode = 'semi' | 'auto' | 'burst' | 'charge'
+export type FireMode = 'semi' | 'auto' | 'burst' | 'charge' | 'release'
+// when the projectile's path is drawn: never, while the fire button is held, held or with the aim locked, always
+export type PathShow = 'off' | 'hold' | 'holdAim' | 'always'
+export const PATH_SHOWS: { value: PathShow; label: string }[] = [
+  { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
+]
 export type ItemId = 'wing' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
@@ -17,6 +22,7 @@ export type ItemDef = {
   name: string
   family: string
   reticle: Reticle
+  pathShow: PathShow
   // firing
   fireMode: FireMode
   rate: number // shots per second
@@ -99,7 +105,7 @@ const NO_MUSIC = {
 }
 
 const PISTOL: ItemDef = {
-  id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot',
+  id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off',
   fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, chargeTime: 0, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
@@ -139,7 +145,7 @@ const PUMP: ItemDef = {
 
 const SNIPER: ItemDef = {
   ...PISTOL, id: 'sniper', name: 'Sniper', family: 'Sniper', reticle: 'laser',
-  fireMode: 'semi', rate: 0.83, mag: 5, reloadTime: 2.2,
+  fireMode: 'release', pathShow: 'holdAim', rate: 0.83, mag: 5, reloadTime: 2.2,
   speed: 9000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
   spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
   recoilKick: 14, recoilPush: 250, weight: 0.85, turnRate: 360,
@@ -156,7 +162,7 @@ const LAUNCHER: ItemDef = {
 }
 
 const GRENADE: ItemDef = {
-  ...PISTOL, id: 'grenade', name: 'Granada', family: 'Granadas', reticle: 'grenade',
+  ...PISTOL, id: 'grenade', name: 'Granada', family: 'Granadas', reticle: 'grenade', pathShow: 'hold',
   fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3,
   speed: 1100, drop: 1500, damage: 0, range: 4000, size: 8, explodeRadius: 140, explodeDamage: 90, fuse: 2.5, bounce: 0.45,
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
@@ -165,7 +171,7 @@ const GRENADE: ItemDef = {
 }
 
 const BOW: ItemDef = {
-  ...PISTOL, id: 'bow', name: 'Arco', family: 'Arco', reticle: 'bow',
+  ...PISTOL, id: 'bow', name: 'Arco', family: 'Arco', reticle: 'bow', pathShow: 'hold',
   fireMode: 'charge', rate: 2, mag: 12, reloadTime: 1.5, chargeTime: 0.9, chargeMin: 0.25,
   speed: 1700, drop: 900, damage: 40, range: 2500,
   spreadBase: 0.5, spreadShot: 0, spreadMax: 3, spreadMove: 1, spreadAir: 2,
@@ -214,7 +220,7 @@ const GUITAR: ItemDef = {
 }
 // Cordas friccionadas → sniper: a held note in a beam; it keeps the enemy still while it plays
 const VIOLIN: ItemDef = {
-  ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser',
+  ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, turnRate: 240, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4,
@@ -326,7 +332,9 @@ export function loadItems(): Record<ItemId, ItemDef> {
         const v = s[m.key]
         if (typeof v === 'number' && Number.isFinite(v)) (out[id] as Record<string, unknown>)[m.key] = Math.min(m.max, Math.max(m.min, v))
       })
-      if (['semi', 'auto', 'burst', 'charge'].includes(s.fireMode)) out[id].fireMode = s.fireMode
+      // saved before the sniper fired on release (v2): it takes the new mode
+      if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && saved._v !== 2)) out[id].fireMode = s.fireMode
+      if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
       ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
       if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
       if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
@@ -337,7 +345,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
 }
 
 export function saveItems(items: Record<ItemId, ItemDef>) {
-  try { window.localStorage.setItem(STORE, JSON.stringify(items)) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 2 })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
