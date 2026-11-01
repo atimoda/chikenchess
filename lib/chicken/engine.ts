@@ -11,7 +11,7 @@ import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 
-export type ChickenState = { x: number; y: number; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
+export type ChickenState = { x: number; y: number; angle: number; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
 export type ChickenGame = { gameMode?: boolean; moveLock?: boolean; aimFace?: number | null; backpedal?: number }
 export type ChickenEngine = {
@@ -933,7 +933,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (on && !virt[action]) virtTapped.add(action)
       virt[action] = on
     },
-    getState: () => ({ x: S.x, y: S.y, vx: S.vx, vy: S.vy, face: S.face, scale: R.scale, grounded: !!S.grounded, state: S.state, held: !!S.held, width: W, height: H, groundY }),
+    // while clinging, S.x is the distance along the wall: report where she is drawn
+    getState: () => ({ x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx, vy: S.vy, face: S.face, scale: R.scale, grounded: !!S.grounded, state: S.state, held: !!S.held, width: W, height: H, groundY }),
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
@@ -943,7 +944,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     shift(dx) {
       if (!dx) return
-      S.x += dx
+      // clinging: the wall moved with the world and her place on it is a distance along it, so only the contact moves
+      if (!S.cl) S.x += dx
+      // standing on a box: the box moved with the world too, so the ride must not carry her a second time
+      if (S.plat) S.platAx += dx
       Object.values(feet).forEach((f: any) => { if (f.x !== null) f.x += dx; f.from += dx; f.to += dx })
       if (headAnchor.x !== null) { headAnchor.x += dx; headAnchor.from += dx; headAnchor.to += dx; if (headAnchor.lastContact !== null) headAnchor.lastContact += dx }
       if (S.cl) S.cl.px += dx

@@ -166,7 +166,9 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL)
       const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || act.down ? 1 : 0) - (act.up ? 1 : 0) }
       if (leftStick || keys.x || keys.y) owner.otherAim(now, S.mouseIdle)
-      const origin = { x: st.x + st.face * 14 * st.scale, y: st.y - 112 * st.scale }
+      // her shoulder, turned with her body (on a wall she is drawn rotated)
+      const lx = st.face * 14 * st.scale, ly = -112 * st.scale, ca = Math.cos(st.angle), sa = Math.sin(st.angle)
+      const origin = { x: st.x + lx * ca - ly * sa, y: st.y + lx * sa + ly * ca }
       aim = resolveAim({
         rightStick, mouse: owner.owns ? mouse : null, touch: touchAim.current, leftStick, keys, origin,
         face: st.face, grounded: st.grounded, aimLock: act.aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
