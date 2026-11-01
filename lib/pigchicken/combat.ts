@@ -191,16 +191,18 @@ export function createCombat() {
     return true
   }
 
-  // grab with no free slot: the item takes the place of the held one, which goes back to its rack (or stays on the floor)
+  // grab with no free slot: the item takes the place of the held one, which falls to the floor
   function swapIn(p: Pickup) {
     const old = held()
     stopBeam()
-    if (old && !racks.some(r => r.item === old.item)) pickups.push({ id: nextId++, owned: old, x: p.x, y: p.y, vy: -250, resting: false, noPick: 1.2 })
+    if (old) pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
     inv[cur] = p.owned; reloadT = 0; chargeT = 0; burstLeft = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
   }
   let hover: Pickup | null = null
+  // an item on the floor she already carries: grab equips hers
+  let hoverOwned: Pickup | null = null
 
   function equip(i: number) {
     if (i === cur) return
@@ -463,6 +465,7 @@ export function createCombat() {
     get swing() { return swing },
     // the item she stands on that grab would take (drawn with a blue outline)
     get hover() { return hover },
+    get hoverOwned() { return hoverOwned },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
@@ -636,7 +639,7 @@ export function createCombat() {
       }
 
       // pickups: fall to the floor, picked up by walking over them
-      hover = null
+      hover = null; hoverOwned = null
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
         p.noPick = Math.max(0, p.noPick - dt)
@@ -650,11 +653,18 @@ export function createCombat() {
         if (Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && canTake(p)) {
           if (pickUp(p)) pickups.splice(i, 1)
           else if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
+        } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && inv.some(o => o && o.item === p.owned.item)) {
+          if (!hoverOwned || Math.abs(p.x - body.x) < Math.abs(hoverOwned.x - body.x)) hoverOwned = p
         }
       }
 
       // no free slot: the item she stands on is outlined; grab swaps it with the held one
       if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); swapIn(g); hover = null }
+      else if (input.grab && hoverOwned) {
+        // the same item is in her inventory: grab equips it (the one on the floor stays)
+        const slot = inv.findIndex(o => o && o.item === hoverOwned!.owned.item)
+        if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
+      }
       // racks: the creative mode always has the item to pick up again
       racks.forEach(r => {
         const near = pickups.some(p => p.owned.item === r.item && Math.abs(p.x - r.x) < 60)

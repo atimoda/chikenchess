@@ -117,7 +117,7 @@ export const CHICKEN_PARAMS = {
   sfx_st_fly: '',
   sfx_st_fastFall: '',
   // Visual
-  scale: 0.95,
+  scale: 0.55,
 }
 
 export type ChickenParams = typeof CHICKEN_PARAMS
