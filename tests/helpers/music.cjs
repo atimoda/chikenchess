@@ -13,7 +13,7 @@ function loadTs(relative) {
   mod.filename = file
   mod.paths = module.paths
   const original = mod.require.bind(mod)
-  mod.require = name => name === '../performance' ? { isConstrainedDevice: () => false } : name.startsWith('@/') && fs.existsSync(path.resolve(__dirname, '..', '..', name.slice(2) + '.ts')) ? loadTs(name.slice(2) + '.ts') : name.startsWith('.') && fs.existsSync(path.resolve(path.dirname(file), name + '.ts')) ? loadTs(path.relative(path.resolve(__dirname, '..', '..'), path.resolve(path.dirname(file), name + '.ts'))) : original(name)
+  mod.require = name => name === '../performance' ? { isConstrainedDevice: () => false, isLiteDevice: () => false } : name.startsWith('@/') && fs.existsSync(path.resolve(__dirname, '..', '..', name.slice(2) + '.ts')) ? loadTs(name.slice(2) + '.ts') : name.startsWith('.') && fs.existsSync(path.resolve(path.dirname(file), name + '.ts')) ? loadTs(path.relative(path.resolve(__dirname, '..', '..'), path.resolve(path.dirname(file), name + '.ts'))) : original(name)
   mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, file)
   return mod.exports
 }
