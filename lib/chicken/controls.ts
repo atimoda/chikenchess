@@ -3,7 +3,7 @@
 
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
-  | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'reload'
+  | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'reload' | 'grab'
 export type ChickenTouchMode = 'auto' | 'on' | 'off'
 type Slots = (string | null)[]
 
@@ -19,8 +19,10 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyX', null, null], pad: ['Pad:b7', null, null], group: 'items' },
   { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyZ', null, null], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyV', 'Key:KeyG', null], pad: ['Pad:b5', null, null], group: 'items' },
-  { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyE', null, null], pad: ['Pad:b4', null, null], group: 'items' },
-  { key: 'prevItem', label: 'Item anterior', keys: ['Key:KeyQ', null, null], pad: [null, null, null], group: 'items' },
+  { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyQ', null, null], pad: ['Pad:b4', null, null], group: 'items' },
+  { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], pad: [null, null, null], group: 'items' },
+  // X on the gamepad also runs: grabbing only acts while she stands on an item
+  { key: 'grab', label: 'Pegar / trocar item (em cima dele)', keys: ['Key:KeyE', null, null], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], pad: ['Pad:b11', null, null], group: 'items' },
 ]
 
@@ -79,7 +81,7 @@ export function loadChickenControls(): ChickenControls {
     }
     // controls saved before the items: the item buttons leave the movement actions (run goes to X, brood keeps B)
     if (!saved?.itemsV1) {
-      const taken = new Set(CHICKEN_ACTIONS.filter(a => a.group === 'items').flatMap(a => [...a.keys, ...a.pad]).filter(Boolean) as string[])
+      const taken = new Set(CHICKEN_ACTIONS.filter(a => a.group === 'items' && a.key !== 'grab').flatMap(a => [...a.keys, ...a.pad]).filter(Boolean) as string[])
       CHICKEN_ACTIONS.filter(a => !a.group).forEach(a => {
         base.keys[a.key] = base.keys[a.key].map(t => t && taken.has(t) ? null : t)
         base.pad[a.key] = base.pad[a.key].map(t => t && taken.has(t) ? null : t)
@@ -99,12 +101,17 @@ export function loadChickenControls(): ChickenControls {
       }
       add('Pad:b6'); add('Pad:b1')
     }
+    // controls saved before E became grab (01/11): Q goes to next item and E leaves it
+    if (!saved?.grabE) {
+      if (base.keys.nextItem.includes('Key:KeyE')) base.keys.nextItem = base.keys.nextItem.map(t => t === 'Key:KeyE' ? 'Key:KeyQ' : t)
+      base.keys.prevItem = base.keys.prevItem.map(t => t === 'Key:KeyQ' && base.keys.nextItem.includes('Key:KeyQ') ? null : t)
+    }
   } catch { /* storage unavailable: defaults */ }
   return base
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true, grabE: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

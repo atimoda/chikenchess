@@ -222,6 +222,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
 
       // ---------- combat (world coordinates) ----------
       const fire = act.fire || mouseBtn.fire, melee = act.melee || mouseBtn.melee
+      grabHint = `${controls.keys.grab.find(Boolean)?.replace("Key:Key", "").replace("Key:", "") ?? "E"}: trocar`
       let pick = 0
       if (act.nextItem && !prev.nextItem) pick = 1
       if (act.prevItem && !prev.prevItem) pick = -1
@@ -229,7 +230,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const input = {
         fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
         throwHeld: act.throw, throwReleased: !act.throw && !!prev.throw,
-        reload: act.reload && !prev.reload, pick, slot: slotPick,
+        reload: act.reload && !prev.reload, pick, slot: slotPick, grab: act.grab && !prev.grab,
       }
       slotPick = 0
       prev = { ...act, fire, melee }
@@ -568,6 +569,8 @@ function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
   ctx.restore()
 }
 
+// the hint over an item she can grab (set from the controls)
+let grabHint = "E: trocar"
 // the horde buttons' labels (set every frame from the horde settings)
 const buttonLabels: Record<string, string> = {}
 function drawButton(ctx: Ctx, g: Combat["targets"][number], x: number) {
@@ -644,7 +647,14 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   combat.pickups.forEach(p => {
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3
     ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.save(); ctx.translate(x, y - 8); drawItem(ctx, p.owned.item, 64, 34); ctx.restore()
+    ctx.save(); ctx.translate(x, y - 8)
+    // the item grab would take: a blue outline and the key to press
+    if (combat.hover === p) {
+      ctx.filter = "drop-shadow(2px 0 0 #4cc9f0) drop-shadow(-2px 0 0 #4cc9f0) drop-shadow(0 2px 0 #4cc9f0) drop-shadow(0 -2px 0 #4cc9f0)"
+      drawItem(ctx, p.owned.item, 64, 34); ctx.filter = "none"
+      ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#4cc9f0"; ctx.fillText(grabHint, 0, 30)
+    } else drawItem(ctx, p.owned.item, 64, 34)
+    ctx.restore()
   })
   combat.thrown.forEach(o => {
     ctx.save(); ctx.translate(X(o.x), o.y); ctx.rotate(o.angle); drawItem(ctx, o.owned.item, 64, 34); ctx.restore()

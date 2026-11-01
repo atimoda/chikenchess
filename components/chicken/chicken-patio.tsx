@@ -150,7 +150,7 @@ export function ChickenPatio() {
       </header>
 
       <p className="pointer-events-none absolute left-1/2 top-16 z-10 w-full -translate-x-1/2 px-4 text-center font-mono text-xs text-[#93a79a]">
-        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular · mouse ou setas miram · clique/X atira · clique direito/Z golpe · V arremessa · Q/E/1–9 itens · chocar com item trava a mira
+        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular · mouse ou setas miram · clique/X atira · clique direito/Z golpe · V arremessa · Q/1–9 trocam o item · E pega (troca com o da mão) · chocar com item trava a mira
       </p>
 
       <ParquinhoWorld screens={pq.screens} worldRef={worldRef} />

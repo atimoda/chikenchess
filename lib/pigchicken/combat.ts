@@ -24,6 +24,7 @@ export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
   note?: NoteInfo; ring?: number // instruments: the note it carries; notes it lets out when it bursts
+  ghost?: boolean // goes through walls and floating platforms (instruments' notes)
 }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
@@ -47,6 +48,7 @@ export type Body = { x: number; y: number; face: number; scale: number; grounded
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1..9 exact, 0 none
+  grab?: boolean // standing on an item with no free slot: it takes the place of the held one
 }
 
 export const SLOTS = 9
@@ -88,7 +90,6 @@ export function createCombat() {
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number }[] = []
-  let fullTextT = 0
   let swing: Swing | null = null
   // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
   const music = createConductor()
@@ -174,22 +175,32 @@ export function createCombat() {
   }
   let lastBody: Body | null = null
 
+  // can she take this item? (one of each item)
+  const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o && o.item === p.owned.item)
+
+  // walking onto an item: with a free slot it goes there (only the very first one goes to her wing)
   function pickUp(p: Pickup) {
-    // one of each item: walking past the rack again does not fill every slot with the same weapon
-    if (inv.some(o => o && o.item === p.owned.item)) return false
+    if (!canTake(p)) return false
     const empty = inv.every(o => o === null)
-    // only the first item she picks up goes to her wing; the others go to a free slot (and stay on the floor when there is none)
     let slot = empty ? cur : inv.findIndex((o, i) => o === null && i !== cur)
     if (slot < 0 && inv[cur] === null) slot = cur
-    if (slot < 0) {
-      if (fullTextT <= 0) { addText(p.x, p.y - 30, 'inventário cheio', '#aaaaaa'); fullTextT = 1.5 }
-      return false
-    }
+    if (slot < 0) return false
     inv[slot] = p.owned
     if (slot === cur) sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
   }
+
+  // grab with no free slot: the item takes the place of the held one, which goes back to its rack (or stays on the floor)
+  function swapIn(p: Pickup) {
+    const old = held()
+    stopBeam()
+    if (old && !racks.some(r => r.item === old.item)) pickups.push({ id: nextId++, owned: old, x: p.x, y: p.y, vy: -250, resting: false, noPick: 1.2 })
+    inv[cur] = p.owned; reloadT = 0; chargeT = 0; burstLeft = 0
+    sound('equip', p.owned.item)
+    addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
+  }
+  let hover: Pickup | null = null
 
   function equip(i: number) {
     if (i === cur) return
@@ -249,7 +260,7 @@ export function createCombat() {
       if (d.instrument) {
         const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
         b.note = { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }
-        b.ring = d.ringNotes
+        b.ring = d.ringNotes; b.ghost = true
       }
       // instant shots travel their whole way now and leave a tracer
       if (d.hitscan && ctx) {
@@ -300,7 +311,7 @@ export function createCombat() {
       bullets.push({
         x, y: y - 6, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, dist: 0, damage: Math.max(5, amount * 0.35), pierce: 0, hits: new Set(), size: 9, drop: 0, range: r * 1.6,
         item: b.item, t: 0, explode: 0, explodeDamage: 0, fuse: 0, bounce: 0,
-        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0,
+        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true,
       })
     }
   }
@@ -337,7 +348,7 @@ export function createCombat() {
     // walls and the floor: explode, bounce (with a fuse) or stop
     for (let k = 1; k <= steps; k++) {
       const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
-      const box = boxAt(boxes, x, y)
+      const box = b.ghost ? undefined : boxAt(boxes, x, y)
       const floor = y >= groundY
       if (!box && !floor) continue
       if (b.fuse > 0) {
@@ -361,7 +372,7 @@ export function createCombat() {
     const d = def()
     const b: Bullet = {
       x: from.x, y: from.y, vx: Math.cos(angle) * d.speed * power, vy: Math.sin(angle) * d.speed * power, dist: 0, damage: 0, pierce: d.explodeRadius > 0 ? 0 : d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
-      item: d.id, t: 0, explode: 0, explodeDamage: 0, fuse: d.fuse, bounce: d.bounce,
+      item: d.id, t: 0, explode: 0, explodeDamage: 0, fuse: d.fuse, bounce: d.bounce, ghost: d.instrument,
     }
     // a dry run: it stops at the first target and changes nothing
     const points: { x: number; y: number }[] = [{ x: b.x, y: b.y }]
@@ -413,7 +424,7 @@ export function createCombat() {
     let x = muzzle.x, y = muzzle.y, hit: Target | null = null
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
-      if (y >= ctx.groundY || boxAt(ctx.boxes, x, y)) break
+      if (y >= ctx.groundY || (!d.instrument && boxAt(ctx.boxes, x, y))) break
       hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
@@ -450,6 +461,8 @@ export function createCombat() {
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
     get kick() { return kick },
     get swing() { return swing },
+    // the item she stands on that grab would take (drawn with a blue outline)
+    get hover() { return hover },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
@@ -623,7 +636,7 @@ export function createCombat() {
       }
 
       // pickups: fall to the floor, picked up by walking over them
-      fullTextT = Math.max(0, fullTextT - dt)
+      hover = null
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
         p.noPick = Math.max(0, p.noPick - dt)
@@ -634,11 +647,14 @@ export function createCombat() {
           if (top) { p.y = top.t; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
-        if (p.noPick <= 0 && Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20) {
+        if (Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && canTake(p)) {
           if (pickUp(p)) pickups.splice(i, 1)
+          else if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
         }
       }
 
+      // no free slot: the item she stands on is outlined; grab swaps it with the held one
+      if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); swapIn(g); hover = null }
       // racks: the creative mode always has the item to pick up again
       racks.forEach(r => {
         const near = pickups.some(p => p.owned.item === r.item && Math.abs(p.x - r.x) < 60)
