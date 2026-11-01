@@ -222,7 +222,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
 
       // ---------- combat (world coordinates) ----------
       const fire = act.fire || mouseBtn.fire, melee = act.melee || mouseBtn.melee
-      grabHint = `${controls.keys.grab.find(Boolean)?.replace("Key:Key", "").replace("Key:", "") ?? "E"}: trocar`
+      grabKey = controls.keys.grab.find(Boolean)?.replace("Key:Key", "").replace("Key:", "") ?? "E"
       let pick = 0
       if (act.nextItem && !prev.nextItem) pick = 1
       if (act.prevItem && !prev.prevItem) pick = -1
@@ -570,7 +570,7 @@ function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
 }
 
 // the hint over an item she can grab (set from the controls)
-let grabHint = "E: trocar"
+let grabKey = "E"
 // the horde buttons' labels (set every frame from the horde settings)
 const buttonLabels: Record<string, string> = {}
 function drawButton(ctx: Ctx, g: Combat["targets"][number], x: number) {
@@ -649,10 +649,12 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
     ctx.save(); ctx.translate(x, y - 8)
     // the item grab would take: a blue outline and the key to press
-    if (combat.hover === p) {
-      ctx.filter = "drop-shadow(2px 0 0 #4cc9f0) drop-shadow(-2px 0 0 #4cc9f0) drop-shadow(0 2px 0 #4cc9f0) drop-shadow(0 -2px 0 #4cc9f0)"
+    // blue: grab swaps it in; grey: she already carries one, grab equips hers
+    const mark = combat.hover === p ? { c: "#4cc9f0", t: "trocar" } : combat.hoverOwned === p ? { c: "#9aa0a8", t: "equipar" } : null
+    if (mark) {
+      ctx.filter = `drop-shadow(2px 0 0 ${mark.c}) drop-shadow(-2px 0 0 ${mark.c}) drop-shadow(0 2px 0 ${mark.c}) drop-shadow(0 -2px 0 ${mark.c})`
       drawItem(ctx, p.owned.item, 64, 34); ctx.filter = "none"
-      ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#4cc9f0"; ctx.fillText(grabHint, 0, 30)
+      ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = mark.c; ctx.fillText(`${grabKey}: ${mark.t}`, 0, 30)
     } else drawItem(ctx, p.owned.item, 64, 34)
     ctx.restore()
   })
@@ -797,6 +799,10 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     line(end.x - 6, end.y - 6, end.x + 6, end.y + 6); line(end.x - 6, end.y + 6, end.x + 6, end.y - 6)
     ctx.strokeStyle = "rgba(255,170,70,0.7)"; ctx.setLineDash([6, 5])
     ctx.beginPath(); ctx.arc(end.x, end.y, d.explodeRadius || 20, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([])
+    // where the mouse (or the stick) points, so the aim is never lost while the marker shows the landing
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([])
+    ctx.beginPath(); ctx.arc(rx, ry, 7, 0, Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(rx, ry, 1.5, 0, Math.PI * 2); ctx.fill()
     // the fuse: a ring that empties in the fuse's time
     if (d.fuse > 0) { ctx.strokeStyle = "#ff6b5b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(end.x, end.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, d.fuse / 6)); ctx.stroke() }
   } else if (d.reticle === "bow" && path) {
