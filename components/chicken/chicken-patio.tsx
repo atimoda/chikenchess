@@ -15,6 +15,7 @@ import {
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { ChickenGround, ChickenLayer } from "./chicken-layer"
+import { ChickenPortalArrival } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 import type { ChickenEngine } from "@/lib/chicken/engine"
@@ -157,6 +158,7 @@ export function ChickenPatio() {
 
       <ChickenGround />
       <ChickenLayer dropIn={false} onEngine={setEngine} />
+      <ChickenPortalArrival engine={engine} />
       <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (

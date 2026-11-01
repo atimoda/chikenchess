@@ -18,6 +18,8 @@ import { useOnline } from './online/online-provider'
 import { AboutReleaseDialog } from './about-release-dialog'
 import styles from './world-map.module.css'
 import { ChickenGround, ChickenLayer } from './chicken/chicken-layer'
+import { ChickenPortal } from './chicken/chicken-portal'
+import type { ChickenEngine } from '@/lib/chicken/engine'
 import { ChickenControlsPanel } from './chicken/chicken-controls-panel'
 
 import { Button } from "@/components/ui/button"
@@ -104,6 +106,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [openPopups, setOpenPopups] = useState<Record<string, PopupState>>({})
   const [nextZIndex, setNextZIndex] = useState(100)
   const [showTitle, setShowTitle] = useState(false)
+  const [chickenEngine, setChickenEngine] = useState<ChickenEngine | null>(null)
+  const footerButtonsRef = useRef<HTMLDivElement>(null)
   const [showChickenControls, setShowChickenControls] = useState(false)
   const [logoPhase, setLogoPhase] = useState<'intro' | 'fading' | 'header'>('intro')
   const [introHeadlineVisible, setIntroHeadlineVisible] = useState(true)
@@ -1364,13 +1368,16 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
 
       {/* Player chicken: ground strip over the city list, behind the footer buttons; the chicken drops in once the globe settles */}
       <ChickenGround className="z-[65]" />
-      {showTitle && <ChickenLayer />}
+      {showTitle && <ChickenLayer onEngine={setChickenEngine} />}
+      {/* Electric portal to the Pátio, on the ground to the left of the footer buttons */}
+      {showTitle && <ChickenPortal engine={chickenEngine} anchorRef={footerButtonsRef} />}
 
       {/* UI OVERLAY LAYER */}
       <div className="absolute inset-0 z-[70] overflow-hidden pointer-events-none">
         
         {/* Bottom Right Info & Controls */}
         <div 
+          ref={footerButtonsRef}
           data-chicken-platforms
           className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}

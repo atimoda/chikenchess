@@ -9,6 +9,7 @@ export const CHANGELOG = [
     groups: [
       { title: 'Galinha', items: [
         'O Pátio da Galinha agora é uma seção do jogo: abra pelo link “Pátio da Galinha” no painel Controles da galinha (botão do gamepad no globo).',
+        'Portal para o Pátio no globo: um anel de raios azuis no canto direito do chão. Leve a galinha até ele (andando, pulando ou clicando nele) e ela é puxada para dentro com um zap elétrico e um clarão azul, chegando ao Pátio no meio de um anel de raios.',
         'No Pátio dá para pular nas caixas e ajustar tudo da galinha (movimento, pulo, voo, animação, cacarejos e o visual de cada parte) vendo o resultado na hora.',
         'Novo slider “Volume dos cacarejos” no Pátio (grupo Cacarejo). O padrão agora é 0: a galinha fica muda até alguém aumentar e salvar.',
         'No gamepad, o X passa a ser correr (no lugar do RB). Chocar (e travar a mira com item) fica no LT e no B.',
