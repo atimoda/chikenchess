@@ -85,6 +85,7 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Idle', key: 'idleMax', label: 'Balanço de cabeça: intervalo máx.', unit: 's', min: 0.5, max: 10, step: 0.1},
   { group: 'Idle', key: 'blinkMin', label: 'Piscada: intervalo mín.', unit: 's', min: 0.5, max: 8, step: 0.1},
   { group: 'Idle', key: 'blinkMax', label: 'Piscada: intervalo máx.', unit: 's', min: 1, max: 12, step: 0.1},
+  { group: 'Cacarejo', key: 'volume', label: 'Volume dos cacarejos', unit: '×', min: 0, max: 1, step: 0.05, hint: '0 = galinha muda' },
   { group: 'Cacarejo', key: 'choke', label: 'Novo cacarejo corta o anterior', type: 'bool'},
   { group: 'Cacarejo', key: 'snd_cot_forte', label: 'Usar "cot" forte', type: 'bool'},
   { group: 'Cacarejo', key: 'snd_cot_suave', label: 'Usar "cot" suave', type: 'bool'},

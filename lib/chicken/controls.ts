@@ -9,10 +9,10 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', 'Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
   { key: 'right', label: 'Direita', keys: ['Key:KeyD', 'Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
   { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', 'Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
-  { key: 'down', label: 'Chocar / cair', keys: ['Key:ControlLeft', 'Key:ArrowDown', null], pad: ['Pad:b1', 'Pad:b4', 'Pad:b2'] },
+  { key: 'down', label: 'Chocar / cair', keys: ['Key:ControlLeft', 'Key:ArrowDown', null], pad: ['Pad:b1', 'Pad:b4', null] },
   { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], pad: ['Pad:a1+', 'Pad:b13', null] },
   { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], pad: ['Pad:b0', null, null] },
-  { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', 'Key:ShiftRight', null], pad: ['Pad:b5', 'Pad:b7', null] },
+  { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', 'Key:ShiftRight', null], pad: ['Pad:b2', 'Pad:b7', null] },
 ]
 
 export type ChickenControls = {
@@ -49,17 +49,21 @@ export function loadChickenControls(): ChickenControls {
     if (saved?.touch === 'on' || saved?.touch === 'off' || saved?.touch === 'auto') base.touch = saved.touch
     if (typeof saved?.sound === 'boolean') base.sound = saved.sound
     // controls saved before X moved from run to brood: move it too
-    if (!saved?.padX && base.pad.run.includes('Pad:b2')) {
-      base.pad.run = base.pad.run.map(t => t === 'Pad:b2' ? null : t)
-      const free = base.pad.down.indexOf(null)
-      if (free >= 0) base.pad.down[free] = 'Pad:b2'
+    // controls saved before X became run (01/11): X leaves brood and takes RB's place in run
+    if (!saved?.padXRun) {
+      base.pad.down = base.pad.down.map(t => t === 'Pad:b2' ? null : t)
+      if (!base.pad.run.includes('Pad:b2')) {
+        const rb = base.pad.run.indexOf('Pad:b5'), free = base.pad.run.indexOf(null)
+        const at = rb >= 0 ? rb : free
+        if (at >= 0) base.pad.run[at] = 'Pad:b2'
+      }
     }
   } catch { /* storage unavailable: defaults */ }
   return base
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
