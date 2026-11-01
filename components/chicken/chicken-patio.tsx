@@ -13,9 +13,9 @@ import {
   setChickenConfigPreview, subscribeChickenConfig, type ChickenConfig, type SavedChickenConfig,
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
-import { LOOK_ART, type ChickenSlot } from "@/lib/chicken/look-art"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { ChickenGround, ChickenLayer } from "./chicken-layer"
+import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
@@ -54,6 +54,7 @@ export function ChickenPatio() {
   const [draft, setDraft] = useState<ChickenConfig>(defaultChickenConfig)
   const [panelOpen, setPanelOpen] = useState(true)
   const [controlsOpen, setControlsOpen] = useState(false)
+  const [vestOpen, setVestOpen] = useState(false)
   const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
@@ -126,6 +127,9 @@ export function ChickenPatio() {
         <button type="button" aria-label="Controles da galinha" title="Controles da galinha" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
+        <button type="button" aria-label="Vestiário" aria-pressed={vestOpen} title="Vestiário" onClick={() => setVestOpen(v => !v)} className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen ? "border-primary" : "border-primary/50")}>
+          <ChickenHeadIcon look={draft.look} />
+        </button>
         <button type="button" aria-label="Ajustes da galinha" aria-pressed={panelOpen} title="Ajustes da galinha" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
         </button>
@@ -144,6 +148,8 @@ export function ChickenPatio() {
       <ChickenGround />
       <ChickenLayer dropIn={false} />
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} />
+
+      {vestOpen && <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} />}
 
       {panelOpen && (
         <aside data-chicken-ignore aria-label="Ajustes da galinha" className="absolute bottom-10 right-3 top-16 z-[210] flex w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
@@ -174,19 +180,7 @@ export function ChickenPatio() {
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Group title="Visual" open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
-              <div className="flex flex-wrap gap-1.5">
-                {LOOK_ART.BREEDS.map(b => (
-                  <button key={b.id} type="button" onClick={() => update(c => { c.look = LOOK_ART.breedLook(b.id) })} className={cn("h-8 rounded-md border px-3", JSON.stringify(draft.look) === JSON.stringify(LOOK_ART.breedLook(b.id)) ? "border-primary bg-primary/20 text-white" : "border-white/15 hover:border-primary/60")}>{b.label}</button>
-                ))}
-              </div>
-              {LOOK_ART.SLOTS.map(s => (
-                <label key={s.id} className="flex items-center justify-between gap-3">
-                  <span>{s.label}</span>
-                  <select value={draft.look[s.id]} onChange={e => { const v = e.target.value; update(c => { c.look[s.id as ChickenSlot] = v }) }} className="h-8 w-48 max-w-[55%] rounded-md border border-white/15 bg-[#0b110e] px-2">
-                    {Object.entries(LOOK_ART.art[s.id]).map(([id, v]) => <option key={id} value={id}>{v.label}</option>)}
-                  </select>
-                </label>
-              ))}
+              <button type="button" onClick={() => setVestOpen(true)} className="h-8 justify-self-start rounded-md border border-white/20 px-3 hover:border-primary">Abrir o vestiário (raças e partes)</button>
               {CHICKEN_PARAM_META.filter(p => p.group === "Visual").map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} />)}
             </Group>
             {CHICKEN_PARAM_GROUPS.filter(g => g !== "Visual").map(g => (
