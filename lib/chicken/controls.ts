@@ -11,7 +11,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', 'Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
   { key: 'right', label: 'Direita', keys: ['Key:KeyD', 'Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
   { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', 'Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
-  { key: 'down', label: 'Chocar / cair / travar mira (com item)', keys: ['Key:ControlLeft', 'Key:ArrowDown', null], pad: ['Pad:b6', null, null] },
+  { key: 'down', label: 'Chocar / cair / travar mira (com item)', keys: ['Key:ControlLeft', 'Key:ArrowDown', null], pad: ['Pad:b6', 'Pad:b1', null] },
   { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], pad: ['Pad:a1+', 'Pad:b13', null] },
   { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], pad: ['Pad:b0', null, null] },
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', 'Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
@@ -89,20 +89,22 @@ export function loadChickenControls(): ChickenControls {
         base.pad.run = ['Pad:b2', null, null]
       }
     }
-    // controls saved before brood moved to LT (01/11): B leaves brood for LT, unless brood was rebound by hand
-    if (!saved?.broodLT) {
-      const b = base.pad.down.indexOf('Pad:b1')
-      if (b >= 0) {
-        CHICKEN_ACTIONS.forEach(a => { base.pad[a.key] = base.pad[a.key].map(t => t === 'Pad:b6' ? null : t) })
-        base.pad.down[b] = 'Pad:b6'
+    // controls saved before brood got LT too (01/11): LT joins B on brood (B stays; it comes back if it was taken off)
+    if (!saved?.broodLTB) {
+      const add = (btn: string) => {
+        if (base.pad.down.includes(btn)) return
+        if (CHICKEN_ACTIONS.some(a => a.key !== 'down' && base.pad[a.key].includes(btn))) return
+        const free = base.pad.down.indexOf(null)
+        if (free >= 0) base.pad.down[free] = btn
       }
+      add('Pad:b6'); add('Pad:b1')
     }
   } catch { /* storage unavailable: defaults */ }
   return base
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLT: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
