@@ -195,7 +195,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // the cluck chosen for a movement in the class: '' none, 'all' any switched-on type, or one type
   function sfx(ev: string) {
     const v = (R as any)['sfx_' + ev] as string | undefined
-    if (!v || !actx || !controls.sound) return
+    if (!v || !actx || !controls.sound || R.volume <= 0) return
     const cats = v === 'all' ? Object.keys(CHICKEN_CLUCKS).filter(c => (R as any)['snd_' + c]) : [v]
     const ready = (c: string) => (CHICKEN_CLUCKS[c] || []).filter(n => buffers[n])
     // byType: draw the type first, so every type has the same chance however many samples it has
@@ -211,7 +211,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     const src = actx.createBufferSource(); src.buffer = buffers[name]
     src.playbackRate.value = 1 + (Math.random() * 2 - 1) * R.pitchJitter / 100
-    const gain = actx.createGain(); gain.gain.value = 0.55 * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
+    const gain = actx.createGain(); gain.gain.value = 0.8 * R.volume * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
     src.connect(gain); gain.connect(actx.destination); src.start(t)
     lastVoice = { src, gain }
   }

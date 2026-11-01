@@ -68,11 +68,14 @@ export function loadChickenControls(): ChickenControls {
       deadzoneL: num(an.deadzoneL, 0, 0.9, DEFAULT_ANALOG.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, DEFAULT_ANALOG.deadzoneR),
       magnet: typeof an.magnet === 'boolean' ? an.magnet : DEFAULT_ANALOG.magnet, magnetDeg: num(an.magnetDeg, 1, 22.5, DEFAULT_ANALOG.magnetDeg),
     }
-    // controls saved before X moved from run to brood: move it too
-    if (!saved?.padX && base.pad.run.includes('Pad:b2')) {
-      base.pad.run = base.pad.run.map(t => t === 'Pad:b2' ? null : t)
-      const free = base.pad.down.indexOf(null)
-      if (free >= 0) base.pad.down[free] = 'Pad:b2'
+    // controls saved before X became run (01/11): X leaves brood and takes RB's place in run
+    if (!saved?.padXRun) {
+      base.pad.down = base.pad.down.map(t => t === 'Pad:b2' ? null : t)
+      if (!base.pad.run.includes('Pad:b2')) {
+        const rb = base.pad.run.indexOf('Pad:b5'), free = base.pad.run.indexOf(null)
+        const at = rb >= 0 ? rb : free
+        if (at >= 0) base.pad.run[at] = 'Pad:b2'
+      }
     }
     // controls saved before the items: the item buttons leave the movement actions (run goes to X, brood keeps B)
     if (!saved?.itemsV1) {
@@ -91,7 +94,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, itemsV1: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

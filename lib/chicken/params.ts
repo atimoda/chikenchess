@@ -82,6 +82,7 @@ export const CHICKEN_PARAMS = {
   blinkMin: 1.5,
   blinkMax: 5,
   // Cacarejo
+  volume: 0,
   choke: true,
   snd_cot_forte: true,
   snd_cot_suave: true,
