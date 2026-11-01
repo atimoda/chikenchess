@@ -10,6 +10,9 @@ export class ReactionQueue {
   glides=new Map<string,Glide>()
   private scope=''
   private cycle=0
+  /** instant: gain/filter glides land at once (phones), so the voices are not recompiled every bar. */
+  constructor(private instant=false){}
+  private glideBars(entry:TimedReaction|undefined){return this.instant?0:glide(entry)}
   update(config:Reactions,context:ReactionContext,running:boolean,cycle:number,scope:string) {
     const desired=reactionEntries(config,context);let bars=0
     this.cycle=cycle
@@ -49,13 +52,13 @@ export class ReactionQueue {
   private commit(id:string,entry:TimedReaction,removed=false){
     const old=this.entries.get(id),current=this.glides.get(id),progress=current?this.rampStates().get(id)!.progress:old?.hit?1:0
     if(current?.fading&&!entry.hit){current.next=removed?undefined:entry;return}
-    if(old?.hit&&!entry.hit&&glide(old)>0){
-      this.glides.set(id,{start:this.cycle,bars:glide(old),from:progress,fading:true,next:removed?undefined:entry})
+    if(old?.hit&&!entry.hit&&this.glideBars(old)>0){
+      this.glides.set(id,{start:this.cycle,bars:this.glideBars(old),from:progress,fading:true,next:removed?undefined:entry})
       return
     }
     if(removed){this.entries.delete(id);this.glides.delete(id);return}
     this.entries.set(id,entry)
-    if(entry.hit&&glide(entry)>0&&progress<1)this.glides.set(id,{start:this.cycle,bars:glide(entry),from:progress,fading:false})
+    if(entry.hit&&this.glideBars(entry)>0&&progress<1)this.glides.set(id,{start:this.cycle,bars:this.glideBars(entry),from:progress,fading:false})
     else this.glides.delete(id)
   }
 }

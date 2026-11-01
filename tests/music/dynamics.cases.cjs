@@ -104,6 +104,23 @@ test('gain and filter influences glide bar by bar on the way in and on the way b
   assert.equal(queue.rampStates().size, 0)
 })
 
+test('lite profile (phones): gain and filter influences land at once, without per-bar steps', () => {
+  const kit = cityKits.defaultCityKit('detroit')
+  const snapshot = creative.creativeSnapshot(kit, true)
+  const id = Object.keys(snapshot.instruments)[0]
+  const config = reactions.reactionsSchema.parse({ rules: [{ id: 'sweep', trigger: 'check', enabled: true, quantize: false, target: 'both', duration: 1, actions: [{ type: 'lpf', value: 400, rampBars: 4 }] }] })
+  const idle = { ply: 0, states: [], events: [] }, active = { ply: 1, states: [{ trigger: 'check', color: 'w', ply: 1 }], events: [] }
+  const queue = new ReactionQueue(true)
+  queue.update(config, idle, true, 0, 'game')
+  queue.update(config, active, true, 0, 'game')
+  assert.equal(queue.rampStates().size, 0)
+  assert.equal(reactions.applyReactions(snapshot, config, active, queue.entries, queue.rampStates()).snapshot.instruments[id].lpf, 400)
+  assert.equal(queue.advance(1).changed, false)
+  queue.update(config, idle, true, 1, 'game')
+  assert.equal(queue.entries.get('sweep').hit, undefined)
+  assert.equal(queue.rampStates().size, 0)
+})
+
 test('a personal global set saved before the new triggers gains their defaults', () => {
   const { parseGlobalReactions } = loadTs('lib/music/global-reactions.ts')
   const known = Object.keys(reactions.TRIGGERS).filter(id => !reactions.DYNAMICS_TRIGGERS.includes(id))

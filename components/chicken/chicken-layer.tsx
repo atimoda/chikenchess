@@ -3,10 +3,10 @@
 // Player chicken layer: mounts the chicken engine above everything on the screen and, on touch
 // devices, the on-screen controls (stick on the left, round jump / brood / run buttons on the right).
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
-import { ChevronsUp, Egg, Footprints } from "lucide-react"
+import { ChevronsUp, Egg, Footprints, Gamepad2 } from "lucide-react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { refreshChickenConfig } from "@/lib/chicken/config"
-import { loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
+import { loadChickenControls, saveChickenControls, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
 export const CHICKEN_GROUND_H = 30
@@ -21,7 +21,8 @@ export function ChickenGround({ className = "", height = CHICKEN_GROUND_H }: { c
   )
 }
 
-export function useTouchControls(mode: ChickenTouchMode) {
+// a touch screen (phone, tablet)
+export function useCoarsePointer() {
   const [coarse, setCoarse] = useState(false)
   useEffect(() => {
     const mq = window.matchMedia("(pointer: coarse)")
@@ -30,7 +31,34 @@ export function useTouchControls(mode: ChickenTouchMode) {
     mq.addEventListener("change", update)
     return () => mq.removeEventListener("change", update)
   }, [])
+  return coarse
+}
+
+export function useTouchControls(mode: ChickenTouchMode) {
+  const coarse = useCoarsePointer()
   return mode === "on" || (mode === "auto" && coarse)
+}
+
+// Footer button (touch screens): shows / hides the chicken's on-screen controls, saved like the panel's setting.
+export function ChickenTouchToggle({ className = "" }: { className?: string }) {
+  const coarse = useCoarsePointer()
+  const showing = useChickenTouch()
+  if (!coarse) return null
+  const toggle = () => saveChickenControls({ ...loadChickenControls(), touch: showing ? "off" : "on" })
+  const label = showing ? "Esconder controles da galinha" : "Mostrar controles da galinha"
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={showing}
+      title={label}
+      onClick={toggle}
+      className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background/80 backdrop-blur-sm transition-colors ${showing ? "border-primary/60 text-primary" : "border-white/30 text-white/45"} ${className}`}
+    >
+      <Gamepad2 className="h-4 w-4" />
+      {!showing && <span aria-hidden="true" className="pointer-events-none absolute h-[1.5px] w-5 rotate-45 rounded bg-current" />}
+    </button>
+  )
 }
 
 // whether the on-screen controls are showing, following the saved touch setting

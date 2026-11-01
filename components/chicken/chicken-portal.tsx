@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { CHICKEN_GROUND_H } from "./chicken-layer"
+import { isLiteDevice } from "@/lib/performance"
 
 const ARRIVAL_KEY = "chickenchess:portal-arrival"
 const PAD = 34 // room around the ring for the glow, arcs and sparks
@@ -79,9 +80,9 @@ export function playPortalSound(kind: "enter" | "arrive") {
 }
 
 // ---------- drawing ----------
-function makeStrands(n: number, r: number, amp: number): Strand[] {
+function makeStrands(n: number, r: number, amp: number, points = 64): Strand[] {
   return Array.from({ length: n }, (_, k) => {
-    const count = 64 + Math.floor(Math.random() * 24)
+    const count = points + Math.floor(Math.random() * (points * 3 / 8))
     // the first strand runs on the ring, the others drift around it like loose wisps
     const off = k === 0 ? 0 : (Math.random() - 0.5) * amp * 2.2
     let jitter = 0
@@ -105,6 +106,56 @@ function makeArc(cx: number, cy: number, r: number): Arc {
     pts.push({ x: cx + Math.cos(aa) * d, y: cy + Math.sin(aa) * d })
   }
   return { pts, life: 1 }
+}
+
+// Lite ring (phones, or when the full one drops frames): canvas shadowBlur is the costly part, so the
+// halo is drawn once into a sprite and the strands get a wide faint stroke instead of a blurred one.
+function makeHalo(r: number, dpr: number) {
+  const size = Math.ceil((r + PAD) * 2)
+  const c = document.createElement("canvas")
+  c.width = Math.round(size * dpr); c.height = Math.round(size * dpr)
+  const g = c.getContext("2d")
+  if (!g) return null
+  g.setTransform(dpr, 0, 0, dpr, 0, 0)
+  const cx = size / 2
+  const core = g.createRadialGradient(cx, cx, r * 0.2, cx, cx, r * 1.05)
+  core.addColorStop(0, "rgba(5,10,60,0.55)")
+  core.addColorStop(0.75, "rgba(20,50,170,0.32)")
+  core.addColorStop(1, "rgba(40,110,255,0)")
+  g.fillStyle = core
+  g.beginPath(); g.arc(cx, cx, r * 1.05, 0, Math.PI * 2); g.fill()
+  g.globalCompositeOperation = "lighter"
+  g.shadowColor = "#1f6bff"; g.shadowBlur = 26
+  g.strokeStyle = "rgba(40,120,255,0.22)"; g.lineWidth = 12
+  g.beginPath(); g.arc(cx, cx, r, 0, Math.PI * 2); g.stroke()
+  return { canvas: c, size }
+}
+
+function drawRingLite(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, strands: Strand[], rot: number, power: number, halo: ReturnType<typeof makeHalo>) {
+  if (halo) {
+    const k = r / Math.max(1, halo.size / 2 - PAD), s = halo.size * k
+    ctx.globalAlpha = Math.min(1, 0.7 + 0.3 * power)
+    ctx.drawImage(halo.canvas, cx - s / 2, cy - s / 2, s, s)
+    ctx.globalAlpha = 1
+  }
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+  for (const st of strands) {
+    ctx.beginPath()
+    st.pts.forEach((p, i) => {
+      const x = cx + Math.cos(p.a + rot) * p.r, y = cy + Math.sin(p.a + rot) * p.r
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+    })
+    ctx.closePath()
+    const a = st.alpha * Math.min(1, power)
+    ctx.strokeStyle = `rgba(58,160,255,${0.25 * a})`
+    ctx.lineWidth = st.w * 4
+    ctx.stroke()
+    ctx.strokeStyle = `rgba(110,200,255,${a})`
+    ctx.lineWidth = st.w * (0.8 + 0.4 * power)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 function drawRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, strands: Strand[], rot: number, power: number) {
@@ -156,6 +207,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
   const flashRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef(engine)
   engineRef.current = engine
+  const visibleRef = useRef(visible)
+  visibleRef.current = visible
   const [layout, setLayout] = useState<{ d: number; right: number } | null>(null)
   const [entering, setEntering] = useState(false)
 
@@ -183,18 +236,32 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
     if (!ctx) return
     const { d } = layout
     const size = d + PAD * 2
-    const dpr = Math.min(2, window.devicePixelRatio || 1)
-    canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr)
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     const cx = size / 2, cy = size / 2, r = d / 2
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    // Phones start lite; any device whose full ring averages under ~36 fps switches to it.
+    let lite = isLiteDevice()
+    let dpr = 1, halo: ReturnType<typeof makeHalo> = null
+    const setup = () => {
+      dpr = lite ? 1 : Math.min(2, window.devicePixelRatio || 1)
+      canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      halo = lite ? makeHalo(r, dpr) : null
+    }
+    setup()
+    const strandCount = () => lite ? 3 : 6
+    const strandPoints = () => lite ? 36 : 64
 
-    let strands = makeStrands(6, r, 6)
+    let strands = makeStrands(strandCount(), r, 6, strandPoints())
     let arcs: Arc[] = []
     const sparks: Spark[] = []
-    let rot = 0, last = performance.now(), nextStrands = 0
+    let rot = 0, last = performance.now(), nextStrands = 0, drawnAt = 0
     let power = 1 // glow strength: rises as she comes close, flares on entering
     let armed = false, enteredAt = 0, raf = 0
+    let slowFrames = 0, measured = 0
+    // the canvas is fixed: its place only changes with the window
+    let box = canvas.getBoundingClientRect()
+    const onResize = () => { box = canvas.getBoundingClientRect() }
+    window.addEventListener("resize", onResize)
 
     const enter = () => {
       enteredAt = performance.now()
@@ -205,8 +272,22 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
     }
 
     const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000); last = now
-      const box = canvas.getBoundingClientRect()
+      raf = requestAnimationFrame(frame)
+      const elapsed = now - last
+      // hidden (city popup open) or tab in the background: nothing to draw
+      if (!visibleRef.current && !enteredAt) { last = now; return }
+      // lite ring at ~30 fps
+      if (lite && !enteredAt && now - drawnAt < 30) return
+      drawnAt = now
+      const dt = Math.min(0.05, elapsed / 1000); last = now
+      if (!lite && !enteredAt) {
+        measured++
+        if (elapsed > 28) slowFrames++
+        if (measured >= 90) {
+          if (slowFrames > 45) { lite = true; setup(); strands = makeStrands(strandCount(), r, 6, strandPoints()); arcs = [] }
+          measured = 0; slowFrames = 0
+        }
+      }
       const pcx = box.left + cx, pcy = box.top + cy
 
       // ---------- the chicken ----------
@@ -229,19 +310,20 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
       // ---------- animate ----------
       rot += dt * (0.25 + near * 0.6 + enterT * 4)
       if (now >= nextStrands) {
-        strands = makeStrands(6, r, 5 + near * 3 + enterT * 6)
-        nextStrands = now + (reduce ? 260 : 55 - enterT * 25)
+        strands = makeStrands(strandCount(), r, 5 + near * 3 + enterT * 6, strandPoints())
+        nextStrands = now + (reduce ? 260 : (lite ? 90 : 55) - enterT * 25)
       }
-      if (!reduce && Math.random() < dt * (3 + near * 10 + enterT * 30)) arcs.push(makeArc(cx, cy, r))
+      if (!lite && !reduce && Math.random() < dt * (3 + near * 10 + enterT * 30)) arcs.push(makeArc(cx, cy, r))
       arcs = arcs.filter(a => (a.life -= dt * 7) > 0)
-      if (Math.random() < dt * (12 + near * 20 + enterT * 60)) {
+      if (Math.random() < dt * (12 + near * 20 + enterT * 60) * (lite ? 0.4 : 1)) {
         sparks.push({ a: Math.random() * Math.PI * 2, r: r + (Math.random() - 0.5) * 10, vr: enterT ? -60 - Math.random() * 80 : (Math.random() - 0.5) * 30, va: (Math.random() - 0.5) * 1.2, life: 0, max: 0.5 + Math.random() * 0.9, size: 0.8 + Math.random() * 1.6 })
       }
 
       // ---------- draw ----------
       ctx.clearRect(0, 0, size, size)
       const ringR = r * (1 + enterT * 0.12)
-      drawRing(ctx, cx, cy, ringR, strands, rot, power)
+      if (lite) drawRingLite(ctx, cx, cy, ringR, strands, rot, power, halo)
+      else drawRing(ctx, cx, cy, ringR, strands, rot, power)
 
       ctx.save()
       ctx.globalCompositeOperation = "lighter"
@@ -265,10 +347,9 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
       ctx.restore()
 
       if (flashRef.current && enteredAt) flashRef.current.style.opacity = String(Math.min(1, enterT * enterT * 1.15))
-      raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(raf)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize) }
   }, [layout, router, href])
 
   if (!layout) return null
@@ -316,7 +397,8 @@ export function ChickenPortalArrival({ engine }: { engine: ChickenEngine | null 
     const canvas = canvasRef.current
     const ctx = canvas?.getContext("2d")
     if (!canvas || !ctx) return
-    const dpr = Math.min(2, window.devicePixelRatio || 1)
+    const lite = isLiteDevice()
+    const dpr = lite ? 1 : Math.min(2, window.devicePixelRatio || 1)
     canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     playPortalSound("arrive")
@@ -334,7 +416,8 @@ export function ChickenPortalArrival({ engine }: { engine: ChickenEngine | null 
       ctx.fillStyle = `rgba(3,6,30,${Math.max(0, 1 - t * 3)})`
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
       ctx.globalAlpha = OPACITY * Math.max(0, 1 - t)
-      drawRing(ctx, cx, cy, r, strands, now / 400, 1.6 - t)
+      if (lite) drawRingLite(ctx, cx, cy, r, strands, now / 400, 1.6 - t, null)
+      else drawRing(ctx, cx, cy, r, strands, now / 400, 1.6 - t)
       ctx.globalAlpha = 1
       raf = requestAnimationFrame(frame)
     }
