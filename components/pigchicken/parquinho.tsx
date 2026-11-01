@@ -11,6 +11,7 @@ import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
 import { createCombat, SLOTS, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
 import { loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
+import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { useTouchControls } from "@/components/chicken/chicken-layer"
 
@@ -124,6 +125,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     let camX = 0, last = performance.now(), raf = 0
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
+    let wasLocked = false
     const combat = createCombat()
     combat.setItems(loadItems())
     const unsubItems = subscribeItems(next => combat.setItems(next))
@@ -214,6 +216,13 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const worldOrigin = { x: origin.x + camX, y: origin.y }
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y }, aim.angle, input, boxes, st.groundY, (vx, vy) => engine.impulse(vx, vy))
+
+      // ---------- sound ----------
+      setWeaponVolume(S.weaponVolume)
+      combat.sounds.splice(0).forEach(e => playWeaponSound(e.kind, e.item))
+      // aiming in (brood with an item): a soft sound on the weapons that have one
+      if (aimLock && !wasLocked) playWeaponSound("aim", combat.inventory[combat.current]?.item ?? null)
+      wasLocked = aimLock
 
       // ---------- draw ----------
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)

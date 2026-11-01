@@ -1,6 +1,7 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { DEFAULT_ITEMS, type ItemDef, type ItemId } from './items'
+import type { WeaponSound } from './sfx'
 
 export type Box = { l: number; t: number; r: number; b: number }
 export type Owned = { item: ItemId; ammo: number; durability: number }
@@ -40,6 +41,10 @@ export function createCombat() {
   let aimAngle = 0
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
+  // sounds to play this frame (the Parquinho drains it)
+  const sounds: { kind: WeaponSound; item: ItemId | null }[] = []
+  const sound = (kind: WeaponSound, item: ItemId | null = held()?.item ?? null) => { sounds.push({ kind, item }) }
+  let pumpT = 0
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   const racks: { x: number; item: ItemId; t: number; label: string }[] = []
   let swing: Swing | null = null
@@ -69,19 +74,21 @@ export function createCombat() {
     // hands empty: she holds what she picks up
     if (!held()) slot = cur
     inv[slot] = p.owned
+    if (slot === cur) sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
   }
 
   function equip(i: number) {
     if (i === cur) return
-    cur = (i + SLOTS) % SLOTS; reloadT = 0; burstLeft = 0; chargeT = 0; cooldown = Math.max(cooldown, 0.15)
+    cur = (i + SLOTS) % SLOTS; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; cooldown = Math.max(cooldown, 0.15)
+    if (held()) sound('equip')
   }
 
   function startReload() {
     const h = held(); if (!h) return
     const d = items[h.item]
-    if (d.mag > 0 && h.ammo < d.mag && reloadT <= 0) reloadT = d.reloadTime
+    if (d.mag > 0 && h.ammo < d.mag && reloadT <= 0) { reloadT = d.reloadTime; sound('reload') }
   }
 
   // one shot: `power` (0..1) scales speed in charge mode; pellets spread evenly across the cone
@@ -106,6 +113,8 @@ export function createCombat() {
       } else bullets.push(b)
     }
     burst(mx, my, 3 + n, '#fff3b0', 140, 2)
+    sound('shot', h.item)
+    if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
     h.ammo--; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
     onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
     if (h.ammo <= 0 && d.autoReload) startReload()
@@ -113,6 +122,7 @@ export function createCombat() {
 
   function explode(x: number, y: number, r: number, damage: number) {
     booms.push({ x, y, r, life: 0.35 })
+    sound('explode', null)
     burst(x, y, 26, '#ffb347', 380, 4); burst(x, y, 14, '#fff3b0', 220, 3)
     targets.forEach(t => {
       if (t.deadT > 0) return
@@ -158,6 +168,7 @@ export function createCombat() {
       if (!box && !floor) continue
       if (b.fuse > 0) {
         const fromAbove = floor || (box && py <= box.t)
+        if (fromAbove && !dry && Math.abs(b.vy) > 120) sound('bounce', b.item)
         if (fromAbove) { b.y = floor ? groundY - 1 : box!.t - 1; b.vy = -Math.abs(b.vy) * b.bounce; b.vx *= 0.7; if (Math.abs(b.vy) < 60) { b.vy = 0; b.drop = 0; b.vx *= 0.5 } }
         else { b.x = px; b.vx = -b.vx * b.bounce }
         if (!floor && box && !fromAbove) b.y = py
@@ -191,6 +202,7 @@ export function createCombat() {
   function melee(origin: { x: number; y: number }, wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
+    sound('swing', null)
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
     // the blow comes down in front of her: clockwise facing right, counterclockwise facing left
@@ -229,7 +241,7 @@ export function createCombat() {
     get aimAngle() { return aimAngle },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
-    booms, tracers,
+    booms, tracers, sounds,
     bullets, thrown, targets, pickups, sparks, texts, racks,
     def,
     setItems(next: Record<ItemId, ItemDef>) {
@@ -273,11 +285,12 @@ export function createCombat() {
         reloadT -= dt
         if (reloadT <= 0) {
           const h = held()
-          if (h && d.shellReload) { h.ammo = Math.min(d.mag, h.ammo + 1); reloadT = h.ammo < d.mag ? d.reloadTime : 0 }
-          else { if (h) h.ammo = items[h.item].mag; reloadT = 0 }
+          if (h && d.shellReload) { h.ammo = Math.min(d.mag, h.ammo + 1); reloadT = h.ammo < d.mag ? d.reloadTime : 0; sound(reloadT ? 'shell' : 'reloadDone') }
+          else { if (h) { h.ammo = items[h.item].mag; sound('reloadDone') } reloadT = 0 }
         }
       }
       if (input.reload) startReload()
+      if (pumpT > 0) { pumpT -= dt; if (pumpT <= 0) sound('pump') }
 
       // fire: with an item it shoots; with empty hands (or an item without ammo) it is a wing slap
       const h = held()
@@ -289,13 +302,13 @@ export function createCombat() {
         const ctx = { boxes, groundY }
         // shell by shell: firing with something loaded stops the reload
         if (reloadT > 0 && d.shellReload && h.ammo > 0 && input.firePressed) reloadT = 0
-        if (reloadT > 0) { /* reloading */ }
-        else if (h.ammo <= 0) { if (input.firePressed) { if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
+        if (reloadT > 0) { if (input.firePressed) sound('dry') }
+        else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
         else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
         else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
         else if (d.fireMode === 'charge') {
           // hold to charge, let go to shoot; force and precision grow with the charge
-          if (input.fire && cooldown <= 0) chargeT += dt
+          if (input.fire && cooldown <= 0) { if (chargeT === 0) sound('charge'); chargeT += dt }
           if (!input.fire && prevFire && chargeT > 0) {
             const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
             shoot(muzzle, spreadDeg * (1 - 0.7 * p), onRecoil, d.chargeMin + (1 - d.chargeMin) * p, ctx)
@@ -316,6 +329,7 @@ export function createCombat() {
         if (t) {
           const p = Math.min(1, throwT / Math.max(0.05, d.throwCharge))
           const v = d.throwMin + (Math.max(d.throwMin, d.throwSpeed) - d.throwMin) * p
+          sound('throw', null)
           thrown.push({ x: origin.x, y: origin.y, vx: Math.cos(aimAngle) * v + body.vx * 0.5, vy: Math.sin(aimAngle) * v, spin: (Math.cos(aimAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: aimAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
           inv[cur] = null; reloadT = 0
           const next = inv.findIndex(o => o !== null)
