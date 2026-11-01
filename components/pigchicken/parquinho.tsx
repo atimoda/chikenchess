@@ -21,11 +21,11 @@ import { useTouchControls } from "@/components/chicken/chicken-layer"
 // floating boxes per screen (percent of the screen), so every screen has something to climb
 const SCREENS: { left: number; bottom: number; width: number; height: number }[][] = [
   [
-    { left: 8, bottom: 22, width: 18, height: 5 },
-    { left: 32, bottom: 38, width: 14, height: 5 },
-    { left: 54, bottom: 26, width: 10, height: 22 },
-    { left: 70, bottom: 48, width: 16, height: 5 },
-    { left: 14, bottom: 58, width: 12, height: 5 },
+    // the first one is the long shelf with the instruments, above the weapons' racks
+    { left: 8, bottom: 32, width: 86, height: 3 },
+    { left: 1, bottom: 16, width: 6, height: 4 },
+    { left: 28, bottom: 60, width: 14, height: 5 },
+    { left: 64, bottom: 60, width: 14, height: 5 },
   ],
   [
     { left: 6, bottom: 14, width: 12, height: 5 },
@@ -152,10 +152,13 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       WEAPON_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id))
       // horde buttons on the second screen: shoot them; the instruments right after them
       ;(["aliens", "pattern", "zombies", "zcount"] as const).forEach((id, i) => combat.addButton(viewW * (1.06 + i * 0.09), groundY - 46, id))
-      INSTRUMENT_IDS.forEach((id, i) => combat.addRack(viewW * (1.42 + i * 0.075), id))
-      ;[2.15, 2.45, 2.8, 3.2, 3.55].forEach(f => combat.addTarget(viewW * f, groundY))
+      // the instruments on the long shelf above the weapons
+      INSTRUMENT_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id, shelfTop() ?? groundY))
+      ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach(f => combat.addTarget(viewW * f, groundY))
       placed = true
     }
+    // the top of the instruments' shelf (the first platform of the first scene), in screen pixels
+    const shelfTop = () => document.querySelector('[data-chicken-id="pq0-0"]')?.getBoundingClientRect().top
     const fit = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1)
       canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
@@ -170,6 +173,8 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const st = engine.getState()
       const viewW = st.width, worldW = viewW * S.screens
       if (!placed) place(viewW, st.groundY)
+      const shelf = shelfTop()
+      if (shelf !== undefined) combat.racks.forEach(r => { if (r.y !== undefined) r.y = shelf })
 
       // ---------- camera ----------
       const worldX = camX + st.x
@@ -623,9 +628,9 @@ function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
 function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   const X = (x: number) => x - camX
   const t = performance.now() / 1000
-  const groundY = combat.targets.find(t => t.kind === "dummy")?.y ?? window.innerHeight - 30
+  const floorY = combat.targets.find(t => t.kind === "dummy")?.y ?? window.innerHeight - 30
   combat.racks.forEach(r => {
-    const x = X(r.x)
+    const x = X(r.x), groundY = r.y ?? floorY
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
     ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)

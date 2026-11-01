@@ -86,7 +86,9 @@ export function createCombat() {
   const kills = { aliens: 0, zombies: 0, bites: 0 }
   let view = { l: 0, r: 1280 }
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
-  const racks: { x: number; item: ItemId; t: number; label: string }[] = []
+  // y: the floor the rack stands on (a platform's top), or the ground when unset
+  const racks: { x: number; item: ItemId; t: number; label: string; y?: number }[] = []
+  let fullTextT = 0
   let swing: Swing | null = null
   // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
   const music = createConductor()
@@ -175,17 +177,14 @@ export function createCombat() {
   function pickUp(p: Pickup) {
     // one of each item: walking past the rack again does not fill every slot with the same weapon
     if (inv.some(o => o && o.item === p.owned.item)) return false
-    let slot = inv.findIndex(s => s === null)
-    // full: what she picks up takes the place of what she holds, which goes back to its rack (or falls to the floor)
+    const empty = inv.every(o => o === null)
+    // only the first item she picks up goes to her wing; the others go to a free slot (and stay on the floor when there is none)
+    let slot = empty ? cur : inv.findIndex((o, i) => o === null && i !== cur)
+    if (slot < 0 && inv[cur] === null) slot = cur
     if (slot < 0) {
-      const old = held()
-      if (!old) return false
-      stopBeam()
-      if (!racks.some(r => r.item === old.item)) pickups.push({ id: nextId++, owned: old, x: p.x, y: p.y - 30, vy: -200, resting: false, noPick: 1.5 })
-      slot = cur; reloadT = 0; chargeT = 0; burstLeft = 0
+      if (fullTextT <= 0) { addText(p.x, p.y - 30, 'inventário cheio', '#aaaaaa'); fullTextT = 1.5 }
+      return false
     }
-    // hands empty: she holds what she picks up
-    if (!held()) slot = cur
     inv[slot] = p.owned
     if (slot === cur) sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
@@ -477,7 +476,7 @@ export function createCombat() {
     spawnZombies(groundY: number, playerX: number, count: number) { spawnZombies(targets, env(groundY, playerX, 0), count) },
     clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
-    addRack(x: number, item: ItemId) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase() }) },
+    addRack(x: number, item: ItemId, y?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
       const d = def()
@@ -622,6 +621,7 @@ export function createCombat() {
       }
 
       // pickups: fall to the floor, picked up by walking over them
+      fullTextT = Math.max(0, fullTextT - dt)
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
         p.noPick = Math.max(0, p.noPick - dt)
@@ -642,7 +642,7 @@ export function createCombat() {
         const near = pickups.some(p => p.owned.item === r.item && Math.abs(p.x - r.x) < 60)
         if (near) { r.t = 0; return }
         r.t += dt
-        if (r.t > 2) { pickups.push({ id: nextId++, owned: fresh(r.item), x: r.x, y: groundY - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0 }
+        if (r.t > 2) { pickups.push({ id: nextId++, owned: fresh(r.item), x: r.x, y: (r.y ?? groundY) - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0 }
       })
 
       // targets: knockback, wobble, fall and come back

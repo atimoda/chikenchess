@@ -63,7 +63,7 @@ export const CHICKEN_PARAMS = {
   terminalVelocity: 1100,
   fastFall: 2,
   // Combinações
-  broodWalk: 0,
+  broodWalk: 0.4,
   crouchRunSpeed: 1,
   crouchJumpBoost: 0,
   broodJumpBoost: 0,
