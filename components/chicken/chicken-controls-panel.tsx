@@ -10,6 +10,7 @@ import {
   CHICKEN_ACTIONS, chickenBindName, defaultChickenControls, loadChickenControls, readGamepadTokens, saveChickenControls,
   setChickenControlsListening, subscribeChickenControls, type ChickenAction, type ChickenControls, type ChickenTouchMode,
 } from "@/lib/chicken/controls"
+import { startTouchLayoutEdit } from "@/lib/chicken/touch-layout"
 import { cn } from "@/lib/utils"
 
 // Game section where the chicken's movement and look are tuned and saved for every screen.
@@ -23,7 +24,8 @@ const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
   { value: "off", label: "Nunca" },
 ]
 
-export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+// editLayout: shows the button that moves the on-screen controls (the Pátio, where every control exists)
+export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }: { open: boolean; onOpenChange: (open: boolean) => void; editLayout?: boolean }) {
   const [controls, setControls] = useState<ChickenControls>(defaultChickenControls)
   const [listen, setListen] = useState<Listen>(null)
   const listenRef = useRef<Listen>(null)
@@ -169,6 +171,12 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
             ))}
           </div>
           <p className="text-[11px] text-[#8a9a8a]">Analógico à esquerda e botões de pular, chocar e correr à direita. Automático mostra em telas de toque.</p>
+          {editLayout && (
+            <>
+              <button type="button" onClick={() => { startTouchLayoutEdit(); onOpenChange(false) }} className="h-8 justify-self-start rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25">Editar posição dos botões</button>
+              <p className="text-[11px] text-[#8a9a8a]">Arraste os analógicos, os botões e o inventário para onde ficarem melhor e toque em Ok.</p>
+            </>
+          )}
         </section>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label className="flex items-center gap-2 text-xs">
