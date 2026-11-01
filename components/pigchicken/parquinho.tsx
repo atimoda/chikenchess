@@ -161,17 +161,20 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const act = engine.getActions()
       const an = controls.analog
       const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL)
-      const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || act.down ? 1 : 0) - (act.up ? 1 : 0) }
+      // brooding with an item in the wing is aiming: she stays put and the aim is locked while brood is held
+      const armed = !!combat.inventory[combat.current]
+      const aimLock = act.down && armed && st.grounded
+      const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || (act.down && !aimLock) ? 1 : 0) - (act.up ? 1 : 0) }
       if (leftStick || keys.x || keys.y) owner.otherAim(now, S.mouseIdle)
       // her shoulder as drawn (it turns with her body on walls)
       const origin = st.shoulder
       aim = resolveAim({
         rightStick, mouse: owner.owns ? mouse : null, touch: touchAim.current, leftStick, keys, origin,
-        face: st.face, grounded: st.grounded, aimLock: act.aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
+        face: st.face, grounded: st.grounded, aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
       })
       const d = combat.def()
       engine.setGame({
-        moveLock: act.aimLock,
+        moveLock: aimLock,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
         backpedal: S.backpedal,
         speedMult: d.weight,
@@ -210,19 +213,12 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       engine.setHeld(art ? { svg: art, angle: sw && !sw.wing ? sw.angle - sw.arc / 2 + sw.arc * Math.min(1, sw.t / 0.2) : ang, kick: combat.kick } : null)
       const dist = aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
       const rx = d.turnRate > 0 || !aim.target ? origin.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? origin.y + ady * dist : aim.target.y
-      drawReticle(ctx, combat, origin, rx, ry, dist, combat.spread(body), act.aimLock, st.scale)
+      drawReticle(ctx, combat, origin, rx, ry, dist, combat.spread(body), aimLock, st.scale)
       drawInventory(ctx, combat)
-      if (act.aimLock) {
-        // aim lock only while held: show it right above her
-        ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
-        const label = "MIRA TRAVADA"
-        ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(st.x - 110, origin.y - 120 * st.scale - 34, 220, 18)
-        ctx.fillStyle = "#ffd166"; ctx.fillText(label, st.x, origin.y - 120 * st.scale - 21)
-      }
       if (hudRef.current) {
         const h = combat.inventory[combat.current]
         const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
-        hudRef.current.textContent = `${item} · mira: ${SOURCE_LABEL[aim.source]}${act.aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
+        hudRef.current.textContent = `${item} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
       }
       raf = requestAnimationFrame(frame)
     }

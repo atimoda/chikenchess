@@ -3,7 +3,7 @@
 
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
-  | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'reload' | 'aimLock'
+  | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'reload'
 export type ChickenTouchMode = 'auto' | 'on' | 'off'
 type Slots = (string | null)[]
 
@@ -11,7 +11,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', 'Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
   { key: 'right', label: 'Direita', keys: ['Key:KeyD', 'Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
   { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', 'Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
-  { key: 'down', label: 'Chocar / cair', keys: ['Key:ControlLeft', 'Key:ArrowDown', null], pad: ['Pad:b1', null, null] },
+  { key: 'down', label: 'Chocar / cair / travar mira (com item)', keys: ['Key:ControlLeft', 'Key:ArrowDown', null], pad: ['Pad:b1', null, null] },
   { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], pad: ['Pad:a1+', 'Pad:b13', null] },
   { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], pad: ['Pad:b0', null, null] },
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', 'Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
@@ -22,7 +22,6 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyE', null, null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: ['Key:KeyQ', null, null], pad: [null, null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], pad: ['Pad:b11', null, null], group: 'items' },
-  { key: 'aimLock', label: 'Travar mira (segurar)', keys: ['Key:AltLeft', null, null], pad: ['Pad:b6', null, null], group: 'items' },
 ]
 
 // Analog sticks: dead zones (0..0.9 of the travel) and the optional magnet that pulls the left stick's aim to 8 angles
@@ -87,14 +86,12 @@ export function loadChickenControls(): ChickenControls {
         base.pad.run = ['Pad:b2', null, null]
       }
     }
-    // Caps Lock cannot be held on the Mac (it only reports turning on and off): the aim lock moves to Option / Alt
-    if (!saved?.itemsV2) base.keys.aimLock = base.keys.aimLock.map(t => t === 'Key:CapsLock' ? 'Key:AltLeft' : t)
   } catch { /* storage unavailable: defaults */ }
   return base
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, itemsV1: true, itemsV2: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, itemsV1: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
