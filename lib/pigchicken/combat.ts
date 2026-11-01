@@ -2,6 +2,7 @@
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { DEFAULT_ITEMS, type ItemDef, type ItemId } from './items'
 import type { WeaponSound } from './sfx'
+import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 
 export type Box = { l: number; t: number; r: number; b: number }
 export type Owned = { item: ItemId; ammo: number; durability: number }
@@ -12,7 +13,12 @@ export type Bullet = {
 export type Boom = { x: number; y: number; r: number; life: number }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
-export type Target = { id: number; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number }
+// x: centre, y: bottom. dummy targets come back after falling; aliens and zombies are removed; buttons never fall
+export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button'
+export type Target = {
+  id: number; kind: TargetKind; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number
+  face: number; state: string; animT: number; label?: string; data?: unknown
+}
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 export type FloatText = { x: number; y: number; text: string; life: number; color: string }
@@ -45,6 +51,10 @@ export function createCombat() {
   const sounds: { kind: WeaponSound; item: ItemId | null }[] = []
   const sound = (kind: WeaponSound, item: ItemId | null = held()?.item ?? null) => { sounds.push({ kind, item }) }
   let pumpT = 0
+  // buttons hit this frame, bites she took, enemies down
+  const pressed: string[] = []
+  const kills = { aliens: 0, zombies: 0, bites: 0 }
+  let view = { l: 0, r: 1280 }
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   const racks: { x: number; item: ItemId; t: number; label: string }[] = []
   let swing: Swing | null = null
@@ -60,10 +70,19 @@ export function createCombat() {
 
   function hitTarget(t: Target, damage: number, pushX: number, x: number, y: number) {
     if (t.deadT > 0 || damage <= 0) return
+    // a button: any hit presses it
+    if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
     t.hp -= damage; t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * 0.35; t.vx += pushX
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
-    burst(x, y, 5, '#ffd166', 160, 2)
-    if (t.hp <= 0) { t.deadT = 2.5; burst(t.x, t.y - t.h / 2, 22, '#e8e2d0', 320, 4); addText(t.x, t.y - t.h - 16, 'derrubado!', '#ff8c69') }
+    burst(x, y, 5, t.kind === 'zombie' ? '#7a9a3a' : '#ffd166', 160, 2)
+    if (t.kind === 'zombie' && t.hp > 0 && t.state !== 'attack') { t.state = 'hurt'; t.animT = 0 }
+    if (t.hp > 0) return
+    if (t.kind === 'alien') {
+      const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
+      t.deadT = ALIEN_DEATH; burst(t.x, t.y - t.h / 2, 24, color, 260, 5); kills.aliens++; sound('alienDie', null)
+    } else if (t.kind === 'zombie') {
+      t.state = 'dead'; t.animT = 0; t.deadT = ZOMBIE_TIMES.dead + ZOMBIE_TIMES.fade; kills.zombies++; sound('zombieDie', null)
+    } else { t.deadT = 2.5; burst(t.x, t.y - t.h / 2, 22, '#e8e2d0', 320, 4); addText(t.x, t.y - t.h - 16, 'derrubado!', '#ff8c69') }
   }
 
   function pickUp(p: Pickup) {
@@ -231,6 +250,11 @@ export function createCombat() {
     }
   }
 
+  const env = (groundY: number, playerX: number, playerY: number): EnemyEnv => ({
+    playerX, playerY, groundY, viewL: view.l, viewR: view.r,
+    onBite: t => { kills.bites++; addText(playerX, playerY - 150, 'mordida!', '#ff6b5b'); burst(playerX + (t.face > 0 ? -20 : 20), playerY - 80, 10, '#ff6b5b', 200, 3); sound('bite', null) },
+  })
+
   return {
     get inventory() { return inv },
     get current() { return cur },
@@ -248,7 +272,15 @@ export function createCombat() {
       items = next
       inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
     },
-    addTarget(x: number, y: number) { targets.push({ id: nextId++, home: x, x, y, w: 46, h: 112, hp: 100, maxHp: 100, flash: 0, wobble: 0, vx: 0, deadT: 0 }) },
+    addTarget(x: number, y: number) { targets.push({ id: nextId++, kind: 'dummy', home: x, x, y, w: 46, h: 112, hp: 100, maxHp: 100, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0 }) },
+    addButton(x: number, y: number, id: string) { targets.push({ id: nextId++, kind: 'button', home: x, x, y, w: 40, h: 40, hp: 1, maxHp: 1, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, label: id }) },
+    // the part of the world on screen (enemies enter from its sides)
+    setView(l: number, r: number) { view = { l, r } },
+    pressed, kills,
+    spawnAliens(groundY: number, playerX: number) { spawnAlienRow(targets, env(groundY, playerX, 0)) },
+    spawnZombies(groundY: number, playerX: number, count: number) { spawnZombies(targets, env(groundY, playerX, 0), count) },
+    clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
+    get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
     addRack(x: number, item: ItemId) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase() }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
@@ -393,8 +425,17 @@ export function createCombat() {
       })
 
       // targets: knockback, wobble, fall and come back
+      // enemies move; the ones that finished dying leave
+      const e = env(groundY, body.x, body.y)
+      stepFormations(targets, dt, e)
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i]
+        if ((t.kind === 'alien' || t.kind === 'zombie') && !stepEnemy(t, dt, e)) targets.splice(i, 1)
+      }
       targets.forEach(t => {
+        if (t.kind !== 'dummy' && t.kind !== 'button') return
         t.flash = Math.max(0, t.flash - dt)
+        if (t.kind === 'button') return
         t.wobble *= Math.pow(0.02, dt)
         t.x += t.vx * dt; t.vx *= Math.pow(0.004, dt)
         t.x += (t.home - t.x) * Math.min(1, 1.5 * dt)

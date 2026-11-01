@@ -12,6 +12,7 @@ import { createCombat, SLOTS, type Box, type Combat, type Swing } from "@/lib/pi
 import { loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
+import { ALIEN_FRAMES, ALIEN_PATTERNS, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData } from "@/lib/pigchicken/enemies"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { useTouchControls } from "@/components/chicken/chicken-layer"
 
@@ -126,6 +127,9 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
     let wasLocked = false
+    // horde settings, changed by shooting their buttons
+    const horde = { zombies: 6, pattern: 0 }
+    const ZOMBIE_COUNTS = [3, 6, 10, 20]
     const combat = createCombat()
     combat.setItems(loadItems())
     const unsubItems = subscribeItems(next => combat.setItems(next))
@@ -134,7 +138,9 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     const place = (viewW: number, groundY: number) => {
       // the creative mode: a row of racks with every weapon on the first screen, targets further in
       WEAPON_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id))
-      ;[1.2, 1.5, 1.85, 2.3, 2.7, 3.2].forEach(f => combat.addTarget(viewW * f, groundY))
+      // horde buttons on the second screen: shoot them
+      ;(["aliens", "pattern", "zombies", "zcount"] as const).forEach((id, i) => combat.addButton(viewW * (1.06 + i * 0.09), groundY - 46, id))
+      ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach(f => combat.addTarget(viewW * f, groundY))
       placed = true
     }
     const fit = () => {
@@ -214,6 +220,15 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       })
       const body = { x: st.x + camX, y: st.y, face: st.face, scale: st.scale, grounded: st.grounded, state: st.state, vx: st.vx }
       const worldOrigin = { x: origin.x + camX, y: origin.y }
+      combat.setView(camX, camX + viewW)
+      combat.pressed.splice(0).forEach(id => {
+        if (id === "aliens") combat.spawnAliens(st.groundY, body.x)
+        else if (id === "zombies") combat.spawnZombies(st.groundY, body.x, horde.zombies)
+        else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
+        else if (id === "pattern") horde.pattern = (horde.pattern + 1) % ALIEN_PATTERNS.length
+      })
+      buttonLabels.aliens = "SOLTAR ALIENS"; buttonLabels.pattern = `PADRÃO: ${ALIEN_PATTERNS[horde.pattern].label.toUpperCase()}`
+      buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y }, aim.angle, input, boxes, st.groundY, (vx, vy) => engine.impulse(vx, vy))
 
@@ -249,7 +264,8 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       if (hudRef.current) {
         const h = combat.inventory[combat.current]
         const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
-        hudRef.current.textContent = `${item} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
+        const k = combat.kills
+        hudRef.current.textContent = `${item}${combat.enemies || k.aliens || k.zombies ? ` · inimigos: ${combat.enemies} · aliens ${k.aliens} · zumbis ${k.zombies} · mordidas ${k.bites}` : ""} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
       }
       raf = requestAnimationFrame(frame)
     }
@@ -378,10 +394,70 @@ function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
   ctx.restore()
 }
 
+// the horde buttons' labels (set every frame from the horde settings)
+const buttonLabels: Record<string, string> = {}
+function drawButton(ctx: Ctx, g: Combat["targets"][number], x: number) {
+  const ground = g.y + 46, cy = g.y - g.h / 2, on = g.flash > 0
+  ctx.fillStyle = "#3a3f4a"; ctx.fillRect(x - 4, g.y, 8, ground - g.y)
+  ctx.fillStyle = "#23262d"; ctx.beginPath(); ctx.ellipse(x, cy + 6, 24, 12, 0, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = on ? "#ffd166" : g.label === "aliens" || g.label === "zombies" ? "#d6453d" : "#4cc9f0"
+  ctx.beginPath(); ctx.ellipse(x, cy + (on ? 4 : 0), 19, 10, 0, 0, Math.PI * 2); ctx.fill()
+  ctx.fillRect(x - 19, cy + (on ? 4 : 0), 38, on ? 2 : 6)
+  ctx.font = "bold 10px ui-monospace, monospace"; ctx.textAlign = "center"
+  ctx.fillStyle = "rgba(0,0,0,0.55)"; const label = buttonLabels[g.label ?? ""] ?? ""; const w = ctx.measureText(label).width + 10
+  ctx.fillRect(x - w / 2, cy - 34, w, 15)
+  ctx.fillStyle = "#ffffff"; ctx.fillText(label, x, cy - 23)
+}
+
+function drawAlien(ctx: Ctx, g: Combat["targets"][number], x: number) {
+  const d = g.data as EnemyData & { kind: "alien" }
+  const frame = ALIEN_FRAMES[Math.floor(g.animT / 0.4) % 2], p = ALIEN_PIXEL
+  const left = x - g.w / 2, top = g.y - g.h
+  ctx.save()
+  if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.35) * 0.6
+  frame.forEach((row, r) => { for (let c = 0; c < row.length; c++) {
+    const ch = row[c]
+    if (ch === ".") continue
+    ctx.fillStyle = g.flash > 0 ? "#ffffff" : ch === "w" ? (Math.floor(g.animT * 2) % 9 === 0 ? d.color : "#f4f1e8") : ch === "o" ? "#101018" : d.color
+    ctx.fillRect(left + c * p, top + r * p, p, p)
+  } })
+  ctx.restore()
+}
+
+// the zombie sprite sheets (Craftpix free zombie pack), one strip per animation
+const ZOMBIE_SHEETS = { walk: { w: 123, h: 206, n: 6, ax: 61.6 }, attack: { w: 130, h: 192, n: 6, ax: 36.2 }, hurt: { w: 152, h: 201, n: 5, ax: 55.6 }, dead: { w: 238, h: 193, n: 8, ax: 55 }, idle: { w: 123, h: 197, n: 4, ax: 77.8 } }
+type ZombieAnim = keyof typeof ZOMBIE_SHEETS
+const zombieImages: Partial<Record<ZombieAnim, HTMLImageElement>> = {}
+function zombieImage(a: ZombieAnim) {
+  let img = zombieImages[a]
+  if (!img) { img = new Image(); img.src = `/pigchicken/zombie1/${a}.webp`; zombieImages[a] = img }
+  return img.complete && img.naturalWidth ? img : null
+}
+const ZOMBIE_HEIGHT = 175 // px on screen for the walk frame
+function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
+  const a: ZombieAnim = g.state === "attack" ? "attack" : g.state === "hurt" ? "hurt" : g.state === "dead" ? "dead" : "walk"
+  const sheet = ZOMBIE_SHEETS[a], img = zombieImage(a)
+  if (!img) return
+  const dur = a === "attack" ? ZOMBIE_TIMES.attack : a === "hurt" ? ZOMBIE_TIMES.hurt : a === "dead" ? ZOMBIE_TIMES.dead : 0.8
+  const f = a === "walk" ? Math.floor((g.animT / dur) * sheet.n) % sheet.n : Math.min(sheet.n - 1, Math.floor((g.animT / dur) * sheet.n))
+  const k = ZOMBIE_HEIGHT / ZOMBIE_SHEETS.walk.h
+  ctx.save()
+  ctx.translate(x, g.y)
+  ctx.scale(g.face < 0 ? -k : k, k)
+  if (g.state === "dead") ctx.globalAlpha = Math.min(1, g.deadT / ZOMBIE_TIMES.fade)
+  if (g.flash > 0) ctx.filter = "brightness(2.2)"
+  ctx.drawImage(img, f * sheet.w, 0, sheet.w, sheet.h, -sheet.ax, -sheet.h, sheet.w, sheet.h)
+  ctx.restore()
+  if (g.state !== "dead" && g.hp < g.maxHp) {
+    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x - 22, g.y - g.h - 16, 44, 5)
+    ctx.fillStyle = "#7bd88f"; ctx.fillRect(x - 22, g.y - g.h - 16, 44 * Math.max(0, g.hp / g.maxHp), 5)
+  }
+}
+
 function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   const X = (x: number) => x - camX
   const t = performance.now() / 1000
-  const groundY = combat.targets[0]?.y ?? window.innerHeight - 30
+  const groundY = combat.targets.find(t => t.kind === "dummy")?.y ?? window.innerHeight - 30
   combat.racks.forEach(r => {
     const x = X(r.x)
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
@@ -398,6 +474,9 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   })
   combat.targets.forEach(g => {
     const x = X(g.x)
+    if (g.kind === "alien") { drawAlien(ctx, g, x); return }
+    if (g.kind === "zombie") { drawZombie(ctx, g, x); return }
+    if (g.kind === "button") { drawButton(ctx, g, x); return }
     ctx.save()
     ctx.translate(x, g.y)
     if (g.deadT > 0) { ctx.globalAlpha = Math.min(1, g.deadT); ctx.rotate(Math.sign(g.wobble || 1) * Math.PI / 2 * Math.min(1, (2.5 - g.deadT) * 4)) }
