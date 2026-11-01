@@ -3,9 +3,9 @@
 // Pátio da Galinha: the game's playground where the player chicken is tuned. The panel edits a draft of
 // the central configuration (lib/chicken/config.ts) that the chicken here follows live; "Salvar padrão"
 // (admin account only) saves it for every screen that draws the chicken.
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Gamepad2, SlidersHorizontal, X } from "lucide-react"
+import { ArrowLeft, Crosshair, Gamepad2, SlidersHorizontal, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -17,17 +17,13 @@ import { LOOK_ART, type ChickenSlot } from "@/lib/chicken/look-art"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { ChickenGround, ChickenLayer } from "./chicken-layer"
 import { cn } from "@/lib/utils"
+import type { ChickenEngine } from "@/lib/chicken/engine"
+import { ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { CAMERA_MODES } from "@/lib/pigchicken/camera"
+import { DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
 
-// floating boxes to jump on, climb and drop through (percent of the stage)
-const PLATFORMS = [
-  { left: 8, bottom: 22, width: 18, height: 5 },
-  { left: 32, bottom: 38, width: 14, height: 5 },
-  { left: 54, bottom: 26, width: 10, height: 22 },
-  { left: 70, bottom: 48, width: 16, height: 5 },
-  { left: 14, bottom: 58, width: 12, height: 5 },
-]
 
 function readDraft(): ChickenConfig | null {
   try {
@@ -56,6 +52,12 @@ export function ChickenPatio() {
   const [controlsOpen, setControlsOpen] = useState(false)
   const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [engine, setEngine] = useState<ChickenEngine | null>(null)
+  const worldRef = useRef<HTMLDivElement>(null)
+  const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
+  const [pqOpen, setPqOpen] = useState(false)
+  useEffect(() => { setPq(loadParquinho()) }, [])
+  const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
 
   // start from this browser's unsaved draft, if any, and fetch the latest saved version
@@ -123,6 +125,12 @@ export function ChickenPatio() {
           <h1 className="truncate font-mono text-sm font-bold">Pátio da Galinha</h1>
           <p className="truncate font-mono text-[11px] text-[#93a79a]">{savedLabel}</p>
         </div>
+        <select aria-label="Câmera" title="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
+          {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => setPqOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Crosshair className="h-4 w-4" />
+        </button>
         <button type="button" aria-label="Controles da galinha" title="Controles da galinha" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
@@ -132,17 +140,30 @@ export function ChickenPatio() {
       </header>
 
       <p className="pointer-events-none absolute left-1/2 top-16 z-10 w-full -translate-x-1/2 px-4 text-center font-mono text-xs text-[#93a79a]">
-        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular (segure para voar) · arraste a galinha com o mouse
+        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular · mouse ou setas miram · clique/X atira · clique direito/Z golpe · V arremessa · Q/E/1–9 itens · Caps Lock trava a mira
       </p>
 
-      <div data-chicken-platforms className="pointer-events-none absolute inset-0">
-        {PLATFORMS.map((p, i) => (
-          <div key={i} className="absolute rounded-md border border-primary/30 bg-[#16241b]" style={{ left: `${p.left}%`, bottom: `calc(${p.bottom}% + 30px)`, width: `${p.width}%`, height: `${p.height}%`, minHeight: 18 }} />
-        ))}
-      </div>
+      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} />
 
       <ChickenGround />
-      <ChickenLayer dropIn={false} />
+      <ChickenLayer dropIn={false} onEngine={setEngine} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} />
+      {pqOpen && (
+        <aside data-chicken-ignore aria-label="Ajustes do Parquinho" className="absolute left-3 top-16 z-[210] grid w-[min(320px,calc(100vw-1.5rem))] gap-3 rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+          <div className="flex items-center gap-2">
+            <h2 className="flex-1 text-sm text-white">Parquinho</h2>
+            <button type="button" onClick={() => { setPq(DEFAULT_PARQUINHO); saveParquinho(DEFAULT_PARQUINHO) }} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+            <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+          </div>
+          <PqRange label="Largura do mundo" unit="telas" min={1} max={8} step={1} value={pq.screens} onChange={v => setPqValue("screens", v)} />
+          <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
+          <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
+          <PqRange label="Andar de costas" unit="%" min={20} max={100} step={5} value={Math.round(pq.backpedal * 100)} onChange={v => setPqValue("backpedal", v / 100)} hint="Velocidade ao andar mirando para trás" />
+          <PqRange label="Mouse parado devolve a mira" unit="s" min={0} max={5} step={0.25} value={pq.mouseIdle} onChange={v => setPqValue("mouseIdle", v)} />
+          <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
+          <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
+        </aside>
+      )}
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} />
 
       {panelOpen && (
@@ -258,5 +279,14 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
       </div>
       {meta.hint && <span className="text-[10px] text-[#93a79a]">{meta.hint}</span>}
     </div>
+  )
+}
+
+function PqRange({ label, unit, min, max, step, value, onChange, hint }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string }) {
+  return (
+    <label className="grid gap-1" title={hint}>
+      <span className="flex justify-between gap-2"><span>{label}</span><output className="tabular-nums text-white">{value}{unit ? ` ${unit}` : ""}</output></span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} onPointerUp={e => e.currentTarget.blur()} className="accent-[var(--primary)]" />
+    </label>
   )
 }

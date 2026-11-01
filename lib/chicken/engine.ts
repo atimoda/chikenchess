@@ -11,8 +11,19 @@ import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 
+export type ChickenState = { x: number; y: number; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
+// Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
+export type ChickenGame = { gameMode?: boolean; moveLock?: boolean; aimFace?: number | null; backpedal?: number }
 export type ChickenEngine = {
   setVirtual: (action: ChickenAction, on: boolean) => void
+  getState: () => ChickenState
+  // every action held right now (keys, gamepad buttons and on-screen controls)
+  getActions: () => Record<ChickenAction, boolean>
+  // camera moved: move her (and everything she keeps in screen coordinates) by dx pixels
+  shift: (dx: number) => void
+  // left and right walls in screen pixels; null = the screen edges
+  setBounds: (bounds: { lo: number; hi: number } | null) => void
+  setGame: (game: ChickenGame) => void
   destroy: () => void
 }
 
@@ -125,7 +136,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // ---------- controls ----------
   let controls: ChickenControls = loadChickenControls()
   const unsubscribe = subscribeChickenControls(c => { controls = c })
-  const held = new Set<string>(), pressed = new Set<string>()
+  const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
   const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>()
   let pad: Partial<Record<ChickenAction, boolean>> = {}
   const input = (a: ChickenAction) => controls.keys[a].some(t => t && held.has(t)) || !!pad[a] || !!virt[a]
@@ -139,7 +150,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     e.preventDefault()
     const t = e.target as HTMLElement | null
     if (t && t !== document.body && t.blur) t.blur()
-    if (!e.repeat) pressed.add(tok)
+    if (!e.repeat) { pressed.add(tok); gameTaps.add(tok) }
     held.add(tok)
   }
   const onKeyUp = (e: KeyboardEvent) => { held.delete('Key:' + e.code) }
@@ -151,7 +162,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('blur', onBlur)
   window.addEventListener('pointermove', onPointerMove)
   function pollPad() {
-    const on = readGamepadTokens()
+    const on = readGamepadTokens(controls.analog.deadzoneL)
     pad = {}
     CHICKEN_ACTIONS.forEach(a => { pad[a.key] = controls.pad[a.key].some(t => t && on.has(t)) })
   }
@@ -190,6 +201,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     src.connect(gain); gain.connect(actx.destination); src.start(t)
     lastVoice = { src, gain }
   }
+
+  // ---------- game hooks ----------
+  let bounds: { lo: number; hi: number } | null = null
+  const game: Required<ChickenGame> = { gameMode: false, moveLock: false, aimFace: null, backpedal: 1 }
+  const wallLo = () => bounds ? bounds.lo : 0, wallHi = () => bounds ? bounds.hi : W
 
   // ---------- simulation state ----------
   const S: any = { x: W * 0.5, y: groundY, vx: 0, vy: 0, face: 1, grounded: true, jumpIndex: -1, state: 'idle', flapPhase: 0, burst: 0, squash: 0, boostT: 0, sliding: false, runIntent: false, plat: null, platAx: 0, cl: null, held: false }
@@ -231,6 +247,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.prevD = Dk
     const D = (Dk && !S.broodOff) || S.broodLatch
     let dir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
+    if (game.moveLock) dir = 0
     // point-and-click: any control of her own cancels the walk to the clicked spot
     if (goal && (dir !== 0 || J || Dk || C || U || S.held || S.cl)) goal = null
     const auto = !!goal && goalStep(dt)
@@ -284,6 +301,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (crouching) mult = R.crouchSpeed * (RUN ? R.crouchRunSpeed : 1)
         if (!S.grounded) mult *= R.airSpeed * (D ? R.fallSideSpeed : 1)
         target = dir * R.walkSpeed * mult
+        // aiming behind her while walking: she walks backwards, slower
+        if (game.aimFace && dir !== 0 && dir !== game.aimFace) target *= game.backpedal
         if (runIntent && S.boostT > 0) target += dir * R.runBoost * (S.boostT / Math.max(0.01, R.runBoostTime))
         // the jump's sideways kick lasts until she lands, instead of fading into the air speed
         if (!S.grounded) target += S.airBoost || 0
@@ -293,6 +312,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       S.vx = approach(S.vx, target, rate * dt)
       if (!S.grounded && D) { const cap = R.walkSpeed * (RUN ? R.runMultiplier : 1) * R.airSpeed * R.fallSideSpeed + Math.abs(S.airBoost || 0); S.vx = clamp(S.vx, -cap, cap) }
       if (dir !== 0 && (!brooding || broodWalking)) S.face = dir
+      if (game.aimFace && !brooding && !S.sliding) S.face = game.aimFace
     }
 
     // down + jump on a floating floor: drop through it instead of jumping
@@ -344,8 +364,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     S.x += S.vx * dt
     const margin = 40 * R.scale
-    if (S.x < margin) { S.x = margin; S.vx = 0 }
-    if (S.x > W - margin) { S.x = W - margin; S.vx = 0 }
+    if (S.x < wallLo() + margin) { S.x = wallLo() + margin; S.vx = 0 }
+    if (S.x > wallHi() - margin) { S.x = wallHi() - margin; S.vx = 0 }
 
     if (S.grounded && !S.sliding && (!brooding || broodWalking) && !crouching && dir !== 0) stepUp()
     // walking to a clicked spot never grabs the screen walls
@@ -438,7 +458,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const yb = Math.min(r.bottom, groundY)
       if (yb - r.top > 8) { add(id + ':left', r.left, r.top, r.left, yb); add(id + ':right', r.right, r.top, r.right, yb) }
     })
-    add('screen:left', 0, 0, 0, groundY, true); add('screen:right', W, 0, W, groundY, true)
+    add('screen:left', wallLo(), 0, wallLo(), groundY, true); add('screen:right', wallHi(), 0, wallHi(), groundY, true)
     SEGS = out
   }
   // elements without an id get one, so standing on a box survives re-ordering of the DOM
@@ -602,7 +622,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return !!n && (el.root.contains(n) || !!n.closest?.('[data-chicken-ignore], [role="dialog"], [role="alertdialog"]'))
   }
   const onTapDown = (e: PointerEvent) => {
-    tap = e.button === 0 && !ignoreTap(e.target) ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null
+    tap = e.button === 0 && !game.gameMode && !ignoreTap(e.target) ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null
   }
   const onTapUp = (e: PointerEvent) => {
     if (!tap || tap.id !== e.pointerId) return
@@ -638,7 +658,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     animate(dt, 'held', false, 0)
   }
   const onRootDown = (e: PointerEvent) => {
-    if (e.button !== 0) return
+    if (e.button !== 0 || game.gameMode) return
     e.preventDefault(); e.stopPropagation(); ensureAudio()
     drag.id = e.pointerId; drag.x0 = e.clientX; drag.y0 = e.clientY; drag.on = false
   }
@@ -913,6 +933,25 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (on && !virt[action]) virtTapped.add(action)
       virt[action] = on
     },
+    getState: () => ({ x: S.x, y: S.y, vx: S.vx, vy: S.vy, face: S.face, scale: R.scale, grounded: !!S.grounded, state: S.state, held: !!S.held, width: W, height: H, groundY }),
+    getActions() {
+      const out = {} as Record<ChickenAction, boolean>
+      // a key pressed and let go between two reads still counts once
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
+      gameTaps.clear()
+      return out
+    },
+    shift(dx) {
+      if (!dx) return
+      S.x += dx
+      Object.values(feet).forEach((f: any) => { if (f.x !== null) f.x += dx; f.from += dx; f.to += dx })
+      if (headAnchor.x !== null) { headAnchor.x += dx; headAnchor.from += dx; headAnchor.to += dx; if (headAnchor.lastContact !== null) headAnchor.lastContact += dx }
+      if (S.cl) S.cl.px += dx
+      if (goal) { goal.x += dx; goal.checkX += dx }
+      if (drag.on) drag.ox -= dx
+    },
+    setBounds(next) { bounds = next },
+    setGame(next) { Object.assign(game, next) },
     destroy() {
       cancelAnimationFrame(raf)
       unsubscribe()

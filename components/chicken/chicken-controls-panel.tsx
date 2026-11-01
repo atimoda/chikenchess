@@ -86,8 +86,11 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
 
   const grid = (kind: "keys" | "pad") => (
     <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,4.5rem))] items-center gap-1.5 text-xs">
-      {CHICKEN_ACTIONS.map(a => (
+      {CHICKEN_ACTIONS.map((a, i) => (
         <div key={a.key} className="contents">
+          {a.group === "items" && CHICKEN_ACTIONS[i - 1]?.group !== "items" && (
+            <span className="col-span-4 pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
+          )}
           <span className="truncate text-[#b9c7b9]" title={a.label}>{a.label}</span>
           {[0, 1, 2].map(slot => {
             const on = listen?.kind === kind && listen.action === a.key && listen.slot === slot
@@ -122,7 +125,27 @@ export function ChickenControlsPanel({ open, onOpenChange }: { open: boolean; on
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Gamepad</h3>
           {grid("pad")}
-          <p className="text-[11px] text-[#8a9a8a]">Nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito.</p>
+          <p className="text-[11px] text-[#8a9a8a]">Nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito. O analógico direito mira.</p>
+        </section>
+        <section className="grid gap-2">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Analógicos</h3>
+          {([["deadzoneL", "Zona morta do esquerdo"], ["deadzoneR", "Zona morta do direito"]] as const).map(([k, label]) => (
+            <label key={k} className="grid gap-1 text-xs">
+              <span className="flex justify-between"><span>{label}</span><output className="tabular-nums">{Math.round(controls.analog[k] * 100)}%</output></span>
+              <input type="range" min={0} max={90} step={1} value={Math.round(controls.analog[k] * 100)} onChange={e => { const v = Number(e.target.value) / 100; update(c => { c.analog[k] = v }) }} className="accent-[var(--primary)]" />
+            </label>
+          ))}
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={controls.analog.magnet} onChange={e => { const v = e.target.checked; update(c => { c.analog.magnet = v }) }} className="accent-[var(--primary)]" />
+            Ímã dos 8 ângulos na mira do analógico esquerdo
+          </label>
+          {controls.analog.magnet && (
+            <label className="grid gap-1 text-xs">
+              <span className="flex justify-between"><span>Força do ímã</span><output className="tabular-nums">{controls.analog.magnetDeg}°</output></span>
+              <input type="range" min={1} max={22.5} step={0.5} value={controls.analog.magnetDeg} onChange={e => { const v = Number(e.target.value); update(c => { c.analog.magnetDeg = v }) }} className="accent-[var(--primary)]" />
+            </label>
+          )}
+          <p className="text-[11px] text-[#8a9a8a]">No mouse: clique esquerdo atira, clique direito dá o golpe, a rodinha troca o item. As teclas 1 a 9 escolhem o item.</p>
         </section>
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Na tela (celular)</h3>
