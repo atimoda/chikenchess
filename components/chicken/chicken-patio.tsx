@@ -5,7 +5,7 @@
 // (admin account only) saves it for every screen that draws the chicken.
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Crosshair, Gamepad2, SlidersHorizontal, X } from "lucide-react"
+import { ArrowLeft, Crosshair, Gamepad2, SlidersHorizontal, Swords, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -19,6 +19,7 @@ import { ChickenGround, ChickenLayer } from "./chicken-layer"
 import { cn } from "@/lib/utils"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 
@@ -56,6 +57,7 @@ export function ChickenPatio() {
   const worldRef = useRef<HTMLDivElement>(null)
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
+  const [itemsOpen, setItemsOpen] = useState(false)
   useEffect(() => { setPq(loadParquinho()) }, [])
   const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
@@ -128,7 +130,10 @@ export function ChickenPatio() {
         <select aria-label="Câmera" title="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
           {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
-        <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => setPqOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Swords className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
         <button type="button" aria-label="Controles da galinha" title="Controles da galinha" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
@@ -148,6 +153,7 @@ export function ChickenPatio() {
       <ChickenGround />
       <ChickenLayer dropIn={false} onEngine={setEngine} />
       <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} />
+      {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
         <aside data-chicken-ignore aria-label="Ajustes do Parquinho" className="absolute left-3 top-16 z-[210] grid w-[min(320px,calc(100vw-1.5rem))] gap-3 rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div className="flex items-center gap-2">

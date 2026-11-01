@@ -8,6 +8,8 @@ import type { ChickenEngine } from "@/lib/chicken/engine"
 import { loadChickenControls, readGamepadTokens, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
+import { createCombat, SLOTS, type Box, type Combat } from "@/lib/pigchicken/combat"
+import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { useTouchControls } from "@/components/chicken/chicken-layer"
 
@@ -46,8 +48,6 @@ const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
 }
 
-type Flash = { kind: "fire" | "melee" | "throw" | "item" | "reload"; t: number; power?: number; label?: string }
-
 export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null> }) {
   return (
     <div ref={worldRef} className="pointer-events-none absolute inset-y-0 left-0 will-change-transform" style={{ width: `${screens * 100}vw` }}>
@@ -64,8 +64,6 @@ export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRe
     </div>
   )
 }
-
-const ITEM_SLOTS = 9
 
 // the gamepad's aim lock button still works as hold while Caps Lock is a switch
 function readPadLock(controls: ChickenControls) {
@@ -134,10 +132,19 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     engine.setGame({ gameMode: true })
 
     let camX = 0, last = performance.now(), raf = 0
-    let prev: Partial<Record<ChickenAction | "mFire" | "mMelee", boolean>> = {}
-    let throwStart = 0, item = 0
-    const flashes: Flash[] = []
+    let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
+    const combat = createCombat()
+    combat.setItems(loadItems())
+    const unsubItems = subscribeItems(next => combat.setItems(next))
+    // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
+    let placed = false
+    const place = (viewW: number, groundY: number) => {
+      combat.addRack(viewW * 0.22, "pistol")
+      combat.addRack(viewW * 1.12, "pistol")
+      ;[0.5, 0.9, 1.45, 1.8].forEach(f => combat.addTarget(viewW * f, groundY))
+      placed = true
+    }
     const fit = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1)
       canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
@@ -151,6 +158,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const S = settingsRef.current
       const st = engine.getState()
       const viewW = st.width, worldW = viewW * S.screens
+      if (!placed) place(viewW, st.groundY)
 
       // ---------- camera ----------
       const worldX = camX + st.x
@@ -173,66 +181,49 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
         rightStick, mouse: owner.owns ? mouse : null, touch: touchAim.current, leftStick, keys, origin,
         face: st.face, grounded: st.grounded, aimLock: act.aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
       })
+      const d = combat.def()
       engine.setGame({
         moveLock: act.aimLock,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
         backpedal: S.backpedal,
+        speedMult: d.weight,
       })
 
-      // ---------- buttons (flashes until the items exist) ----------
+      // ---------- combat (world coordinates) ----------
       const fire = act.fire || mouseBtn.fire, melee = act.melee || mouseBtn.melee
-      if (fire && !prev.fire) flashes.push({ kind: "fire", t: now })
-      if (melee && !prev.melee) flashes.push({ kind: "melee", t: now })
-      if (act.throw && !prev.throw) throwStart = now
-      if (!act.throw && prev.throw) flashes.push({ kind: "throw", t: now, power: Math.min(1, (now - throwStart) / 1000) })
       let pick = 0
       if (act.nextItem && !prev.nextItem) pick = 1
       if (act.prevItem && !prev.prevItem) pick = -1
       if (wheel) { pick = wheel > 0 ? 1 : -1; wheel = 0 }
-      if (pick) { item = (item + pick + ITEM_SLOTS) % ITEM_SLOTS; flashes.push({ kind: "item", t: now, label: `item ${item + 1}` }) }
-      if (slotPick) { item = slotPick - 1; slotPick = 0; flashes.push({ kind: "item", t: now, label: `item ${item + 1}` }) }
-      if (act.reload && !prev.reload) flashes.push({ kind: "reload", t: now })
+      const input = {
+        fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
+        throwHeld: act.throw, throwReleased: !act.throw && !!prev.throw,
+        reload: act.reload && !prev.reload, pick, slot: slotPick,
+      }
+      slotPick = 0
       prev = { ...act, fire, melee }
+      const boxes: Box[] = []
+      document.querySelectorAll("[data-chicken-platforms] > *").forEach(e => {
+        const r = e.getBoundingClientRect()
+        boxes.push({ l: r.left + camX, t: r.top, r: r.right + camX, b: Math.min(r.bottom, st.groundY) })
+      })
+      const body = { x: st.x + camX, y: st.y, face: st.face, scale: st.scale, grounded: st.grounded, state: st.state, vx: st.vx }
+      const worldOrigin = { x: origin.x + camX, y: origin.y }
+      combat.step(dt, body, worldOrigin, aim.angle, input, boxes, st.groundY, (vx, vy) => engine.impulse(vx, vy))
 
       // ---------- draw ----------
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
+      drawWorld(ctx, combat, camX)
+      const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
+      drawHeld(ctx, combat, origin, ang, st.scale)
       const dist = aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
-      const rx = aim.target ? aim.target.x : origin.x + aim.dx * dist, ry = aim.target ? aim.target.y : origin.y + aim.dy * dist
-      while (flashes.length && now - flashes[0].t > 600) flashes.shift()
-      const fireAge = flashes.filter(f => f.kind === "fire").map(f => now - f.t)[0]
-      const pulse = fireAge !== undefined ? 1 + 0.6 * (1 - fireAge / 600) : 1
-      ctx.save()
-      ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
-      ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.lineTo(rx, ry); ctx.stroke()
-      ctx.setLineDash([])
-      ctx.strokeStyle = act.aimLock ? "#ffd166" : "#ffffff"; ctx.lineWidth = 2
-      const r = 10 * pulse
-      ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke()
-      ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => { ctx.beginPath(); ctx.moveTo(rx + ux * (r + 3), ry + uy * (r + 3)); ctx.lineTo(rx + ux * (r + 9), ry + uy * (r + 9)); ctx.stroke() })
-      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(rx, ry, 1.6, 0, Math.PI * 2); ctx.fill()
-      // throw: a charge ring around her while held
-      if (act.throw) {
-        const p = Math.min(1, (now - throwStart) / 1000)
-        ctx.strokeStyle = "#7bdff2"; ctx.lineWidth = 3
-        ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * st.scale + 8, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke()
-      }
-      flashes.forEach(f => {
-        const k = 1 - (now - f.t) / 600
-        if (f.kind === "melee") {
-          ctx.strokeStyle = `rgba(255,209,102,${k})`; ctx.lineWidth = 5
-          ctx.beginPath(); ctx.arc(origin.x, origin.y, 70 * st.scale + 20, aim!.angle - 0.9, aim!.angle + 0.9); ctx.stroke()
-        }
-        if (f.kind === "throw") {
-          ctx.fillStyle = `rgba(123,223,242,${k})`
-          const d = 40 + (1 - k) * (120 + 380 * (f.power ?? 0))
-          ctx.beginPath(); ctx.arc(origin.x + aim!.dx * d, origin.y + aim!.dy * d, 6, 0, Math.PI * 2); ctx.fill()
-        }
-      })
-      ctx.restore()
+      const rx = d.turnRate > 0 || !aim.target ? origin.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? origin.y + ady * dist : aim.target.y
+      drawReticle(ctx, combat, origin, rx, ry, dist, combat.spread(body), act.aimLock, st.scale)
+      drawInventory(ctx, combat)
       if (hudRef.current) {
-        const latest = flashes[flashes.length - 1]
-        const word = latest ? { fire: "atirou", melee: "golpe", throw: `arremesso ${Math.round((latest.power ?? 0) * 100)}%`, item: latest.label ?? "", reload: "recarregar" }[latest.kind] : ""
-        hudRef.current.textContent = `mira: ${SOURCE_LABEL[aim.source]}${act.aimLock ? " · travada" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}${word ? ` · ${word}` : ""}`
+        const h = combat.inventory[combat.current]
+        const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
+        hudRef.current.textContent = `${item} · mira: ${SOURCE_LABEL[aim.source]}${act.aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
       }
       raf = requestAnimationFrame(frame)
     }
@@ -240,6 +231,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     return () => {
       cancelAnimationFrame(raf)
       unsub()
+      unsubItems()
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerdown", onDown)
       window.removeEventListener("pointerup", onUp)
@@ -248,7 +240,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       window.removeEventListener("keydown", onKey)
       window.removeEventListener("keyup", readCaps)
       window.removeEventListener("resize", fit)
-      engine.setGame({ gameMode: false, moveLock: false, aimFace: null, backpedal: 1 })
+      engine.setGame({ gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1 })
       engine.setBounds(null)
       if (camX) engine.shift(camX)
       if (worldRef.current) worldRef.current.style.transform = ""
@@ -323,4 +315,135 @@ function TouchAimStick({ engine, aimRef }: { engine: ChickenEngine; aimRef: Reac
       </div>
     </div>
   )
+}
+
+// ---------- drawing (canvas, screen pixels) ----------
+type Ctx = CanvasRenderingContext2D
+
+// flat item art, pointing right with the grip at (0, 0)
+function drawItemShape(ctx: Ctx, item: ItemId, s: number) {
+  ctx.save()
+  ctx.scale(s, s)
+  if (item === "pistol") {
+    ctx.fillStyle = "#2b2f38"
+    ctx.beginPath(); ctx.moveTo(2, -1); ctx.lineTo(11, -1); ctx.lineTo(9, 12); ctx.lineTo(1, 12); ctx.closePath(); ctx.fill()
+    ctx.strokeStyle = "#2b2f38"; ctx.lineWidth = 1.6
+    ctx.beginPath(); ctx.moveTo(11, 0); ctx.quadraticCurveTo(16, 1, 15, 6); ctx.lineTo(11, 6); ctx.stroke()
+    ctx.fillStyle = "#566072"; ctx.fillRect(-2, -8, 32, 8)
+    ctx.fillStyle = "#7d8899"; ctx.fillRect(-2, -8, 32, 2.5)
+    ctx.fillStyle = "#1c1f25"; ctx.fillRect(28, -6.5, 4, 5)
+  }
+  ctx.restore()
+}
+
+function drawHeld(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, ang: number, scale: number) {
+  const h = combat.inventory[combat.current]
+  const sw = combat.swing
+  ctx.save()
+  ctx.translate(origin.x, origin.y)
+  if (sw) {
+    // the swing: a fan in front of her
+    const k = 1 - sw.t / 0.2
+    ctx.fillStyle = sw.wing ? `rgba(255,236,179,${0.35 * k})` : `rgba(255,209,102,${0.4 * k})`
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle + sw.arc / 2); ctx.closePath(); ctx.fill()
+    ctx.strokeStyle = `rgba(255,255,255,${0.7 * k})`; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(0, 0, sw.range, sw.angle - sw.arc / 2, sw.angle - sw.arc / 2 + sw.arc * (sw.t / 0.2)); ctx.stroke()
+  }
+  if (h) {
+    // during a swing the item sweeps across the arc
+    const a = sw && !sw.wing ? sw.angle - sw.arc / 2 + sw.arc * Math.min(1, sw.t / 0.2) : ang
+    ctx.rotate(a)
+    if (Math.cos(a) < 0) ctx.scale(1, -1)
+    ctx.translate(14 * scale - combat.kick * scale, 0)
+    drawItemShape(ctx, h.item, 1.7 * scale)
+  }
+  ctx.restore()
+}
+
+function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
+  const X = (x: number) => x - camX
+  const t = performance.now() / 1000
+  const groundY = combat.targets[0]?.y ?? window.innerHeight - 30
+  combat.racks.forEach(r => {
+    const x = X(r.x)
+    ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
+    ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
+    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText("ARMAS", x, groundY - 62)
+  })
+  combat.pickups.forEach(p => {
+    const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3
+    ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
+    ctx.save(); ctx.translate(x - 14, y); drawItemShape(ctx, p.owned.item, 1.2); ctx.restore()
+  })
+  combat.thrown.forEach(o => {
+    ctx.save(); ctx.translate(X(o.x), o.y); ctx.rotate(o.angle); ctx.translate(-14, 0); drawItemShape(ctx, o.owned.item, 1.2); ctx.restore()
+  })
+  combat.targets.forEach(g => {
+    const x = X(g.x)
+    ctx.save()
+    ctx.translate(x, g.y)
+    if (g.deadT > 0) { ctx.globalAlpha = Math.min(1, g.deadT); ctx.rotate(Math.sign(g.wobble || 1) * Math.PI / 2 * Math.min(1, (2.5 - g.deadT) * 4)) }
+    else ctx.rotate(g.wobble)
+    ctx.fillStyle = "#5b4630"; ctx.fillRect(-3, -g.h * 0.35, 6, g.h * 0.35)
+    ctx.fillStyle = g.flash > 0 ? "#ffffff" : "#d9cfb8"
+    ctx.beginPath(); ctx.roundRect(-g.w / 2, -g.h, g.w, g.h * 0.68, 14); ctx.fill()
+    ;[17, 11, 5].forEach((r, i) => { ctx.fillStyle = g.flash > 0 ? "#ffffff" : i % 2 ? "#f4f1e8" : "#d6453d"; ctx.beginPath(); ctx.arc(0, -g.h * 0.68, r, 0, Math.PI * 2); ctx.fill() })
+    ctx.restore()
+    if (g.deadT <= 0 && g.hp < g.maxHp) {
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x - 24, g.y - g.h - 14, 48, 5)
+      ctx.fillStyle = g.hp > 50 ? "#7bd88f" : g.hp > 25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x - 24, g.y - g.h - 14, 48 * Math.max(0, g.hp / g.maxHp), 5)
+    }
+  })
+  combat.bullets.forEach(b => {
+    const len = Math.hypot(b.vx, b.vy) || 1
+    ctx.strokeStyle = "rgba(255,230,140,0.9)"; ctx.lineWidth = b.size; ctx.lineCap = "round"
+    ctx.beginPath(); ctx.moveTo(X(b.x) - (b.vx / len) * 14, b.y - (b.vy / len) * 14); ctx.lineTo(X(b.x), b.y); ctx.stroke()
+  })
+  combat.sparks.forEach(s => { ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
+  ctx.globalAlpha = 1
+  ctx.font = "bold 13px ui-monospace, monospace"; ctx.textAlign = "center"
+  combat.texts.forEach(tx => { ctx.globalAlpha = Math.min(1, tx.life * 2); ctx.fillStyle = "#000"; ctx.fillText(tx.text, X(tx.x) + 1, tx.y + 1); ctx.fillStyle = tx.color; ctx.fillText(tx.text, X(tx.x), tx.y) })
+  ctx.globalAlpha = 1
+}
+
+function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number) {
+  const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
+  ctx.save()
+  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
+  ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.lineTo(rx, ry); ctx.stroke()
+  ctx.setLineDash([])
+  const color = combat.reloading ? "#8a8f98" : locked ? "#ffd166" : "#ffffff"
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2
+  if (armed) {
+    // pistol: a dot and four ticks opening with the spread
+    const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
+    ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => { ctx.beginPath(); ctx.moveTo(rx + ux * gap, ry + uy * gap); ctx.lineTo(rx + ux * (gap + 8), ry + uy * (gap + 8)); ctx.stroke() })
+    ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill()
+  } else {
+    ctx.beginPath(); ctx.arc(rx, ry, 8, 0, Math.PI * 2); ctx.stroke()
+  }
+  if (combat.reloading) {
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(rx, ry, 18, -Math.PI / 2, -Math.PI / 2 + combat.reloading * Math.PI * 2); ctx.stroke()
+  }
+  if (combat.throwCharge > 0 && combat.inventory[combat.current]) {
+    ctx.strokeStyle = "#7bdff2"; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 8, -Math.PI / 2, -Math.PI / 2 + combat.throwCharge * Math.PI * 2); ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawInventory(ctx: Ctx, combat: Combat) {
+  const size = 30, gap = 4, w = SLOTS * size + (SLOTS - 1) * gap
+  const x0 = (window.innerWidth - w) / 2, y = 100
+  ctx.save()
+  ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "left"
+  for (let i = 0; i < SLOTS; i++) {
+    const x = x0 + i * (size + gap), o = combat.inventory[i], on = i === combat.current
+    ctx.fillStyle = on ? "rgba(255,209,102,0.22)" : "rgba(0,0,0,0.35)"; ctx.fillRect(x, y, size, size)
+    ctx.strokeStyle = on ? "#ffd166" : "rgba(255,255,255,0.18)"; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1)
+    if (o) { ctx.save(); ctx.translate(x + 7, y + 14); drawItemShape(ctx, o.item, 0.55); ctx.restore() }
+    ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10)
+  }
+  ctx.restore()
 }

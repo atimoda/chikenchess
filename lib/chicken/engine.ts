@@ -13,7 +13,7 @@ import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readG
 
 export type ChickenState = { x: number; y: number; angle: number; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
-export type ChickenGame = { gameMode?: boolean; moveLock?: boolean; aimFace?: number | null; backpedal?: number }
+export type ChickenGame = { gameMode?: boolean; moveLock?: boolean; aimFace?: number | null; backpedal?: number; speedMult?: number }
 export type ChickenEngine = {
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
@@ -24,6 +24,8 @@ export type ChickenEngine = {
   // left and right walls in screen pixels; null = the screen edges
   setBounds: (bounds: { lo: number; hi: number } | null) => void
   setGame: (game: ChickenGame) => void
+  // a push (px/s), e.g. a weapon's recoil; only while she is in the air
+  impulse: (vx: number, vy: number) => void
   destroy: () => void
 }
 
@@ -204,7 +206,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- game hooks ----------
   let bounds: { lo: number; hi: number } | null = null
-  const game: Required<ChickenGame> = { gameMode: false, moveLock: false, aimFace: null, backpedal: 1 }
+  const game: Required<ChickenGame> = { gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1 }
   const wallLo = () => bounds ? bounds.lo : 0, wallHi = () => bounds ? bounds.hi : W
 
   // ---------- simulation state ----------
@@ -303,6 +305,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         target = dir * R.walkSpeed * mult
         // aiming behind her while walking: she walks backwards, slower
         if (game.aimFace && dir !== 0 && dir !== game.aimFace) target *= game.backpedal
+        target *= game.speedMult
         if (runIntent && S.boostT > 0) target += dir * R.runBoost * (S.boostT / Math.max(0.01, R.runBoostTime))
         // the jump's sideways kick lasts until she lands, instead of fading into the air speed
         if (!S.grounded) target += S.airBoost || 0
@@ -957,6 +960,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     setBounds(next) { bounds = next },
     setGame(next) { Object.assign(game, next) },
+    impulse(vx, vy) {
+      if (S.grounded || S.cl || S.held) return
+      S.vx += vx; S.vy += vy
+    },
     destroy() {
       cancelAnimationFrame(raf)
       unsubscribe()
