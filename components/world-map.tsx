@@ -969,6 +969,29 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [isMobile, setIsMobile] = useState(false)
   const [isIntro, setIsIntro] = useState(true)
 
+  // phones and tablets: the globe is a one-screen app, the page itself never scrolls (dragging a button used to move it)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px), (pointer: coarse)')
+    const html = document.documentElement.style, body = document.body.style
+    const saved = { hOver: html.overflow, hOb: html.overscrollBehavior, bOver: body.overflow, bOb: body.overscrollBehavior, bPos: body.position, bInset: body.inset, bW: body.width }
+    const apply = () => {
+      if (mq.matches) {
+        html.overflow = 'hidden'; html.overscrollBehavior = 'none'
+        body.overflow = 'hidden'; body.overscrollBehavior = 'none'; body.position = 'fixed'; body.inset = '0'; body.width = '100%'
+      } else {
+        html.overflow = saved.hOver; html.overscrollBehavior = saved.hOb
+        body.overflow = saved.bOver; body.overscrollBehavior = saved.bOb; body.position = saved.bPos; body.inset = saved.bInset; body.width = saved.bW
+      }
+    }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => {
+      mq.removeEventListener('change', apply)
+      html.overflow = saved.hOver; html.overscrollBehavior = saved.hOb
+      body.overflow = saved.bOver; body.overscrollBehavior = saved.bOb; body.position = saved.bPos; body.inset = saved.bInset; body.width = saved.bW
+    }
+  }, [])
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
@@ -1055,7 +1078,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden flex flex-col" style={{ background: 'radial-gradient(ellipse at 18% 30%, #22243d 0%, transparent 52%), radial-gradient(ellipse at 82% 62%, #142d36 0%, transparent 48%), radial-gradient(ellipse at 56% 90%, #2b1e32 0%, transparent 50%), #080b14' }}>
+    <div className="relative w-full h-[100dvh] overflow-hidden flex flex-col" style={{ background: 'radial-gradient(ellipse at 18% 30%, #22243d 0%, transparent 52%), radial-gradient(ellipse at 82% 62%, #142d36 0%, transparent 48%), radial-gradient(ellipse at 56% 90%, #2b1e32 0%, transparent 50%), #080b14' }}>
       <style jsx global>{`
         @keyframes drawLine {
           from { stroke-dashoffset: 4000; }
@@ -1252,8 +1275,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           className="flex items-center gap-4 pointer-events-none z-50 transition-all duration-1000 ease-out"
           style={{
             position: "absolute",
-            top: logoPhase === 'header' ? "24px" : "-100px",
-            left: "32px",
+            top: logoPhase === 'header' ? (isMobile ? "16px" : "24px") : "-100px",
+            left: isMobile ? "12px" : "32px",
             opacity: logoPhase === 'header' ? 1 : 0,
           }}
         >
@@ -1274,7 +1297,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           </div>
         </div>
 
-        <div className="absolute top-6 right-6 flex items-center gap-3 pointer-events-auto text-xs font-mono">
+        <div className="absolute top-3 right-3 md:top-6 md:right-6 flex items-center gap-1.5 md:gap-3 pointer-events-auto text-xs font-mono">
           <button
             onClick={(e) => {
                 e.preventDefault()
@@ -1381,7 +1404,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
         {/* Bottom Right Info & Controls */}
         <div 
           data-chicken-platforms
-          className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
+          className="fixed bottom-3 right-3 md:bottom-4 md:right-4 z-50 flex max-w-[calc(100vw-1.5rem)] md:max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-1.5 md:gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
           {/* touch screens: show / hide the chicken's on-screen controls, left of Friends */}
           {!onOnlineMatch && <ChickenTouchToggle active={globeTouch} onToggle={toggleGlobeTouch} />}

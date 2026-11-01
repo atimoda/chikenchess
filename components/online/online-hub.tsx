@@ -1029,7 +1029,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
 
   return <>
     {showLaunchers && (
-      <div className="flex gap-2">
+      <div className="flex gap-1.5 md:gap-2">
         {ownMember && room && (
           <Button variant="outline" className={styles.mapButton} onClick={() => { setOpen(false); setLobbyOpen(true) }}>
             <DoorOpen className="size-3.5" />Lobby
