@@ -1,5 +1,7 @@
-// Movement, animation and sound tuning for the player chicken: the "Leve" class saved in the
+// Default movement, animation and sound tuning for the player chicken: the "Leve" class saved in the
 // "Pátio da Caipira" prototype (2026-10-29), plus the prototype defaults for settings added after it.
+// The game reads the central configuration (config.ts), saved in the Pátio da Galinha (/patio); these
+// values are its fallback and fill any setting the saved version lacks.
 // Distances are in screen pixels at full size; the engine scales the ones in CHICKEN_PX_PARAMS on small screens.
 // sfx_* pick the cluck of each movement: '' none, 'all' any enabled type, or one type.
 export const CHICKEN_PARAMS = {
@@ -89,6 +91,8 @@ export const CHICKEN_PARAMS = {
   // Sorteio do cacarejo
   pitchJitter: 4,
   volJitter: 0,
+  byType: false,
+  avoidRepeat: true,
   // Som de cada movimento
   sfx_runStart: 'all',
   sfx_jump: 'all',

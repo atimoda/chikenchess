@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { ChevronsUp, Egg, Footprints } from "lucide-react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
+import { refreshChickenConfig } from "@/lib/chicken/config"
 import { loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
@@ -42,6 +43,9 @@ export function ChickenLayer({ dropIn = true }: { dropIn?: boolean }) {
     setTouchMode(loadChickenControls().touch)
     return subscribeChickenControls(c => setTouchMode(c.touch))
   }, [])
+
+  // the central configuration: cached copy right away, the saved version as soon as it arrives
+  useEffect(() => { void refreshChickenConfig() }, [])
 
   useEffect(() => {
     if (!hostRef.current) return
