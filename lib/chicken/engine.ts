@@ -335,7 +335,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (!S.grounded) rate *= R.airControl
       S.vx = approach(S.vx, target, rate * dt)
       if (!S.grounded && D) { const cap = R.walkSpeed * (RUN ? R.runMultiplier : 1) * R.airSpeed * R.fallSideSpeed + Math.abs(S.airBoost || 0); S.vx = clamp(S.vx, -cap, cap) }
-      if (dir !== 0 && (!brooding || broodWalking)) S.face = dir
+      // brooding keeps the side she faced when she sat down, even walking the other way
+      if (dir !== 0 && !brooding) S.face = dir
       if (game.aimFace && !brooding && !S.sliding) S.face = game.aimFace
     }
 
