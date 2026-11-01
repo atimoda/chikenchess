@@ -53,9 +53,10 @@ const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
 }
 
-export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null> }) {
+// groundHeight: how high the ground reaches (raised on a phone held upright): the scene sits on top of it
+export function ParquinhoWorld({ screens, worldRef, groundHeight = 30 }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number }) {
   return (
-    <div ref={worldRef} className="pointer-events-none absolute inset-y-0 left-0 will-change-transform" style={{ width: `${screens * 100}vw` }}>
+    <div ref={worldRef} className="pointer-events-none absolute left-0 top-0 will-change-transform" style={{ width: `${screens * 100}vw`, bottom: groundHeight - 30 }}>
       {Array.from({ length: screens }, (_, s) => (
         <div key={`m${s}`} className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: `${s * 100}vw` }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1} <span style={{ color: ZONES[s % ZONES.length].color, opacity: 0.6 }}>· {zoneLabel(ZONES[s % ZONES.length])}</span></span>
@@ -71,12 +72,14 @@ export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRe
 }
 
 
-export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null> }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
   const touchAim = useRef<Stick | null>(null)
+  // what the on-screen grab button offers: '' hidden, 'take' an item to pick up, 'equip' one she already carries
+  const [grabOffer, setGrabOffer] = useState<"" | "take" | "equip">("")
   const [controls, setControls] = useState<ChickenControls | null>(null)
   useEffect(() => {
     setControls(loadChickenControls())
@@ -148,7 +151,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
-    let placed = false
+    let placed = false, groundAt = 0, offerShown = ""
     const place = (viewW: number, groundY: number) => {
       // the creative mode: a row of racks with every weapon on the first screen, targets further in
       WEAPON_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id))
@@ -174,7 +177,16 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const S = settingsRef.current
       const st = engine.getState()
       const viewW = st.width, worldW = viewW * S.screens
-      if (!placed) place(viewW, st.groundY)
+      if (!placed) { place(viewW, st.groundY); groundAt = st.groundY }
+      // the ground moved (phone turned upright or back): what stands on it moves with it
+      if (st.groundY !== groundAt) {
+        const dy = st.groundY - groundAt
+        combat.targets.forEach(t => { if (Math.abs(t.y - groundAt) < 2 || t.kind === "button") t.y += dy })
+        combat.pickups.forEach(pk => { if (Math.abs(pk.y - groundAt) < 2) pk.y += dy })
+        groundAt = st.groundY
+      }
+      const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : ""
+      if (offer !== offerShown) { offerShown = offer; setGrabOffer(offer) }
       const shelf = shelfTop()
       if (shelf !== undefined) combat.racks.forEach(r => { if (r.y !== undefined) r.y = shelf })
 
@@ -279,7 +291,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       drawWorld(ctx, combat, camX)
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
-      // the item itself is drawn inside her rig, in front of her body and behind the wing; in a swing the wing
+      // the item itself is drawn inside her rig, in front of her body and of the wing; in a swing the wing
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.inventory[combat.current], sw = combat.swing
       const art = h ? ITEM_SVG[h.item] : undefined
@@ -338,8 +350,8 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     <>
       <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
-      <div ref={hudRef} className="pointer-events-none absolute bottom-10 left-3 z-[120] font-mono text-[11px] text-[#93a79a]" />
-      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} />}
+      <div ref={hudRef} className="pointer-events-none absolute left-3 z-[120] font-mono text-[11px] text-[#93a79a]" style={{ bottom: groundHeight + 10 }} />
+      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
     </>
   )
 }
@@ -347,7 +359,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
 // ---------- on-screen right stick (twin-stick): pushing aims, pushing to the edge fires ----------
 const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 
-function TouchAimStick({ engine, aimRef }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null> }) {
+function TouchAimStick({ engine, aimRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; bottom: number; grabOffer: "" | "take" | "equip" }) {
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const ref = useRef<HTMLDivElement>(null)
   const pid = useRef<number | null>(null)
@@ -365,11 +377,11 @@ function TouchAimStick({ engine, aimRef }: { engine: ChickenEngine; aimRef: Reac
   }
   const release = () => { pid.current = null; setKnob({ x: 0, y: 0 }); aimRef.current = null; setFire(false) }
   useEffect(() => () => { aimRef.current = null; if (firing.current) engine.setVirtual("fire", false) }, [engine, aimRef])
-  const button = (label: string, action: ChickenAction) => (
+  const button = (label: string, action: ChickenAction, tone = "border-white/30 bg-white/10 text-white/80") => (
     <button
       type="button"
       aria-label={label}
-      className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/30 bg-white/10 font-mono text-[9px] uppercase text-white/80 active:bg-white/35"
+      className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase active:bg-white/35 ${tone}`}
       style={{ touchAction: "none" }}
       onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); engine.setVirtual(action, true) }}
       onPointerUp={() => engine.setVirtual(action, false)}
@@ -381,10 +393,12 @@ function TouchAimStick({ engine, aimRef }: { engine: ChickenEngine; aimRef: Reac
   )
   return (
     <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
-      <div className="absolute flex items-center gap-3" style={{ right: 20, bottom: STICK_BOTTOM, height: STICK }}>
+      <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
+        {/* standing on an item: grab it (blue) or equip the one she already carries (grey) */}
+        {grabOffer && button(grabOffer === "take" ? "Pegar" : "Equipar", "grab", grabOffer === "take" ? "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white" : "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white")}
         <div className="flex flex-col gap-2">
-          {button("Golpe", "melee")}
-          {button("Jogar", "throw")}
+          {button("Punch", "melee")}
+          {button("Throw", "throw")}
         </div>
         <div
           ref={ref}

@@ -5,7 +5,7 @@
 // (admin account only) saves it for every screen that draws the chicken.
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Crosshair, Gamepad2, SlidersHorizontal, Swords, X } from "lucide-react"
+import { ArrowLeft, Crosshair, Gamepad2, Maximize, Minimize, SlidersHorizontal, Swords, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
-import { ChickenGround, ChickenLayer } from "./chicken-layer"
+import { CHICKEN_GROUND_H, ChickenGround, ChickenLayer, STICK, useChickenTouch, usePortrait } from "./chicken-layer"
 import { ChickenPortalArrival } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
@@ -51,8 +51,24 @@ export function ChickenPatio() {
   // same first render on the server and in the browser; the cached and saved versions come in the effect
   const [saved, setSaved] = useState<SavedChickenConfig>(() => ({ config: defaultChickenConfig(), revision: 0, updatedAt: null }))
   const [draft, setDraft] = useState<ChickenConfig>(defaultChickenConfig)
-  const [panelOpen, setPanelOpen] = useState(true)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [controlsOpen, setControlsOpen] = useState(false)
+  // a phone held upright: the whole scene moves up and the touch controls get the ground below it to themselves
+  const showTouch = useChickenTouch(), portrait = usePortrait()
+  const lifted = showTouch && portrait
+  const controlsBottom = lifted ? 16 : undefined
+  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : CHICKEN_GROUND_H
+  // tela cheia: segue o estado real do navegador (Esc também sai)
+  const [fullscreen, setFullscreen] = useState(false)
+  useEffect(() => {
+    const on = () => setFullscreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", on)
+    return () => document.removeEventListener("fullscreenchange", on)
+  }, [])
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    else void document.documentElement.requestFullscreen?.().catch(() => {})
+  }
   const [vestOpen, setVestOpen] = useState(false)
   const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -142,24 +158,24 @@ export function ChickenPatio() {
         <button type="button" aria-label="Controles da galinha" title="Controles da galinha" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Vestiário" aria-pressed={vestOpen} title="Vestiário" onClick={() => setVestOpen(v => !v)} className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen ? "border-primary" : "border-primary/50")}>
-          <ChickenHeadIcon look={draft.look} />
-        </button>
         <button type="button" aria-label="Ajustes da galinha" aria-pressed={panelOpen} title="Ajustes da galinha" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
         </button>
+        <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </button>
+        <button type="button" aria-label="Vestiário" aria-pressed={vestOpen} title="Vestiário" onClick={() => setVestOpen(v => !v)} className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen ? "border-primary" : "border-primary/50")}>
+          <ChickenHeadIcon look={draft.look} />
+        </button>
       </header>
 
-      <p className="pointer-events-none absolute left-1/2 top-16 z-10 w-full -translate-x-1/2 px-4 text-center font-mono text-xs text-[#93a79a]">
-        A/D andar · Shift correr · S agachar · Ctrl chocar · Espaço pular · mouse ou setas miram · clique/X atira · clique direito/Z golpe · V arremessa · Q/1–9 trocam o item · E pega (troca com o da mão) · chocar com item trava a mira
-      </p>
 
-      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} />
+      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} groundHeight={groundHeight} />
 
-      <ChickenGround />
-      <ChickenLayer dropIn={false} onEngine={setEngine} />
+      <ChickenGround height={groundHeight} />
+      <ChickenLayer dropIn={false} onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortalArrival engine={engine} />
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
