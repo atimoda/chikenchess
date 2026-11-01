@@ -172,6 +172,10 @@ export function ChickenPatio() {
           <PqRange label="Andar de costas" unit="%" min={20} max={100} step={5} value={Math.round(pq.backpedal * 100)} onChange={v => setPqValue("backpedal", v / 100)} hint="Velocidade ao andar mirando para trás" />
           <PqRange label="Mouse parado devolve a mira" unit="s" min={0} max={5} step={0.25} value={pq.mouseIdle} onChange={v => setPqValue("mouseIdle", v)} />
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
+          <PqRange label="Volume das armas" unit="%" min={0} max={100} step={5} value={Math.round(pq.weaponVolume * 100)} onChange={v => setPqValue("weaponVolume", v / 100)} />
+          <PqRange label="Volume dos instrumentos" unit="%" min={0} max={100} step={5} value={Math.round(pq.noteVolume * 100)} onChange={v => setPqValue("noteVolume", v / 100)} hint="Notas e as respostas dos inimigos" />
+          <PqRange label="Volume do ambiente" unit="%" min={0} max={100} step={5} value={Math.round(pq.ambienceVolume * 100)} onChange={v => setPqValue("ambienceVolume", v / 100)} hint="Percussão e drone de cada zona (0 desliga)" />
+          <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
           <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
         </FloatingPanel>
       )}

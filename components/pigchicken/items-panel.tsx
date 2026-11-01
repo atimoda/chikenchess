@@ -1,21 +1,23 @@
 "use client"
 
-// Popup with every number of the PigChicKen items (weapons now, instruments later), one item at a time
+// Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
 // picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { DEFAULT_ITEMS, ITEM_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, loadItems, saveItems, subscribeItems, type FireMode, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
+import { ARPS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, WEAPON_IDS, loadItems, saveItems, subscribeItems, type Arp, type FireMode, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
+import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { cn } from "@/lib/utils"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "semi", label: "Semi (um por toque)" },
   { value: "auto", label: "Automático" },
   { value: "burst", label: "Rajada" },
+  { value: "charge", label: "Carga (segura e solta)" },
 ]
 
 // what each item uses; the wing has no ammo, projectile or throw
-const HIDDEN: Partial<Record<ItemId, string[]>> = { wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho"] }
+const HIDDEN: Partial<Record<ItemId, string[]>> = { wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão"] }
 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
@@ -35,15 +37,17 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   return (
     <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        <select aria-label="Item" value={sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
-          {ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}
+        <select aria-label="Item" value={sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+          <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
+          <option value="wing">{items.wing.name}</option>
         </select>
         <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do código" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <p className="px-4 pt-3 text-[10px] text-[#93a79a]">Família: {it.family}. Vale na hora no Parquinho e fica salvo neste navegador. Duplo clique numa barra volta o valor do código.</p>
-        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g)).map(g => (
+        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Música" || it.instrument)).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a] hover:text-white">{g}</summary>
             <div className="grid gap-3 px-4 pb-4">
@@ -56,7 +60,35 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     </select>
                   </label>
                   <label className="flex items-center justify-between gap-3"><span>Recarga automática</span><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><span>Recarrega um tiro por vez</span><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><span>Tiro instantâneo</span><input type="checkbox" checked={it.hitscan} onChange={e => { const v = e.target.checked; update(d => { d.hitscan = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Atira durante o slide</span><input type="checkbox" checked={it.slideFire} onChange={e => { const v = e.target.checked; update(d => { d.slideFire = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                </>
+              )}
+              {g === "Música" && (
+                <>
+                  <label className="flex items-center justify-between gap-3">
+                    <span>Som</span>
+                    <select value={it.voice} onChange={e => { const v = e.target.value as VoiceId; update(d => { d.voice = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                      {(Object.keys(VOICE_LABELS) as VoiceId[]).map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex items-center justify-between gap-3">
+                    <span>Notas de onde</span>
+                    <select value={it.pitchSet} onChange={e => { const v = e.target.value as ItemDef["pitchSet"]; update(d => { d.pitchSet = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                      <option value="chord">Do acorde da hora</option>
+                      <option value="scale">Da escala da zona</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center justify-between gap-3">
+                    <span>Arpejador</span>
+                    <select value={it.arp} onChange={e => { const v = e.target.value as Arp; update(d => { d.arp = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                      {ARPS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex items-center justify-between gap-3"><span>No ritmo (quantizar)</span><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><span>Nota sustentada em feixe</span><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><span>Carga em glissando</span><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                 </>
               )}
               {ITEM_PARAM_META.filter(m => m.group === g).map(m => {
@@ -67,7 +99,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     <div className="relative h-9 overflow-hidden rounded-md bg-[#22302a]" onDoubleClick={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })}>
                       <div className="absolute inset-y-0 left-0 bg-primary/50" style={{ width: `${fill}%` }} />
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-2 px-3 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)]">
-                        <span className="truncate">{m.label}</span>
+                        <span className="truncate">{it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : m.label}</span>
                         <output className={cn("shrink-0 font-bold tabular-nums", changed && "text-amber-300")}>{v}{m.unit ? ` ${m.unit}` : ""}</output>
                       </div>
                       <input type="range" aria-label={m.label} min={m.min} max={m.max} step={m.step} value={v} onChange={e => { const n = Number(e.target.value); update(d => { (d as Record<string, unknown>)[m.key] = n }) }} onPointerUp={e => e.currentTarget.blur()} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
