@@ -1,17 +1,17 @@
 "use client"
 
 // Electric portal on the globe's ground: a ring of blue lightning standing in the right corner of the
-// ground strip, to the left of the footer buttons. When the player chicken walks (jumps, flies or is
-// dropped) into it, it flares, zaps and the game goes to the Pátio (/patio). The Pátio shows a short
+// ground strip, half transparent, rising behind the footer buttons. When the player chicken walks (jumps,
+// flies or is dropped) into it, it flares, plays a soft sound and the game goes to the Pátio (/patio). The Pátio shows a short
 // arrival burst around her (ChickenPortalArrival).
-import { useEffect, useRef, useState, type RefObject } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { CHICKEN_GROUND_H } from "./chicken-layer"
 
 const ARRIVAL_KEY = "chickenchess:portal-arrival"
 const PAD = 34 // room around the ring for the glow, arcs and sparks
-const GAP = 14 // space between the portal and the footer buttons
+const OPACITY = 0.5 // the ring is half transparent
 const ENTER_MS = 750 // from the touch to the navigation
 
 type Strand = { pts: { a: number; r: number }[]; w: number; alpha: number }
@@ -38,63 +38,44 @@ function noiseBuffer(a: AudioContext, seconds: number) {
   return b
 }
 
-// the zap of touching the ring and the whoosh of being pulled in
+// a soft, quiet sound: a gentle airy swell with a faint sparkle and a soft chime (no harsh zap)
 export function playPortalSound(kind: "enter" | "arrive") {
   const a = audio()
   if (!a) return
   const t = a.currentTime + 0.01
-  const out = a.createGain(); out.gain.value = 0.55; out.connect(a.destination)
+  const out = a.createGain(); out.gain.value = 0.16; out.connect(a.destination)
   const env = (g: GainNode, at: number, peak: number, attack: number, decay: number) => {
     g.gain.setValueAtTime(0.0001, at)
     g.gain.exponentialRampToValueAtTime(peak, at + attack)
     g.gain.exponentialRampToValueAtTime(0.0001, at + attack + decay)
   }
-  const noise = noiseBuffer(a, 1.2)
+  const noise = noiseBuffer(a, 1.6)
 
-  if (kind === "enter") {
-    // electric crackle: short bursts of band-passed noise
-    for (let i = 0; i < 9; i++) {
-      const at = t + Math.random() * 0.45
-      const src = a.createBufferSource(); src.buffer = noise
-      const f = a.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 2500 + Math.random() * 4500; f.Q.value = 2
-      const g = a.createGain(); env(g, at, 0.35 + Math.random() * 0.3, 0.002, 0.03 + Math.random() * 0.05)
-      src.connect(f); f.connect(g); g.connect(out); src.start(at, Math.random() * 0.5, 0.12)
-    }
-    // the zap: a falling noise sweep
-    {
-      const src = a.createBufferSource(); src.buffer = noise
-      const f = a.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.4
-      f.frequency.setValueAtTime(7000, t); f.frequency.exponentialRampToValueAtTime(500, t + 0.5)
-      const g = a.createGain(); env(g, t, 0.5, 0.004, 0.5)
-      src.connect(f); f.connect(g); g.connect(out); src.start(t)
-    }
-    // the pull: a buzzing saw rising into the portal
-    {
-      const o = a.createOscillator(); o.type = "sawtooth"
-      o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(1400, t + 0.7)
-      const lfo = a.createOscillator(); lfo.frequency.value = 38
-      const lfoGain = a.createGain(); lfoGain.gain.value = 30
-      lfo.connect(lfoGain); lfoGain.connect(o.frequency)
-      const f = a.createBiquadFilter(); f.type = "lowpass"; f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(5000, t + 0.7)
-      const g = a.createGain(); env(g, t, 0.22, 0.12, 0.65)
-      o.connect(f); f.connect(g); g.connect(out); o.start(t); lfo.start(t); o.stop(t + 0.9); lfo.stop(t + 0.9)
-    }
-  }
-  // shimmer (both): a bright chord that rings out
-  const base = kind === "enter" ? 660 : 880
-  ;[1, 1.5, 2, 3].forEach((m, i) => {
-    const o = a.createOscillator(); o.type = "sine"; o.frequency.value = base * m
-    const g = a.createGain(); env(g, t + (kind === "enter" ? 0.25 : 0) + i * 0.03, 0.12 / (i + 1), 0.02, kind === "enter" ? 0.9 : 1.1)
-    o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.6)
-  })
-  if (kind === "arrive") {
+  // airy whoosh: low-passed noise that swells and fades (rising into the portal, opening on arrival)
+  {
     const src = a.createBufferSource(); src.buffer = noise
-    const f = a.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.2
-    f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(6000, t + 0.4)
-    const g = a.createGain(); env(g, t, 0.35, 0.01, 0.45)
-    src.connect(f); f.connect(g); g.connect(out); src.start(t)
+    const f = a.createBiquadFilter(); f.type = "lowpass"; f.Q.value = 0.7
+    const [from, to] = kind === "enter" ? [400, 2200] : [2200, 500]
+    f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + 0.7)
+    const g = a.createGain(); env(g, t, 0.35, 0.25, 0.6)
+    src.connect(f); f.connect(g); g.connect(out); src.start(t); src.stop(t + 1.2)
   }
-  window.setTimeout(() => out.disconnect(), 2000)
+  // faint sparkle: a few tiny, soft ticks
+  for (let i = 0; i < 4; i++) {
+    const at = t + 0.1 + Math.random() * 0.5
+    const src = a.createBufferSource(); src.buffer = noise
+    const f = a.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 3500 + Math.random() * 2500; f.Q.value = 6
+    const g = a.createGain(); env(g, at, 0.08, 0.004, 0.06)
+    src.connect(f); f.connect(g); g.connect(out); src.start(at, Math.random() * 0.5, 0.1)
+  }
+  // soft chime: sines with a slow attack
+  const base = kind === "enter" ? 523.25 : 659.25
+  ;[1, 1.5, 2].forEach((m, i) => {
+    const o = a.createOscillator(); o.type = "sine"; o.frequency.value = base * m
+    const g = a.createGain(); env(g, t + 0.15 + i * 0.06, 0.1 / (i + 1), 0.12, 1.1)
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.8)
+  })
+  window.setTimeout(() => out.disconnect(), 2200)
 }
 
 // ---------- drawing ----------
@@ -165,10 +146,8 @@ function drawRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numb
   ctx.restore()
 }
 
-export function ChickenPortal({ engine, anchorRef, href = "/patio", visible = true }: {
+export function ChickenPortal({ engine, href = "/patio", visible = true }: {
   engine: ChickenEngine | null
-  // the footer button row: the portal stands to its left
-  anchorRef?: RefObject<HTMLElement | null>
   href?: string
   visible?: boolean
 }) {
@@ -182,24 +161,20 @@ export function ChickenPortal({ engine, anchorRef, href = "/patio", visible = tr
 
   useEffect(() => { router.prefetch(href) }, [router, href])
 
-  // size and place: to the left of the footer buttons, standing on the ground
+  // size and place: in the right corner of the ground
   useEffect(() => {
     const place = () => {
       const vw = window.innerWidth
-      const d = vw < 768 ? 104 : 136
-      const row = anchorRef?.current?.getBoundingClientRect()
-      let right = 16
-      // the buttons stand on the ground in the corner: go to their left while that is still the right half
-      // of the screen; on narrow screens stay in the corner, rising behind them
-      if (row && row.width > 0 && row.left - GAP - d >= vw / 2) right = vw - row.left + GAP
+      const d = vw < 768 ? 135 : 177
+      // at the end of the ground, rising behind the footer buttons; from 768 px, just left of the zoom
+      // buttons' column (bottom-24 right-4, 36 px wide) so it does not cover them
+      const right = vw < 768 ? 6 : 58
       setLayout(l => (l && l.d === d && l.right === right ? l : { d, right }))
     }
     place()
     window.addEventListener("resize", place)
-    const ro = typeof ResizeObserver !== "undefined" && anchorRef?.current ? new ResizeObserver(place) : null
-    if (ro && anchorRef?.current) ro.observe(anchorRef.current)
-    return () => { window.removeEventListener("resize", place); ro?.disconnect() }
-  }, [anchorRef])
+    return () => window.removeEventListener("resize", place)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -305,7 +280,7 @@ export function ChickenPortal({ engine, anchorRef, href = "/patio", visible = tr
         aria-hidden="true"
         data-chicken-portal
         className="pointer-events-none fixed z-[66] transition-opacity duration-700"
-        style={{ width: size, height: size, right: layout.right - PAD, bottom: CHICKEN_GROUND_H - 6 - PAD, opacity: visible ? 1 : 0 }}
+        style={{ width: size, height: size, right: layout.right - PAD, bottom: CHICKEN_GROUND_H - 6 - PAD, opacity: visible ? OPACITY : 0 }}
       />
       {entering && (
         <div
@@ -358,7 +333,7 @@ export function ChickenPortalArrival({ engine }: { engine: ChickenEngine | null 
       // the screen fades in from the portal's flash
       ctx.fillStyle = `rgba(3,6,30,${Math.max(0, 1 - t * 3)})`
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
-      ctx.globalAlpha = Math.max(0, 1 - t)
+      ctx.globalAlpha = OPACITY * Math.max(0, 1 - t)
       drawRing(ctx, cx, cy, r, strands, now / 400, 1.6 - t)
       ctx.globalAlpha = 1
       raf = requestAnimationFrame(frame)
