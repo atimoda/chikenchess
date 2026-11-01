@@ -5,7 +5,7 @@
 // (admin account only) saves it for every screen that draws the chicken.
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Crosshair, Gamepad2, SlidersHorizontal, Swords, X } from "lucide-react"
+import { ArrowLeft, Crosshair, Gamepad2, Maximize, Minimize, SlidersHorizontal, Swords, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -53,6 +53,17 @@ export function ChickenPatio() {
   const [draft, setDraft] = useState<ChickenConfig>(defaultChickenConfig)
   const [panelOpen, setPanelOpen] = useState(true)
   const [controlsOpen, setControlsOpen] = useState(false)
+  // tela cheia: segue o estado real do navegador (Esc também sai)
+  const [fullscreen, setFullscreen] = useState(false)
+  useEffect(() => {
+    const on = () => setFullscreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", on)
+    return () => document.removeEventListener("fullscreenchange", on)
+  }, [])
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    else void document.documentElement.requestFullscreen?.().catch(() => {})
+  }
   const [vestOpen, setVestOpen] = useState(false)
   const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -142,11 +153,14 @@ export function ChickenPatio() {
         <button type="button" aria-label="Controles da galinha" title="Controles da galinha" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Vestiário" aria-pressed={vestOpen} title="Vestiário" onClick={() => setVestOpen(v => !v)} className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen ? "border-primary" : "border-primary/50")}>
-          <ChickenHeadIcon look={draft.look} />
-        </button>
         <button type="button" aria-label="Ajustes da galinha" aria-pressed={panelOpen} title="Ajustes da galinha" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </button>
+        <button type="button" aria-label="Vestiário" aria-pressed={vestOpen} title="Vestiário" onClick={() => setVestOpen(v => !v)} className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen ? "border-primary" : "border-primary/50")}>
+          <ChickenHeadIcon look={draft.look} />
         </button>
       </header>
 
