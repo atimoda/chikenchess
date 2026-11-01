@@ -12,10 +12,11 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "semi", label: "Semi (um por toque)" },
   { value: "auto", label: "Automático" },
   { value: "burst", label: "Rajada" },
+  { value: "charge", label: "Carga (segura e solta)" },
 ]
 
 // what each item uses; the wing has no ammo, projectile or throw
-const HIDDEN: Partial<Record<ItemId, string[]>> = { wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho"] }
+const HIDDEN: Partial<Record<ItemId, string[]>> = { wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão"] }
 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
@@ -56,6 +57,8 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     </select>
                   </label>
                   <label className="flex items-center justify-between gap-3"><span>Recarga automática</span><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><span>Recarrega um tiro por vez</span><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><span>Tiro instantâneo</span><input type="checkbox" checked={it.hitscan} onChange={e => { const v = e.target.checked; update(d => { d.hitscan = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Atira durante o slide</span><input type="checkbox" checked={it.slideFire} onChange={e => { const v = e.target.checked; update(d => { d.slideFire = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                 </>
               )}

@@ -4,7 +4,12 @@ import { DEFAULT_ITEMS, type ItemDef, type ItemId } from './items'
 
 export type Box = { l: number; t: number; r: number; b: number }
 export type Owned = { item: ItemId; ammo: number; durability: number }
-export type Bullet = { x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number }
+export type Bullet = {
+  x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
+  item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
+}
+export type Boom = { x: number; y: number; r: number; life: number }
+export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
 export type Target = { id: number; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number }
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
@@ -31,11 +36,12 @@ export function createCombat() {
   let items: Record<ItemId, ItemDef> = structuredClone(DEFAULT_ITEMS)
   const inv: (Owned | null)[] = Array(SLOTS).fill(null)
   let cur = 0
-  let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0
+  let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
   let aimAngle = 0
   let nextId = 1
+  const booms: Boom[] = [], tracers: Tracer[] = []
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
-  const racks: { x: number; item: ItemId; t: number }[] = []
+  const racks: { x: number; item: ItemId; t: number; label: string }[] = []
   let swing: Swing | null = null
 
   const held = () => inv[cur]
@@ -69,7 +75,7 @@ export function createCombat() {
 
   function equip(i: number) {
     if (i === cur) return
-    cur = (i + SLOTS) % SLOTS; reloadT = 0; burstLeft = 0; cooldown = Math.max(cooldown, 0.15)
+    cur = (i + SLOTS) % SLOTS; reloadT = 0; burstLeft = 0; chargeT = 0; cooldown = Math.max(cooldown, 0.15)
   }
 
   function startReload() {
@@ -78,15 +84,108 @@ export function createCombat() {
     if (d.mag > 0 && h.ammo < d.mag && reloadT <= 0) reloadT = d.reloadTime
   }
 
-  function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void) {
+  // one shot: `power` (0..1) scales speed in charge mode; pellets spread evenly across the cone
+  function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void, power = 1, ctx?: StepCtx) {
     const h = held()!, d = items[h.item]
-    const a = aimAngle + rand(-spreadDeg / 2, spreadDeg / 2) * DEG
     const mx = muzzle.x, my = muzzle.y
-    bullets.push({ x: mx, y: my, vx: Math.cos(a) * d.speed, vy: Math.sin(a) * d.speed, dist: 0, damage: d.damage, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range })
-    burst(mx, my, 3, '#fff3b0', 140, 2)
+    const n = Math.max(1, Math.round(d.pellets))
+    const speed = d.speed * power
+    const damage = d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
+    for (let i = 0; i < n; i++) {
+      const u = n === 1 ? rand(-0.5, 0.5) : i / (n - 1) - 0.5 + rand(-0.3, 0.3) / n
+      const a = aimAngle + u * spreadDeg * DEG
+      const b: Bullet = {
+        x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+        item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage, fuse: d.fuse, bounce: d.bounce,
+      }
+      // instant shots travel their whole way now and leave a tracer
+      if (d.hitscan && ctx) {
+        let guard = 0
+        while (!stepBullet(b, 1 / 240, ctx) && guard++ < 2000) { /* travel */ }
+        tracers.push({ x1: mx, y1: my, x2: b.x, y2: b.y, life: 0.12 })
+      } else bullets.push(b)
+    }
+    burst(mx, my, 3 + n, '#fff3b0', 140, 2)
     h.ammo--; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
     onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
     if (h.ammo <= 0 && d.autoReload) startReload()
+  }
+
+  function explode(x: number, y: number, r: number, damage: number) {
+    booms.push({ x, y, r, life: 0.35 })
+    burst(x, y, 26, '#ffb347', 380, 4); burst(x, y, 14, '#fff3b0', 220, 3)
+    targets.forEach(t => {
+      if (t.deadT > 0) return
+      const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
+      const dist = Math.hypot(cx - x, cy - y)
+      if (dist > r) return
+      hitTarget(t, damage * (1 - dist / r), Math.sign(t.x - x || 1) * 420 * (1 - dist / r), cx, cy)
+    })
+  }
+
+  type StepCtx = { boxes: Box[]; groundY: number }
+  const boxAt = (boxes: Box[], x: number, y: number) => boxes.find(b => x >= b.l && x <= b.r && y >= b.t && y <= b.b)
+  // moves a projectile one step; true when it is gone
+  function stepBullet(b: Bullet, dt: number, { boxes, groundY }: StepCtx, dry = false): boolean {
+    const px = b.x, py = b.y
+    b.t += dt
+    b.vy += b.drop * dt
+    b.x += b.vx * dt; b.y += b.vy * dt
+    b.dist += Math.hypot(b.x - px, b.y - py)
+    const gone = (x: number, y: number) => { if (b.explode > 0 && !dry) explode(x, y, b.explode, b.explodeDamage); return true }
+    if (b.fuse > 0 && b.t >= b.fuse) return gone(b.x, b.y)
+    if (b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
+    const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
+    // swept test against targets: points along the step's segment inside the target's box
+    for (const t of targets) {
+      if (t.deadT > 0 || b.hits.has(t.id)) continue
+      const l = t.x - t.w / 2, r = t.x + t.w / 2, top = t.y - t.h, bot = t.y
+      for (let k = 1; k <= steps; k++) {
+        const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
+        if (x >= l && x <= r && y >= top && y <= bot) {
+          if (b.explode > 0 || dry) { b.x = x; b.y = y; return gone(x, y) }
+          hitTarget(t, b.damage, Math.sign(b.vx) * 40, x, y); b.hits.add(t.id)
+          if (b.hits.size > b.pierce) return true
+          break
+        }
+      }
+    }
+    // walls and the floor: explode, bounce (with a fuse) or stop
+    for (let k = 1; k <= steps; k++) {
+      const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
+      const box = boxAt(boxes, x, y)
+      const floor = y >= groundY
+      if (!box && !floor) continue
+      if (b.fuse > 0) {
+        const fromAbove = floor || (box && py <= box.t)
+        if (fromAbove) { b.y = floor ? groundY - 1 : box!.t - 1; b.vy = -Math.abs(b.vy) * b.bounce; b.vx *= 0.7; if (Math.abs(b.vy) < 60) { b.vy = 0; b.drop = 0; b.vx *= 0.5 } }
+        else { b.x = px; b.vx = -b.vx * b.bounce }
+        if (!floor && box && !fromAbove) b.y = py
+        return false
+      }
+      b.x = x; b.y = Math.min(y, groundY)
+      if (b.explode > 0) return gone(b.x, b.y)
+      if (!dry) burst(b.x, b.y, 4, floor ? '#8a6d4b' : '#9fd3a8', 120, 2)
+      return true
+    }
+    return false
+  }
+
+  // where a shot would go now (for the reticles): its path and where it ends
+  function predict(from: { x: number; y: number }, angle: number, power: number, ctx: StepCtx) {
+    const d = def()
+    const b: Bullet = {
+      x: from.x, y: from.y, vx: Math.cos(angle) * d.speed * power, vy: Math.sin(angle) * d.speed * power, dist: 0, damage: 0, pierce: d.explodeRadius > 0 ? 0 : d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      item: d.id, t: 0, explode: 0, explodeDamage: 0, fuse: d.fuse, bounce: d.bounce,
+    }
+    // a dry run: it stops at the first target and changes nothing
+    const points: { x: number; y: number }[] = [{ x: b.x, y: b.y }]
+    for (let n = 0; n < 400; n++) {
+      const done = stepBullet(b, 1 / 60, ctx, true)
+      points.push({ x: b.x, y: b.y })
+      if (done) break
+    }
+    return { points, end: points[points.length - 1] }
   }
 
   function melee(origin: { x: number; y: number }, wing: boolean, scale: number) {
@@ -128,6 +227,9 @@ export function createCombat() {
     get swing() { return swing },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
+    get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
+    predict,
+    booms, tracers,
     bullets, thrown, targets, pickups, sparks, texts, racks,
     def,
     setItems(next: Record<ItemId, ItemDef>) {
@@ -135,7 +237,7 @@ export function createCombat() {
       inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
     },
     addTarget(x: number, y: number) { targets.push({ id: nextId++, home: x, x, y, w: 46, h: 112, hp: 100, maxHp: 100, flash: 0, wobble: 0, vx: 0, deadT: 0 }) },
-    addRack(x: number, item: ItemId) { racks.push({ x, item, t: 0 }) },
+    addRack(x: number, item: ItemId) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase() }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
       const d = def()
@@ -169,7 +271,11 @@ export function createCombat() {
       // reload
       if (reloadT > 0) {
         reloadT -= dt
-        if (reloadT <= 0) { const h = held(); if (h) h.ammo = items[h.item].mag; reloadT = 0 }
+        if (reloadT <= 0) {
+          const h = held()
+          if (h && d.shellReload) { h.ammo = Math.min(d.mag, h.ammo + 1); reloadT = h.ammo < d.mag ? d.reloadTime : 0 }
+          else { if (h) h.ammo = items[h.item].mag; reloadT = 0 }
+        }
       }
       if (input.reload) startReload()
 
@@ -178,16 +284,29 @@ export function createCombat() {
       const canFire = body.state !== 'slide' || d.slideFire
       if (!h || d.mag === 0) {
         if (input.firePressed && meleeCool <= 0) melee(origin, true, body.scale)
-      } else if (canFire && reloadT <= 0) {
+      } else if (canFire) {
         const spreadDeg = this.spread(body)
-        if (h.ammo <= 0) { if (input.firePressed) { if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
-        else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil) }
-        else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil) }
-        else {
+        const ctx = { boxes, groundY }
+        // shell by shell: firing with something loaded stops the reload
+        if (reloadT > 0 && d.shellReload && h.ammo > 0 && input.firePressed) reloadT = 0
+        if (reloadT > 0) { /* reloading */ }
+        else if (h.ammo <= 0) { if (input.firePressed) { if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
+        else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
+        else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
+        else if (d.fireMode === 'charge') {
+          // hold to charge, let go to shoot; force and precision grow with the charge
+          if (input.fire && cooldown <= 0) chargeT += dt
+          if (!input.fire && prevFire && chargeT > 0) {
+            const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
+            shoot(muzzle, spreadDeg * (1 - 0.7 * p), onRecoil, d.chargeMin + (1 - d.chargeMin) * p, ctx)
+            chargeT = 0
+          }
+        } else {
           if (input.firePressed && burstLeft <= 0 && cooldown <= 0) burstLeft = d.burst
-          if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) { shoot(muzzle, spreadDeg, onRecoil); burstLeft--; if (burstLeft <= 0) cooldown = 3 / d.rate }
+          if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) { shoot(muzzle, spreadDeg, onRecoil, 1, ctx); burstLeft--; if (burstLeft <= 0) cooldown = 3 / d.rate }
         }
       }
+      prevFire = input.fire
       if (input.melee && meleeCool <= 0) melee(origin, !h, body.scale)
 
       // throw: hold to charge, let go to throw what she holds
@@ -205,40 +324,13 @@ export function createCombat() {
         throwT = 0
       }
 
-      const inBox = (x: number, y: number) => boxes.find(b => x >= b.l && x <= b.r && y >= b.t && y <= b.b)
+      const inBox = (x: number, y: number) => boxAt(boxes, x, y)
 
-      // bullets
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        const b = bullets[i]
-        const px = b.x, py = b.y
-        b.vy += b.drop * dt
-        b.x += b.vx * dt; b.y += b.vy * dt
-        b.dist += Math.hypot(b.x - px, b.y - py)
-        let dead = b.dist > b.range || b.y > groundY
-        // swept test against targets: closest point of the step's segment to the target's box
-        for (const t of targets) {
-          if (dead || t.deadT > 0 || b.hits.has(t.id)) continue
-          const l = t.x - t.w / 2, r = t.x + t.w / 2, top = t.y - t.h, bot = t.y
-          const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
-          for (let k = 1; k <= steps; k++) {
-            const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
-            if (x >= l && x <= r && y >= top && y <= bot) {
-              hitTarget(t, b.damage, Math.sign(b.vx) * 40, x, y); b.hits.add(t.id)
-              if (b.hits.size > b.pierce) dead = true
-              break
-            }
-          }
-        }
-        if (!dead) {
-          const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 10))
-          for (let k = 1; k <= steps && !dead; k++) {
-            const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
-            if (inBox(x, y)) { dead = true; burst(x, y, 4, '#9fd3a8', 120, 2) }
-          }
-        }
-        if (b.y > groundY) burst(b.x, groundY, 3, '#8a6d4b', 100, 2)
-        if (dead) bullets.splice(i, 1)
-      }
+      // projectiles
+      const ctx = { boxes, groundY }
+      for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
+      for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
+      for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
 
       // thrown items: spin, hit once, land as a pickup
       for (let i = thrown.length - 1; i >= 0; i--) {

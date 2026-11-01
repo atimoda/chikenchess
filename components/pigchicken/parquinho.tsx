@@ -9,8 +9,8 @@ import { loadChickenControls, readStick, subscribeChickenControls, type ChickenA
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
 import { createCombat, SLOTS, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
-import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
-import { ITEM_SVG } from "@/lib/pigchicken/art"
+import { loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { useTouchControls } from "@/components/chicken/chicken-layer"
 
@@ -130,9 +130,9 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
     let placed = false
     const place = (viewW: number, groundY: number) => {
-      combat.addRack(viewW * 0.22, "pistol")
-      combat.addRack(viewW * 1.12, "pistol")
-      ;[0.5, 0.9, 1.45, 1.8].forEach(f => combat.addTarget(viewW * f, groundY))
+      // the creative mode: a row of racks with every weapon on the first screen, targets further in
+      WEAPON_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id))
+      ;[1.2, 1.5, 1.85, 2.3, 2.7, 3.2].forEach(f => combat.addTarget(viewW * f, groundY))
       placed = true
     }
     const fit = () => {
@@ -229,7 +229,13 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const muzzle = muzzleAt(ang)
       const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
       const rx = d.turnRate > 0 || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? muzzle.y + ady * dist : aim.target.y
-      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale)
+      // weapons whose reticle shows where the shot lands: the path a shot fired now would take
+      let path: { x: number; y: number }[] | null = null
+      if (armed && ["laser", "impact", "grenade", "bow"].includes(d.reticle)) {
+        const power = d.fireMode === "charge" ? d.chargeMin + (1 - d.chargeMin) * combat.fireCharge : 1
+        path = combat.predict({ x: muzzle.x + camX, y: muzzle.y }, ang, power, { boxes, groundY: st.groundY }).points.map(p => ({ x: p.x - camX, y: p.y }))
+      }
+      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path)
       drawInventory(ctx, combat)
       if (hudRef.current) {
         const h = combat.inventory[combat.current]
@@ -333,19 +339,14 @@ function TouchAimStick({ engine, aimRef }: { engine: ChickenEngine; aimRef: Reac
 type Ctx = CanvasRenderingContext2D
 
 // flat item art, pointing right with the grip at (0, 0)
-function drawItemShape(ctx: Ctx, item: ItemId, s: number) {
-  ctx.save()
-  ctx.scale(s, s)
-  if (item === "pistol") {
-    ctx.fillStyle = "#2b2f38"
-    ctx.beginPath(); ctx.moveTo(2, -1); ctx.lineTo(11, -1); ctx.lineTo(9, 12); ctx.lineTo(1, 12); ctx.closePath(); ctx.fill()
-    ctx.strokeStyle = "#2b2f38"; ctx.lineWidth = 1.6
-    ctx.beginPath(); ctx.moveTo(11, 0); ctx.quadraticCurveTo(16, 1, 15, 6); ctx.lineTo(11, 6); ctx.stroke()
-    ctx.fillStyle = "#566072"; ctx.fillRect(-2, -8, 32, 8)
-    ctx.fillStyle = "#7d8899"; ctx.fillRect(-2, -8, 32, 2.5)
-    ctx.fillStyle = "#1c1f25"; ctx.fillRect(28, -6.5, 4, 5)
-  }
-  ctx.restore()
+// an item's art fitted into maxW x maxH around the current origin (centred), or with its grip at the origin
+function drawItem(ctx: Ctx, item: ItemId, maxW: number, maxH: number, atGrip = false) {
+  const im = itemImage(item)
+  if (!im) return
+  const [x, y, w, h] = im.box
+  const k = Math.min(maxW / w, maxH / h)
+  if (atGrip) ctx.drawImage(im.img, x * k, y * k, w * k, h * k)
+  else ctx.drawImage(im.img, -w * k / 2, -h * k / 2, w * k, h * k)
 }
 
 // where the blow is now: it sweeps across its arc in sw.time, downward in front of her
@@ -376,15 +377,15 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     const x = X(r.x)
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
     ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
-    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText("ARMAS", x, groundY - 62)
+    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
   })
   combat.pickups.forEach(p => {
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3
     ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.save(); ctx.translate(x - 14, y); drawItemShape(ctx, p.owned.item, 1.2); ctx.restore()
+    ctx.save(); ctx.translate(x, y - 8); drawItem(ctx, p.owned.item, 64, 34); ctx.restore()
   })
   combat.thrown.forEach(o => {
-    ctx.save(); ctx.translate(X(o.x), o.y); ctx.rotate(o.angle); ctx.translate(-14, 0); drawItemShape(ctx, o.owned.item, 1.2); ctx.restore()
+    ctx.save(); ctx.translate(X(o.x), o.y); ctx.rotate(o.angle); drawItem(ctx, o.owned.item, 64, 34); ctx.restore()
   })
   combat.targets.forEach(g => {
     const x = X(g.x)
@@ -403,9 +404,34 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     }
   })
   combat.bullets.forEach(b => {
-    const len = Math.hypot(b.vx, b.vy) || 1
-    ctx.strokeStyle = "rgba(255,230,140,0.9)"; ctx.lineWidth = b.size; ctx.lineCap = "round"
-    ctx.beginPath(); ctx.moveTo(X(b.x) - (b.vx / len) * 14, b.y - (b.vy / len) * 14); ctx.lineTo(X(b.x), b.y); ctx.stroke()
+    const len = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / len, uy = b.vy / len, x = X(b.x)
+    ctx.lineCap = "round"
+    if (b.item === "grenade") {
+      ctx.fillStyle = "#4b5320"; ctx.beginPath(); ctx.arc(x, b.y, b.size, 0, Math.PI * 2); ctx.fill()
+      // the fuse blinks faster as it runs out
+      if (Math.sin(b.t * (6 + b.t * 10)) > 0) { ctx.fillStyle = "#ff6b5b"; ctx.beginPath(); ctx.arc(x, b.y - b.size, 2.5, 0, Math.PI * 2); ctx.fill() }
+    } else if (b.item === "launcher") {
+      ctx.strokeStyle = "rgba(255,170,80,0.8)"; ctx.lineWidth = b.size
+      ctx.beginPath(); ctx.moveTo(x - ux * 30, b.y - uy * 30); ctx.lineTo(x - ux * 8, b.y - uy * 8); ctx.stroke()
+      ctx.strokeStyle = "#d6453d"; ctx.lineWidth = b.size + 2
+      ctx.beginPath(); ctx.moveTo(x - ux * 10, b.y - uy * 10); ctx.lineTo(x, b.y); ctx.stroke()
+    } else if (b.item === "bow") {
+      ctx.strokeStyle = "#c9a46a"; ctx.lineWidth = 2
+      ctx.beginPath(); ctx.moveTo(x - ux * 30, b.y - uy * 30); ctx.lineTo(x, b.y); ctx.stroke()
+      ctx.fillStyle = "#c9ced6"; ctx.beginPath(); ctx.moveTo(x + ux * 4, b.y + uy * 4); ctx.lineTo(x - ux * 4 - uy * 4, b.y - uy * 4 + ux * 4); ctx.lineTo(x - ux * 4 + uy * 4, b.y - uy * 4 - ux * 4); ctx.fill()
+    } else {
+      ctx.strokeStyle = "rgba(255,230,140,0.9)"; ctx.lineWidth = b.size
+      ctx.beginPath(); ctx.moveTo(x - ux * 14, b.y - uy * 14); ctx.lineTo(x, b.y); ctx.stroke()
+    }
+  })
+  combat.tracers.forEach(t => {
+    ctx.strokeStyle = `rgba(255,245,200,${Math.min(1, t.life * 10)})`; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.moveTo(X(t.x1), t.y1); ctx.lineTo(X(t.x2), t.y2); ctx.stroke()
+  })
+  combat.booms.forEach(b => {
+    const k = 1 - b.life / 0.35
+    ctx.fillStyle = `rgba(255,170,70,${0.45 * (1 - k)})`; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = `rgba(255,240,200,${0.8 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * k, 0, Math.PI * 2); ctx.stroke()
   })
   combat.sparks.forEach(s => { ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
   ctx.globalAlpha = 1
@@ -414,29 +440,93 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   ctx.globalAlpha = 1
 }
 
-function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number) {
+function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null) {
   const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
-  ctx.save()
-  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
-  ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.lineTo(rx, ry); ctx.stroke()
-  ctx.setLineDash([])
+  const t = performance.now() / 1000
+  const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
+  const ang = Math.atan2(ry - origin.y, rx - origin.x)
   const color = combat.reloading ? "#8a8f98" : locked ? "#ffd166" : "#ffffff"
+  const line = (x1: number, y1: number, x2: number, y2: number) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke() }
+  const end = path ? path[path.length - 1] : null
+  ctx.save()
+  // the faint aim line (the families that draw their own path skip it)
+  if (!path && d.reticle !== "cone") {
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
+    line(origin.x, origin.y, rx, ry)
+    ctx.setLineDash([])
+  }
   ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2
-  if (armed) {
-    // pistol: a dot and four ticks opening with the spread
-    const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
-    ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => { ctx.beginPath(); ctx.moveTo(rx + ux * gap, ry + uy * gap); ctx.lineTo(rx + ux * (gap + 8), ry + uy * (gap + 8)); ctx.stroke() })
-    ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill()
-  } else {
+  if (!armed) {
     ctx.beginPath(); ctx.arc(rx, ry, 8, 0, Math.PI * 2); ctx.stroke()
+  } else if (d.reticle === "circle") {
+    // SMG: a circle that pulses and opens fast while firing
+    const r = gap + 6 + Math.sin(t * 18) * Math.min(3, gap * 0.15)
+    ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(rx, ry, 1.5, 0, Math.PI * 2); ctx.fill()
+  } else if (d.reticle === "cross") {
+    // rifle: a cross with a gap in the middle that opens with walking and firing
+    ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => line(rx + ux * (gap + 3), ry + uy * (gap + 3), rx + ux * (gap + 15), ry + uy * (gap + 15)))
+  } else if (d.reticle === "cone") {
+    // pump: the cone of the pellets, fading with distance
+    const half = (spreadDeg / 2) * Math.PI / 180, reach = Math.min(d.range, 900)
+    const grad = ctx.createRadialGradient(origin.x, origin.y, 0, origin.x, origin.y, reach)
+    grad.addColorStop(0, combat.reloading ? "rgba(138,143,152,0.8)" : "rgba(255,255,255,0.8)"); grad.addColorStop(1, "rgba(255,255,255,0)")
+    ctx.strokeStyle = grad
+    ;[-half, half].forEach(a => line(origin.x, origin.y, origin.x + Math.cos(ang + a) * reach, origin.y + Math.sin(ang + a) * reach))
+    ctx.strokeStyle = color
+    ctx.beginPath(); ctx.arc(origin.x, origin.y, Math.min(dist, reach * 0.6), ang - half, ang + half); ctx.stroke()
+  } else if (d.reticle === "laser" && end) {
+    // sniper: a thin laser from the muzzle to whatever it hits, and a circle with a cross that closes while still
+    ctx.strokeStyle = "rgba(255,80,80,0.75)"; ctx.lineWidth = 1
+    line(origin.x, origin.y, end.x, end.y)
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5
+    const r = 10 + gap
+    ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke()
+    line(rx - r - 6, ry, rx - 4, ry); line(rx + 4, ry, rx + r + 6, ry); line(rx, ry - r - 6, rx, ry - 4); line(rx, ry + 4, rx, ry + r + 6)
+    ctx.fillStyle = "#ff5050"; ctx.beginPath(); ctx.arc(end.x, end.y, 2.5, 0, Math.PI * 2); ctx.fill()
+  } else if ((d.reticle === "impact" || d.reticle === "grenade") && path && end) {
+    // launchers and grenades: the path (dotted for the grenade) and where it lands, with the blast's radius
+    ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5
+    if (d.reticle === "grenade") {
+      path.forEach((p, i) => { if (i % 3 === 0) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fill() } })
+    } else { ctx.setLineDash([3, 5]); line(origin.x, origin.y, end.x, end.y); ctx.setLineDash([]) }
+    ctx.strokeStyle = color; ctx.lineWidth = 2
+    line(end.x - 6, end.y - 6, end.x + 6, end.y + 6); line(end.x - 6, end.y + 6, end.x + 6, end.y - 6)
+    ctx.strokeStyle = "rgba(255,170,70,0.7)"; ctx.setLineDash([6, 5])
+    ctx.beginPath(); ctx.arc(end.x, end.y, d.explodeRadius || 20, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([])
+    // the fuse: a ring that empties in the fuse's time
+    if (d.fuse > 0) { ctx.strokeStyle = "#ff6b5b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(end.x, end.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, d.fuse / 6)); ctx.stroke() }
+  } else if (d.reticle === "bow" && path) {
+    // bow: a half moon that fills with the charge, and a short path that gets longer
+    const c = combat.fireCharge
+    const n = Math.max(2, Math.round(path.length * (0.25 + 0.75 * c)))
+    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4])
+    ctx.beginPath(); path.slice(0, n).forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([])
+    const r = 26 * scale + 10
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 4
+    ctx.beginPath(); ctx.arc(origin.x, origin.y, r, ang - Math.PI / 2, ang + Math.PI / 2); ctx.stroke()
+    ctx.strokeStyle = c >= 1 ? "#ffd166" : color
+    ctx.beginPath(); ctx.arc(origin.x, origin.y, r, ang - Math.PI / 2 * c, ang + Math.PI / 2 * c); ctx.stroke()
+    const tip = path[n - 1]
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2); ctx.stroke()
+  } else {
+    // pistol: a dot and four short ticks that open a little with the spread
+    ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => line(rx + ux * gap, ry + uy * gap, rx + ux * (gap + 8), ry + uy * (gap + 8)))
+    ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill()
+  }
+  // grenade charge: a ring around her filling up
+  if (armed && d.reticle === "grenade" && combat.fireCharge > 0) {
+    ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 8, -Math.PI / 2, -Math.PI / 2 + combat.fireCharge * Math.PI * 2); ctx.stroke()
   }
   if (combat.reloading) {
+    const at = end && d.reticle !== "laser" ? end : { x: rx, y: ry }
     ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(rx, ry, 18, -Math.PI / 2, -Math.PI / 2 + combat.reloading * Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(at.x, at.y, 18, -Math.PI / 2, -Math.PI / 2 + combat.reloading * Math.PI * 2); ctx.stroke()
   }
   if (combat.throwCharge > 0 && combat.inventory[combat.current]) {
     ctx.strokeStyle = "#7bdff2"; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 8, -Math.PI / 2, -Math.PI / 2 + combat.throwCharge * Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 14, -Math.PI / 2, -Math.PI / 2 + combat.throwCharge * Math.PI * 2); ctx.stroke()
   }
   ctx.restore()
 }
@@ -450,7 +540,7 @@ function drawInventory(ctx: Ctx, combat: Combat) {
     const x = x0 + i * (size + gap), o = combat.inventory[i], on = i === combat.current
     ctx.fillStyle = on ? "rgba(255,209,102,0.22)" : "rgba(0,0,0,0.35)"; ctx.fillRect(x, y, size, size)
     ctx.strokeStyle = on ? "#ffd166" : "rgba(255,255,255,0.18)"; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1)
-    if (o) { ctx.save(); ctx.translate(x + 7, y + 14); drawItemShape(ctx, o.item, 0.55); ctx.restore() }
+    if (o) { ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 2); drawItem(ctx, o.item, size - 6, size - 8); ctx.restore() }
     ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10)
   }
   ctx.restore()

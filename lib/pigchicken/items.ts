@@ -1,13 +1,16 @@
 // PigChicKen items: weapons and (later) instruments share one sheet of numbers. The Parquinho's item popup
 // edits these sheets; they are saved in this browser for now.
 
-export type FireMode = 'semi' | 'auto' | 'burst'
-export type ItemId = 'wing' | 'pistol'
+export type FireMode = 'semi' | 'auto' | 'burst' | 'charge'
+export type ItemId = 'wing' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
+// each family's reticle shows what matters for it
+export type Reticle = 'dot' | 'circle' | 'cross' | 'cone' | 'laser' | 'impact' | 'grenade' | 'bow'
 
 export type ItemDef = {
   id: ItemId
   name: string
   family: string
+  reticle: Reticle
   // firing
   fireMode: FireMode
   rate: number // shots per second
@@ -16,6 +19,9 @@ export type ItemDef = {
   reloadTime: number // s
   autoReload: boolean
   slideFire: boolean // can fire while sliding
+  shellReload: boolean // reloads one shot at a time (reloadTime each); firing stops it
+  chargeTime: number // charge mode: s to full charge (force and precision grow with it)
+  chargeMin: number // charge mode: share of the speed with no charge
   // projectile
   speed: number // px/s
   drop: number // projectile drop (gravity, px/s²); 0 = straight line
@@ -23,6 +29,12 @@ export type ItemDef = {
   pierce: number // targets it goes through
   range: number // px before it fades
   size: number // px
+  pellets: number // projectiles per shot, spread across the cone
+  hitscan: boolean // the shot arrives at once (it still stops at walls)
+  explodeRadius: number // px; 0 = no explosion
+  explodeDamage: number // at the centre, fading to the edge
+  fuse: number // s before it explodes; 0 = on impact
+  bounce: number // speed kept when bouncing off the floor (with a fuse)
   // spread (degrees)
   spreadBase: number
   spreadShot: number // added per shot
@@ -57,14 +69,77 @@ export type ItemDef = {
 }
 
 const PISTOL: ItemDef = {
-  id: 'pistol', name: 'Pistola', family: 'Pistola',
-  fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true,
-  speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3,
+  id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot',
+  fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, chargeTime: 0, chargeMin: 0.3,
+  speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
   meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, meleeTime: 0.2, durability: 40, meleePush: 260,
   throwDamage: 25, throwMin: 275, throwSpeed: 1100, throwCharge: 1,
+}
+
+const SMG: ItemDef = {
+  ...PISTOL, id: 'smg', name: 'Submetralhadora', family: 'SMG', reticle: 'circle',
+  fireMode: 'auto', rate: 14, mag: 35, reloadTime: 1.4,
+  speed: 1600, damage: 6, range: 900, size: 2,
+  spreadBase: 3, spreadShot: 0.8, spreadMax: 12, spreadRecover: 18, spreadMove: 2, spreadAir: 3,
+  recoilKick: 3, recoilPush: 30, weight: 0.98,
+  muzzleX: 62, muzzleY: -6.5, length: 70, meleeDamage: 16, durability: 35, throwDamage: 22,
+}
+
+const RIFLE: ItemDef = {
+  ...PISTOL, id: 'rifle', name: 'Rifle', family: 'Rifle', reticle: 'cross',
+  fireMode: 'auto', rate: 9, mag: 30, reloadTime: 1.8,
+  speed: 2200, damage: 14, pierce: 1, range: 1600,
+  spreadBase: 1, spreadShot: 1.2, spreadMax: 10, spreadRecover: 14, spreadMove: 3, spreadAir: 5,
+  recoilKick: 5, recoilPush: 50, weight: 0.92, turnRate: 720,
+  muzzleX: 106, muzzleY: -5.5, length: 110, meleeDamage: 22, durability: 45, throwDamage: 28,
+}
+
+const PUMP: ItemDef = {
+  ...PISTOL, id: 'pump', name: 'Escopeta (pump)', family: 'Pump', reticle: 'cone',
+  fireMode: 'semi', rate: 1.25, mag: 6, reloadTime: 0.45, shellReload: true,
+  speed: 1400, damage: 9, range: 520, pellets: 8,
+  spreadBase: 14, spreadShot: 0, spreadMax: 18, spreadRecover: 30, spreadMove: 2, spreadAir: 3,
+  recoilKick: 12, recoilPush: 420, weight: 0.9, turnRate: 540,
+  muzzleX: 104, muzzleY: -8, length: 105, meleeDamage: 25, durability: 45, throwDamage: 30,
+}
+
+const SNIPER: ItemDef = {
+  ...PISTOL, id: 'sniper', name: 'Sniper', family: 'Sniper', reticle: 'laser',
+  fireMode: 'semi', rate: 0.83, mag: 5, reloadTime: 2.2,
+  speed: 9000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
+  spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
+  recoilKick: 14, recoilPush: 250, weight: 0.85, turnRate: 360,
+  muzzleX: 142, muzzleY: -4, length: 140, meleeDamage: 20, durability: 30, throwDamage: 30,
+}
+
+const LAUNCHER: ItemDef = {
+  ...PISTOL, id: 'launcher', name: 'Lança-foguetes', family: 'Lançadores', reticle: 'impact',
+  fireMode: 'semi', rate: 1, mag: 1, reloadTime: 1.6,
+  speed: 900, damage: 0, range: 1600, size: 6, explodeRadius: 130, explodeDamage: 80,
+  spreadBase: 1, spreadShot: 0, spreadMax: 2, spreadMove: 1, spreadAir: 2,
+  recoilKick: 16, recoilPush: 500, weight: 0.8, turnRate: 300,
+  muzzleX: 96, muzzleY: -17, length: 120, meleeDamage: 26, durability: 50, throwDamage: 35,
+}
+
+const GRENADE: ItemDef = {
+  ...PISTOL, id: 'grenade', name: 'Granada', family: 'Granadas', reticle: 'grenade',
+  fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3,
+  speed: 1100, drop: 1500, damage: 0, range: 4000, size: 8, explodeRadius: 140, explodeDamage: 90, fuse: 2.5, bounce: 0.45,
+  spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
+  recoilKick: 0, recoilPush: 0,
+  muzzleX: 8, muzzleY: -4, length: 0, meleeDamage: 10, meleeRange: 80, durability: 20, throwDamage: 15,
+}
+
+const BOW: ItemDef = {
+  ...PISTOL, id: 'bow', name: 'Arco', family: 'Arco', reticle: 'bow',
+  fireMode: 'charge', rate: 2, mag: 12, reloadTime: 1.5, chargeTime: 0.9, chargeMin: 0.25,
+  speed: 1700, drop: 900, damage: 40, range: 2500,
+  spreadBase: 0.5, spreadShot: 0, spreadMax: 3, spreadMove: 1, spreadAir: 2,
+  recoilKick: 0, recoilPush: 0,
+  muzzleX: 28, muzzleY: 0, length: 40, meleeDamage: 12, durability: 25, throwDamage: 15,
 }
 
 // no item: firing and hitting are both a wing slap
@@ -74,8 +149,9 @@ const WING: ItemDef = {
   meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeCooldown: 0.35, durability: 0, meleePush: 180, throwDamage: 0,
 }
 
-export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = { wing: WING, pistol: PISTOL }
-export const ITEM_IDS: ItemId[] = ['pistol', 'wing']
+export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = { wing: WING, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW }
+export const ITEM_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow', 'wing']
+export const WEAPON_IDS = ITEM_IDS.filter(id => id !== 'wing')
 
 type Meta = { key: keyof ItemDef; label: string; min: number; max: number; step: number; unit?: string; group: string; hint?: string }
 export const ITEM_PARAM_META: Meta[] = [
@@ -83,12 +159,19 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'burst', label: 'Tiros por rajada', min: 2, max: 6, step: 1, group: 'Disparo' },
   { key: 'mag', label: 'Pente', min: 0, max: 60, step: 1, unit: 'tiros', group: 'Disparo', hint: '0 = sem munição' },
   { key: 'reloadTime', label: 'Recarga', min: 0.2, max: 4, step: 0.1, unit: 's', group: 'Disparo' },
+  { key: 'chargeTime', label: 'Tempo de carga do tiro', min: 0.1, max: 3, step: 0.05, unit: 's', group: 'Disparo', hint: 'Modo carga: segure e solte' },
+  { key: 'chargeMin', label: 'Força sem carga', min: 0, max: 1, step: 0.05, unit: '×', group: 'Disparo', hint: 'Modo carga' },
   { key: 'speed', label: 'Velocidade do projétil', min: 200, max: 4000, step: 50, unit: 'px/s', group: 'Projétil' },
   { key: 'drop', label: 'Queda do projétil', min: 0, max: 3000, step: 50, unit: 'px/s²', group: 'Projétil', hint: '0 = linha reta' },
   { key: 'damage', label: 'Dano', min: 0, max: 100, step: 1, group: 'Projétil' },
   { key: 'pierce', label: 'Atravessa', min: 0, max: 10, step: 1, unit: 'alvos', group: 'Projétil' },
   { key: 'range', label: 'Alcance', min: 100, max: 3000, step: 50, unit: 'px', group: 'Projétil' },
   { key: 'size', label: 'Tamanho', min: 1, max: 12, step: 1, unit: 'px', group: 'Projétil' },
+  { key: 'pellets', label: 'Projéteis por tiro', min: 1, max: 16, step: 1, group: 'Projétil', hint: 'Chumbos em leque' },
+  { key: 'explodeRadius', label: 'Raio da explosão', min: 0, max: 400, step: 10, unit: 'px', group: 'Explosão', hint: '0 = não explode' },
+  { key: 'explodeDamage', label: 'Dano da explosão', min: 0, max: 200, step: 1, group: 'Explosão', hint: 'No centro; cai até a borda' },
+  { key: 'fuse', label: 'Pavio', min: 0, max: 6, step: 0.1, unit: 's', group: 'Explosão', hint: '0 = explode ao bater' },
+  { key: 'bounce', label: 'Quique', min: 0, max: 0.9, step: 0.05, unit: '×', group: 'Explosão', hint: 'Com pavio' },
   { key: 'spreadBase', label: 'Espalhamento base', min: 0, max: 20, step: 0.5, unit: '°', group: 'Espalhamento' },
   { key: 'spreadShot', label: 'Por tiro', min: 0, max: 10, step: 0.1, unit: '°', group: 'Espalhamento' },
   { key: 'spreadMax', label: 'Máximo', min: 0, max: 40, step: 0.5, unit: '°', group: 'Espalhamento' },
@@ -133,9 +216,8 @@ export function loadItems(): Record<ItemId, ItemDef> {
         const v = s[m.key]
         if (typeof v === 'number' && Number.isFinite(v)) (out[id] as Record<string, unknown>)[m.key] = Math.min(m.max, Math.max(m.min, v))
       })
-      if (s.fireMode === 'semi' || s.fireMode === 'auto' || s.fireMode === 'burst') out[id].fireMode = s.fireMode
-      if (typeof s.autoReload === 'boolean') out[id].autoReload = s.autoReload
-      if (typeof s.slideFire === 'boolean') out[id].slideFire = s.slideFire
+      if (['semi', 'auto', 'burst', 'charge'].includes(s.fireMode)) out[id].fireMode = s.fireMode
+      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
     })
   } catch { /* storage unavailable */ }
   return out
