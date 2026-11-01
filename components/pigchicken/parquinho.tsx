@@ -8,7 +8,7 @@ import type { ChickenEngine } from "@/lib/chicken/engine"
 import { loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
-import { createCombat, SLOTS, SWING_TIME, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
+import { createCombat, SLOTS, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
 import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
@@ -225,7 +225,7 @@ export function ParquinhoPlay({ engine, settings, worldRef }: { engine: ChickenE
       const h = combat.inventory[combat.current], sw = combat.swing
       const art = h ? ITEM_SVG[h.item] : undefined
       engine.setHeld(art ? { svg: art, angle: ang, kick: combat.kick } : null)
-      engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (SWING_TIME * 0.3), (SWING_TIME - sw.t) / (SWING_TIME * 0.3)) } : null)
+      engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
       const muzzle = muzzleAt(ang)
       const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
       const rx = d.turnRate > 0 || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? muzzle.y + ady * dist : aim.target.y
@@ -348,16 +348,16 @@ function drawItemShape(ctx: Ctx, item: ItemId, s: number) {
   ctx.restore()
 }
 
-// where the blow is now: it sweeps across its arc in SWING_TIME, downward in front of her
+// where the blow is now: it sweeps across its arc in sw.time, downward in front of her
 function swingAngle(sw: Swing) {
-  return sw.angle + sw.dir * (-sw.arc / 2 + sw.arc * Math.min(1, sw.t / SWING_TIME))
+  return sw.angle + sw.dir * (-sw.arc / 2 + sw.arc * Math.min(1, sw.t / sw.time))
 }
 
 function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
   const sw = combat.swing
   if (!sw) return
   // the swing: a faint fan over the whole hit area, and a trail behind the wing tip
-  const k = 1 - sw.t / SWING_TIME
+  const k = 1 - sw.t / sw.time
   const a0 = sw.angle - sw.dir * sw.arc / 2, now = swingAngle(sw)
   ctx.save()
   ctx.translate(origin.x, origin.y)
