@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Plus, RefreshCw, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -181,6 +181,8 @@ export interface OnlineHubProps {
   initialTab?: OnlineHubTab
   showMapRooms?: boolean
   showLaunchers?: boolean
+  /** Rendered just left of the Friends launcher. */
+  friendsLeading?: ReactNode
   /** One-shot public room creation requested from a city on the map. */
   createRequest?: { id: number; cityId: string } | null
   onCreateRequestHandled?: (id: number) => void
@@ -584,7 +586,7 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
   )
 }
 
-export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, open, onOpenChange, initialTab, showLaunchers = true, showMapRooms = false, createRequest, onCreateRequestHandled }: OnlineHubProps) {
+export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, open, onOpenChange, initialTab, showLaunchers = true, friendsLeading, showMapRooms = false, createRequest, onCreateRequestHandled }: OnlineHubProps) {
   const { configured, user, ensureGuest, refreshProfile, openLogin, notify } = useOnline()
   const documentVisible = useDocumentVisible()
   const runningGames = useRunningGames()
@@ -1033,6 +1035,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
             <DoorOpen className="size-3.5" />Lobby
           </Button>
         )}
+        {friendsLeading}
         <Button variant="outline" className={styles.mapButton} onClick={() => launch('friends')}>
           <Users className="size-3.5" />Friends
         </Button>

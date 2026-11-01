@@ -30,6 +30,19 @@ Retorno do Redmi Note 13 com a v1.6.6: áudio melhor, mas FPS baixo, movimentos 
 
 Timbres, notas, efeitos, polifonia, buses e regras não mudaram. Não é aprovação de desempenho no aparelho físico.
 
+### Perfil leve da engine musical no celular — 01/11, v1.12.0
+
+Retorno do Redmi Note 13 Pro: o jogo voltou a lagar depois dos controles de sound design (25/10) e das rampas das regras. Em aparelhos restritos (`isLiteDevice()` em `lib/performance.ts`: os critérios de `isConstrainedDevice()` — tela < 768 px, ponteiro grosso ou até 4 núcleos — ou `deviceMemory` ≤ 4; `localStorage['chickenchess:performance'] = 'lite' | 'full'` força um perfil para teste), campanha, online e Criativo usam o perfil leve:
+
+- **LFO de filtro e de ganho (tremolo) desligados.** O Superdough cria um AudioWorklet por nota para cada um. O corte, a ressonância e o envelope do filtro continuam; LFO de pan (sinal Strudel, sem nó de áudio) e de altura (oscilador nativo) continuam.
+- **Sem buses próprios.** Delay próprio (D.TIME/D.FDBK) e sidechain (DUCK) não criam bus extra: a peça fica no bus da equipe com o delay comum (3/16) e não é abaixada pelo ataque da fonte.
+- **Supersaw com no máximo 3 vozes** (UNISON maior, ou o padrão de 5 do Superdough, vira 3). DETUNE/SPREAD e FM continuam.
+- **Rampas de ganho/filtro das regras chegam de uma vez** na virada, em vez de passo a passo por compasso: cada passo recompilava as vozes afetadas na thread principal. As rampas de BPM, feitas no transporte, continuam.
+
+Os kits salvos, o editor e a exportação Strudel não mudam; só a saída do runtime no aparelho restrito. Kits sem esses campos soam como antes (testes em `sound-design.cases.cjs` e `dynamics.cases.cjs`). Não é aprovação de desempenho no aparelho físico.
+
+No globo, além do portal leve (ver `map.md`), a galinha procura a lista de plataformas (`[data-chicken-platform]`) no DOM cinco vezes por segundo, em vez de a cada quadro; as caixas continuam medidas a cada quadro.
+
 ### Otimização de arraste e exportação — 16/09
 
 Durante a travessia entre casas da mesma peça, só a voz manual muda. A separação de 01/10 acima substitui a recompilação de entrada/saída por supressão dos ataques da peça segurada na saída, mantendo o acompanhamento e sua fase. Cheque e prioridades anteriores permanecem. No Criativo, a imagem acompanha mouse/toque por transformação de DOM; soltura/cancelamento remove a imagem temporária. O código Strudel é gerado somente com seu painel aberto, onde aparecem contagens estruturais (não nós DSP ativos).

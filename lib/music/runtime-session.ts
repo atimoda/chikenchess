@@ -7,7 +7,7 @@ import { MusicTransport } from './transport'
 import { beatsPerBar } from './meter'
 import { ReactionQueue } from './reaction-queue'
 import { applyReactions } from './reactions'
-import { isConstrainedDevice } from '../performance'
+import { isConstrainedDevice, isLiteDevice } from '../performance'
 import { DEFAULT_ARRANGEMENT, arrangementPosition, sectionStartCycle, sectionEndCycle } from './arrangement'
 import { variationPosition } from './performance'
 import { TeamMixer, createTeamMixes } from './team-mixer'
@@ -26,7 +26,9 @@ export class MusicRuntime {
   private scheduledLoops: unknown[] | undefined
   private targetBpm = 120
   private sourceState?: MusicSnapshot
-  private reactionQueue = new ReactionQueue()
+  // Phones: lite sound design (see voiceSpecs) and rule glides that land at once instead of every bar.
+  private readonly lite = isLiteDevice()
+  private reactionQueue = new ReactionQueue(this.lite)
   private rampBars = 0
   private state?: MusicSnapshot
   private preview: Preview | null = null
@@ -350,7 +352,7 @@ export class MusicRuntime {
     if (!this.api || !this.state || this.disposed || !this.pageVisible) return
     // Build from the requested square as the pointer may already be up by the
     // time the browser grants audio access on the first interaction.
-    const voice = voiceSpecs({ ...this.state, pieces: this.state.pieces.filter(p => p.id === requested.id) }, requested, this.effectBuses)[0]
+    const voice = voiceSpecs({ ...this.state, pieces: this.state.pieces.filter(p => p.id === requested.id) }, requested, this.effectBuses, this.lite)[0]
     if (!voice) return
     const pattern = voice.manual ? compileVoice(this.api, voice) : this.patternFor(voice)
     const hap = pattern.queryArc(0, voice.manual ? 1 : 4).find((h: any) => h.hasOnset())
@@ -550,7 +552,7 @@ export class MusicRuntime {
     }
     try {
       const loopPreview = this.preview?.mode === 'manual' ? null : this.preview
-      const specs = voiceSpecs(this.pageVisible ? this.state : { ...this.state, playing: false }, this.pageVisible ? loopPreview : null, this.effectBuses)
+      const specs = voiceSpecs(this.pageVisible ? this.state : { ...this.state, playing: false }, this.pageVisible ? loopPreview : null, this.effectBuses, this.lite)
         .filter(voice => (voice.preview || voice.instrument.loopEnabled !== false) && this.sampleReady(voice))
       // Compile first: invalid edits must not tear down the last valid voices.
       const loops = specs.filter(voice => !voice.manual)

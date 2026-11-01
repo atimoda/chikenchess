@@ -38,7 +38,8 @@ function chordVoicings(plan: HarmonyPlanId, scale: readonly string[], octave: nu
   })
 }
 
-export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effectBuses: 2 | 4 = 4): VoiceSpec[] {
+// lite (phones): no private buses, so custom delay lines and sidechain fall back to the shared bus.
+export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effectBuses: 2 | 4 = 4, lite = false): VoiceSpec[] {
   let ownBuses = 0
   const specs: VoiceSpec[] = state.pieces.filter(p => (state.playing && p.active) || p.id === preview?.id).map(piece => {
     const audition = piece.id === preview?.id
@@ -64,8 +65,8 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
     const generatedChords=!manual&&!unpitched&&instrument.behavior==='sustain'&&harmonyPlan!=='static'&&harmonyPlan!=='kit'
       ? chordVoicings(harmonyPlan,state.scale,instrument.octave,offset,pitch,roots):undefined
     const lpf = Math.min(fx?.lpf ?? instrument.lpf, audition && mapping.previewFilter ? 800 + Number(square[1]) * 1800 : 20000)
-    const ownBus = !audition && needsOwnBus(instrument) && ownBuses < OWN_BUS_LIMIT && ++ownBuses > 0
-    const design = soundDesignControls(instrument, { bpm: state.bpm, beatsPerBar: beatsPerBar(state.meter), unpitched, sample: source?.kind === 'sample' })
+    const ownBus = !lite && !audition && needsOwnBus(instrument) && ownBuses < OWN_BUS_LIMIT && ++ownBuses > 0
+    const design = soundDesignControls(instrument, { bpm: state.bpm, beatsPerBar: beatsPerBar(state.meter), unpitched, sample: source?.kind === 'sample', lite })
     if (!ownBus) { delete design.delaytime; delete design.delayfeedback }
     const pan = Math.max(0, Math.min(1, 0.5 + ((square.charCodeAt(0) - 97) / 7 - 0.5) * mapping.panWidth + (fx?.pan ?? 0) / 2))
     const performance = manual ? undefined : piecePerformance(instrument,plan,state.sectionOverrides?.[piece.id],beatsPerBar(state.meter))

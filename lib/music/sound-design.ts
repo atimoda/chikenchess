@@ -22,7 +22,12 @@ export function needsOwnBus(instrument: Instrument) {
 }
 export const isDucked = (instrument: Instrument) => !!instrument.duckSource && (instrument.duckDepth ?? .7) > 0
 
-export function soundDesignControls(instrument: Instrument, options: { bpm: number; beatsPerBar: number; unpitched: boolean; sample: boolean }) {
+/** Phones (lite profile): widest supersaw kept, in voices. Superdough's default is 5. */
+export const LITE_UNISON = 3
+
+/** `lite` drops what costs the most on a phone's audio thread: the filter and gain LFOs (one
+ * AudioWorklet per note) and supersaw voices above LITE_UNISON. */
+export function soundDesignControls(instrument: Instrument, options: { bpm: number; beatsPerBar: number; unpitched: boolean; sample: boolean; lite?: boolean }) {
   const controls: Record<string, number | string> = {}
   const cps = options.bpm / (60 * options.beatsPerBar)
   if (instrument.resonance) controls.lpq = instrument.resonance
@@ -35,13 +40,14 @@ export function soundDesignControls(instrument: Instrument, options: { bpm: numb
     if (instrument.unison !== undefined) controls.unison = instrument.unison
     if (instrument.detune !== undefined) controls.detune = instrument.detune
     if (instrument.spread !== undefined) controls.spread = instrument.spread
+    if (options.lite) controls.unison = Math.min(LITE_UNISON, instrument.unison ?? 5)
   }
   if (options.sample && instrument.sampleLoop) {
     const start = instrument.loopStart ?? 0, end = instrument.loopEnd ?? 1
     if (end > start) Object.assign(controls, { loop: 1, loopBegin: start, loopEnd: end })
   }
   const depth = instrument.lfoDepth ?? 0
-  if (instrument.lfoTarget && depth > 0) {
+  if (instrument.lfoTarget && depth > 0 && !(options.lite && (instrument.lfoTarget === 'lpf' || instrument.lfoTarget === 'gain'))) {
     const period = lfoPeriod(instrument, cps), shape = SUPERDOUGH_SHAPES[instrument.lfoShape ?? 'sine']
     // Superdough's filter LFO swings ±depth/2 of the cutoff, so 1.8 reaches ±90 %.
     if (instrument.lfoTarget === 'lpf') Object.assign(controls, { lpsync: 1 / period, lpdepth: depth * 1.8, lpshape: shape })

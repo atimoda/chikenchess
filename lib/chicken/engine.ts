@@ -465,6 +465,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- colliders ----------
   let SEGS: Seg[] = []
+  let boxCache: Element[] | null = null, boxCacheAt = 0
   function buildSegs() {
     const out: Seg[] = []
     const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false) => {
@@ -472,9 +473,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
       out.push({ id, ax, ay, bx, by, len, ang: a, wall: Math.min(a, 180 - a) > 45, solid })
     }
-    const boxes = new Set<Element>()
-    document.querySelectorAll('[data-chicken-platform]').forEach(e => boxes.add(e))
-    document.querySelectorAll('[data-chicken-platforms] > *').forEach(e => boxes.add(e))
+    // the platform list is looked up a few times a second, not on every frame (their boxes still are)
+    const now = performance.now()
+    if (!boxCache || now - boxCacheAt > 200) {
+      const found = new Set<Element>()
+      document.querySelectorAll('[data-chicken-platform], [data-chicken-platforms] > *').forEach(e => found.add(e))
+      boxCache = [...found]; boxCacheAt = now
+    }
+    const boxes = boxCache
     let n = 0
     boxes.forEach(e => {
       const r = e.getBoundingClientRect()

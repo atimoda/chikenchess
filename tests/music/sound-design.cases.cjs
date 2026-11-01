@@ -86,6 +86,29 @@ test('sidechain: the source hit ducks the listening bus of its own team, black m
   assert.equal(fallback.orbits.length, 2)
 })
 
+test('lite profile (phones) drops worklet LFOs, private buses and sidechain, narrows supersaws', () => {
+  let snapshot = allActive(cityKits.defaultCityKit('detroit'))
+  const ids = Object.keys(snapshot.instruments)
+  const synthId = ids.find(id => snapshot.instruments[id].source?.kind !== 'sample' && id !== 'w:e2' && id !== 'w:d2')
+  snapshot = withInstrument(snapshot, 'w:c1', { delayTime: '1/16', delayFeedback: .6, lfoTarget: 'lpf', lfoDepth: .5, resonance: 8 })
+  snapshot = withInstrument(snapshot, 'w:d2', { duckSource: 'e2', lfoTarget: 'gain', lfoDepth: .4 })
+  if (synthId) snapshot = withInstrument(snapshot, synthId, { sound: 'supersaw', unison: 7, fmIndex: 2 })
+  const full = voiceSpecs(snapshot, null), lite = voiceSpecs(snapshot, null, 2, true)
+  const find = (voices, id) => voices.find(voice => voice.piece.id === id)
+  assert.equal(find(full, 'w:c1').ownBus, true); assert.ok(find(full, 'w:c1').controls.lpsync)
+  for (const voice of lite) { assert.equal(voice.ownBus, undefined); assert.equal(voice.duck, undefined); assert.ok(voice.orbit < 2) }
+  const c1 = find(lite, 'w:c1').controls
+  assert.deepEqual([c1.lpsync, c1.lpdepth, c1.delayfeedback, c1.lpq], [undefined, undefined, undefined, 8])
+  assert.equal(find(lite, 'w:d2').controls.tremolosync, undefined)
+  if (synthId) {
+    assert.equal(find(full, synthId).controls.unison, 7)
+    assert.deepEqual([find(lite, synthId).controls.unison, find(lite, synthId).controls.fmi], [3, 2])
+  }
+  // Kits without the new fields keep their voices apart from the bus count.
+  const plain = allActive(cityKits.defaultCityKit('buenos-aires-1940'))
+  assert.equal(JSON.stringify(voiceSpecs(plain, null, 2, true)), JSON.stringify(voiceSpecs(plain, null, 2)))
+})
+
 test('pan LFO sweeps around the board pan as a Strudel signal', async () => {
   const api = await strudel()
   const base = allActive(cityKits.defaultCityKit('detroit'))

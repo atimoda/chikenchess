@@ -17,7 +17,7 @@ import { isAdminUser } from '@/lib/admin/access'
 import { useOnline } from './online/online-provider'
 import { AboutReleaseDialog } from './about-release-dialog'
 import styles from './world-map.module.css'
-import { ChickenGround, ChickenLayer } from './chicken/chicken-layer'
+import { ChickenGround, ChickenLayer, ChickenTouchToggle } from './chicken/chicken-layer'
 import { ChickenPortal } from './chicken/chicken-portal'
 import type { ChickenEngine } from '@/lib/chicken/engine'
 import { ChickenControlsPanel } from './chicken/chicken-controls-panel'
@@ -1379,7 +1379,9 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           data-chicken-platforms
           className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-2 pointer-events-auto">
           {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
-          {onOnlineMatch && <OnlineHub showMapRooms playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
+          {/* touch screens: show / hide the chicken's on-screen controls, left of Friends */}
+          {!onOnlineMatch && <ChickenTouchToggle />}
+          {onOnlineMatch && <OnlineHub showMapRooms friendsLeading={<ChickenTouchToggle />} playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
           <Link href="/creative" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Creative</Link>
           {isAdminUser(online.user) && <Link href="/admin" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Admin</Link>}
           <VersionChangelog mapButton onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />

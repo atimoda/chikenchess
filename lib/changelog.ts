@@ -16,6 +16,12 @@ export const CHANGELOG = [
         'O Vestiário do protótipo voltou no Pátio (botão com a cabeça da galinha): raças e cada parte com miniaturas, prévia grande e a origem de cada item (liberado, conquista ou loja).',
         'A galinha não agarra mais as laterais das plataformas flutuantes ao pular: ela agarra quando os pés encostam numa lateral no ar sem nenhum botão de movimento apertado.',
         'Com a conta admin, “Salvar padrão” grava os ajustes para todo mundo, e o globo (e qualquer outra tela com a galinha) passa a usar essa mesma versão. Sem a conta admin, os ajustes ficam só no seu navegador, como rascunho.',
+        'No celular, um botão com ícone de gamepad à esquerda de Friends, no globo, mostra e esconde os controles da galinha na tela.',
+      ] },
+      { title: 'Desempenho no celular', items: [
+        'Em celulares e aparelhos limitados, a música usa um perfil mais leve: sem LFO de filtro e tremolo, sem delay próprio e sidechain por peça (essas peças usam o delay comum), supersaw com até 3 vozes, e as rampas de ganho e filtro das regras chegam de uma vez em vez de compasso a compasso.',
+        'O portal do Pátio tem uma versão leve no celular (sem brilho borrado, menos raios e faíscas, 30 quadros por segundo), e qualquer aparelho que comece a perder quadros com o portal completo passa para ela sozinho.',
+        'A galinha no globo procura as plataformas na tela menos vezes por segundo, aliviando cada quadro.',
       ] },
     ],
   },
