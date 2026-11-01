@@ -3,8 +3,8 @@
 //
 // It draws in its own full-screen SVG layer above the page. Colliders come from the page itself:
 // every element with `data-chicken-platform` (or a direct child of `data-chicken-platforms`) is a
-// floating box: its horizontal edges are one-way floors, its sides are walls she grabs by jumping
-// next to them. The screen sides are solid (rigid) walls she climbs by pushing into them, and the
+// floating box: its horizontal edges are one-way floors, its sides are walls she grabs when her feet
+// touch them in the air with no movement control held. The screen sides are solid (rigid) walls she climbs by pushing into them, and the
 // ground sits `groundHeight` px above the bottom of the viewport.
 import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
@@ -236,11 +236,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const auto = !!goal && goalStep(dt)
     if (auto) dir = Math.sign(goal!.x - S.x)
     buildSegs(); heldDir = dir
-    S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt); S.grabT = Math.max(0, (S.grabT || 0) - dt)
+    S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt);
     if (S.held) { heldStep(dt); return }
     if (S.cl) { clingStep(dt, dir, (U ? 1 : 0) - (D || C ? 1 : 0), jumpPressed, RUN); return }
-    // holding down keeps a jump from grabbing floating walls, like it skips floating floors
-    S.noGrab = Dk || D || C
+    // floating walls grab only while no movement control is held
+    S.noGrab = Lh || Rh || U || Dk || C || J || RUN
     // standing on a floating edge: ride along when it moves, fall when walking off its end
     if (S.grounded && S.plat) {
       const sg = segById(S.plat), fy = sg ? floorY(sg, S.x) : null
@@ -302,7 +302,6 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
     } else if (jumpPressed) {
       const fromGround = S.grounded
-      S.grabT = 0.3 // a jump next to a floating wall grabs it
       S.jumpIndex = S.grounded ? 0 : S.jumpIndex + 1
       S.vy = -jumpVelocity(S.jumpIndex)
       // super jump: holding crouch scales the jump height (air jumps too); negative pushes her down
@@ -477,18 +476,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.x = x; S.y = y; S.vx = vx; S.vy = vy; plantFeet(); headAnchor.x = null
   }
 
-  // walls: solid ones grab when pushing toward them, floating ones only by jumping next to them
+  // walls: solid ones grab when pushing toward them; floating ones when her feet touch them in the
+  // air while no movement control is held
   function tryCling(dir: number) {
-    const reach = 46 * R.scale, py = S.y - 40 * R.scale
+    const bodyY = S.y - 40 * R.scale, footY = S.y - 4 * R.scale
     for (const sg of SEGS) {
       if (!sg.wall || (S.clCool > 0 && sg.id === S.clLast)) continue
+      if (!sg.solid && (S.grounded || S.noGrab)) continue
+      const py = sg.solid ? bodyY : footY, reach = (sg.solid ? 46 : 24) * R.scale
       if (py < Math.min(sg.ay, sg.by) || py > Math.max(sg.ay, sg.by)) continue
       const wx = sg.ax + (sg.bx - sg.ax) * (py - sg.ay) / ((sg.by - sg.ay) || 1e-6)
       const dx = wx - S.x
       if (Math.abs(dx) > reach) continue
       const toward = Math.sign(dx) || 1
-      if (sg.solid) { if (!(dir === toward || (!S.grounded && S.vx * toward > 60))) continue }
-      else if (!(S.grabT > 0) || S.noGrab) continue
+      if (sg.solid && !(dir === toward || (!S.grounded && S.vx * toward > 60))) continue
       attach(sg, wx, py)
       return true
     }
