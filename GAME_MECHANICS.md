@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 01/11/2026 — v1.12.0 (Pátio da Galinha dentro do jogo, em `/patio`, e configuração central da galinha salva no servidor para todas as telas).
+Atualizado em 02/11/2026 — v1.12.1 (portal do globo pede confirmação: botão “Enter playground?” para entrar no Pátio).
 
 ## Leitura por assunto
 
