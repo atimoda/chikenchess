@@ -81,6 +81,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const touchAim = useRef<Stick | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
+  // a slot the player clicked or tapped on the inventory bar (1-based, 0 none): equips it on the next frame
+  const slotTap = useRef(0)
   // what the on-screen grab button offers: '' hidden, 'take' an item to pick up, 'equip' one she already carries
   const [grabOffer, setGrabOffer] = useState<"" | "take" | "equip">("")
   const [controls, setControls] = useState<ChickenControls | null>(null)
@@ -259,9 +261,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const input = {
         fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
         throwHeld: act.throw, throwReleased: !act.throw && !!prev.throw,
-        reload: act.reload && !prev.reload, pick, slot: slotPick, grab: act.grab && !prev.grab,
+        reload: act.reload && !prev.reload, pick, slot: slotPick || slotTap.current, grab: act.grab && !prev.grab,
       }
-      slotPick = 0
+      slotPick = 0; slotTap.current = 0
       prev = { ...act, fire, melee }
       const boxes: Box[] = []
       document.querySelectorAll("[data-chicken-platforms] > *").forEach(e => {
@@ -368,8 +370,28 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
       <div ref={hudRef} className="pointer-events-none absolute left-3 z-[120] font-mono text-[11px] text-[#93a79a]" style={{ bottom: groundHeight + 10 }} />
-      {editing && (
-        <Movable id="inventory" className="fixed z-[190]" style={{ left: `calc(50% - ${INV_W() / 2}px)`, top: INV_TOP, width: INV_W(), height: INV_SIZE }}>{null}</Movable>
+      {/* the inventory bar is drawn on the canvas; these invisible slots sit on top of it so a click or a tap
+          equips that item. In edit mode the Movable's drag handle covers them, so dragging never equips. */}
+      {engine && (
+        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ left: `calc(50% - ${INV_W() / 2}px)`, top: INV_TOP, width: INV_W(), height: INV_SIZE }}>
+          {!editing && (
+            <div data-chicken-ignore className="flex h-full" style={{ gap: INV_GAP }}>
+              {Array.from({ length: SLOTS }, (_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  tabIndex={-1}
+                  aria-label={`Equipar item ${i + 1} do inventário`}
+                  className="pointer-events-auto h-full shrink-0 rounded-sm bg-transparent"
+                  style={{ width: INV_SIZE, touchAction: "none" }}
+                  // pointerdown (not click): instant on touch, and preventDefault keeps focus off the button so Space stays a game key
+                  onPointerDown={e => { e.preventDefault(); e.stopPropagation(); slotTap.current = i + 1 }}
+                  onContextMenu={e => e.preventDefault()}
+                />
+              ))}
+            </div>
+          )}
+        </Movable>
       )}
       {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
     </>
@@ -886,20 +908,32 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
   ctx.restore()
 }
 
-const INV_SIZE = 30, INV_GAP = 4, INV_TOP = 100
+const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
 const INV_W = () => SLOTS * INV_SIZE + (SLOTS - 1) * INV_GAP
-// the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls)
+// a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
+const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
+// the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls).
+// The slots touch each other, with a thin line between them; the current one is outlined in yellow.
 function drawInventory(ctx: Ctx, combat: Combat, offset?: { x: number; y: number }) {
-  const size = INV_SIZE, gap = INV_GAP, w = INV_W()
-  const x0 = (window.innerWidth - w) / 2 + (offset?.x ?? 0), y = INV_TOP + (offset?.y ?? 0)
+  const size = INV_SIZE, w = INV_W()
+  const x0 = Math.round((window.innerWidth - w) / 2 + (offset?.x ?? 0)), y = INV_TOP + (offset?.y ?? 0)
+  const numbers = desktopPointer?.matches ?? true
   ctx.save()
   ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "left"
+  ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x0, y, w, size)
+  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1
+  ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, size - 1)
+  ctx.beginPath()
+  for (let i = 1; i < SLOTS; i++) { const x = x0 + i * size + 0.5; ctx.moveTo(x, y); ctx.lineTo(x, y + size) }
+  ctx.stroke()
   for (let i = 0; i < SLOTS; i++) {
-    const x = x0 + i * (size + gap), o = combat.inventory[i], on = i === combat.current
-    ctx.fillStyle = on ? "rgba(255,209,102,0.22)" : "rgba(0,0,0,0.35)"; ctx.fillRect(x, y, size, size)
-    ctx.strokeStyle = on ? "#ffd166" : "rgba(255,255,255,0.18)"; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1)
+    const x = x0 + i * size, o = combat.inventory[i]
+    if (i === combat.current) {
+      ctx.fillStyle = "rgba(255,209,102,0.22)"; ctx.fillRect(x, y, size, size)
+      ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, size - 2, size - 2)
+    }
     if (o) { ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 2); drawItem(ctx, o.item, size - 6, size - 8); ctx.restore() }
-    ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10)
+    if (numbers) { ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10) }
   }
   ctx.restore()
 }

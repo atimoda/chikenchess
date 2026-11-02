@@ -20,6 +20,8 @@ export const CHANGELOG = [
         'PigChicKen: o painel Controles da galinha, no Pátio, ganhou “Editar posição dos botões”: os analógicos, os botões e o inventário podem ser arrastados na tela, e o botão Ok no alto salva a posição (Padrão volta ao original).',
         'PigChicKen no celular: o analógico da esquerda mira em 360 graus, e não só nas 8 direções. Um toque rápido no analógico da direita (sem arrastar) atira no inimigo mais próximo, ou num boneco de treino quando não há inimigos.',
         'Globo no celular: a página não rola mais (nem arrastando os botões); é uma tela única. As margens do logotipo e dos botões do cabeçalho e do rodapé encostam mais na borda da tela (12 px), o espaço entre todos os botões é de 6 px e o botão Campanhas fica alinhado à esquerda com o logotipo.',
+        'PigChicKen: o inventário agora é clicável. Clique (no computador) ou toque (no celular) num quadradinho para equipar aquele item. No modo de editar posição dos botões, arrastar o inventário não equipa nada.',
+        'PigChicKen: os quadradinhos do inventário ficaram um pouco maiores e encostados uns nos outros, separados só por uma linha. Os números das casas aparecem só no computador.',
         'Ao sair da aba ou do app, todos os sons do jogo param (música, efeitos, portal, Pátio) e voltam quando você retorna.',
       ] },
       { title: 'Desempenho no celular', items: [
