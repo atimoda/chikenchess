@@ -42,7 +42,7 @@ export const STAGES: StageDef[] = [
 export const GONG_FIRST = 5, GONG_NEXT = 3
 // the reset stone (Recomeçar): this many strikes put the temple back at rest, panels and score cleared
 export const RESET_NEED = 3
-export const RESET_X = 790
+export const RESET_X = 1770
 const MAX_HEARTS = 3
 const INTRO = 3.2
 const DRAGON_SEGMENTS = 14

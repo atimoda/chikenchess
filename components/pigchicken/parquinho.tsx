@@ -24,6 +24,7 @@ import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib
 import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
+import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
@@ -37,6 +38,8 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
   const width = worldScenes(screens) * SCENE_W
   return (
     <div ref={worldRef} className="pointer-events-none absolute left-0 top-0 will-change-transform" style={{ width, height: WORLD_GROUND_Y }}>
+      {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
+      <ParallaxBackdrop worldW={width} />
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }} />
       {debug && Array.from({ length: screens }, (_, s) => (
@@ -202,7 +205,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
       if (gong) { gong.x = gong.home = L + GONG_X }
       if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
-      templeRacks.forEach((r, i) => { r.x = L + 130 + i * 105 })
+      templeRacks.forEach((r, i) => { r.x = L + 80 + i * 100 })
       templeFor = screens
     }
     // the platforms the shots hit, in world units (the same boxes the world draws)
@@ -244,7 +247,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       st = engine.getState()
       const camY = oy
       engine.setBounds(cameraBounds(camX, { mode: S.camera, viewW, worldW }))
-      if (worldRef.current) worldRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
+      if (worldRef.current) {
+        worldRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
+        // the parallax layers follow the camera at their own rates (parallax.tsx)
+        worldRef.current.style.setProperty("--camx", String(Math.round(camX * 10) / 10))
+      }
 
       // ---------- aim ----------
       const act = engine.getActions()

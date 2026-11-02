@@ -1,6 +1,6 @@
-// The temple scene's backdrop (Templo do Gongo), inspired by the halls of a Chinese palace: a teal sky with drifting
-// clouds, golden tiled roofs with upturned eaves, red columns, a painted beam band, white marble balustrades, a red
-// wall in front and lanterns that sway. Plain SVG in world units (one scene: 1920 x WORLD_GROUND_Y); the lanterns
+// The temple scene's backdrop (Templo do Gongo), inspired by the halls of a Chinese palace: golden tiled roofs with
+// upturned eaves, red columns, a painted beam band, white marble balustrades, a red wall in front, old trees and
+// lanterns that sway, in the Pátio's dusk (the sky and the mountains behind are parallax.tsx's). Plain SVG in world units (one scene: 1920 x WORLD_GROUND_Y); the lanterns
 // light up when a stage is cleared (data-temple on the world element, set by the Parquinho).
 import { SCENE_W, WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 
@@ -125,21 +125,6 @@ function Lantern({ x, y, d = 0 }: { x: number; y: number; d?: number }) {
   )
 }
 
-// an auspicious cloud (xiangyun): soft puffs with a curl, lit warm from below
-function Cloud({ x, y, s = 1, o = 1 }: { x: number; y: number; s?: number; o?: number }) {
-  return (
-    <g transform={`translate(${x} ${y}) scale(${s})`} opacity={o}>
-      <ellipse cx={0} cy={8} rx={150} ry={20} fill="#f6c9a8" opacity={0.55} />
-      <ellipse cx={-60} cy={-6} rx={70} ry={30} fill="#fff7ec" />
-      <ellipse cx={20} cy={-20} rx={80} ry={40} fill="#fff7ec" />
-      <ellipse cx={95} cy={-2} rx={60} ry={26} fill="#fff7ec" />
-      <ellipse cx={10} cy={6} rx={140} ry={16} fill="#ffe9d6" />
-      <path d="M -28 -10 a 18 18 0 1 1 22 16 a 10 10 0 1 1 -10 -12" fill="none" stroke="#f2b48c" strokeWidth={3} strokeLinecap="round" opacity={0.8} />
-      <path d="M 70 -6 a 14 14 0 1 0 -18 12 a 8 8 0 1 0 8 -9" fill="none" stroke="#f2b48c" strokeWidth={3} strokeLinecap="round" opacity={0.8} />
-    </g>
-  )
-}
-
 // a pine like the old ones in temple courtyards: a crooked trunk and flat layered canopies
 function Pine({ x, base, h = 1, flip = false }: { x: number; base: number; h?: number; flip?: boolean }) {
   const f = flip ? -1 : 1
@@ -150,9 +135,9 @@ function Pine({ x, base, h = 1, flip = false }: { x: number; base: number; h?: n
       <path d="M 6 -150 C -20 -150 -40 -146 -60 -150 M 10 -210 C 30 -212 46 -208 62 -210 M 6 -280 C -10 -282 -24 -278 -36 -280" stroke="#5a3a24" strokeWidth={8} strokeLinecap="round" fill="none" />
       {pads.map(([px, py, r], i) => (
         <g key={i}>
-          <ellipse cx={px} cy={py + 6} rx={r} ry={r * 0.32} fill="#1f4a32" />
-          <ellipse cx={px} cy={py} rx={r * 0.92} ry={r * 0.28} fill="#2f6b45" />
-          <ellipse cx={px - r * 0.2} cy={py - 4} rx={r * 0.55} ry={r * 0.14} fill="#4c8d5c" />
+          <ellipse cx={px} cy={py + 6} rx={r} ry={r * 0.32} fill="#1c3328" />
+          <ellipse cx={px} cy={py} rx={r * 0.92} ry={r * 0.28} fill="#264434" />
+          <ellipse cx={px - r * 0.2} cy={py - 4} rx={r * 0.55} ry={r * 0.14} fill="#33573f" />
         </g>
       ))}
     </g></g>
@@ -177,198 +162,153 @@ function Blossom({ x, base, h = 1 }: { x: number; base: number; h?: number }) {
   )
 }
 
-// far karst mountains in the haze
-const MOUNTAINS = "M 0 700 L 0 560 C 60 540 90 470 140 470 C 190 470 200 560 260 560 C 300 560 320 430 380 420 C 440 410 450 540 520 540 C 580 540 600 480 660 480 C 720 480 740 560 820 560 C 880 560 900 440 960 430 C 1020 420 1040 520 1100 520 C 1160 520 1180 400 1250 390 C 1320 380 1330 520 1400 520 C 1460 520 1480 460 1540 460 C 1600 460 1620 540 1690 540 C 1750 540 1770 420 1830 420 C 1880 420 1900 500 1920 500 L 1920 700 Z"
-const MOUNTAINS_NEAR = "M 0 760 L 0 640 C 80 640 110 560 180 560 C 250 560 270 640 350 640 C 420 640 440 590 500 590 C 560 590 600 660 680 660 C 760 660 780 600 860 600 C 940 600 960 650 1040 650 C 1120 650 1150 570 1230 570 C 1310 570 1330 640 1410 640 C 1490 640 1510 600 1590 600 C 1670 600 1700 650 1780 650 C 1850 650 1880 610 1920 610 L 1920 760 Z"
-
+// the temple sits in the Pátio's own scenery (parallax.tsx: sky, sun, clouds, mountains): it only draws itself.
+// Everything is muted (less saturation, a little darker) except the roofs' walkable edges, drawn last in bright
+// gold so the floors she can climb stand out; the far pavilion and the trees behind sit in the haze.
 export function TempleBackdrop({ left }: { left: number }) {
   return (
     <svg aria-hidden="true" className="absolute top-0" style={{ left, width: SCENE_W, height: G + 160, overflow: "visible" }} viewBox={`0 0 ${SCENE_W} ${G + 160}`}>
       <defs>
-        <linearGradient id="tp-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1d2b5a" />
-          <stop offset="0.35" stopColor="#3a5f8f" />
-          <stop offset="0.62" stopColor="#8db3c4" />
-          <stop offset="0.8" stopColor="#f2c8a0" />
-          <stop offset="1" stopColor="#f7a77a" />
-        </linearGradient>
-        <radialGradient id="tp-sun" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#fff4d6" />
-          <stop offset="0.35" stopColor="#ffd59a" stopOpacity="0.9" />
-          <stop offset="1" stopColor="#ffb07a" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="tp-haze" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#f7d9c0" stopOpacity="0" />
-          <stop offset="1" stopColor="#f7d9c0" stopOpacity="0.85" />
-        </linearGradient>
+        <filter id="tp-muted" colorInterpolationFilters="sRGB">
+          <feColorMatrix type="saturate" values="0.42" />
+          <feComponentTransfer><feFuncR type="linear" slope="0.8" /><feFuncG type="linear" slope="0.8" /><feFuncB type="linear" slope="0.84" /></feComponentTransfer>
+        </filter>
+        {/* the haze: half the colour, half the dusk's mauve-blue */}
+        <filter id="tp-haze" colorInterpolationFilters="sRGB">
+          <feColorMatrix type="matrix" values="0.32 0.06 0.04 0 0.2  0.04 0.32 0.04 0 0.19  0.04 0.06 0.34 0 0.25  0 0 0 1 0" />
+        </filter>
         <pattern id="tp-tiles" width="14" height="12" patternUnits="userSpaceOnUse">
-          <rect width="14" height="12" fill="#eab532" />
-          <rect x="10" width="4" height="12" fill="#b9791a" />
-          <rect x="2" width="2" height="12" fill="#ffd970" />
-          <rect y="10" width="14" height="2" fill="#cf9426" />
+          <rect width="14" height="12" fill="#d9a43a" />
+          <rect x="10" width="4" height="12" fill="#a8752a" />
+          <rect y="10" width="14" height="2" fill="#bf8c33" />
         </pattern>
         <linearGradient id="tp-roofshade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff3c4" stopOpacity="0.35" />
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.08" />
           <stop offset="0.6" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="1" stopColor="#5a2a00" stopOpacity="0.35" />
+          <stop offset="1" stopColor="#2a1400" stopOpacity="0.4" />
         </linearGradient>
         <pattern id="tp-band" width="60" height="26" patternUnits="userSpaceOnUse">
-          <rect width="60" height="26" fill="#1f6b62" />
-          <rect y="0" width="60" height="3" fill="#ffd166" />
-          <rect y="23" width="60" height="3" fill="#ffd166" />
-          <path d="M 0 13 L 8 5 L 52 5 L 60 13 L 52 21 L 8 21 Z" fill="#2c5aa8" stroke="#ffd166" strokeWidth="1" />
-          <ellipse cx="30" cy="13" rx="14" ry="5.5" fill="#3fa7a0" stroke="#ffd166" strokeWidth="1.2" />
-          <circle cx="30" cy="13" r="2.5" fill="#e63946" />
-          <circle cx="4" cy="13" r="2.5" fill="#f4f1e8" />
-          <circle cx="56" cy="13" r="2.5" fill="#f4f1e8" />
+          <rect width="60" height="26" fill="#2b5d5a" />
+          <rect y="0" width="60" height="2" fill="#c9a24e" />
+          <rect y="24" width="60" height="2" fill="#c9a24e" />
+          <ellipse cx="30" cy="13" rx="14" ry="5" fill="#33607f" stroke="#c9a24e" strokeWidth="1" />
         </pattern>
         <pattern id="tp-lattice" width="14" height="14" patternUnits="userSpaceOnUse">
-          <rect width="14" height="14" fill="#7d1610" />
-          <path d="M 0 7 L 14 7 M 7 0 L 7 14" stroke="#d99a2b" strokeWidth="1.4" />
-          <path d="M 0 0 L 3.5 3.5 M 14 0 L 10.5 3.5 M 0 14 L 3.5 10.5 M 14 14 L 10.5 10.5" stroke="#b07a1e" strokeWidth="0.8" />
+          <rect width="14" height="14" fill="#6a1d16" />
+          <path d="M 0 7 L 14 7 M 7 0 L 7 14" stroke="#a87a34" strokeWidth="1.2" />
         </pattern>
         <radialGradient id="tp-warm" cx="0.5" cy="0.6" r="0.7">
-          <stop offset="0" stopColor="#ffcf73" stopOpacity="0.55" />
+          <stop offset="0" stopColor="#ffcf73" stopOpacity="0.5" />
           <stop offset="1" stopColor="#ff9f43" stopOpacity="0" />
         </radialGradient>
         <linearGradient id="tp-column" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#8e1a12" />
-          <stop offset="0.35" stopColor="#e0402f" />
-          <stop offset="0.55" stopColor="#c62f24" />
-          <stop offset="1" stopColor="#7a1710" />
+          <stop offset="0" stopColor="#7a2018" />
+          <stop offset="0.4" stopColor="#b2382b" />
+          <stop offset="1" stopColor="#6a1a13" />
         </linearGradient>
         <linearGradient id="tp-undershade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1a0402" stopOpacity="0.5" />
+          <stop offset="0" stopColor="#1a0402" stopOpacity="0.55" />
           <stop offset="1" stopColor="#1a0402" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="tp-redwall" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#9a2117" />
-          <stop offset="1" stopColor="#7a1710" />
+          <stop offset="0" stopColor="#8a2a20" />
+          <stop offset="1" stopColor="#6e1f17" />
         </linearGradient>
         <pattern id="tp-wall" width="80" height="20" patternUnits="userSpaceOnUse">
-          <rect width="80" height="20" fill="#b02a1f" />
-          <rect y="19" width="80" height="1" fill="#8a1d15" />
-          <rect x="40" y="9" width="1" height="10" fill="#951f16" opacity="0.6" />
+          <rect width="80" height="20" fill="#93302a" />
+          <rect y="19" width="80" height="1" fill="#7a2620" />
         </pattern>
         <linearGradient id="tp-wallshade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#2a0603" stopOpacity="0.45" />
-          <stop offset="0.3" stopColor="#2a0603" stopOpacity="0" />
-          <stop offset="1" stopColor="#2a0603" stopOpacity="0.2" />
+          <stop offset="0" stopColor="#1a0603" stopOpacity="0.45" />
+          <stop offset="0.3" stopColor="#1a0603" stopOpacity="0" />
+          <stop offset="1" stopColor="#1a0603" stopOpacity="0.25" />
         </linearGradient>
         <pattern id="tp-coping" width="16" height="16" patternUnits="userSpaceOnUse">
-          <rect width="16" height="16" fill="#e6ac2c" />
-          <rect x="12" width="4" height="16" fill="#b67719" />
-          <rect x="2" width="2" height="16" fill="#ffd970" />
+          <rect width="16" height="16" fill="#b88a3a" />
+          <rect x="12" width="4" height="16" fill="#8f6626" />
         </pattern>
         <pattern id="tp-stone" width="120" height="40" patternUnits="userSpaceOnUse">
-          <rect width="120" height="40" fill="#a39684" />
-          <rect x="0" y="0" width="60" height="20" fill="#ab9e8b" />
-          <rect x="60" y="20" width="60" height="20" fill="#9b8f7d" />
-          <path d="M 0 0 L 120 0 M 0 20 L 120 20 M 30 0 L 30 20 M 90 20 L 90 40" stroke="#7d725f" strokeWidth="2" />
+          <rect width="120" height="40" fill="#6f6a66" />
+          <rect x="0" y="0" width="60" height="20" fill="#75706b" />
+          <path d="M 0 0 L 120 0 M 0 20 L 120 20 M 30 0 L 30 20 M 90 20 L 90 40" stroke="#57534f" strokeWidth="2" />
         </pattern>
         <radialGradient id="tp-glow">
-          <stop offset="0" stopColor="#ffd166" stopOpacity="0.7" />
+          <stop offset="0" stopColor="#ffd166" stopOpacity="0.6" />
           <stop offset="1" stopColor="#ffd166" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="tp-lanternbody" cx="0.4" cy="0.35" r="0.7">
-          <stop offset="0" stopColor="#ff7b6b" />
-          <stop offset="0.6" stopColor="#e63946" />
-          <stop offset="1" stopColor="#a4161a" />
+          <stop offset="0" stopColor="#e0675a" />
+          <stop offset="0.6" stopColor="#c23a35" />
+          <stop offset="1" stopColor="#8a1d1b" />
         </radialGradient>
       </defs>
       <style>{`
         .tp-lantern { animation: tp-sway 3.2s ease-in-out infinite; }
         .tp-glow { opacity: 0.25; transition: opacity 0.6s; }
-        .tp-window { opacity: 0.35; transition: opacity 0.8s; }
+        .tp-window { opacity: 0.3; transition: opacity 0.8s; }
         [data-temple="cleared"] .tp-glow, [data-temple="victory"] .tp-glow { opacity: 1; animation: tp-flicker 0.5s ease-in-out infinite alternate; }
-        [data-temple="cleared"] .tp-window, [data-temple="victory"] .tp-window { opacity: 1; }
-        [data-temple="playing"] .tp-glow, [data-temple="intro"] .tp-glow { opacity: 0.45; }
-        [data-temple="playing"] .tp-window, [data-temple="intro"] .tp-window { opacity: 0.6; }
-        .tp-cloud-a { animation: tp-drift 70s ease-in-out infinite alternate; }
-        .tp-cloud-b { animation: tp-drift 110s ease-in-out infinite alternate-reverse; }
-        .tp-cloud-c { animation: tp-drift 150s ease-in-out infinite alternate; }
-        .tp-tree { transform-box: fill-box; transform-origin: 50% 100%; animation: tp-breeze 6s ease-in-out infinite; }
-        .tp-petal { animation: tp-fall 8s linear infinite; }
-        .tp-crane { animation: tp-fly 40s linear infinite; }
-        .tp-wing { transform-box: fill-box; transform-origin: 50% 100%; animation: tp-flap 0.9s ease-in-out infinite alternate; }
-        @keyframes tp-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+        [data-temple="cleared"] .tp-window, [data-temple="victory"] .tp-window { opacity: 0.9; }
+        [data-temple="playing"] .tp-glow, [data-temple="intro"] .tp-glow { opacity: 0.4; }
+        [data-temple="playing"] .tp-window, [data-temple="intro"] .tp-window { opacity: 0.5; }
+        .tp-tree { transform-box: fill-box; transform-origin: 50% 100%; animation: tp-breeze 7s ease-in-out infinite; }
+        .tp-petal { animation: tp-fall 9s linear infinite; }
+        @keyframes tp-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
         @keyframes tp-flicker { from { opacity: 0.8; } to { opacity: 1; } }
-        @keyframes tp-drift { from { transform: translateX(-160px); } to { transform: translateX(160px); } }
-        @keyframes tp-breeze { 0%, 100% { transform: skewX(0deg); } 50% { transform: skewX(-1.2deg); } }
-        @keyframes tp-fall { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(-90px, 170px) rotate(240deg); opacity: 0; } }
-        @keyframes tp-fly { from { transform: translateX(-300px); } to { transform: translateX(2300px); } }
-        @keyframes tp-flap { from { transform: scaleY(1); } to { transform: scaleY(-0.6); } }
-        @media (prefers-reduced-motion: reduce) { .tp-lantern, .tp-cloud-a, .tp-cloud-b, .tp-cloud-c, .tp-glow, .tp-tree, .tp-petal, .tp-crane, .tp-wing { animation: none !important; } }
+        @keyframes tp-breeze { 0%, 100% { transform: skewX(0deg); } 50% { transform: skewX(-1deg); } }
+        @keyframes tp-fall { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 0.8; } 100% { transform: translate(-90px, 170px) rotate(240deg); opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) { .tp-lantern, .tp-glow, .tp-tree, .tp-petal { animation: none !important; } }
       `}</style>
-      {/* the sky at golden hour, the sun low behind the hall, far mountains in the haze */}
-      <rect x={0} y={0} width={SCENE_W} height={G} fill="url(#tp-sky)" />
-      <circle cx={1180} cy={520} r={240} fill="url(#tp-sun)" />
-      <circle cx={1180} cy={520} r={56} fill="#fff1d0" opacity={0.9} />
-      <g className="tp-cloud-c"><Cloud x={300} y={150} s={0.7} o={0.55} /><Cloud x={1500} y={110} s={0.6} o={0.5} /></g>
-      <path d={MOUNTAINS} fill="#8a8fb0" opacity={0.55} />
-      <path d={MOUNTAINS_NEAR} fill="#6f7f8f" opacity={0.6} />
-      <rect x={0} y={480} width={SCENE_W} height={300} fill="url(#tp-haze)" />
-      <g className="tp-cloud-b"><Cloud x={900} y={250} s={1} o={0.9} /><Cloud x={160} y={330} s={0.8} o={0.8} /></g>
-      {/* cranes crossing the sky */}
-      <g className="tp-crane" opacity={0.75}>
-        {[[0, 230], [60, 250], [110, 222]].map(([dx, y], i) => (
-          <g key={i} transform={`translate(${dx} ${y})`}>
-            <path className="tp-wing" style={{ animationDelay: `${-i * 0.3}s` }} d="M -16 0 Q -6 -10 0 0 Q 6 -10 16 0" stroke="#2b2b3a" strokeWidth={2.5} fill="none" />
-          </g>
-        ))}
+      {/* in the haze, behind: two trees and the far pavilion (scenery, not climbable) */}
+      <g filter="url(#tp-haze)">
+        <Pine x={1230} base={800} h={0.95} />
+        <Blossom x={1560} base={800} h={0.9} />
+        <Hall cx={1420} half={150} base={790} colTop={660} upper={{ half: 110, top: 560, ridge: 470 }} />
       </g>
-      {/* trees behind the halls */}
-      <Pine x={1230} base={800} h={0.95} />
-      <Blossom x={1560} base={800} h={0.9} />
-      {/* far pavilion, behind */}
-      <Hall cx={1420} half={150} base={790} colTop={660} dim={0.85} upper={{ half: 110, top: 560, ridge: 470 }} />
-      {/* main hall, two roofs */}
-      <Hall cx={660} half={520} base={790} colTop={640} upper={{ half: 400, top: 520, ridge: 400 }} />
-      {/* the plaque */}
-      <rect x={624} y={536} width={72} height={58} rx={3} fill="#1f4fa0" stroke="#ffd166" strokeWidth={5} />
-      <rect x={630} y={542} width={60} height={46} fill="none" stroke="#e0a526" strokeWidth={1.5} />
-      <path d="M 660 550 l 0 30 M 646 560 l 28 0 M 648 574 l 24 0" stroke="#ffd166" strokeWidth={3} />
-      {/* right pavilion with a pyramid roof and a golden finial */}
-      <g>
-        <rect x={1600} y={672} width={260} height={118} fill="#6e140e" />
-        <rect className="tp-window" x={1614} y={680} width={232} height={104} fill="url(#tp-warm)" />
-        {Array.from({ length: 5 }, (_, i) => <rect key={i} x={1602 + i * 64} y={672} width={14} height={118} fill="url(#tp-column)" />)}
-        <rect x={1600} y={648} width={260} height={24} fill="url(#tp-band)" />
-        <Roof d={roof(1730, 596, 70, 170, 650, 30)} />
-        <rect x={1620} y={548} width={220} height={52} fill="url(#tp-redwall)" />
-        <rect x={1640} y={556} width={180} height={36} fill="url(#tp-lattice)" />
-        <Roof d={`M 1560 556 Q 1590 552 1610 540 L 1730 452 L 1850 540 Q 1870 552 1900 556 L 1888 566 L 1572 566 Z`} />
-        <path d="M 1730 452 L 1730 414" stroke="#c98a1c" strokeWidth={4} />
-        <circle cx={1730} cy={420} r={12} fill="#ffd166" stroke="#c98a1c" strokeWidth={2} />
-        <circle cx={1730} cy={402} r={6} fill="#2e7d5b" stroke="#ffd166" strokeWidth={1.5} />
-        <rect x={1570} y={790} width={320} height={12} fill="#ece7da" />
+      <g filter="url(#tp-muted)">
+        {/* main hall, two roofs */}
+        <Hall cx={660} half={520} base={790} colTop={640} upper={{ half: 400, top: 520, ridge: 400 }} />
+        {/* the plaque */}
+        <rect x={624} y={536} width={72} height={58} rx={3} fill="#1f4fa0" stroke="#ffd166" strokeWidth={5} />
+        <path d="M 660 550 l 0 30 M 646 560 l 28 0 M 648 574 l 24 0" stroke="#ffd166" strokeWidth={3} />
+        {/* right pavilion with a pyramid roof and a golden finial */}
+        <g>
+          <rect x={1600} y={672} width={260} height={118} fill="#6e140e" />
+          <rect className="tp-window" x={1614} y={680} width={232} height={104} fill="url(#tp-warm)" />
+          {Array.from({ length: 5 }, (_, i) => <rect key={i} x={1602 + i * 64} y={672} width={14} height={118} fill="url(#tp-column)" />)}
+          <rect x={1600} y={648} width={260} height={24} fill="url(#tp-band)" />
+          <Roof d={roof(1730, 596, 70, 170, 650, 30)} />
+          <rect x={1620} y={548} width={220} height={52} fill="url(#tp-redwall)" />
+          <rect x={1640} y={556} width={180} height={36} fill="url(#tp-lattice)" />
+          <Roof d={`M 1560 556 Q 1590 552 1610 540 L 1730 452 L 1850 540 Q 1870 552 1900 556 L 1888 566 L 1572 566 Z`} />
+          <path d="M 1730 452 L 1730 414" stroke="#c98a1c" strokeWidth={4} />
+          <circle cx={1730} cy={420} r={12} fill="#ffd166" stroke="#c98a1c" strokeWidth={2} />
+          <rect x={1570} y={790} width={320} height={12} fill="#ece7da" />
+        </g>
+        {/* trees in front of the halls, by the wall */}
+        <Pine x={110} base={830} h={0.95} />
+        <Blossom x={1890} base={830} h={0.8} />
+        {/* lanterns hanging from the eaves */}
+        {[200, 430, 890, 1120, 1630, 1830].map((x, i) => <Lantern key={x} x={x} y={i < 4 ? 642 : 650} d={i * 0.7} />)}
+        {/* white marble balustrade */}
+        <rect x={0} y={810} width={SCENE_W} height={8} fill="#d8d3c8" />
+        <rect x={0} y={836} width={SCENE_W} height={6} fill="#bfb9ad" />
+        {Array.from({ length: 49 }, (_, i) => <rect key={i} x={i * 40} y={800} width={10} height={44} rx={2} fill="#dcd7cb" />)}
+        {/* the red wall in front, with its glazed coping */}
+        <rect x={0} y={842} width={SCENE_W} height={16} fill="url(#tp-coping)" />
+        <rect x={0} y={856} width={SCENE_W} height={4} fill="#5a3a10" />
+        <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tp-wall)" />
+        <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tp-wallshade)" />
+        {/* the courtyard's stone floor where she walks */}
+        <rect x={0} y={G} width={SCENE_W} height={160} fill="url(#tp-stone)" />
+        <rect x={0} y={G} width={SCENE_W} height={3} fill="#9a938a" />
       </g>
-      {/* trees in front of the halls, by the wall */}
-      <Pine x={40} base={830} h={1.05} />
-      <Blossom x={1890} base={830} h={0.8} />
-      {/* lanterns hanging from the eaves */}
-      {[200, 430, 890, 1120, 1630, 1830].map((x, i) => <Lantern key={x} x={x} y={i < 4 ? 642 : 650} d={i * 0.7} />)}
-      <g className="tp-cloud-a"><Cloud x={620} y={90} s={0.9} o={0.85} /></g>
-      {/* white marble balustrade */}
-      <rect x={0} y={810} width={SCENE_W} height={8} fill="#f1ece0" />
-      <rect x={0} y={818} width={SCENE_W} height={2} fill="#c9c2b2" />
-      <rect x={0} y={836} width={SCENE_W} height={6} fill="#d9d4c7" />
-      {Array.from({ length: 49 }, (_, i) => (
-        <g key={i}>
-          <rect x={i * 40} y={800} width={10} height={44} rx={2} fill="#f8f5ec" />
-          <circle cx={i * 40 + 5} cy={798} r={6} fill="#f8f5ec" />
-          <rect x={i * 40 + 7} y={802} width={3} height={40} fill="#d6d0c2" />
+      {/* the floors she can climb: the roofs' top edges and the eaves, bright on a dark rim */}
+      {TEMPLE_ROOF_LINES.map(l => (
+        <g key={l.id}>
+          <polyline points={lineAttr(l.pts)} fill="none" stroke="#1a0c03" strokeOpacity={0.75} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={lineAttr(l.pts)} fill="none" stroke="#f2cf72" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
         </g>
       ))}
-      {/* the red wall in front, with its golden glazed coping */}
-      <rect x={0} y={842} width={SCENE_W} height={16} fill="url(#tp-coping)" />
-      <rect x={0} y={842} width={SCENE_W} height={3} fill="#ffe08a" />
-      <rect x={0} y={856} width={SCENE_W} height={4} fill="#7a4a10" />
-      <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tp-wall)" />
-      <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tp-wallshade)" />
-      {/* the courtyard's stone floor where she walks */}
-      <rect x={0} y={G} width={SCENE_W} height={160} fill="url(#tp-stone)" />
-      <rect x={0} y={G} width={SCENE_W} height={4} fill="#d8cdb8" />
     </svg>
   )
 }

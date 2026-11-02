@@ -147,11 +147,12 @@ test('the music has sections: groove, call and answer, riff, breakdown and build
   STAGE_MUSIC.forEach((m, i) => assert.equal(m.groove, i))
 })
 
-test('the temple is one more scene after the Parquinho, with its own terraces', () => {
+test('the temple is one more scene after the Parquinho, with no loose platforms (its roofs are the floors)', () => {
   const world = loadTs('lib/pigchicken/world.ts')
   assert.equal(world.worldScenes(4), 5)
   assert.equal(world.worldPlatforms(4).length, 18)
   const all = world.worldPlatforms(4, true)
-  assert.equal(all.length, 18 + world.TEMPLE_PLATFORMS.length)
+  assert.equal(all.length, 18)
+  assert.equal(world.TEMPLE_PLATFORMS.length, 0)
   all.filter(p => p.id.startsWith('tp-')).forEach(p => assert.ok(p.x >= 4 * 1920 && p.x + p.w <= 5 * 1920))
 })

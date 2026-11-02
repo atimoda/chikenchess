@@ -46,13 +46,9 @@ const SCENES: { x: number; bottom: number; w: number; h: number }[][] = [
   ],
 ]
 
-// the temple (Templo do Gongo, the aliens' mini-game) is one more scene after the `screens` of the Parquinho:
-// marble terraces to shoot from and hide behind, as the bunkers of the old invader games
-export const TEMPLE_PLATFORMS: { x: number; bottom: number; w: number; h: number }[] = [
-  { x: 720, bottom: 190, w: 250, h: 26 },
-  { x: 1290, bottom: 190, w: 250, h: 26 },
-  { x: 1015, bottom: 400, w: 210, h: 26 },
-]
+// the temple (Templo do Gongo, the aliens' mini-game) is one more scene after the `screens` of the Parquinho.
+// It has no loose platforms: its roofs are the floors (TEMPLE_ROOF_LINES in temple-backdrop.tsx)
+export const TEMPLE_PLATFORMS: { x: number; bottom: number; w: number; h: number }[] = []
 // the scene index of the temple and the whole world's width in scenes
 export const templeScene = (screens: number) => screens
 export const worldScenes = (screens: number) => screens + 1
