@@ -197,6 +197,21 @@ function drawRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numb
   ctx.restore()
 }
 
+// the portal's size and its distance from the right edge for a window this wide
+function portalLayout(vw: number) {
+  // at the end of the ground, rising behind the footer buttons; from 768 px, just left of the zoom
+  // buttons' column (bottom-24 right-4, 36 px wide) so it does not cover them
+  return vw < 768 ? { d: 135, right: 6 } : { d: 177, right: 58 }
+}
+
+// The horizontal span the chicken's entrance must avoid: the portal plus a margin around it, so she
+// never drops straight into it and leaves the globe right away.
+export function chickenPortalAvoid(vw: number): [number, number][] {
+  const { d, right } = portalLayout(vw)
+  const margin = 70
+  return [[vw - right - d - margin, vw]]
+}
+
 export function ChickenPortal({ engine, href = "/patio", visible = true }: {
   engine: ChickenEngine | null
   href?: string
@@ -217,11 +232,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
   // size and place: in the right corner of the ground
   useEffect(() => {
     const place = () => {
-      const vw = window.innerWidth
-      const d = vw < 768 ? 135 : 177
-      // at the end of the ground, rising behind the footer buttons; from 768 px, just left of the zoom
-      // buttons' column (bottom-24 right-4, 36 px wide) so it does not cover them
-      const right = vw < 768 ? 6 : 58
+      const { d, right } = portalLayout(window.innerWidth)
       setLayout(l => (l && l.d === d && l.right === right ? l : { d, right }))
     }
     place()
