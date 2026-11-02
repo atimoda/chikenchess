@@ -317,6 +317,43 @@ export function drawGong(ctx: Ctx, g: Target, x: number, temple: Temple) {
   }
 }
 
+// the reset stone (Recomeçar): a carved stele on a little plinth; it glows teal when there is a game to end
+export function drawResetStone(ctx: Ctx, g: Target, x: number, temple: Temple) {
+  const s = temple.state, t = performance.now() / 1000
+  const ground = g.y + 4
+  const live = s.phase !== "idle" || s.score > 0
+  const k = s.resetRing, shake = k < 0.3 ? Math.sin(k * 60) * 3 * (1 - k / 0.3) : 0
+  ctx.save()
+  ctx.translate(shake, 0)
+  // the plinth
+  ctx.fillStyle = "#6f695f"; ctx.fillRect(x - 46, ground - 14, 92, 14)
+  ctx.fillStyle = "#8e877b"; ctx.fillRect(x - 40, ground - 20, 80, 8)
+  // the stele, rounded on top
+  const grad = ctx.createLinearGradient(x - 34, 0, x + 34, 0)
+  grad.addColorStop(0, "#5b6670"); grad.addColorStop(0.5, g.flash > 0 ? "#c9e6ee" : "#8a98a3"); grad.addColorStop(1, "#4a545c")
+  ctx.fillStyle = grad
+  ctx.beginPath(); ctx.moveTo(x - 32, ground - 20); ctx.lineTo(x - 32, ground - 96); ctx.quadraticCurveTo(x, ground - 124, x + 32, ground - 96); ctx.lineTo(x + 32, ground - 20); ctx.closePath(); ctx.fill()
+  ctx.strokeStyle = "rgba(20,24,28,0.6)"; ctx.lineWidth = 2; ctx.stroke()
+  // the carving: a circular arrow, lit when it can reset
+  if (live) { ctx.shadowColor = "#7bdff2"; ctx.shadowBlur = 10 + 6 * Math.sin(t * 3) }
+  ctx.strokeStyle = live ? "#7bdff2" : "rgba(255,255,255,0.35)"; ctx.lineWidth = 4
+  ctx.beginPath(); ctx.arc(x, ground - 66, 16, -Math.PI * 0.3, Math.PI * 1.45); ctx.stroke()
+  ctx.fillStyle = ctx.strokeStyle
+  const ax = x + 16 * Math.cos(-Math.PI * 0.3), ay = ground - 66 + 16 * Math.sin(-Math.PI * 0.3)
+  ctx.beginPath(); ctx.moveTo(ax + 8, ay - 2); ctx.lineTo(ax - 6, ay - 6); ctx.lineTo(ax, ay + 8); ctx.closePath(); ctx.fill()
+  ctx.shadowBlur = 0
+  ctx.restore()
+  if (!live) return
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i < s.resetHits ? "#7bdff2" : "rgba(255,255,255,0.18)"
+    ctx.beginPath(); ctx.arc(x + (i - 1) * 18, ground - 138, 5, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
+  const label = "RECOMEÇAR", w = ctx.measureText(label).width + 12
+  ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, ground - 166, w, 16)
+  ctx.fillStyle = "#7bdff2"; ctx.fillText(label, x, ground - 154)
+}
+
 // bombs (red orbs with a white core) and the dragon's fire
 export function drawTempleShots(ctx: Ctx, temple: Temple, camX: number) {
   const t = performance.now() / 1000

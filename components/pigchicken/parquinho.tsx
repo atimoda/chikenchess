@@ -20,9 +20,9 @@ import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
 import { SCENE_W, SHELF_TOP, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, worldPlatforms, worldScenes } from "@/lib/pigchicken/world"
-import { GONG_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
+import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
-import { drawGong, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
+import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
@@ -58,7 +58,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
       )}
       <div data-chicken-platforms className="absolute inset-0">
         {worldPlatforms(screens, true).map(p => (
-          <div key={p.id} data-chicken-id={p.id} className={p.id.startsWith("tp-") ? "absolute rounded-sm border-t-4 border-[#ffd166] bg-[#b3261e] shadow-[0_6px_0_#7a1710]" : "absolute rounded-md border border-primary/30 bg-[#16241b]"} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} />
+          <div key={p.id} data-chicken-id={p.id} className={p.id.startsWith("tp-") ? "absolute rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" : "absolute rounded-md border border-primary/30 bg-[#16241b]"} style={{ left: p.x, top: p.y, width: p.w, height: p.h, ...(p.id.startsWith("tp-") ? { background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" } : {}) }} />
         ))}
         {TEMPLE_ROOF_LINES.map(l => (
           <div key={l.id} data-chicken-id={`tp-${l.id}`} data-chicken-line={lineAttr(l.pts)} className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }} />
@@ -164,7 +164,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
     let placed = false, offerShown = "", templeFor = -1
     // the temple's things move with the world's width: the gong and its racks
-    let gong: Combat["targets"][number] | null = null
+    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null
     const templeRacks: Combat["racks"] = []
     const G = WORLD_GROUND_Y
     const place = () => {
@@ -178,6 +178,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the temple: the gong (strike it to start) and a few weapons and instruments by the entrance
       combat.addButton(0, G - 40, "gong", 130, 150)
       gong = combat.targets[combat.targets.length - 1]
+      // and the reset stone (Recomeçar): strike it to end the game and clear the panels
+      combat.addButton(0, G - 4, "reset", 80, 110)
+      resetStone = combat.targets[combat.targets.length - 1]
       ;(["pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
@@ -187,7 +190,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const placeTemple = (screens: number) => {
       const L = templeScene(screens) * SCENE_W
       combat.targets.forEach(t => {
-        if (t === gong || (t.kind !== "dummy" && t.kind !== "button")) return
+        if (t === gong || t === resetStone || (t.kind !== "dummy" && t.kind !== "button")) return
         if (!homes.has(t)) homes.set(t, t.home)
         const x = homes.get(t)! < L ? homes.get(t)! : -1e6
         t.x = t.home = x
@@ -198,6 +201,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         r.x = homes.get(r)! < L ? homes.get(r)! : -1e6
       })
       if (gong) { gong.x = gong.home = L + GONG_X }
+      if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
       templeRacks.forEach((r, i) => { r.x = L + 130 + i * 105 })
       templeFor = screens
     }
@@ -310,9 +314,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the enemies move inside the scene she is in: the same for every screen size (and every player)
       const sceneL = Math.min(sceneAt(body.x), worldScenes(S.screens) - 1) * SCENE_W
       combat.setView(sceneL, sceneL + SCENE_W)
-      let gongHit = false
+      let gongHit = false, resetHit = false
       combat.pressed.splice(0).forEach(id => {
         if (id === "gong") gongHit = true
+        else if (id === "reset") resetHit = true
         else if (id === "aliens") combat.spawnAliens(G, body.x)
         else if (id === "zombies") combat.spawnZombies(G, body.x, horde.zombies)
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
@@ -329,7 +334,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const events = combat.music.events.splice(0)
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
-        gongHit, firePressed: input.firePressed, beats: events.filter(e => e.kind === "beat").map(e => e.n),
+        gongHit, resetHit, firePressed: input.firePressed, beats: events.filter(e => e.kind === "beat").map(e => e.n),
         fx: { burst: combat.burst, text: combat.addText },
         hurt: dir => engine.impulse(dir * 420, -380),
         sound: e => templeSounds.push(e),
@@ -816,6 +821,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat); return }
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
+    if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }
     if (g.kind === "button") { drawButton(ctx, g, x); return }
     ctx.save()

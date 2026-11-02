@@ -35,8 +35,8 @@ test('the gong starts the first stage after five strikes', () => {
   assert.equal(r.t.state.gongHits, 4)
   r.gong(1)
   assert.equal(r.t.state.phase, 'intro')
-  assert.equal(r.t.state.aliens.length, 18)
-  assert.equal(r.targets.filter(x => x.kind === 'alien').length, 18)
+  assert.equal(r.t.state.aliens.length, 21)
+  assert.equal(r.targets.filter(x => x.kind === 'alien').length, 21)
   assert.ok(r.sounds.some(s => s.kind === 'stageStart'))
 })
 
@@ -120,6 +120,31 @@ test('losing every heart fails the stage; the same seed plays the same game', ()
   ;[a, b].forEach(x => { x.gong(5); for (let i = 0; i < 60 * 10; i++) x.frame() })
   assert.deepEqual(a.t.state.aliens.map(q => [q.x, q.y, q.charge]), b.t.state.aliens.map(q => [q.x, q.y, q.charge]))
   assert.equal(a.t.state.rng, b.t.state.rng)
+})
+
+test('the reset stone ends the game and clears the panels after a few strikes', () => {
+  const r = rig()
+  r.gong(5)
+  for (let i = 0; i < 60 * 5; i++) r.frame()
+  r.t.state.score = 1234
+  r.frame(1 / 60, { resetHit: true }); r.frame(1 / 60, { resetHit: true })
+  assert.equal(r.t.state.phase, 'playing')
+  r.frame(1 / 60, { resetHit: true })
+  assert.equal(r.t.state.phase, 'idle')
+  assert.equal(r.t.state.score, 0)
+  assert.equal(r.t.state.aliens.length, 0)
+  assert.equal(r.targets.filter(x => x.kind === 'alien').length, 0)
+  assert.ok(r.sounds.some(s => s.kind === 'reset' && s.hit === 3))
+  // strikes too far apart do not add up
+  r.t.state.score = 10
+  r.frame(1 / 60, { resetHit: true }); for (let i = 0; i < 60 * 5; i++) r.frame(); r.frame(1 / 60, { resetHit: true })
+  assert.equal(r.t.state.resetHits, 1)
+})
+
+test('the music has sections: groove, call and answer, riff, breakdown and build', () => {
+  const tm = loadTs('lib/pigchicken/temple-music.ts')
+  assert.deepEqual([0, 4, 8, 12, 14, 16].map(tm.sectionOf), ['A', 'A2', 'B', 'break', 'build', 'A'])
+  STAGE_MUSIC.forEach((m, i) => assert.equal(m.groove, i))
 })
 
 test('the temple is one more scene after the Parquinho, with its own terraces', () => {

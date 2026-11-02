@@ -32,17 +32,20 @@ export type StageDef = {
   dragon?: boolean
 }
 export const STAGES: StageDef[] = [
-  { name: 'Despertar', intro: 'As águas-vivas marcham no ritmo. Nos tempos vermelhos da pista, elas soltam bombas.', rows: ['jelly', 'jelly', 'jelly'], cols: 6, bombEvery: 4, bombs: 1, bombSpeed: 220, diveEvery: 0, stepPx: 22 },
-  { name: 'Lanternas', intro: 'Novo: Lanterna. Ela mergulha em você e volta para a formação.', rows: ['lantern', 'jelly', 'jelly'], cols: 6, bombEvery: 4, bombs: 1, bombSpeed: 240, diveEvery: 6, stepPx: 24 },
-  { name: 'Couraça', intro: 'Novo: Casco. Aguenta vários tiros e racha aos poucos.', rows: ['shell', 'lantern', 'jelly'], cols: 6, bombEvery: 2, bombs: 1, bombSpeed: 250, diveEvery: 6, stepPx: 24 },
-  { name: 'Gêmeos', intro: 'Novo: Gêmeos. Derrubado, vira dois pequenos que voam soltos.', rows: ['twin', 'shell', 'lantern'], cols: 5, bombEvery: 2, bombs: 2, bombSpeed: 270, diveEvery: 4, stepPx: 26 },
-  { name: 'Tambores', intro: 'Novo: Tambor. Só abre no tempo da música: acerte no compasso!', rows: ['drum', 'twin', 'jelly'], cols: 6, bombEvery: 2, bombs: 2, bombSpeed: 290, diveEvery: 0, stepPx: 26 },
+  { name: 'Despertar', intro: 'As águas-vivas marcham no ritmo. Nos tempos vermelhos da pista, elas soltam bombas.', rows: ['jelly', 'jelly', 'jelly'], cols: 7, bombEvery: 4, bombs: 1, bombSpeed: 220, diveEvery: 0, stepPx: 22 },
+  { name: 'Lanternas', intro: 'Novo: Lanterna. Ela mergulha em você e volta para a formação.', rows: ['lantern', 'jelly', 'jelly', 'jelly'], cols: 7, bombEvery: 4, bombs: 1, bombSpeed: 240, diveEvery: 6, stepPx: 24 },
+  { name: 'Couraça', intro: 'Novo: Casco. Aguenta vários tiros e racha aos poucos.', rows: ['shell', 'lantern', 'jelly', 'jelly'], cols: 7, bombEvery: 2, bombs: 1, bombSpeed: 250, diveEvery: 6, stepPx: 24 },
+  { name: 'Gêmeos', intro: 'Novo: Gêmeos. Derrubado, vira dois pequenos que voam soltos.', rows: ['twin', 'shell', 'lantern', 'jelly'], cols: 6, bombEvery: 2, bombs: 2, bombSpeed: 270, diveEvery: 4, stepPx: 26 },
+  { name: 'Tambores', intro: 'Novo: Tambor. Só abre no tempo da música: acerte no compasso!', rows: ['drum', 'twin', 'lantern', 'jelly'], cols: 7, bombEvery: 2, bombs: 2, bombSpeed: 290, diveEvery: 6, stepPx: 26 },
   { name: 'Dragão', intro: 'O dragão do templo! Destrua o corpo para expor a cabeça.', rows: [], cols: 0, bombEvery: 4, bombs: 1, bombSpeed: 300, diveEvery: 0, stepPx: 0, dragon: true },
 ]
 export const GONG_FIRST = 5, GONG_NEXT = 3
+// the reset stone (Recomeçar): this many strikes put the temple back at rest, panels and score cleared
+export const RESET_NEED = 3
+export const RESET_X = 790
 const MAX_HEARTS = 3
 const INTRO = 3.2
-const DRAGON_SEGMENTS = 10
+const DRAGON_SEGMENTS = 14
 
 export type Phase = 'idle' | 'intro' | 'playing' | 'cleared' | 'failed' | 'victory'
 // one alien of the temple: its behaviour (the combat's target with the same id holds its hit points)
@@ -62,6 +65,7 @@ export type Judge = { grade: 'perfect' | 'good' | 'miss'; t: number }
 export type TempleState = {
   phase: Phase; stage: number; t: number
   gongHits: number; gongNeed: number; gongRing: number // the ring of light of the last strike (s since)
+  resetHits: number; resetRing: number // the reset stone: strikes so far, s since the last one
   hearts: number; invuln: number; hurtT: number
   score: number; stageScore: number; combo: number; bestCombo: number; judge: Judge | null
   melodyStep: number; rng: number
@@ -75,7 +79,7 @@ export type TempleState = {
 
 export function newTempleState(seed = 1): TempleState {
   return {
-    phase: 'idle', stage: 0, t: 0, gongHits: 0, gongNeed: GONG_FIRST, gongRing: 9,
+    phase: 'idle', stage: 0, t: 0, gongHits: 0, gongNeed: GONG_FIRST, gongRing: 9, resetHits: 0, resetRing: 9,
     hearts: MAX_HEARTS, invuln: 0, hurtT: 9, score: 0, stageScore: 0, combo: 0, bestCombo: 0, judge: null,
     melodyStep: 0, rng: seed >>> 0 || 1, f: null, aliens: [], bombs: [], dragonT: 0, banner: null, welcomed: false, outsideT: 0, kills: 0, perfects: 0,
   }
@@ -91,6 +95,7 @@ export type TempleIO = {
   body: { x: number; y: number; scale: number }
   boxes: Box[]
   gongHit: boolean // the gong (totem) was struck this frame
+  resetHit?: boolean // the reset stone was struck this frame
   firePressed: boolean
   beats: number[] // conductor beats that started this frame
   fx: { burst: (x: number, y: number, n: number, color: string, speed?: number, size?: number) => void; text: (x: number, y: number, text: string, color?: string, size?: number) => void }
@@ -170,7 +175,7 @@ export function createTemple(seed = 1) {
   function fail(io: TempleIO, why: string) {
     clearAliens(io, true)
     s.phase = 'failed'; s.t = 0; s.gongHits = 0; s.gongNeed = GONG_NEXT
-    banner('Fase perdida', `${why} Bata ${GONG_NEXT} vezes no gongo para tentar de novo.`, '#ff6b5b', 6)
+    banner('Fase perdida', `${why} Bata ${GONG_NEXT} vezes no gongo para tentar de novo (ou ${RESET_NEED} na pedra Recomeçar para voltar ao início).`, '#ff6b5b', 6)
     io.sound({ kind: 'fail' })
   }
 
@@ -182,7 +187,7 @@ export function createTemple(seed = 1) {
     const chord = io.music.chord()
     if (s.phase === 'victory') {
       s.gongNeed = GONG_FIRST
-      banner('Templo libertado!', `Pontos ${s.score.toLocaleString('pt-BR')} · combo máximo ${s.bestCombo}. Bata ${GONG_FIRST} vezes no gongo para jogar de novo.`, '#ffd166', 9)
+      banner('Templo libertado!', `Pontos ${s.score.toLocaleString('pt-BR')} · combo máximo ${s.bestCombo}. Bata ${GONG_FIRST} vezes no gongo para jogar de novo, ou ${RESET_NEED} na pedra Recomeçar para zerar.`, '#ffd166', 9)
       io.sound({ kind: 'victory', root: io.music.zone.root, chord })
     } else {
       s.gongNeed = GONG_NEXT
@@ -252,6 +257,25 @@ export function createTemple(seed = 1) {
         if (s.gongHits >= s.gongNeed) {
           const next = s.phase === 'cleared' ? s.stage + 1 : s.phase === 'failed' ? s.stage : 0
           startStage(io, next)
+        }
+      }
+    }
+
+    // the reset stone: a few strikes end whatever is on and put the temple back at rest (score and panels cleared)
+    s.resetRing += dt
+    if (s.resetHits > 0 && s.resetRing > 4) s.resetHits = 0
+    if (io.resetHit) {
+      s.resetRing = 0
+      if (s.phase === 'idle' && s.score === 0) io.sound({ kind: 'gongDull' })
+      else {
+        s.resetHits++
+        io.sound({ kind: 'reset', hit: s.resetHits, need: RESET_NEED })
+        io.fx.text(L + RESET_X, G - 170, `${s.resetHits}/${RESET_NEED}`, '#7bdff2', 20)
+        if (s.resetHits >= RESET_NEED) {
+          clearAliens(io, true)
+          Object.assign(s, newTempleState(s.rng), { welcomed: true, resetRing: 0 })
+          banner('Templo reiniciado', `Pontos zerados. Bata ${GONG_FIRST} vezes no gongo para começar da Fase 1.`, '#7bdff2', 4)
+          return
         }
       }
     }
