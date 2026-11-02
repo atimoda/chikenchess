@@ -2,7 +2,7 @@
 // Each item has its own shot; equipping, dry fire, aiming, reloading and explosions share a few recipes.
 import type { ItemId } from './items'
 
-export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie'
+export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block'
 
 let ac: AudioContext | null = null, master: GainNode | null = null, noise: AudioBuffer | null = null
 let volume = 0.6
@@ -97,6 +97,8 @@ export function playWeaponSound(kind: WeaponSound, item: ItemId | null) {
     case 'button': tone(a, { gain: 0.12, decay: 0.08 }, 'square', 880); tone(a, { at: 0.08, gain: 0.12, decay: 0.12 }, 'square', 1320); break
     case 'alienDie': tone(a, { gain: 0.15, decay: 0.25 }, 'square', 900, 120); hiss(a, { gain: 0.15, decay: 0.15 }, 'highpass', 2000); break
     case 'zombieDie': tone(a, { gain: 0.18, attack: 0.02, decay: 0.5 }, 'sawtooth', 140, 60); break
+    // a hit that glances off a shield: a bright metallic tink
+    case 'block': tone(a, { gain: 0.1, decay: 0.12 }, 'triangle', 2400, 2100); tone(a, { gain: 0.06, decay: 0.2 }, 'sine', 3700); click(a, 0, 0.1, 5000); break
     case 'throw': hiss(a, { gain: 0.15, attack: 0.03, decay: 0.2 }, 'bandpass', 400, 1200, 1); break
   }
 }

@@ -40,6 +40,8 @@ type Formation = { x: number; y: number; dir: number; targetY: number; speed: nu
 export type EnemyData =
   | { kind: 'alien'; f: Formation; col: number; row: number; color: string }
   | { kind: 'zombie'; speed: number; bit: boolean }
+  // the temple's aliens (lib/pigchicken/temple.ts moves them; here they only blink and die)
+  | { kind: 'temple'; species: string; color: string }
 
 export type EnemyEnv = { playerX: number; playerY: number; groundY: number; viewL: number; viewR: number; onBite: (t: Target) => void }
 
@@ -78,6 +80,11 @@ export function stepEnemy(t: Target, dt: number, env: EnemyEnv): boolean {
   if (!d) return true
   t.animT += dt
   t.flash = Math.max(0, t.flash - dt)
+  if (d.kind === 'temple') {
+    if (t.deadT > 0) { t.deadT -= dt; return t.deadT > 0 }
+    t.vx *= Math.pow(0.01, dt)
+    return true
+  }
   if (d.kind === 'alien') {
     if (t.deadT > 0) { t.deadT -= dt; return t.deadT > 0 }
     t.x = d.f.x + d.col * d.f.gap + t.vx * 0.05

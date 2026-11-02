@@ -3,12 +3,15 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '1.12.1',
+    version: '1.13.0',
     date: '02/11/2026',
-    title: 'Portal do Pátio pede confirmação',
+    title: 'Templo do Gongo: mini-jogo de aliens em fases no Pátio, e o portal do Pátio pede confirmação',
     groups: [
       { title: 'Galinha', items: [
         'Globo: encostar a galinha no portal não leva mais direto ao Pátio. Enquanto ela estiver encostada, aparece o botão “Enter playground?” acima do portal; clique (no computador) ou toque (no celular) nele para entrar. Se ela se afastar, o botão some.',
+        'PigChicKen: novo mini-jogo Templo do Gongo, na última cena do Pátio (depois de todas as outras), com cenário de templo chinês. Bata 5 vezes no gongo (tiro, golpe de asa ou nota) para começar. São 6 fases, cada uma com um alien novo: águas-vivas que marcham no ritmo, Lanternas que mergulham em você, Cascos que aguentam vários tiros, Gêmeos que se dividem em dois, Tambores que só abrem no tempo da música e, no fim, o Dragão (destrua o corpo para expor a cabeça).',
+        'Templo do Gongo: a música cresce a cada fase (gongo, taiko, woodblock, baixo, guzheng, flauta, sinos), e cada alien derrubado toca a próxima nota da melodia da fase. A pista de ritmo no alto mostra as batidas chegando: atire no tempo para fazer PERFEITO, subir o combo e multiplicar os pontos; as batidas vermelhas são as que soltam bombas.',
+        'Templo do Gongo: 3 corações por fase; bombas, mergulhos e o fogo do dragão tiram um. As plataformas vermelhas servem de abrigo. Ao vencer a fase aparecem os pontos, fogos e as lanternas do templo acendem; bata 3 vezes no gongo para a próxima. Perdeu? 3 batidas no gongo tentam de novo.',
         'PigChicKen: armas e instrumentos não são mais pegos só de passar por cima. Parado sobre um item, aperte Pegar (tecla E ou o botão na tela) para pegá-lo; ele já vai para a mão. Com o inventário cheio, Pegar troca pelo item que está na mão.',
       ] },
     ],
