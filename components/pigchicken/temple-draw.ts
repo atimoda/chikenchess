@@ -160,6 +160,13 @@ export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: numbe
   const top = g.y - g.h
   ctx.save()
   if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.35) * 0.6
+  // a dark halo behind it, so it reads against the temple's roofs and walls
+  {
+    const cy = g.y - g.h / 2, r = Math.max(g.w, g.h) * 0.85
+    const halo = ctx.createRadialGradient(x, cy, r * 0.3, x, cy, r)
+    halo.addColorStop(0, "rgba(8,8,20,0.6)"); halo.addColorStop(1, "rgba(8,8,20,0)")
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2); ctx.fill()
+  }
   // the bomb's warning: a red glow pulsing under it
   if (charge > 0.3 && g.deadT <= 0) {
     const r = g.w * (0.7 + 0.15 * Math.sin(performance.now() / 50))
