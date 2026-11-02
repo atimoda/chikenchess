@@ -3,6 +3,16 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.12.1',
+    date: '02/11/2026',
+    title: 'Portal do Pátio pede confirmação',
+    groups: [
+      { title: 'Galinha', items: [
+        'Globo: encostar a galinha no portal não leva mais direto ao Pátio. Enquanto ela estiver encostada, aparece o botão “Enter playground?” acima do portal; clique (no computador) ou toque (no celular) nele para entrar. Se ela se afastar, o botão some.',
+      ] },
+    ],
+  },
+  {
     version: '1.12.0',
     date: '01/11/2026',
     title: 'Pátio da Galinha dentro do jogo e uma configuração da galinha para todas as telas',

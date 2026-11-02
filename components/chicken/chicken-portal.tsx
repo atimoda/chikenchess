@@ -1,9 +1,10 @@
 "use client"
 
 // Electric portal on the globe's ground: a ring of blue lightning standing in the right corner of the
-// ground strip, half transparent, rising behind the footer buttons. When the player chicken walks (jumps,
-// flies or is dropped) into it, it flares, plays a soft sound and the game goes to the Pátio (/patio). The Pátio shows a short
-// arrival burst around her (ChickenPortalArrival).
+// ground strip, half transparent, rising behind the footer buttons. While the player chicken is touching it
+// (walked, jumped, flew or was dropped into it), an "Enter playground?" button floats above the ring;
+// clicking or tapping it makes the portal flare, play a soft sound and the game goes to the Pátio (/patio).
+// The Pátio shows a short arrival burst around her (ChickenPortalArrival).
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { ChickenEngine } from "@/lib/chicken/engine"
@@ -226,6 +227,9 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
   visibleRef.current = visible
   const [layout, setLayout] = useState<{ d: number; right: number } | null>(null)
   const [entering, setEntering] = useState(false)
+  const [touching, setTouching] = useState(false)
+  const enterRef = useRef<(() => void) | null>(null)
+  const [buttonW, setButtonW] = useState(170)
 
   useEffect(() => { router.prefetch(href) }, [router, href])
 
@@ -267,7 +271,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
     const sparks: Spark[] = []
     let rot = 0, last = performance.now(), nextStrands = 0, drawnAt = 0
     let power = 1 // glow strength: rises as she comes close, flares on entering
-    let armed = false, enteredAt = 0, raf = 0
+    let touchingNow = false, enteredAt = 0, raf = 0
     let slowFrames = 0, measured = 0
     // the canvas is fixed: its place only changes with the window
     let box = canvas.getBoundingClientRect()
@@ -275,18 +279,26 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
     window.addEventListener("resize", onResize)
 
     const enter = () => {
+      if (enteredAt) return
       enteredAt = performance.now()
+      touchingNow = false
+      setTouching(false)
       setEntering(true)
       playPortalSound("enter")
       try { window.sessionStorage.setItem(ARRIVAL_KEY, String(Date.now())) } catch { /* private mode */ }
       window.setTimeout(() => router.push(href), ENTER_MS)
     }
 
+    enterRef.current = enter
+
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
       const elapsed = now - last
       // hidden (city popup open) or tab in the background: nothing to draw
-      if (!visibleRef.current && !enteredAt) { last = now; return }
+      if (!visibleRef.current && !enteredAt) {
+        if (touchingNow) { touchingNow = false; setTouching(false) }
+        last = now; return
+      }
       // lite ring at ~30 fps
       if (lite && !enteredAt && now - drawnAt < 30) return
       drawnAt = now
@@ -308,10 +320,10 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
         const st = eng.getState()
         const bodyY = st.y - 80 * st.scale
         const dx = st.x - pcx, dy = bodyY - pcy
-        const inside = Math.abs(dx) < r * 0.55 && Math.abs(dy) < r * 0.95
-        // dropped in on top of it: wait until she has stepped out once
-        if (!inside) armed = true
-        else if (armed) enter()
+        // touching: her body inside the ring; she has to move a bit further out to let go (no flicker at the edge)
+        const k = touchingNow ? 1.15 : 1
+        const inside = Math.abs(dx) < r * 0.55 * k && Math.abs(dy) < r * 0.95 * k
+        if (inside !== touchingNow) { touchingNow = inside; setTouching(inside) }
         near = Math.max(0, 1 - Math.hypot(dx, dy) / (r * 3.5))
       }
       const enterT = enteredAt ? Math.min(1, (now - enteredAt) / ENTER_MS) : 0
@@ -360,7 +372,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
       if (flashRef.current && enteredAt) flashRef.current.style.opacity = String(Math.min(1, enterT * enterT * 1.15))
     }
     raf = requestAnimationFrame(frame)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize) }
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); enterRef.current = null }
   }, [layout, router, href])
 
   if (!layout) return null
@@ -374,6 +386,18 @@ export function ChickenPortal({ engine, href = "/patio", visible = true }: {
         className="pointer-events-none fixed z-[66] transition-opacity duration-700"
         style={{ width: size, height: size, right: layout.right - PAD, bottom: CHICKEN_GROUND_H - 6 - PAD, opacity: visible ? OPACITY : 0 }}
       />
+      {touching && visible && !entering && (
+        <button
+          type="button"
+          data-chicken-ignore
+          ref={el => { if (el && Math.abs(el.offsetWidth - buttonW) > 1) setButtonW(el.offsetWidth) }}
+          onClick={() => enterRef.current?.()}
+          className="pointer-events-auto fixed z-[195] whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 animate-in fade-in zoom-in-95 duration-200"
+          style={{ right: Math.max(8, layout.right + layout.d / 2 - buttonW / 2), bottom: CHICKEN_GROUND_H - 6 + layout.d + 10, touchAction: "manipulation" }}
+        >
+          Enter playground?
+        </button>
+      )}
       {entering && (
         <div
           ref={flashRef}
