@@ -3,6 +3,7 @@
 // Parquinho: PigChicKen's creative mode, built on the Pátio. A world several screens wide with a camera
 // (follow, scenes, fixed), and the aim of the items: right stick > mouse > on-screen right stick > left stick /
 // arrows > facing, drawn as a reticle. Firing, hitting and throwing only flash for now; the items come next.
+// The world is in fixed units (lib/pigchicken/world.ts): the same size on every screen, which only changes the crop.
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
@@ -18,55 +19,30 @@ import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchick
 import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
-
-// floating boxes per screen (percent of the screen), so every screen has something to climb
-const SCREENS: { left: number; bottom: number; width: number; height: number }[][] = [
-  [
-    // the first one is the long shelf with the instruments, above the weapons' racks
-    { left: 8, bottom: 32, width: 86, height: 3 },
-    { left: 1, bottom: 16, width: 6, height: 4 },
-    { left: 28, bottom: 60, width: 14, height: 5 },
-    { left: 64, bottom: 60, width: 14, height: 5 },
-  ],
-  [
-    { left: 6, bottom: 14, width: 12, height: 5 },
-    { left: 22, bottom: 26, width: 12, height: 5 },
-    { left: 38, bottom: 38, width: 12, height: 5 },
-    { left: 54, bottom: 50, width: 12, height: 5 },
-    { left: 76, bottom: 0, width: 6, height: 46 },
-  ],
-  [
-    { left: 10, bottom: 0, width: 5, height: 30 },
-    { left: 30, bottom: 20, width: 26, height: 5 },
-    { left: 66, bottom: 0, width: 5, height: 55 },
-    { left: 80, bottom: 30, width: 14, height: 5 },
-  ],
-  [
-    { left: 8, bottom: 30, width: 10, height: 5 },
-    { left: 26, bottom: 30, width: 10, height: 5 },
-    { left: 44, bottom: 30, width: 10, height: 5 },
-    { left: 62, bottom: 30, width: 10, height: 5 },
-    { left: 35, bottom: 56, width: 30, height: 5 },
-  ],
-]
+import { SCENE_W, SHELF_TOP, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, worldPlatforms } from "@/lib/pigchicken/world"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
 }
 
-// groundHeight: how high the ground reaches (raised on a phone held upright): the scene sits on top of it
-export function ParquinhoWorld({ screens, worldRef, groundHeight = 30 }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number }) {
+// The world in fixed world units: scenes of SCENE_W, the ground at WORLD_GROUND_Y. ParquinhoPlay moves it with the
+// camera (translate); nothing in it depends on the screen's size.
+const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
+export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null> }) {
+  const width = screens * SCENE_W
   return (
-    <div ref={worldRef} className="pointer-events-none absolute left-0 top-0 will-change-transform" style={{ width: `${screens * 100}vw`, bottom: groundHeight - 30 }}>
+    <div ref={worldRef} className="pointer-events-none absolute left-0 top-0 will-change-transform" style={{ width, height: WORLD_GROUND_Y }}>
+      {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
+      <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }} />
       {Array.from({ length: screens }, (_, s) => (
-        <div key={`m${s}`} className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: `${s * 100}vw` }}>
+        <div key={`m${s}`} className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: s * SCENE_W }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1} <span style={{ color: ZONES[s % ZONES.length].color, opacity: 0.6 }}>· {zoneLabel(ZONES[s % ZONES.length])}</span></span>
         </div>
       ))}
       <div data-chicken-platforms className="absolute inset-0">
-        {Array.from({ length: screens }, (_, s) => SCREENS[s % SCREENS.length].map((p, i) => (
-          <div key={`${s}-${i}`} data-chicken-id={`pq${s}-${i}`} className="absolute rounded-md border border-primary/30 bg-[#16241b]" style={{ left: `${s * 100 + p.left}vw`, bottom: `calc(${p.bottom}% + 30px)`, width: `${p.width}vw`, height: `${p.height}%`, minHeight: 18 }} />
-        )))}
+        {worldPlatforms(screens).map(p => (
+          <div key={p.id} data-chicken-id={p.id} className="absolute rounded-md border border-primary/30 bg-[#16241b]" style={{ left: p.x, top: p.y, width: p.w, height: p.h }} />
+        ))}
       </div>
     </div>
   )
@@ -78,6 +54,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const hudRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  // where the page keeps the ground on the screen (raised above the touch controls on a phone held upright)
+  const groundHRef = useRef(groundHeight)
+  groundHRef.current = groundHeight
   const touchAim = useRef<Stick | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
@@ -136,7 +115,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // only the reticle: the mouse arrow hides over the game (panels and buttons keep it)
     document.body.classList.add("pigchicken-play")
 
-    let camX = 0, last = performance.now(), raf = 0
+    // camX: world x at the screen's left edge; oy: screen y of world y = 0 (null until the first frame)
+    let camX = 0, oy: number | null = null, last = performance.now(), raf = 0
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
@@ -157,19 +137,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
-    let placed = false, groundAt = 0, offerShown = ""
-    const place = (viewW: number, groundY: number) => {
-      // the creative mode: a row of racks with every weapon on the first screen, targets further in
-      WEAPON_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id))
-      // horde buttons on the second screen: shoot them; the instruments right after them
-      ;(["aliens", "pattern", "zombies", "zcount"] as const).forEach((id, i) => combat.addButton(viewW * (1.06 + i * 0.09), groundY - 46, id))
+    let placed = false, offerShown = ""
+    const G = WORLD_GROUND_Y
+    const place = () => {
+      // the creative mode: a row of racks with every weapon on the first scene, targets further in
+      WEAPON_IDS.forEach((id, i) => combat.addRack(SCENE_W * (0.14 + i * 0.105), id))
+      // horde buttons on the second scene: shoot them; the instruments right after them
+      ;(["aliens", "pattern", "zombies", "zcount"] as const).forEach((id, i) => combat.addButton(SCENE_W * (1.06 + i * 0.09), G - 46, id))
       // the instruments on the long shelf above the weapons
-      INSTRUMENT_IDS.forEach((id, i) => combat.addRack(viewW * (0.14 + i * 0.105), id, shelfTop() ?? groundY))
-      ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach(f => combat.addTarget(viewW * f, groundY))
+      INSTRUMENT_IDS.forEach((id, i) => combat.addRack(SCENE_W * (0.14 + i * 0.105), id, SHELF_TOP))
+      ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach(f => combat.addTarget(SCENE_W * f, G))
       placed = true
     }
-    // the top of the instruments' shelf (the first platform of the first scene), in screen pixels
-    const shelfTop = () => document.querySelector('[data-chicken-id="pq0-0"]')?.getBoundingClientRect().top
+    // the platforms the shots hit, in world units (the same boxes the world draws)
+    let boxesFor = -1, worldBoxes: Box[] = []
+    const header = document.querySelector("main header")
     const fit = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1)
       canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
@@ -181,27 +163,31 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now
       const S = settingsRef.current
-      const st = engine.getState()
-      const viewW = st.width, worldW = viewW * S.screens
-      if (!placed) { place(viewW, st.groundY); groundAt = st.groundY }
-      // the ground moved (phone turned upright or back): what stands on it moves with it
-      if (st.groundY !== groundAt) {
-        const dy = st.groundY - groundAt
-        combat.targets.forEach(t => { if (Math.abs(t.y - groundAt) < 2 || t.kind === "button") t.y += dy })
-        combat.pickups.forEach(pk => { if (Math.abs(pk.y - groundAt) < 2) pk.y += dy })
-        groundAt = st.groundY
+      let st = engine.getState()
+      const viewW = st.width, worldW = SCENE_W * S.screens
+      if (!placed) place()
+      if (boxesFor !== S.screens) {
+        boxesFor = S.screens
+        worldBoxes = worldPlatforms(S.screens).map(p => ({ l: p.x, t: p.y, r: p.x + p.w, b: Math.min(p.y + p.h, G) }))
       }
       const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : ""
       if (offer !== offerShown) { offerShown = offer; setGrabOffer(offer) }
-      const shelf = shelfTop()
-      if (shelf !== undefined) combat.racks.forEach(r => { if (r.y !== undefined) r.y = shelf })
 
-      // ---------- camera ----------
+      // ---------- camera: only the crop changes with the screen, never the size of things ----------
       const worldX = camX + st.x
       const next = st.held ? camX : cameraStep(camX, { mode: S.camera, worldX, viewW, worldW, dt, deadband: S.deadband, lag: S.lag })
-      if (next !== camX) { engine.shift(camX - next); camX = next }
+      const groundScreen = st.height - groundHRef.current
+      const yr = cameraYRange(groundScreen)
+      if (oy === null) oy = yr.lo
+      const viewTop = header ? header.getBoundingClientRect().bottom : 0
+      const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt, lag: S.lag })
+      if (next !== camX || nextOy !== oy) { engine.shift(camX - next, nextOy - oy); camX = next; oy = nextOy }
+      // her ground is the world's, wherever the camera puts it on the screen
+      if (Math.abs(st.groundY - (G + oy)) > 0.01) engine.setGroundHeight(st.height - G - oy)
+      st = engine.getState()
+      const camY = oy
       engine.setBounds(cameraBounds(camX, { mode: S.camera, viewW, worldW }))
-      if (worldRef.current) worldRef.current.style.transform = `translate3d(${-camX}px,0,0)`
+      if (worldRef.current) worldRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
 
       // ---------- aim ----------
       const act = engine.getActions()
@@ -221,7 +207,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         let best = Infinity
         const pick = (kinds: string[]) => combat.targets.forEach(t => {
           if (!kinds.includes(t.kind) || t.deadT > 0 || t.state === "dead" || t.state === "converted") return
-          const cx = t.x - camX, cy = t.y - t.h / 2, dd = Math.hypot(cx - origin.x, cy - origin.y)
+          const cx = t.x - camX, cy = t.y - t.h / 2 + camY, dd = Math.hypot(cx - origin.x, cy - origin.y)
           if (dd < best) { best = dd; autoAt = { x: cx, y: cy } }
         })
         pick(["alien", "zombie"])
@@ -265,27 +251,25 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       slotPick = 0; slotTap.current = 0
       prev = { ...act, fire, melee }
-      const boxes: Box[] = []
-      document.querySelectorAll("[data-chicken-platforms] > *").forEach(e => {
-        const r = e.getBoundingClientRect()
-        boxes.push({ l: r.left + camX, t: r.top, r: r.right + camX, b: Math.min(r.bottom, st.groundY) })
-      })
-      const body = { x: st.x + camX, y: st.y, face: st.face, scale: st.scale, grounded: st.grounded, state: st.state, vx: st.vx }
-      const worldOrigin = { x: origin.x + camX, y: origin.y }
-      combat.setView(camX, camX + viewW)
+      const boxes = worldBoxes
+      const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: st.state, vx: st.vx }
+      const worldOrigin = { x: origin.x + camX, y: origin.y - camY }
+      // the enemies move inside the scene she is in: the same for every screen size (and every player)
+      const sceneL = Math.min(sceneAt(body.x), S.screens - 1) * SCENE_W
+      combat.setView(sceneL, sceneL + SCENE_W)
       combat.pressed.splice(0).forEach(id => {
-        if (id === "aliens") combat.spawnAliens(st.groundY, body.x)
-        else if (id === "zombies") combat.spawnZombies(st.groundY, body.x, horde.zombies)
+        if (id === "aliens") combat.spawnAliens(G, body.x)
+        else if (id === "zombies") combat.spawnZombies(G, body.x, horde.zombies)
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
         else if (id === "pattern") horde.pattern = (horde.pattern + 1) % ALIEN_PATTERNS.length
       })
       buttonLabels.aliens = "SOLTAR ALIENS"; buttonLabels.pattern = `PADRÃO: ${ALIEN_PATTERNS[horde.pattern].label.toUpperCase()}`
       buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
-      combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y }, aim.angle, input, boxes, st.groundY, (vx, vy) => engine.impulse(vx, vy))
+      combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy))
 
       // ---------- music: the zone of the scene she is in sets key, scale and tempo; ambience on its beat ----------
-      const zone = ZONES[Math.max(0, Math.floor(worldX / viewW)) % ZONES.length]
+      const zone = ZONES[sceneAt(worldX) % ZONES.length]
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
       setMusicVolumes(S.noteVolume, S.ambienceVolume)
@@ -307,7 +291,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- draw ----------
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
+      // the world's things stay under the header, like the world itself
+      const inWorld = () => { ctx.save(); ctx.beginPath(); ctx.rect(0, viewTop, viewW, st.height - viewTop); ctx.clip(); ctx.translate(0, camY) }
+      inWorld()
       drawWorld(ctx, combat, camX)
+      ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
       // the item itself is drawn inside her rig, in front of her body and of the wing; in a swing the wing
@@ -323,9 +311,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       let path: { x: number; y: number }[] | null = null
       if (armed && ["laser", "impact", "grenade", "bow"].includes(d.reticle)) {
         const power = d.fireMode === "charge" ? d.chargeMin + (1 - d.chargeMin) * combat.fireCharge : 1
-        path = combat.predict({ x: muzzle.x + camX, y: muzzle.y }, ang, power, { boxes, groundY: st.groundY }).points.map(p => ({ x: p.x - camX, y: p.y }))
+        path = combat.predict({ x: muzzle.x + camX, y: muzzle.y - camY }, ang, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
       }
+      inWorld()
       drawBeam(ctx, combat, camX)
+      ctx.restore()
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
@@ -338,7 +328,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const shown = h && d.mag > 0 ? Math.ceil(h.ammo) : 0
         const item2 = h ? item.replace(`${h.ammo}/`, `${shown}/`) : item
         const m = combat.music
-        hudRef.current.textContent = `${item2} · ${m.zone.name} ${chordName(m.chord())} ${[0, 1, 2, 3].map(i => (Math.floor(m.beat) % 4 === i ? "●" : "·")).join("")}${combat.enemies || k.aliens || k.zombies || cv.birds || cv.people ? ` · inimigos: ${combat.enemies} · aliens ${k.aliens} · zumbis ${k.zombies} · passarinhos ${cv.birds} · curados ${cv.people} · mordidas ${k.bites}` : ""} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${Math.floor(worldX / viewW) + 1}` : "câmera fixa"}`
+        hudRef.current.textContent = `${item2} · ${m.zone.name} ${chordName(m.chord())} ${[0, 1, 2, 3].map(i => (Math.floor(m.beat) % 4 === i ? "●" : "·")).join("")}${combat.enemies || k.aliens || k.zombies || cv.birds || cv.people ? ` · inimigos: ${combat.enemies} · aliens ${k.aliens} · zumbis ${k.zombies} · passarinhos ${cv.birds} · curados ${cv.people} · mordidas ${k.bites}` : ""} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${sceneAt(worldX) + 1}` : "câmera fixa"}`
       }
       raf = requestAnimationFrame(frame)
     }
@@ -360,7 +350,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setBounds(null)
       drone.set(null)
       document.body.classList.remove("pigchicken-play")
-      if (camX) engine.shift(camX)
+      if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(window.innerHeight - groundHRef.current).lo - oy)
+      engine.setGroundHeight(groundHRef.current)
       if (worldRef.current) worldRef.current.style.transform = ""
     }
   }, [engine, worldRef])
@@ -703,7 +694,7 @@ function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
 function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   const X = (x: number) => x - camX
   const t = performance.now() / 1000
-  const floorY = combat.targets.find(t => t.kind === "dummy")?.y ?? window.innerHeight - 30
+  const floorY = combat.targets.find(t => t.kind === "dummy")?.y ?? WORLD_GROUND_Y
   combat.racks.forEach(r => {
     const x = X(r.x), groundY = r.y ?? floorY
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)

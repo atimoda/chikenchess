@@ -24,6 +24,7 @@ export const CHANGELOG = [
         'Globo: a galinha nunca cai do céu em cima do portal do Pátio (nem perto dele), então a tela não vai mais direto para o PigChicKen ao abrir o globo.',
         'PigChicKen: o inventário agora é clicável. Clique (no computador) ou toque (no celular) num quadradinho para equipar aquele item. No modo de editar posição dos botões, arrastar o inventário não equipa nada.',
         'PigChicKen: os quadradinhos do inventário ficaram um pouco maiores e encostados uns nos outros, separados só por uma linha. Os números das casas aparecem só no computador.',
+        'PigChicKen: o Pátio agora tem tamanhos fixos. Plataformas, galinha, aliens, zumbis e itens têm o mesmo tamanho em qualquer tela (o do computador) e não mudam ao redimensionar a janela: só muda o pedaço do mundo que aparece. No celular a câmera também sobe e desce seguindo a galinha. É a base para o multiplayer entre aparelhos diferentes.',
         'Ao sair da aba ou do app, todos os sons do jogo param (música, efeitos, portal, Pátio) e voltam quando você retorna.',
       ] },
       { title: 'Desempenho no celular', items: [

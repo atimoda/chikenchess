@@ -19,8 +19,8 @@ export type ChickenEngine = {
   getState: () => ChickenState
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
-  // camera moved: move her (and everything she keeps in screen coordinates) by dx pixels
-  shift: (dx: number) => void
+  // camera moved: move her (and everything she keeps in screen coordinates) by dx, dy pixels
+  shift: (dx: number, dy?: number) => void
   // left and right walls in screen pixels; null = the screen edges
   setBounds: (bounds: { lo: number; hi: number } | null) => void
   // the ground's height from the bottom of the screen (the Pátio raises it on a phone held upright)
@@ -100,7 +100,7 @@ function isTextField(t: EventTarget | null) {
   return (e.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes((e as HTMLInputElement).type)) || e.tagName === 'TEXTAREA' || e.tagName === 'SELECT' || e.isContentEditable
 }
 
-export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][] }): ChickenEngine {
+export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean }): ChickenEngine {
   const svg = document.createElementNS(NS, 'svg')
   svg.setAttribute('aria-hidden', 'true')
   svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;touch-action:none'
@@ -134,13 +134,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let config: ChickenConfig = getChickenConfig()
   paintLook(opts.look ?? config.look)
 
-  // ---------- params (scaled down on small screens) ----------
+  // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
   const R = { ...config.params } as ChickenParams
   let W = window.innerWidth, H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     W = window.innerWidth; H = window.innerHeight; groundY = H - opts.groundHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
-    const vf = clamp(Math.min(W, H) / 800, 0.55, 1)
+    // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
+    const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
     const P = config.params
     Object.assign(R, P)
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
@@ -1023,8 +1024,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       gameTaps.clear()
       return out
     },
-    shift(dx) {
+    shift(dx, dy = 0) {
+      if (dy) {
+        if (!S.cl) S.y += dy
+        else S.cl.py += dy
+        if (goal) goal.y += dy
+        if (drag.on) drag.oy -= dy
+        turn.y += dy
+      }
       if (!dx) return
+      turn.x += dx
       // clinging: the wall moved with the world and her place on it is a distance along it, so only the contact moves
       if (!S.cl) S.x += dx
       // standing on a box: the box moved with the world too, so the ride must not carry her a second time
