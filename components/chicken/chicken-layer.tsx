@@ -139,7 +139,8 @@ export function usePortrait() {
 // groundHeight: how high the ground reaches from the bottom of the screen; controlsBottom: where the touch controls sit
 // touch: forces the on-screen controls on or off (the globe has its own switch); left out, the saved setting decides
 // dropAvoid: horizontal spans (for a window this wide) the entrance fall must not start above
-export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM, touch, dropAvoid }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number; touch?: boolean; dropAvoid?: (w: number) => [number, number][] }) {
+// fixedScale: she keeps one size on every screen (a world in fixed units, such as the Pátio's) instead of shrinking on small ones
+export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM, touch, dropAvoid, fixedScale = false }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number; touch?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<ChickenEngine | null>(null)
   const savedTouch = useChickenTouch()
@@ -157,11 +158,11 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
 
   useEffect(() => {
     if (!hostRef.current) return
-    const engine = createChickenEngine(hostRef.current, { groundHeight: groundRef.current, dropIn, dropAvoid: w => avoidRef.current?.(w) ?? [] })
+    const engine = createChickenEngine(hostRef.current, { groundHeight: groundRef.current, dropIn, fixedScale, dropAvoid: w => avoidRef.current?.(w) ?? [] })
     engineRef.current = engine
     onEngineRef.current?.(engine)
     return () => { onEngineRef.current?.(null); engine.destroy(); engineRef.current = null }
-  }, [dropIn])
+  }, [dropIn, fixedScale])
 
   useEffect(() => { engineRef.current?.setGroundHeight(groundHeight) }, [groundHeight])
 

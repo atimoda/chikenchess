@@ -14,7 +14,7 @@ import {
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
-import { CHICKEN_GROUND_H, ChickenGround, ChickenLayer, STICK, useChickenTouch, usePortrait } from "./chicken-layer"
+import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait } from "./chicken-layer"
 import { ChickenPortalArrival } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
@@ -170,10 +170,10 @@ export function ChickenPatio() {
       </header>
 
 
-      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} groundHeight={groundHeight} />
+      {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
+      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} />
 
-      <ChickenGround height={groundHeight} />
-      <ChickenLayer dropIn={false} onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
+      <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortalArrival engine={engine} />
       <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
