@@ -22,6 +22,8 @@ export const CHANGELOG = [
         'Globo no celular: a página não rola mais (nem arrastando os botões); é uma tela única. As margens do logotipo e dos botões do cabeçalho e do rodapé encostam mais na borda da tela (12 px), o espaço entre todos os botões é de 6 px e o botão Campanhas fica alinhado à esquerda com o logotipo.',
         'Globo no celular: arrastar a galinha com o dedo não solta mais ela sozinha logo depois de começar o arraste.',
         'Globo: a galinha nunca cai do céu em cima do portal do Pátio (nem perto dele), então a tela não vai mais direto para o PigChicKen ao abrir o globo.',
+        'PigChicKen: o inventário agora é clicável. Clique (no computador) ou toque (no celular) num quadradinho para equipar aquele item. No modo de editar posição dos botões, arrastar o inventário não equipa nada.',
+        'PigChicKen: os quadradinhos do inventário ficaram um pouco maiores e encostados uns nos outros, separados só por uma linha. Os números das casas aparecem só no computador.',
         'Ao sair da aba ou do app, todos os sons do jogo param (música, efeitos, portal, Pátio) e voltam quando você retorna.',
       ] },
       { title: 'Desempenho no celular', items: [
