@@ -3,9 +3,9 @@
 import { audio } from './sfx'
 import { midiHz } from './music'
 
-export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird'
+export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass'
 export const VOICE_LABELS: Record<VoiceId, string> = {
-  flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho',
+  flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo',
 }
 
 const MAX_VOICES = 18
@@ -156,6 +156,26 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       sources.push(o1, vibrato(a, [o1.frequency], f, 0.012, t, 0.05))
       end = env(a, out, t, 0.5 * vel, 0.07, Math.max(0, dur - 0.07), 0.2); break
     }
+    case 'guzheng': {
+      // a plucked zither: bright attack that slides down into the note, a short shimmer and a long ring
+      const o1 = osc(a, 'triangle', f * 1.02, t), o2 = osc(a, 'sawtooth', f, t)
+      o1.frequency.exponentialRampToValueAtTime(f, t + 0.05); o2.frequency.setValueAtTime(f * 1.02, t); o2.frequency.exponentialRampToValueAtTime(f, t + 0.05)
+      const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3
+      lp.frequency.setValueAtTime(f * 12, t); lp.frequency.exponentialRampToValueAtTime(f * 2, t + 0.5)
+      const g2 = a.createGain(); g2.gain.value = 0.35
+      o1.connect(out); o2.connect(g2); g2.connect(lp); lp.connect(out); track(o1.frequency, 1); track(o2.frequency, 1)
+      sources.push(o1, o2, vibrato(a, [o1.frequency], f, 0.01, t, 0.25))
+      end = env(a, out, t, 0.3 * vel, 0.002, 0, Math.max(0.9, dur * 3)); break
+    }
+    case 'bass': {
+      const o1 = osc(a, 'sine', f, t), o2 = osc(a, 'sawtooth', f, t)
+      const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2
+      lp.frequency.setValueAtTime(f * 6, t); lp.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.2)
+      const g2 = a.createGain(); g2.gain.value = 0.3
+      o1.connect(out); o2.connect(g2); g2.connect(lp); lp.connect(out); track(o1.frequency, 1); track(o2.frequency, 1)
+      sources.push(o1, o2)
+      end = env(a, out, t, 0.45 * vel, 0.006, Math.max(0, dur - 0.05), 0.12); break
+    }
     case 'bird': {
       const o1 = osc(a, 'sine', f * 2, t); o1.frequency.exponentialRampToValueAtTime(f * 3, t + 0.05); o1.frequency.exponentialRampToValueAtTime(f * 2, t + 0.1)
       o1.connect(out); track(o1.frequency, 2); sources.push(o1)
@@ -179,7 +199,7 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
 }
 
 // ---------- ambience: percussion and drone from the scenery ----------
-export type Drum = 'kick' | 'snare' | 'hat' | 'openHat' | 'shaker' | 'jingle' | 'clap'
+export type Drum = 'kick' | 'snare' | 'hat' | 'openHat' | 'shaker' | 'jingle' | 'clap' | 'taiko' | 'wood' | 'crash'
 export function playDrum(kind: Drum, at = 0, vel = 1) {
   const a = ctx()
   if (!a || !amb || ambVol <= 0) return
@@ -201,6 +221,19 @@ export function playDrum(kind: Drum, at = 0, vel = 1) {
     case 'hat': hit('highpass', 8000, 0.7, 0.22, 0.035); break
     case 'openHat': hit('highpass', 7000, 0.7, 0.18, 0.22); break
     case 'shaker': hit('bandpass', 5500, 1.5, 0.14, 0.07); break
+    case 'taiko': {
+      // a big temple drum: a deep skin that drops in pitch, with the stick's slap on top
+      const o = osc(a, 'sine', 110, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.25)
+      const og = a.createGain(); env(a, og, t, 1.0 * vel, 0.004, 0, 0.6); o.connect(og); og.connect(g); o.start(t); o.stop(t + 0.7)
+      hit('lowpass', 900, 0.7, 0.35, 0.09); break
+    }
+    case 'wood': {
+      // woodblock: a hollow knock, two short tuned partials
+      const o = osc(a, 'sine', 1050, t), o2 = osc(a, 'sine', 1720, t)
+      const og = a.createGain(); env(a, og, t, 0.28 * vel, 0.001, 0, 0.07); o.connect(og); o2.connect(og); og.connect(g); o.start(t); o.stop(t + 0.1); o2.start(t); o2.stop(t + 0.1)
+      hit('bandpass', 2500, 2, 0.1, 0.02); break
+    }
+    case 'crash': hit('highpass', 4500, 0.5, 0.22, 1.3); hit('bandpass', 9000, 1, 0.1, 0.8); break
     case 'jingle': [0, 0.018, 0.04, 0.07].forEach((s, i) => hit('bandpass', 6500 + i * 900, 6, 0.16, 0.12, s)); break
   }
 }
@@ -228,4 +261,23 @@ export function createDrone() {
       }
     },
   }
+}
+
+// a struck gong: inharmonic partials with long tails, a slight pitch sag ("wah") and a soft noise swell.
+// `vel` 0..1; `midi` sets its size (lower = bigger gong). It plays on the notes' bus, or the ambience's.
+export function playGong(midi: number, vel = 1, at = 0, onAmbience = false) {
+  const a = ctx()
+  const target = onAmbience ? amb : bus
+  if (!a || !target || (onAmbience ? ambVol : noteVol) <= 0) return
+  const t = a.currentTime + Math.max(0, at), f = midiHz(midi)
+  const out = a.createGain(); out.gain.value = 1; out.connect(target)
+  const partials: [number, number, number][] = [[1, 0.5, 3.6], [1.52, 0.32, 2.6], [2.03, 0.22, 2.0], [2.74, 0.16, 1.5], [3.31, 0.12, 1.1], [4.18, 0.08, 0.8], [5.4, 0.05, 0.5]]
+  partials.forEach(([r, g0, dec]) => {
+    const o = osc(a, 'sine', f * r * 1.012, t); o.frequency.exponentialRampToValueAtTime(f * r, t + 0.35)
+    const g = a.createGain(); env(a, g, t, g0 * vel, 0.004 + r * 0.004, 0, dec * (0.6 + 0.4 * vel)); o.connect(g); g.connect(out)
+    o.start(t); o.stop(t + dec + 0.1)
+  })
+  const n = noise(a), bf = a.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = f * 3; bf.Q.value = 1.5
+  const ng = a.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(0.05 * vel, t + 0.25); ng.gain.exponentialRampToValueAtTime(0.0001, t + 2.2)
+  n.connect(bf); bf.connect(ng); ng.connect(out); n.start(t, Math.random() * 0.5); n.stop(t + 2.3)
 }

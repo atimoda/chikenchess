@@ -286,7 +286,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.noGrab = Lh || Rh || U || Dk || C || J || RUN
     // standing on a floating edge: ride along when it moves, fall when walking off its end
     if (S.grounded && S.plat) {
-      const sg = segById(S.plat), fy = sg ? floorY(sg, S.x) : null
+      let sg = segById(S.plat), fy = sg ? floorY(sg, S.x) : null
+      // walking off one piece of a shaped floor onto the next one (they share the element's id)
+      if (sg && fy === null && sg.id.includes(':l')) {
+        const base = sg.id.slice(0, sg.id.lastIndexOf(':l'))
+        const next = SEGS.find(o => o !== sg && !o.wall && o.id.startsWith(base + ':l') && (() => { const y = floorY(o, S.x); return y !== null && Math.abs(y - S.y) < 10 })())
+        if (next) { sg = next; fy = floorY(next, S.x); S.plat = next.id; S.platAx = next.ax }
+      }
       if (!sg || fy === null) { S.grounded = false; S.plat = null; S.vy = 0; S.jumpIndex = 0 }
       else {
         const dx = sg.ax - S.platAx, dy = fy - S.y; S.platAx = sg.ax
@@ -300,6 +306,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const broodWalking = brooding && dir !== 0 && R.broodWalk > 0
     // slide starts when crouching out of a run
     if (S.grounded && crouchPressed && !brooding && speed0 > R.walkSpeed * 1.1) S.sliding = true
+    // landing from the air with crouch held and at least the slide's minimum speed goes straight into the slide
+    if (S.grounded && S.justLanded && C && !brooding && speed0 >= R.slideMinSpeed) S.sliding = true
+    S.justLanded = false
     if (S.sliding && (!C || !S.grounded || speed0 < R.slideMinSpeed || brooding)) S.sliding = false
     const crouching = S.grounded && C && !brooding && !S.sliding
     // run start: initial impulse + cluck
@@ -469,10 +478,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let boxCache: Element[] | null = null, boxCacheAt = 0
   function buildSegs() {
     const out: Seg[] = []
-    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false) => {
+    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false) => {
       const len = Math.hypot(bx - ax, by - ay); if (len < 4) return
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
-      out.push({ id, ax, ay, bx, by, len, ang: a, wall: Math.min(a, 180 - a) > 45, solid })
+      out.push({ id, ax, ay, bx, by, len, ang: a, wall: !floor && Math.min(a, 180 - a) > 45, solid })
     }
     // the platform list is looked up a few times a second, not on every frame (their boxes still are)
     const now = performance.now()
@@ -487,6 +496,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const r = e.getBoundingClientRect()
       if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > H) return
       const id = (e as HTMLElement).dataset.chickenId || (e as HTMLElement).id || `box${n++}`
+      // a shaped floor (curved or sloped roofs): `data-chicken-line="x,y x,y …"` in the element's own pixels,
+      // one-way floors along the line (never walls, however steep a piece is)
+      const line = linePoints(e as HTMLElement)
+      if (line) {
+        for (let i = 1; i < line.length; i++) {
+          const [ax, ay] = line[i - 1], [bx, by] = line[i]
+          if (r.top + Math.max(ay, by) < groundY - 4) add(`${id}:l${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, true)
+        }
+        return
+      }
       if (r.top < groundY - 4) add(id + ':top', r.left, r.top, r.right, r.top)
       if (r.bottom < groundY - 4) add(id + ':bottom', r.left, r.bottom, r.right, r.bottom)
       const yb = Math.min(r.bottom, groundY)
@@ -494,6 +513,17 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     })
     add('screen:left', wallLo(), 0, wallLo(), groundY, true); add('screen:right', wallHi(), 0, wallHi(), groundY, true)
     SEGS = out
+  }
+  // the points of a shaped floor, parsed once per attribute value
+  const lineCache = new WeakMap<HTMLElement, { src: string; pts: number[][] }>()
+  function linePoints(e: HTMLElement) {
+    const src = e.dataset.chickenLine
+    if (!src) return null
+    const c = lineCache.get(e)
+    if (c && c.src === src) return c.pts
+    const pts = src.trim().split(/\s+/).map(p => p.split(',').map(Number)).filter(p => p.length === 2 && p.every(Number.isFinite))
+    lineCache.set(e, { src, pts })
+    return pts
   }
   // elements without an id get one, so standing on a box survives re-ordering of the DOM
   let autoId = 0
@@ -515,6 +545,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return best
   }
   function land(y: number, sg: Seg | null) {
+    S.justLanded = !S.grounded
     S.y = y; S.vy = 0; S.grounded = true; S.jumpIndex = -1; S.squash = 1; S.airBoost = 0
     S.plat = sg ? sg.id : null; S.platAx = sg ? sg.ax : 0
     plantFeet(); sfx('land')

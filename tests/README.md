@@ -63,3 +63,8 @@ Para cartas/preferências (09/10), confira campanha/online e ambas as engines: C
 Preferências usa painel não modal: abrir/fechar/reabrir pelo botão, Escape e clique fora deve manter o `body` sem bloqueio de ponteiro. Com o painel aberto, clicar no tabuleiro deve fechar as opções e selecionar a peça no mesmo gesto; valide lance por clique e arraste após trocar Cards/Botões e fechar o painel, em campanha/online.
 
 Para os refinamentos de 09/10: tente capturar alvo congelado por clique/arraste/teclado, incluindo en passant e Freeze+Shield; casa vazia congelada conserva entrada. Avance a partida para expirar ambos os poderes e confira desaparecimento/som, sem duplicação ao desfazer, refazer, reconectar ou cancelar prévia online. Mulligan retorna em 360 ms ease-in-out e gira carta anti-horária; Redo continua em 200 ms. Confira entrada somente quando a mão aparece, arco, números visíveis/ovos cobertos em desktop/mobile, hover/foco e movimento reduzido. Com 0/1/2 ovos, Freeze/Shield devem avisar no contador sem armar/cobrar/enviar. Play/Pause usa largura interna total e borda suave no Mixer em ambos os modos.
+
+
+## PigChicKen
+
+`npm run test:pigchicken` cobre o mundo em tamanho fixo e o Templo do Gongo: batidas no gongo, passos da formação na batida, bombas nas batidas de queda, fim de fase, alien novo em cada fase, divisão dos Gêmeos, Tambores e cabeça do Dragão protegidos, perda de corações e repetição pela mesma semente.

@@ -36,6 +36,8 @@ export type Target = {
   face: number; state: string; animT: number; label?: string; data?: unknown
   // instruments: the harmony bar (full at maxHp converts), how long it stays still, its answer's cooldown, the tint of the last note
   harmony?: number; stun?: number; answerCool?: number; tint?: string
+  // the share of each hit it blocks (1 = immune right now): the temple's drums between beats, the dragon's head
+  shield?: number
 }
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
@@ -48,7 +50,7 @@ export type Body = { x: number; y: number; face: number; scale: number; grounded
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1..9 exact, 0 none
-  grab?: boolean // standing on an item with no free slot: it takes the place of the held one
+  grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
 }
 
 export const SLOTS = 9
@@ -114,6 +116,8 @@ export function createCombat() {
     if (t.deadT > 0 || damage <= 0) return
     // a button: any hit presses it
     if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
+    if (blocked(t, x, y)) return
+    damage *= 1 - (t.shield ?? 0)
     t.hp -= damage; t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * 0.35; t.vx += pushX
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
     burst(x, y, 5, t.kind === 'zombie' ? '#7a9a3a' : '#ffd166', 160, 2)
@@ -127,10 +131,18 @@ export function createCombat() {
     } else { t.deadT = 2.5; burst(t.x, t.y - t.h / 2, 22, '#e8e2d0', 320, 4); addText(t.x, t.y - t.h - 16, 'derrubado!', '#ff8c69') }
   }
 
+  // a shielded target: the hit glances off with a spark and a metallic tink
+  function blocked(t: Target, x: number, y: number) {
+    if ((t.shield ?? 0) < 1) return false
+    if (t.flash <= 0) { t.flash = 0.06; burst(x, y, 4, '#e9e4d0', 160, 2); sound('block', null) }
+    return true
+  }
+
   // a note lands: it fills the harmony bar instead of hurting; the enemy answers with a note of its own
   function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number) {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
+    if (blocked(t, x, y)) return
     t.harmony = (t.harmony ?? 0) + amount; t.flash = 0.12; t.tint = note.color; t.vx += pushX * 0.3
     t.stun = Math.max(t.stun ?? 0, stun)
     if (t.kind === 'zombie' && t.state === 'walk' && stun > 0) { t.state = 'hurt'; t.animT = 0 }
@@ -178,15 +190,17 @@ export function createCombat() {
   // can she take this item? (one of each item)
   const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o && o.item === p.owned.item)
 
-  // walking onto an item: with a free slot it goes there (only the very first one goes to her wing)
+  // a free slot for an item grabbed from the floor: the held slot when the wing is empty, else the first empty one
+  const freeSlot = () => inv[cur] === null ? cur : inv.findIndex(o => o === null)
+
+  // grab with a free slot: the item goes there and she holds it (picking up is always the player's choice)
   function pickUp(p: Pickup) {
     if (!canTake(p)) return false
-    const empty = inv.every(o => o === null)
-    let slot = empty ? cur : inv.findIndex((o, i) => o === null && i !== cur)
-    if (slot < 0 && inv[cur] === null) slot = cur
+    const slot = freeSlot()
     if (slot < 0) return false
     inv[slot] = p.owned
-    if (slot === cur) sound('equip', p.owned.item)
+    if (slot === cur) { stopBeam(); reloadT = 0; chargeT = 0; burstLeft = 0; sound('equip', p.owned.item) }
+    else equip(slot)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
   }
@@ -466,6 +480,8 @@ export function createCombat() {
     // the item she stands on that grab would take (drawn with a blue outline)
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
+    // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
+    get hoverSwaps() { return freeSlot() < 0 },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
@@ -476,6 +492,8 @@ export function createCombat() {
     setMusicOut(o: MusicOut) { out = o },
     setQuantize(v: boolean) { quantizeAll = v },
     bullets, thrown, targets, pickups, sparks, texts, racks,
+    // effects for the modes built on top (the temple): sparks and floating text
+    burst, addText(x: number, y: number, text: string, color = '#ffffff', size?: number) { texts.push({ x, y, text, life: size ? 1.2 : 0.9, color, size }) },
     def,
     // creative mode / tests: put an item straight into a slot
     give(slot: number, item: ItemId) { inv[slot] = fresh(item); if (slot === cur) sound('equip', item) },
@@ -484,7 +502,7 @@ export function createCombat() {
       inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
     },
     addTarget(x: number, y: number) { targets.push({ id: nextId++, kind: 'dummy', home: x, x, y, w: 46, h: 112, hp: 100, maxHp: 100, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0 }) },
-    addButton(x: number, y: number, id: string) { targets.push({ id: nextId++, kind: 'button', home: x, x, y, w: 40, h: 40, hp: 1, maxHp: 1, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, label: id }) },
+    addButton(x: number, y: number, id: string, w = 40, h = 40) { targets.push({ id: nextId++, kind: 'button', home: x, x, y, w, h, hp: 1, maxHp: 1, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, label: id }) },
     // the part of the world on screen (enemies enter from its sides)
     setView(l: number, r: number) { view = { l, r } },
     pressed, kills,
@@ -638,7 +656,7 @@ export function createCombat() {
         }
       }
 
-      // pickups: fall to the floor, picked up by walking over them
+      // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
       hover = null; hoverOwned = null
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
@@ -651,15 +669,14 @@ export function createCombat() {
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
         if (Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && canTake(p)) {
-          if (pickUp(p)) pickups.splice(i, 1)
-          else if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
+          if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
         } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && inv.some(o => o && o.item === p.owned.item)) {
           if (!hoverOwned || Math.abs(p.x - body.x) < Math.abs(hoverOwned.x - body.x)) hoverOwned = p
         }
       }
 
-      // no free slot: the item she stands on is outlined; grab swaps it with the held one
-      if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); swapIn(g); hover = null }
+      // the item she stands on is outlined; grab takes it into a free slot, or swaps it with the held one when full
+      if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null }
       else if (input.grab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays)
         const slot = inv.findIndex(o => o && o.item === hoverOwned!.owned.item)

@@ -13,9 +13,10 @@ export type ParquinhoSettings = {
   noteVolume: number // instruments and the enemies' answers, 0..1
   ambienceVolume: number // the zone's percussion and drone, 0..1 (0 = off)
   quantize: boolean // instruments land on the sixteenth grid
+  debug: boolean // the debug readouts: the HUD line, the scenes' labels and the shaped floors' lines
 }
 
-export const DEFAULT_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, backpedal: 0.7, mouseIdle: 1, reticleDist: 200, weaponVolume: 0.6, noteVolume: 0.7, ambienceVolume: 0.35, quantize: true }
+export const DEFAULT_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, backpedal: 0.7, mouseIdle: 1, reticleDist: 200, weaponVolume: 0.6, noteVolume: 0.7, ambienceVolume: 0.35, quantize: true, debug: false }
 
 const STORE = 'pigchicken-parquinho-v1'
 
@@ -31,6 +32,7 @@ export function loadParquinho(): ParquinhoSettings {
     }
     num('screens', 1, 8); num('deadband', 0, 400); num('lag', 1, 20); num('backpedal', 0.2, 1); num('mouseIdle', 0, 5); num('reticleDist', 60, 500); num('weaponVolume', 0, 1); num('noteVolume', 0, 1); num('ambienceVolume', 0, 1)
     if (typeof saved.quantize === 'boolean') base.quantize = saved.quantize
+    if (typeof saved.debug === 'boolean') base.debug = saved.debug
   } catch { /* storage unavailable */ }
   return base
 }

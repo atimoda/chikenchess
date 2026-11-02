@@ -1,6 +1,6 @@
 {
   "name": "chikenchess",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "private": true,
   "scripts": {
     "prebuild": "npm run admin:check && npm run build:powered-analysis",
@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "start": "next start",
     "test:music": "node --test tests/music.test.cjs",
+    "test:pigchicken": "node --test tests/pigchicken-world.cases.cjs tests/pigchicken-temple.cases.cjs",
     "typecheck": "tsc --noEmit",
     "build:online": "node scripts/build-online.mjs",
     "build:powered-analysis": "node scripts/build-powered-analysis.mjs",
