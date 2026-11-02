@@ -23,7 +23,7 @@ import { SCENE_W, SHELF_TOP, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt,
 import { GONG_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { drawGong, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
-import { TempleBackdrop } from "@/components/pigchicken/temple-backdrop"
+import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
@@ -32,25 +32,36 @@ const SOURCE_LABEL: Record<AimSource, string> = {
 // The world in fixed world units: scenes of SCENE_W, the ground at WORLD_GROUND_Y. ParquinhoPlay moves it with the
 // camera (translate); nothing in it depends on the screen's size.
 const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
-export function ParquinhoWorld({ screens, worldRef }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null> }) {
+export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean }) {
   // the Parquinho's scenes, then the temple (Templo do Gongo, the aliens' mini-game)
   const width = worldScenes(screens) * SCENE_W
   return (
     <div ref={worldRef} className="pointer-events-none absolute left-0 top-0 will-change-transform" style={{ width, height: WORLD_GROUND_Y }}>
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }} />
-      {Array.from({ length: screens }, (_, s) => (
+      {debug && Array.from({ length: screens }, (_, s) => (
         <div key={`m${s}`} className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: s * SCENE_W }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1} <span style={{ color: ZONES[s % ZONES.length].color, opacity: 0.6 }}>· {zoneLabel(ZONES[s % ZONES.length])}</span></span>
         </div>
       ))}
       <TempleBackdrop left={templeScene(screens) * SCENE_W} />
-      <div className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: templeScene(screens) * SCENE_W }}>
-        <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 1} · Templo do Gongo</span>
-      </div>
+      {debug && (
+        <div className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: templeScene(screens) * SCENE_W }}>
+          <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 1} · Templo do Gongo</span>
+        </div>
+      )}
+      {/* the temple's roofs: floors with their own curves (drawn only in debug) */}
+      {debug && (
+        <svg aria-hidden="true" className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }}>
+          {TEMPLE_ROOF_LINES.map(l => <polyline key={l.id} points={lineAttr(l.pts)} fill="none" stroke="#ff3b3b" strokeWidth={3} strokeDasharray="8 5" />)}
+        </svg>
+      )}
       <div data-chicken-platforms className="absolute inset-0">
         {worldPlatforms(screens, true).map(p => (
           <div key={p.id} data-chicken-id={p.id} className={p.id.startsWith("tp-") ? "absolute rounded-sm border-t-4 border-[#ffd166] bg-[#b3261e] shadow-[0_6px_0_#7a1710]" : "absolute rounded-md border border-primary/30 bg-[#16241b]"} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} />
+        ))}
+        {TEMPLE_ROOF_LINES.map(l => (
+          <div key={l.id} data-chicken-id={`tp-${l.id}`} data-chicken-line={lineAttr(l.pts)} className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }} />
         ))}
       </div>
     </div>
@@ -146,7 +157,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const templeSounds: TempleSound[] = []
     let templeShown = ""
     // dev only: lets the test scripts reach the combat and the temple
-    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple })
+    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __chickenEngine: engine })
     const drone = createDrone()
     let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
@@ -395,7 +406,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       drawInventory(ctx, combat, getTouchLayout().offsets.inventory)
       drawTempleHud(ctx, temple, combat.music, inTemple, INV_TOP + INV_SIZE + 12)
-      if (hudRef.current) {
+      if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
+      if (hudRef.current && S.debug) {
         const h = combat.inventory[combat.current]
         const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
         const k = combat.kills, cv = combat.converted

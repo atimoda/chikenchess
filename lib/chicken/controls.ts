@@ -18,7 +18,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   // the mouse is fixed: left click fires, right click hits, the wheel cycles items; 1 to 9 pick an item
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyX', null, null], pad: ['Pad:b7', null, null], group: 'items' },
   { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyZ', null, null], pad: ['Pad:b3', null, null], group: 'items' },
-  { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyV', 'Key:KeyG', null], pad: ['Pad:b5', null, null], group: 'items' },
+  { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyF', 'Key:KeyG', null], pad: ['Pad:b5', null, null], group: 'items' },
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyQ', null, null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], pad: [null, null, null], group: 'items' },
   // X on the gamepad also runs: grabbing only acts while she stands on an item
@@ -106,12 +106,16 @@ export function loadChickenControls(): ChickenControls {
       if (base.keys.nextItem.includes('Key:KeyE')) base.keys.nextItem = base.keys.nextItem.map(t => t === 'Key:KeyE' ? 'Key:KeyQ' : t)
       base.keys.prevItem = base.keys.prevItem.map(t => t === 'Key:KeyQ' && base.keys.nextItem.includes('Key:KeyQ') ? null : t)
     }
+    // controls saved before F became throw (02/11): V on throw turns into F, unless F is taken
+    if (!saved?.throwF && base.keys.throw.includes('Key:KeyV') && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:KeyF'))) {
+      base.keys.throw = base.keys.throw.map(t => t === 'Key:KeyV' ? 'Key:KeyF' : t)
+    }
   } catch { /* storage unavailable: defaults */ }
   return base
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true, grabE: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

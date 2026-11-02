@@ -389,6 +389,11 @@ export function drawTempleHud(ctx: Ctx, temple: Temple, music: Conductor, inside
     // combo and multiplier
     ctx.font = "bold 12px ui-monospace, monospace"; ctx.textAlign = "right"
     if (active && s.combo > 0) { ctx.fillStyle = multOf(s.combo) > 1 ? "#ffd166" : "#c9ced6"; ctx.fillText(`combo ${s.combo}${multOf(s.combo) > 1 ? ` · ×${multOf(s.combo)}` : ""}`, x0 + pw, ly + 30) }
+    // what the pista is for, until the first stage is under way
+    if (s.phase === "idle" || s.phase === "intro" || (s.phase === "playing" && s.stage === 0 && s.t < 10)) {
+      ctx.font = "11px ui-sans-serif, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "rgba(244,241,232,0.85)"
+      ctx.fillText(W < 700 ? "Atire quando a bolinha chegar no anel · vermelhas = bombas" : "Ritmo: atire quando a bolinha chegar no anel (PERFEITO soma combo e multiplica os pontos). Vermelhas = bombas.", W / 2, ly + 48)
+    }
     // the judgement of the last press, popping over the ring
     if (j) {
       const k = j.t / 0.6

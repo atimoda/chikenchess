@@ -21,6 +21,30 @@ function roof(cx: number, yTop: number, top: number, bot: number, yBot: number, 
   ].join(" ")
 }
 
+// the roof's upper outline as points (the same curves as roof()), for its platform collider
+type Pt = [number, number]
+const quad = (a: Pt, c: Pt, b: Pt, n = 6): Pt[] => Array.from({ length: n }, (_, i) => { const t = (i + 1) / n, u = 1 - t; return [u * u * a[0] + 2 * u * t * c[0] + t * t * b[0], u * u * a[1] + 2 * u * t * c[1] + t * t * b[1]] as Pt })
+function roofTop(cx: number, yTop: number, top: number, bot: number, yBot: number, fly = 26): Pt[] {
+  const l = cx - bot, r = cx + bot
+  const p0: Pt = [l - fly, yBot - 14], p1: Pt = [l + 26, yBot - 8], p2: Pt = [cx - top, yTop], p3: Pt = [cx + top, yTop], p4: Pt = [r - 26, yBot - 8], p5: Pt = [r + fly, yBot - 14]
+  return [p0, ...quad(p0, [l - 4, yBot - 2], p1, 3), ...quad(p1, [cx - top - (bot - top) * 0.15, yBot - (yBot - yTop) * 0.25], p2), p3, ...quad(p3, [cx + top + (bot - top) * 0.15, yBot - (yBot - yTop) * 0.25], p4), ...quad(p4, [r + 4, yBot - 2], p5, 3)]
+}
+// a roof's lower edge (the eaves' line), straight
+const eaves = (cx: number, bot: number, yBot: number, fly = 26): Pt[] => [[cx - bot - fly + 10, yBot + 6], [cx + bot + fly - 10, yBot + 6]]
+
+// The roofs and eaves she can stand on (scene units): one-way floors with the roofs' own curves. The main hall's
+// two roofs and their eaves, and the right pavilion's pyramid and lower roof (the faded far pavilion is scenery).
+export const TEMPLE_ROOF_LINES: { id: string; pts: Pt[] }[] = [
+  { id: "roof-main-top", pts: roofTop(660, 400, 400 * 0.55, 400 + 70, 524, 30) },
+  { id: "roof-main-top-eaves", pts: eaves(660, 470, 524, 30) },
+  { id: "roof-main-low", pts: roofTop(660, 576, 510, 580, 642, 34) },
+  { id: "roof-main-low-eaves", pts: eaves(660, 580, 642, 34) },
+  { id: "roof-right-top", pts: [[1560, 556], ...quad([1560, 556], [1590, 552], [1610, 540], 3), [1730, 452], [1850, 540], ...quad([1850, 540], [1870, 552], [1900, 556], 3)] },
+  { id: "roof-right-low", pts: roofTop(1730, 596, 70, 170, 650, 30) },
+]
+// "x,y x,y …" for data-chicken-line
+export const lineAttr = (pts: Pt[]) => pts.map(([x, y]) => `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`).join(" ")
+
 // one hall: a stone base, columns with lattice windows, the painted band and its roof (two roofs when tall)
 function Hall({ cx, half, base, colTop, upper, dim = 1 }: { cx: number; half: number; base: number; colTop: number; upper?: { half: number; top: number; ridge: number }; dim?: number }) {
   const cols = Math.max(4, Math.round((half * 2) / 82))

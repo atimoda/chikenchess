@@ -171,7 +171,7 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} />
+      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortalArrival engine={engine} />
@@ -218,6 +218,7 @@ export function ChickenPatio() {
               )}
               <button type="button" disabled={!dirty} onClick={() => replaceDraft(saved.config)} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-45">Desfazer</button>
               <button type="button" onClick={() => replaceDraft(defaultChickenConfig())} title="Volta todos os valores para o padrão que vem no código do jogo" className="h-8 rounded-md border border-white/20 px-3 hover:border-primary">Valores do código</button>
+              <button type="button" aria-pressed={pq.debug} onClick={() => setPqValue("debug", !pq.debug)} title="Mostra as informações de debug: a linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas" className={cn("h-8 rounded-md border px-3 hover:border-primary", pq.debug ? "border-primary bg-primary/15 text-white" : "border-white/20")}>Debug</button>
             </div>
             <p className={cn("leading-relaxed", status?.kind === "error" ? "text-red-300" : "text-[#93a79a]")}>
               {status?.text ?? (isAdmin
