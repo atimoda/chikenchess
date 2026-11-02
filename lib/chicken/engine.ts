@@ -100,10 +100,10 @@ function isTextField(t: EventTarget | null) {
   return (e.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes((e as HTMLInputElement).type)) || e.tagName === 'TEXTAREA' || e.tagName === 'SELECT' || e.isContentEditable
 }
 
-export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean }): ChickenEngine {
+export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][] }): ChickenEngine {
   const svg = document.createElementNS(NS, 'svg')
   svg.setAttribute('aria-hidden', 'true')
-  svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none'
+  svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;touch-action:none'
   svg.innerHTML = SVG_MARKUP
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
@@ -714,7 +714,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     drag.on = false; S.held = false
     fallFrom(S.x, S.y, e.type === 'pointercancel' ? 0 : clamp(S.vx * 0.35, -420, 420), e.type === 'pointercancel' ? 0 : clamp(S.vy * 0.35, -420, 420))
   }
+  // Mobile browsers ignore touch-action on SVG shapes: a finger moving on her starts a page pan, which
+  // fires pointercancel and drops her. Blocking the touch's default keeps the pointer stream alive.
+  const blockTouch = (e: TouchEvent) => { if (e.cancelable && !game.gameMode) e.preventDefault() }
+  const blockTouchMove = (e: TouchEvent) => { if (drag.id !== null && e.cancelable) e.preventDefault() }
   el.root.addEventListener('pointerdown', onRootDown)
+  el.root.addEventListener('touchstart', blockTouch, { passive: false })
+  window.addEventListener('touchmove', blockTouchMove, { passive: false })
   window.addEventListener('pointerup', endDrag)
   window.addEventListener('pointercancel', endDrag)
 
@@ -978,8 +984,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     raf = requestAnimationFrame(frame)
   }
   tagBoxes()
+  // a random x in [12%, 88%] of the width outside the avoided spans (the plain range if they cover it all)
+  function dropX() {
+    let free: [number, number][] = [[W * 0.12, W * 0.88]]
+    for (const [a, b] of opts.dropAvoid?.(W) ?? []) {
+      free = free.flatMap(([l, r]): [number, number][] => b <= l || a >= r ? [[l, r]] : [[l, Math.min(r, a)], [Math.max(l, b), r]]).filter(([x, y]) => y - x > 1)
+    }
+    const total = free.reduce((t, [l, r]) => t + r - l, 0)
+    if (!total) return W * (0.12 + Math.random() * 0.76)
+    let k = Math.random() * total
+    for (const [l, r] of free) { if (k <= r - l) return l + k; k -= r - l }
+    return free[0][0]
+  }
   // entrance: falls from above the screen at a random horizontal spot
-  if (opts.dropIn) fallFrom(W * (0.12 + Math.random() * 0.76), -160 * R.scale, 0, 0)
+  // (never above a spot the page asks to avoid, such as the portal: landing in it would leave the screen)
+  if (opts.dropIn) fallFrom(dropX(), -160 * R.scale, 0, 0)
   raf = requestAnimationFrame(frame)
 
   // her shoulder (the item's pivot) on the screen, from the drawn rig
@@ -1048,6 +1067,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       window.removeEventListener('pointerup', onTapUp, true)
       window.removeEventListener('pointerup', endDrag)
       window.removeEventListener('pointercancel', endDrag)
+      window.removeEventListener('touchmove', blockTouchMove)
+      el.root.removeEventListener('touchstart', blockTouch)
       window.removeEventListener('resize', resize)
       el.root.removeEventListener('pointerdown', onRootDown)
       void actx?.close()
