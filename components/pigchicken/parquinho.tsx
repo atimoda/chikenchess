@@ -706,8 +706,8 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
     ctx.save(); ctx.translate(x, y - 8)
     // the item grab would take: a blue outline and the key to press
-    // blue: grab swaps it in; grey: she already carries one, grab equips hers
-    const mark = combat.hover === p ? { c: "#4cc9f0", t: "trocar" } : combat.hoverOwned === p ? { c: "#9aa0a8", t: "equipar" } : null
+    // blue: grab takes it (or swaps it in when the inventory is full); grey: she already carries one, grab equips hers
+    const mark = combat.hover === p ? { c: "#4cc9f0", t: combat.hoverSwaps ? "trocar" : "pegar" } : combat.hoverOwned === p ? { c: "#9aa0a8", t: "equipar" } : null
     if (mark) {
       ctx.filter = `drop-shadow(2px 0 0 ${mark.c}) drop-shadow(-2px 0 0 ${mark.c}) drop-shadow(0 2px 0 ${mark.c}) drop-shadow(0 -2px 0 ${mark.c})`
       drawItem(ctx, p.owned.item, 64, 34); ctx.filter = "none"

@@ -48,7 +48,7 @@ export type Body = { x: number; y: number; face: number; scale: number; grounded
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1..9 exact, 0 none
-  grab?: boolean // standing on an item with no free slot: it takes the place of the held one
+  grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
 }
 
 export const SLOTS = 9
@@ -178,15 +178,17 @@ export function createCombat() {
   // can she take this item? (one of each item)
   const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o && o.item === p.owned.item)
 
-  // walking onto an item: with a free slot it goes there (only the very first one goes to her wing)
+  // a free slot for an item grabbed from the floor: the held slot when the wing is empty, else the first empty one
+  const freeSlot = () => inv[cur] === null ? cur : inv.findIndex(o => o === null)
+
+  // grab with a free slot: the item goes there and she holds it (picking up is always the player's choice)
   function pickUp(p: Pickup) {
     if (!canTake(p)) return false
-    const empty = inv.every(o => o === null)
-    let slot = empty ? cur : inv.findIndex((o, i) => o === null && i !== cur)
-    if (slot < 0 && inv[cur] === null) slot = cur
+    const slot = freeSlot()
     if (slot < 0) return false
     inv[slot] = p.owned
-    if (slot === cur) sound('equip', p.owned.item)
+    if (slot === cur) { stopBeam(); reloadT = 0; chargeT = 0; burstLeft = 0; sound('equip', p.owned.item) }
+    else equip(slot)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
   }
@@ -466,6 +468,8 @@ export function createCombat() {
     // the item she stands on that grab would take (drawn with a blue outline)
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
+    // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
+    get hoverSwaps() { return freeSlot() < 0 },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
@@ -638,7 +642,7 @@ export function createCombat() {
         }
       }
 
-      // pickups: fall to the floor, picked up by walking over them
+      // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
       hover = null; hoverOwned = null
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
@@ -651,15 +655,14 @@ export function createCombat() {
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
         if (Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && canTake(p)) {
-          if (pickUp(p)) pickups.splice(i, 1)
-          else if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
+          if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
         } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && inv.some(o => o && o.item === p.owned.item)) {
           if (!hoverOwned || Math.abs(p.x - body.x) < Math.abs(hoverOwned.x - body.x)) hoverOwned = p
         }
       }
 
-      // no free slot: the item she stands on is outlined; grab swaps it with the held one
-      if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); swapIn(g); hover = null }
+      // the item she stands on is outlined; grab takes it into a free slot, or swaps it with the held one when full
+      if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null }
       else if (input.grab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays)
         const slot = inv.findIndex(o => o && o.item === hoverOwned!.owned.item)

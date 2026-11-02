@@ -9,6 +9,7 @@ export const CHANGELOG = [
     groups: [
       { title: 'Galinha', items: [
         'Globo: encostar a galinha no portal não leva mais direto ao Pátio. Enquanto ela estiver encostada, aparece o botão “Enter playground?” acima do portal; clique (no computador) ou toque (no celular) nele para entrar. Se ela se afastar, o botão some.',
+        'PigChicKen: armas e instrumentos não são mais pegos só de passar por cima. Parado sobre um item, aperte Pegar (tecla E ou o botão na tela) para pegá-lo; ele já vai para a mão. Com o inventário cheio, Pegar troca pelo item que está na mão.',
       ] },
     ],
   },

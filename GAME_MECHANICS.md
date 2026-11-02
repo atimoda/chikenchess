@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 02/11/2026 — v1.12.1 (portal do globo pede confirmação: botão “Enter playground?” para entrar no Pátio).
+Atualizado em 02/11/2026 — v1.12.1 (portal do globo pede confirmação: botão “Enter playground?” para entrar no Pátio; no Pátio, itens do chão só são pegos pelo botão Pegar).
 
 ## Leitura por assunto
 
