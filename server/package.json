@@ -1,0 +1,15 @@
+{
+  "name": "chickenchess-game-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "loadtest": "node src/loadtest.mjs"
+  },
+  "dependencies": {
+    "@colyseus/schema": "^5.0.43",
+    "@colyseus/sdk": "^0.18.9",
+    "@colyseus/ws-transport": "^0.18.4",
+    "colyseus": "^0.18.10"
+  }
+}
