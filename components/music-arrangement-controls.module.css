@@ -6,7 +6,7 @@
   margin-top: 0;
   padding: 4px;
   scrollbar-width: thin;
-  scrollbar-color: #58695a #151d18;
+  scrollbar-color: rgba(88, 105, 90, 0.5) transparent;
   overscroll-behavior-x: contain;
 }
 

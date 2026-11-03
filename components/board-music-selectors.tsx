@@ -35,7 +35,7 @@ export function BoardMusicSelectors({ disabled = false, cityColor, tonality, bas
   const menuStyle = {
     color: cityColor,
     colorScheme: "dark",
-    scrollbarColor: "rgba(255,255,255,.42) transparent",
+    scrollbarColor: "rgba(255,255,255,.5) transparent",
     scrollbarWidth: "thin",
     "--city-dropdown-hover": `color-mix(in srgb, ${cityColor} 50%, black)`,
   } as React.CSSProperties

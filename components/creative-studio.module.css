@@ -123,10 +123,10 @@
 .columns > * { min-width: 0; }
 .boardPanel { position: sticky; top: 16px; align-self: start; }
 .controlColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; }
-.controlColumn { display: grid; align-content: start; gap: 0; min-width: 0; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior-y: auto; padding-right: 0; scrollbar-color: #58695a #151d18; }
+.controlColumn { display: grid; align-content: start; gap: 0; min-width: 0; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior-y: auto; padding-right: 0; scrollbar-color: rgba(88, 105, 90, 0.5) transparent; }
 .controlColumn::-webkit-scrollbar { width: 8px; }
-.controlColumn::-webkit-scrollbar-track { background: #151d18; border-radius: 999px; }
-.controlColumn::-webkit-scrollbar-thumb { background: #58695a; border-radius: 999px; border: 2px solid #151d18; }
+.controlColumn::-webkit-scrollbar-track { background: transparent; }
+.controlColumn::-webkit-scrollbar-thumb { background: rgba(88, 105, 90, 0.5); border-radius: 999px; }
 .canvas { display: grid; gap: 20px; min-width: 0; }
 .panel { background: #19221d; border: 1px solid #35443a; border-radius: 10px; padding: 22px; min-width: 0; }
 .panel h2 { font-size: 18px; font-weight: 500; letter-spacing: -.3px; }
