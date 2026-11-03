@@ -1043,12 +1043,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const [px, py] = PIV.wing
       el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / WING_TIP_LEN).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
     } else if (heldItem) {
-      // holding an item: the wing turns with it, its tip along the aim (under the item, which is drawn in front);
-      // the flap still shows a little on top
-      const target = rigAngle(heldItem.angle * DEG)
-      const b = target + (pose.wing - 15) * 0.25
-      const [px, py] = PIV.wing
-      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(1 0.9) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+      // holding an item: the wing keeps its own pivot (the shoulder) and pose, and turns by the aim's angle
+      // the other way round (aiming up lifts it back, aiming down lowers it forward), flap included
+      el.wing.setAttribute('transform', rot('wing', pose.wing - rigAngle(heldItem.angle * DEG)))
     } else el.wing.setAttribute('transform', rot('wing', pose.wing))
     if (heldItem) {
       let a: number, at = ''
