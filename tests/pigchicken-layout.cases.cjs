@@ -72,3 +72,29 @@ test('a new element is centred where it was dropped, with its kind\'s defaults',
   const rack = L.createElement('rack', 0, 0, { item: 'violin' })
   assert.equal(rack.params.item, 'violin')
 })
+
+test('gravity: an element falls onto the solid element under it, or the ground, and stacks settle in one pass', () => {
+  const G = world.WORLD_GROUND_Y
+  const base = L.createElement('platform', 500, G - 24) // resting on the ground
+  const shelf = { ...L.createElement('platform', 500, 300), id: 'shelf' }
+  const box = { ...L.createElement('platform', 520, 100), id: 'box', w: 40, h: 40, gravity: true }
+  const top = { ...L.createElement('platform', 520, 0), id: 'top', w: 40, h: 40, gravity: true }
+  const away = { ...L.createElement('pine', 3000, 100), id: 'tree', gravity: true }
+  const out = L.settleLayout([base, shelf, top, box, away])
+  const by = id => out.find(e => e.id === id)
+  const shelfTop = shelf.y
+  assert.equal(by('box').y + 40, shelfTop) // onto the shelf
+  assert.equal(by('top').y + 40, by('box').y) // onto the box that fell first
+  assert.equal(by('tree').y + by('tree').h, G) // nothing under it: the ground
+  assert.equal(by('shelf').y, shelf.y) // without gravity nothing moves
+  // the one being dragged stays where it is
+  assert.equal(L.settleLayout([shelf, box], 'box').find(e => e.id === 'box').y, box.y)
+  // on a 45° ramp it rests on the slope's highest point under it
+  const ramp = { ...L.createElement('platform', 1200, 600), id: 'ramp', w: 300, h: 40, rot: 45 }
+  const rb = L.elementBounds(ramp)
+  const onRamp = L.settleLayout([ramp, { ...box, x: rb.x + rb.w / 2 - 20, y: 0 }]).find(e => e.id === 'box')
+  assert.ok(onRamp.y + 40 > rb.y && onRamp.y + 40 < rb.y + rb.h)
+  // the flag survives normalizing
+  assert.equal(L.normalizeElement(box).gravity, true)
+  assert.equal(L.normalizeElement({ ...box, gravity: false }).gravity, undefined)
+})

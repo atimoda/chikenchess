@@ -117,6 +117,8 @@ const ART: Partial<Record<ItemId, Art>> = {
 }
 
 export const ITEM_SVG: Partial<Record<ItemId, string>> = Object.fromEntries(Object.entries(ART).map(([k, a]) => [k, a!.svg]))
+// each item's art box [x, y, width, height]: the viewBox to show ITEM_SVG inside an <svg>
+export const ITEM_BOX: Partial<Record<ItemId, Art['box']>> = Object.fromEntries(Object.entries(ART).map(([k, a]) => [k, a!.box]))
 
 // canvas images of the same art, built once per item (drawings are turned into a canvas the size of the box)
 const images: Partial<Record<ItemId, HTMLImageElement>> = {}

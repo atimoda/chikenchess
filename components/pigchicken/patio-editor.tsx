@@ -7,16 +7,16 @@
 // The game keeps running underneath: the keyboard moves her, and a click on empty space still shoots (with
 // something selected, the first click there only clears the selection).
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Copy, Layers, Lock, LockOpen, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
   ELEMENT_DEFS, HORDE_BUTTONS, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutBoxes,
-  newElementId, normalizeElement, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
+  newElementId, normalizeElement, settleLayout, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { DEFAULT_ITEMS, INSTRUMENT_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
-import { ITEM_SVG } from "@/lib/pigchicken/art"
+import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
 import { ElementArt } from "./patio-layout"
@@ -61,7 +61,14 @@ const rad = (deg: number) => (deg * Math.PI) / 180
 const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 
 export function PatioEditor({ layout, screens, onChange, onClose }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void }) {
-  const { commit, back, forward, canUndo, canRedo } = useHistory(layout, onChange)
+  const history = useHistory(layout, onChange)
+  const { back, forward, canUndo, canRedo } = history
+  // the gesture under way (move, resize, turn); the element being dragged does not fall until it is let go
+  const gesture = useRef<Gesture | null>(null)
+  // every change lets the elements with gravity fall onto what is under them
+  const commit = useCallback((next: PatioLayout, step?: string) => {
+    history.commit({ ...next, elements: settleLayout(next.elements, gesture.current?.moved ? gesture.current.id : null) }, step)
+  }, [history.commit])
   const [selected, setSelected] = useState<string | null>(null)
   const [panel, setPanel] = useState<"" | "layers" | "edit" | "delete">("")
   const layoutRef = useRef(layout)
@@ -126,7 +133,6 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
   }, [select])
 
   // ---------- gestures on the selected element: move, resize, turn ----------
-  const gesture = useRef<Gesture | null>(null)
   const begin = (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault(); e.stopPropagation()
@@ -167,6 +173,8 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
     gesture.current = null
     // a click on the turn handle (no drag) turns it 45°
     if (g.kind === "rotate" && !g.moved) update({ ...g.start, rot: snap45(g.start.rot + 45) })
+    // let go: with gravity it falls now (in the same undo step as the drag)
+    else if (g.moved) commit(layoutRef.current, `${g.kind}:${g.id}:${g.sx}:${g.sy}`)
   }
 
   // ---------- the overlay in world units, following the camera ----------
@@ -196,6 +204,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
               panel={panel}
               setPanel={setPanel}
               onLock={() => update({ ...sel, locked: !sel.locked })}
+              onGravity={() => update({ ...sel, gravity: !sel.gravity })}
               onRotate={begin("rotate", sel)}
               onMove={onMove}
               onUp={onUp}
@@ -254,9 +263,9 @@ const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp }: {
 const TOOL = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-[#101713]/95 text-[#dfe8df] transition-colors hover:border-primary hover:text-white disabled:opacity-40"
 
 // the selected element's bar, over its top-right corner
-function Toolbar({ el, panel, setPanel, onLock, onRotate, onMove, onUp, onDuplicate, onDelete }: {
+function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onUp, onDuplicate, onDelete }: {
   el: LayoutElement; panel: string; setPanel: (p: "" | "layers" | "edit" | "delete") => void
-  onLock: () => void; onRotate: (e: React.PointerEvent) => void; onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void
+  onLock: () => void; onGravity: () => void; onRotate: (e: React.PointerEvent) => void; onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void
   onDuplicate: () => void; onDelete: () => void
 }) {
   const d = ELEMENT_DEFS[el.kind]
@@ -271,6 +280,9 @@ function Toolbar({ el, panel, setPanel, onLock, onRotate, onMove, onUp, onDuplic
       </button>
       {!el.locked && (
         <>
+          <button type="button" className={cn(TOOL, el.gravity && "border-sky-300 text-sky-300")} title={el.gravity ? "Gravidade ligada: cai até se apoiar em algo (clique para desligar)" : "Gravidade: cai até se apoiar em algo"} aria-label="Gravidade" aria-pressed={!!el.gravity} onClick={onGravity}>
+            <ArrowDownToLine className="h-4 w-4" />
+          </button>
           {d.rotatable && (
             <button type="button" className={cn(TOOL, "touch-none")} title="Girar: arraste (encaixa a cada 45°) ou clique para girar 45°" aria-label="Girar" onPointerDown={onRotate} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
               <RotateCw className="h-4 w-4" />
@@ -419,12 +431,12 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Instrumentos", items: INSTRUMENT_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
 ]
 
-const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-
 function Thumb({ entry }: { entry: Entry }) {
   const d = ELEMENT_DEFS[entry.kind]
-  if (entry.kind === "rack" && entry.params?.item && ITEM_SVG[entry.params.item]) {
-    return <img alt="" src={svgUrl(ITEM_SVG[entry.params.item]!)} className="h-8 w-12 object-contain" draggable={false} />
+  // the item's own art (an SVG fragment in its box; the instruments are drawings placed inside it)
+  const item = entry.kind === "rack" ? entry.params?.item : undefined
+  if (item && ITEM_SVG[item] && ITEM_BOX[item]) {
+    return <svg aria-hidden="true" viewBox={ITEM_BOX[item]!.join(" ")} className="h-8 w-12" preserveAspectRatio="xMidYMid meet" dangerouslySetInnerHTML={{ __html: ITEM_SVG[item]! }} />
   }
   if (entry.kind === "dummy") return <span className="relative block h-9 w-6"><span className="absolute inset-x-0 top-0 h-6 rounded-md bg-[#d9cfb8]" /><span className="absolute left-1/2 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#d6453d] bg-[#f4f1e8]" /><span className="absolute bottom-0 left-1/2 h-3 w-1 -translate-x-1/2 bg-[#5b4630]" /></span>
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>

@@ -304,15 +304,18 @@ export function ChickenPatio() {
         >
           <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo"><GlobeGridIcon /></Link>
         </Button>
-        <div className="hidden min-w-0 flex-1 sm:block">
+        <div className="hidden min-w-0 shrink sm:block">
           <h1 className="truncate font-mono text-sm font-bold" title="O Pátio aberto">{patio?.name ?? (patio?.id ? "Lobby não salvo" : "Pátio da Galinha")}</h1>
           <p className="truncate font-mono text-[11px] text-[#93a79a]">{savedLabel}</p>
         </div>
+        {/* the lobby switcher and the players, right after the Pátio's name */}
+        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => { changeLobby(s => moveLocalsTo(s, target)); openPatioLobby(target.id) }} />
+        <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Users className="h-4 w-4" />
+          {lobby && lobby.players.length > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{lobby.players.length}</span>}
+        </button>
         {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
         <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <select aria-label="Câmera" title="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
-          {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
         <ChickenChatButton open={chatOpen} onToggle={() => setChatOpen(v => !v)} />
         <button type="button" aria-label="Playgrounds" aria-pressed={openOpen} title="Playgrounds" onClick={() => setOpenOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", openOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <FolderOpen className="h-4 w-4" />
@@ -345,13 +348,8 @@ export function ChickenPatio() {
         <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
-        </button>
-        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => { changeLobby(s => moveLocalsTo(s, target)); openPatioLobby(target.id) }} />
-        <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Users className="h-4 w-4" />
-          {lobby && lobby.players.length > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{lobby.players.length}</span>}
         </button>
         <button type="button" aria-label="Controles do boneco" title="Controles do boneco" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
@@ -413,12 +411,17 @@ export function ChickenPatio() {
       {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
-        <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
-            <h2 className="flex-1 text-sm text-white">Parquinho</h2>
+            <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
             <button type="button" onClick={() => { setPq(DEFAULT_PARQUINHO); saveParquinho(DEFAULT_PARQUINHO) }} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
             <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
+          <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
+            <select aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
+              {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </label>
           <PqRange label="Largura do mundo" unit="telas" min={1} max={8} step={1} value={pq.screens} onChange={v => setPqValue("screens", v)} />
           <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
           <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
