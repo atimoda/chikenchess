@@ -170,3 +170,15 @@ test('editing follows the Pátio in any mode: admin, its creator, or who the own
   assert.equal(L.canUseEditor(ok(L.setEditor(mine, p1, p2, true)), p2), true)
   assert.equal(L.canUseEditor({ ...s, creatorId: 'someone-else' }, p2), false)
 })
+
+test('the owner removes anyone except themselves, the creator and the padrinho', () => {
+  const s0 = L.createLobby({ name: 'Fulano', userId: 'f' }, ['kb1'], 1000, 'online')
+  const creator = { id: 'c', kind: 'online', name: 'Criador', joinedAt: 2000, inputs: [], userId: 'u-c' }
+  const padrinho = { id: 'g', kind: 'online', name: 'Padrinho', joinedAt: 3000, inputs: [], userId: 'u-g' }
+  const other = { id: 'o', kind: 'online', name: 'Outro', joinedAt: 4000, inputs: [], userId: 'u-o' }
+  const s = { ...s0, creatorId: 'u-c', godparentId: 'u-g', players: [...s0.players, creator, padrinho, other] }
+  const me = s0.players[0].id
+  assert.equal(L.removePlayer(s, me, 'c').ok, false)
+  assert.equal(L.removePlayer(s, me, 'g').ok, false)
+  assert.equal(L.removePlayer(s, me, 'o').ok, true)
+})

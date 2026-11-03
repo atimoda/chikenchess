@@ -8,7 +8,7 @@ import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { LOOK_ART, type ChickenLook } from "@/lib/chicken/look-art"
 import { connectedPads, inputDeviceLabel, sortDevices, type InputDeviceId } from "@/lib/chicken/input-devices"
 import {
-  LOBBY_MAX, ONLINE_UNAVAILABLE, canEditPatio, firstLocal, inviteLink, isOwner, listPublicLobbies, neighbourLobby,
+  LOBBY_MAX, ONLINE_UNAVAILABLE, canEditPatio, isProtectedPlayer, firstLocal, inviteLink, isOwner, listPublicLobbies, neighbourLobby,
   type LobbyMode, type LobbyPlayer, type LobbyState, type PublicLobby,
 } from "@/lib/chicken/lobby"
 import { onlineConfigured, onlineRpc } from "@/lib/online/client"
@@ -242,7 +242,7 @@ export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, 
                     />
                   </td>
                   <td className="px-3 py-1.5 text-center">
-                    {iOwn && !owner && (
+                    {iOwn && !owner && !isProtectedPlayer(lobby, p) && (
                       <button type="button" aria-label={`Remover ${nameOf(p)}`} onClick={() => onRemove(p.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] hover:border-red-400 hover:text-red-300"><X className="h-3.5 w-3.5" /></button>
                     )}
                   </td>

@@ -43,6 +43,8 @@ export type LobbyState = {
   ownerId: string | null
   // the account that created this Pátio (null: the default Pátio, edited only by the admin)
   creatorId?: string | null
+  // the account that first named the Pátio (padrinho); usually the creator. Creator and padrinho can never be removed
+  godparentId?: string | null
   // who may edit the Pátio while Edit mode is on; reset to only the owner whenever the owner changes
   editors: string[]
   players: LobbyPlayer[]
@@ -111,12 +113,16 @@ export function addLocalPlayer(s: LobbyState, now = Date.now(), look?: ChickenLo
   return { ok: true, state: reconcileOwner({ ...s, players: [...players, player] }), player }
 }
 
-// Only the owner removes players (never themselves); a local player's devices go back to the first local player.
+// the Pátio's creator and padrinho stay, whoever owns the lobby at the moment
+export const isProtectedPlayer = (s: LobbyState, p: LobbyPlayer) => !!p.userId && (p.userId === s.creatorId || p.userId === s.godparentId)
+
+// Only the owner removes players (never themselves, nor the Pátio's creator or padrinho); a local player's devices go back to the first local player.
 export function removePlayer(s: LobbyState, actorId: string, targetId: string): LobbyResult {
   if (!isOwner(s, actorId)) return { ok: false, state: s, reason: 'Só o dono do lobby remove players.' }
   if (actorId === targetId) return { ok: false, state: s, reason: 'O dono não remove a si mesmo.' }
   const target = s.players.find(p => p.id === targetId)
   if (!target) return { ok: false, state: s, reason: 'Player não está no lobby.' }
+  if (isProtectedPlayer(s, target)) return { ok: false, state: s, reason: 'O criador e o padrinho do Pátio não podem ser removidos.' }
   let players = s.players.filter(p => p.id !== targetId)
   if (target.kind === 'local' && target.inputs.length) {
     const p1 = players.find(p => p.kind === 'local')
