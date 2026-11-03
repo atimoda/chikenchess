@@ -52,6 +52,7 @@ export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
+  grabHeld?: boolean // Pegar held down: every item she passes over is taken as if grab were pressed on it
 }
 
 export const SLOTS = INVENTORY_MAX
@@ -219,6 +220,8 @@ export function createCombat() {
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
   }
   let hover: Pickup | null = null
+  // items taken (or dropped by a swap) during the current hold of Pegar: each is taken once per hold
+  const heldTaken = new Set<number>()
   // an item on the floor she already carries: grab equips hers
   let hoverOwned: Pickup | null = null
 
@@ -688,7 +691,14 @@ export function createCombat() {
       }
 
       // the item she stands on is outlined; grab takes it into a free slot, or swaps it with the held one when full
-      if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null }
+      // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
+      if (!input.grabHeld) heldTaken.clear()
+      const grabNow = !!input.grab || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      if (grabNow && hover && pickups.includes(hover)) {
+        const g = hover, firstNew = nextId
+        pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null
+        heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
+      }
       else if (input.grab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays)
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)

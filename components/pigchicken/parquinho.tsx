@@ -272,7 +272,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         boxesFor = S.screens
         worldBoxes = worldPlatforms(S.screens, true).map(p => ({ l: p.x, t: p.y, r: p.x + p.w, b: Math.min(p.y + p.h, G) }))
       }
-      const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : ""
+      // the button stays while Pegar is held, so holding it while walking keeps taking items
+      const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : offerShown && engine.peekActions().grab ? offerShown as "take" | "equip" : ""
       if (offer !== offerShown) { offerShown = offer; setGrabOffer(offer) }
 
       // ---------- camera: only the crop changes with the screen, never the size of things ----------
@@ -403,7 +404,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const input = {
         fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
         throwHeld: act.throw && !wh.open, throwReleased: !act.throw && !!prev.throw && !wh.open,
-        reload: act.reload && !prev.reload, pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab,
+        reload: act.reload && !prev.reload, pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab,
       }
       slotPick = 0; slotTap.current = 0
       prev = { ...act, fire, melee }
