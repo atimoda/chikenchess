@@ -24,6 +24,7 @@ import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
+import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
@@ -176,6 +177,7 @@ export function ChickenPatio() {
         <button type="button" aria-label="Ajustes da galinha" aria-pressed={panelOpen} title="Ajustes da galinha" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
         </button>
+        <VolumeButton />
         <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>
@@ -212,9 +214,6 @@ export function ChickenPatio() {
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
           <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
           <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
-          <PqRange label="Volume das armas" unit="%" min={0} max={100} step={5} value={Math.round(pq.weaponVolume * 100)} onChange={v => setPqValue("weaponVolume", v / 100)} />
-          <PqRange label="Volume dos instrumentos" unit="%" min={0} max={100} step={5} value={Math.round(pq.noteVolume * 100)} onChange={v => setPqValue("noteVolume", v / 100)} hint="Notas e as respostas dos inimigos" />
-          <PqRange label="Volume do ambiente" unit="%" min={0} max={100} step={5} value={Math.round(pq.ambienceVolume * 100)} onChange={v => setPqValue("ambienceVolume", v / 100)} hint="Percussão e drone de cada zona (0 desliga)" />
           <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
           <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
         </FloatingPanel>

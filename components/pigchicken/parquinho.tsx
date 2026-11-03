@@ -17,6 +17,7 @@ import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { ALIEN_FRAMES, ALIEN_PATTERNS, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData } from "@/lib/pigchicken/enemies"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
+import { mixGain } from "@/lib/pigchicken/mixer"
 import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
@@ -460,7 +461,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         sound: e => templeSounds.push(e),
       }
       temple.step(dt, io)
-      templeSounds.splice(0).forEach(e => playTempleSound(e, S.weaponVolume))
+      templeSounds.splice(0).forEach(e => playTempleSound(e, mixGain("effects")))
       const tp = temple.state.phase
       if (tp !== templeShown) { templeShown = tp; if (worldRef.current) worldRef.current.dataset.temple = tp }
       // a cleared stage: fireworks over the temple
@@ -476,22 +477,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const zone = inTemple ? temple.music?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
-      setMusicVolumes(S.noteVolume, S.ambienceVolume)
+      setMusicVolumes(mixGain("notes"), mixGain("ambience"))
       if (combat.music.zone !== zoneShown) { zoneShown = combat.music.zone; zoneBanner = 2.5 }
       zoneBanner = Math.max(0, zoneBanner - dt)
       const templeZone = combat.music.zone.id.startsWith("templo")
       events.forEach(e => {
-        if (S.ambienceVolume <= 0) return
+        if (mixGain("ambience") <= 0) return
         if (e.kind === "bar") drone.set(combat.music.chord()[0])
         if (e.kind === "step") {
           if (templeZone) templeAmbience(temple.music && combat.music.zone.id !== "templo" ? temple.music : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat())
           else ambience(combat.music.zone, e.n % 16, combat.music.secondsPerBeat())
         }
       })
-      if (S.ambienceVolume <= 0) drone.set(null)
+      if (mixGain("ambience") <= 0) drone.set(null)
 
       // ---------- sound ----------
-      setWeaponVolume(S.weaponVolume)
+      setWeaponVolume(mixGain("weapons"))
       combat.sounds.splice(0).forEach(e => playWeaponSound(e.kind, e.item))
       // aiming in (brood with an item): a soft sound on the weapons that have one
       if (aimLock && !wasLocked) playWeaponSound("aim", combat.inventory[combat.current]?.item ?? null)
