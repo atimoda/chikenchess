@@ -321,7 +321,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const armed = !!combat.inventory[combat.current]
       const aimLock = act.down && armed && st.grounded
       const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || (act.down && !aimLock) ? 1 : 0) - (act.up ? 1 : 0) }
-      if (leftStick || keys.x || keys.y) owner.otherAim(now, S.mouseIdle)
+      // only the left stick takes the aim back from a still mouse: the movement keys never aim
+      if (leftStick) owner.otherAim(now, S.mouseIdle)
       // her shoulder as drawn (it turns with her body on walls)
       const origin = st.shoulder
       // a quick tap on the on-screen right stick: aim at the nearest enemy (dummies when none is left) and fire for a moment

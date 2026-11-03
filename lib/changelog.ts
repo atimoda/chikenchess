@@ -11,6 +11,7 @@ export const CHANGELOG = [
         'PigChicKen: o inventário agora mostra só as casas com item, mais uma casa vazia (mãos vazias) enquanto houver espaço. A troca rápida (Q no teclado, LB no gamepad, rodinha do mouse) passa pelos itens, por uma casa vazia e volta para o primeiro.',
         'PigChicKen: os itens ficam sempre agrupados no inventário, nesta ordem: instrumentos musicais, armas e depois os demais itens. O limite agora é de 13 itens.',
         'PigChicKen: nova roda do inventário. Segure Tab (teclado) ou View/Select (gamepad), aponte para o item com o mouse ou o analógico direito e solte para equipar. Um toque rápido deixa a roda aberta: aí é só clicar ou tocar no item (no celular, botão “Roda”). A roda mostra só os itens que ela tem, mais uma casa vazia se houver espaço, com fatias do mesmo tamanho, e faz um tique bem suave ao passar por cada item.',
+        'PigChicKen: andar pelo teclado (setas, WASD) não mexe mais na mira, para não brigar com o mouse. Sem mouse nem analógico, ela mira para a frente.',
       ] },
     ],
   },
