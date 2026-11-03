@@ -370,6 +370,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       let kind = fromGround ? 'jump' : 'airJump', boost = 0, flaps = R.jumpFlaps
       if (dir !== 0 && C && RUN && D) { kind = 'crouchRunBroodJump'; boost = R.crouchRunBroodJumpBoost }
       else if (dir !== 0 && C && RUN) { kind = 'crouchRunJump'; boost = R.crouchRunJumpBoost }
+      else if (dir !== 0 && RUN && D) { kind = 'runBroodJump'; boost = R.runBroodJumpBoost; flaps = R.broodJumpFlaps }
       else if (D) { kind = 'broodJump'; boost = R.broodJumpBoost; flaps = R.broodJumpFlaps }
       else if (C) { kind = 'superJump'; boost = R.crouchJumpBoost }
       S.airBoost = (dir !== 0 ? dir * R.jumpPush : 0) + hd * boost

@@ -64,10 +64,11 @@ export const CHICKEN_PARAMS = {
   fastFall: 2,
   // Combinações
   broodWalk: 0.4,
-  crouchRunSpeed: 1,
+  crouchRunSpeed: 1.6,
   crouchJumpBoost: 0,
   broodJumpBoost: 0,
   broodJumpFlaps: 2,
+  runBroodJumpBoost: 100,
   crouchRunJumpBoost: 0,
   crouchRunBroodJumpBoost: 0,
   // Voo
@@ -100,6 +101,7 @@ export const CHICKEN_PARAMS = {
   sfx_airJump: 'all',
   sfx_superJump: 'all',
   sfx_broodJump: 'all',
+  sfx_runBroodJump: 'all',
   sfx_crouchRunJump: 'all',
   sfx_crouchRunBroodJump: 'all',
   sfx_wallJump: 'all',
@@ -122,7 +124,7 @@ export const CHICKEN_PARAMS = {
 
 export type ChickenParams = typeof CHICKEN_PARAMS
 
-export const CHICKEN_PX_PARAMS: (keyof ChickenParams)[] = ['walkSpeed', 'acceleration', 'deceleration', 'jumpPush', 'climbSpeed', 'maxSpeed', 'runBoost', 'slideFriction', 'slideMinSpeed', 'jumpHeight', 'gravity', 'terminalVelocity', 'crouchJumpBoost', 'broodJumpBoost', 'crouchRunJumpBoost', 'crouchRunBroodJumpBoost']
+export const CHICKEN_PX_PARAMS: (keyof ChickenParams)[] = ['walkSpeed', 'acceleration', 'deceleration', 'jumpPush', 'climbSpeed', 'maxSpeed', 'runBoost', 'slideFriction', 'slideMinSpeed', 'jumpHeight', 'gravity', 'terminalVelocity', 'crouchJumpBoost', 'broodJumpBoost', 'runBroodJumpBoost', 'crouchRunJumpBoost', 'crouchRunBroodJumpBoost']
 
 // Cluck samples in public/audio/chicken, by type (the ones switched on in the class)
 export const CHICKEN_CLUCKS: Record<string, string[]> = {

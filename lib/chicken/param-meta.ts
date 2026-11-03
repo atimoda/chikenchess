@@ -11,7 +11,7 @@ export type ChickenParamMeta =
 // every movement can cluck: '' = no sound, 'all' = any enabled type, or one type
 export const CHICKEN_SFX_EVENTS: [string, string][] = [
   ['runStart', 'Começar a correr'], ['jump', 'Pulo'], ['airJump', 'Pulo no ar'], ['superJump', 'Super pulo (baixo + pulo)'],
-  ['broodJump', 'Pular chocando'], ['crouchRunJump', 'Frente + baixo + corrida + pulo'], ['crouchRunBroodJump', 'Frente + baixo + corrida + chocar + pulo'],
+  ['broodJump', 'Pular chocando'], ['runBroodJump', 'Pular chocando correndo'], ['crouchRunJump', 'Frente + baixo + corrida + pulo'], ['crouchRunBroodJump', 'Frente + baixo + corrida + chocar + pulo'],
   ['wallJump', 'Pulo da parede'], ['slideTurn', 'Virada no slide'], ['pickUp', 'Ser pega com o mouse'],
   ['grab', 'Agarrar na parede'], ['land', 'Aterrissar'], ['dropThrough', 'Atravessar plataforma'],
   ['st_idle', 'Ficar parada'], ['st_walk', 'Começar a andar'], ['st_lookUp', 'Olhar pra cima'], ['st_brood', 'Chocar'],
@@ -74,6 +74,7 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Combinações', key: 'crouchJumpBoost', label: 'Baixo + pulo: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
   { group: 'Combinações', key: 'broodJumpBoost', label: 'Pular chocando: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
   { group: 'Combinações', key: 'broodJumpFlaps', label: 'Pular chocando: batidas de asa', unit: '', min: 0, max: 12, step: 1},
+  { group: 'Combinações', key: 'runBroodJumpBoost', label: 'Pular chocando correndo: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
   { group: 'Combinações', key: 'crouchRunJumpBoost', label: 'Frente + baixo + corrida + pulo: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
   { group: 'Combinações', key: 'crouchRunBroodJumpBoost', label: 'Frente + baixo + corrida + chocar + pulo: impulso lateral', unit: 'px/s', min: 0, max: 3000, step: 10},
   { group: 'Voo', key: 'flyFallDivisor', label: 'Queda voando (divisor)', unit: '÷', min: 1, max: 10, step: 0.1},
