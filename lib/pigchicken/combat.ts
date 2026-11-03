@@ -1,6 +1,7 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { DEFAULT_ITEMS, type ItemDef, type ItemId } from './items'
+import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
 import type { WeaponSound } from './sfx'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS } from './music'
@@ -49,11 +50,11 @@ export type Swing = { angle: number; arc: number; range: number; reach: number; 
 export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
-  reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1..9 exact, 0 none
+  reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
 }
 
-export const SLOTS = 9
+export const SLOTS = INVENTORY_MAX
 const THROW_GRAVITY = 1500
 const ITEM_GRAVITY = 1800
 
@@ -62,7 +63,9 @@ const DEG = Math.PI / 180
 
 export function createCombat() {
   let items: Record<ItemId, ItemDef> = structuredClone(DEFAULT_ITEMS)
-  const inv: (Owned | null)[] = Array(SLOTS).fill(null)
+  // the items she carries, grouped and in order (instruments, weapons, others); cur may be inv.length:
+  // the empty slot (empty hands), which exists while there is room
+  const inv: Owned[] = []
   let cur = 0
   let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
   let aimAngle = 0
@@ -103,7 +106,13 @@ export function createCombat() {
   let quantizeAll = true
   const conv = { birds: 0, people: 0, harmonized: 0 }
 
-  const held = () => inv[cur]
+  const held = (): Owned | null => inv[cur] ?? null
+  const groupOf = (o: Owned) => itemGroup(o.item, !!items[o.item]?.instrument)
+  const room = () => inv.length < SLOTS
+  // the slots shown on the bar and the wheel: her items, plus the empty one while there is room
+  const shown = (): (Owned | null)[] => room() ? [...inv, null] : inv.slice()
+  // the held item leaves (broke, thrown): her hands are empty (the empty slot, at the end)
+  const removeHeld = () => { inv.splice(cur, 1); cur = inv.length }
   const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
   const fresh = (item: ItemId): Owned => ({ item, ammo: items[item].mag, durability: items[item].durability })
 
@@ -188,19 +197,14 @@ export function createCombat() {
   let lastBody: Body | null = null
 
   // can she take this item? (one of each item)
-  const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o && o.item === p.owned.item)
+  const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o.item === p.owned.item)
 
-  // a free slot for an item grabbed from the floor: the held slot when the wing is empty, else the first empty one
-  const freeSlot = () => inv[cur] === null ? cur : inv.findIndex(o => o === null)
-
-  // grab with a free slot: the item goes there and she holds it (picking up is always the player's choice)
+  // grab with room: the item goes into its group's place and she holds it (picking up is always the player's choice)
   function pickUp(p: Pickup) {
-    if (!canTake(p)) return false
-    const slot = freeSlot()
-    if (slot < 0) return false
-    inv[slot] = p.owned
-    if (slot === cur) { stopBeam(); reloadT = 0; chargeT = 0; burstLeft = 0; sound('equip', p.owned.item) }
-    else equip(slot)
+    if (!canTake(p) || !room()) return false
+    stopBeam()
+    cur = insertSorted(inv, p.owned, groupOf); reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0
+    sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
   }
@@ -209,8 +213,8 @@ export function createCombat() {
   function swapIn(p: Pickup) {
     const old = held()
     stopBeam()
-    if (old) pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
-    inv[cur] = p.owned; reloadT = 0; chargeT = 0; burstLeft = 0
+    if (old) { pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 }); inv.splice(cur, 1) }
+    cur = insertSorted(inv, p.owned, groupOf); reloadT = 0; chargeT = 0; burstLeft = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
   }
@@ -219,9 +223,10 @@ export function createCombat() {
   let hoverOwned: Pickup | null = null
 
   function equip(i: number) {
+    i = wrapSlot(i, slotCount(inv.length))
     if (i === cur) return
     stopBeam()
-    cur = (i + SLOTS) % SLOTS; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; cooldown = Math.max(cooldown, 0.15)
+    cur = i; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; cooldown = Math.max(cooldown, 0.15)
     if (held()) sound('equip')
   }
 
@@ -427,7 +432,7 @@ export function createCombat() {
     if (!wing && h && hits > 0 && d.durability > 0) {
       h.durability -= hits
       if (h.durability <= 0) {
-        inv[cur] = null
+        removeHeld()
         burst(origin.x + Math.cos(aimAngle) * 30, origin.y + Math.sin(aimAngle) * 30, 18, '#c9c9c9', 200, 4)
         addText(origin.x, origin.y - 50, `${d.name} quebrou!`, '#ff8c69')
       }
@@ -472,8 +477,10 @@ export function createCombat() {
   })
 
   return {
-    get inventory() { return inv },
+    // the slots shown (her items plus the empty one while there is room) and the one she holds
+    get inventory() { return shown() },
     get current() { return cur },
+    get held() { return held() },
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
     get kick() { return kick },
     get swing() { return swing },
@@ -481,7 +488,7 @@ export function createCombat() {
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
-    get hoverSwaps() { return freeSlot() < 0 },
+    get hoverSwaps() { return !room() },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
@@ -495,8 +502,13 @@ export function createCombat() {
     // effects for the modes built on top (the temple): sparks and floating text
     burst, addText(x: number, y: number, text: string, color = '#ffffff', size?: number) { texts.push({ x, y, text, life: size ? 1.2 : 0.9, color, size }) },
     def,
-    // creative mode / tests: put an item straight into a slot
-    give(slot: number, item: ItemId) { inv[slot] = fresh(item); if (slot === cur) sound('equip', item) },
+    // an item's sheet (names and numbers for the bar and the wheel)
+    item(id: ItemId): ItemDef { return items[id] },
+    // creative mode / tests: put an item straight into the inventory (in its group's place) and hold it
+    give(item: ItemId) {
+      if (inv.some(o => o.item === item) || !room()) return
+      stopBeam(); cur = insertSorted(inv, fresh(item), groupOf); sound('equip', item)
+    },
     setItems(next: Record<ItemId, ItemDef>) {
       items = next
       inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
@@ -543,7 +555,7 @@ export function createCombat() {
       if (swing) { swing.t += dt; if (swing.t > swing.time) swing = null }
 
       // switching items
-      if (input.slot) equip(input.slot - 1)
+      if (input.slot) { if (input.slot <= slotCount(inv.length)) equip(input.slot - 1) }
       else if (input.pick) equip(cur + input.pick)
       const dNow = def()
       if (beam && (!input.fire || !dNow.beam)) stopBeam()
@@ -619,9 +631,9 @@ export function createCombat() {
           const v = d.throwMin + (Math.max(d.throwMin, d.throwSpeed) - d.throwMin) * p
           sound('throw', null)
           thrown.push({ x: origin.x, y: origin.y, vx: Math.cos(aimAngle) * v + body.vx * 0.5, vy: Math.sin(aimAngle) * v, spin: (Math.cos(aimAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: aimAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
-          inv[cur] = null; reloadT = 0
-          const next = inv.findIndex(o => o !== null)
-          if (next >= 0) cur = next
+          removeHeld(); reloadT = 0
+          // the next item in the wing: the first one (empty hands when she has none)
+          cur = 0
         }
         throwT = 0
       }
@@ -670,7 +682,7 @@ export function createCombat() {
         }
         if (Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && canTake(p)) {
           if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
-        } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && inv.some(o => o && o.item === p.owned.item)) {
+        } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && inv.some(o => o.item === p.owned.item)) {
           if (!hoverOwned || Math.abs(p.x - body.x) < Math.abs(hoverOwned.x - body.x)) hoverOwned = p
         }
       }
@@ -679,7 +691,7 @@ export function createCombat() {
       if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null }
       else if (input.grab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays)
-        const slot = inv.findIndex(o => o && o.item === hoverOwned!.owned.item)
+        const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
       // racks: the creative mode always has the item to pick up again

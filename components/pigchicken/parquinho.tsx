@@ -9,7 +9,8 @@ import type { ChickenEngine } from "@/lib/chicken/engine"
 import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
-import { createCombat, SLOTS, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
+import { createCombat, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
+import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { INSTRUMENT_IDS, loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
@@ -74,6 +75,8 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
 
 export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // the inventory wheel has its own canvas, above the chicken
+  const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
@@ -85,6 +88,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const tapShot = useRef(0)
   // a slot the player clicked or tapped on the inventory bar (1-based, 0 none): equips it on the next frame
   const slotTap = useRef(0)
+  // how many slots the inventory bar shows (her items plus the empty one while there is room)
+  const [invSlots, setInvSlots] = useState(1)
+  // the inventory wheel: open (its layer takes the clicks and taps), where the pointer is over it, a click on it
+  const [wheelOpen, setWheelOpen] = useState(false)
+  const wheelPtr = useRef<{ x: number; y: number } | null>(null)
+  const wheelTap = useRef<{ x: number; y: number } | null>(null)
   // what the on-screen grab button offers: '' hidden, 'take' an item to pick up, 'equip' one she already carries
   const [grabOffer, setGrabOffer] = useState<"" | "take" | "equip">("")
   const [controls, setControls] = useState<ChickenControls | null>(null)
@@ -99,6 +108,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     if (!engine) return
     const canvas = canvasRef.current!
     const ctx = canvas.getContext("2d")!
+    const wheelCanvas = wheelCanvasRef.current!, wctx = wheelCanvas.getContext("2d")!
     let controls = loadChickenControls()
     const unsub = subscribeChickenControls(c => { controls = c })
     const owner = createMouseOwner()
@@ -108,7 +118,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let heldStick: { stick: Stick; touch: boolean } | null = null
     let mouse: { x: number; y: number } | null = null
     const mouseBtn = { fire: false, melee: false }
-    let wheel = 0, slotPick = 0
+    let wheel = 0, slotPick = 0, escape = false
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return
@@ -134,6 +144,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
       const m = /^Digit([1-9])$/.exec(e.code)
       if (m && !e.repeat) slotPick = Number(m[1])
+      if (e.code === "Escape") escape = true
     }
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerdown", onDown)
@@ -150,6 +161,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
+    // the inventory wheel: open, left open by a quick tap of its button (sticky), when it opened, the slice under
+    // the pointer / stick (-1 none); slotsShown: the bar's slot count the page knows
+    const wh = { open: false, sticky: false, at: 0, hover: -1 }
+    let slotsShown = 1, wheelDrawn = false
     // horde settings, changed by shooting their buttons
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
@@ -222,6 +237,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const dpr = Math.min(2, window.devicePixelRatio || 1)
       canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
+      wctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      wheelDrawn = true
     }
     fit()
     window.addEventListener("resize", fit)
@@ -264,18 +282,62 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const act = engine.getActions()
       const an = controls.analog
       const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
+
+      // ---------- the inventory wheel: hold its button, point at an item (mouse, right stick, touch) and let go ----------
+      const slots = combat.inventory, nSlots = slots.length
+      if (nSlots !== slotsShown) { slotsShown = nSlots; setInvSlots(nSlots) }
+      let wheelPick = 0
+      const showWheel = (on: boolean) => {
+        if (wh.open === on) return
+        wh.open = on; wh.sticky = false; wh.at = now; wh.hover = -1
+        wheelPtr.current = null; wheelTap.current = null
+        setWheelOpen(on)
+      }
+      const wheelDown = act.itemWheel && !prev.itemWheel, wheelUp = !act.itemWheel && !!prev.itemWheel
+      if (wheelDown) {
+        if (!wh.open) showWheel(true)
+        else { if (wh.hover >= 0) wheelPick = wh.hover + 1; showWheel(false) }
+      } else if (wheelUp && wh.open && !wh.sticky) {
+        // let go on an item: equip it; a quick tap with nothing chosen leaves the wheel open
+        if (wh.hover >= 0) { wheelPick = wh.hover + 1; showWheel(false) }
+        else if (now - wh.at < 300) wh.sticky = true
+        else showWheel(false)
+      }
+      if (wh.open) {
+        const g = wheelGeom()
+        let hov = wh.hover >= nSlots ? -1 : wh.hover
+        // the right stick (or the on-screen one) pushed far enough points at a slice; at rest it keeps the last one
+        const stick = rightStick ?? (touchAim.current && touchAim.current.mag > 0.4 ? touchAim.current : null)
+        const ptr = wheelPtr.current
+        if (stick && (stick.mag ?? 1) > 0.5) hov = wheelSliceAt(Math.atan2(stick.y, stick.x), nSlots)
+        else if (ptr && Math.hypot(ptr.x - g.cx, ptr.y - g.cy) > g.rIn * 0.35) hov = wheelSliceAt(Math.atan2(ptr.y - g.cy, ptr.x - g.cx), nSlots)
+        if (wheel) { hov = wrapSlot((hov < 0 ? combat.current : hov) + Math.sign(wheel), nSlots); wheel = 0 }
+        if (hov !== wh.hover) { wh.hover = hov; if (hov >= 0) playWeaponSound("tick", null) }
+        // a click or a tap: on the ring equips that slice, anywhere else just closes
+        const tap = wheelTap.current
+        wheelTap.current = null
+        if (tap) {
+          const r = Math.hypot(tap.x - g.cx, tap.y - g.cy)
+          if (r >= g.rIn * 0.6 && r <= g.rOut * 1.12) wheelPick = wheelSliceAt(Math.atan2(tap.y - g.cy, tap.x - g.cx), nSlots) + 1
+          showWheel(false)
+        }
+        if (escape || slotPick) showWheel(false)
+      }
+      escape = false
       // brooding with an item in the wing is aiming: she stays put and the aim is locked while brood is held
       const armed = !!combat.inventory[combat.current]
       const aimLock = act.down && armed && st.grounded
       const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || (act.down && !aimLock) ? 1 : 0) - (act.up ? 1 : 0) }
-      const liveStick = rightStick ?? touchAim.current
+      // the wheel's stick choices are not aim: while it is open the aim stick is not held
+      const liveStick = wh.open ? null : rightStick ?? touchAim.current
       if (liveStick) { heldStick = { stick: liveStick, touch: !rightStick }; stickOwner.moved(1, now); owner.release() }
-      if (leftStick || keys.x || keys.y) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
+      // only the left stick takes the aim back from a still mouse / aim stick: the movement keys never aim
+      if (leftStick) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
       const held = !liveStick && stickOwner.owns ? heldStick : null
       // her shoulder as drawn (it turns with her body on walls)
       const origin = st.shoulder
       // a quick tap on the on-screen right stick: aim at the nearest enemy (dummies when none is left) and fire for a moment
-      if (tapShot.current) { autoUntil = now + 260; tapShot.current = 0 }
+      if (tapShot.current) { if (!wh.open) autoUntil = now + 260; tapShot.current = 0 }
       let autoAt: { x: number; y: number } | null = null
       if (now < autoUntil) {
         let best = Infinity
@@ -287,9 +349,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         pick(["alien", "zombie"])
         if (!autoAt) pick(["dummy"])
       }
+      // while the wheel is open the mouse and the right stick choose items, not the aim
       aim = resolveAim({
-        rightStick: rightStick ?? (held && !held.touch ? held.stick : null), mouse: autoAt ?? (owner.owns ? mouse : null),
-        touch: touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
+        rightStick: wh.open ? null : rightStick ?? (held && !held.touch ? held.stick : null), mouse: autoAt ?? (owner.owns && !wh.open ? mouse : null),
+        touch: wh.open ? null : touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
         face: st.face, grounded: st.grounded, aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
       })
       const d = combat.def()
@@ -313,7 +376,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
 
       // ---------- combat (world coordinates) ----------
-      const fire = act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil), melee = act.melee || mouseBtn.melee
+      const fire = !wh.open && (act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
       grabKey = controls.keys.grab.find(Boolean)?.replace("Key:Key", "").replace("Key:", "") ?? "E"
       let pick = 0
       if (act.nextItem && !prev.nextItem) pick = 1
@@ -321,8 +384,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (wheel) { pick = wheel > 0 ? 1 : -1; wheel = 0 }
       const input = {
         fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
-        throwHeld: act.throw, throwReleased: !act.throw && !!prev.throw,
-        reload: act.reload && !prev.reload, pick, slot: slotPick || slotTap.current, grab: act.grab && !prev.grab,
+        throwHeld: act.throw && !wh.open, throwReleased: !act.throw && !!prev.throw && !wh.open,
+        reload: act.reload && !prev.reload, pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab,
       }
       slotPick = 0; slotTap.current = 0
       prev = { ...act, fire, melee }
@@ -428,6 +491,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       drawInventory(ctx, combat, getTouchLayout().offsets.inventory)
+      if (wh.open || wheelDrawn) { wctx.clearRect(0, 0, window.innerWidth, window.innerHeight); wheelDrawn = false }
+      if (wh.open) { drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110)); wheelDrawn = true }
       drawTempleHud(ctx, temple, combat.music, inTemple, INV_TOP + INV_SIZE + 12)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
@@ -471,14 +536,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     <>
       <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
+      <canvas ref={wheelCanvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[205] h-full w-full" />
       <div ref={hudRef} className="pointer-events-none absolute left-3 z-[120] font-mono text-[11px] text-[#93a79a]" style={{ bottom: groundHeight + 10 }} />
       {/* the inventory bar is drawn on the canvas; these invisible slots sit on top of it so a click or a tap
           equips that item. In edit mode the Movable's drag handle covers them, so dragging never equips. */}
       {engine && (
-        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ left: `calc(50% - ${INV_W() / 2}px)`, top: INV_TOP, width: INV_W(), height: INV_SIZE }}>
+        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ left: `calc(50% - ${INV_W(invSlots) / 2}px)`, top: INV_TOP, width: INV_W(invSlots), height: INV_SIZE }}>
           {!editing && (
             <div data-chicken-ignore className="flex h-full" style={{ gap: INV_GAP }}>
-              {Array.from({ length: SLOTS }, (_, i) => (
+              {Array.from({ length: invSlots }, (_, i) => (
                 <button
                   key={i}
                   type="button"
@@ -494,6 +560,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             </div>
           )}
         </Movable>
+      )}
+      {/* the inventory wheel (drawn on the canvas): this layer, under the touch controls, takes the pointer while it is open */}
+      {engine && wheelOpen && (
+        <div
+          data-chicken-ignore
+          aria-label="Roda do inventário"
+          className="pointer-events-auto fixed inset-0 z-[189]"
+          style={{ touchAction: "none" }}
+          onPointerMove={e => { wheelPtr.current = { x: e.clientX, y: e.clientY } }}
+          onPointerDown={e => { e.preventDefault(); wheelPtr.current = { x: e.clientX, y: e.clientY }; wheelTap.current = { x: e.clientX, y: e.clientY } }}
+          onContextMenu={e => e.preventDefault()}
+        />
       )}
       {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
     </>
@@ -551,6 +629,7 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
         <Movable id="items" className="relative flex flex-col gap-2">
           {button("Punch", "melee")}
           {button("Throw", "throw")}
+          {button("Roda", "itemWheel")}
         </Movable>
         <Movable id="aim" className="relative">
         <div
@@ -1017,13 +1096,15 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
 }
 
 const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
-const INV_W = () => SLOTS * INV_SIZE + (SLOTS - 1) * INV_GAP
+const INV_W = (n: number) => n * INV_SIZE + (n - 1) * INV_GAP
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
 // the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls).
+// Only her items show, plus one empty slot while there is room (instruments, weapons, then the other items).
 // The slots touch each other, with a thin line between them; the current one is outlined in yellow.
 function drawInventory(ctx: Ctx, combat: Combat, offset?: { x: number; y: number }) {
-  const size = INV_SIZE, w = INV_W()
+  const slots = combat.inventory, n = slots.length
+  const size = INV_SIZE, w = INV_W(n)
   const x0 = Math.round((window.innerWidth - w) / 2 + (offset?.x ?? 0)), y = INV_TOP + (offset?.y ?? 0)
   const numbers = desktopPointer?.matches ?? true
   ctx.save()
@@ -1032,16 +1113,80 @@ function drawInventory(ctx: Ctx, combat: Combat, offset?: { x: number; y: number
   ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1
   ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, size - 1)
   ctx.beginPath()
-  for (let i = 1; i < SLOTS; i++) { const x = x0 + i * size + 0.5; ctx.moveTo(x, y); ctx.lineTo(x, y + size) }
+  for (let i = 1; i < n; i++) { const x = x0 + i * size + 0.5; ctx.moveTo(x, y); ctx.lineTo(x, y + size) }
   ctx.stroke()
-  for (let i = 0; i < SLOTS; i++) {
-    const x = x0 + i * size, o = combat.inventory[i]
+  for (let i = 0; i < n; i++) {
+    const x = x0 + i * size, o = slots[i]
     if (i === combat.current) {
       ctx.fillStyle = "rgba(255,209,102,0.22)"; ctx.fillRect(x, y, size, size)
       ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, size - 2, size - 2)
     }
     if (o) { ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 2); drawItem(ctx, o.item, size - 6, size - 8); ctx.restore() }
-    if (numbers) { ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10) }
+    if (numbers && i < 9) { ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10) }
+  }
+  ctx.restore()
+}
+
+// ---------- the inventory wheel: her items plus the empty slot (while there is room), in equal slices ----------
+// centred on the screen; the first slot at the top, then clockwise in the inventory's order
+function wheelGeom() {
+  const W = window.innerWidth, H = window.innerHeight
+  const rOut = Math.max(120, Math.min(230, Math.min(W, H) * 0.42))
+  return { cx: W / 2, cy: H / 2, rOut, rIn: rOut * 0.5 }
+}
+const GROUP_COLORS = ["#c77dff", "#ff9f43", "#7bd88f"]
+const GROUP_NAMES = ["Instrumento", "Arma", "Item"]
+function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number) {
+  const slots = combat.inventory, n = slots.length, { cx, cy, rOut, rIn } = wheelGeom(), span = wheelSpan(n)
+  const ease = 1 - (1 - open) ** 3
+  ctx.save()
+  ctx.globalAlpha = ease
+  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
+  ctx.translate(cx, cy); ctx.scale(0.88 + 0.12 * ease, 0.88 + 0.12 * ease)
+  const mid = (rIn + rOut) / 2, ring = rOut - rIn
+  ctx.beginPath(); ctx.arc(0, 0, rIn - 3, 0, Math.PI * 2); ctx.fillStyle = "rgba(14,17,22,0.92)"; ctx.fill()
+  for (let i = 0; i < n; i++) {
+    const o = slots[i], c = wheelSliceCenter(i, n), on = i === hover
+    const gap = n > 1 ? 1.5 / rIn : 0
+    const a0 = n > 1 ? c - span / 2 + gap : 0, a1 = n > 1 ? c + span / 2 - gap : Math.PI * 2
+    ctx.beginPath(); ctx.arc(0, 0, rOut, a0, a1); ctx.arc(0, 0, rIn, a1, a0, true); ctx.closePath()
+    ctx.fillStyle = on ? "rgba(255,255,255,0.92)" : "rgba(28,32,38,0.66)"; ctx.fill()
+    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 1; ctx.stroke()
+    // the group's colour along the inner edge, the held one in yellow, the chosen one with a blue rim
+    if (o) { ctx.strokeStyle = GROUP_COLORS[itemGroup(o.item, combat.item(o.item).instrument)]; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, rIn + 2.5, a0, a1); ctx.stroke() }
+    if (i === combat.current) { ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, rOut - 2.5, a0, a1); ctx.stroke() }
+    if (on) { ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, rOut + 3.5, a0, a1); ctx.stroke() }
+    const x = Math.cos(c) * mid, y = Math.sin(c) * mid, arc = n > 1 ? span * mid : Infinity
+    if (o) {
+      ctx.save(); ctx.translate(x, y); ctx.globalAlpha = ease * (on ? 1 : 0.85)
+      // about the same area for every item: long guns stay long, a pistol is not huge, the bow is not a thin line
+      const im = itemImage(o.item)
+      if (im) {
+        const [, , w, h] = im.box, maxW = Math.min(ring * 0.95, arc * 0.75), maxH = Math.min(ring * 0.7, arc * 0.7)
+        const k = Math.min(maxW / w, maxH / h, Math.sqrt((ring * ring * 0.26) / (w * h)))
+        ctx.drawImage(im.img, -w * k / 2, -h * k / 2, w * k, h * k)
+      }
+      ctx.restore()
+    } else {
+      ctx.fillStyle = on ? "rgba(20,24,30,0.7)" : "rgba(255,255,255,0.45)"
+      ctx.font = "11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"
+      ctx.fillText("vazio", x, y)
+    }
+  }
+  // the centre: what the chosen (or held) slot is
+  const i = hover >= 0 ? hover : combat.current, o = slots[i] ?? null
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"
+  if (o) {
+    const d = combat.item(o.item)
+    ctx.fillStyle = GROUP_COLORS[itemGroup(o.item, d.instrument)]; ctx.font = "10px ui-monospace, monospace"
+    ctx.fillText(GROUP_NAMES[itemGroup(o.item, d.instrument)].toUpperCase(), 0, -22)
+    ctx.fillStyle = "#ffffff"; ctx.font = "bold 17px ui-sans-serif, system-ui, sans-serif"
+    ctx.fillText(d.name, 0, 0, rIn * 1.7)
+    const info = [d.mag > 0 ? `${Math.ceil(o.ammo)}/${d.mag}` : "", d.durability > 0 ? `${o.durability} golpes` : ""].filter(Boolean).join(" · ")
+    if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, 0, 20) }
+  } else {
+    ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "bold 15px ui-sans-serif, system-ui, sans-serif"
+    ctx.fillText("Mãos vazias", 0, 0)
   }
   ctx.restore()
 }

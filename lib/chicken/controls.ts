@@ -3,7 +3,7 @@
 
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
-  | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'reload' | 'grab'
+  | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'itemWheel' | 'reload' | 'grab'
 export type ChickenTouchMode = 'auto' | 'on' | 'off'
 type Slots = (string | null)[]
 
@@ -15,12 +15,14 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], pad: ['Pad:a1+', 'Pad:b13', null] },
   { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], pad: ['Pad:b0', null, null] },
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', 'Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
-  // the mouse is fixed: left click fires, right click hits, the wheel cycles items; 1 to 9 pick an item
+  // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyX', null, null], pad: ['Pad:b7', null, null], group: 'items' },
   { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyZ', null, null], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyF', 'Key:KeyG', null], pad: ['Pad:b5', null, null], group: 'items' },
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyQ', null, null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], pad: [null, null, null], group: 'items' },
+  // hold to open the inventory wheel, aim at an item (mouse / right stick) and let go; a quick tap leaves it open
+  { key: 'itemWheel', label: 'Roda do inventário (segure e solte no item)', keys: ['Key:Tab', null, null], pad: ['Pad:b8', null, null], group: 'items' },
   // X on the gamepad also runs: grabbing only acts while she stands on an item
   { key: 'grab', label: 'Pegar / trocar item (em cima dele)', keys: ['Key:KeyE', null, null], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], pad: ['Pad:b11', null, null], group: 'items' },

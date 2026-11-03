@@ -1,5 +1,6 @@
 // PigChicKen aim: which input owns the aim this frame and where it points. Pure functions, screen coordinates (y down).
-// Priority: right stick > mouse (after it moves) > on-screen right stick > left stick / arrows (8 angles) > facing.
+// Priority: right stick > mouse (after it moves) > on-screen right stick > left stick > facing. The movement keys
+// (arrows, WASD) do not aim.
 
 export type Stick = { x: number; y: number; mag: number }
 export type AimSource = 'rightStick' | 'mouse' | 'touch' | 'leftStick' | 'keys' | 'facing'
@@ -8,7 +9,7 @@ export type AimInput = {
   mouse: { x: number; y: number } | null // cursor, only while the mouse owns the aim
   touch: Stick | null
   leftStick: Stick | null
-  keys: { x: number; y: number } // -1, 0 or 1 on each axis
+  keys: { x: number; y: number } // -1, 0 or 1 on each axis (movement keys: not used for the aim any more)
   origin: { x: number; y: number } // where the aim starts (her shoulder)
   face: number
   grounded: boolean
@@ -58,9 +59,7 @@ export function resolveAim(i: AimInput): Aim {
       return { ...fromVec(Math.cos(a), Math.sin(a), 'leftStick', i.leftStick.mag, false) }
     }
   }
-  let { x, y } = i.keys
-  if (y > 0 && !downOk) y = 0
-  if (x !== 0 || y !== 0) return fromVec(x, y, 'keys', 1, false)
+  // the keyboard's movement keys never aim (they would fight the mouse): with no other aim, she aims ahead
   return fromVec(i.face || 1, 0, 'facing', 1, false)
 }
 

@@ -161,7 +161,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
               <input type="range" min={1} max={22.5} step={0.5} value={controls.analog.magnetDeg} onChange={e => { const v = Number(e.target.value); update(c => { c.analog.magnetDeg = v }) }} className="accent-[var(--primary)]" />
             </label>
           )}
-          <p className="text-[11px] text-[#8a9a8a]">No mouse: clique esquerdo atira, clique direito dá o golpe, a rodinha troca o item. As teclas 1 a 9 escolhem o item.</p>
+          <p className="text-[11px] text-[#8a9a8a]">No mouse: clique esquerdo atira, clique direito dá o golpe, a rodinha troca o item. As teclas 1 a 9 escolhem o item. Com a roda do inventário aberta, o mouse ou o analógico direito escolhe o item.</p>
         </section>
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Na tela (celular)</h3>
