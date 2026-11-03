@@ -24,7 +24,10 @@ export function normalizeChickenConfig(raw: unknown): ChickenConfig {
   const src = (raw && typeof raw === 'object' ? raw : {}) as { params?: Record<string, unknown>; look?: Record<string, unknown> }
   const params = src.params && typeof src.params === 'object' ? src.params : {}
   const target = out.params as Record<string, unknown>
+  // a version saved before 'runBroodJumpBoost' existed still has the old crouch-run speed (1): drop it so the new default applies
+  const legacy = !('runBroodJumpBoost' in params)
   for (const [key, def] of Object.entries(CHICKEN_PARAMS)) {
+    if (legacy && key === 'crouchRunSpeed') continue
     const v = params[key]
     if (typeof def === 'number' ? typeof v === 'number' && Number.isFinite(v) : typeof v === typeof def) {
       if (key.startsWith('sfx_') && !SFX_VALUES.has(v as string)) continue
