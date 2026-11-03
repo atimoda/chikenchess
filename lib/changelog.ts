@@ -7,6 +7,9 @@ export const CHANGELOG = [
     date: '03/11/2026',
     title: 'PigChicKen: inventário organizado e roda do inventário',
     groups: [
+      { title: 'Criativo', items: [
+        'Novo botão Arpeggiator na linha de botões abaixo do MIDI, na partida e no Criativo: um clique transforma as notas da variação num arpejo com a configuração atual. Segure o botão (ou clique com o botão direito) para abrir as configurações: ordem (Up, Down, Up/Down, As played, Walk, Random, Chord), Rate com tercina e pontuada, Octaves, Length, Gate, Swing, Chord/Above e o Rhythm com uma barra de acento por passo. Mexer nas configurações reaplica na hora, sempre a partir do MIDI original, sem acumular.',
+      ] },
       { title: 'Pátio', items: [
         'Pátio da Galinha: o portal agora fica parado perto do começo do Pátio, ela chega ao lado dele, e entrar nele leva de volta ao globo (“Back to the globe?”). Nos dois portais, com o botão à mostra, apertar correr ou pegar (Shift / E, X no gamepad) também confirma a entrada.',
         'Pátio da Galinha: cabeçalho transparente, o botão de voltar é o mesmo botão Globo das partidas, e árvores no estilo das do templo, cada uma diferente, ficam em primeiro plano nas cenas, meio transparentes para não esconder o jogo.',
