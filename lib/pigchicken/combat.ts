@@ -6,6 +6,7 @@ import type { WeaponSound } from './sfx'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS } from './music'
 import type { Drum, Held, VoiceId } from './synth'
+import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
 
 // where the instruments' sound goes (the Parquinho plugs the synth in)
 export type MusicOut = {
@@ -30,7 +31,7 @@ export type Bullet = {
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
-// x: centre, y: bottom. dummy targets come back after falling; aliens and zombies are removed; buttons never fall
+// x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button'
 export type Target = {
   id: number; kind: TargetKind; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number
@@ -39,7 +40,13 @@ export type Target = {
   harmony?: number; stun?: number; answerCool?: number; tint?: string
   // the share of each hit it blocks (1 = immune right now): the temple's drums between beats, the dragon's head
   shield?: number
+  // training dummies: their own params, the stage they are in, how long the tip bubble shows, the crack's jolt
+  dummy?: DummyState
 }
+export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
+// how long the tip stays up after it is destroyed (and after each hit while wrecked)
+export const TIP_TIME = 8
+export const TIP_AGAIN = 5
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
@@ -126,6 +133,7 @@ export function createCombat() {
     // a button: any hit presses it
     if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
     if (blocked(t, x, y)) return
+    if (t.dummy) { hurtDummy(t, damage, pushX, x, y); return }
     damage *= 1 - (t.shield ?? 0)
     t.hp -= damage; t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * 0.35; t.vx += pushX
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
@@ -137,7 +145,74 @@ export function createCombat() {
       t.deadT = ALIEN_DEATH; burst(t.x, t.y - t.h / 2, 24, color, 260, 5); kills.aliens++; sound('alienDie', null)
     } else if (t.kind === 'zombie') {
       t.state = 'dead'; t.animT = 0; t.deadT = ZOMBIE_TIMES.dead + ZOMBIE_TIMES.fade; kills.zombies++; sound('zombieDie', null)
-    } else { t.deadT = 2.5; burst(t.x, t.y - t.h / 2, 22, '#e8e2d0', 320, 4); addText(t.x, t.y - t.h - 16, 'derrubado!', '#ff8c69') }
+    }
+  }
+
+  // a training dummy takes a hit: it loses life and breaks a stage at a time; wrecked, it only rattles and shows its tip again
+  function hurtDummy(t: Target, damage: number, pushX: number, x: number, y: number) {
+    const d = t.dummy!
+    t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * (d.stage === 0 ? 0.15 : 0.35); t.vx += pushX * (d.stage === 0 ? 0.3 : 1)
+    if (t.hp <= 0) {
+      burst(x, y, 4, '#8a7a5c', 120, 2)
+      if (d.params.message) d.tipT = Math.max(d.tipT, TIP_AGAIN)
+      answerDummy(t)
+      return
+    }
+    t.hp = Math.max(0, t.hp - damage)
+    addText(x, y - 10, String(Math.round(damage)), '#ffd166')
+    burst(x, y, 5, '#ffd166', 160, 2)
+    setStage(t)
+    answerDummy(t)
+  }
+
+  // notes mend a dummy: life comes back, and with it the stages (and its tune)
+  function mendDummy(t: Target, amount: number, color: string) {
+    if (amount <= 0) return
+    const was = t.hp
+    t.hp = Math.min(t.maxHp, t.hp + amount); t.tint = color
+    if (t.hp > was && Math.random() < 0.5) sparks.push({ x: t.x + rand(-t.w / 2, t.w / 2), y: t.y - rand(t.h * 0.4, t.h), vx: rand(-30, 30), vy: rand(-90, -40), life: 0.5, max: 0.5, color: '#7bd88f', size: 3 })
+    setStage(t)
+    if (was < t.maxHp && t.hp >= t.maxHp) {
+      conv.harmonized++
+      const top = t.y - t.h / 2
+      music.chord(true).forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
+      addText(t.x, t.y - t.h - 24, 'novinho!', '#7bd88f')
+    }
+  }
+
+  // the stage follows the life: breaking down cracks it (splinters, a jolt); mending it up chimes
+  function setStage(t: Target) {
+    const d = t.dummy!
+    const next = dummyStage(t.hp, t.maxHp)
+    if (next === d.stage) return
+    const top = t.y - t.h * 0.7
+    if (next < d.stage) {
+      d.crackT = 0.35
+      burst(t.x, top, next === 0 ? 26 : 12, '#c9a46a', next === 0 ? 320 : 220, next === 0 ? 5 : 4)
+      if (next === 0) {
+        burst(t.x, top, 12, '#d6453d', 240, 3)
+        addText(t.x, t.y - t.h - 16, 'destruído!', '#ff8c69')
+        if (d.params.message) d.tipT = TIP_TIME
+        sound('block', null)
+      }
+    } else {
+      burst(t.x, top, 8, '#7bd88f', 140, 3)
+      if (d.stage === 0) d.tipT = Math.min(d.tipT, 0.4)
+      if (next < DUMMY_STAGE_MAX) addText(t.x, t.y - t.h - 16, 'melhorou!', '#7bd88f')
+    }
+    d.stage = next
+  }
+
+  // its answer: low and sour when wrecked, climbing the zone's scale and getting in tune as it gets better
+  function answerDummy(t: Target) {
+    if ((t.answerCool ?? 0) > 0) return
+    t.answerCool = 0.14
+    const d = t.dummy!
+    const m = dummyAnswerMidi(d.stage, (from, n) => music.walk(from, n, 'scale'))
+    const vel = 0.35 + 0.1 * d.stage
+    out.note('keys', m, 0, 0.3, vel)
+    // wrecked: a second, sourer note rubs against it
+    if (d.stage === 0) out.note('keys', m + 0.8 + rand(-0.15, 0.15), 0.03, 0.4, 0.3)
   }
 
   // a shielded target: the hit glances off with a spark and a metallic tink
@@ -152,6 +227,13 @@ export function createCombat() {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
     if (blocked(t, x, y)) return
+    if (t.dummy) {
+      t.flash = 0.12; t.vx += pushX * 0.3
+      texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
+      burst(x, y, 4, note.color, 120, 3)
+      mendDummy(t, amount, note.color); answerDummy(t)
+      return
+    }
     t.harmony = (t.harmony ?? 0) + amount; t.flash = 0.12; t.tint = note.color; t.vx += pushX * 0.3
     t.stun = Math.max(t.stun ?? 0, stun)
     if (t.kind === 'zombie' && t.state === 'walk' && stun > 0) { t.state = 'hurt'; t.animT = 0 }
@@ -172,12 +254,6 @@ export function createCombat() {
   function convert(t: Target) {
     const chord = music.chord(true)
     const top = t.y - t.h / 2
-    if (t.kind === 'dummy') {
-      t.harmony = 0; conv.harmonized++
-      chord.forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
-      addText(t.x, t.y - t.h - 24, 'harmonizado!', '#c77dff')
-      return
-    }
     t.state = 'converted'; t.deadT = 0.001
     const away = Math.sign(t.x - (lastBody?.x ?? t.x)) || 1
     if (t.kind === 'alien') {
@@ -460,12 +536,13 @@ export function createCombat() {
       const note: NoteInfo = { midi, color, sym: '♩', wave: 0, phase: 0, voice: d.voice }
       // harmony flows while it plays; the target stays still; it answers every so often
       hit.stun = Math.max(hit.stun ?? 0, d.stun)
-      hit.harmony = (hit.harmony ?? 0) + d.damage * dt
+      if (hit.dummy) { mendDummy(hit, d.damage * dt, color); answerDummy(hit) }
+      else hit.harmony = (hit.harmony ?? 0) + d.damage * dt
       hit.tint = color
       if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
       if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun)
       if (hit.kind === 'button' && hit.flash <= 0) hitTarget(hit, 1, 0, x, y)
-      if (hit.harmony >= hit.maxHp) convert(hit)
+      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) convert(hit)
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
   }
@@ -513,7 +590,24 @@ export function createCombat() {
       items = next
       inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
     },
-    addTarget(x: number, y: number) { targets.push({ id: nextId++, kind: 'dummy', home: x, x, y, w: 46, h: 112, hp: 100, maxHp: 100, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0 }) },
+    // a training dummy with its own params (the tip it shows when destroyed, its total life); returns its id
+    addTarget(x: number, y: number, params?: Partial<DummyParams>) {
+      const p = cleanDummyParams(params)
+      const id = nextId++
+      targets.push({ id, kind: 'dummy', home: x, x, y, w: 46, h: 112, hp: p.maxHp, maxHp: p.maxHp, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, dummy: { params: p, stage: DUMMY_STAGE_MAX, tipT: 0, crackT: 0 } })
+      return id
+    },
+    // the editor changes a dummy's params: a new total life keeps the share of life it had
+    setDummyParams(id: number, params: Partial<DummyParams>) {
+      const t = targets.find(g => g.id === id && g.dummy)
+      if (!t?.dummy) return false
+      const p = cleanDummyParams(params, t.dummy.params)
+      const share = t.maxHp > 0 ? t.hp / t.maxHp : 1
+      t.dummy.params = p; t.maxHp = p.maxHp; t.hp = Math.round(share * p.maxHp * 100) / 100
+      t.dummy.stage = dummyStage(t.hp, t.maxHp)
+      if (!p.message) t.dummy.tipT = 0
+      return true
+    },
     addButton(x: number, y: number, id: string, w = 40, h = 40) { targets.push({ id: nextId++, kind: 'button', home: x, x, y, w, h, hp: 1, maxHp: 1, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, label: id }) },
     // the part of the world on screen (enemies enter from its sides)
     setView(l: number, r: number) { view = { l, r } },
@@ -717,7 +811,7 @@ export function createCombat() {
         t.wobble *= Math.pow(0.02, dt)
         t.x += t.vx * dt; t.vx *= Math.pow(0.004, dt)
         t.x += (t.home - t.x) * Math.min(1, 1.5 * dt)
-        if (t.deadT > 0) { t.deadT -= dt; if (t.deadT <= 0) { t.hp = t.maxHp; t.x = t.home; burst(t.x, t.y - t.h / 2, 10, '#7bdff2', 160, 3) } }
+        if (t.dummy) { t.dummy.tipT = Math.max(0, t.dummy.tipT - dt); t.dummy.crackT = Math.max(0, t.dummy.crackT - dt) }
       })
 
       // every target: the stillness of a note wears off; answers cool down
