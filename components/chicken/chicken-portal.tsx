@@ -6,7 +6,8 @@
 // clicking or tapping it makes the portal flare, play a soft sound and the game goes to the Pátio (/patio).
 // The Pátio shows a short arrival burst around her (ChickenPortalArrival) and has its own portal, standing
 // near the start of its world, that leads back to the globe (the same ring, placed in world units: `world`).
-// On either, pressing run or grab (Shift / E, the gamepad's X) while the button shows confirms it too.
+// On either, pressing run or grab (Shift / E, the gamepad's X) while the button shows confirms it too, and
+// arriving running (run held while she moves) goes straight in without stopping to confirm.
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
@@ -362,9 +363,11 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         const inside = Math.abs(dx) < r * 0.55 * k && Math.abs(dy) < r * 0.95 * k
         if (inside !== touchingNow) { touchingNow = inside; setTouching(inside) }
         near = Math.max(0, 1 - Math.hypot(dx, dy) / (r * 3.5))
-        // run or grab pressed (not just held from before) while the button shows: go in
+        // run or grab pressed while the button shows: go in; arriving running (run held while she moves)
+        // goes straight in too, with no stop to confirm
         const a = eng.peekActions(), key = a.run || a.grab
-        if (key && !keyWas && touchingNow) { keyWas = key; enter(); return }
+        const runningIn = a.run && Math.abs(st.vx) > 40
+        if (touchingNow && ((key && !keyWas) || runningIn)) { keyWas = key; enter(); return }
         keyWas = key
       }
       const enterT = enteredAt ? Math.min(1, (now - enteredAt) / ENTER_MS) : 0

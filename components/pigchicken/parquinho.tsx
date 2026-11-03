@@ -299,7 +299,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         layoutSync.sync(syncedElements, S.screens)
         worldBoxes = layoutBoxes(shown)
       }
-      const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : ""
+      // the button stays while Pegar is held, so holding it while walking keeps taking items
+      const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : offerShown && engine.peekActions().grab ? offerShown as "take" | "equip" : ""
       if (offer !== offerShown) { offerShown = offer; setGrabOffer(offer) }
 
       // ---------- camera: only the crop changes with the screen, never the size of things ----------
@@ -463,7 +464,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const input = {
         fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
         throwHeld: act.throw && !wh.open, throwReleased: !act.throw && !!prev.throw && !wh.open,
-        reload: act.reload && !prev.reload, pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab,
+        reload: act.reload && !prev.reload, pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab,
       }
       slotPick = 0; slotTap.current = 0
       prev = { ...act, fire, melee }
@@ -585,6 +586,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.inventory[combat.current], sw = combat.swing
       const art = h ? ITEM_SVG[h.item] : undefined
+      // charging a throw: the item points where it will fly (all the way round) and is pulled back the other
+      // way as the charge grows, like a slingshot; at full charge it trembles
+      const charge = h && !sw ? combat.throwCharge : 0
+      const pull = charge > 0 ? 6 + 30 * charge + (charge >= 1 ? Math.sin(now / 25) * 1.5 : 0) : 0
       // the violin: while it plays, the bow goes back and forth across the strings with the mouse's movement
       // (a full stroke every BOW_STROKE_PX), or once a beat when the mouse rests or another control aims
       if (combat.beam) {
@@ -595,7 +600,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         }
       }
       bowing.travel = 0
-      engine.setHeld(art ? { svg: art, angle: ang, kick: combat.kick, bow: h && d.beam ? { x: VIOLIN_BOW_X, stroke: bowing.stroke } : null } : null)
+      engine.setHeld(art ? { svg: art, angle: charge > 0 ? combat.throwAngle : ang, kick: combat.kick + pull, bow: h && d.beam && charge <= 0 ? { x: VIOLIN_BOW_X, stroke: bowing.stroke } : null } : null)
       engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
       const muzzle = muzzleAt(ang)
       const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
@@ -619,6 +624,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
       const tints = colorsRef.current
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath, tints?.p1 ?? "#ffffff")
+      if (charge > 0) drawThrowPath(ctx, combat.predictThrow({ x: origin.x + camX, y: origin.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY })))
       // the other local players' reticles, each in their own color, where their item points
       extraList.forEach(([id, eng]) => {
         const at = extraAim.get(id)
@@ -1402,6 +1408,26 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
   if (combat.throwCharge > 0 && combat.inventory[combat.current]) {
     ctx.strokeStyle = "#7bdff2"; ctx.lineWidth = 3
     ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 14, -Math.PI / 2, -Math.PI / 2 + combat.throwCharge * Math.PI * 2); ctx.stroke()
+  }
+  ctx.restore()
+}
+
+// where a throw let go now would fly: a dotted arc, solid for its first half and fading out over the second
+function drawThrowPath(ctx: Ctx, pts: { x: number; y: number }[]) {
+  if (pts.length < 2) return
+  const len: number[] = [0]
+  for (let i = 1; i < pts.length; i++) len.push(len[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y))
+  const total = len[len.length - 1]
+  if (total < 1) return
+  ctx.save()
+  ctx.fillStyle = "#7bdff2"
+  let j = 1
+  for (let at = 14; at < total; at += 14) {
+    while (j < pts.length - 1 && len[j] < at) j++
+    const a = pts[j - 1], b = pts[j], seg = len[j] - len[j - 1] || 1, u = (at - len[j - 1]) / seg
+    const t = at / total
+    ctx.globalAlpha = 0.9 * (t < 0.5 ? 1 : Math.max(0, 1 - (t - 0.5) / 0.5))
+    ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, 2.6, 0, Math.PI * 2); ctx.fill()
   }
   ctx.restore()
 }

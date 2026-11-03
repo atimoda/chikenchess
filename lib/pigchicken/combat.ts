@@ -61,6 +61,7 @@ export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
+  grabHeld?: boolean // Pegar held down: every item she passes over is taken as if grab were pressed on it
 }
 
 export const SLOTS = INVENTORY_MAX
@@ -78,6 +79,8 @@ export function createCombat() {
   let cur = 0
   let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
   let aimAngle = 0
+  // the throw goes where the aim points, all the way round (not slowed by a heavy item's turn rate)
+  let throwAngle = 0
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
@@ -323,6 +326,8 @@ export function createCombat() {
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
   }
   let hover: Pickup | null = null
+  // items taken (or dropped by a swap) during the current hold of Pegar: each is taken once per hold
+  const heldTaken = new Set<number>()
   // an item on the floor she already carries: grab equips hers
   let hoverOwned: Pickup | null = null
 
@@ -510,6 +515,32 @@ export function createCombat() {
     return { points, end: points[points.length - 1] }
   }
 
+  // a throw let go now: its speed at this charge (0..1), plus half of her own run
+  function throwVelocity(angle: number, charge: number, bodyVx: number) {
+    const d = def()
+    const v = d.throwMin + (Math.max(d.throwMin, d.throwSpeed) - d.throwMin) * charge
+    return { vx: Math.cos(angle) * v + bodyVx * 0.5, vy: Math.sin(angle) * v }
+  }
+
+  // the arc a throw let go now would fly (a dry run of the thrown item's flight): until it lands or hits a target
+  function predictThrow(from: { x: number; y: number }, ctx: StepCtx) {
+    const charge = throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0
+    let { vx, vy } = throwVelocity(throwAngle, charge, lastBody?.vx ?? 0)
+    let x = from.x, y = from.y
+    const points = [{ x, y }], dt = 1 / 60
+    for (let n = 0; n < 180; n++) {
+      const py = y
+      vy += THROW_GRAVITY * dt; x += vx * dt; y += vy * dt
+      points.push({ x, y })
+      if (targets.some(g => g.deadT <= 0 && Math.abs(x - g.x) < g.w / 2 + 10 && y > g.y - g.h && y < g.y)) break
+      const top = vy > 0 && ctx.boxes.find(b => x >= b.l && x <= b.r && py <= b.t && y >= b.t)
+      if (top) { points[points.length - 1] = { x, y: top.t }; break }
+      if (vy > 0 && y >= ctx.groundY) { points[points.length - 1] = { x, y: ctx.groundY }; break }
+      if (boxAt(ctx.boxes, x, y)) break
+    }
+    return points
+  }
+
   function melee(origin: { x: number; y: number }, wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
@@ -603,6 +634,8 @@ export function createCombat() {
     get hoverSwaps() { return !room() },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
+    get throwAngle() { return throwAngle },
+    predictThrow,
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
     booms, tracers, sounds, critters, music,
@@ -674,6 +707,7 @@ export function createCombat() {
         diff = Math.max(-max, Math.min(max, diff))
         aimAngle += diff
       } else aimAngle = targetAngle
+      throwAngle = targetAngle
 
       lastBody = body
       if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt) }
@@ -758,9 +792,9 @@ export function createCombat() {
         const t = held()
         if (t) {
           const p = Math.min(1, throwT / Math.max(0.05, d.throwCharge))
-          const v = d.throwMin + (Math.max(d.throwMin, d.throwSpeed) - d.throwMin) * p
+          const { vx, vy } = throwVelocity(throwAngle, p, body.vx)
           sound('throw', null)
-          thrown.push({ x: origin.x, y: origin.y, vx: Math.cos(aimAngle) * v + body.vx * 0.5, vy: Math.sin(aimAngle) * v, spin: (Math.cos(aimAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: aimAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
+          thrown.push({ x: origin.x, y: origin.y, vx, vy, spin: (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
           removeHeld(); reloadT = 0
           // the next item in the wing: the first one (empty hands when she has none)
           cur = 0
@@ -818,7 +852,14 @@ export function createCombat() {
       }
 
       // the item she stands on is outlined; grab takes it into a free slot, or swaps it with the held one when full
-      if (input.grab && hover && pickups.includes(hover)) { const g = hover; pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null }
+      // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
+      if (!input.grabHeld) heldTaken.clear()
+      const grabNow = !!input.grab || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      if (grabNow && hover && pickups.includes(hover)) {
+        const g = hover, firstNew = nextId
+        pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null
+        heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
+      }
       else if (input.grab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays)
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
