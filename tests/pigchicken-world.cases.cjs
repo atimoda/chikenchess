@@ -31,3 +31,19 @@ test('vertical camera: still on a tall screen on the ground floor, rises with he
   // standing on the ground: the ground stays at its place
   assert.equal(world.cameraYStep(short.lo, { worldY: world.WORLD_GROUND_Y, groundScreen: 578, viewTop: 65, dt: 1, lag: 6 }), short.lo)
 })
+
+test('follow camera looks ahead to the side she faces, and slides over when she turns', () => {
+  const camera = loadTs('lib/pigchicken/camera.ts')
+  const base = { mode: 'follow', viewW: 1000, worldW: 8000, dt: 1, deadband: 0, lag: 60 }
+  // she is at x 3000: centred with no lead, 200 px left of the centre with a lead of 200 to the right
+  assert.equal(camera.cameraStep(2500, { ...base, worldX: 3000 }), 2500)
+  assert.equal(camera.cameraStep(2500, { ...base, worldX: 3000, lead: 200 }), 2700)
+  assert.equal(camera.cameraStep(2500, { ...base, worldX: 3000, lead: -200 }), 2300)
+  // the lead eases toward the side she faces, never past it
+  let lead = 200
+  lead = camera.leadStep(lead, -1, 200, 2, 0.1)
+  assert.ok(lead < 200 && lead > -200)
+  for (let i = 0; i < 200; i++) lead = camera.leadStep(lead, -1, 200, 2, 0.1)
+  assert.equal(lead, -200)
+  assert.equal(camera.leadStep(0, 1, 0, 2, 0.1), 0)
+})

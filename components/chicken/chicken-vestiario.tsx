@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react"
 import { Lock, X } from "lucide-react"
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from "@/lib/chicken/look-art"
+import { RARITIES, RARITY_COLOR, RARITY_LABEL, breedRarity, itemRarity, type Rarity } from "@/lib/chicken/rarity"
 import { cn } from "@/lib/utils"
 
 const UNLOCK = "chickenchess:chicken-vest-unlock-all:v1"
@@ -13,6 +14,8 @@ type Src = "green" | "gold" | "red"
 // where each variant comes from: Caipira items come with the player; the others are earned (gold) or bought (red)
 const SRC: Record<string, Src> = { caipira: "green", none: "green", angola: "gold", onagadori: "red" }
 const SRC_LABEL: Record<Src, string> = { green: "liberado", gold: "conquista", red: "loja" }
+// the cards' border: a neutral gray, so it never reads as a player's color (players are told apart by color)
+const CARD_BORDER = "#3a3e42"
 const SRC_COLOR: Record<Src, string> = { green: "#1fd39a", gold: "#f2c14e", red: "#ef4b4b" }
 const OWNED = new Set(["caipira", "none"])
 const KLASS: Record<string, string> = { leve: "Leve", media: "Média", pesada: "Pesada", ana: "Anã", cauda_longa: "Ornamental de cauda longa" }
@@ -33,21 +36,28 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
   const owned = (v: string) => unlockAll || OWNED.has(v)
   const dirty = !sameLook(look, savedLook)
 
-  const card = (key: string, src: Src, locked: boolean, on: boolean, art: React.ReactNode, name: React.ReactNode, label: string, onPick: () => void, wide = false) => (
+  // the photo's background takes a tint of the item's rarity; where it comes from only colors the small label
+  const card = (key: string, src: Src, rarity: Rarity, locked: boolean, on: boolean, art: React.ReactNode, name: React.ReactNode, label: string, onPick: () => void, wide = false) => (
     <button
       key={key}
       type="button"
       aria-pressed={on}
-      aria-label={label + (locked ? `, bloqueado (${SRC_LABEL[src]})` : "") + (on ? ", no visual" : "")}
+      aria-label={label + `, ${RARITY_LABEL[rarity].toLowerCase()}` + (locked ? `, bloqueado (${SRC_LABEL[src]})` : "") + (on ? ", no visual" : "")}
       onClick={onPick}
-      className={cn("relative flex flex-col gap-1.5 rounded-[10px] border-2 bg-[#0b110e] p-1.5 pb-2 text-left text-[11px] transition-[opacity,transform] hover:-translate-y-px hover:opacity-100", locked && "opacity-50")}
-      style={{ borderColor: SRC_COLOR[src], background: on ? `color-mix(in srgb, ${SRC_COLOR[src]} 14%, #0b110e)` : undefined }}
+      className={cn("relative flex flex-col gap-1.5 rounded-[10px] border-2 p-1.5 pb-2 text-left text-[11px] transition-[opacity,transform] hover:-translate-y-px hover:opacity-100", on ? "bg-[#1a221d]" : "bg-[#0b110e]", locked && "opacity-50")}
+      style={{ borderColor: on ? "#8b9096" : CARD_BORDER }}
     >
-      <div className={cn("w-full overflow-hidden rounded-md bg-[#17241c]", wide ? "aspect-[16/10]" : "aspect-square")}>{art}</div>
+      <div
+        className={cn("w-full overflow-hidden rounded-md", wide ? "aspect-[16/10]" : "aspect-square")}
+        style={{ background: `radial-gradient(120% 90% at 50% 80%, color-mix(in srgb, ${RARITY_COLOR[rarity]} 42%, #17241c), color-mix(in srgb, ${RARITY_COLOR[rarity]} 16%, #121a15))` }}
+      >{art}</div>
       {locked && <span className="absolute left-2.5 top-2.5 grid h-[22px] w-[22px] place-items-center rounded-full bg-[#05060c]/75 text-white"><Lock className="h-3 w-3" /></span>}
-      {on && <span className="absolute right-2.5 top-2.5 grid h-[22px] w-[22px] place-items-center rounded-full text-xs font-bold text-[#05060c]" style={{ background: SRC_COLOR[src] }}>✓</span>}
+      {on && <span className="absolute right-2.5 top-2.5 grid h-[22px] w-[22px] place-items-center rounded-full bg-white text-xs font-bold text-[#05060c]">✓</span>}
       <span className="min-h-[2.7em] leading-snug">{name}</span>
-      <span className="text-[9px] uppercase tracking-wider" style={{ color: SRC_COLOR[src] }}>{locked ? "bloqueado · " : ""}{SRC_LABEL[src]}</span>
+      <span className="flex items-center justify-between gap-1 text-[9px] uppercase tracking-wider">
+        <span style={{ color: SRC_COLOR[src] }}>{locked ? "bloqueado · " : ""}{SRC_LABEL[src]}</span>
+        <span className="text-[#93a79a]">{RARITY_LABEL[rarity]}</span>
+      </span>
     </button>
   )
   const svg = (view: string, html: string) => <svg viewBox={view} aria-hidden="true" className="h-full w-full" dangerouslySetInnerHTML={{ __html: html }} />
@@ -64,7 +74,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
               {list.map(br => {
                 const l = LOOK_ART.breedLook(br.id)
                 const locked = LOOK_ART.SLOTS.some(s => !owned(l[s.id]))
-                return card(br.id, SRC[br.id] ?? "green", locked, sameLook(look, l), svg(fullView(l), LOOK_ART.compose(l)), <>{br.label}<br /><small className="text-[#93a79a]">classe {KLASS[br.klass] ?? br.klass}</small></>, br.label, () => onChange(l), true)
+                return card(br.id, SRC[br.id] ?? "green", breedRarity(br.id), locked, sameLook(look, l), svg(fullView(l), LOOK_ART.compose(l)), <>{br.label}<br /><small className="text-[#93a79a]">classe {KLASS[br.klass] ?? br.klass}</small></>, br.label, () => onChange(l), true)
               })}
             </div>
           ) : <p className="rounded-[10px] border border-dashed border-white/15 p-3.5 text-center text-[#93a79a]">Em breve</p>}
@@ -88,7 +98,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
             const l = { ...look, [slot.id]: v }
             const view = slot.id === "tail" && LOOK_ART.TAIL_VIEW[v] ? LOOK_ART.TAIL_VIEW[v] : LOOK_ART.VIEW[slot.id]
             const art = slot.id === "tail" ? svg(view, it.svg ?? "") : svg(view, LOOK_ART.compose(l))
-            return card(v, SRC[v] ?? "green", !owned(v), look[slot.id] === v, art, it.label, `${slot.label}: ${it.label}`, () => onChange({ ...look, [slot.id as ChickenSlot]: v }))
+            return card(v, SRC[v] ?? "green", itemRarity(slot.id, v), !owned(v), look[slot.id] === v, art, it.label, `${slot.label}: ${it.label}`, () => onChange({ ...look, [slot.id as ChickenSlot]: v }))
           })}
         </div>
       </section>
@@ -117,7 +127,9 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
           <div className="min-h-0 flex-1 overflow-y-auto">
             {body}
             <section className="flex flex-wrap gap-x-3.5 gap-y-1.5 px-4 py-3.5 text-[11px] text-[#93a79a]">
-              {(["gold", "green", "red"] as Src[]).map(s => <span key={s}><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] border-2 align-[-1px]" style={{ borderColor: SRC_COLOR[s] }} />{SRC_LABEL[s]}</span>)}
+              {RARITIES.map(r => <span key={r}><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] align-[-1px]" style={{ background: RARITY_COLOR[r] }} />{RARITY_LABEL[r]}</span>)}
+              <span className="basis-full" />
+              {(["green", "gold", "red"] as Src[]).map(s => <span key={s} className="uppercase tracking-wider" style={{ color: SRC_COLOR[s] }}>{SRC_LABEL[s]}</span>)}
               <span>meio apagado: ainda não liberado (dá pra testar)</span>
             </section>
           </div>

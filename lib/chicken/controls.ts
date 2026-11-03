@@ -7,25 +7,36 @@ export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump'
 export type ChickenTouchMode = 'auto' | 'on' | 'off'
 type Slots = (string | null)[]
 
-export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; pad: Slots; group?: 'items' }[] = [
-  { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', 'Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
-  { key: 'right', label: 'Direita', keys: ['Key:KeyD', 'Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
-  { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', 'Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
-  { key: 'down', label: 'Chocar / cair / travar mira (com item)', keys: ['Key:ControlLeft', 'Key:ArrowDown', null], pad: ['Pad:b6', 'Pad:b1', null] },
-  { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], pad: ['Pad:a1+', 'Pad:b13', null] },
-  { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], pad: ['Pad:b0', null, null] },
-  { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', 'Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
+// Input types: each one is a separate source of input that the players panel can hand to one local player.
+// keys = primary keyboard (left hand, WASD), keys2 = secondary keyboard (right hand, arrows and the
+// Insert/Home/Page Up block), pad = gamepad. A key belongs to one keyboard type and one action only.
+export type ChickenInputType = 'keys' | 'keys2' | 'pad'
+export const CHICKEN_INPUT_TYPES: { id: ChickenInputType; label: string; device: 'keyboard' | 'gamepad'; slots: number }[] = [
+  { id: 'keys', label: 'Primary keyboard', device: 'keyboard', slots: 3 },
+  { id: 'keys2', label: 'Secondary keyboard', device: 'keyboard', slots: 2 },
+  { id: 'pad', label: 'Gamepad', device: 'gamepad', slots: 3 },
+]
+export const KEYBOARD_INPUT_TYPES: ChickenInputType[] = CHICKEN_INPUT_TYPES.filter(t => t.device === 'keyboard').map(t => t.id)
+
+export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; keys2: Slots; pad: Slots; group?: 'items' }[] = [
+  { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', null, null], keys2: ['Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
+  { key: 'right', label: 'Direita', keys: ['Key:KeyD', null, null], keys2: ['Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
+  { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', null, null], keys2: ['Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
+  { key: 'down', label: 'Chocar / cair / travar mira (com item)', keys: ['Key:ControlLeft', null, null], keys2: ['Key:ArrowDown', 'Key:ControlRight'], pad: ['Pad:b6', 'Pad:b1', null] },
+  { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], keys2: ['Key:PageDown', null], pad: ['Pad:a1+', 'Pad:b13', null] },
+  { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], keys2: ['Key:PageUp', null], pad: ['Pad:b0', null, null] },
+  { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
-  { key: 'fire', label: 'Atirar', keys: ['Key:KeyX', null, null], pad: ['Pad:b7', null, null], group: 'items' },
-  { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyZ', null, null], pad: ['Pad:b3', null, null], group: 'items' },
-  { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyF', 'Key:KeyG', null], pad: ['Pad:b5', null, null], group: 'items' },
-  { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyQ', null, null], pad: ['Pad:b4', null, null], group: 'items' },
-  { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], pad: [null, null, null], group: 'items' },
+  { key: 'fire', label: 'Atirar', keys: ['Key:KeyX', 'Key:KeyV', null], keys2: ['Key:Insert', null], pad: ['Pad:b7', null, null], group: 'items' },
+  { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyZ', 'Key:KeyB', null], keys2: ['Key:Home', null], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyF', 'Key:KeyG', null], keys2: ['Key:End', null], pad: ['Pad:b5', null, null], group: 'items' },
+  { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyQ', null, null], keys2: ['Key:Delete', null], pad: ['Pad:b4', null, null], group: 'items' },
+  { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Backslash', null], pad: [null, null, null], group: 'items' },
   // hold to open the inventory wheel, aim at an item (mouse / right stick) and let go; a quick tap leaves it open
-  { key: 'itemWheel', label: 'Roda do inventário (segure e solte no item)', keys: ['Key:Tab', null, null], pad: ['Pad:b8', null, null], group: 'items' },
+  { key: 'itemWheel', label: 'Roda do inventário (segure e solte no item)', keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b8', null, null], group: 'items' },
   // X on the gamepad also runs: grabbing only acts while she stands on an item
-  { key: 'grab', label: 'Pegar / trocar item (em cima dele)', keys: ['Key:KeyE', null, null], pad: ['Pad:b2', null, null], group: 'items' },
-  { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], pad: ['Pad:b11', null, null], group: 'items' },
+  { key: 'grab', label: 'Pegar / trocar item (em cima dele)', keys: ['Key:KeyE', null, null], keys2: [null, null], pad: ['Pad:b2', null, null], group: 'items' },
+  { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: ['Key:Backspace', null], pad: ['Pad:b11', null, null], group: 'items' },
 ]
 
 // Analog sticks: dead zones (0..0.9 of the travel) and the optional magnet that pulls the left stick's aim to 8 angles
@@ -34,6 +45,7 @@ export const DEFAULT_ANALOG: ChickenAnalog = { deadzoneL: 0.25, deadzoneR: 0.25,
 
 export type ChickenControls = {
   keys: Record<ChickenAction, Slots>
+  keys2: Record<ChickenAction, Slots>
   pad: Record<ChickenAction, Slots>
   touch: ChickenTouchMode
   sound: boolean
@@ -44,14 +56,17 @@ const STORE = 'chickenchess-chicken-controls-v1'
 const EVENT = 'chickenchess-chicken-controls'
 
 export function defaultChickenControls(): ChickenControls {
-  const keys = {} as ChickenControls['keys'], pad = {} as ChickenControls['pad']
-  CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); pad[a.key] = a.pad.slice() })
-  return { keys, pad, touch: 'auto', sound: true, analog: { ...DEFAULT_ANALOG } }
+  const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
+  CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
+  return { keys, keys2, pad, touch: 'auto', sound: true, analog: { ...DEFAULT_ANALOG } }
 }
 
-const slots = (raw: unknown, fallback: Slots, prefix: string): Slots => {
+// The binds of one action on one input type (the players panel reads a player's inputs through this)
+export const chickenBinds = (controls: ChickenControls, type: ChickenInputType, action: ChickenAction): Slots => controls[type][action]
+
+const slots = (raw: unknown, fallback: Slots, prefix: string, n = 3): Slots => {
   if (!Array.isArray(raw)) return fallback.slice()
-  return [0, 1, 2].map(i => typeof raw[i] === 'string' && raw[i].startsWith(prefix) ? raw[i] : null)
+  return Array.from({ length: n }, (_, i) => i).map(i => typeof raw[i] === 'string' && raw[i].startsWith(prefix) ? raw[i] : null)
 }
 
 export function loadChickenControls(): ChickenControls {
@@ -112,6 +127,23 @@ export function loadChickenControls(): ChickenControls {
     if (!saved?.throwF && base.keys.throw.includes('Key:KeyV') && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:KeyF'))) {
       base.keys.throw = base.keys.throw.map(t => t === 'Key:KeyV' ? 'Key:KeyF' : t)
     }
+    // controls saved before the secondary keyboard (03/11): the arrows and Shift dir. leave the primary keyboard for
+    // the new keys2 column, and V / B join fire / melee where they are free
+    if (!saved?.keys2) {
+      const moved = new Set(CHICKEN_ACTIONS.flatMap(a => a.keys2).filter(Boolean) as string[])
+      CHICKEN_ACTIONS.forEach(a => { base.keys[a.key] = base.keys[a.key].map(t => t && moved.has(t) ? null : t) })
+      const addKey = (action: ChickenAction, tok: string) => {
+        if (CHICKEN_ACTIONS.some(a => base.keys[a.key].includes(tok))) return
+        const free = base.keys[action].indexOf(null)
+        if (free >= 0) base.keys[action][free] = tok
+      }
+      addKey('fire', 'Key:KeyV'); addKey('melee', 'Key:KeyB')
+    } else {
+      CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = slots(saved?.keys2?.[a.key], a.keys2, 'Key:', CHICKEN_INPUT_TYPES.find(t => t.id === 'keys2')!.slots) })
+    }
+    // one key, one action, on one keyboard type: the primary keyboard wins
+    const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
+    CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = base.keys2[a.key].map(t => t && primary.has(t) ? null : t) })
   } catch { /* storage unavailable: defaults */ }
   return base
 }
@@ -133,10 +165,18 @@ let listening = false
 export const isChickenControlsListening = () => listening
 export const setChickenControlsListening = (value: boolean) => { listening = value }
 
-const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: 'Alt/Option esq.', AltRight: 'Alt/Option dir.', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab' }
+const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: 'Alt/Option esq.', AltRight: 'Alt/Option dir.', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab', Insert: 'Ins', Delete: 'Del', PageUp: 'PgUp', PageDown: 'PgDn', Backspace: 'Bksp', Backslash: '\\', MetaLeft: 'Cmd esq.', MetaRight: 'Cmd dir.' }
 // Xbox names; LS / RS are the left / right sticks
 const PAD_BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'Home']
 const PAD_AXES = ['LS ←', 'LS →', 'LS ↑', 'LS ↓', 'RS ←', 'RS →', 'RS ↑', 'RS ↓']
+
+let layoutNames: Map<string, string> | null = null
+// Reads the keyboard layout once (Chromium only) so punctuation binds show their real character
+export function loadKeyboardLayoutNames(): Promise<void> {
+  const kb = typeof navigator !== 'undefined' ? (navigator as any).keyboard : null
+  if (layoutNames || !kb?.getLayoutMap) return Promise.resolve()
+  return kb.getLayoutMap().then((m: Map<string, string>) => { layoutNames = new Map(m) }).catch(() => {})
+}
 
 export function chickenBindName(token: string | null) {
   if (!token) return '—'
@@ -146,6 +186,9 @@ export function chickenBindName(token: string | null) {
     const i = Number(value.slice(1, -1)), plus = value.endsWith('+')
     return PAD_AXES[i * 2 + (plus ? 1 : 0)] ?? `Eixo ${i}${plus ? '+' : '−'}`
   }
+  // punctuation keys: event.code names the US position, so show what this keyboard's layout prints there
+  // (on ABNT2 the US "\\" key is "]"); Chrome and Edge tell us, the others keep the US name
+  if (layoutNames?.get(value) && !value.startsWith('Key') && !value.startsWith('Digit')) return layoutNames.get(value)!.toUpperCase()
   if (KEY_NAMES[value]) return KEY_NAMES[value]
   if (value.startsWith('Key')) return value.slice(3)
   if (value.startsWith('Digit')) return value.slice(5)
