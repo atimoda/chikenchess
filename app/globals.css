@@ -137,6 +137,25 @@ select[data-city-dropdown] option:focus {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Scrollbars de todos os painéis/popups: trilho transparente e barra com 50% de opacidade. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
+    }
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 999px;
+  }
 }
 
 /* Keep the targeting hand across the board, widgets and empty screen space. */

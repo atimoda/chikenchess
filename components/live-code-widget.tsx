@@ -266,12 +266,10 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
         </div>
       </div>
       <style jsx global>{`
-        .debug-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.38) transparent; }
-        .debug-scroll:hover { scrollbar-color: rgba(255,255,255,.72) transparent; }
+        .debug-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.5) transparent; }
         .debug-scroll::-webkit-scrollbar { width: 6px; }
         .debug-scroll::-webkit-scrollbar-track { background: transparent; }
-        .debug-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.38); border-radius: 999px; }
-        .debug-scroll:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.72); }
+        .debug-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.5); border-radius: 999px; }
       `}</style>
       {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}
       </Resizable>

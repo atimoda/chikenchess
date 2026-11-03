@@ -151,7 +151,7 @@ export const PieceDebugWidget = forwardRef<HTMLDivElement, PieceDebugWidgetProps
       <div ref={effectiveHandleRef} data-drag-handle="true" className="absolute inset-x-0 top-0 z-[60] h-8" />
       <section aria-label="Piece debug" className="relative z-50 flex h-full min-h-0 flex-col overflow-hidden px-2.5 pb-3 pt-2.5 font-mono text-[10px] leading-[1.4] text-white/75">
         <h2 className="mb-3 h-4 shrink-0 text-center text-xs font-bold tracking-wider text-white/90">PIECE DEBUG</h2>
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,.3)_transparent] [scrollbar-width:thin]">
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,.5)_transparent] [scrollbar-width:thin]">
           {instrument && selectedPiece
             ? <PieceConfigurationSummary instrument={instrument} piece={selectedPiece} movementMapping={movementMapping} arrangement={arrangement} sectionOverride={sectionOverride} />
             : <p className="text-white/55">Selecione uma peça com voz musical para ver as configurações adicionais.</p>}

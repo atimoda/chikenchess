@@ -39,6 +39,9 @@ export const CHANGELOG = [
         'PigChicKen: andar pelo teclado (setas, WASD) não mexe mais na mira, para não brigar com o mouse. Sem mouse nem analógico, ela mira para a frente.',
         'Pátio da Galinha: nova combinação pular chocando correndo (frente + correr + chocar + pulo), com impulso lateral próprio em Combinações (padrão 100 px/s) e as batidas de asa do pulo chocando. Agachada correndo agora anda 1,60× mais rápido por padrão.',
       ] },
+      { title: 'Interface', items: [
+        'Barras de rolagem de todos os painéis e popups agora têm o fundo transparente e a barra com 50% de transparência.',
+      ] },
     ],
   },
   {
