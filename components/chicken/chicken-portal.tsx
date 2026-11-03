@@ -14,6 +14,7 @@ import type { ChickenEngine } from "@/lib/chicken/engine"
 import { CHICKEN_GROUND_H } from "./chicken-layer"
 import { isLiteDevice } from "@/lib/performance"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
+import { mixGain } from "@/lib/pigchicken/mixer"
 
 const ARRIVAL_KEY = "chickenchess:portal-arrival"
 const PAD = 34 // room around the ring for the glow, arcs and sparks
@@ -49,7 +50,7 @@ export function playPortalSound(kind: "enter" | "arrive") {
   const a = audio()
   if (!a) return
   const t = a.currentTime + 0.01
-  const out = a.createGain(); out.gain.value = 0.16; out.connect(a.destination)
+  const out = a.createGain(); out.gain.value = 0.16 * mixGain("effects"); out.connect(a.destination)
   const env = (g: GainNode, at: number, peak: number, attack: number, decay: number) => {
     g.gain.setValueAtTime(0.0001, at)
     g.gain.exponentialRampToValueAtTime(peak, at + attack)

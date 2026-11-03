@@ -4,7 +4,6 @@
 import { CHICKEN_ACTIONS, type ChickenAction, type ChickenControls } from './controls'
 
 export type InputDeviceId = 'kb1' | 'kb2' | 'mouse' | 'touch' | `pad${number}`
-type Slots = (string | null)[]
 
 export const isPadDevice = (d: InputDeviceId): d is `pad${number}` => d.startsWith('pad')
 export const padIndex = (d: InputDeviceId) => (isPadDevice(d) ? Number(d.slice(3)) : -1)
@@ -23,34 +22,17 @@ export function sortDevices(list: InputDeviceId[]) {
   return [...new Set(list)].sort((a, b) => rank(a) - rank(b))
 }
 
-// The secondary keyboard's keys while controls.ts has no column of its own for it: the arrows plus the
-// INS / HOME / PGUP / DEL / END / PGDN group, right Shift and right Ctrl. Once controls carry `keys2`, those win.
-export const SECONDARY_KEYBOARD_FALLBACK: Partial<Record<ChickenAction, string[]>> = {
-  left: ['Key:ArrowLeft'], right: ['Key:ArrowRight'], up: ['Key:ArrowUp'],
-  down: ['Key:ControlRight'], crouch: ['Key:PageDown', 'Key:ArrowDown'], jump: ['Key:PageUp'], run: ['Key:ShiftRight'],
-  fire: ['Key:Insert'], melee: ['Key:Home'], grab: ['Key:AltRight'], throw: ['Key:End'], nextItem: ['Key:Delete'], prevItem: ['Key:Backslash'], reload: ['Key:Backspace'],
-}
-
-const has2 = (c: ChickenControls): c is ChickenControls & { keys2: Record<ChickenAction, Slots> } => !!(c as { keys2?: unknown }).keys2
-
-// every key bound on the primary keyboard (to any action); the secondary fallback never takes these
+// The primary keyboard drives with the `keys` column of the controls, the secondary keyboard with `keys2`.
 function primaryKeys(c: ChickenControls) {
   const out = new Set<string>()
   CHICKEN_ACTIONS.forEach(a => primaryBinds(c, a.key).forEach(t => out.add(t)))
   return out
 }
 function primaryBinds(c: ChickenControls, a: ChickenAction): string[] {
-  // without a secondary column yet, the middle slot (the arrows) is the secondary keyboard's
-  const slots = has2(c) ? c.keys[a] : c.keys[a].filter((_, i) => i !== 1)
-  return slots.filter((t): t is string => !!t)
+  return (c.keys[a] ?? []).filter((t): t is string => !!t)
 }
-function secondaryBinds(c: ChickenControls, a: ChickenAction, taken: Set<string>): string[] {
-  if (has2(c)) return (c.keys2[a] ?? []).filter((t): t is string => !!t)
-  const out = new Set<string>()
-  const mid = c.keys[a][1]
-  if (mid) out.add(mid)
-  ;(SECONDARY_KEYBOARD_FALLBACK[a] ?? []).forEach(t => { if (!taken.has(t)) out.add(t) })
-  return [...out]
+function secondaryBinds(c: ChickenControls, a: ChickenAction): string[] {
+  return (c.keys2[a] ?? []).filter((t): t is string => !!t)
 }
 
 // The keyboard keys that drive `action` for a player holding `devices` (null: everything, as on the globe).
@@ -61,7 +43,7 @@ export function keyTokensFor(c: ChickenControls, action: ChickenAction, devices:
   if (kb2) {
     // a player with only the secondary keyboard never moves with keys of the primary one
     const taken = kb1 ? new Set<string>() : primaryKeys(c)
-    out.push(...secondaryBinds(c, action, taken).filter(t => kb1 || !taken.has(t)))
+    out.push(...secondaryBinds(c, action).filter(t => kb1 || !taken.has(t)))
   }
   return out
 }
