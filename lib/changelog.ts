@@ -11,6 +11,7 @@ export const CHANGELOG = [
         'Pátio da Galinha: o portal agora fica parado perto do começo do Pátio, ela chega ao lado dele, e entrar nele leva de volta ao globo (“Back to the globe?”). Nos dois portais, com o botão à mostra, apertar correr ou pegar (Shift / E, X no gamepad) também confirma a entrada.',
         'Pátio da Galinha: cabeçalho transparente, o botão de voltar é o mesmo botão Globo das partidas, e árvores no estilo das do templo, cada uma diferente, ficam em primeiro plano nas cenas, meio transparentes para não esconder o jogo.',
         'Templo do Gongo: o terraço logo abaixo da balaustrada virou plataforma em todo o templo, e o aviso do gongo fica em cima da trave de madeira dele.',
+        'Pátio da Galinha: chat. Aperte Enter (ou o botão de balão no cabeçalho), escreva até 140 caracteres e aperte Enter de novo: a mensagem aparece num balão de fala em cima da galinha, por um tempo de leitura que cresce com o tamanho do texto (de 3 a 11 s). Enquanto o campo está aberto, as teclas vão para o texto e não mexem a galinha; Esc cancela.',
       ] },
       { title: 'Galinha', items: [
         'PigChicKen: o inventário agora mostra só as casas com item, mais uma casa vazia (mãos vazias) enquanto houver espaço. A troca rápida (Q no teclado, LB no gamepad, rodinha do mouse) passa pelos itens, por uma casa vazia e volta para o primeiro.',
