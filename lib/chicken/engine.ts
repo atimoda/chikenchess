@@ -9,7 +9,7 @@
 import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
-import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { CHICKEN_ACTIONS, KEYBOARD_INPUT_TYPES, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -158,9 +158,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
   const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>()
   let pad: Partial<Record<ChickenAction, boolean>> = {}
-  const input = (a: ChickenAction) => controls.keys[a].some(t => t && held.has(t)) || !!pad[a] || !!virt[a]
-  const tapped = (a: ChickenAction) => controls.keys[a].some(t => t && pressed.has(t)) || virtTapped.has(a)
-  const usedKey = (tok: string) => CHICKEN_ACTIONS.some(a => controls.keys[a.key].includes(tok))
+  // every keyboard input type (primary and secondary) drives this chicken for now; the players panel will split them
+  const keyBound = (a: ChickenAction, on: Set<string>) => KEYBOARD_INPUT_TYPES.some(k => controls[k][a].some(t => t && on.has(t)))
+  const input = (a: ChickenAction) => keyBound(a, held) || !!pad[a] || !!virt[a]
+  const tapped = (a: ChickenAction) => keyBound(a, pressed) || virtTapped.has(a)
+  const usedKey = (tok: string) => CHICKEN_ACTIONS.some(a => KEYBOARD_INPUT_TYPES.some(k => controls[k][a.key].includes(tok)))
   const onKeyDown = (e: KeyboardEvent) => {
     ensureAudio()
     if (isChickenControlsListening() || isTextField(e.target) || (e.target as HTMLElement | null)?.closest?.('[role="dialog"], [role="alertdialog"]')) return
@@ -1054,13 +1056,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBound(a.key, gameTaps)) })
       gameTaps.clear()
       return out
     },
     peekActions() {
       const out = {} as Record<ChickenAction, boolean>
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBound(a.key, gameTaps)) })
       return out
     },
     shift(dx, dy = 0) {
