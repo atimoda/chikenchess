@@ -17,7 +17,7 @@ export type ParquinhoSettings = {
   debug: boolean // the debug readouts: the HUD line, the scenes' labels and the shaped floors' lines
 }
 
-export const DEFAULT_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, lookAhead: 140, lookAheadSpeed: 2.5, backpedal: 0.7, aimRelease: Infinity, reticleDist: 200, jumpShake: 3, superJumpShake: 8, quantize: true, debug: false }
+export const DEFAULT_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, lookAhead: 140, lookAheadSpeed: 2.5, backpedal: 0.7, aimRelease: 0, reticleDist: 200, jumpShake: 3, superJumpShake: 8, quantize: true, debug: false }
 
 // the aim-release slider: 0..AIM_RELEASE_MAX seconds, and one step past it is "never" (Infinity)
 export const AIM_RELEASE_MAX = 5
@@ -35,8 +35,10 @@ export function loadParquinho(): ParquinhoSettings {
       if (typeof v === 'number' && Number.isFinite(v)) (base as Record<string, unknown>)[k] = Math.min(hi, Math.max(lo, v))
     }
     num('screens', 1, 8); num('deadband', 0, 400); num('lag', 1, 20); num('lookAhead', 0, 500); num('lookAheadSpeed', 0.5, 12); num('jumpShake', 0, 30); num('superJumpShake', 0, 30); num('backpedal', 0.2, 1); num('reticleDist', 60, 500)
-    // saved as null when infinite (JSON has no Infinity); the old `mouseIdle` key is ignored so the new default applies
+    // saved as null when infinite (JSON has no Infinity). Saves before aimV2 (03/11) had ∞ as the default, which kept
+    // the left stick from ever aiming again: those fall back to the new default (0 s), and only an ∞ chosen since stays
     if (typeof saved.aimRelease === 'number' && Number.isFinite(saved.aimRelease)) base.aimRelease = Math.min(AIM_RELEASE_MAX, Math.max(0, saved.aimRelease))
+    else if (saved.aimRelease === null && saved.aimV2) base.aimRelease = Infinity
     if (typeof saved.quantize === 'boolean') base.quantize = saved.quantize
     if (typeof saved.debug === 'boolean') base.debug = saved.debug
   } catch { /* storage unavailable */ }
@@ -44,5 +46,5 @@ export function loadParquinho(): ParquinhoSettings {
 }
 
 export function saveParquinho(next: ParquinhoSettings) {
-  try { window.localStorage.setItem(STORE, JSON.stringify(next)) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, aimV2: true })) } catch { /* ignore */ }
 }
