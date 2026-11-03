@@ -25,6 +25,7 @@ import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib
 import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
+import { PatioTrees } from "@/components/pigchicken/patio-trees"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
@@ -43,6 +44,8 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
       <ParallaxBackdrop worldW={width} />
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }} />
+      {/* trees in the temple's style along the Parquinho's scenes, in front of the far scenery */}
+      <PatioTrees screens={screens} />
       {debug && Array.from({ length: screens }, (_, s) => (
         <div key={`m${s}`} className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: s * SCENE_W }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1} <span style={{ color: ZONES[s % ZONES.length].color, opacity: 0.6 }}>· {zoneLabel(ZONES[s % ZONES.length])}</span></span>
@@ -73,7 +76,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
 }
 
 
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -249,7 +252,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const S = settingsRef.current
       let st = engine.getState()
       const viewW = st.width, worldW = SCENE_W * worldScenes(S.screens)
-      if (!placed) place()
+      if (!placed) {
+        place()
+        // she starts by the entrance portal (world x), not in the middle of the screen
+        if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getState() }
+      }
       if (templeFor !== S.screens) placeTemple(S.screens)
       if (boxesFor !== S.screens) {
         boxesFor = S.screens
@@ -530,7 +537,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setGroundHeight(groundHRef.current)
       if (worldRef.current) worldRef.current.style.transform = ""
     }
-  }, [engine, worldRef])
+  }, [engine, worldRef, spawnX])
 
   return (
     <>

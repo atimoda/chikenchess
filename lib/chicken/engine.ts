@@ -19,6 +19,8 @@ export type ChickenEngine = {
   getState: () => ChickenState
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
+  // the same, without using up the quick taps getActions keeps for its next read (for a second reader, e.g. a portal)
+  peekActions: () => Record<ChickenAction, boolean>
   // camera moved: move her (and everything she keeps in screen coordinates) by dx, dy pixels
   shift: (dx: number, dy?: number) => void
   // left and right walls in screen pixels; null = the screen edges
@@ -1053,6 +1055,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       // a key pressed and let go between two reads still counts once
       CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
       gameTaps.clear()
+      return out
+    },
+    peekActions() {
+      const out = {} as Record<ChickenAction, boolean>
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
       return out
     },
     shift(dx, dy = 0) {
