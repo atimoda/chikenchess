@@ -272,6 +272,32 @@ export function createCombat() {
   }
   let lastBody: Body | null = null
 
+  // ---------- loadouts: one per local player ----------
+  type Loadout = {
+    inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
+    throwT: number; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
+    beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null
+  }
+  const loadouts = new Map<string, Loadout>()
+  let active = 'p1'
+  const save = (): Loadout => ({
+    inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, chargeT, prevFire, aimAngle, pumpT, swing,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody,
+  })
+  const blank = (): Loadout => ({
+    inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null,
+  })
+  function useLoadout(id: string) {
+    if (id === active) return
+    loadouts.set(active, save())
+    const l = loadouts.get(id) ?? blank()
+    inv.splice(0, inv.length, ...l.inv)
+    ;({ cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody } = l)
+    active = id
+  }
+
   // can she take this item? (one of each item)
   const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o.item === p.owned.item)
 
@@ -554,6 +580,12 @@ export function createCombat() {
   })
 
   return {
+    // Local players: each one has their own items, aim, cooldowns and swing (a loadout); the world (targets,
+    // enemies, shots, pickups, music) is shared. use(id) makes that player's loadout the current one; the
+    // first one in use is 'p1'. Every getter and step() below act on the current loadout.
+    use(id: string) { useLoadout(id) },
+    get player() { return active },
+    drop(id: string) { if (id !== active) loadouts.delete(id) },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
     get current() { return cur },
@@ -628,7 +660,9 @@ export function createCombat() {
       return Math.min(s, d.spreadMax + d.spreadAir + d.spreadMove)
     },
 
-    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void) {
+    // world: false steps only the current player's loadout (another local player in the same frame)
+    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean } = {}) {
+      const world = opts.world !== false
       const d = def()
       // aim turns at the item's speed
       if (d.turnRate > 0) {
@@ -639,8 +673,7 @@ export function createCombat() {
       } else aimAngle = targetAngle
 
       lastBody = body
-      music.step(dt)
-      bonusTextT = Math.max(0, bonusTextT - dt)
+      if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt) }
       // the arpeggio starts over after a pause
       if (!input.fire) { arpIdle += dt; if (arpIdle > 0.6) arpStep = 0 } else arpIdle = 0
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
@@ -736,12 +769,12 @@ export function createCombat() {
 
       // projectiles
       const ctx = { boxes, groundY }
-      for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
-      for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
-      for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
+      if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
+      if (world) for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
+      if (world) for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
 
       // thrown items: spin, hit once, land as a pickup
-      for (let i = thrown.length - 1; i >= 0; i--) {
+      if (world) for (let i = thrown.length - 1; i >= 0; i--) {
         const t = thrown[i]
         const py = t.y
         t.vy += THROW_GRAVITY * dt; t.x += t.vx * dt; t.y += t.vy * dt; t.angle += t.spin * dt
@@ -766,8 +799,8 @@ export function createCombat() {
       hover = null; hoverOwned = null
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
-        p.noPick = Math.max(0, p.noPick - dt)
-        if (!p.resting) {
+        if (world) p.noPick = Math.max(0, p.noPick - dt)
+        if (world && !p.resting) {
           const py = p.y
           p.vy += ITEM_GRAVITY * dt; p.y += p.vy * dt
           const top = boxes.find(b => p.x >= b.l && p.x <= b.r && py <= b.t && p.y >= b.t)
@@ -788,6 +821,7 @@ export function createCombat() {
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
+      if (!world) return
       // racks: the creative mode always has the item to pick up again
       racks.forEach(r => {
         const near = pickups.some(p => p.owned.item === r.item && Math.abs(p.x - r.x) < 60)

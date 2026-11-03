@@ -6,7 +6,8 @@
 // The world is in fixed units (lib/pigchicken/world.ts): the same size on every screen, which only changes the crop.
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
 import { createCombat, TIP_TIME, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
@@ -89,13 +90,21 @@ export function ParquinhoForeground({ screens, fgRef }: { screens: number; fgRef
   )
 }
 
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null> }) {
+// devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
+// and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
+// with the same camera (no items yet).
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  const devicesRef = useRef(devices)
+  devicesRef.current = devices
+  // each local player's lobby color (p1: the first one, the others by their id): their reticle's color
+  const colorsRef = useRef(colors)
+  colorsRef.current = colors
   // where the page keeps the ground on the screen (raised above the touch controls on a phone held upright)
   const groundHRef = useRef(groundHeight)
   groundHRef.current = groundHeight
@@ -139,8 +148,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const mouseBtn = { fire: false, melee: false }
     let wheel = 0, slotPick = 0, escape = false
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
+    // the mouse is someone else's (another local player holds it)
+    const noMouse = () => !!devicesRef.current && !devicesRef.current.includes("mouse")
     const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return
+      if (e.pointerType !== "mouse" || noMouse()) return
       if (mouse) {
         const moved = Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y)
         owner.moved(moved, performance.now())
@@ -151,7 +162,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       mouse = { x: e.clientX, y: e.clientY }
     }
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || isUi(e.target)) return
+      if (e.pointerType !== "mouse" || isUi(e.target) || noMouse()) return
       if (e.button === 0) mouseBtn.fire = true
       if (e.button === 2) mouseBtn.melee = true
     }
@@ -160,7 +171,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (e.button === 2) mouseBtn.melee = false
     }
     const onMenu = (e: MouseEvent) => { if (!isUi(e.target)) e.preventDefault() }
-    const onWheel = (e: WheelEvent) => { if (!isUi(e.target)) wheel += Math.sign(e.deltaY) }
+    const onWheel = (e: WheelEvent) => { if (!isUi(e.target) && !noMouse()) wheel += Math.sign(e.deltaY) }
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
@@ -181,6 +192,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // camX: world x at the screen's left edge; oy: screen y of world y = 0 (null until the first frame)
     let camX = 0, oy: number | null = null, last = performance.now(), raf = 0
     let prev: Partial<Record<ChickenAction, boolean>> = {}
+    // the other local players' actions in the last frame (presses are edges)
+    const extraPrev = new Map<string, Partial<Record<ChickenAction, boolean>>>()
+    const extraAim = new Map<string, { muzzle: { x: number; y: number }; angle: number; reach: number }>()
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
     // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
@@ -298,12 +312,23 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (oy === null) oy = yr.lo
       const viewTop = header ? header.getBoundingClientRect().bottom : 0
       const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt, lag: S.lag })
-      if (next !== camX || nextOy !== oy) { engine.shift(camX - next, nextOy - oy); camX = next; oy = nextOy }
+      const others = extras?.current ? [...extras.current.values()] : []
+      if (next !== camX || nextOy !== oy) {
+        engine.shift(camX - next, nextOy - oy)
+        others.forEach(o => o.shift(camX - next, nextOy - (oy as number)))
+        camX = next; oy = nextOy
+      }
       // her ground is the world's, wherever the camera puts it on the screen
       if (Math.abs(st.groundY - (G + oy)) > 0.01) engine.setGroundHeight(st.height - G - oy)
       st = engine.getState()
       const camY = oy
-      engine.setBounds(cameraBounds(camX, { mode: S.camera, viewW, worldW }))
+      const walls = cameraBounds(camX, { mode: S.camera, viewW, worldW })
+      engine.setBounds(walls)
+      others.forEach(o => {
+        const os = o.getState()
+        if (Math.abs(os.groundY - (G + camY)) > 0.01) o.setGroundHeight(os.height - G - camY)
+        o.setBounds(walls)
+      })
       if (worldRef.current) {
         worldRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
         // the parallax layers follow the camera at their own rates (parallax.tsx)
@@ -314,7 +339,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- aim ----------
       const act = engine.getActions()
       const an = controls.analog
-      const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
+      const devs = devicesRef.current
+      if (noMouse() && (mouse || mouseBtn.fire || mouseBtn.melee)) { mouse = null; mouseBtn.fire = false; mouseBtn.melee = false }
+      const rightStick = stickFor(devs, 1, an.deadzoneR), leftStick = stickFor(devs, 0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
 
       // ---------- the inventory wheel: hold its button, point at an item (mouse, right stick, touch) and let go ----------
       const slots = combat.inventory, nSlots = slots.length
@@ -458,6 +485,39 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy))
 
+      // ---------- the other local players: their own items (a loadout each), in the same world ----------
+      const extraList = extras?.current ? [...extras.current.entries()] : []
+      extraList.forEach(([id, eng]) => {
+        const xs = eng.getState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
+        combat.use(id)
+        const xd = combat.def(), xArmed = !!combat.inventory[combat.current]
+        // aim: their gamepad's right stick; else up (looking up) or straight ahead
+        const devs = eng.getDevices()
+        const rs = stickFor(devs, 1, an.deadzoneR)
+        const ahead = xs.face >= 0 ? 0 : Math.PI
+        const angle = rs ? Math.atan2(rs.y, rs.x) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
+        const xo = xs.shoulder
+        const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
+        let xpick = 0
+        if (xa.nextItem && !xp.nextItem) xpick = 1
+        if (xa.prevItem && !xp.prevItem) xpick = -1
+        const xin = {
+          fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
+          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab,
+        }
+        extraPrev.set(id, xa)
+        extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false })
+        eng.setGame({ moveLock: false, aimFace: null, backpedal: S.backpedal, speedMult: xd.weight })
+        const xh = combat.inventory[combat.current], xsw = combat.swing
+        const xart = xh ? ITEM_SVG[xh.item] : undefined
+        eng.setHeld(xart ? { svg: xart, angle: combat.aimAngle, kick: combat.kick } : null)
+        eng.setSwing(xsw ? { angle: swingAngle(xsw), reach: xsw.range, t: Math.min(1, xsw.t / (xsw.time * 0.3), (xsw.time - xsw.t) / (xsw.time * 0.3)) } : null)
+      })
+      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraAim.delete(id); combat.drop(id) } })
+      combat.use("p1")
+
       // ---------- the temple's mini-game ----------
       const tL = templeScene(S.screens) * SCENE_W
       const inTemple = body.x >= tL
@@ -548,12 +608,40 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       inWorld()
       drawBeam(ctx, combat, camX)
+      extraList.forEach(([id]) => { combat.use(id); drawBeam(ctx, combat, camX) })
+      combat.use("p1")
       ctx.restore()
+      extraList.forEach(([id, eng]) => { combat.use(id); drawSwing(ctx, combat, eng.getState().shoulder) })
+      combat.use("p1")
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
-      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
+      const tints = colorsRef.current
+      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath, tints?.p1 ?? "#ffffff")
+      // the other local players' reticles, each in their own color, where their item points
+      extraList.forEach(([id, eng]) => {
+        const at = extraAim.get(id)
+        if (!at) return
+        combat.use(id)
+        const xd = combat.def(), xs = eng.getState()
+        const xArmed = !!combat.inventory[combat.current]
+        const xdist = S.reticleDist * at.reach
+        const xrx = at.muzzle.x + Math.cos(at.angle) * xdist, xry = at.muzzle.y + Math.sin(at.angle) * xdist
+        let xpath: { x: number; y: number }[] | null = null
+        if (xArmed && ["laser", "impact", "grenade", "bow"].includes(xd.reticle)) {
+          const power = xd.fireMode === "charge" ? xd.chargeMin + (1 - xd.chargeMin) * combat.fireCharge : 1
+          xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
+        }
+        const xShow = xArmed && (xd.pathShow === "always" || (xd.pathShow !== "off" && !!extraPrev.get(id)?.fire))
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xs.scale, xpath, xShow, tints?.[id] ?? "#ffffff")
+      })
+      combat.use("p1")
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
-      drawInventory(ctx, combat, getTouchLayout().offsets.inventory)
+      // one inventory per local player, stacked in the top right corner (the avatars sit to their right)
+      const invOff = getTouchLayout().offsets.inventory
+      drawInventory(ctx, combat, 0, invOff)
+      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, invOff) })
+      combat.use("p1")
       if (wh.open || wheelDrawn) { wctx.clearRect(0, 0, window.innerWidth, window.innerHeight); wheelDrawn = false }
       if (wh.open) { drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110)); wheelDrawn = true }
       drawTempleHud(ctx, temple, combat.music, inTemple, INV_TOP + INV_SIZE + 12)
@@ -604,7 +692,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       {/* the inventory bar is drawn on the canvas; these invisible slots sit on top of it so a click or a tap
           equips that item. In edit mode the Movable's drag handle covers them, so dragging never equips. */}
       {engine && (
-        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ left: `calc(50% - ${INV_W(invSlots) / 2}px)`, top: INV_TOP, width: INV_W(invSlots), height: INV_SIZE }}>
+        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE }}>
           {!editing && (
             <div data-chicken-ignore className="flex h-full" style={{ gap: INV_GAP }}>
               {Array.from({ length: invSlots }, (_, i) => (
@@ -1204,22 +1292,26 @@ function drawDummyTip(ctx: Ctx, g: Combat["targets"][number], x: number, time: n
   ctx.restore()
 }
 
-function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean) {
+function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean, tint: string) {
   const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
   const t = performance.now() / 1000
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
   const ang = Math.atan2(ry - origin.y, rx - origin.x)
-  const color = combat.reloading ? "#8a8f98" : locked ? "#ffd166" : "#ffffff"
+  // the player's own color (their lobby color), with a dark outline so it reads on any background; aim locked
+  // draws it thicker, reloading fainter
+  const color = tint
   const line = (x1: number, y1: number, x2: number, y2: number) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke() }
   const end = path ? path[path.length - 1] : null
   ctx.save()
+  ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 3
+  if (combat.reloading) ctx.globalAlpha = 0.55
   // the faint aim line (the families that draw their own path skip it)
   if (showPath && !path && d.reticle !== "cone") {
     ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
     line(origin.x, origin.y, rx, ry)
     ctx.setLineDash([])
   }
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = locked ? 3 : 2
   if (!armed) {
     ctx.beginPath(); ctx.arc(rx, ry, 8, 0, Math.PI * 2); ctx.stroke()
   } else if (d.reticle === "circle") {
@@ -1313,16 +1405,21 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
 
 const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
 const INV_W = (n: number) => n * INV_SIZE + (n - 1) * INV_GAP
+// the inventories' stack: top right, one row per local player, the player's avatar at the right end of the row
+export const INV_STACK = { top: 64, right: 12, size: INV_SIZE, rowGap: 6, avatarGap: 6 }
+const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_STACK.rowGap)
+const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
 // the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls).
 // Only her items show, plus one empty slot while there is room (instruments, weapons, then the other items).
 // The slots touch each other, with a thin line between them; the current one is outlined in yellow.
-function drawInventory(ctx: Ctx, combat: Combat, offset?: { x: number; y: number }) {
+function drawInventory(ctx: Ctx, combat: Combat, row: number, offset?: { x: number; y: number }) {
   const slots = combat.inventory, n = slots.length
   const size = INV_SIZE, w = INV_W(n)
-  const x0 = Math.round((window.innerWidth - w) / 2 + (offset?.x ?? 0)), y = INV_TOP + (offset?.y ?? 0)
-  const numbers = desktopPointer?.matches ?? true
+  const x0 = Math.round(window.innerWidth - invRight - w + (offset?.x ?? 0)), y = invRowY(row) + (offset?.y ?? 0)
+  // the slot numbers (keys 1-9) are the first player's
+  const numbers = row === 0 && (desktopPointer?.matches ?? true)
   ctx.save()
   ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "left"
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x0, y, w, size)

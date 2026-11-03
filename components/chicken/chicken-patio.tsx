@@ -5,7 +5,7 @@
 // (admin account only) saves it for every screen that draws the chicken.
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Crosshair, Gamepad2, Maximize, Minimize, SlidersHorizontal, Swords, X } from "lucide-react"
+import { Crosshair, Gamepad2, Maximize, Minimize, SlidersHorizontal, Swords, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -16,7 +16,7 @@ import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type Chi
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
-import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait } from "./chicken-layer"
+import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, ChickenPortalArrival, type ChickenPortalWorld } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
@@ -24,12 +24,18 @@ import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
+import {
+  PLAYER_COLORS, addLocalPlayer, adoptDevices, moveLocalsTo, assignDevice, createLobby, firstLocal, joinOpenLobby, loadEntryMode, loadLobby, localPlayers, removePlayer,
+  renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyResult, type LobbyState,
+} from "@/lib/chicken/lobby"
+import type { ChickenLook } from "@/lib/chicken/look-art"
+import { LobbySwitcher, LocalChickens, PlayersPanel, lookForNewPlayer, useInputDevices } from "./players-panel"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
 // the portal back to the globe: near the start of the Pátio, before the weapons' racks (world units)
@@ -95,6 +101,66 @@ export function ChickenPatio() {
   useEffect(() => { setPq(loadParquinho()) }, [])
   const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
+
+  // ---------- players and lobby ----------
+  const devices = useInputDevices()
+  const [lobby, setLobby] = useState<LobbyState | null>(null)
+  const [playersOpen, setPlayersOpen] = useState(false)
+  // whose look the vestiário edits: null the first player (the central configuration's draft), else a local player
+  const [vestFor, setVestFor] = useState<string | null>(null)
+  const extraEngines = useRef(new Map<string, ChickenEngine>())
+  const invOffset = useTouchLayout().offsets.inventory
+  // a short notice under the header (lobby rules, online unavailable)
+  const [toast, setToast] = useState<string | null>(null)
+  useEffect(() => {
+    if (!toast) return
+    const t = window.setTimeout(() => setToast(null), 4000)
+    return () => window.clearTimeout(t)
+  }, [toast])
+  const meName = online.profile?.display_name?.trim() || null
+  const changeLobby = (fn: (s: LobbyState) => LobbyState | LobbyResult) => setLobby(prev => {
+    if (!prev) return prev
+    const out = fn(prev)
+    if ("ok" in out) {
+      if (!out.ok) setToast(out.reason)
+      return out.state
+    }
+    return out
+  })
+  // this browser's lobby (its local players and their devices), or a new one; the globe's portal says local or online
+  useEffect(() => {
+    const entry = loadEntryMode()
+    const saved = loadLobby()
+    const base = saved ? { ...saved, mode: entry } : createLobby({ name: "Player 1" }, [], Date.now(), entry)
+    // the Pátio's id in the address (an invite link or the editor's saved Pátio) is this lobby's id
+    const fromUrl = new URLSearchParams(window.location.search).get("lobby")
+    setLobby(fromUrl ? { ...base, id: fromUrl } : base)
+    if (entry === "online") void joinOpenLobby().then(r => setToast(r.reason))
+  }, [])
+  useEffect(() => { if (lobby) saveLobby(lobby) }, [lobby])
+  // devices found later (a gamepad's first press) go to the first player, or to one standing still
+  useEffect(() => { if (devices.length) setLobby(prev => (prev ? adoptDevices(prev, devices) : prev)) }, [devices])
+  const me = lobby ? firstLocal(lobby) : null
+  const others = useMemo(() => (lobby ? localPlayers(lobby).slice(1) : []), [lobby])
+  // each local player's lobby color: their avatar's border and their reticle
+  const colors = useMemo(() => {
+    const out: Record<string, string> = { p1: me?.color ?? PLAYER_COLORS[0] }
+    others.forEach(p => { if (p.color) out[p.id] = p.color })
+    return out
+  }, [me, others])
+  // alone, she listens to everything (as on the globe); with more local players, only to her own devices
+  const myDevices = useMemo(() => {
+    const first = lobby ? firstLocal(lobby) : null
+    return lobby && first && localPlayers(lobby).length > 1 ? first.inputs : null
+  }, [lobby])
+  useEffect(() => { engine?.setDevices(myDevices) }, [engine, myDevices])
+  const setMode = (mode: LobbyMode) => {
+    changeLobby(s => ({ ...s, mode }))
+    if (mode === "online") void joinOpenLobby().then(r => setToast(r.reason))
+  }
+  const addPlayer = () => changeLobby(s => addLocalPlayer(s, Date.now(), lookForNewPlayer([draft.look, ...localPlayers(s).flatMap(p => (p.look ? [p.look] : []))])))
+  const vestPlayer = lobby && vestFor ? lobby.players.find(p => p.id === vestFor) ?? null : null
+  const openVestiario = (playerId: string | null) => { setVestFor(playerId && playerId !== me?.id ? playerId : null); setVestOpen(true) }
 
   // start from this browser's unsaved draft, if any, and fetch the latest saved version
   useEffect(() => {
@@ -177,6 +243,11 @@ export function ChickenPatio() {
         <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
+        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => changeLobby(s => moveLocalsTo(s, target))} />
+        <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Users className="h-4 w-4" />
+          {lobby && lobby.players.length > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{lobby.players.length}</span>}
+        </button>
         <button type="button" aria-label="Controles do boneco" title="Controles do boneco" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
@@ -187,10 +258,23 @@ export function ChickenPatio() {
         <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>
-        <button type="button" aria-label="Vestiário" aria-pressed={vestOpen} title="Vestiário" onClick={() => setVestOpen(v => !v)} className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen ? "border-primary" : "border-primary/50")}>
-          <ChickenHeadIcon look={draft.look} />
-        </button>
       </header>
+      {/* the avatars: one per local player, at the right end of that player's inventory (drawn by the Parquinho) */}
+      <div data-chicken-ignore className="pointer-events-none fixed z-[190] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
+        {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] }))].map(row => {
+          const on = vestOpen && vestFor === row.id
+          return (
+            <button key={row.id ?? "me"} type="button" aria-label={`Vestiário · ${row.name}`} aria-pressed={on} title={`Vestiário · ${row.name}`} onClick={() => { if (on) setVestOpen(false); else openVestiario(row.id) }} className={cn("pointer-events-auto shrink-0 overflow-hidden rounded-full border-[3px] bg-[#101713] transition-shadow", on && "ring-2 ring-white/80 ring-offset-1 ring-offset-black")} style={{ width: INV_STACK.size, height: INV_STACK.size, borderColor: row.color }}>
+              <ChickenHeadIcon look={row.look} />
+            </button>
+          )
+        })}
+      </div>
+      {toast && (
+        <div role="status" className="pointer-events-none fixed left-1/2 top-16 z-[330] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-lg border border-amber-300/40 bg-black/80 px-4 py-2 text-center font-mono text-xs text-amber-100 backdrop-blur animate-in fade-in">
+          {toast}
+        </div>
+      )}
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
@@ -199,7 +283,8 @@ export function ChickenPatio() {
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortal engine={engine} href="/" world={portalWorld} label="Back to the globe?" arrival={false} />
       <ChickenPortalArrival engine={engine} />
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} />
+      <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={pq.screens} fgRef={fgRef} />
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} />
@@ -227,7 +312,26 @@ export function ChickenPatio() {
       )}
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} editLayout />
 
-      {vestOpen && <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} />}
+      {vestOpen && (vestPlayer?.look
+        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} />
+        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} />)}
+
+      {playersOpen && lobby && (
+        <PlayersPanel
+          lobby={lobby}
+          devices={devices}
+          meName={meName}
+          meLook={draft.look}
+          onClose={() => setPlayersOpen(false)}
+          onMode={setMode}
+          onAdd={addPlayer}
+          onRemove={id => changeLobby(s => removePlayer(s, me?.id ?? "", id))}
+          onAssign={(d, id) => changeLobby(s => assignDevice(s, d, id))}
+          onEditor={(id, on) => changeLobby(s => setEditor(s, me?.id ?? "", id, on))}
+          onRename={(id, name) => changeLobby(s => renameLocalPlayer(s, id, name))}
+          onAvatar={id => openVestiario(id)}
+        />
+      )}
 
       {panelOpen && (
         <FloatingPanel id="chicken-tuning" aria-label="Ajustes da galinha" initial={(vw, vh) => { const w = Math.min(400, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
