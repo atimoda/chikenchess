@@ -11,6 +11,8 @@ export const CHANGELOG = [
         'Pátio da Galinha: o portal agora fica parado perto do começo do Pátio, ela chega ao lado dele, e entrar nele leva de volta ao globo (“Back to the globe?”). Nos dois portais, com o botão à mostra, apertar correr ou pegar (Shift / E, X no gamepad) também confirma a entrada.',
         'Pátio da Galinha: cabeçalho transparente, o botão de voltar é o mesmo botão Globo das partidas, e árvores no estilo das do templo, cada uma diferente, ficam em primeiro plano nas cenas, meio transparentes para não esconder o jogo.',
         'Templo do Gongo: o terraço logo abaixo da balaustrada virou plataforma em todo o templo, e o aviso do gongo fica em cima da trave de madeira dele.',
+        'Pátio da Galinha: novo painel de Players (ícone de pessoas no cabeçalho). Adicione players locais (até 13 no lobby), cada um com a própria galinha, e escolha qual input controla cada um: teclado principal, teclado secundário (setas, PgUp/PgDn, Ins/Home/End/Del), mouse e cada gamepad. Coluna Edit mode para o dono do lobby liberar quem edita o Pátio, e Remove para tirar players. Copy link copia o convite; o modo online e o convite a amigos chegam quando o servidor voltar.',
+        'Globo: embaixo do botão do portal do Pátio, um switch online / local escolhe como entrar (local por padrão). No cabeçalho do Pátio, setas para passar entre os lobbies públicos (ativas no modo online).',
       ] },
       { title: 'Galinha', items: [
         'PigChicKen: o inventário agora mostra só as casas com item, mais uma casa vazia (mãos vazias) enquanto houver espaço. A troca rápida (Q no teclado, LB no gamepad, rodinha do mouse) passa pelos itens, por uma casa vazia e volta para o primeiro.',

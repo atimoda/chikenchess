@@ -9,7 +9,8 @@
 import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
-import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { allKeyTokens, keyTokensFor, padTokensFor, type InputDeviceId } from './input-devices'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -39,6 +40,12 @@ export type ChickenEngine = {
   heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
   // a push (px/s), e.g. a weapon's recoil; only while she is in the air
   impulse: (vx: number, vy: number) => void
+  // the input devices this chicken listens to (local players: each drives their own); null = every device
+  setDevices: (devices: InputDeviceId[] | null) => void
+  // her look, apart from the central configuration's (another local player's chicken); null follows the configuration
+  setLook: (look: ChickenLook | null) => void
+  // falls from above the screen at x (screen px): a player arriving in the lobby
+  dropAt: (x: number) => void
   destroy: () => void
 }
 
@@ -102,7 +109,27 @@ function isTextField(t: EventTarget | null) {
   return (e.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes((e as HTMLInputElement).type)) || e.tagName === 'TEXTAREA' || e.tagName === 'SELECT' || e.isContentEditable
 }
 
+// the clucks' audio, shared by every chicken on the page and closed when the last one goes
+const sharedAudio: { ctx: AudioContext | null; users: number; buffers: Record<string, AudioBuffer> } = { ctx: null, users: 0, buffers: {} }
+function sharedAudioContext() {
+  const a = sharedAudio
+  if (a.ctx) { if (a.ctx.state === 'suspended') void a.ctx.resume(); return a.ctx }
+  try { a.ctx = new (window.AudioContext || (window as any).webkitAudioContext)() } catch { a.ctx = null; return null }
+  const ctx = a.ctx
+  Object.values(CHICKEN_CLUCKS).flat().forEach(name => {
+    if (a.buffers[name]) return
+    fetch(`/audio/chicken/${name}.mp3`).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { a.buffers[name] = buf }).catch(() => {})
+  })
+  return ctx
+}
+function releaseSharedAudio() {
+  const a = sharedAudio
+  a.users = Math.max(0, a.users - 1)
+  if (!a.users && a.ctx) { void a.ctx.close(); a.ctx = null }
+}
+
 export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean }): ChickenEngine {
+  sharedAudio.users++
   const svg = document.createElementNS(NS, 'svg')
   svg.setAttribute('aria-hidden', 'true')
   svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;touch-action:none'
@@ -134,7 +161,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   // central configuration (config.ts): params and look follow it live, including the Pátio's draft
   let config: ChickenConfig = getChickenConfig()
-  paintLook(opts.look ?? config.look)
+  let ownLook = opts.look ?? null
+  paintLook(ownLook ?? config.look)
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
   const R = { ...config.params } as ChickenParams
@@ -154,13 +182,22 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- controls ----------
   let controls: ChickenControls = loadChickenControls()
-  const unsubscribe = subscribeChickenControls(c => { controls = c })
+  const unsubscribe = subscribeChickenControls(c => { controls = c; rebind() })
   const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
   const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>()
   let pad: Partial<Record<ChickenAction, boolean>> = {}
-  const input = (a: ChickenAction) => controls.keys[a].some(t => t && held.has(t)) || !!pad[a] || !!virt[a]
-  const tapped = (a: ChickenAction) => controls.keys[a].some(t => t && pressed.has(t)) || virtTapped.has(a)
-  const usedKey = (tok: string) => CHICKEN_ACTIONS.some(a => controls.keys[a.key].includes(tok))
+  // the devices she listens to (null: all of them) and, from them, the keys of each action
+  let devices: InputDeviceId[] | null = null
+  let keyBinds = {} as Record<ChickenAction, string[]>, usedKeys = new Set<string>()
+  const rebind = () => {
+    CHICKEN_ACTIONS.forEach(a => { keyBinds[a.key] = keyTokensFor(controls, a.key, devices) })
+    usedKeys = allKeyTokens(controls, devices)
+  }
+  rebind()
+  const virtOk = () => !devices || devices.includes('touch') || devices.includes('mouse')
+  const input = (a: ChickenAction) => keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && !!virt[a])
+  const tapped = (a: ChickenAction) => keyBinds[a].some(t => pressed.has(t)) || (virtOk() && virtTapped.has(a))
+  const usedKey = (tok: string) => usedKeys.has(tok)
   const onKeyDown = (e: KeyboardEvent) => {
     ensureAudio()
     if (isChickenControlsListening() || isTextField(e.target) || (e.target as HTMLElement | null)?.closest?.('[role="dialog"], [role="alertdialog"]')) return
@@ -181,25 +218,22 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('blur', onBlur)
   window.addEventListener('pointermove', onPointerMove)
   function pollPad() {
-    const on = readGamepadTokens(controls.analog.deadzoneL)
+    const on = padTokensFor(devices, controls.analog.deadzoneL)
     pad = {}
     CHICKEN_ACTIONS.forEach(a => { pad[a.key] = controls.pad[a.key].some(t => t && on.has(t)) })
   }
 
   // ---------- sound ----------
+  // one audio context and one set of clucks for every chicken on the page (local players share them)
   let actx: AudioContext | null = null, lastVoice: { src: AudioBufferSourceNode; gain: GainNode } | null = null, lastName = ''
-  const buffers: Record<string, AudioBuffer> = {}
+  const buffers = sharedAudio.buffers
   function ensureAudio() {
-    if (actx) { if (actx.state === 'suspended') void actx.resume(); return }
-    try { actx = new (window.AudioContext || (window as any).webkitAudioContext)() } catch { actx = null; return }
-    const ctx = actx
-    Object.values(CHICKEN_CLUCKS).flat().forEach(name => {
-      fetch(`/audio/chicken/${name}.mp3`).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { buffers[name] = buf }).catch(() => {})
-    })
+    actx = sharedAudioContext()
   }
   // the cluck chosen for a movement in the class: '' none, 'all' any switched-on type, or one type
   function sfx(ev: string) {
     const v = (R as any)['sfx_' + ev] as string | undefined
+    actx = sharedAudio.ctx
     if (!v || !actx || !controls.sound || R.volume <= 0) return
     const cats = v === 'all' ? Object.keys(CHICKEN_CLUCKS).filter(c => (R as any)['snd_' + c]) : [v]
     const ready = (c: string) => (CHICKEN_CLUCKS[c] || []).filter(n => buffers[n])
@@ -253,7 +287,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const lookChanged = JSON.stringify(next.look) !== JSON.stringify(config.look)
     config = next
     resize()
-    if (lookChanged && !opts.look) paintLook(next.look)
+    if (lookChanged && !ownLook) paintLook(next.look)
   })
   window.addEventListener('resize', resize)
 
@@ -1054,13 +1088,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t))) })
       gameTaps.clear()
       return out
     },
     peekActions() {
       const out = {} as Record<ChickenAction, boolean>
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t))) })
       return out
     },
     shift(dx, dy = 0) {
@@ -1103,6 +1137,18 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (S.grounded || S.cl || S.held) return
       S.vx += vx; S.vy += vy
     },
+    setDevices(next) {
+      if (next === devices || (next && devices && next.length === devices.length && next.every((d, i) => d === devices![i]))) return
+      devices = next ? [...next] : null
+      rebind()
+      held.clear(); pressed.clear(); gameTaps.clear(); pad = {}
+    },
+    setLook(next) {
+      if (JSON.stringify(next) === JSON.stringify(ownLook)) return
+      ownLook = next
+      paintLook(next ?? config.look)
+    },
+    dropAt(x) { fallFrom(clamp(x, 40 * R.scale, W - 40 * R.scale), -160 * R.scale, 0, 0) },
     destroy() {
       cancelAnimationFrame(raf)
       unsubscribe()
@@ -1119,7 +1165,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.root.removeEventListener('touchstart', blockTouch)
       window.removeEventListener('resize', resize)
       el.root.removeEventListener('pointerdown', onRootDown)
-      void actx?.close()
+      releaseSharedAudio()
       svg.remove()
     },
   }

@@ -6,7 +6,8 @@
 // The world is in fixed units (lib/pigchicken/world.ts): the same size on every screen, which only changes the crop.
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
 import { createCombat, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
@@ -86,13 +87,18 @@ export function ParquinhoForeground({ screens, fgRef }: { screens: number; fgRef
   )
 }
 
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null> }) {
+// devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
+// and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
+// with the same camera (no items yet).
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  const devicesRef = useRef(devices)
+  devicesRef.current = devices
   // where the page keeps the ground on the screen (raised above the touch controls on a phone held upright)
   const groundHRef = useRef(groundHeight)
   groundHRef.current = groundHeight
@@ -133,8 +139,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const mouseBtn = { fire: false, melee: false }
     let wheel = 0, slotPick = 0, escape = false
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
+    // the mouse is someone else's (another local player holds it)
+    const noMouse = () => !!devicesRef.current && !devicesRef.current.includes("mouse")
     const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return
+      if (e.pointerType !== "mouse" || noMouse()) return
       if (mouse) {
         owner.moved(Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y), performance.now())
         if (owner.owns) stickOwner.release()
@@ -142,7 +150,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       mouse = { x: e.clientX, y: e.clientY }
     }
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || isUi(e.target)) return
+      if (e.pointerType !== "mouse" || isUi(e.target) || noMouse()) return
       if (e.button === 0) mouseBtn.fire = true
       if (e.button === 2) mouseBtn.melee = true
     }
@@ -151,7 +159,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (e.button === 2) mouseBtn.melee = false
     }
     const onMenu = (e: MouseEvent) => { if (!isUi(e.target)) e.preventDefault() }
-    const onWheel = (e: WheelEvent) => { if (!isUi(e.target)) wheel += Math.sign(e.deltaY) }
+    const onWheel = (e: WheelEvent) => { if (!isUi(e.target) && !noMouse()) wheel += Math.sign(e.deltaY) }
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
@@ -283,12 +291,23 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (oy === null) oy = yr.lo
       const viewTop = header ? header.getBoundingClientRect().bottom : 0
       const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt, lag: S.lag })
-      if (next !== camX || nextOy !== oy) { engine.shift(camX - next, nextOy - oy); camX = next; oy = nextOy }
+      const others = extras?.current ? [...extras.current.values()] : []
+      if (next !== camX || nextOy !== oy) {
+        engine.shift(camX - next, nextOy - oy)
+        others.forEach(o => o.shift(camX - next, nextOy - (oy as number)))
+        camX = next; oy = nextOy
+      }
       // her ground is the world's, wherever the camera puts it on the screen
       if (Math.abs(st.groundY - (G + oy)) > 0.01) engine.setGroundHeight(st.height - G - oy)
       st = engine.getState()
       const camY = oy
-      engine.setBounds(cameraBounds(camX, { mode: S.camera, viewW, worldW }))
+      const walls = cameraBounds(camX, { mode: S.camera, viewW, worldW })
+      engine.setBounds(walls)
+      others.forEach(o => {
+        const os = o.getState()
+        if (Math.abs(os.groundY - (G + camY)) > 0.01) o.setGroundHeight(os.height - G - camY)
+        o.setBounds(walls)
+      })
       if (worldRef.current) {
         worldRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
         // the parallax layers follow the camera at their own rates (parallax.tsx)
@@ -299,7 +318,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- aim ----------
       const act = engine.getActions()
       const an = controls.analog
-      const rightStick = readStick(1, an.deadzoneR), leftStick = readStick(0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
+      const devs = devicesRef.current
+      if (noMouse() && (mouse || mouseBtn.fire || mouseBtn.melee)) { mouse = null; mouseBtn.fire = false; mouseBtn.melee = false }
+      const rightStick = stickFor(devs, 1, an.deadzoneR), leftStick = stickFor(devs, 0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
 
       // ---------- the inventory wheel: hold its button, point at an item (mouse, right stick, touch) and let go ----------
       const slots = combat.inventory, nSlots = slots.length

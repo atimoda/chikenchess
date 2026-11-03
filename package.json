@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "start": "next start",
     "test:music": "node --test tests/music.test.cjs",
-    "test:pigchicken": "node --test tests/pigchicken-world.cases.cjs tests/pigchicken-temple.cases.cjs tests/pigchicken-inventory.cases.cjs",
+    "test:pigchicken": "node --test tests/pigchicken-world.cases.cjs tests/pigchicken-temple.cases.cjs tests/pigchicken-inventory.cases.cjs tests/chicken-lobby.cases.cjs",
     "typecheck": "tsc --noEmit",
     "build:online": "node scripts/build-online.mjs",
     "build:powered-analysis": "node scripts/build-powered-analysis.mjs",

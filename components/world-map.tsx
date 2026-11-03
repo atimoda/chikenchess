@@ -1396,7 +1396,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
       <ChickenGround className="z-[65]" />
       {showTitle && <ChickenLayer onEngine={setChickenEngine} touch={globeTouch} dropAvoid={chickenPortalAvoid} />}
       {/* Electric portal to the Pátio, in the right corner of the ground */}
-      {showTitle && <ChickenPortal engine={chickenEngine} />}
+      {showTitle && <ChickenPortal engine={chickenEngine} modeSwitch />}
 
       {/* UI OVERLAY LAYER */}
       <div className="absolute inset-0 z-[70] overflow-hidden pointer-events-none">
