@@ -6,11 +6,11 @@
 // The world is in fixed units (lib/pigchicken/world.ts): the same size on every screen, which only changes the crop.
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { chickenBindName, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
-import { createCombat, TIP_TIME, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
+import { createCombat, TIP_TIME, type Box, type Combat, type Pickup, type Swing } from "@/lib/pigchicken/combat"
 import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
@@ -456,7 +456,6 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- combat (world coordinates) ----------
       const fire = !wh.open && (act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
-      grabKey = controls.keys.grab.find(Boolean)?.replace("Key:Key", "").replace("Key:", "") ?? "E"
       let pick = 0
       if (act.nextItem && !prev.nextItem) pick = 1
       if (act.prevItem && !prev.prevItem) pick = -1
@@ -487,6 +486,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy))
+      // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
+      pickupMarks.clear()
+      markHover(combat, grabLabel(controls, devs))
 
       // ---------- the other local players: their own items (a loadout each), in the same world ----------
       const extraList = extras?.current ? [...extras.current.entries()] : []
@@ -512,6 +514,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false })
+        markHover(combat, grabLabel(controls, devs))
         eng.setGame({ moveLock: false, aimFace: null, backpedal: S.backpedal, speedMult: xd.weight })
         const xh = combat.inventory[combat.current], xsw = combat.swing
         const xart = xh ? ITEM_SVG[xh.item] : undefined
@@ -988,8 +991,20 @@ const lookTargets: { x: number; y: number }[] = []
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
 const templeDraw: { temple: Temple | null; charges: Map<number, number> } = { temple: null, charges: new Map() }
 
-// the hint over an item she can grab (set from the controls)
-let grabKey = "E"
+// the hint over the items the local players can grab (set every frame): the first player to stand on one shows theirs
+const pickupMarks = new Map<Pickup, { c: string; t: string }>()
+function markHover(combat: Combat, key: string) {
+  const at = (p: Pickup | null, c: string, t: string) => { if (p && !pickupMarks.has(p)) pickupMarks.set(p, { c, t: key ? `${key}: ${t}` : t }) }
+  at(combat.hover, "#4cc9f0", combat.hoverSwaps ? "trocar" : "pegar")
+  at(combat.hoverOwned, "#9aa0a8", "equipar")
+}
+// the grab bind a player sees: from the keyboard they hold (primary first), else from their gamepad
+function grabLabel(c: ChickenControls, devices: readonly InputDeviceId[] | null) {
+  const pick = (slots: (string | null)[]) => slots.find(Boolean) ?? null
+  const kb = !devices || devices.includes("kb1") ? pick(c.keys.grab) : devices.includes("kb2") ? pick(c.keys2.grab) : null
+  const tok = kb ?? (!devices || devices.some(d => d.startsWith("pad")) ? pick(c.pad.grab) : null)
+  return tok ? chickenBindName(tok) : ""
+}
 // the horde buttons' labels (set every frame from the horde settings)
 const buttonLabels: Record<string, string> = {}
 function drawButton(ctx: Ctx, g: Combat["targets"][number], x: number) {
@@ -1071,11 +1086,11 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     ctx.save(); ctx.translate(x, y - 8)
     // the item grab would take: a blue outline and the key to press
     // blue: grab takes it (or swaps it in when the inventory is full); grey: she already carries one, grab equips hers
-    const mark = combat.hover === p ? { c: "#4cc9f0", t: combat.hoverSwaps ? "trocar" : "pegar" } : combat.hoverOwned === p ? { c: "#9aa0a8", t: "equipar" } : null
+    const mark = pickupMarks.get(p)
     if (mark) {
       ctx.filter = `drop-shadow(2px 0 0 ${mark.c}) drop-shadow(-2px 0 0 ${mark.c}) drop-shadow(0 2px 0 ${mark.c}) drop-shadow(0 -2px 0 ${mark.c})`
       drawItem(ctx, p.owned.item, 64, 34); ctx.filter = "none"
-      ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = mark.c; ctx.fillText(`${grabKey}: ${mark.t}`, 0, 30)
+      ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = mark.c; ctx.fillText(mark.t, 0, 30)
     } else drawItem(ctx, p.owned.item, 64, 34)
     ctx.restore()
   })

@@ -31,6 +31,8 @@ export const CHANGELOG = [
         'Globo: embaixo do botão do portal do Pátio, um switch online / local escolhe como entrar (local por padrão). No cabeçalho do Pátio, setas para passar entre os lobbies públicos (ativas no modo online).',
       ] },
       { title: 'Galinha', items: [
+        'Pátio: os outros players locais também veem o destaque azul ou cinza no item em que estão em cima, com a tecla de pegar do próprio controle. No teclado secundário, a barra / pega o item.',
+        'PigChicKen: o analógico esquerdo (do gamepad e da tela) voltou a mirar, como antes: ele regula a mira assim que é empurrado, e o analógico direito tem prioridade quando os dois estão ativos. Só as setas e o WASD do teclado continuam sem mirar.',
         'PigChicKen: o inventário agora mostra só as casas com item, mais uma casa vazia (mãos vazias) enquanto houver espaço. A troca rápida (Q no teclado, LB no gamepad, rodinha do mouse) passa pelos itens, por uma casa vazia e volta para o primeiro.',
         'PigChicKen: com o violino na mão, a asa segura um arco. Tocando, o arco vai e volta nas cordas conforme o mouse se mexe (uma arcada inteira a cada 260 px); com o mouse parado, ou mirando pelo analógico, ele faz uma arcada por batida.',
         'PigChicKen: os itens ficam sempre agrupados no inventário, nesta ordem: instrumentos musicais, armas e depois os demais itens. O limite agora é de 13 itens.',

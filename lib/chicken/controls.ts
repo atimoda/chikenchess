@@ -35,7 +35,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   // hold to open the inventory wheel, aim at an item (mouse / right stick) and let go; a quick tap leaves it open
   { key: 'itemWheel', label: 'Roda do inventário (segure e solte no item)', keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b8', null, null], group: 'items' },
   // X on the gamepad also runs: grabbing only acts while she stands on an item
-  { key: 'grab', label: 'Pegar / trocar item (em cima dele)', keys: ['Key:KeyE', null, null], keys2: [null, null], pad: ['Pad:b2', null, null], group: 'items' },
+  { key: 'grab', label: 'Pegar / trocar item (em cima dele)', keys: ['Key:KeyE', null, null], keys2: ['Key:Slash', null], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: ['Key:Backspace', null], pad: ['Pad:b11', null, null], group: 'items' },
 ]
 
@@ -140,6 +140,8 @@ export function loadChickenControls(): ChickenControls {
       addKey('fire', 'Key:KeyV'); addKey('melee', 'Key:KeyB')
     } else {
       CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = slots(saved?.keys2?.[a.key], a.keys2, 'Key:', CHICKEN_INPUT_TYPES.find(t => t.id === 'keys2')!.slots) })
+      // controls saved before the secondary keyboard could grab (03/11): / takes grab there, if it is free
+      if (!saved?.grabKeys2 && !base.keys2.grab.some(Boolean) && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:Slash') || base.keys2[a.key].includes('Key:Slash'))) base.keys2.grab[0] = 'Key:Slash'
     }
     // one key, one action, on one keyboard type: the primary keyboard wins
     const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
@@ -149,7 +151,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, grabKeys2: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
@@ -165,7 +167,7 @@ let listening = false
 export const isChickenControlsListening = () => listening
 export const setChickenControlsListening = (value: boolean) => { listening = value }
 
-const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: 'Alt/Option esq.', AltRight: 'Alt/Option dir.', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab', Insert: 'Ins', Delete: 'Del', PageUp: 'PgUp', PageDown: 'PgDn', Backspace: 'Bksp', Backslash: '\\', MetaLeft: 'Cmd esq.', MetaRight: 'Cmd dir.' }
+const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: 'Alt/Option esq.', AltRight: 'Alt/Option dir.', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab', Insert: 'Ins', Delete: 'Del', PageUp: 'PgUp', PageDown: 'PgDn', Backspace: 'Bksp', Backslash: '\\', Slash: '/', MetaLeft: 'Cmd esq.', MetaRight: 'Cmd dir.' }
 // Xbox names; LS / RS are the left / right sticks
 const PAD_BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'Home']
 const PAD_AXES = ['LS ←', 'LS →', 'LS ↑', 'LS ↓', 'RS ←', 'RS →', 'RS ↑', 'RS ↓']
