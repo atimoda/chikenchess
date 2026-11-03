@@ -25,6 +25,8 @@ export type LobbyPlayer = {
   // a look of their own (local players after the first); the first follows the central configuration / vestiário
   look?: ChickenLook
   userId?: string
+  // a temporary color of their own while in this lobby: their avatar's border and their reticle
+  color?: string
 }
 
 // Pátio and lobby are the same thing: one world with its players.
@@ -55,7 +57,7 @@ const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(++seq
 
 export function createLobby(me: { name: string; userId?: string }, devices: InputDeviceId[], now = Date.now(), mode: LobbyMode = 'local'): LobbyState {
   const p1: LobbyPlayer = { id: newId('p'), kind: 'local', name: me.name, joinedAt: now, inputs: sortDevices(devices), userId: me.userId }
-  return { id: newId('lobby'), mode, createdAt: now, ownerId: p1.id, editors: [p1.id], players: [p1] }
+  return { id: newId('lobby'), mode, createdAt: now, ownerId: p1.id, editors: [p1.id], players: withColors([p1]) }
 }
 
 // the oldest player present who is not a bot
@@ -63,8 +65,34 @@ export function lobbyOwner(players: LobbyPlayer[]) {
   return players.filter(p => p.kind !== 'bot').reduce<LobbyPlayer | null>((best, p) => (!best || p.joinedAt < best.joinedAt ? p : best), null)
 }
 
-// The owner follows the oldest player; when it changes, only the new owner can edit again.
-export function reconcileOwner(s: LobbyState): LobbyState {
+// One color per player in the lobby (13, as many as the players), bright and far apart from each other, so
+// each one tells their own reticle (drawn with a dark outline) and avatar by the color alone.
+export const PLAYER_COLORS = [
+  '#ff3b3b', '#2f8fff', '#ffd60a', '#22e07a', '#ff4fd8', '#ff8c1a', '#1ee3e3',
+  '#a66bff', '#ffffff', '#b4ff3d', '#ff9e8a', '#5b5bff', '#d9a066',
+] as const
+
+// Players keep their color while they stay; a new one (or one whose color is taken) gets the first free one,
+// in the order they arrived.
+export function withColors(players: LobbyPlayer[]): LobbyPlayer[] {
+  const taken = new Set<string>()
+  const order = [...players].sort((a, b) => a.joinedAt - b.joinedAt)
+  const pick = new Map<string, string>()
+  order.forEach(p => { if (p.color && !taken.has(p.color)) { taken.add(p.color); pick.set(p.id, p.color) } })
+  order.forEach(p => {
+    if (pick.has(p.id)) return
+    const c = PLAYER_COLORS.find(x => !taken.has(x)) ?? PLAYER_COLORS[taken.size % PLAYER_COLORS.length]
+    taken.add(c); pick.set(p.id, c)
+  })
+  return players.some(p => p.color !== pick.get(p.id)) ? players.map(p => ({ ...p, color: pick.get(p.id) })) : players
+}
+
+export const playerColor = (s: LobbyState, playerId: string | null | undefined) => s.players.find(p => p.id === playerId)?.color ?? PLAYER_COLORS[0]
+
+// The owner follows the oldest player; when it changes, only the new owner can edit again. Colors are settled here too.
+export function reconcileOwner(s0: LobbyState): LobbyState {
+  const players = withColors(s0.players)
+  const s = players === s0.players ? s0 : { ...s0, players }
   const owner = lobbyOwner(s.players)?.id ?? null
   const editors = s.editors.filter(id => s.players.some(p => p.id === id))
   if (owner === s.ownerId) return editors.length === s.editors.length ? s : { ...s, editors }

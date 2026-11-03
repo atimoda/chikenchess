@@ -182,3 +182,21 @@ test('the owner removes anyone except themselves, the creator and the padrinho',
   assert.equal(L.removePlayer(s, me, 'g').ok, false)
   assert.equal(L.removePlayer(s, me, 'o').ok, true)
 })
+
+test('each player gets a color of their own, kept while they stay; a newcomer takes the first free one', () => {
+  let s = start(['kb1', 'kb2'])
+  assert.equal(s.players[0].color, L.PLAYER_COLORS[0])
+  const r2 = L.addLocalPlayer(s, 2000); s = ok(r2)
+  const r3 = L.addLocalPlayer(s, 3000); s = ok(r3)
+  assert.deepEqual(s.players.map(p => p.color), L.PLAYER_COLORS.slice(0, 3))
+  s = ok(L.removePlayer(s, s.players[0].id, r2.player.id))
+  assert.equal(s.players[1].color, L.PLAYER_COLORS[2])
+  const r4 = L.addLocalPlayer(s, 4000); s = ok(r4)
+  assert.equal(s.players.find(p => p.id === r4.player.id).color, L.PLAYER_COLORS[1])
+  assert.equal(new Set(L.PLAYER_COLORS).size, L.LOBBY_MAX)
+  // arriving in another lobby: a color already taken there goes to the first free one
+  const host = { id: 'h', kind: 'online', name: 'Host', joinedAt: 10, inputs: [], color: L.PLAYER_COLORS[0] }
+  const next = L.moveLocalsTo(s, { id: 'x', createdAt: 5, roster: [host] }, 9000)
+  assert.equal(new Set(next.players.map(p => p.color)).size, next.players.length)
+  assert.equal(next.players[0].color, L.PLAYER_COLORS[0])
+})

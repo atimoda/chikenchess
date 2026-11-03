@@ -90,7 +90,7 @@ export function ParquinhoForeground({ screens, fgRef }: { screens: number; fgRef
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>> }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -99,6 +99,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   settingsRef.current = settings
   const devicesRef = useRef(devices)
   devicesRef.current = devices
+  // each local player's lobby color (p1: the first one, the others by their id): their reticle's color
+  const colorsRef = useRef(colors)
+  colorsRef.current = colors
   // where the page keeps the ground on the screen (raised above the touch controls on a phone held upright)
   const groundHRef = useRef(groundHeight)
   groundHRef.current = groundHeight
@@ -182,6 +185,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     // the other local players' actions in the last frame (presses are edges)
     const extraPrev = new Map<string, Partial<Record<ChickenAction, boolean>>>()
+    const extraAim = new Map<string, { muzzle: { x: number; y: number }; angle: number; reach: number }>()
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
     // the inventory wheel: open, left open by a quick tap of its button (sticky), when it opened, the slice under
@@ -471,6 +475,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab,
         }
         extraPrev.set(id, xa)
+        extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false })
         eng.setGame({ moveLock: false, aimFace: null, backpedal: S.backpedal, speedMult: xd.weight })
@@ -479,7 +484,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         eng.setHeld(xart ? { svg: xart, angle: combat.aimAngle, kick: combat.kick } : null)
         eng.setSwing(xsw ? { angle: swingAngle(xsw), reach: xsw.range, t: Math.min(1, xsw.t / (xsw.time * 0.3), (xsw.time - xsw.t) / (xsw.time * 0.3)) } : null)
       })
-      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); combat.drop(id) } })
+      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraAim.delete(id); combat.drop(id) } })
       combat.use("p1")
 
       // ---------- the temple's mini-game ----------
@@ -565,7 +570,27 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.use("p1")
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
-      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
+      const tints = colorsRef.current
+      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath, tints?.p1 ?? "#ffffff")
+      // the other local players' reticles, each in their own color, where their item points
+      extraList.forEach(([id, eng]) => {
+        const at = extraAim.get(id)
+        if (!at) return
+        combat.use(id)
+        const xd = combat.def(), xs = eng.getState()
+        const xArmed = !!combat.inventory[combat.current]
+        const xdist = S.reticleDist * at.reach
+        const xrx = at.muzzle.x + Math.cos(at.angle) * xdist, xry = at.muzzle.y + Math.sin(at.angle) * xdist
+        let xpath: { x: number; y: number }[] | null = null
+        if (xArmed && ["laser", "impact", "grenade", "bow"].includes(xd.reticle)) {
+          const power = xd.fireMode === "charge" ? xd.chargeMin + (1 - xd.chargeMin) * combat.fireCharge : 1
+          xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
+        }
+        const xShow = xArmed && (xd.pathShow === "always" || (xd.pathShow !== "off" && !!extraPrev.get(id)?.fire))
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xs.scale, xpath, xShow, tints?.[id] ?? "#ffffff")
+      })
+      combat.use("p1")
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       // one inventory per local player, stacked in the top right corner (the avatars sit to their right)
       const invOff = getTouchLayout().offsets.inventory
@@ -1069,22 +1094,26 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   ctx.globalAlpha = 1
 }
 
-function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean) {
+function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean, tint: string) {
   const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
   const t = performance.now() / 1000
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
   const ang = Math.atan2(ry - origin.y, rx - origin.x)
-  const color = combat.reloading ? "#8a8f98" : locked ? "#ffd166" : "#ffffff"
+  // the player's own color (their lobby color), with a dark outline so it reads on any background; aim locked
+  // draws it thicker, reloading fainter
+  const color = tint
   const line = (x1: number, y1: number, x2: number, y2: number) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke() }
   const end = path ? path[path.length - 1] : null
   ctx.save()
+  ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 3
+  if (combat.reloading) ctx.globalAlpha = 0.55
   // the faint aim line (the families that draw their own path skip it)
   if (showPath && !path && d.reticle !== "cone") {
     ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
     line(origin.x, origin.y, rx, ry)
     ctx.setLineDash([])
   }
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = locked ? 3 : 2
   if (!armed) {
     ctx.beginPath(); ctx.arc(rx, ry, 8, 0, Math.PI * 2); ctx.stroke()
   } else if (d.reticle === "circle") {

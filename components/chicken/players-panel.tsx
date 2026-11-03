@@ -192,7 +192,7 @@ export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, 
               return (
                 <tr key={p.id} className="border-t border-white/5 hover:bg-white/[0.03]">
                   <td className="px-3 py-1.5">
-                    <button type="button" onClick={() => onAvatar(p.id)} disabled={!local} title={local ? "Vestiário" : undefined} aria-label={`Vestiário de ${nameOf(p)}`} className="relative block h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 bg-[#0b110e] hover:border-primary disabled:cursor-default">
+                    <button type="button" onClick={() => onAvatar(p.id)} disabled={!local} title={local ? "Vestiário" : undefined} aria-label={`Vestiário de ${nameOf(p)}`} style={{ borderColor: p.color }} className="relative block h-10 w-10 overflow-hidden rounded-full border-[3px] border-white/20 bg-[#0b110e] disabled:cursor-default">
                       {p.id === me?.id ? <ChickenHeadIcon look={meLook} /> : p.look ? <ChickenHeadIcon look={p.look} /> : <Users className="m-auto h-5 w-5 text-[#93a79a]" />}
                     </button>
                   </td>

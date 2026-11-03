@@ -28,7 +28,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 import {
-  addLocalPlayer, adoptDevices, moveLocalsTo, assignDevice, createLobby, firstLocal, joinOpenLobby, loadEntryMode, loadLobby, localPlayers, removePlayer,
+  PLAYER_COLORS, addLocalPlayer, adoptDevices, moveLocalsTo, assignDevice, createLobby, firstLocal, joinOpenLobby, loadEntryMode, loadLobby, localPlayers, removePlayer,
   renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyResult, type LobbyState,
 } from "@/lib/chicken/lobby"
 import type { ChickenLook } from "@/lib/chicken/look-art"
@@ -136,6 +136,12 @@ export function ChickenPatio() {
   useEffect(() => { if (devices.length) setLobby(prev => (prev ? adoptDevices(prev, devices) : prev)) }, [devices])
   const me = lobby ? firstLocal(lobby) : null
   const others = useMemo(() => (lobby ? localPlayers(lobby).slice(1) : []), [lobby])
+  // each local player's lobby color: their avatar's border and their reticle
+  const colors = useMemo(() => {
+    const out: Record<string, string> = { p1: me?.color ?? PLAYER_COLORS[0] }
+    others.forEach(p => { if (p.color) out[p.id] = p.color })
+    return out
+  }, [me, others])
   // alone, she listens to everything (as on the globe); with more local players, only to her own devices
   const myDevices = useMemo(() => {
     const first = lobby ? firstLocal(lobby) : null
@@ -247,10 +253,10 @@ export function ChickenPatio() {
       </header>
       {/* the avatars: one per local player, at the right end of that player's inventory (drawn by the Parquinho) */}
       <div data-chicken-ignore className="pointer-events-none fixed z-[190] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
-        {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1" }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name }))].map(row => {
+        {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] }))].map(row => {
           const on = vestOpen && vestFor === row.id
           return (
-            <button key={row.id ?? "me"} type="button" aria-label={`Vestiário · ${row.name}`} aria-pressed={on} title={`Vestiário · ${row.name}`} onClick={() => { if (on) setVestOpen(false); else openVestiario(row.id) }} className={cn("pointer-events-auto shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", on ? "border-primary" : "border-primary/50")} style={{ width: INV_STACK.size, height: INV_STACK.size }}>
+            <button key={row.id ?? "me"} type="button" aria-label={`Vestiário · ${row.name}`} aria-pressed={on} title={`Vestiário · ${row.name}`} onClick={() => { if (on) setVestOpen(false); else openVestiario(row.id) }} className={cn("pointer-events-auto shrink-0 overflow-hidden rounded-full border-[3px] bg-[#101713] transition-shadow", on && "ring-2 ring-white/80 ring-offset-1 ring-offset-black")} style={{ width: INV_STACK.size, height: INV_STACK.size, borderColor: row.color }}>
               <ChickenHeadIcon look={row.look} />
             </button>
           )
@@ -270,7 +276,7 @@ export function ChickenPatio() {
       <ChickenPortal engine={engine} href="/" world={portalWorld} label="Back to the globe?" arrival={false} />
       <ChickenPortalArrival engine={engine} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={pq.screens} fgRef={fgRef} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
