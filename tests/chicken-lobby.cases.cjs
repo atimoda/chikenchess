@@ -122,3 +122,39 @@ test('keyboards: the primary and the secondary drive different keys', () => {
   const withKeys2 = { ...c, keys2: { ...Object.fromEntries(Object.keys(c.keys).map(k => [k, [null, null]])), jump: ['Key:Numpad0', null] } }
   assert.deepEqual(D.keyTokensFor(withKeys2, 'jump', ['kb2']), ['Key:Numpad0'])
 })
+
+test('the switcher only goes through public lobbies online with someone playing', () => {
+  const list = [
+    { id: 'a', createdAt: 1, players: 2 },
+    { id: 'b', createdAt: 2, players: 0 },
+    { id: 'c', createdAt: 3, players: 3, status: 'offline' },
+    { id: 'd', createdAt: 4, players: 1, visibility: 'private' },
+    { id: 'e', createdAt: 5, players: 4 },
+  ]
+  assert.equal(L.neighbourLobby(list, 'a', 1).id, 'e')
+  assert.equal(L.neighbourLobby(list, 'e', 1).id, 'a')
+})
+
+test('switching lobby takes every local player along; the oldest player there stays the owner', () => {
+  let s = start(['kb1', 'kb2'])
+  s = ok(L.addLocalPlayer(s, 2000))
+  const host = { id: 'h', kind: 'online', name: 'Host', joinedAt: 10, inputs: [] }
+  const next = L.moveLocalsTo(s, { id: 'other', createdAt: 5, roster: [host] }, 50000)
+  assert.equal(next.id, 'other')
+  assert.equal(next.players.length, 3)
+  assert.equal(next.ownerId, 'h')
+  assert.deepEqual(next.editors, ['h'])
+  assert.deepEqual(next.players.filter(p => p.kind === 'local').map(p => p.inputs), [['kb1'], ['kb2']])
+  assert.equal(L.canUseEditor(next, next.players[1].id), false)
+})
+
+test('the last online player leaving takes the lobby offline; it comes back only when made public', () => {
+  let s = { ...start(), mode: 'online', visibility: 'public', status: 'online' }
+  s = L.leavePlayer(s, s.players[0].id)
+  assert.equal(s.status, 'offline')
+  assert.equal(s.visibility, 'private')
+  const back = L.createLobby({ name: 'X' }, ['kb1'], 9000, 'online')
+  const reopened = ok(L.setPublic({ ...back, id: s.id, status: 'offline' }, back.players[0].id, true))
+  assert.equal(reopened.status, 'online')
+  assert.equal(reopened.visibility, 'public')
+})

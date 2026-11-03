@@ -28,7 +28,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 import {
-  addLocalPlayer, adoptDevices, assignDevice, createLobby, firstLocal, joinOpenLobby, loadEntryMode, loadLobby, localPlayers, removePlayer,
+  addLocalPlayer, adoptDevices, moveLocalsTo, assignDevice, createLobby, firstLocal, joinOpenLobby, loadEntryMode, loadLobby, localPlayers, removePlayer,
   renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyResult, type LobbyState,
 } from "@/lib/chicken/lobby"
 import type { ChickenLook } from "@/lib/chicken/look-art"
@@ -226,7 +226,7 @@ export function ChickenPatio() {
         <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
-        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} />
+        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => changeLobby(s => moveLocalsTo(s, target))} />
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Users className="h-4 w-4" />
           {lobby && lobby.players.length > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{lobby.players.length}</span>}

@@ -9,7 +9,7 @@ import { LOOK_ART, type ChickenLook } from "@/lib/chicken/look-art"
 import { connectedPads, inputDeviceLabel, sortDevices, type InputDeviceId } from "@/lib/chicken/input-devices"
 import {
   LOBBY_MAX, ONLINE_UNAVAILABLE, canEditPatio, firstLocal, inviteLink, isOwner, listPublicLobbies, neighbourLobby,
-  type LobbyMode, type LobbyPlayer, type LobbyState,
+  type LobbyMode, type LobbyPlayer, type LobbyState, type PublicLobby,
 } from "@/lib/chicken/lobby"
 import { onlineConfigured, onlineRpc } from "@/lib/online/client"
 import type { OnlineFriend } from "@/lib/online/types"
@@ -98,13 +98,16 @@ export function LocalChickens({ players, lead, groundHeight, engines }: {
 }
 
 // ---------- header: the lobby switcher ----------
-// back / forward through the public lobbies in the order they opened; only online
-export function LobbySwitcher({ mode, lobbyId, onStatus }: { mode: LobbyMode; lobbyId: string | null; onStatus: (text: string) => void }) {
+// back / forward through the public lobbies (Pátios) open with someone playing, in the order they opened; going
+// to another one leaves this Pátio, and every local player goes along (onSwitch)
+export function LobbySwitcher({ mode, lobbyId, onStatus, onSwitch }: { mode: LobbyMode; lobbyId: string | null; onStatus: (text: string) => void; onSwitch: (lobby: PublicLobby) => void }) {
   const go = async (dir: -1 | 1) => {
     if (mode !== "online") { onStatus("O passador de lobby só funciona no modo online (painel de players)."); return }
     const list = await listPublicLobbies()
     const next = neighbourLobby(list, lobbyId, dir)
-    onStatus(next ? `Indo para o lobby ${next.name ?? next.id}…` : ONLINE_UNAVAILABLE)
+    if (!next) { onStatus(list.length ? "Nenhum outro Pátio público aberto com alguém jogando." : ONLINE_UNAVAILABLE); return }
+    onStatus(`Indo para o Pátio ${next.name ?? next.id}…`)
+    onSwitch(next)
   }
   const btn = "inline-flex h-9 w-7 items-center justify-center text-[#b9c7b9] transition-colors hover:text-white disabled:opacity-40"
   return (

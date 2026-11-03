@@ -27,9 +27,17 @@ export type LobbyPlayer = {
   userId?: string
 }
 
+// Pátio and lobby are the same thing: one world with its players.
+// public: listed for others (the lobby switcher); online: someone is playing in it right now. When the last
+// online player leaves, it goes offline, and only comes back when someone enters it and makes it public again.
+export type LobbyVisibility = 'public' | 'private'
+export type LobbyStatus = 'online' | 'offline'
+
 export type LobbyState = {
   id: string
   mode: LobbyMode
+  visibility?: LobbyVisibility
+  status?: LobbyStatus
   createdAt: number
   // the oldest player present (bots never own a lobby)
   ownerId: string | null
@@ -61,6 +69,9 @@ export function reconcileOwner(s: LobbyState): LobbyState {
 
 export const isOwner = (s: LobbyState, playerId: string | null | undefined) => !!playerId && s.ownerId === playerId
 export const canEditPatio = (s: LobbyState, playerId: string | null | undefined) => !!playerId && s.editors.includes(playerId)
+// The editor panel opens only for a player allowed to edit (in a local lobby that is the first player, its owner);
+// in an online lobby without the permission it stays locked.
+export const canUseEditor = (s: LobbyState, playerId: string | null | undefined) => canEditPatio(s, playerId)
 export const localPlayers = (s: LobbyState) => s.players.filter(p => p.kind === 'local')
 // "Player 1": the first local player, the person at this computer
 export const firstLocal = (s: LobbyState) => localPlayers(s)[0] ?? null
@@ -108,7 +119,27 @@ export function removePlayer(s: LobbyState, actorId: string, targetId: string): 
 
 // A player leaves by themselves (closing the tab, going back to the globe): the oldest one left owns the lobby.
 export function leavePlayer(s: LobbyState, playerId: string): LobbyState {
-  return reconcileOwner({ ...s, players: s.players.filter(p => p.id !== playerId), editors: s.editors.filter(id => id !== playerId) })
+  const players = s.players.filter(p => p.id !== playerId)
+  const status: LobbyStatus = players.some(p => p.kind !== 'bot') ? s.status ?? 'online' : 'offline'
+  // offline: it is no longer listed as public until someone comes in and opens it again
+  const visibility = status === 'offline' ? 'private' : s.visibility
+  return reconcileOwner({ ...s, players, status, visibility, editors: s.editors.filter(id => id !== playerId) })
+}
+
+// A player in the lobby makes it public (listed, and online again) or private. Only the owner decides.
+export function setPublic(s: LobbyState, actorId: string, on: boolean): LobbyResult {
+  if (!isOwner(s, actorId)) return { ok: false, state: s, reason: 'Só o dono do lobby abre ou fecha o lobby.' }
+  return { ok: true, state: { ...s, visibility: on ? 'public' : 'private', status: on ? 'online' : s.status ?? 'online' } }
+}
+
+// Switching lobby (Pátio): every local player of this computer goes together, keeping their devices and looks.
+// They arrive now, so the target's oldest player stays its owner; the players already there come from the server.
+// target.roster: the players already there (from the server; none while online is a stub)
+export function moveLocalsTo(s: LobbyState, target: { id: string; createdAt: number; roster?: LobbyPlayer[] }, now = Date.now()): LobbyState {
+  const locals = localPlayers(s).map((p, i) => ({ ...p, joinedAt: now + i }))
+  const there = (target.roster ?? []).filter(p => p.kind !== 'local')
+  const players = [...there, ...locals].slice(0, LOBBY_MAX)
+  return reconcileOwner({ id: target.id, mode: 'online', createdAt: target.createdAt, visibility: 'public', status: 'online', ownerId: null, editors: [], players })
 }
 
 // Only the owner changes who may edit; the owner always may.
@@ -189,7 +220,9 @@ export function saveEntryMode(mode: LobbyMode) {
 }
 
 // ---------- online (stub until Supabase is back) ----------
-export type PublicLobby = { id: string; createdAt: number; players: number; name?: string }
+export type PublicLobby = { id: string; createdAt: number; players: number; name?: string; visibility?: LobbyVisibility; status?: LobbyStatus }
+// the lobby switcher only goes through public lobbies that are online with someone playing
+export const switchableLobby = (l: PublicLobby) => (l.visibility ?? 'public') === 'public' && (l.status ?? 'online') === 'online' && l.players > 0
 export const ONLINE_UNAVAILABLE = 'Online volta quando o servidor (Supabase) voltar. Por enquanto, só players locais.'
 
 // Public lobbies in the order they were opened. Online: fills the last one with room, else opens a new one.
@@ -202,8 +235,9 @@ export async function joinOpenLobby(): Promise<{ ok: false; reason: string }> {
 }
 // the lobby before / after `currentId` in the chronological list (wraps around); null when there is no other
 export function neighbourLobby(list: PublicLobby[], currentId: string | null, dir: -1 | 1): PublicLobby | null {
-  if (!list.length) return null
-  const sorted = [...list].sort((a, b) => a.createdAt - b.createdAt)
+  const open = list.filter(l => switchableLobby(l) || l.id === currentId)
+  if (!open.length) return null
+  const sorted = [...open].sort((a, b) => a.createdAt - b.createdAt)
   const i = sorted.findIndex(l => l.id === currentId)
   if (i < 0) return dir > 0 ? sorted[0] : sorted[sorted.length - 1]
   if (sorted.length === 1) return null
