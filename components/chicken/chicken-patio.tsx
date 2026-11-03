@@ -5,7 +5,7 @@
 // (admin account only) saves it for every screen that draws the chicken.
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Crosshair, Gamepad2, Maximize, Minimize, PencilRuler, SlidersHorizontal, Swords, Users, X } from "lucide-react"
+import { Crosshair, FolderOpen, Gamepad2, Maximize, Minimize, PencilRuler, Save, SlidersHorizontal, Swords, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -30,9 +30,11 @@ import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { PatioEditor } from "@/components/pigchicken/patio-editor"
-import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { deviceId, keepPatio, loadPatio, lobbyFromUrl, newPatio, setLobbyInUrl, type PatioRecord } from "@/lib/pigchicken/patio-store"
+import { deviceId, forgetPatio, lobbyFromUrl, onPatioOpenRequest, openPatioLobby } from "@/lib/pigchicken/patio-store"
 import { setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
+import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
+import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
+import { PatioOpenPanel, PatioPersonPanel, PatioSavePanel, type PatioPersonCard } from "@/components/pigchicken/patio-lobby-panels"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 import {
   PLAYER_COLORS, addLocalPlayer, adoptDevices, moveLocalsTo, assignDevice, createLobby, firstLocal, joinOpenLobby, loadEntryMode, loadLobby, localPlayers, removePlayer,
@@ -166,44 +168,57 @@ export function ChickenPatio() {
   const vestPlayer = lobby && vestFor ? lobby.players.find(p => p.id === vestFor) ?? null : null
   const openVestiario = (playerId: string | null) => { setVestFor(playerId && playerId !== me?.id ? playerId : null); setVestOpen(true) }
 
-  // ---------- the Pátio open here (a lobby: its layout and who created it) and the editor mode ----------
-  const [patio, setPatio] = useState<PatioRecord | null>(null)
+  // ---------- the Pátio open here (a lobby: its layout, who created it, its saving) and the editor mode ----------
   const [editorOn, setEditorOn] = useState(false)
   const [editHint, setEditHint] = useState(false)
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [openOpen, setOpenOpen] = useState(false)
+  const [person, setPerson] = useState<PatioPersonCard | null>(null)
   const meId = online.user?.id ?? null
-  useEffect(() => { setPatio(loadPatio(lobbyFromUrl())) }, [])
-  useEffect(() => {
-    setPatioInfo({ lobbyId: patio?.id ?? null, creatorId: patio?.creatorId ?? null, me: meId ?? (patio ? deviceId() : null), isAdmin })
-  }, [patio?.id, patio?.creatorId, meId, isAdmin])
+  const isAccount = !!online.user && !online.user.is_anonymous
   const access = usePatioEditAccess()
+  const pl = usePatioLobby({ userId: meId, isAccount, isAdmin, canEdit: access.canEdit })
+  const patio = pl.patio
+  useEffect(() => { void pl.load(lobbyFromUrl()) }, [])
+  // a Pátio made here before signing in (its creator is this browser) is mine once I sign in, until it is saved
+  const creator = patio && patio.revision === 0 && patio.creatorId === (typeof window === "undefined" ? null : deviceId()) ? (meId ?? patio.creatorId) : patio?.creatorId ?? null
+  const editors = pl.remote?.editors
+  // the default Pátio is the admin's alone, whoever made it
+  const isDefaultLobby = !patio?.id || !!pl.remote?.isDefault
+  useEffect(() => {
+    setPatioInfo({ lobbyId: patio?.id ?? null, isDefault: isDefaultLobby, creatorId: creator, me: meId ?? (patio ? deviceId() : null), isAdmin, editors })
+  }, [patio?.id, creator, meId, isAdmin, editors, isDefaultLobby])
+  // the Playgrounds lists count who is here: the local players for now (the online presence feeds it when it is on)
+  const playersHere = lobby?.players.length ?? 0
+  useEffect(() => { setPatioLiveCounts({ [patio?.id ?? "default"]: playersHere }) }, [patio?.id, playersHere])
   // losing the permission (another Pátio, the owner changed it) closes the editor
   useEffect(() => { if (!access.canEdit) setEditorOn(false) }, [access.canEdit])
-  // a Pátio is kept (in this browser, for now) a moment after each change
-  const keepTimer = useRef<number | null>(null)
-  const pendingKeep = useRef<PatioRecord | null>(null)
-  const flushKeep = () => { if (keepTimer.current) window.clearTimeout(keepTimer.current); keepTimer.current = null; if (pendingKeep.current) { keepPatio(pendingKeep.current); pendingKeep.current = null } }
-  useEffect(() => () => flushKeep(), [])
-  const changeLayout = (layout: PatioLayout) => {
-    setPatio(prev => {
-      if (!prev) return prev
-      const next = { ...prev, layout, edited: true }
-      pendingKeep.current = next
-      if (keepTimer.current) window.clearTimeout(keepTimer.current)
-      keepTimer.current = window.setTimeout(flushKeep, 600)
-      return next
-    })
+  const changeLayout = pl.changeLayout
+  // another lobby (from "Abrir" or the lobby panel's Próximo / Anterior): what is pending is saved, the editor closes
+  const switchLobby = (id: string | null) => {
+    setEditorOn(false)
+    setEditHint(false)
+    setOpenOpen(false)
+    setPerson(null)
+    // the players' lobby is the Pátio open here
+    setLobby(prev => (prev ? { ...prev, id: id ?? prev.id } : prev))
+    void pl.switchTo(id)
   }
+  const switchRef = useRef(switchLobby)
+  switchRef.current = switchLobby
+  useEffect(() => onPatioOpenRequest(id => switchRef.current(id)), [])
   // a new Pátio of mine (a copy of the default one): I am its creator and may edit it
   const startNewPatio = () => {
-    flushKeep()
-    const next = newPatio(meId ?? deviceId())
-    setLobbyInUrl(next.id)
-    // the new Pátio's id is this lobby's id too (as when it comes in the address)
-    setLobby(prev => (prev && next.id ? { ...prev, id: next.id } : prev))
-    setPatio(next)
     setEditHint(false)
-    setEditorOn(true)
+    setOpenOpen(false)
+    setPerson(null)
+    void pl.startNew(meId ?? deviceId()).then(id => {
+      if (id) setLobby(prev => (prev ? { ...prev, id } : prev))
+      setEditorOn(true)
+    })
   }
+  const canRename = !!patio && isAccount && (isDefaultLobby ? isAdmin : patio.name ? isAdmin || patio.creatorId === meId || patio.godparentId === meId : access.canEdit)
+  const renameHint = !isAccount ? "Entre com sua conta para dar nome ao Pátio." : isDefaultLobby ? "Só o admin renomeia o Pátio padrão." : patio?.name ? "Só o criador ou o padrinho renomeiam este Pátio." : "Só quem pode editar este Pátio dá o primeiro nome."
   const toggleEditor = () => {
     if (!access.canEdit) { setEditHint(v => !v); return }
     setEditHint(false)
@@ -289,14 +304,23 @@ export function ChickenPatio() {
         >
           <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo"><GlobeGridIcon /></Link>
         </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate font-mono text-sm font-bold">Pátio da Galinha</h1>
+        <div className="hidden min-w-0 flex-1 sm:block">
+          <h1 className="truncate font-mono text-sm font-bold" title="O Pátio aberto">{patio?.name ?? (patio?.id ? "Lobby não salvo" : "Pátio da Galinha")}</h1>
           <p className="truncate font-mono text-[11px] text-[#93a79a]">{savedLabel}</p>
         </div>
+        {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
+        <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <select aria-label="Câmera" title="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
           {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
         <ChickenChatButton open={chatOpen} onToggle={() => setChatOpen(v => !v)} />
+        <button type="button" aria-label="Playgrounds" aria-pressed={openOpen} title="Playgrounds" onClick={() => setOpenOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", openOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <FolderOpen className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label="Salvar Pátio" aria-pressed={saveOpen} title={patio?.dirty ? "Salvar Pátio (há mudanças)" : "Salvar Pátio"} onClick={() => setSaveOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", saveOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Save className="h-4 w-4" />
+          {patio?.dirty && <span aria-hidden="true" className={cn("absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full", pl.save.kind === "conflict" || pl.save.kind === "error" ? "bg-[#ff8a7a]" : "bg-[#ffd166]")} />}
+        </button>
         <div className="relative">
           <button
             type="button"
@@ -309,7 +333,7 @@ export function ChickenPatio() {
             <PencilRuler className="h-4 w-4" />
           </button>
           {editHint && !access.canEdit && (
-            <div role="dialog" aria-label="Sem permissão para editar" className="absolute right-0 top-11 z-[130] w-64 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-3 font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
+            <div role="dialog" aria-label="Sem permissão para editar" className="fixed right-3 top-14 z-[130] w-64 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-3 font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
               <p>{access.reason === "default" ? "Este é o Pátio padrão: só o admin edita." : access.reason === "notAllowed" ? "O dono deste Pátio não liberou a edição para você." : "Este Pátio não é seu."} Crie um Pátio seu (uma cópia do padrão) para editar.</p>
               <div className="mt-2 flex gap-2">
                 <button type="button" onClick={startNewPatio} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">Criar meu Pátio</button>
@@ -324,7 +348,7 @@ export function ChickenPatio() {
         <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
-        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => changeLobby(s => moveLocalsTo(s, target))} />
+        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => { changeLobby(s => moveLocalsTo(s, target)); openPatioLobby(target.id) }} />
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Users className="h-4 w-4" />
           {lobby && lobby.players.length > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{lobby.players.length}</span>}
@@ -339,6 +363,7 @@ export function ChickenPatio() {
         <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>
+        </div>
       </header>
       {/* the avatars: one per local player, at the right end of that player's inventory (drawn by the Parquinho) */}
       <div data-chicken-ignore className="pointer-events-none fixed z-[190] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
@@ -370,6 +395,22 @@ export function ChickenPatio() {
       <ParquinhoForeground screens={pq.screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
       {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={pq.screens} onChange={changeLayout} onClose={() => setEditorOn(false)} />}
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} />
+      {saveOpen && patio && (
+        <PatioSavePanel
+          patio={patio} remote={pl.remote} save={pl.save} canEdit={access.canEdit} canRename={canRename} renameHint={renameHint} isAccount={isAccount}
+          onSave={() => void pl.saveNow()} onRename={pl.rename} onFavorite={on => void pl.favorite(on)} onResolve={c => void pl.resolveConflict(c)}
+          onPerson={setPerson} onLogin={online.openLogin} onClose={() => setSaveOpen(false)}
+        />
+      )}
+      {openOpen && (
+        <PatioOpenPanel
+          currentId={patio?.id ?? null} me={meId} isAdmin={isAdmin} isAccount={isAccount}
+          onOpen={switchLobby} onNew={startNewPatio} onLogin={online.openLogin}
+          onDeleted={id => { forgetPatio(id); if (id === patio?.id) switchLobby(null) }}
+          onClose={() => setOpenOpen(false)}
+        />
+      )}
+      {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">

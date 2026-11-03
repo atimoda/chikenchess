@@ -1,7 +1,8 @@
 // The Pátio (lobby) the page has open: its layout, who created it, and where it is kept. A Pátio is the same thing
 // as a lobby; its id is a uuid made when someone starts a new Pátio, kept in the page address (/patio?lobby=<id>).
 // Without one the page shows the default Pátio (the admin's). Each Pátio is kept in this browser as soon as it is
-// edited; the database copy (save, open, autosave) builds on this.
+// edited, so nothing is lost while offline; the database copy (lib/pigchicken/patio-online.ts) is saved over it on
+// "Salvar" and every minute, and `revision` / `dirty` say how this copy relates to the saved one.
 import { defaultLayout, normalizeLayout, type PatioLayout } from './layout'
 
 export type PatioRecord = {
@@ -13,6 +14,12 @@ export type PatioRecord = {
   updatedAt: string | null
   // someone changed it (only then it is kept)
   edited: boolean
+  // the database's revision this copy builds on (0: never saved there)
+  revision: number
+  // changed since the last database save
+  dirty: boolean
+  // the database row: the lobby's own id, or for the default Pátio the row the admin set as default (null: none yet)
+  dbId: string | null
 }
 
 const KEY = 'chickenchess:patio:v1:'
@@ -49,33 +56,71 @@ function read(key: string): PatioRecord | null {
       id: key === 'default' ? null : key, layout, creatorId: typeof v.creatorId === 'string' ? v.creatorId : null,
       name: typeof v.name === 'string' ? v.name : null, godparentId: typeof v.godparentId === 'string' ? v.godparentId : null,
       updatedAt: typeof v.updatedAt === 'string' ? v.updatedAt : null, edited: true,
+      revision: Number.isInteger(v.revision) && (v.revision as number) >= 0 ? (v.revision as number) : 0, dirty: v.dirty === true,
+      dbId: isPatioId(v.dbId) ? v.dbId : key === 'default' ? null : key,
     }
   } catch { return null }
 }
 
 // the default Pátio: the one the admin set, or the code's
 export function loadDefaultPatio(): PatioRecord {
-  return read('default') ?? { id: null, layout: defaultLayout(), creatorId: null, name: null, godparentId: null, updatedAt: null, edited: false }
+  return read('default') ?? { id: null, layout: defaultLayout(), creatorId: null, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: null }
 }
 
 // a Pátio by id; one this browser does not know yet starts as a copy of the default with no creator (nobody here
 // may edit it until the database says who created it)
 export function loadPatio(id: string | null): PatioRecord {
   if (!id) return loadDefaultPatio()
-  return read(id) ?? { ...loadDefaultPatio(), id, creatorId: null, name: null, godparentId: null, updatedAt: null, edited: false }
+  return read(id) ?? { ...loadDefaultPatio(), id, creatorId: null, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
 }
 
 // a new Pátio of mine: a copy of the default; kept only once it is edited
 export function newPatio(creatorId: string): PatioRecord {
   const base = loadDefaultPatio()
-  return { id: uuid(), layout: structuredClone(base.layout), creatorId, name: null, godparentId: null, updatedAt: null, edited: false }
+  const id = uuid()
+  return { id, layout: structuredClone(base.layout), creatorId, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
 }
+export const newPatioId = uuid
 
 export function keepPatio(rec: PatioRecord): PatioRecord {
   const next = { ...rec, edited: true, updatedAt: new Date().toISOString() }
-  try { storage()?.setItem(KEY + (rec.id ?? 'default'), JSON.stringify({ layout: next.layout, creatorId: next.creatorId, name: next.name, godparentId: next.godparentId, updatedAt: next.updatedAt })) } catch { /* full or blocked */ }
+  try {
+    storage()?.setItem(KEY + (rec.id ?? 'default'), JSON.stringify({
+      layout: next.layout, creatorId: next.creatorId, name: next.name, godparentId: next.godparentId, updatedAt: next.updatedAt,
+      revision: next.revision, dirty: next.dirty, dbId: next.dbId,
+    }))
+  } catch { /* full or blocked */ }
   return next
 }
+
+export function forgetPatio(id: string) {
+  try { storage()?.removeItem(KEY + id) } catch { /* blocked */ }
+}
+
+// the Pátios kept in this browser (the "Abrir" list when there is no server, and the ones never saved there)
+export function localPatios(): PatioRecord[] {
+  const s = storage()
+  if (!s) return []
+  const out: PatioRecord[] = []
+  try {
+    for (let i = 0; i < s.length; i++) {
+      const k = s.key(i)
+      if (!k?.startsWith(KEY)) continue
+      const id = k.slice(KEY.length)
+      if (id === 'default' || !isPatioId(id)) continue
+      const rec = read(id)
+      if (rec) out.push(rec)
+    }
+  } catch { /* blocked */ }
+  return out.sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))
+}
+
+// switching the open Pátio from elsewhere (the lobby panel's Próximo / Anterior): the Pátio page listens, saves
+// what is pending, closes the editor and loads the other one (null: the default Pátio)
+type OpenListener = (id: string | null) => void
+const openListeners = new Set<OpenListener>()
+export function openPatioLobby(id: string | null) { openListeners.forEach(fn => fn(isPatioId(id) ? id : null)) }
+export function onPatioOpenRequest(fn: OpenListener) { openListeners.add(fn); return () => { openListeners.delete(fn) } }
 
 // the lobby in the page address, and moving to another one without reloading
 export function lobbyFromUrl(): string | null {

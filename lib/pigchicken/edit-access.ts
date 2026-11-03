@@ -16,7 +16,9 @@ export type PatioEditAccess = {
   reason: "" | "default" | "notCreator" | "notAllowed"
 }
 
-type PatioInfo = { lobbyId: string | null; creatorId: string | null; me: string | null; isAdmin: boolean }
+// editors: the players the owner allowed (saved with the Pátio); isDefault: the admin's default Pátio (also when it
+// is opened by its own lobby id), which nobody else edits
+type PatioInfo = { lobbyId: string | null; creatorId: string | null; me: string | null; isAdmin: boolean; editors?: string[]; isDefault?: boolean }
 let info: PatioInfo = { lobbyId: null, creatorId: null, me: null, isAdmin: false }
 let external: { lobbyId: string | null; mode: PatioLobbyMode; canEdit: boolean } | null = null
 let current: PatioEditAccess = compute()
@@ -25,9 +27,10 @@ const listeners = new Set<() => void>()
 function compute(): PatioEditAccess {
   const mode = external?.mode ?? "local"
   if (info.isAdmin) return { lobbyId: info.lobbyId, mode, canEdit: true, reason: "" }
+  if (info.isDefault || !info.lobbyId) return { lobbyId: info.lobbyId, mode, canEdit: false, reason: "default" }
   if (external && external.lobbyId === info.lobbyId) return { lobbyId: info.lobbyId, mode, canEdit: external.canEdit, reason: external.canEdit ? "" : "notAllowed" }
-  if (!info.lobbyId || !info.creatorId) return { lobbyId: info.lobbyId, mode, canEdit: false, reason: "default" }
-  const mine = !!info.me && info.creatorId === info.me
+  if (!info.creatorId) return { lobbyId: info.lobbyId, mode, canEdit: false, reason: "notCreator" }
+  const mine = !!info.me && (info.creatorId === info.me || !!info.editors?.includes(info.me))
   return { lobbyId: info.lobbyId, mode, canEdit: mine, reason: mine ? "" : "notCreator" }
 }
 function update() {
