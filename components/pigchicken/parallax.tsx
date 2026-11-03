@@ -112,7 +112,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW }: { wor
   return (
     <div aria-hidden="true" className="absolute inset-0">
       {/* the sky: deep blue up high, a muted mauve at the horizon; it reaches far above the world's top */}
-      <div className="absolute" style={{ left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: -2000, height: G + 2000, background: "linear-gradient(to bottom, #0a0f20 0, #0a0f20 2000px, #121a33 2250px, #222a48 2500px, #3d3f5c 2700px, #5e5468 2820px, #7a6670 2930px)" }} />
+      <div className="absolute" style={{ left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: -4200, height: G + 4200, background: "linear-gradient(to bottom, #04060f 0, #0a0f20 3000px, #0a0f20 4200px, #121a33 4450px, #222a48 4700px, #3d3f5c 4900px, #5e5468 5020px, #7a6670 5130px)" }} />
       <Layer p={0.97} w={wSun}>
         <defs>
           <radialGradient id="px-sun">

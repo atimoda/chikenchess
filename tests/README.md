@@ -1,6 +1,6 @@
 # Testes por domínio
 
-`npm run test:music` reúne 309 casos, incluindo as regressões do arranjo global, organizados abaixo. Os arquivos `.cases.cjs` evitam descoberta duplicada pelo runner padrão. Helpers em `helpers/music.cjs` compartilham o carregamento TypeScript, os imports JSON dos presets MIDI, o armazenamento em memória e o bundle real do Strudel.
+`npm run test:music` reúne 313 casos, incluindo as regressões do arranjo global, organizados abaixo. Os arquivos `.cases.cjs` evitam descoberta duplicada pelo runner padrão. Helpers em `helpers/music.cjs` compartilham o carregamento TypeScript, os imports JSON dos presets MIDI, o armazenamento em memória e o bundle real do Strudel.
 
 | Arquivo em `tests/music/` | Casos | Responsabilidade |
 | --- | ---: | --- |
@@ -14,7 +14,7 @@
 | `reactions.cases.cjs` | 16 | Cheque com presença/pausas por peça, eventos, regras, conjunto global com overrides por kit e migração dos kits antigos, transformações de graus MIDI/escala e prioridade/retorno da harmonia sobre sequências do kit |
 | `transport.cases.cjs` | 13 | Mixer por equipe, fine pitch em todas as notas MIDI e velocidade de samples, BPM/compasso, rampas, downbeat, salto pausado/reinício/preservação de rampas, seção enfileirada com deadline exato/monitor sem avanço antecipado/substituição/cancelamento e fila de regras com coalescência/cancelamento/rebase |
 | `meter.cases.cjs` | 6 | Onze compassos, unidade do BPM, agrupamentos, persistência de quintos/sétimos, 19 kits rítmicos, reset de fórmula e equivalência Strudel |
-| `editor.cases.cjs` | 13 | Duração, atribuições na forma global, progressões harmônicas/tétrades de jazz nos eventos compilados sem expandir bancos, edição/espelho/randomização MIDI, +/− de bancos explícitos com limites e pin, loop por peça, cursor sem falsa reprodução, fase visual sem compilar, slides e pan por nota |
+| `editor.cases.cjs` | 16 | Duração, atribuições na forma global, progressões harmônicas/tétrades de jazz nos eventos compilados sem expandir bancos, edição/espelho/randomização MIDI, Euclid e arpejador (ordens, ritmo, swing, acorde, orçamento de notas), +/− de bancos explícitos com limites e pin, loop por peça, cursor sem falsa reprodução, fase visual sem compilar, slides e pan por nota |
 | `sound-design.cases.cjs` | 9 | Vozes idênticas sem os campos novos, controles de filtro/LFO/vibrato, FM/supersaw/loop, delay em bus próprio, sidechain, LFO de pan, marcas de articulação dos perfis, fills e rolls de 16 compassos |
 | `dynamics.cases.cjs` | 7 | Tensão, seca de capturas, roques opostos, virada de avaliação, peça pendurada, peão avançado, limiares, filtro por papel e rampas de ganho/filtro |
 | `globe.cases.cjs` | 7 | Voo, linhas e colunas do grid com menos pontos nas regiões polares, pins sem colisão, direção do gesto e compensação do popup |

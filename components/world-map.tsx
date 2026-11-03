@@ -1312,8 +1312,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Controles da galinha"
-            title="Controles da galinha"
+            aria-label="Controles do boneco"
+            title="Controles do boneco"
             onClick={() => setShowChickenControls(v => !v)}
             className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
@@ -1396,7 +1396,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
       <ChickenGround className="z-[65]" />
       {showTitle && <ChickenLayer onEngine={setChickenEngine} touch={globeTouch} dropAvoid={chickenPortalAvoid} />}
       {/* Electric portal to the Pátio, in the right corner of the ground */}
-      {showTitle && <ChickenPortal engine={chickenEngine} />}
+      {showTitle && <ChickenPortal engine={chickenEngine} modeSwitch />}
 
       {/* UI OVERLAY LAYER */}
       <div className="absolute inset-0 z-[70] overflow-hidden pointer-events-none">

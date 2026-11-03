@@ -49,3 +49,27 @@ test('the wheel: equal slices, the first at the top, clockwise', () => {
   for (let n = 1; n <= 13; n++) for (let i = 0; i < n; i++) assert.equal(inv.wheelSliceAt(inv.wheelSliceCenter(i, n), n), i)
   assert.equal(inv.slotCount(0), 1); assert.equal(inv.slotCount(12), 13); assert.equal(inv.slotCount(13), 13)
 })
+
+test('each local player has their own items (loadouts) in the same world', () => {
+  const c = createCombat()
+  c.give('pistol')
+  c.use('p2')
+  assert.deepEqual(names(c), [null])
+  c.give('flute')
+  assert.deepEqual(names(c), ['flute', null])
+  c.use('p1')
+  assert.deepEqual(names(c), ['pistol', null])
+  assert.equal(c.held.item, 'pistol')
+  c.use('p2')
+  assert.equal(c.held.item, 'flute')
+  // a step of another player leaves the shared world alone
+  c.addTarget(500, 1000)
+  const before = c.targets[0].x
+  step(c)
+  c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 }, [], 1000, () => {}, { world: false })
+  assert.equal(c.targets[0].x, before)
+  c.use('p1')
+  c.drop('p2')
+  c.use('p2')
+  assert.deepEqual(names(c), [null])
+})

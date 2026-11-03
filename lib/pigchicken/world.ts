@@ -10,13 +10,15 @@
 export const SCENE_W = 1920
 // from the top of the world to the ground
 export const WORLD_GROUND_Y = 930
-// sky above the world's top the camera may still show (a little headroom on tall screens)
-export const WORLD_TOP = 0
+// how far above y = 0 the world goes: the camera follows her up to here (y = WORLD_TOP, negative is above)
+export const WORLD_TOP = -3000
+// above this world y the camera rises with her on every screen (below it, a tall screen shows the whole ground floor still)
+export const CAMERA_RISE_Y = 500
 
 export type WorldBox = { x: number; y: number; w: number; h: number }
 
 // floating boxes per scene, in world units: x from the scene's left edge, bottom = height of its base above ground
-const SCENES: { x: number; bottom: number; w: number; h: number }[][] = [
+export const SCENE_PLATFORMS: { x: number; bottom: number; w: number; h: number }[][] = [
   [
     // the first one is the long shelf with the instruments, above the weapons' racks
     { x: 154, bottom: 307, w: 1651, h: 29 },
@@ -57,7 +59,7 @@ export const worldScenes = (screens: number) => screens + 1
 export function worldPlatforms(screens: number, temple = false): (WorldBox & { id: string })[] {
   const out: (WorldBox & { id: string })[] = []
   for (let s = 0; s < screens; s++) {
-    SCENES[s % SCENES.length].forEach((p, i) => {
+    SCENE_PLATFORMS[s % SCENE_PLATFORMS.length].forEach((p, i) => {
       out.push({ id: `pq${s}-${i}`, x: s * SCENE_W + p.x, y: WORLD_GROUND_Y - p.bottom - p.h, w: p.w, h: p.h })
     })
   }
@@ -66,7 +68,7 @@ export function worldPlatforms(screens: number, temple = false): (WorldBox & { i
 }
 
 // the top of the instruments' shelf (the first platform of the first scene)
-export const SHELF_TOP = WORLD_GROUND_Y - SCENES[0][0].bottom - SCENES[0][0].h
+export const SHELF_TOP = WORLD_GROUND_Y - SCENE_PLATFORMS[0][0].bottom - SCENE_PLATFORMS[0][0].h
 
 // the scene a world x is in
 export const sceneAt = (x: number) => Math.max(0, Math.floor(x / SCENE_W))
@@ -74,20 +76,23 @@ export const sceneAt = (x: number) => Math.max(0, Math.floor(x / SCENE_W))
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
 // Vertical camera. `oy` is the screen y of world y = 0 (screen = world + oy). The ground never rises above the
-// place the page keeps for it (groundScreen, above the touch controls on a phone); on a screen shorter than the
-// world the camera follows her up, until the world's top reaches the top of the screen. On a desktop window as
-// tall as the reference the whole world fits and the camera never moves vertically.
+// place the page keeps for it (groundScreen, above the touch controls on a phone). On a screen shorter than the
+// ground floor (y 0..WORLD_GROUND_Y) the camera follows her to keep her a bit below the middle; on any screen, once
+// she climbs above CAMERA_RISE_Y it rises with her, keeping her where that height was, up to WORLD_TOP.
 export function cameraYRange(groundScreen: number) {
   const lo = groundScreen - WORLD_GROUND_Y
-  return { lo, hi: Math.max(lo, -WORLD_TOP) }
+  return { lo, hi: lo + (WORLD_GROUND_Y - WORLD_TOP) }
 }
 
 export function cameraYStep(oy: number, o: { worldY: number; groundScreen: number; viewTop: number; dt: number; lag: number }) {
   const { lo, hi } = cameraYRange(o.groundScreen)
-  if (hi <= lo) return lo
-  // keep her (her feet) a bit below the middle of what is visible between the header and the ground's place
-  const want = o.viewTop + (o.groundScreen - o.viewTop) * 0.62 - o.worldY
-  const target = clamp(want, lo, hi)
+  // short screens: keep her (her feet) a bit below the middle of what is visible between the header and the ground's place,
+  // but never show above y = 0 for that alone
+  const floorHi = Math.max(lo, 0)
+  const want = clamp(o.viewTop + (o.groundScreen - o.viewTop) * 0.62 - o.worldY, lo, floorHi)
+  // climbing above CAMERA_RISE_Y: the camera rises with her on every screen
+  const rise = lo + Math.max(0, CAMERA_RISE_Y - o.worldY)
+  const target = clamp(Math.max(want, rise), lo, hi)
   const next = oy + (target - oy) * Math.min(1, o.lag * o.dt)
   return clamp(Math.abs(target - next) < 0.5 ? target : next, lo, hi)
 }

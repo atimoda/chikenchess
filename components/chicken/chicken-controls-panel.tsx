@@ -1,14 +1,16 @@
 "use client"
 
-// Chicken controls panel: the same floating panel on every screen. Keyboard and gamepad binds
-// (3 slots per action), on-screen controls mode and clucking sound, saved in this browser.
+// Character controls panel ("Controles do boneco"): the same floating panel on every screen. One list of actions
+// with the binds grouped by input type (primary keyboard, secondary keyboard, gamepad), on-screen controls mode and
+// clucking sound, saved in this browser.
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import {
-  CHICKEN_ACTIONS, chickenBindName, defaultChickenControls, loadChickenControls, readGamepadTokens, saveChickenControls,
-  setChickenControlsListening, subscribeChickenControls, type ChickenAction, type ChickenControls, type ChickenTouchMode,
+  CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, KEYBOARD_INPUT_TYPES, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames,
+  readGamepadTokens, saveChickenControls, setChickenControlsListening, subscribeChickenControls,
+  type ChickenAction, type ChickenControls, type ChickenInputType, type ChickenTouchMode,
 } from "@/lib/chicken/controls"
 import { startTouchLayoutEdit } from "@/lib/chicken/touch-layout"
 import { cn } from "@/lib/utils"
@@ -16,7 +18,8 @@ import { cn } from "@/lib/utils"
 // Game section where the chicken's movement and look are tuned and saved for every screen.
 const CHICKEN_PATIO_PATH = "/patio"
 
-type Listen = { kind: "keys" | "pad"; action: ChickenAction; slot: number } | null
+type Listen = { kind: ChickenInputType; action: ChickenAction; slot: number } | null
+const COLUMNS = CHICKEN_INPUT_TYPES.flatMap(t => Array.from({ length: t.slots }, (_, slot) => ({ type: t, slot })))
 
 const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
   { value: "auto", label: "Automático" },
@@ -33,6 +36,8 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
 
   useEffect(() => {
     setControls(loadChickenControls())
+    // punctuation binds show this keyboard layout's character (re-render once the layout is known)
+    void loadKeyboardLayoutNames().then(() => setControls(loadChickenControls()))
     return subscribeChickenControls(setControls)
   }, [])
 
@@ -42,12 +47,13 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
     saveChickenControls(next)
     setControls(next)
   }
-  const assign = (token: string | null) => {
-    const l = listenRef.current
+  const assign = (token: string | null, target: Listen = listenRef.current) => {
+    const l = target
     if (!l) return
     update(c => {
-      // a key or button belongs to one action only
-      if (token) CHICKEN_ACTIONS.forEach(a => { c[l.kind][a.key] = c[l.kind][a.key].map(t => t === token ? null : t) })
+      // a key or button belongs to one action only, and a key to one keyboard type only
+      const kinds = KEYBOARD_INPUT_TYPES.includes(l.kind) ? KEYBOARD_INPUT_TYPES : [l.kind]
+      if (token) kinds.forEach(k => CHICKEN_ACTIONS.forEach(a => { c[k][a.key] = c[k][a.key].map(t => t === token ? null : t) }))
       c[l.kind][l.action][l.slot] = token
     })
     setListen(null)
@@ -56,12 +62,12 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   useEffect(() => {
     setChickenControlsListening(!!listen)
     if (!listen) return
-    if (listen.kind === "keys") {
+    if (listen.kind !== "pad") {
+      // every key can be bound, Delete and Backspace included (the secondary keyboard uses them): right click clears
       const onKey = (e: KeyboardEvent) => {
         e.preventDefault(); e.stopPropagation()
         if (e.code === "Escape") setListen(null)
-        else if (e.code === "Delete" || e.code === "Backspace") assign(null)
-        else assign(`Key:${e.code}`)
+        else if (e.code) assign(`Key:${e.code}`)
       }
       window.addEventListener("keydown", onKey, true)
       return () => window.removeEventListener("keydown", onKey, true)
@@ -94,54 +100,61 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   }, [open, onOpenChange])
   useEffect(() => () => setChickenControlsListening(false), [])
 
-  const grid = (kind: "keys" | "pad") => (
-    <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,4.5rem))] items-center gap-1.5 text-xs">
-      {CHICKEN_ACTIONS.map((a, i) => (
-        <div key={a.key} className="contents">
-          {a.group === "items" && CHICKEN_ACTIONS[i - 1]?.group !== "items" && (
-            <span className="col-span-4 pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
-          )}
-          <span className="truncate text-[#b9c7b9]" title={a.label}>{a.label}</span>
-          {[0, 1, 2].map(slot => {
-            const on = listen?.kind === kind && listen.action === a.key && listen.slot === slot
-            return (
-              <button
-                key={slot}
-                type="button"
-                onClick={() => setListen(on ? null : { kind, action: a.key, slot })}
-                className={cn("h-7 truncate rounded border px-1 font-mono text-[11px] transition-colors", on ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 text-[#dfe8df] hover:border-primary/60")}
-              >
-                {on ? (kind === "pad" ? "no controle…" : "aperte…") : chickenBindName(controls[kind][a.key][slot])}
-              </button>
-            )
-          })}
-        </div>
-      ))}
+  // one list of actions; the bind columns are grouped by input type
+  const cols = `clamp(7.5rem, 30vw, 14rem) repeat(${COLUMNS.length}, 4.75rem)`
+  const grid = (
+    <div className="overflow-x-auto">
+      <div className="grid w-max min-w-full items-center gap-x-1.5 gap-y-1.5 text-xs" style={{ gridTemplateColumns: cols }}>
+        <span />
+        {CHICKEN_INPUT_TYPES.map(t => (
+          <span key={t.id} style={{ gridColumn: `span ${t.slots}` }} className="border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">{t.label}</span>
+        ))}
+        {CHICKEN_ACTIONS.map((a, i) => (
+          <div key={a.key} className="contents">
+            {a.group === "items" && CHICKEN_ACTIONS[i - 1]?.group !== "items" && (
+              <span style={{ gridColumn: `span ${COLUMNS.length + 1}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
+            )}
+            <span className="sticky left-0 z-[1] truncate bg-[#101713] pr-1 text-[#b9c7b9]" title={a.label}>{a.label}</span>
+            {COLUMNS.map(({ type, slot }) => {
+              const kind = type.id
+              const on = listen?.kind === kind && listen.action === a.key && listen.slot === slot
+              return (
+                <button
+                  key={`${kind}-${slot}`}
+                  type="button"
+                  title={`${type.label}: clique e aperte ${type.device === "gamepad" ? "um botão" : "uma tecla"}; botão direito apaga`}
+                  onClick={() => setListen(on ? null : { kind, action: a.key, slot })}
+                  onContextMenu={e => { e.preventDefault(); assign(null, { kind, action: a.key, slot }) }}
+                  className={cn("h-7 truncate rounded border px-1 font-mono text-[11px] transition-colors", on ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 text-[#dfe8df] hover:border-primary/60")}
+                >
+                  {on ? (kind === "pad" ? "no controle…" : "aperte…") : chickenBindName(controls[kind][a.key][slot])}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   )
 
   if (!open) return null
   return (
     <FloatingPanel
-      id="chicken-controls" role="dialog" aria-label="Controles da galinha"
-      initial={(vw, vh) => { const w = Math.min(576, vw - 32); return { x: (vw - w) / 2, y: 16, w, h: Math.min(820, vh - 32) } }}
+      id="chicken-controls" role="dialog" aria-label="Controles do boneco"
+      initial={(vw, vh) => { const w = Math.min(980, vw - 32); return { x: (vw - w) / 2, y: 16, w, h: Math.min(820, vh - 32) } }}
       minW={300} className="z-[230] rounded-lg border border-primary/30 bg-[#101713] text-[#dfe8df] shadow-lg"
     >
       <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2 border-b border-white/10 px-6 py-3">
-        <h2 className="flex-1 font-mono text-sm uppercase tracking-widest">Controles da galinha</h2>
+        <h2 className="flex-1 font-mono text-sm uppercase tracking-widest">Controles do boneco</h2>
         <button type="button" aria-label="Fechar controles" onClick={() => onOpenChange(false)} className="rounded p-1 text-white/70 hover:text-white"><X className="h-4 w-4" /></button>
       </div>
       <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto p-6">
-        <p className="text-xs text-[#9fb09f]">Os mesmos controles valem em todas as telas e ficam salvos só neste navegador. Clique num campo e aperte uma tecla ou botão. Esc cancela, Delete apaga.</p>
+        <p className="text-xs text-[#9fb09f]">Os mesmos controles valem para qualquer boneco, em todas as telas, e ficam salvos só neste navegador. Clique num campo e aperte uma tecla ou botão. Esc cancela; botão direito no campo apaga.</p>
         <section className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Teclado</h3>
-          {grid("keys")}
-          <p className="text-[11px] text-[#8a9a8a]">O navegador não deixa bloquear alguns atalhos com Ctrl: Ctrl junto com W fecha a aba.</p>
-        </section>
-        <section className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Gamepad</h3>
-          {grid("pad")}
-          <p className="text-[11px] text-[#8a9a8a]">Nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito. O analógico direito mira.</p>
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Movimentos</h3>
+          {grid}
+          <p className="text-[11px] text-[#8a9a8a]">Primary keyboard é a mão esquerda (WASD); Secondary keyboard é a mão direita (setas e o bloco Ins/Home/PgUp/Del/End/PgDn), pensado para um segundo jogador no mesmo teclado. Teclados de notebook (Mac principalmente) não têm esse bloco nem Ctrl direito: troque por teclas perto das setas, como / . ; e Enter. O navegador não deixa bloquear alguns atalhos com Ctrl: Ctrl junto com W fecha a aba.</p>
+          <p className="text-[11px] text-[#8a9a8a]">Gamepad: nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito. O analógico direito mira.</p>
         </section>
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Analógicos</h3>

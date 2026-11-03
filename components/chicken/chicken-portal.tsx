@@ -14,6 +14,8 @@ import { useRouter } from "next/navigation"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { CHICKEN_GROUND_H } from "./chicken-layer"
 import { isLiteDevice } from "@/lib/performance"
+import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
+import { mixGain } from "@/lib/pigchicken/mixer"
 
 const ARRIVAL_KEY = "chickenchess:portal-arrival"
 const PAD = 34 // room around the ring for the glow, arcs and sparks
@@ -49,7 +51,7 @@ export function playPortalSound(kind: "enter" | "arrive") {
   const a = audio()
   if (!a) return
   const t = a.currentTime + 0.01
-  const out = a.createGain(); out.gain.value = 0.16; out.connect(a.destination)
+  const out = a.createGain(); out.gain.value = 0.16 * mixGain("effects"); out.connect(a.destination)
   const env = (g: GainNode, at: number, peak: number, attack: number, decay: number) => {
     g.gain.setValueAtTime(0.0001, at)
     g.gain.exponentialRampToValueAtTime(peak, at + attack)
@@ -220,7 +222,7 @@ export function chickenPortalAvoid(vw: number): [number, number][] {
 // a portal standing in a moving world (the Pátio): its centre x and the ground's y in the world element's units
 export type ChickenPortalWorld = { host: React.RefObject<HTMLElement | null>; x: number; groundY: number; d: number }
 
-export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", arrival = true }: {
+export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", arrival = true, modeSwitch = false }: {
   engine: ChickenEngine | null
   href?: string
   visible?: boolean
@@ -229,6 +231,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   label?: string
   // tell the next page she came through a portal (the Pátio's arrival burst)
   arrival?: boolean
+  // under the button, an online / local switch: how the Pátio's lobby starts (local by default)
+  modeSwitch?: boolean
 }) {
   const router = useRouter()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -242,7 +246,11 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   const [touching, setTouching] = useState(false)
   const enterRef = useRef<(() => void) | null>(null)
   const [buttonW, setButtonW] = useState(170)
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  // the button (and the switch under it): the animation keeps it over the ring
+  const buttonRef = useRef<HTMLDivElement>(null)
+  const [entryMode, setEntryMode] = useState<LobbyMode>("local")
+  useEffect(() => { if (modeSwitch) setEntryMode(loadEntryMode()) }, [modeSwitch])
+  const pickMode = (mode: LobbyMode) => { setEntryMode(mode); saveEntryMode(mode) }
   // the ring's centre on the screen, kept up to date by the animation (the button and the flash follow it)
   const centerRef = useRef<{ x: number; y: number } | null>(null)
   const [flashAt, setFlashAt] = useState<{ x: number; y: number } | null>(null)
@@ -436,17 +444,22 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     <>
       {world && host ? createPortal(canvas, host) : canvas}
       {touching && visible && !entering && (
-        <button
-          type="button"
+        <div
           data-chicken-ignore
           ref={el => { buttonRef.current = el; if (el && Math.abs(el.offsetWidth - buttonW) > 1) setButtonW(el.offsetWidth) }}
-          onClick={() => enterRef.current?.()}
-          title="Clique, ou aperte correr / pegar"
-          className="pointer-events-auto fixed z-[195] whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 animate-in fade-in zoom-in-95 duration-200"
+          className="pointer-events-auto fixed z-[195] flex flex-col items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200"
           style={{ ...btnStyle, touchAction: "manipulation" }}
         >
-          {label}
-        </button>
+          <button
+            type="button"
+            onClick={() => enterRef.current?.()}
+            title="Clique, ou aperte correr / pegar"
+            className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95"
+          >
+            {label}
+          </button>
+          {modeSwitch && <EntryModeSwitch mode={entryMode} onChange={pickMode} />}
+        </div>
       )}
       {entering && (
         <div
@@ -460,6 +473,30 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         />
       )}
     </>
+  )
+}
+
+// online / local, a label on each side of the switch (local: a lobby of this computer's players)
+function EntryModeSwitch({ mode, onChange }: { mode: LobbyMode; onChange: (mode: LobbyMode) => void }) {
+  const online = mode === "online"
+  const side = (m: LobbyMode, text: string) => (
+    <button type="button" onClick={() => onChange(m)} aria-pressed={mode === m} className={mode === m ? "text-white" : "text-white/55 hover:text-white"}>{text}</button>
+  )
+  return (
+    <div className="flex items-center gap-2 rounded-full border border-[#7cc4ff]/40 bg-[#0a1a4a]/80 px-3 py-1 font-mono text-[11px] backdrop-blur" title={online ? "Entra no lobby online aberto (até 13 players)" : "Lobby só com os players deste computador"}>
+      {side("online", "online")}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={!online}
+        aria-label="Lobby local"
+        onClick={() => onChange(online ? "local" : "online")}
+        className="relative h-4 w-8 rounded-full border border-[#7cc4ff]/60 bg-[#123080]/70"
+      >
+        <span className="absolute top-0.5 h-2.5 w-2.5 rounded-full bg-[#9fd4ff] shadow-[0_0_6px_#7cc4ff] transition-[left] duration-150" style={{ left: online ? 3 : 17 }} />
+      </button>
+      {side("local", "local")}
+    </div>
   )
 }
 

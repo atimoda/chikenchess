@@ -6,6 +6,7 @@ import type { WeaponSound } from './sfx'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS } from './music'
 import type { Drum, Held, VoiceId } from './synth'
+import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
 
 // where the instruments' sound goes (the Parquinho plugs the synth in)
 export type MusicOut = {
@@ -19,7 +20,9 @@ export type NoteInfo = { midi: number; color: string; sym: string; wave: number;
 // a converted enemy leaving the scene: aliens become birds, zombies become happy people
 export type Critter = { kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number }
 
-export type Box = { l: number; t: number; r: number; b: number }
+// a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
+// beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through)
+export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean }
 export type Owned = { item: ItemId; ammo: number; durability: number }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
@@ -30,7 +33,7 @@ export type Bullet = {
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
-// x: centre, y: bottom. dummy targets come back after falling; aliens and zombies are removed; buttons never fall
+// x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button'
 export type Target = {
   id: number; kind: TargetKind; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number
@@ -39,7 +42,13 @@ export type Target = {
   harmony?: number; stun?: number; answerCool?: number; tint?: string
   // the share of each hit it blocks (1 = immune right now): the temple's drums between beats, the dragon's head
   shield?: number
+  // training dummies: their own params, the stage they are in, how long the tip bubble shows, the crack's jolt
+  dummy?: DummyState
 }
+export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
+// how long the tip stays up after it is destroyed (and after each hit while wrecked)
+export const TIP_TIME = 8
+export const TIP_AGAIN = 5
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
@@ -129,6 +138,7 @@ export function createCombat() {
     // a button: any hit presses it
     if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
     if (blocked(t, x, y)) return
+    if (t.dummy) { hurtDummy(t, damage, pushX, x, y); return }
     damage *= 1 - (t.shield ?? 0)
     t.hp -= damage; t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * 0.35; t.vx += pushX
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
@@ -140,7 +150,74 @@ export function createCombat() {
       t.deadT = ALIEN_DEATH; burst(t.x, t.y - t.h / 2, 24, color, 260, 5); kills.aliens++; sound('alienDie', null)
     } else if (t.kind === 'zombie') {
       t.state = 'dead'; t.animT = 0; t.deadT = ZOMBIE_TIMES.dead + ZOMBIE_TIMES.fade; kills.zombies++; sound('zombieDie', null)
-    } else { t.deadT = 2.5; burst(t.x, t.y - t.h / 2, 22, '#e8e2d0', 320, 4); addText(t.x, t.y - t.h - 16, 'derrubado!', '#ff8c69') }
+    }
+  }
+
+  // a training dummy takes a hit: it loses life and breaks a stage at a time; wrecked, it only rattles and shows its tip again
+  function hurtDummy(t: Target, damage: number, pushX: number, x: number, y: number) {
+    const d = t.dummy!
+    t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * (d.stage === 0 ? 0.15 : 0.35); t.vx += pushX * (d.stage === 0 ? 0.3 : 1)
+    if (t.hp <= 0) {
+      burst(x, y, 4, '#8a7a5c', 120, 2)
+      if (d.params.message) d.tipT = Math.max(d.tipT, TIP_AGAIN)
+      answerDummy(t)
+      return
+    }
+    t.hp = Math.max(0, t.hp - damage)
+    addText(x, y - 10, String(Math.round(damage)), '#ffd166')
+    burst(x, y, 5, '#ffd166', 160, 2)
+    setStage(t)
+    answerDummy(t)
+  }
+
+  // notes mend a dummy: life comes back, and with it the stages (and its tune)
+  function mendDummy(t: Target, amount: number, color: string) {
+    if (amount <= 0) return
+    const was = t.hp
+    t.hp = Math.min(t.maxHp, t.hp + amount); t.tint = color
+    if (t.hp > was && Math.random() < 0.5) sparks.push({ x: t.x + rand(-t.w / 2, t.w / 2), y: t.y - rand(t.h * 0.4, t.h), vx: rand(-30, 30), vy: rand(-90, -40), life: 0.5, max: 0.5, color: '#7bd88f', size: 3 })
+    setStage(t)
+    if (was < t.maxHp && t.hp >= t.maxHp) {
+      conv.harmonized++
+      const top = t.y - t.h / 2
+      music.chord(true).forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
+      addText(t.x, t.y - t.h - 24, 'novinho!', '#7bd88f')
+    }
+  }
+
+  // the stage follows the life: breaking down cracks it (splinters, a jolt); mending it up chimes
+  function setStage(t: Target) {
+    const d = t.dummy!
+    const next = dummyStage(t.hp, t.maxHp)
+    if (next === d.stage) return
+    const top = t.y - t.h * 0.7
+    if (next < d.stage) {
+      d.crackT = 0.35
+      burst(t.x, top, next === 0 ? 26 : 12, '#c9a46a', next === 0 ? 320 : 220, next === 0 ? 5 : 4)
+      if (next === 0) {
+        burst(t.x, top, 12, '#d6453d', 240, 3)
+        addText(t.x, t.y - t.h - 16, 'destruído!', '#ff8c69')
+        if (d.params.message) d.tipT = TIP_TIME
+        sound('block', null)
+      }
+    } else {
+      burst(t.x, top, 8, '#7bd88f', 140, 3)
+      if (d.stage === 0) d.tipT = Math.min(d.tipT, 0.4)
+      if (next < DUMMY_STAGE_MAX) addText(t.x, t.y - t.h - 16, 'melhorou!', '#7bd88f')
+    }
+    d.stage = next
+  }
+
+  // its answer: low and sour when wrecked, climbing the zone's scale and getting in tune as it gets better
+  function answerDummy(t: Target) {
+    if ((t.answerCool ?? 0) > 0) return
+    t.answerCool = 0.14
+    const d = t.dummy!
+    const m = dummyAnswerMidi(d.stage, (from, n) => music.walk(from, n, 'scale'))
+    const vel = 0.35 + 0.1 * d.stage
+    out.note('keys', m, 0, 0.3, vel)
+    // wrecked: a second, sourer note rubs against it
+    if (d.stage === 0) out.note('keys', m + 0.8 + rand(-0.15, 0.15), 0.03, 0.4, 0.3)
   }
 
   // a shielded target: the hit glances off with a spark and a metallic tink
@@ -155,6 +232,13 @@ export function createCombat() {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
     if (blocked(t, x, y)) return
+    if (t.dummy) {
+      t.flash = 0.12; t.vx += pushX * 0.3
+      texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
+      burst(x, y, 4, note.color, 120, 3)
+      mendDummy(t, amount, note.color); answerDummy(t)
+      return
+    }
     t.harmony = (t.harmony ?? 0) + amount; t.flash = 0.12; t.tint = note.color; t.vx += pushX * 0.3
     t.stun = Math.max(t.stun ?? 0, stun)
     if (t.kind === 'zombie' && t.state === 'walk' && stun > 0) { t.state = 'hurt'; t.animT = 0 }
@@ -175,12 +259,6 @@ export function createCombat() {
   function convert(t: Target) {
     const chord = music.chord(true)
     const top = t.y - t.h / 2
-    if (t.kind === 'dummy') {
-      t.harmony = 0; conv.harmonized++
-      chord.forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
-      addText(t.x, t.y - t.h - 24, 'harmonizado!', '#c77dff')
-      return
-    }
     t.state = 'converted'; t.deadT = 0.001
     const away = Math.sign(t.x - (lastBody?.x ?? t.x)) || 1
     if (t.kind === 'alien') {
@@ -198,6 +276,32 @@ export function createCombat() {
     addText(t.x, top - 60, t.kind === 'alien' ? 'virou passarinho!' : 'curado!', '#7bdff2')
   }
   let lastBody: Body | null = null
+
+  // ---------- loadouts: one per local player ----------
+  type Loadout = {
+    inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
+    throwT: number; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
+    beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null
+  }
+  const loadouts = new Map<string, Loadout>()
+  let active = 'p1'
+  const save = (): Loadout => ({
+    inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, chargeT, prevFire, aimAngle, pumpT, swing,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody,
+  })
+  const blank = (): Loadout => ({
+    inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null,
+  })
+  function useLoadout(id: string) {
+    if (id === active) return
+    loadouts.set(active, save())
+    const l = loadouts.get(id) ?? blank()
+    inv.splice(0, inv.length, ...l.inv)
+    ;({ cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody } = l)
+    active = id
+  }
 
   // can she take this item? (one of each item)
   const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o.item === p.owned.item)
@@ -343,7 +447,8 @@ export function createCombat() {
   }
 
   type StepCtx = { boxes: Box[]; groundY: number }
-  const boxAt = (boxes: Box[], x: number, y: number) => boxes.find(b => x >= b.l && x <= b.r && y >= b.t && y <= b.b)
+  const boxAt = (boxes: Box[], x: number, y: number, note = false) => boxes.find(b => (note ? b.notes === true : b.shots !== false) && x >= b.l && x <= b.r && y >= b.t && y <= b.b)
+  const solidAt = (boxes: Box[], x: number, y: number) => boxes.find(b => b.solid !== false && x >= b.l && x <= b.r && y >= b.t && y <= b.b)
   // moves a projectile one step; true when it is gone
   function stepBullet(b: Bullet, dt: number, { boxes, groundY }: StepCtx, dry = false): boolean {
     const px = b.x, py = b.y
@@ -374,7 +479,7 @@ export function createCombat() {
     // walls and the floor: explode, bounce (with a fuse) or stop
     for (let k = 1; k <= steps; k++) {
       const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
-      const box = b.ghost ? undefined : boxAt(boxes, x, y)
+      const box = boxAt(boxes, x, y, !!b.ghost)
       const floor = y >= groundY
       if (!box && !floor) continue
       if (b.fuse > 0) {
@@ -476,7 +581,7 @@ export function createCombat() {
     let x = muzzle.x, y = muzzle.y, hit: Target | null = null
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
-      if (y >= ctx.groundY || (!d.instrument && boxAt(ctx.boxes, x, y))) break
+      if (y >= ctx.groundY || boxAt(ctx.boxes, x, y, d.instrument)) break
       hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
@@ -491,12 +596,13 @@ export function createCombat() {
       const note: NoteInfo = { midi, color, sym: '♩', wave: 0, phase: 0, voice: d.voice }
       // harmony flows while it plays; the target stays still; it answers every so often
       hit.stun = Math.max(hit.stun ?? 0, d.stun)
-      hit.harmony = (hit.harmony ?? 0) + d.damage * dt
+      if (hit.dummy) { mendDummy(hit, d.damage * dt, color); answerDummy(hit) }
+      else hit.harmony = (hit.harmony ?? 0) + d.damage * dt
       hit.tint = color
       if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
       if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun)
       if (hit.kind === 'button' && hit.flash <= 0) hitTarget(hit, 1, 0, x, y)
-      if (hit.harmony >= hit.maxHp) convert(hit)
+      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) convert(hit)
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
   }
@@ -508,6 +614,12 @@ export function createCombat() {
   })
 
   return {
+    // Local players: each one has their own items, aim, cooldowns and swing (a loadout); the world (targets,
+    // enemies, shots, pickups, music) is shared. use(id) makes that player's loadout the current one; the
+    // first one in use is 'p1'. Every getter and step() below act on the current loadout.
+    use(id: string) { useLoadout(id) },
+    get player() { return active },
+    drop(id: string) { if (id !== active) loadouts.delete(id) },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
     get current() { return cur },
@@ -546,7 +658,24 @@ export function createCombat() {
       items = next
       inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
     },
-    addTarget(x: number, y: number) { targets.push({ id: nextId++, kind: 'dummy', home: x, x, y, w: 46, h: 112, hp: 100, maxHp: 100, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0 }) },
+    // a training dummy with its own params (the tip it shows when destroyed, its total life); returns its id
+    addTarget(x: number, y: number, params?: Partial<DummyParams>) {
+      const p = cleanDummyParams(params)
+      const id = nextId++
+      targets.push({ id, kind: 'dummy', home: x, x, y, w: 46, h: 112, hp: p.maxHp, maxHp: p.maxHp, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, dummy: { params: p, stage: DUMMY_STAGE_MAX, tipT: 0, crackT: 0 } })
+      return id
+    },
+    // the editor changes a dummy's params: a new total life keeps the share of life it had
+    setDummyParams(id: number, params: Partial<DummyParams>) {
+      const t = targets.find(g => g.id === id && g.dummy)
+      if (!t?.dummy) return false
+      const p = cleanDummyParams(params, t.dummy.params)
+      const share = t.maxHp > 0 ? t.hp / t.maxHp : 1
+      t.dummy.params = p; t.maxHp = p.maxHp; t.hp = Math.round(share * p.maxHp * 100) / 100
+      t.dummy.stage = dummyStage(t.hp, t.maxHp)
+      if (!p.message) t.dummy.tipT = 0
+      return true
+    },
     addButton(x: number, y: number, id: string, w = 40, h = 40) { targets.push({ id: nextId++, kind: 'button', home: x, x, y, w, h, hp: 1, maxHp: 1, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, label: id }) },
     // the part of the world on screen (enemies enter from its sides)
     setView(l: number, r: number) { view = { l, r } },
@@ -567,7 +696,9 @@ export function createCombat() {
       return Math.min(s, d.spreadMax + d.spreadAir + d.spreadMove)
     },
 
-    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void) {
+    // world: false steps only the current player's loadout (another local player in the same frame)
+    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean } = {}) {
+      const world = opts.world !== false
       const d = def()
       // aim turns at the item's speed
       if (d.turnRate > 0) {
@@ -579,8 +710,7 @@ export function createCombat() {
       throwAngle = targetAngle
 
       lastBody = body
-      music.step(dt)
-      bonusTextT = Math.max(0, bonusTextT - dt)
+      if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt) }
       // the arpeggio starts over after a pause
       if (!input.fire) { arpIdle += dt; if (arpIdle > 0.6) arpStep = 0 } else arpIdle = 0
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
@@ -672,16 +802,16 @@ export function createCombat() {
         throwT = 0
       }
 
-      const inBox = (x: number, y: number) => boxAt(boxes, x, y)
+      const inBox = (x: number, y: number) => solidAt(boxes, x, y)
 
       // projectiles
       const ctx = { boxes, groundY }
-      for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
-      for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
-      for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
+      if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
+      if (world) for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
+      if (world) for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
 
       // thrown items: spin, hit once, land as a pickup
-      for (let i = thrown.length - 1; i >= 0; i--) {
+      if (world) for (let i = thrown.length - 1; i >= 0; i--) {
         const t = thrown[i]
         const py = t.y
         t.vy += THROW_GRAVITY * dt; t.x += t.vx * dt; t.y += t.vy * dt; t.angle += t.spin * dt
@@ -691,7 +821,7 @@ export function createCombat() {
             hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y); t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
-        const top = boxes.find(b => t.x >= b.l && t.x <= b.r && py <= b.t && t.y >= b.t)
+        const top = boxes.find(b => b.solid !== false && t.x >= b.l && t.x <= b.r && py <= b.t && t.y >= b.t)
         const side = !top && inBox(t.x, t.y)
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
         const floor = top ? top.t : t.y >= groundY ? groundY : null
@@ -706,11 +836,11 @@ export function createCombat() {
       hover = null; hoverOwned = null
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
-        p.noPick = Math.max(0, p.noPick - dt)
-        if (!p.resting) {
+        if (world) p.noPick = Math.max(0, p.noPick - dt)
+        if (world && !p.resting) {
           const py = p.y
           p.vy += ITEM_GRAVITY * dt; p.y += p.vy * dt
-          const top = boxes.find(b => p.x >= b.l && p.x <= b.r && py <= b.t && p.y >= b.t)
+          const top = boxes.find(b => b.solid !== false && p.x >= b.l && p.x <= b.r && py <= b.t && p.y >= b.t)
           if (top) { p.y = top.t; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
@@ -735,6 +865,7 @@ export function createCombat() {
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
+      if (!world) return
       // racks: the creative mode always has the item to pick up again
       racks.forEach(r => {
         const near = pickups.some(p => p.owned.item === r.item && Math.abs(p.x - r.x) < 60)
@@ -758,7 +889,7 @@ export function createCombat() {
         t.wobble *= Math.pow(0.02, dt)
         t.x += t.vx * dt; t.vx *= Math.pow(0.004, dt)
         t.x += (t.home - t.x) * Math.min(1, 1.5 * dt)
-        if (t.deadT > 0) { t.deadT -= dt; if (t.deadT <= 0) { t.hp = t.maxHp; t.x = t.home; burst(t.x, t.y - t.h / 2, 10, '#7bdff2', 160, 3) } }
+        if (t.dummy) { t.dummy.tipT = Math.max(0, t.dummy.tipT - dt); t.dummy.crackT = Math.max(0, t.dummy.crackT - dt) }
       })
 
       // every target: the stillness of a note wears off; answers cool down
