@@ -11,6 +11,7 @@ export const CHANGELOG = [
         'Pátio da Galinha: o portal agora fica parado perto do começo do Pátio, ela chega ao lado dele, e entrar nele leva de volta ao globo (“Back to the globe?”). Nos dois portais, com o botão à mostra, apertar correr ou pegar (Shift / E, X no gamepad) também confirma a entrada.',
         'Pátio da Galinha: cabeçalho transparente, o botão de voltar é o mesmo botão Globo das partidas, e árvores no estilo das do templo, cada uma diferente, ficam em primeiro plano nas cenas, meio transparentes para não esconder o jogo.',
         'Templo do Gongo: o terraço logo abaixo da balaustrada virou plataforma em todo o templo, e o aviso do gongo fica em cima da trave de madeira dele.',
+        'Pátio da Galinha: novo botão de volume no cabeçalho. Ele abre um painel com o Master volume em cima e um controle para cada camada de som: instrumentos, ambiente, armas, efeitos do cenário (gongo, templo e portal) e os cacarejos da galinha. Os volumes ficam salvos neste navegador e os que já estavam no painel do Parquinho passam para cá.',
       ] },
       { title: 'Galinha', items: [
         'PigChicKen: o inventário agora mostra só as casas com item, mais uma casa vazia (mãos vazias) enquanto houver espaço. A troca rápida (Q no teclado, LB no gamepad, rodinha do mouse) passa pelos itens, por uma casa vazia e volta para o primeiro.',

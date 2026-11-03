@@ -9,14 +9,11 @@ export type ParquinhoSettings = {
   backpedal: number // walking speed while aiming behind her (0..1)
   aimRelease: number // seconds of a still mouse / aim stick before the arrows / left stick get the aim back (Infinity = never)
   reticleDist: number // px from her shoulder to the reticle when aiming with a stick or the keys
-  weaponVolume: number // 0..1
-  noteVolume: number // instruments and the enemies' answers, 0..1
-  ambienceVolume: number // the zone's percussion and drone, 0..1 (0 = off)
   quantize: boolean // instruments land on the sixteenth grid
   debug: boolean // the debug readouts: the HUD line, the scenes' labels and the shaped floors' lines
 }
 
-export const DEFAULT_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, backpedal: 0.7, aimRelease: Infinity, reticleDist: 200, weaponVolume: 0.6, noteVolume: 0.7, ambienceVolume: 0.35, quantize: true, debug: false }
+export const DEFAULT_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, backpedal: 0.7, aimRelease: Infinity, reticleDist: 200, quantize: true, debug: false }
 
 // the aim-release slider: 0..AIM_RELEASE_MAX seconds, and one step past it is "never" (Infinity)
 export const AIM_RELEASE_MAX = 5
@@ -33,7 +30,7 @@ export function loadParquinho(): ParquinhoSettings {
       const v = saved[k]
       if (typeof v === 'number' && Number.isFinite(v)) (base as Record<string, unknown>)[k] = Math.min(hi, Math.max(lo, v))
     }
-    num('screens', 1, 8); num('deadband', 0, 400); num('lag', 1, 20); num('backpedal', 0.2, 1); num('reticleDist', 60, 500); num('weaponVolume', 0, 1); num('noteVolume', 0, 1); num('ambienceVolume', 0, 1)
+    num('screens', 1, 8); num('deadband', 0, 400); num('lag', 1, 20); num('backpedal', 0.2, 1); num('reticleDist', 60, 500)
     // saved as null when infinite (JSON has no Infinity); the old `mouseIdle` key is ignored so the new default applies
     if (typeof saved.aimRelease === 'number' && Number.isFinite(saved.aimRelease)) base.aimRelease = Math.min(AIM_RELEASE_MAX, Math.max(0, saved.aimRelease))
     if (typeof saved.quantize === 'boolean') base.quantize = saved.quantize

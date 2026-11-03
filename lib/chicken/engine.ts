@@ -10,6 +10,7 @@ import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { mixGain } from '../pigchicken/mixer'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -216,7 +217,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     const src = actx.createBufferSource(); src.buffer = buffers[name]
     src.playbackRate.value = 1 + (Math.random() * 2 - 1) * R.pitchJitter / 100
-    const gain = actx.createGain(); gain.gain.value = 0.8 * R.volume * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
+    const gain = actx.createGain(); gain.gain.value = 0.8 * R.volume * mixGain('chicken') * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
     src.connect(gain); gain.connect(actx.destination); src.start(t)
     lastVoice = { src, gain }
   }
