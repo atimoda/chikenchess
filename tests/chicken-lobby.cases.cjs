@@ -145,7 +145,6 @@ test('switching lobby takes every local player along; the oldest player there st
   assert.equal(next.ownerId, 'h')
   assert.deepEqual(next.editors, ['h'])
   assert.deepEqual(next.players.filter(p => p.kind === 'local').map(p => p.inputs), [['kb1'], ['kb2']])
-  assert.equal(L.canUseEditor(next, next.players[1].id), false)
 })
 
 test('the last online player leaving takes the lobby offline; it comes back only when made public', () => {
@@ -157,4 +156,17 @@ test('the last online player leaving takes the lobby offline; it comes back only
   const reopened = ok(L.setPublic({ ...back, id: s.id, status: 'offline' }, back.players[0].id, true))
   assert.equal(reopened.status, 'online')
   assert.equal(reopened.visibility, 'public')
+})
+
+test('editing follows the Pátio in any mode: admin, its creator, or who the owner marked; the default Pátio only the admin', () => {
+  let s = L.createLobby({ name: 'Titi', userId: 'u1' }, ['kb1', 'kb2'], 1000, 'local')
+  s = ok(L.addLocalPlayer(s, 2000))
+  const [p1, p2] = s.players.map(p => p.id)
+  assert.equal(L.canUseEditor(s, p1), false)
+  assert.equal(L.canUseEditor(s, p1, { isAdmin: true }), true)
+  const mine = { ...s, creatorId: 'u1' }
+  assert.equal(L.canUseEditor(mine, p1), true)
+  assert.equal(L.canUseEditor(mine, p2), false)
+  assert.equal(L.canUseEditor(ok(L.setEditor(mine, p1, p2, true)), p2), true)
+  assert.equal(L.canUseEditor({ ...s, creatorId: 'someone-else' }, p2), false)
 })

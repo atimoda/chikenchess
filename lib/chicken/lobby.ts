@@ -41,6 +41,8 @@ export type LobbyState = {
   createdAt: number
   // the oldest player present (bots never own a lobby)
   ownerId: string | null
+  // the account that created this Pátio (null: the default Pátio, edited only by the admin)
+  creatorId?: string | null
   // who may edit the Pátio while Edit mode is on; reset to only the owner whenever the owner changes
   editors: string[]
   players: LobbyPlayer[]
@@ -69,10 +71,15 @@ export function reconcileOwner(s: LobbyState): LobbyState {
 
 export const isOwner = (s: LobbyState, playerId: string | null | undefined) => !!playerId && s.ownerId === playerId
 export const canEditPatio = (s: LobbyState, playerId: string | null | undefined) => !!playerId && s.editors.includes(playerId)
-// The editor panel: in a local lobby every local player edits freely; in an online one only those with the Edit
-// mode permission (by default the owner), otherwise it stays locked.
-export const canUseEditor = (s: LobbyState, playerId: string | null | undefined) =>
-  s.mode === 'local' ? s.players.some(p => p.id === playerId && p.kind === 'local') : canEditPatio(s, playerId)
+// The editor panel follows the Pátio, in any mode (local, online, offline): the admin, the Pátio's creator and the
+// players the owner marked in Edit mode edit it. The default Pátio (no creator) is only the admin's: everyone else
+// opens a new Pátio (a clone of the default) and becomes its creator.
+export function canUseEditor(s: LobbyState, playerId: string | null | undefined, opts: { isAdmin?: boolean } = {}) {
+  if (opts.isAdmin) return true
+  if (!playerId || !s.creatorId) return false
+  const p = s.players.find(x => x.id === playerId)
+  return (!!p?.userId && p.userId === s.creatorId) || s.editors.includes(playerId)
+}
 export const localPlayers = (s: LobbyState) => s.players.filter(p => p.kind === 'local')
 // "Player 1": the first local player, the person at this computer
 export const firstLocal = (s: LobbyState) => localPlayers(s)[0] ?? null
