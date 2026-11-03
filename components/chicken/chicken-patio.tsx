@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
@@ -81,6 +81,7 @@ export function ChickenPatio() {
   const [saving, setSaving] = useState(false)
   const [engine, setEngine] = useState<ChickenEngine | null>(null)
   const worldRef = useRef<HTMLDivElement>(null)
+  const fgRef = useRef<HTMLDivElement>(null)
   const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: WORLD_GROUND_Y, d: PORTAL_D }), [])
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
@@ -190,7 +191,9 @@ export function ChickenPatio() {
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortal engine={engine} href="/" world={portalWorld} label="Back to the globe?" arrival={false} />
       <ChickenPortalArrival engine={engine} />
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} />
+      {/* the trees in front of her (half see-through) */}
+      <ParquinhoForeground screens={pq.screens} fgRef={fgRef} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">

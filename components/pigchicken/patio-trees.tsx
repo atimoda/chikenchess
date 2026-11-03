@@ -1,7 +1,7 @@
 // Trees along the Pátio's scenes, in the Templo do Gongo's style (old courtyard pines with flat layered canopies and
 // plum trees in blossom), each one a different random variation: lean, size, canopy layout and a shade of its
 // palette. The randomness is seeded (the same trees on the server and in the browser, and for every player).
-// They stand on the ground in front of the far scenery and behind her and the platforms. Each tree is its own small
+// They stand on the ground in the foreground, in front of her, half see-through (ParquinhoForeground). Each tree is its own small
 // SVG so its breeze only repaints itself.
 import { memo } from "react"
 import { SCENE_W, WORLD_GROUND_Y } from "@/lib/pigchicken/world"

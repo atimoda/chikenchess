@@ -44,8 +44,6 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
       <ParallaxBackdrop worldW={width} />
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }} />
-      {/* trees in the temple's style along the Parquinho's scenes, in front of the far scenery */}
-      <PatioTrees screens={screens} />
       {debug && Array.from({ length: screens }, (_, s) => (
         <div key={`m${s}`} className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: s * SCENE_W }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1} <span style={{ color: ZONES[s % ZONES.length].color, opacity: 0.6 }}>· {zoneLabel(ZONES[s % ZONES.length])}</span></span>
@@ -76,7 +74,19 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
 }
 
 
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number }) {
+// The foreground: the Parquinho's trees in front of her, half see-through so the game still reads behind them.
+// A fixed layer above the chicken that ParquinhoPlay moves with the same camera as the world.
+export function ParquinhoForeground({ screens, fgRef }: { screens: number; fgRef: React.RefObject<HTMLDivElement | null> }) {
+  return (
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[202] overflow-hidden opacity-55">
+      <div ref={fgRef} className="absolute left-0 top-0 will-change-transform" style={{ width: worldScenes(screens) * SCENE_W, height: WORLD_GROUND_Y }}>
+        <PatioTrees screens={screens} />
+      </div>
+    </div>
+  )
+}
+
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -284,6 +294,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         // the parallax layers follow the camera at their own rates (parallax.tsx)
         worldRef.current.style.setProperty("--camx", String(Math.round(camX * 10) / 10))
       }
+      if (fgRef?.current) fgRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
 
       // ---------- aim ----------
       const act = engine.getActions()
@@ -537,7 +548,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setGroundHeight(groundHRef.current)
       if (worldRef.current) worldRef.current.style.transform = ""
     }
-  }, [engine, worldRef, spawnX])
+  }, [engine, worldRef, spawnX, fgRef])
 
   return (
     <>
