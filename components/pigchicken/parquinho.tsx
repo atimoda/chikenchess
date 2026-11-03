@@ -8,15 +8,17 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
-import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
+import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
 import { createCombat, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
 import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { INSTRUMENT_IDS, loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
+import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
 import { ALIEN_FRAMES, ALIEN_PATTERNS, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData } from "@/lib/pigchicken/enemies"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
+import { mixGain } from "@/lib/pigchicken/mixer"
 import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
@@ -130,13 +132,19 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const stickOwner = createMouseOwner(0)
     let heldStick: { stick: Stick; touch: boolean } | null = null
     let mouse: { x: number; y: number } | null = null
+    // the violin's bow: how far it has slid (0 frog .. 1 tip), which way it goes, and the mouse's travel that
+    // pushes it (px since the last frame; when the mouse rests, it bows on the beat by itself)
+    const bowing = { stroke: 0.5, dir: 1, travel: 0, movedAt: 0 }
     const mouseBtn = { fire: false, melee: false }
     let wheel = 0, slotPick = 0, escape = false
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return
       if (mouse) {
-        owner.moved(Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y), performance.now())
+        const moved = Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y)
+        owner.moved(moved, performance.now())
+        bowing.travel += moved
+        if (moved > 0) bowing.movedAt = performance.now()
         if (owner.owns) stickOwner.release()
       }
       mouse = { x: e.clientX, y: e.clientY }
@@ -174,6 +182,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
+    // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
+    let lead = 0, shake = 0, shakeT = 0, prevVy = 0
+    const shakePhase = [Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3]
     // the inventory wheel: open, left open by a quick tap of its button (sticky), when it opened, the slice under
     // the pointer / stick (-1 none); slotsShown: the bar's slot count the page knows
     const wh = { open: false, sticky: false, at: 0, hover: -1 }
@@ -277,7 +288,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- camera: only the crop changes with the screen, never the size of things ----------
       const worldX = camX + st.x
-      const next = st.held ? camX : cameraStep(camX, { mode: S.camera, worldX, viewW, worldW, dt, deadband: S.deadband, lag: S.lag })
+      // the look-ahead: the view leans toward the side she faces (and slides over when she turns around)
+      if (!st.held) lead = leadStep(lead, st.face, S.camera === "follow" ? S.lookAhead : 0, S.lookAheadSpeed, dt)
+      const next = st.held ? camX : cameraStep(camX, { mode: S.camera, worldX, viewW, worldW, dt, deadband: S.deadband, lag: S.lag, lead })
       const groundScreen = st.height - groundHRef.current
       const yr = cameraYRange(groundScreen)
       if (oy === null) oy = yr.lo
@@ -384,6 +397,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
         }
       }
+      // a jump shakes the aim for a moment (a super jump, crouch + jump, more): a wobble that fades out
+      if (!st.grounded && st.vy < -250 && st.vy < prevVy - 250) {
+        const amp = act.crouch ? S.superJumpShake : S.jumpShake
+        if (amp > 0 && amp >= shake) { shake = amp; shakeT = 0 }
+      }
+      prevVy = st.vy
+      if (shake > 0) {
+        shakeT += dt
+        const k = Math.max(0, 1 - shakeT / 0.45), t = shakeT * 2 * Math.PI
+        if (k <= 0) shake = 0
+        else {
+          const w = Math.sin(t * 13 + shakePhase[0]) * 0.55 + Math.sin(t * 21 + shakePhase[1]) * 0.3 + Math.sin(t * 34 + shakePhase[2]) * 0.15
+          const a = aim.angle + (shake * k * k * w * Math.PI) / 180
+          aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
+        }
+      }
       const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
         // brooding does not freeze her: "frente + chocar" walks at its own speed (0 keeps her still), aiming with the item
@@ -439,7 +468,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         sound: e => templeSounds.push(e),
       }
       temple.step(dt, io)
-      templeSounds.splice(0).forEach(e => playTempleSound(e, S.weaponVolume))
+      templeSounds.splice(0).forEach(e => playTempleSound(e, mixGain("effects")))
       const tp = temple.state.phase
       if (tp !== templeShown) { templeShown = tp; if (worldRef.current) worldRef.current.dataset.temple = tp }
       // a cleared stage: fireworks over the temple
@@ -455,22 +484,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const zone = inTemple ? temple.music?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
-      setMusicVolumes(S.noteVolume, S.ambienceVolume)
+      setMusicVolumes(mixGain("notes"), mixGain("ambience"))
       if (combat.music.zone !== zoneShown) { zoneShown = combat.music.zone; zoneBanner = 2.5 }
       zoneBanner = Math.max(0, zoneBanner - dt)
       const templeZone = combat.music.zone.id.startsWith("templo")
       events.forEach(e => {
-        if (S.ambienceVolume <= 0) return
+        if (mixGain("ambience") <= 0) return
         if (e.kind === "bar") drone.set(combat.music.chord()[0])
         if (e.kind === "step") {
           if (templeZone) templeAmbience(temple.music && combat.music.zone.id !== "templo" ? temple.music : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat())
           else ambience(combat.music.zone, e.n % 16, combat.music.secondsPerBeat())
         }
       })
-      if (S.ambienceVolume <= 0) drone.set(null)
+      if (mixGain("ambience") <= 0) drone.set(null)
 
       // ---------- sound ----------
-      setWeaponVolume(S.weaponVolume)
+      setWeaponVolume(mixGain("weapons"))
       combat.sounds.splice(0).forEach(e => playWeaponSound(e.kind, e.item))
       // aiming in (brood with an item): a soft sound on the weapons that have one
       if (aimLock && !wasLocked) playWeaponSound("aim", combat.inventory[combat.current]?.item ?? null)
@@ -480,6 +509,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
       // the world's things stay under the header, like the world itself
       const inWorld = () => { ctx.save(); ctx.beginPath(); ctx.rect(0, viewTop, viewW, st.height - viewTop); ctx.clip(); ctx.translate(0, camY) }
+      lookTargets.length = 0
+      lookTargets.push({ x: body.x, y: body.y - 170 * st.scale })
       inWorld()
       drawWorld(ctx, combat, camX)
       drawTempleShots(ctx, temple, camX)
@@ -490,11 +521,23 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.inventory[combat.current], sw = combat.swing
       const art = h ? ITEM_SVG[h.item] : undefined
-      engine.setHeld(art ? { svg: art, angle: ang, kick: combat.kick } : null)
+      // the violin: while it plays, the bow goes back and forth across the strings with the mouse's movement
+      // (a full stroke every BOW_STROKE_PX), or once a beat when the mouse rests or another control aims
+      if (combat.beam) {
+        const push = now - bowing.movedAt < 150 ? bowing.travel / BOW_STROKE_PX : dt / combat.music.secondsPerBeat()
+        bowing.stroke += bowing.dir * push
+        while (bowing.stroke > 1 || bowing.stroke < 0) {
+          if (bowing.stroke > 1) { bowing.stroke = 2 - bowing.stroke; bowing.dir = -1 } else { bowing.stroke = -bowing.stroke; bowing.dir = 1 }
+        }
+      }
+      bowing.travel = 0
+      engine.setHeld(art ? { svg: art, angle: ang, kick: combat.kick, bow: h && d.beam ? { x: VIOLIN_BOW_X, stroke: bowing.stroke } : null } : null)
       engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
       const muzzle = muzzleAt(ang)
       const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
-      const rx = d.turnRate > 0 || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? muzzle.y + ady * dist : aim.target.y
+      // (while the aim shakes the reticle shakes with it, off the cursor)
+      const free = d.turnRate > 0 || !aim.target || shake > 0
+      const rx = free || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = free || !aim.target ? muzzle.y + ady * dist : aim.target.y
       // weapons whose reticle shows where the shot lands: the path a shot fired now would take
       let path: { x: number; y: number }[] | null = null
       if (armed && ["laser", "impact", "grenade", "bow"].includes(d.reticle)) {
@@ -670,6 +713,11 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
   )
 }
 
+// the violin's bow crosses the strings between the bridge and the fingerboard: rig units along the violin from
+// her shoulder (the drawing's grip), and the mouse travel (px) for one full stroke of the bow
+const VIOLIN_BOW_X = -23
+const BOW_STROKE_PX = 260
+
 // ---------- drawing (canvas, screen pixels) ----------
 type Ctx = CanvasRenderingContext2D
 
@@ -834,6 +882,10 @@ function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
   ctx.restore()
 }
 
+// where the characters are (world coordinates, at their heads), set every frame: the aliens' eyes follow the
+// nearest one. Only her for now; online, every character on screen goes in here.
+const lookTargets: { x: number; y: number }[] = []
+
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
 const templeDraw: { temple: Temple | null; charges: Map<number, number> } = { temple: null, charges: new Map() }
 
@@ -856,7 +908,9 @@ function drawButton(ctx: Ctx, g: Combat["targets"][number], x: number) {
 
 function drawAlien(ctx: Ctx, g: Combat["targets"][number], x: number) {
   const d = g.data as EnemyData & { kind: "alien" }
-  const frame = ALIEN_FRAMES[Math.floor(g.animT / 0.4) % 2], p = ALIEN_PIXEL
+  // its eye looks at the character nearest to it
+  const look = lookDir({ x: g.x, y: g.y - g.h / 2 }, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets))
+  const frame = lookRows(ALIEN_FRAMES[Math.floor(g.animT / 0.4) % 2], look), p = ALIEN_PIXEL
   const left = x - g.w / 2, top = g.y - g.h
   ctx.save()
   if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.35) * 0.6
@@ -933,7 +987,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   combat.targets.forEach(g => {
     const x = X(g.x)
     if (g.state === "converted") return
-    if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat); return }
+    if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }
