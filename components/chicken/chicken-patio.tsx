@@ -124,7 +124,10 @@ export function ChickenPatio() {
   useEffect(() => {
     const entry = loadEntryMode()
     const saved = loadLobby()
-    setLobby(saved ? { ...saved, mode: entry } : createLobby({ name: "Player 1" }, [], Date.now(), entry))
+    const base = saved ? { ...saved, mode: entry } : createLobby({ name: "Player 1" }, [], Date.now(), entry)
+    // the Pátio's id in the address (an invite link or the editor's saved Pátio) is this lobby's id
+    const fromUrl = new URLSearchParams(window.location.search).get("lobby")
+    setLobby(fromUrl ? { ...base, id: fromUrl } : base)
     if (entry === "online") void joinOpenLobby().then(r => setToast(r.reason))
   }, [])
   useEffect(() => { if (lobby) saveLobby(lobby) }, [lobby])
