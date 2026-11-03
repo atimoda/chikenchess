@@ -12,6 +12,7 @@ export const CHANGELOG = [
         'Pátio da Galinha: cabeçalho transparente, o botão de voltar é o mesmo botão Globo das partidas, e árvores no estilo das do templo, cada uma diferente, ficam em primeiro plano nas cenas, meio transparentes para não esconder o jogo.',
         'Templo do Gongo: o terraço logo abaixo da balaustrada virou plataforma em todo o templo, e o aviso do gongo fica em cima da trave de madeira dele.',
         'Pátio da Galinha: novo painel de Players (ícone de pessoas no cabeçalho). Adicione players locais (até 13 no lobby), cada um com a própria galinha, e escolha qual input controla cada um: teclado principal, teclado secundário (setas, PgUp/PgDn, Ins/Home/End/Del), mouse e cada gamepad. Coluna Edit mode para o dono do lobby liberar quem edita o Pátio, e Remove para tirar players. Copy link copia o convite; o modo online e o convite a amigos chegam quando o servidor voltar.',
+        'Pátio da Galinha: cada player local tem o próprio inventário e pega, troca e usa armas e instrumentos. Os inventários ficam no canto superior direito, um embaixo do outro, com o avatar de cada player ao lado (clique para abrir o vestiário dele).',
         'Globo: embaixo do botão do portal do Pátio, um switch online / local escolhe como entrar (local por padrão). No cabeçalho do Pátio, setas para passar entre os lobbies públicos (ativas no modo online).',
       ] },
       { title: 'Galinha', items: [
