@@ -23,7 +23,7 @@ import { ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
-import { DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
+import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
 
@@ -188,7 +188,7 @@ export function ChickenPatio() {
           <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
           <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
           <PqRange label="Andar de costas" unit="%" min={20} max={100} step={5} value={Math.round(pq.backpedal * 100)} onChange={v => setPqValue("backpedal", v / 100)} hint="Velocidade ao andar mirando para trás" />
-          <PqRange label="Mouse parado devolve a mira" unit="s" min={0} max={5} step={0.25} value={pq.mouseIdle} onChange={v => setPqValue("mouseIdle", v)} />
+          <PqRange label="Mira parada volta para o analógico esquerdo" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo volta a mirar (as setas não miram). No fim da barra (∞) a mira fica sempre onde você deixou" />
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
           <PqRange label="Volume das armas" unit="%" min={0} max={100} step={5} value={Math.round(pq.weaponVolume * 100)} onChange={v => setPqValue("weaponVolume", v / 100)} />
           <PqRange label="Volume dos instrumentos" unit="%" min={0} max={100} step={5} value={Math.round(pq.noteVolume * 100)} onChange={v => setPqValue("noteVolume", v / 100)} hint="Notas e as respostas dos inimigos" />
@@ -306,10 +306,10 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
   )
 }
 
-function PqRange({ label, unit, min, max, step, value, onChange, hint }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string }) {
+function PqRange({ label, unit, min, max, step, value, onChange, hint, format }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string; format?: (v: number) => string }) {
   return (
     <label className="grid gap-1" title={hint}>
-      <span className="flex justify-between gap-2"><span>{label}</span><output className="tabular-nums text-white">{value}{unit ? ` ${unit}` : ""}</output></span>
+      <span className="flex justify-between gap-2"><span>{label}</span><output className="tabular-nums text-white">{format ? format(value) : `${value}${unit ? ` ${unit}` : ""}`}</output></span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} onPointerUp={e => e.currentTarget.blur()} className="accent-[var(--primary)]" />
     </label>
   )

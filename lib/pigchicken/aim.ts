@@ -63,8 +63,8 @@ export function resolveAim(i: AimInput): Aim {
   return fromVec(i.face || 1, 0, 'facing', 1, false)
 }
 
-// The mouse takes the aim after moving `grabPx`; it gives it back when the arrows / left stick are used and the
-// mouse has been still for `idleS` seconds.
+// The mouse (or the aim stick) takes the aim after moving `grabPx`; it gives it back when the arrows / left stick are
+// used and it has been still for `idleS` seconds. `idleS` = Infinity: it never gives it back (the aim stays put).
 export function createMouseOwner(grabPx = 8) {
   let owns = false, travel = 0, lastMove = -Infinity
   return {
@@ -74,8 +74,9 @@ export function createMouseOwner(grabPx = 8) {
       if (travel >= grabPx) owns = true
     },
     otherAim(now: number, idleS: number) {
-      if (owns && now - lastMove >= idleS * 1000) { owns = false; travel = 0 }
+      if (owns && Number.isFinite(idleS) && now - lastMove >= idleS * 1000) { owns = false; travel = 0 }
     },
+    release() { owns = false; travel = 0 },
   }
 }
 

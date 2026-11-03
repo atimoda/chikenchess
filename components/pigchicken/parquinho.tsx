@@ -112,13 +112,20 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let controls = loadChickenControls()
     const unsub = subscribeChickenControls(c => { controls = c })
     const owner = createMouseOwner()
+    // the aim stick (gamepad right stick or the on-screen one) keeps its last direction after it is let go,
+    // with the same release rule as the mouse; whichever of the two moved last holds the aim
+    const stickOwner = createMouseOwner(0)
+    let heldStick: { stick: Stick; touch: boolean } | null = null
     let mouse: { x: number; y: number } | null = null
     const mouseBtn = { fire: false, melee: false }
     let wheel = 0, slotPick = 0, escape = false
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return
-      if (mouse) owner.moved(Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y), performance.now())
+      if (mouse) {
+        owner.moved(Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y), performance.now())
+        if (owner.owns) stickOwner.release()
+      }
       mouse = { x: e.clientX, y: e.clientY }
     }
     const onDown = (e: PointerEvent) => {
@@ -321,8 +328,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const armed = !!combat.inventory[combat.current]
       const aimLock = act.down && armed && st.grounded
       const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || (act.down && !aimLock) ? 1 : 0) - (act.up ? 1 : 0) }
-      // only the left stick takes the aim back from a still mouse: the movement keys never aim
-      if (leftStick) owner.otherAim(now, S.mouseIdle)
+      // the wheel's stick choices are not aim: while it is open the aim stick is not held
+      const liveStick = wh.open ? null : rightStick ?? touchAim.current
+      if (liveStick) { heldStick = { stick: liveStick, touch: !rightStick }; stickOwner.moved(1, now); owner.release() }
+      // only the left stick takes the aim back from a still mouse / aim stick: the movement keys never aim
+      if (leftStick) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
+      const held = !liveStick && stickOwner.owns ? heldStick : null
       // her shoulder as drawn (it turns with her body on walls)
       const origin = st.shoulder
       // a quick tap on the on-screen right stick: aim at the nearest enemy (dummies when none is left) and fire for a moment
@@ -340,7 +351,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       // while the wheel is open the mouse and the right stick choose items, not the aim
       aim = resolveAim({
-        rightStick: wh.open ? null : rightStick, mouse: autoAt ?? (owner.owns && !wh.open ? mouse : null), touch: wh.open ? null : touchAim.current, leftStick, keys, origin,
+        rightStick: wh.open ? null : rightStick ?? (held && !held.touch ? held.stick : null), mouse: autoAt ?? (owner.owns && !wh.open ? mouse : null),
+        touch: wh.open ? null : touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
         face: st.face, grounded: st.grounded, aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
       })
       const d = combat.def()
