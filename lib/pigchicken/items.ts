@@ -23,6 +23,7 @@ export type ItemDef = {
   family: string
   reticle: Reticle
   pathShow: PathShow
+  landShow: PathShow // launchers and grenades: where it lands and the blast's circle (same options as the path)
   // firing
   fireMode: FireMode
   rate: number // shots per second
@@ -105,7 +106,7 @@ const NO_MUSIC = {
 }
 
 const PISTOL: ItemDef = {
-  id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off',
+  id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off', landShow: 'always',
   fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, chargeTime: 0, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
@@ -234,7 +235,7 @@ const KEYS: ItemDef = {
 }
 // Percussão → grenade: a tambourine thrown with a fuse; it jingles and lets out notes in a circle
 const TAMBOURINE: ItemDef = {
-  ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade',
+  ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
   mag: 3, fuse: 1.6, explodeRadius: 120, explodeDamage: 20, size: 14, muzzleX: 14, muzzleY: 0, length: 20,
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10,
 }
@@ -335,6 +336,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
       // saved before the sniper fired on release (v2): it takes the new mode
       if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && saved._v !== 2)) out[id].fireMode = s.fireMode
       if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
+      if (PATH_SHOWS.some(o => o.value === s.landShow)) out[id].landShow = s.landShow
       ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
       if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
       if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet

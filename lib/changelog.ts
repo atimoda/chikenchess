@@ -11,6 +11,7 @@ export const CHANGELOG = [
         'Novo botão Arpeggiator na linha de botões abaixo do MIDI, na partida e no Criativo: um clique transforma as notas da variação num arpejo com a configuração atual. Segure o botão (ou clique com o botão direito) para abrir as configurações: ordem (Up, Down, Up/Down, As played, Walk, Random, Chord), Rate com tercina e pontuada, Octaves, Length, Gate, Swing, Chord/Above e o Rhythm com uma barra de acento por passo. Mexer nas configurações reaplica na hora, sempre a partir do MIDI original, sem acumular.',
       ] },
       { title: 'Pátio', items: [
+        'PigChicKen: no Pandeiro, o X de onde ele cai e o círculo do dano só aparecem enquanto você segura Atirar. Cada arma de explosão ganhou a opção “Onde cai (círculo do dano)” no painel de itens (Sempre, Com o tiro segurado, …); o Lança-foguetes e as outras continuam mostrando o tempo todo.',
         'Pátio da Galinha: o portal agora fica parado perto do começo do Pátio, ela chega ao lado dele, e entrar nele leva de volta ao globo (“Back to the globe?”). Nos dois portais, com o botão à mostra, apertar correr ou pegar (Shift / E, X no gamepad) também confirma a entrada.',
         'Pátio da Galinha: chegar correndo num portal (segurando correr enquanto anda) já entra direto, sem parar para confirmar.',
         'Pátio da Galinha: segurando Pegar (E, X no gamepad, ou o botão Pegar no toque) enquanto anda, ela pega sozinha cada item por onde passa, como se apertasse Pegar em cima de cada um.',
