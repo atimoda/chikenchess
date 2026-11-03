@@ -5,7 +5,7 @@
 // (admin account only) saves it for every screen that draws the chicken.
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Crosshair, Gamepad2, Maximize, Minimize, SlidersHorizontal, Swords, X } from "lucide-react"
+import { Crosshair, Gamepad2, Maximize, Minimize, SlidersHorizontal, Swords, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -15,17 +15,24 @@ import {
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait } from "./chicken-layer"
-import { ChickenPortalArrival } from "./chicken-portal"
+import { ChickenPortal, ChickenPortalArrival, type ChickenPortalWorld } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { GlobeGridIcon } from "@/components/game-presentation"
+import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
+// the portal back to the globe: near the start of the Pátio, before the weapons' racks (world units)
+const PORTAL_X = 100, PORTAL_D = 150
+// she arrives (and starts) just to its right, clear of the ring
+const SPAWN_X = PORTAL_X + 110
 
 
 function readDraft(): ChickenConfig | null {
@@ -74,6 +81,8 @@ export function ChickenPatio() {
   const [saving, setSaving] = useState(false)
   const [engine, setEngine] = useState<ChickenEngine | null>(null)
   const worldRef = useRef<HTMLDivElement>(null)
+  const fgRef = useRef<HTMLDivElement>(null)
+  const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: WORLD_GROUND_Y, d: PORTAL_D }), [])
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
@@ -138,10 +147,16 @@ export function ChickenPatio() {
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]">
-      <header className="pointer-events-auto absolute inset-x-0 top-0 z-[120] flex items-center gap-2 border-b border-white/10 bg-[#05060c]/90 px-4 py-2.5 backdrop-blur">
-        <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo" className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+      <header className="pointer-events-auto absolute inset-x-0 top-0 z-[120] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)]" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
+        {/* the same Globe button as the chess matches' header */}
+        <Button
+          asChild
+          variant="outline"
+          size="icon"
+          className="shrink-0 text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all"
+        >
+          <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo"><GlobeGridIcon /></Link>
+        </Button>
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-mono text-sm font-bold">Pátio da Galinha</h1>
           <p className="truncate font-mono text-[11px] text-[#93a79a]">{savedLabel}</p>
@@ -174,8 +189,11 @@ export function ChickenPatio() {
       <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
+      <ChickenPortal engine={engine} href="/" world={portalWorld} label="Back to the globe?" arrival={false} />
       <ChickenPortalArrival engine={engine} />
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} />
+      {/* the trees in front of her (half see-through) */}
+      <ParquinhoForeground screens={pq.screens} fgRef={fgRef} />
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">

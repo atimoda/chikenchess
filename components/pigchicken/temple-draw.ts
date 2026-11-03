@@ -312,15 +312,16 @@ export function drawGong(ctx: Ctx, g: Target, x: number, temple: Temple) {
   // how many strikes so far: little lamps over the frame
   if (waiting) {
     for (let i = 0; i < s.gongNeed; i++) {
-      const lx = x + (i - (s.gongNeed - 1) / 2) * 22, ly = ground - 258
+      const lx = x + (i - (s.gongNeed - 1) / 2) * 22, ly = ground - 252
       ctx.fillStyle = i < s.gongHits ? "#ffd166" : "rgba(255,255,255,0.18)"
       ctx.beginPath(); ctx.arc(lx, ly, 6, 0, Math.PI * 2); ctx.fill()
     }
     const label = s.phase === "idle" ? "BATA NO GONGO" : s.phase === "cleared" ? `FASE ${s.stage + 2}: BATA NO GONGO` : s.phase === "failed" ? "TENTAR DE NOVO" : "JOGAR DE NOVO"
+    // the label sits on the frame's top beam, like a plaque on the wood
     ctx.font = "bold 12px ui-monospace, monospace"; ctx.textAlign = "center"
-    const w = ctx.measureText(label).width + 14
-    ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, ground - 290, w, 18)
-    ctx.fillStyle = "#ffd166"; ctx.fillText(label, x, ground - 277)
+    const w = Math.min(176, ctx.measureText(label).width + 14)
+    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x - w / 2, ground - 233, w, 18)
+    ctx.fillStyle = "#ffd166"; ctx.fillText(label, x, ground - 220, 168)
   }
 }
 

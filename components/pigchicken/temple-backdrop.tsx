@@ -32,7 +32,7 @@ function roofTop(cx: number, yTop: number, top: number, bot: number, yBot: numbe
 // a roof's lower edge (the eaves' line), straight
 const eaves = (cx: number, bot: number, yBot: number, fly = 26): Pt[] => [[cx - bot - fly + 10, yBot + 6], [cx + bot + fly - 10, yBot + 6]]
 
-// The roofs and eaves she can stand on (scene units): one-way floors with the roofs' own curves. The main hall's
+// The roofs, eaves and the terrace she can stand on (scene units): one-way floors with the roofs' own curves. The main hall's
 // two roofs and their eaves, and the right pavilion's pyramid and lower roof (the faded far pavilion is scenery).
 export const TEMPLE_ROOF_LINES: { id: string; pts: Pt[] }[] = [
   { id: "roof-main-top", pts: roofTop(660, 400, 400 * 0.55, 400 + 70, 524, 30) },
@@ -41,6 +41,8 @@ export const TEMPLE_ROOF_LINES: { id: string; pts: Pt[] }[] = [
   { id: "roof-main-low-eaves", pts: eaves(660, 580, 642, 34) },
   { id: "roof-right-top", pts: [[1560, 556], ...quad([1560, 556], [1590, 552], [1610, 540], 3), [1730, 452], [1850, 540], ...quad([1850, 540], [1870, 552], [1900, 556], 3)] },
   { id: "roof-right-low", pts: roofTop(1730, 596, 70, 170, 650, 30) },
+  // the terrace: the glazed coping on top of the red wall, under the balustrade, along the whole temple
+  { id: "terrace", pts: [[0, 842], [SCENE_W, 842]] },
 ]
 // "x,y x,y …" for data-chicken-line
 export const lineAttr = (pts: Pt[]) => pts.map(([x, y]) => `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`).join(" ")

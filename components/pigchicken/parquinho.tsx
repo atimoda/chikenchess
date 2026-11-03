@@ -25,6 +25,7 @@ import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib
 import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
+import { PatioTrees } from "@/components/pigchicken/patio-trees"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
@@ -73,7 +74,19 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
 }
 
 
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean }) {
+// The foreground: the Parquinho's trees in front of her, half see-through so the game still reads behind them.
+// A fixed layer above the chicken that ParquinhoPlay moves with the same camera as the world.
+export function ParquinhoForeground({ screens, fgRef }: { screens: number; fgRef: React.RefObject<HTMLDivElement | null> }) {
+  return (
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[202] overflow-hidden opacity-55">
+      <div ref={fgRef} className="absolute left-0 top-0 will-change-transform" style={{ width: worldScenes(screens) * SCENE_W, height: WORLD_GROUND_Y }}>
+        <PatioTrees screens={screens} />
+      </div>
+    </div>
+  )
+}
+
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -249,7 +262,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const S = settingsRef.current
       let st = engine.getState()
       const viewW = st.width, worldW = SCENE_W * worldScenes(S.screens)
-      if (!placed) place()
+      if (!placed) {
+        place()
+        // she starts by the entrance portal (world x), not in the middle of the screen
+        if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getState() }
+      }
       if (templeFor !== S.screens) placeTemple(S.screens)
       if (boxesFor !== S.screens) {
         boxesFor = S.screens
@@ -277,6 +294,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         // the parallax layers follow the camera at their own rates (parallax.tsx)
         worldRef.current.style.setProperty("--camx", String(Math.round(camX * 10) / 10))
       }
+      if (fgRef?.current) fgRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
 
       // ---------- aim ----------
       const act = engine.getActions()
@@ -530,7 +548,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setGroundHeight(groundHRef.current)
       if (worldRef.current) worldRef.current.style.transform = ""
     }
-  }, [engine, worldRef])
+  }, [engine, worldRef, spawnX, fgRef])
 
   return (
     <>
