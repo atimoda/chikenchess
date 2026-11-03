@@ -180,9 +180,9 @@ export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, 
               <th className="w-12 px-3 py-2" />
               <th className="px-2 py-2">Player</th>
               {columns.map(d => (
-                <th key={d} className={cn("whitespace-nowrap px-2 py-2 text-center", !present.has(d) && "opacity-50")} title={present.has(d) ? undefined : "Desconectado"}>{inputDeviceLabel(d)}</th>
+                <th key={d} className={cn("px-2 py-2 text-center leading-tight", !present.has(d) && "opacity-50")} title={present.has(d) ? undefined : "Desconectado"}>{inputDeviceLabel(d)}</th>
               ))}
-              <th className="whitespace-nowrap px-2 py-2 text-center" title="Quem pode editar o Pátio quando o Modo Edição está ligado">Edit mode</th>
+              <th className="px-2 py-2 text-center leading-tight" title="Quem pode editar o Pátio quando o Modo Edição está ligado">Edit mode</th>
               <th className="whitespace-nowrap px-3 py-2 text-center">Remove</th>
             </tr>
           </thead>
@@ -269,11 +269,11 @@ export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, 
         </table>
         {invite && <InviteFriends lobbyId={lobby.id} onNote={setNote} />}
       </div>
-      <p className="shrink-0 border-t border-white/10 px-4 py-2 text-[10px] leading-relaxed text-[#93a79a]">
-        {note ?? (full
-          ? `Lobby cheio (${LOBBY_MAX} players).`
-          : "Cada coluna é um input deste computador: marque qual player ele controla. Um player sem input chega mas fica parado. Por enquanto só o Player 1 usa itens e a câmera segue ele.")}
-      </p>
+      {(note || full) && (
+        <p className="shrink-0 border-t border-white/10 px-4 py-2 text-[10px] leading-relaxed text-[#93a79a]">
+          {note ?? `Lobby cheio (${LOBBY_MAX} players).`}
+        </p>
+      )}
     </FloatingPanel>
   )
 }

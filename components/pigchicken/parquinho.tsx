@@ -180,6 +180,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // camX: world x at the screen's left edge; oy: screen y of world y = 0 (null until the first frame)
     let camX = 0, oy: number | null = null, last = performance.now(), raf = 0
     let prev: Partial<Record<ChickenAction, boolean>> = {}
+    // the other local players' actions in the last frame (presses are edges)
+    const extraPrev = new Map<string, Partial<Record<ChickenAction, boolean>>>()
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
     // the inventory wheel: open, left open by a quick tap of its button (sticky), when it opened, the slice under
@@ -448,6 +450,38 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy))
 
+      // ---------- the other local players: their own items (a loadout each), in the same world ----------
+      const extraList = extras?.current ? [...extras.current.entries()] : []
+      extraList.forEach(([id, eng]) => {
+        const xs = eng.getState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
+        combat.use(id)
+        const xd = combat.def(), xArmed = !!combat.inventory[combat.current]
+        // aim: their gamepad's right stick; else up (looking up) or straight ahead
+        const devs = eng.getDevices()
+        const rs = stickFor(devs, 1, an.deadzoneR)
+        const ahead = xs.face >= 0 ? 0 : Math.PI
+        const angle = rs ? Math.atan2(rs.y, rs.x) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
+        const xo = xs.shoulder
+        const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
+        let xpick = 0
+        if (xa.nextItem && !xp.nextItem) xpick = 1
+        if (xa.prevItem && !xp.prevItem) xpick = -1
+        const xin = {
+          fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
+          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab,
+        }
+        extraPrev.set(id, xa)
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false })
+        eng.setGame({ moveLock: false, aimFace: null, backpedal: S.backpedal, speedMult: xd.weight })
+        const xh = combat.inventory[combat.current], xsw = combat.swing
+        const xart = xh ? ITEM_SVG[xh.item] : undefined
+        eng.setHeld(xart ? { svg: xart, angle: combat.aimAngle, kick: combat.kick } : null)
+        eng.setSwing(xsw ? { angle: swingAngle(xsw), reach: xsw.range, t: Math.min(1, xsw.t / (xsw.time * 0.3), (xsw.time - xsw.t) / (xsw.time * 0.3)) } : null)
+      })
+      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); combat.drop(id) } })
+      combat.use("p1")
+
       // ---------- the temple's mini-game ----------
       const tL = templeScene(S.screens) * SCENE_W
       const inTemple = body.x >= tL
@@ -524,12 +558,20 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       inWorld()
       drawBeam(ctx, combat, camX)
+      extraList.forEach(([id]) => { combat.use(id); drawBeam(ctx, combat, camX) })
+      combat.use("p1")
       ctx.restore()
+      extraList.forEach(([id, eng]) => { combat.use(id); drawSwing(ctx, combat, eng.getState().shoulder) })
+      combat.use("p1")
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
-      drawInventory(ctx, combat, getTouchLayout().offsets.inventory)
+      // one inventory per local player, stacked in the top right corner (the avatars sit to their right)
+      const invOff = getTouchLayout().offsets.inventory
+      drawInventory(ctx, combat, 0, invOff)
+      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, invOff) })
+      combat.use("p1")
       if (wh.open || wheelDrawn) { wctx.clearRect(0, 0, window.innerWidth, window.innerHeight); wheelDrawn = false }
       if (wh.open) { drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110)); wheelDrawn = true }
       drawTempleHud(ctx, temple, combat.music, inTemple, INV_TOP + INV_SIZE + 12)
@@ -580,7 +622,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       {/* the inventory bar is drawn on the canvas; these invisible slots sit on top of it so a click or a tap
           equips that item. In edit mode the Movable's drag handle covers them, so dragging never equips. */}
       {engine && (
-        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ left: `calc(50% - ${INV_W(invSlots) / 2}px)`, top: INV_TOP, width: INV_W(invSlots), height: INV_SIZE }}>
+        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE }}>
           {!editing && (
             <div data-chicken-ignore className="flex h-full" style={{ gap: INV_GAP }}>
               {Array.from({ length: invSlots }, (_, i) => (
@@ -1136,16 +1178,21 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
 
 const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
 const INV_W = (n: number) => n * INV_SIZE + (n - 1) * INV_GAP
+// the inventories' stack: top right, one row per local player, the player's avatar at the right end of the row
+export const INV_STACK = { top: 64, right: 12, size: INV_SIZE, rowGap: 6, avatarGap: 6 }
+const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_STACK.rowGap)
+const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
 // the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls).
 // Only her items show, plus one empty slot while there is room (instruments, weapons, then the other items).
 // The slots touch each other, with a thin line between them; the current one is outlined in yellow.
-function drawInventory(ctx: Ctx, combat: Combat, offset?: { x: number; y: number }) {
+function drawInventory(ctx: Ctx, combat: Combat, row: number, offset?: { x: number; y: number }) {
   const slots = combat.inventory, n = slots.length
   const size = INV_SIZE, w = INV_W(n)
-  const x0 = Math.round((window.innerWidth - w) / 2 + (offset?.x ?? 0)), y = INV_TOP + (offset?.y ?? 0)
-  const numbers = desktopPointer?.matches ?? true
+  const x0 = Math.round(window.innerWidth - invRight - w + (offset?.x ?? 0)), y = invRowY(row) + (offset?.y ?? 0)
+  // the slot numbers (keys 1-9) are the first player's
+  const numbers = row === 0 && (desktopPointer?.matches ?? true)
   ctx.save()
   ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "left"
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x0, y, w, size)

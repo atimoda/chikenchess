@@ -14,7 +14,7 @@ import {
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
-import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait } from "./chicken-layer"
+import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, ChickenPortalArrival, type ChickenPortalWorld } from "./chicken-portal"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
@@ -103,6 +103,7 @@ export function ChickenPatio() {
   // whose look the vestiário edits: null the first player (the central configuration's draft), else a local player
   const [vestFor, setVestFor] = useState<string | null>(null)
   const extraEngines = useRef(new Map<string, ChickenEngine>())
+  const invOffset = useTouchLayout().offsets.inventory
   // a short notice under the header (lobby rules, online unavailable)
   const [toast, setToast] = useState<string | null>(null)
   useEffect(() => {
@@ -243,16 +244,18 @@ export function ChickenPatio() {
         <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>
-        <button type="button" aria-label="Vestiário" aria-pressed={vestOpen && !vestFor} title={meName ? `Vestiário · ${meName}` : "Vestiário"} onClick={() => { if (vestOpen && !vestFor) setVestOpen(false); else openVestiario(null) }} className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen && !vestFor ? "border-primary" : "border-primary/50")}>
-          <ChickenHeadIcon look={draft.look} />
-        </button>
-        {/* one more avatar for each local player */}
-        {others.map(p => (
-          <button key={p.id} type="button" aria-label={`Vestiário · ${p.name}`} title={`Vestiário · ${p.name}`} onClick={() => { if (vestOpen && vestFor === p.id) setVestOpen(false); else openVestiario(p.id) }} className={cn("-ml-3 h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", vestOpen && vestFor === p.id ? "border-primary" : "border-white/30")}>
-            {p.look && <ChickenHeadIcon look={p.look} />}
-          </button>
-        ))}
       </header>
+      {/* the avatars: one per local player, at the right end of that player's inventory (drawn by the Parquinho) */}
+      <div data-chicken-ignore className="pointer-events-none fixed z-[190] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
+        {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1" }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name }))].map(row => {
+          const on = vestOpen && vestFor === row.id
+          return (
+            <button key={row.id ?? "me"} type="button" aria-label={`Vestiário · ${row.name}`} aria-pressed={on} title={`Vestiário · ${row.name}`} onClick={() => { if (on) setVestOpen(false); else openVestiario(row.id) }} className={cn("pointer-events-auto shrink-0 overflow-hidden rounded-full border-2 bg-[#101713] transition-colors hover:border-primary", on ? "border-primary" : "border-primary/50")} style={{ width: INV_STACK.size, height: INV_STACK.size }}>
+              <ChickenHeadIcon look={row.look} />
+            </button>
+          )
+        })}
+      </div>
       {toast && (
         <div role="status" className="pointer-events-none fixed left-1/2 top-16 z-[330] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-lg border border-amber-300/40 bg-black/80 px-4 py-2 text-center font-mono text-xs text-amber-100 backdrop-blur animate-in fade-in">
           {toast}

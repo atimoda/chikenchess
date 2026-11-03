@@ -28,7 +28,7 @@ export function sortDevices(list: InputDeviceId[]) {
 export const SECONDARY_KEYBOARD_FALLBACK: Partial<Record<ChickenAction, string[]>> = {
   left: ['Key:ArrowLeft'], right: ['Key:ArrowRight'], up: ['Key:ArrowUp'],
   down: ['Key:ControlRight'], crouch: ['Key:PageDown', 'Key:ArrowDown'], jump: ['Key:PageUp'], run: ['Key:ShiftRight'],
-  fire: ['Key:Insert'], melee: ['Key:Home'], throw: ['Key:End'], nextItem: ['Key:Delete'], prevItem: ['Key:Backslash'], reload: ['Key:Backspace'],
+  fire: ['Key:Insert'], melee: ['Key:Home'], grab: ['Key:AltRight'], throw: ['Key:End'], nextItem: ['Key:Delete'], prevItem: ['Key:Backslash'], reload: ['Key:Backspace'],
 }
 
 const has2 = (c: ChickenControls): c is ChickenControls & { keys2: Record<ChickenAction, Slots> } => !!(c as { keys2?: unknown }).keys2

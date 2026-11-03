@@ -42,6 +42,7 @@ export type ChickenEngine = {
   impulse: (vx: number, vy: number) => void
   // the input devices this chicken listens to (local players: each drives their own); null = every device
   setDevices: (devices: InputDeviceId[] | null) => void
+  getDevices: () => InputDeviceId[] | null
   // her look, apart from the central configuration's (another local player's chicken); null follows the configuration
   setLook: (look: ChickenLook | null) => void
   // falls from above the screen at x (screen px): a player arriving in the lobby
@@ -1143,6 +1144,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       rebind()
       held.clear(); pressed.clear(); gameTaps.clear(); pad = {}
     },
+    getDevices: () => devices,
     setLook(next) {
       if (JSON.stringify(next) === JSON.stringify(ownLook)) return
       ownLook = next
