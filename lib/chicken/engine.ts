@@ -9,7 +9,8 @@
 import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
-import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { CHICKEN_ACTIONS, KEYBOARD_INPUT_TYPES, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { mixGain } from '../pigchicken/mixer'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -29,8 +30,11 @@ export type ChickenEngine = {
   setGroundHeight: (h: number) => void
   setGame: (game: ChickenGame) => void
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
-  // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units
-  setHeld: (held: { svg: string; angle: number; kick: number } | null) => void
+  // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
+  // The wing turns with it: its tip follows the aim.
+  // `bow`: a bow played across it (the violin), held by the wing: `x` is where it crosses the strings (rig units
+  // along the item), `stroke` 0..1 how far the bow has slid (0: played at its frog, 1: at its tip)
+  setHeld: (held: { svg: string; angle: number; kick: number; bow?: { x: number; stroke: number } | null } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in.
   setSwing: (swing: { angle: number; reach: number; t: number } | null) => void
@@ -66,6 +70,17 @@ const legMarkup = (k: 'Front' | 'Back', x: number) => `
       </g>
     </g>
   </g></g>`
+// the violin's bow, drawn from its frog at (0, 0) up to its tip at (0, -BOW_LEN): a thin curved stick, the
+// pale hair beside it, the dark frog with its pearl eye
+const BOW_LEN = 118
+// the bow crosses the strings a little off square, its frog toward her
+const BOW_TILT = 10
+const BOW_MARKUP = `
+  <path d="M1.5 -3 L1.5 ${-BOW_LEN + 5}" stroke="#efe6cf" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M-1 4 Q-4.5 ${-BOW_LEN / 2} -1 ${-BOW_LEN}" fill="none" stroke="#6b3f1f" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M-1.5 ${-BOW_LEN} L3 ${-BOW_LEN + 1.5} L2.5 ${-BOW_LEN + 6} Z" fill="#6b3f1f"/>
+  <rect x="-2.5" y="-5" width="6.5" height="11" rx="1.5" fill="#1d1a18"/>
+  <circle cx="0.8" cy="0.5" r="1.3" fill="#f4f1e8"/>`
 const SVG_MARKUP = `
   <defs>
     <clipPath id="chk-wingClip"><path d="${LOOK_ART.WING}"/></clipPath>
@@ -86,7 +101,7 @@ const SVG_MARKUP = `
         </g>
       </g>
       <g data-part="wing"><g data-part="artWing"></g></g>
-      <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"></g></g>
+      <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"><g data-part="heldArt"></g><g data-part="heldBow" style="display:none">${BOW_MARKUP}</g></g></g>
     </g>
   </g>`
 
@@ -110,7 +125,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldArt', 'heldBow'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -158,9 +173,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
   const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>()
   let pad: Partial<Record<ChickenAction, boolean>> = {}
-  const input = (a: ChickenAction) => controls.keys[a].some(t => t && held.has(t)) || !!pad[a] || !!virt[a]
-  const tapped = (a: ChickenAction) => controls.keys[a].some(t => t && pressed.has(t)) || virtTapped.has(a)
-  const usedKey = (tok: string) => CHICKEN_ACTIONS.some(a => controls.keys[a.key].includes(tok))
+  // every keyboard input type (primary and secondary) drives this chicken for now; the players panel will split them
+  const keyBound = (a: ChickenAction, on: Set<string>) => KEYBOARD_INPUT_TYPES.some(k => controls[k][a].some(t => t && on.has(t)))
+  const input = (a: ChickenAction) => keyBound(a, held) || !!pad[a] || !!virt[a]
+  const tapped = (a: ChickenAction) => keyBound(a, pressed) || virtTapped.has(a)
+  const usedKey = (tok: string) => CHICKEN_ACTIONS.some(a => KEYBOARD_INPUT_TYPES.some(k => controls[k][a.key].includes(tok)))
   const onKeyDown = (e: KeyboardEvent) => {
     ensureAudio()
     if (isChickenControlsListening() || isTextField(e.target) || (e.target as HTMLElement | null)?.closest?.('[role="dialog"], [role="alertdialog"]')) return
@@ -216,13 +233,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     const src = actx.createBufferSource(); src.buffer = buffers[name]
     src.playbackRate.value = 1 + (Math.random() * 2 - 1) * R.pitchJitter / 100
-    const gain = actx.createGain(); gain.gain.value = 0.8 * R.volume * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
+    const gain = actx.createGain(); gain.gain.value = 0.8 * R.volume * mixGain('chicken') * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
     src.connect(gain); gain.connect(actx.destination); src.start(t)
     lastVoice = { src, gain }
   }
 
   // ---------- game hooks ----------
-  let heldItem: { svg: string; angle: number; kick: number } | null = null, heldSvg = ''
+  let heldItem: { svg: string; angle: number; kick: number; bow?: { x: number; stroke: number } | null } | null = null, heldSvg = ''
   let swingNow: { angle: number; reach: number; t: number } | null = null
   // screen angle (degrees) -> her rig: undo the root's turn, the mirror when facing left, and the body's lean
   const rigAngle = (screenDeg: number) => {
@@ -965,7 +982,24 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.head.setAttribute('transform', rot('head', pose.head))
     // the swing: the wing tip points along the blow and the wing stretches out to the end of its reach
     let tipRig = 0, wingLen = 0
-    if (swingNow) {
+    // the held item's turn in her rig (and its mirror when it points behind her)
+    const heldA = heldItem && !swingNow ? rigAngle(heldItem.angle * DEG) : 0
+    const heldFlip = Math.abs(heldA) > 90 ? -1 : 1
+    // the bow: it slides across the strings and the wing holds it by the frog (its tip reaches the frog)
+    const bow = heldItem && !swingNow ? heldItem.bow : null
+    el.heldBow.style.display = bow ? '' : 'none'
+    if (bow) {
+      const ux = Math.cos((90 + BOW_TILT) / DEG), uy = Math.sin((90 + BOW_TILT) / DEG)
+      const along = 14 + clamp(bow.stroke, 0, 1) * (BOW_LEN - 28)
+      const fx = bow.x + ux * along, fy = uy * along
+      el.heldBow.setAttribute('transform', `translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(${BOW_TILT})`)
+      // the frog in her body's frame, from the shoulder: the held item's own transform applied to it
+      const qx = fx - heldItem!.kick, qy = fy * heldFlip, r = heldA / DEG
+      const vx = qx * Math.cos(r) - qy * Math.sin(r), vy = qx * Math.sin(r) + qy * Math.cos(r)
+      const b = Math.atan2(vy, vx) * DEG, stretch = clamp(Math.hypot(vx, vy) / WING_TIP_LEN, 0.6, 1.5)
+      const [px, py] = PIV.wing
+      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${stretch.toFixed(3)} 1) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+    } else if (swingNow) {
       const e = smooth(clamp(swingNow.t, 0, 1))
       const rest = WING_TIP_DEG + pose.wing
       const target = rigAngle(swingNow.angle * DEG)
@@ -975,12 +1009,19 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       tipRig = b
       const [px, py] = PIV.wing
       el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / WING_TIP_LEN).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+    } else if (heldItem) {
+      // holding an item: the wing turns with it, its tip along the aim (under the item, which is drawn in front);
+      // the flap still shows a little on top
+      const target = rigAngle(heldItem.angle * DEG)
+      const b = target + (pose.wing - 15) * 0.25
+      const [px, py] = PIV.wing
+      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(1 0.9) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
     } else el.wing.setAttribute('transform', rot('wing', pose.wing))
     if (heldItem) {
       let a: number, at = ''
       // swinging: the item rides on the wing tip and turns with it
       if (swingNow) { a = tipRig; at = ` translate(${wingLen.toFixed(1)} 0)`; a = ((a % 360) + 540) % 360 - 180 }
-      else a = rigAngle(heldItem.angle * DEG)
+      else a = heldA
       const flip = Math.abs(a) > 90 ? ' scale(1 -1)' : ''
       el.held.setAttribute('transform', `rotate(${a.toFixed(1)})${at}${flip} translate(${(-heldItem.kick).toFixed(1)} 0)`)
     }
@@ -1054,13 +1095,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBound(a.key, gameTaps)) })
       gameTaps.clear()
       return out
     },
     peekActions() {
       const out = {} as Record<ChickenAction, boolean>
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || controls.keys[a.key].some(t => t && gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBound(a.key, gameTaps)) })
       return out
     },
     shift(dx, dy = 0) {
@@ -1097,7 +1138,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     setHeld(next) {
       heldItem = next
       const svgArt = next ? next.svg : ''
-      if (svgArt !== heldSvg) { heldSvg = svgArt; el.held.innerHTML = svgArt }
+      if (svgArt !== heldSvg) { heldSvg = svgArt; el.heldArt.innerHTML = svgArt }
     },
     impulse(vx, vy) {
       if (S.grounded || S.cl || S.held) return

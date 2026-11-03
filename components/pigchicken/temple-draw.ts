@@ -1,6 +1,7 @@
 // Drawing of the Templo do Gongo (canvas, screen pixels): its aliens, the gong totem, bombs and fire, and the HUD
 // (hearts, score, the rhythm "pista" with the beats coming, the judgement of each press and the stage banners).
 import { ALIEN_FRAMES } from "@/lib/pigchicken/enemies"
+import { lookDir, lookRows, type Point } from "@/lib/pigchicken/eyes"
 import type { Combat } from "@/lib/pigchicken/combat"
 import type { Conductor } from "@/lib/pigchicken/music"
 import { STAGES, drumOpen, multOf, type Species, type Temple } from "@/lib/pigchicken/temple"
@@ -154,10 +155,12 @@ function pixels(ctx: Ctx, rows: string[], pal: Record<string, string>, left: num
 }
 
 // a temple alien at screen x (its target's y is its bottom). charge: about to drop a bomb (glows red)
-export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: number, charge: number, beat: number) {
+// lookAt: the character it looks at (world coordinates; its eyes follow them)
+export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: number, charge: number, beat: number, lookAt: Point | null = null) {
   const d = g.data as { species: Species; color: string }
   const sp = d.species
   const top = g.y - g.h
+  const look = lookDir({ x: g.x, y: g.y - g.h / 2 }, lookAt)
   ctx.save()
   if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.35) * 0.6
   // a dark halo behind it, so it reads against the temple's roofs and walls
@@ -175,23 +178,23 @@ export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: numbe
     ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, g.y - g.h / 2, r, 0, Math.PI * 2); ctx.fill()
   }
   const flash = g.flash > 0 ? (g.tint ?? "#ffffff") : null
-  if (sp === "dragon" || sp === "dragonHead") { drawDragon(ctx, g, x, flash); ctx.restore(); return }
+  if (sp === "dragon" || sp === "dragonHead") { drawDragon(ctx, g, x, flash, look); ctx.restore(); return }
   // the stomp: a squash on each beat
   const squash = 1 - 0.1 * Math.pow(1 - beatPhase, 5)
   ctx.translate(x, g.y); ctx.scale(2 - squash, squash); ctx.translate(-x, -g.y)
   const frame = Math.floor(beat) % 2
   if (sp === "jelly") {
-    const rows = ALIEN_FRAMES[frame]
+    const rows = lookRows(ALIEN_FRAMES[frame], look)
     pixels(ctx, rows, { "#": d.color, w: "#f4f1e8", o: "#101018" }, x - g.w / 2, top, flash)
   } else if (sp === "drum") {
     const open = drumOpen(beatPhase)
     if (open && !flash) { ctx.shadowColor = "#ffd166"; ctx.shadowBlur = 16 }
-    pixels(ctx, ART.drum!.frames[open ? 1 : 0], ART.drum!.pal, x - g.w / 2, top, flash)
+    pixels(ctx, lookRows(ART.drum!.frames[open ? 1 : 0], look), ART.drum!.pal, x - g.w / 2, top, flash)
     ctx.shadowBlur = 0
   } else {
     const art = ART[sp]!
     const tint = sp === "mini" ? (ch: string) => (ch === "#" ? d.color : null) : undefined
-    pixels(ctx, art.frames[frame], art.pal, x - g.w / 2, top, flash, tint)
+    pixels(ctx, lookRows(art.frames[frame], look), art.pal, x - g.w / 2, top, flash, tint)
     // the shell cracks as it loses hit points
     if (sp === "shell" && !flash) {
       const k = g.hp / g.maxHp
@@ -209,7 +212,7 @@ export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: numbe
 }
 
 // the dragon: round golden segments with a red crest; the head with horns, whiskers and a fiery mane
-function drawDragon(ctx: Ctx, g: Target, x: number, flash: string | null) {
+function drawDragon(ctx: Ctx, g: Target, x: number, flash: string | null, look: Point | null) {
   const cy = g.y - g.h / 2, t = performance.now() / 1000
   const head = (g.data as { species: Species }).species === "dragonHead"
   ctx.save()
@@ -253,7 +256,9 @@ function drawDragon(ctx: Ctx, g: Target, x: number, flash: string | null) {
     ctx.fillStyle = "#fff4e0"; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(18 + i * 9, 16); ctx.lineTo(22 + i * 9, 22); ctx.lineTo(26 + i * 9, 16); ctx.fill() }
     // eye
     ctx.fillStyle = "#fff4e0"; ctx.beginPath(); ctx.ellipse(10, -8, 9, 7, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = "#d00000"; ctx.beginPath(); ctx.arc(13, -8, 4, 0, Math.PI * 2); ctx.fill()
+    // the pupil looks at her (mirrored with the head); straight ahead when there is no one
+    const lx = look ? look.x * (g.face < 0 ? -1 : 1) * 4 : 3, ly = look ? look.y * 2.5 : 0
+    ctx.fillStyle = "#d00000"; ctx.beginPath(); ctx.arc(10 + lx, -8 + ly, 4, 0, Math.PI * 2); ctx.fill()
     // whiskers
     ctx.strokeStyle = flash ?? "#ffe8a3"; ctx.lineWidth = 2.5
     ;[-1, 1].forEach(k => { ctx.beginPath(); ctx.moveTo(48, 2 + k * 4); for (let s = 0; s <= 50; s += 5) ctx.lineTo(48 + s, 2 + k * 4 + Math.sin(s * 0.12 + t * 5 + k) * 7 + k * s * 0.15); ctx.stroke() })
@@ -312,16 +317,16 @@ export function drawGong(ctx: Ctx, g: Target, x: number, temple: Temple) {
   // how many strikes so far: little lamps over the frame
   if (waiting) {
     for (let i = 0; i < s.gongNeed; i++) {
-      const lx = x + (i - (s.gongNeed - 1) / 2) * 22, ly = ground - 252
+      const lx = x + (i - (s.gongNeed - 1) / 2) * 22, ly = ground - 264
       ctx.fillStyle = i < s.gongHits ? "#ffd166" : "rgba(255,255,255,0.18)"
       ctx.beginPath(); ctx.arc(lx, ly, 6, 0, Math.PI * 2); ctx.fill()
     }
     const label = s.phase === "idle" ? "BATA NO GONGO" : s.phase === "cleared" ? `FASE ${s.stage + 2}: BATA NO GONGO` : s.phase === "failed" ? "TENTAR DE NOVO" : "JOGAR DE NOVO"
-    // the label sits on the frame's top beam, like a plaque on the wood
+    // the label rests right on top of the frame's top beam, between its two gold knobs
     ctx.font = "bold 12px ui-monospace, monospace"; ctx.textAlign = "center"
-    const w = Math.min(176, ctx.measureText(label).width + 14)
-    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x - w / 2, ground - 233, w, 18)
-    ctx.fillStyle = "#ffd166"; ctx.fillText(label, x, ground - 220, 168)
+    const w = Math.min(148, ctx.measureText(label).width + 14)
+    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x - w / 2, ground - 252, w, 18)
+    ctx.fillStyle = "#ffd166"; ctx.fillText(label, x, ground - 239, w - 10)
   }
 }
 
