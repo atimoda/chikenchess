@@ -8,7 +8,8 @@ export const CAMERA_MODES: { value: CameraMode; label: string }[] = [
   { value: 'fixed', label: 'Fixa' },
 ]
 
-export type CameraOpts = { mode: CameraMode; worldX: number; viewW: number; worldW: number; dt: number; deadband: number; lag: number }
+// lead: px the follow camera looks ahead of her (toward the side she faces; negative = to the left)
+export type CameraOpts = { mode: CameraMode; worldX: number; viewW: number; worldW: number; dt: number; deadband: number; lag: number; lead?: number }
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
@@ -25,10 +26,19 @@ export function cameraStep(camX: number, o: CameraOpts) {
     const next = camX + (target - camX) * k
     return Math.abs(target - next) < 0.5 ? target : next
   }
-  const centre = camX + o.viewW / 2, off = o.worldX - centre
+  // the dead band sits around the point she looks at, `lead` px ahead of her
+  const centre = camX + o.viewW / 2, off = o.worldX + (o.lead ?? 0) - centre
   target = Math.abs(off) <= o.deadband ? camX : camX + off - Math.sign(off) * o.deadband
   target = clamp(target, 0, maxX)
   return camX + (target - camX) * Math.min(1, o.lag * o.dt)
+}
+
+// the look-ahead: slides toward `dist` px on the side she faces (face -1 / 1) at `speed` (1/s), so turning
+// around pans the view to the other side instead of jumping
+export function leadStep(lead: number, face: number, dist: number, speed: number, dt: number) {
+  const target = (face < 0 ? -1 : 1) * dist
+  const next = lead + (target - lead) * Math.min(1, speed * dt)
+  return Math.abs(target - next) < 0.05 ? target : next
 }
 
 // walls in screen pixels: the world's edges, or the screen's in fixed mode
