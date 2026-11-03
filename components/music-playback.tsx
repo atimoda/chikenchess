@@ -14,6 +14,8 @@ import { variationPosition } from '@/lib/music/performance'
 import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music/arrangement'
 import { ArrowLeftRight, CircleDotDashed, Dice5, Minus, Pin, Plus, RotateCw } from 'lucide-react'
 import styles from './music-playback.module.css'
+import { ArpeggiatorButton, ArpeggiatorPanel, useArpConfig } from './music-arpeggiator'
+import { arpeggiate, type ArpConfig } from '@/lib/music/arpeggiator'
 import type { KnobUpdateMode } from './knob'
 
 interface MusicPlaybackViewportState {
@@ -142,7 +144,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     if (euclid.tab !== activeTab || (json !== euclid.last && json !== euclid.sourceJson)) setEuclid({ ...euclid, tab: activeTab, source: activeRoll, sourceJson: json, last: json })
   }
   const euclidStepCount = activeRoll ? euclidSteps(activeRoll, beatsPerBar(snapshot.meter), division) : 1
-  const toggleEuclid = () => setEuclid(current => current || !activeRoll ? null : { tab: activeTab, source: activeRoll, sourceJson: JSON.stringify(activeRoll), last: JSON.stringify(activeRoll), mode: 'notes', pulses: Math.max(1, Math.min(euclidStepCount, activeRoll.notes.length)), rotate: 0 })
+  const toggleEuclid = () => { setArpOpen(false); setEuclid(current => current || !activeRoll ? null : { tab: activeTab, source: activeRoll, sourceJson: JSON.stringify(activeRoll), last: JSON.stringify(activeRoll), mode: 'notes', pulses: Math.max(1, Math.min(euclidStepCount, activeRoll.notes.length)), rotate: 0 }) }
   const changeEuclid = (patch: Partial<Pick<EuclidState, 'mode' | 'pulses' | 'rotate'>>) => {
     if (!euclid || !instrument || !onInstrumentChange) return
     const next = { ...euclid, ...patch }
@@ -152,6 +154,21 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     setEuclid({ ...next, last: JSON.stringify(edit.pianoRolls?.[next.tab]) })
     onInstrumentChange(edit)
   }
+  // Arpeggiator: like Euclid, it always rewrites from the MIDI as it was before
+  // the arp (or as last edited by hand), so re-applying never arpeggiates an arpeggio.
+  const [arpConfig, setArpConfig] = useArpConfig()
+  const [arpOpen, setArpOpen] = useState(false)
+  const [arpMemory, setArpMemory] = useState<{ tab: number; source: PianoRoll; last: string } | null>(null)
+  if (arpOpen && !activeRoll) setArpOpen(false)
+  const applyArp = (config: ArpConfig) => {
+    if (!instrument || !onInstrumentChange || !activeRoll) return
+    const json = JSON.stringify(activeRoll)
+    const source = arpMemory && arpMemory.tab === activeTab && arpMemory.last === json ? arpMemory.source : activeRoll
+    const roll = arpeggiate(source, config, { beatsPerBar: beatsPerBar(snapshot.meter), degreesPerOctave: snapshot.scale.length || 7 })
+    setArpMemory({ tab: activeTab, source, last: JSON.stringify(roll) })
+    onInstrumentChange({ pianoRolls: instrument.pianoRolls.map((r, index) => index === activeTab ? roll : r) })
+  }
+  const toggleArpPanel = () => { setEuclid(null); setArpOpen(open => !open) }
   // The piano editor passes Delete note (only while a note is selected) as the first action.
   const variationActions = instrument && onInstrumentChange ? (leading: ReactNode) => <div className={styles.variationActions} aria-label="Variation actions">
     {leading}
@@ -160,6 +177,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
     <button type="button" aria-label="Reverse variation notes" title="Mirror the variation in time" onClick={() => onInstrumentChange(reverseVariation(instrument,activeTab))}><ArrowLeftRight size={14}/></button>
     <button type="button" aria-label="Randomize variation notes" title="Randomize notes" onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dice5 size={14}/></button>
     <button type="button" className={styles.euclidToggle} aria-label="Euclidean pattern" aria-pressed={!!euclid} data-on={!!euclid} title="Euclidean pattern: spread pulses evenly over the grid to rewrite the rhythm, accents, ratchets or chance" onClick={toggleEuclid}><CircleDotDashed size={14}/></button>
+    <ArpeggiatorButton open={arpOpen} disabled={!activeRoll} onApply={() => applyArp(arpConfig)} onToggleOpen={toggleArpPanel}/>
     <span className={styles.buttonPair}><button type="button" aria-label={`Shorten variation ${activeTab+1}`} title="Remove one beat" disabled={!activeRoll||activeRoll.bars<=1/beatsPerBar(snapshot.meter)} onClick={()=>resizeActiveVariation(-.25)}><Minus size={14}/></button>
     <button type="button" aria-label={`Lengthen variation ${activeTab+1}`} title="Add one beat" disabled={!activeRoll||activeRoll.bars>=8} onClick={()=>resizeActiveVariation(.25)}><Plus size={14}/></button></span>
   </div> : null
@@ -185,6 +203,7 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
       </div>
       <MusicPianoEditor compact actions={variationActions} onlyVariation={activeTab} division={division} onDivisionChange={setDivision} snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode} visualUpdatesEnabled={viewport.visualUpdatesEnabled}/>
       {euclid && <EuclidPanel state={euclid} steps={euclidStepCount} onChange={changeEuclid} />}
+      {arpOpen && <ArpeggiatorPanel config={arpConfig} onChange={patch => applyArp(setArpConfig(patch))} />}
       </>}
       {!variationTabs&&<>
       <div className={styles.variations} data-tabbed={variationTabs || undefined} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Saved piece variations">

@@ -259,3 +259,41 @@ test('euclidean edits spread onsets evenly and always start from the source roll
  assert.deepEqual(empty.pianoRolls[1].notes.map(n=>[n.start,n.degree]),[[0,0],[.5,0]])
  assert.deepEqual(empty.pianoRolls[0],source,'other variations stay untouched')
 })
+
+test('arpeggiator rewrites a variation from its held notes without compounding', () => {
+ const arp = loadTs('lib/music/arpeggiator.ts')
+ const source = { bars: 1, notes: [4, 0, 2].map((degree, index) => ({ start: index * .25, duration: .25, degree, velocity: .8, pan: .2 })) }
+ const flat = { ...arp.DEFAULT_ARP_CONFIG, rhythm: Array(32).fill(1), gate: .5 }
+ const degrees = (roll) => roll.notes.map(note => note.degree)
+ const up = arp.arpeggiate(source, { ...flat, order: 'up' }, { beatsPerBar: 4 })
+ assert.equal(up.notes.length, 16, '1/16 fills a 4/4 bar with 16 steps')
+ assert.deepEqual(degrees(up).slice(0, 6), [0, 2, 4, 0, 2, 4])
+ assert.equal(up.notes[1].start, 1 / 16)
+ assert.equal(up.notes[0].duration, 1 / 32, 'gate is a share of the step')
+ assert.equal(up.notes[0].pan, .2, 'articulation follows the held note')
+ assert.deepEqual(degrees(arp.arpeggiate(source, { ...flat, order: 'down' }, { beatsPerBar: 4 })).slice(0, 3), [4, 2, 0])
+ assert.deepEqual(degrees(arp.arpeggiate(source, { ...flat, order: 'updown', octaves: 2 }, { beatsPerBar: 4, degreesPerOctave: 7 })).slice(0, 11), [0, 2, 4, 7, 9, 11, 9, 7, 4, 2, 0])
+ assert.deepEqual(degrees(arp.arpeggiate(source, { ...flat, order: 'played' }, { beatsPerBar: 4 })).slice(0, 3), [4, 0, 2])
+ const chord = arp.arpeggiate(source, { ...flat, order: 'chord', rate: 4 }, { beatsPerBar: 4 })
+ assert.equal(chord.notes.length, 12, 'chord order stacks every held note on each step')
+ // Rhythm: zero is a rest and does not advance the order; velocity is the bar height.
+ const rhythm = arp.arpeggiate(source, { ...flat, order: 'up', length: 4, rhythm: [1, 0, .5, 0, ...Array(28).fill(1)] }, { beatsPerBar: 4 })
+ assert.deepEqual(rhythm.notes.slice(0, 3).map(note => [note.start, note.degree, note.velocity]), [[0, 0, 1], [.125, 2, .5], [.25, 4, 1]])
+ // Triplets, swing and the chord chance.
+ assert.equal(arp.arpeggiate(source, { ...flat, feel: 'triplet' }, { beatsPerBar: 4 }).notes.length, 24)
+ const swung = arp.arpeggiate(source, { ...flat, swing: 1 }, { beatsPerBar: 4 })
+ assert.equal(swung.notes[1].start, 1 / 16 + 1 / 32)
+ const stacked = arp.arpeggiate(source, { ...flat, order: 'up', chord: .4, above: 2 }, { beatsPerBar: 4, degreesPerOctave: 7 })
+ assert.deepEqual(stacked.notes.slice(0, 6).map(note => [note.degree, note.chance]), [[0, undefined], [2, .4], [4, .4], [2, undefined], [4, .4], [7, .4]])
+ // Walk and random only use the held notes and stay inside the roll.
+ for (const order of ['walk', 'random']) {
+  const roll = arp.arpeggiate(source, { ...flat, order, octaves: 2 }, { beatsPerBar: 4, random: Math.random })
+  assert.ok(roll.notes.every(note => [0, 2, 4, 7, 9, 11].includes(note.degree) && note.start + note.duration <= roll.bars + 1e-9))
+ }
+ // Empty MIDI uses a triad; the config survives junk preferences.
+ assert.deepEqual(degrees(arp.arpeggiate({ bars: 1, notes: [] }, { ...flat, rate: 4 }, { beatsPerBar: 4 })), [0, 2, 4, 2])
+ assert.deepEqual(arp.normalizeArpConfig({ rate: 7, octaves: 9, gate: 'x', rhythm: [2] }).octaves, 4)
+ assert.equal(arp.normalizeArpConfig(null).rate, 16)
+ const { pianoRollSchema } = loadTs('lib/music/piano-roll.ts')
+ assert.ok(pianoRollSchema.safeParse(arp.arpeggiate({ bars: 8, notes: source.notes }, { ...flat, rate: 32, chord: 1, above: 2 }, { beatsPerBar: 4 })).success, 'never exceeds the note budget')
+})
