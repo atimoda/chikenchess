@@ -10,6 +10,7 @@ import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, readGamepadTokens, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { mixGain } from '../pigchicken/mixer'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -29,7 +30,8 @@ export type ChickenEngine = {
   setGroundHeight: (h: number) => void
   setGame: (game: ChickenGame) => void
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
-  // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units
+  // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
+  // The wing turns with it: its tip follows the aim.
   setHeld: (held: { svg: string; angle: number; kick: number } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in.
@@ -216,7 +218,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     const src = actx.createBufferSource(); src.buffer = buffers[name]
     src.playbackRate.value = 1 + (Math.random() * 2 - 1) * R.pitchJitter / 100
-    const gain = actx.createGain(); gain.gain.value = 0.8 * R.volume * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
+    const gain = actx.createGain(); gain.gain.value = 0.8 * R.volume * mixGain('chicken') * (1 + (Math.random() * 2 - 1) * R.volJitter / 100)
     src.connect(gain); gain.connect(actx.destination); src.start(t)
     lastVoice = { src, gain }
   }
@@ -975,6 +977,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       tipRig = b
       const [px, py] = PIV.wing
       el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / WING_TIP_LEN).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+    } else if (heldItem) {
+      // holding an item: the wing turns with it, its tip along the aim (under the item, which is drawn in front);
+      // the flap still shows a little on top
+      const target = rigAngle(heldItem.angle * DEG)
+      const b = target + (pose.wing - 15) * 0.25
+      const [px, py] = PIV.wing
+      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(1 0.9) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
     } else el.wing.setAttribute('transform', rot('wing', pose.wing))
     if (heldItem) {
       let a: number, at = ''
