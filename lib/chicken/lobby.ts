@@ -69,9 +69,10 @@ export function reconcileOwner(s: LobbyState): LobbyState {
 
 export const isOwner = (s: LobbyState, playerId: string | null | undefined) => !!playerId && s.ownerId === playerId
 export const canEditPatio = (s: LobbyState, playerId: string | null | undefined) => !!playerId && s.editors.includes(playerId)
-// The editor panel opens only for a player allowed to edit (in a local lobby that is the first player, its owner);
-// in an online lobby without the permission it stays locked.
-export const canUseEditor = (s: LobbyState, playerId: string | null | undefined) => canEditPatio(s, playerId)
+// The editor panel: in a local lobby every local player edits freely; in an online one only those with the Edit
+// mode permission (by default the owner), otherwise it stays locked.
+export const canUseEditor = (s: LobbyState, playerId: string | null | undefined) =>
+  s.mode === 'local' ? s.players.some(p => p.id === playerId && p.kind === 'local') : canEditPatio(s, playerId)
 export const localPlayers = (s: LobbyState) => s.players.filter(p => p.kind === 'local')
 // "Player 1": the first local player, the person at this computer
 export const firstLocal = (s: LobbyState) => localPlayers(s)[0] ?? null
