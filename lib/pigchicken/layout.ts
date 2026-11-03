@@ -53,6 +53,8 @@ export type LayoutElement = {
   // only shown in the editor mode (invisible walls and floors)
   hidden: boolean
   opacity: number
+  // falls until it rests on a solid element (or the ground): settleLayout
+  gravity?: boolean
   params: ElementParams
 }
 export type PatioLayout = { v: number; elements: LayoutElement[] }
@@ -202,6 +204,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     notes: d.entity ? false : !!e.notes,
     hidden: d.entity ? false : !!e.hidden,
     opacity: r1(clamp(num(e.opacity, 1), 0.1, 1) * 100) / 100,
+    ...(e.gravity === true ? { gravity: true } : {}),
     params,
   }
 }
@@ -273,3 +276,48 @@ export function layoutBoxes(elements: LayoutElement[]): Box[] {
 }
 
 export const sameLayout = (a: PatioLayout | null, b: PatioLayout | null) => JSON.stringify(a) === JSON.stringify(b)
+
+// the top of a solid element over the span [l, r]: its highest point there (a ramp's sloped edge, else its top)
+function surfaceTop(el: LayoutElement, l: number, r: number): number {
+  const b = elementBounds(el)
+  const line = elementFloorLine(el)
+  if (!line) return b.y
+  const pts = line.split(' ').map(p => p.split(',').map(Number)).map(([x, y]) => [b.x + x, b.y + y] as const)
+  const xs = [l, r, ...pts.map(p => p[0]).filter(x => x > l && x < r)]
+  let best = Infinity
+  for (const x of xs) {
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1], [bx, by] = pts[i]
+      if (x < Math.min(ax, bx) || x > Math.max(ax, bx) || ax === bx) continue
+      best = Math.min(best, ay + ((x - ax) / (bx - ax)) * (by - ay))
+    }
+  }
+  return Number.isFinite(best) ? best : b.y
+}
+
+// gravity: each element with `gravity` falls straight down until its bounds rest on a solid element below it or on
+// the ground. The lowest ones fall first, so a stack settles in one pass; one already resting (or `skip`, the one
+// being dragged) stays. Only falls: an element is never pushed up.
+export function settleLayout(elements: LayoutElement[], skip?: string | null): LayoutElement[] {
+  const falling = elements.filter(e => e.gravity && e.id !== skip)
+  if (!falling.length) return elements
+  const supports = elements.filter(e => e.solid && !ELEMENT_DEFS[e.kind].entity && (!e.gravity || e.id === skip))
+  const moved = new Map<string, LayoutElement>()
+  const order = [...falling].sort((a, b) => { const ba = elementBounds(a), bb = elementBounds(b); return bb.y + bb.h - (ba.y + ba.h) })
+  for (const el of order) {
+    const b = elementBounds(el)
+    const bottom = b.y + b.h, l = b.x + 1, r = b.x + b.w - 1
+    let floor = WORLD_GROUND_Y
+    for (const s of supports) {
+      const sb = elementBounds(s)
+      if (sb.x >= r || sb.x + sb.w <= l) continue
+      const top = surfaceTop(s, Math.max(l, sb.x), Math.min(r, sb.x + sb.w))
+      if (top >= bottom - 2 && top < floor) floor = top
+    }
+    const dy = r1(floor - bottom)
+    const next = Math.abs(dy) < 0.05 ? el : { ...el, y: r1(el.y + dy) }
+    if (next !== el) moved.set(el.id, next)
+    if (next.solid && !ELEMENT_DEFS[next.kind].entity) supports.push(next)
+  }
+  return moved.size ? elements.map(e => moved.get(e.id) ?? e) : elements
+}
