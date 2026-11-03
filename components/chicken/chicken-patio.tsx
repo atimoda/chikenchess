@@ -177,7 +177,7 @@ export function ChickenPatio() {
         <button type="button" aria-label="Ajustes do Parquinho" aria-pressed={pqOpen} title="Ajustes do Parquinho (câmera e mira)" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Controles da galinha" title="Controles da galinha" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
+        <button type="button" aria-label="Controles do boneco" title="Controles do boneco" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
         <button type="button" aria-label="Ajustes da galinha" aria-pressed={panelOpen} title="Ajustes da galinha" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
