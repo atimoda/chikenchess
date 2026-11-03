@@ -11,9 +11,11 @@ export const CHANGELOG = [
         'Pátio da Galinha: o portal agora fica parado perto do começo do Pátio, ela chega ao lado dele, e entrar nele leva de volta ao globo (“Back to the globe?”). Nos dois portais, com o botão à mostra, apertar correr ou pegar (Shift / E, X no gamepad) também confirma a entrada.',
         'Pátio da Galinha: cabeçalho transparente, o botão de voltar é o mesmo botão Globo das partidas, e árvores no estilo das do templo, cada uma diferente, ficam em primeiro plano nas cenas, meio transparentes para não esconder o jogo.',
         'Templo do Gongo: o terraço logo abaixo da balaustrada virou plataforma em todo o templo, e o aviso do gongo fica em cima da trave de madeira dele.',
+        'Pátio: os olhos dos aliens (do Parquinho e do Templo do Gongo, incluindo o dragão) agora seguem a galinha. Cada alien olha para o personagem mais perto dele, pronto para quando houver vários no modo online.',
       ] },
       { title: 'Galinha', items: [
         'PigChicKen: o inventário agora mostra só as casas com item, mais uma casa vazia (mãos vazias) enquanto houver espaço. A troca rápida (Q no teclado, LB no gamepad, rodinha do mouse) passa pelos itens, por uma casa vazia e volta para o primeiro.',
+        'PigChicKen: com o violino na mão, a asa segura um arco. Tocando, o arco vai e volta nas cordas conforme o mouse se mexe (uma arcada inteira a cada 260 px); com o mouse parado, ou mirando pelo analógico, ele faz uma arcada por batida.',
         'PigChicKen: os itens ficam sempre agrupados no inventário, nesta ordem: instrumentos musicais, armas e depois os demais itens. O limite agora é de 13 itens.',
         'PigChicKen: nova roda do inventário. Segure Tab (teclado) ou View/Select (gamepad), aponte para o item com o mouse ou o analógico direito e solte para equipar. Um toque rápido deixa a roda aberta: aí é só clicar ou tocar no item (no celular, botão “Roda”). A roda mostra só os itens que ela tem, mais uma casa vazia se houver espaço, com fatias do mesmo tamanho, e faz um tique bem suave ao passar por cada item.',
         'PigChicKen: andar pelo teclado (setas, WASD) não mexe mais na mira, para não brigar com o mouse. Sem mouse nem analógico, ela mira para a frente.',
