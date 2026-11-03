@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 02/11/2026 — v1.13.0 (Templo do Gongo: mini-jogo de aliens em fases no fim do Pátio; portal do globo pede confirmação; itens do chão só são pegos pelo botão Pegar).
+Atualizado em 03/11/2026 — v1.14.0 (inventário do PigChicKen agrupado, só com os itens que ela tem mais uma casa vazia, até 13 itens, e nova roda do inventário).
 
 ## Leitura por assunto
 

@@ -3,6 +3,18 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.14.0',
+    date: '03/11/2026',
+    title: 'PigChicKen: inventário organizado e roda do inventário',
+    groups: [
+      { title: 'Galinha', items: [
+        'PigChicKen: o inventário agora mostra só as casas com item, mais uma casa vazia (mãos vazias) enquanto houver espaço. A troca rápida (Q no teclado, LB no gamepad, rodinha do mouse) passa pelos itens, por uma casa vazia e volta para o primeiro.',
+        'PigChicKen: os itens ficam sempre agrupados no inventário, nesta ordem: instrumentos musicais, armas e depois os demais itens. O limite agora é de 13 itens.',
+        'PigChicKen: nova roda do inventário. Segure Tab (teclado) ou View/Select (gamepad), aponte para o item com o mouse ou o analógico direito e solte para equipar. Um toque rápido deixa a roda aberta: aí é só clicar ou tocar no item (no celular, botão “Roda”). A roda mostra só os itens que ela tem, mais uma casa vazia se houver espaço, com fatias do mesmo tamanho, e faz um tique bem suave ao passar por cada item.',
+      ] },
+    ],
+  },
+  {
     version: '1.13.0',
     date: '02/11/2026',
     title: 'Templo do Gongo: mini-jogo de aliens em fases no Pátio, e o portal do Pátio pede confirmação',
