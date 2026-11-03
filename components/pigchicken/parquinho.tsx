@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
-import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
+import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
 import { createCombat, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
 import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { INSTRUMENT_IDS, loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
@@ -174,6 +174,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let prev: Partial<Record<ChickenAction, boolean>> = {}
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
+    // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
+    let lead = 0, shake = 0, shakeT = 0, prevVy = 0
+    const shakePhase = [Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3]
     // the inventory wheel: open, left open by a quick tap of its button (sticky), when it opened, the slice under
     // the pointer / stick (-1 none); slotsShown: the bar's slot count the page knows
     const wh = { open: false, sticky: false, at: 0, hover: -1 }
@@ -277,7 +280,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- camera: only the crop changes with the screen, never the size of things ----------
       const worldX = camX + st.x
-      const next = st.held ? camX : cameraStep(camX, { mode: S.camera, worldX, viewW, worldW, dt, deadband: S.deadband, lag: S.lag })
+      // the look-ahead: the view leans toward the side she faces (and slides over when she turns around)
+      if (!st.held) lead = leadStep(lead, st.face, S.camera === "follow" ? S.lookAhead : 0, S.lookAheadSpeed, dt)
+      const next = st.held ? camX : cameraStep(camX, { mode: S.camera, worldX, viewW, worldW, dt, deadband: S.deadband, lag: S.lag, lead })
       const groundScreen = st.height - groundHRef.current
       const yr = cameraYRange(groundScreen)
       if (oy === null) oy = yr.lo
@@ -381,6 +386,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         for (let i = 0; i < 3; i++) {
           const o = engine.heldPoint(aim.angle, 0, d.muzzleY)
           const a = Math.atan2(tgt.y - o.y, tgt.x - o.x)
+          aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
+        }
+      }
+      // a jump shakes the aim for a moment (a super jump, crouch + jump, more): a wobble that fades out
+      if (!st.grounded && st.vy < -250 && st.vy < prevVy - 250) {
+        const amp = act.crouch ? S.superJumpShake : S.jumpShake
+        if (amp > 0 && amp >= shake) { shake = amp; shakeT = 0 }
+      }
+      prevVy = st.vy
+      if (shake > 0) {
+        shakeT += dt
+        const k = Math.max(0, 1 - shakeT / 0.45), t = shakeT * 2 * Math.PI
+        if (k <= 0) shake = 0
+        else {
+          const w = Math.sin(t * 13 + shakePhase[0]) * 0.55 + Math.sin(t * 21 + shakePhase[1]) * 0.3 + Math.sin(t * 34 + shakePhase[2]) * 0.15
+          const a = aim.angle + (shake * k * k * w * Math.PI) / 180
           aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
         }
       }
@@ -494,7 +515,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
       const muzzle = muzzleAt(ang)
       const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
-      const rx = d.turnRate > 0 || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = d.turnRate > 0 || !aim.target ? muzzle.y + ady * dist : aim.target.y
+      // (while the aim shakes the reticle shakes with it, off the cursor)
+      const free = d.turnRate > 0 || !aim.target || shake > 0
+      const rx = free || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = free || !aim.target ? muzzle.y + ady * dist : aim.target.y
       // weapons whose reticle shows where the shot lands: the path a shot fired now would take
       let path: { x: number; y: number }[] | null = null
       if (armed && ["laser", "impact", "grenade", "bow"].includes(d.reticle)) {
