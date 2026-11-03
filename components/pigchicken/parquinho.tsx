@@ -4,15 +4,14 @@
 // (follow, scenes, fixed), and the aim of the items: right stick > mouse > on-screen right stick > left stick /
 // arrows > facing, drawn as a reticle. Firing, hitting and throwing only flash for now; the items come next.
 // The world is in fixed units (lib/pigchicken/world.ts): the same size on every screen, which only changes the crop.
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { readTouchMoveStick, loadChickenControls, readStick, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep } from "@/lib/pigchicken/camera"
 import { createCombat, TIP_TIME, type Box, type Combat, type Swing } from "@/lib/pigchicken/combat"
-import { dummyTip } from "@/lib/pigchicken/dummies"
 import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
-import { INSTRUMENT_IDS, loadItems, subscribeItems, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { ALIEN_FRAMES, ALIEN_PATTERNS, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData } from "@/lib/pigchicken/enemies"
@@ -21,12 +20,15 @@ import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchick
 import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
-import { SCENE_W, SHELF_TOP, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, worldPlatforms, worldScenes } from "@/lib/pigchicken/world"
+import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
+import { defaultLayout, elementsInWorld, layoutBoxes, type LayoutElement } from "@/lib/pigchicken/layout"
+import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
+import { moveLiveCamera } from "@/lib/pigchicken/live-camera"
+import { FollowLayer, LayoutColliders, LayoutLayerView, TreeStyles } from "@/components/pigchicken/patio-layout"
 import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
-import { PatioTrees } from "@/components/pigchicken/patio-trees"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
@@ -35,10 +37,13 @@ const SOURCE_LABEL: Record<AimSource, string> = {
 
 // The world in fixed world units: scenes of SCENE_W, the ground at WORLD_GROUND_Y. ParquinhoPlay moves it with the
 // camera (translate); nothing in it depends on the screen's size.
+// the code's own Pátio, when the page gives no layout
+const DEFAULT_ELEMENTS = defaultLayout().elements
 const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
-export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean }) {
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean }) {
   // the Parquinho's scenes, then the temple (Templo do Gongo, the aliens' mini-game)
   const width = worldScenes(screens) * SCENE_W
+  const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
   return (
     <div ref={worldRef} className="pointer-events-none absolute left-0 top-0 will-change-transform" style={{ width, height: WORLD_GROUND_Y }}>
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
@@ -62,9 +67,15 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
           {TEMPLE_ROOF_LINES.map(l => <polyline key={l.id} points={lineAttr(l.pts)} fill="none" stroke="#ff3b3b" strokeWidth={3} strokeDasharray="8 5" />)}
         </svg>
       )}
+      {/* the Pátio's layout (lib/pigchicken/layout.ts): the scenery behind the platforms, then the platforms' layer */}
+      <TreeStyles />
+      <LayoutLayerView elements={shown} layer="back" editing={editing} />
+      <LayoutLayerView elements={shown} layer="scene" editing={editing} />
+      {/* what she stands on: the layout's solid elements (invisible boxes; the art is in the layers) */}
+      <LayoutColliders elements={shown} />
       <div data-chicken-platforms className="absolute inset-0">
-        {worldPlatforms(screens, true).map(p => (
-          <div key={p.id} data-chicken-id={p.id} className={p.id.startsWith("tp-") ? "absolute rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" : "absolute rounded-md border border-primary/30 bg-[#16241b]"} style={{ left: p.x, top: p.y, width: p.w, height: p.h, ...(p.id.startsWith("tp-") ? { background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" } : {}) }} />
+        {TEMPLE_PLATFORMS.map((p, i) => (
+          <div key={`tp-${i}`} data-chicken-id={`tp-${i}`} className="absolute rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" style={{ left: templeScene(screens) * SCENE_W + p.x, top: WORLD_GROUND_Y - p.bottom - p.h, width: p.w, height: p.h, background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" }} />
         ))}
         {TEMPLE_ROOF_LINES.map(l => (
           <div key={l.id} data-chicken-id={`tp-${l.id}`} data-chicken-line={lineAttr(l.pts)} className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }} />
@@ -75,19 +86,25 @@ export function ParquinhoWorld({ screens, worldRef, debug = false }: { screens: 
 }
 
 
-// The foreground: the Parquinho's trees in front of her, half see-through so the game still reads behind them.
-// A fixed layer above the chicken that ParquinhoPlay moves with the same camera as the world.
-export function ParquinhoForeground({ screens, fgRef }: { screens: number; fgRef: React.RefObject<HTMLDivElement | null> }) {
+// The layers above the game's things: "behind" (in front of the dummies, racks and shots, behind the characters),
+// "front" (in front of her) and "frontGhost" (in front, half see-through, like the trees). Each is a fixed layer
+// that follows the camera (lib/pigchicken/live-camera.ts).
+export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, editing = false }: { screens: number; fgRef?: React.RefObject<HTMLDivElement | null>; elements?: LayoutElement[]; editing?: boolean }) {
+  const width = worldScenes(screens) * SCENE_W
+  const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[202] overflow-hidden opacity-55">
-      <div ref={fgRef} className="absolute left-0 top-0 will-change-transform" style={{ width: worldScenes(screens) * SCENE_W, height: WORLD_GROUND_Y }}>
-        <PatioTrees screens={screens} />
-      </div>
-    </div>
+    <>
+      <FollowLayer z={197} width={width}><LayoutLayerView elements={shown} layer="behind" editing={editing} /></FollowLayer>
+      <FollowLayer z={202} width={width}><LayoutLayerView elements={shown} layer="front" editing={editing} /></FollowLayer>
+      <FollowLayer z={202} opacity={0.55} width={width}><LayoutLayerView elements={shown} layer="frontGhost" editing={editing} /></FollowLayer>
+    </>
   )
 }
 
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null> }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, elements = DEFAULT_ELEMENTS }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; elements?: LayoutElement[] }) {
+  // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
+  const elementsRef = useRef(elements)
+  elementsRef.current = elements
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -206,15 +223,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null
     const templeRacks: Combat["racks"] = []
     const G = WORLD_GROUND_Y
+    // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
+    const layoutSync = createLayoutSync(combat)
+    let syncedElements: LayoutElement[] | null = null, syncedScreens = -1
     const place = () => {
-      // the creative mode: a row of racks with every weapon on the first scene, targets further in
-      WEAPON_IDS.forEach((id, i) => combat.addRack(SCENE_W * (0.14 + i * 0.105), id))
-      // horde buttons on the second scene: shoot them; the instruments right after them
-      ;(["aliens", "pattern", "zombies", "zcount"] as const).forEach((id, i) => combat.addButton(SCENE_W * (1.06 + i * 0.09), G - 46, id))
-      // the instruments on the long shelf above the weapons
-      INSTRUMENT_IDS.forEach((id, i) => combat.addRack(SCENE_W * (0.14 + i * 0.105), id, SHELF_TOP))
-      // training dummies, each with its own tip (shown when it is destroyed)
-      ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach((f, i) => combat.addTarget(SCENE_W * f, G, { message: dummyTip(i) }))
       // the temple: the gong (strike it to start) and a few weapons and instruments by the entrance
       combat.addButton(0, G - 40, "gong", 130, 150)
       gong = combat.targets[combat.targets.length - 1]
@@ -224,29 +236,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       ;(["pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
-    // where each Parquinho thing was placed: the ones past a narrow world's last scene wait out of the world
-    // (they would land in the temple), and come back when the world is made wider
-    const homes = new Map<object, number>()
     const placeTemple = (screens: number) => {
       const L = templeScene(screens) * SCENE_W
-      combat.targets.forEach(t => {
-        if (t === gong || t === resetStone || (t.kind !== "dummy" && t.kind !== "button")) return
-        if (!homes.has(t)) homes.set(t, t.home)
-        const x = homes.get(t)! < L ? homes.get(t)! : -1e6
-        t.x = t.home = x
-      })
-      combat.racks.forEach(r => {
-        if (templeRacks.includes(r)) return
-        if (!homes.has(r)) homes.set(r, r.x)
-        r.x = homes.get(r)! < L ? homes.get(r)! : -1e6
-      })
       if (gong) { gong.x = gong.home = L + GONG_X }
       if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
       templeRacks.forEach((r, i) => { r.x = L + 80 + i * 100 })
       templeFor = screens
     }
     // the platforms the shots hit, in world units (the same boxes the world draws)
-    let boxesFor = -1, worldBoxes: Box[] = []
+    let worldBoxes: Box[] = []
     const header = document.querySelector("main header")
     const fit = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1)
@@ -270,9 +268,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getState() }
       }
       if (templeFor !== S.screens) placeTemple(S.screens)
-      if (boxesFor !== S.screens) {
-        boxesFor = S.screens
-        worldBoxes = worldPlatforms(S.screens, true).map(p => ({ l: p.x, t: p.y, r: p.x + p.w, b: Math.min(p.y + p.h, G) }))
+      if (syncedElements !== elementsRef.current || syncedScreens !== S.screens) {
+        syncedElements = elementsRef.current; syncedScreens = S.screens
+        const shown = elementsInWorld({ v: 1, elements: syncedElements }, S.screens)
+        layoutSync.sync(syncedElements, S.screens)
+        worldBoxes = layoutBoxes(shown)
       }
       const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : ""
       if (offer !== offerShown) { offerShown = offer; setGrabOffer(offer) }
@@ -297,6 +297,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         worldRef.current.style.setProperty("--camx", String(Math.round(camX * 10) / 10))
       }
       if (fgRef?.current) fgRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
+      // the layers above the chicken and the editor's handles follow the same camera
+      moveLiveCamera(camX, camY)
 
       // ---------- aim ----------
       const act = engine.getActions()
@@ -549,6 +551,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(window.innerHeight - groundHRef.current).lo - oy)
       engine.setGroundHeight(groundHRef.current)
       if (worldRef.current) worldRef.current.style.transform = ""
+      moveLiveCamera(0, 0)
     }
   }, [engine, worldRef, spawnX, fgRef])
 

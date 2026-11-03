@@ -5,7 +5,7 @@
 // (admin account only) saves it for every screen that draws the chicken.
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Crosshair, Gamepad2, Maximize, Minimize, SlidersHorizontal, Swords, X } from "lucide-react"
+import { Crosshair, Gamepad2, Maximize, Minimize, PencilRuler, SlidersHorizontal, Swords, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -26,6 +26,10 @@ import { ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
+import { PatioEditor } from "@/components/pigchicken/patio-editor"
+import type { PatioLayout } from "@/lib/pigchicken/layout"
+import { deviceId, keepPatio, loadPatio, lobbyFromUrl, newPatio, setLobbyInUrl, type PatioRecord } from "@/lib/pigchicken/patio-store"
+import { setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
@@ -89,6 +93,60 @@ export function ChickenPatio() {
   useEffect(() => { setPq(loadParquinho()) }, [])
   const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
+
+  // ---------- the Pátio open here (a lobby: its layout and who created it) and the editor mode ----------
+  const [patio, setPatio] = useState<PatioRecord | null>(null)
+  const [editorOn, setEditorOn] = useState(false)
+  const [editHint, setEditHint] = useState(false)
+  const me = online.user?.id ?? null
+  useEffect(() => { setPatio(loadPatio(lobbyFromUrl())) }, [])
+  useEffect(() => {
+    setPatioInfo({ lobbyId: patio?.id ?? null, creatorId: patio?.creatorId ?? null, me: me ?? (patio ? deviceId() : null), isAdmin })
+  }, [patio?.id, patio?.creatorId, me, isAdmin])
+  const access = usePatioEditAccess()
+  // losing the permission (another Pátio, the owner changed it) closes the editor
+  useEffect(() => { if (!access.canEdit) setEditorOn(false) }, [access.canEdit])
+  // a Pátio is kept (in this browser, for now) a moment after each change
+  const keepTimer = useRef<number | null>(null)
+  const pendingKeep = useRef<PatioRecord | null>(null)
+  const flushKeep = () => { if (keepTimer.current) window.clearTimeout(keepTimer.current); keepTimer.current = null; if (pendingKeep.current) { keepPatio(pendingKeep.current); pendingKeep.current = null } }
+  useEffect(() => () => flushKeep(), [])
+  const changeLayout = (layout: PatioLayout) => {
+    setPatio(prev => {
+      if (!prev) return prev
+      const next = { ...prev, layout, edited: true }
+      pendingKeep.current = next
+      if (keepTimer.current) window.clearTimeout(keepTimer.current)
+      keepTimer.current = window.setTimeout(flushKeep, 600)
+      return next
+    })
+  }
+  // a new Pátio of mine (a copy of the default one): I am its creator and may edit it
+  const startNewPatio = () => {
+    flushKeep()
+    const next = newPatio(me ?? deviceId())
+    setLobbyInUrl(next.id)
+    setPatio(next)
+    setEditHint(false)
+    setEditorOn(true)
+  }
+  const toggleEditor = () => {
+    if (!access.canEdit) { setEditHint(v => !v); return }
+    setEditHint(false)
+    setEditorOn(v => !v)
+  }
+  const toggleRef = useRef(toggleEditor)
+  toggleRef.current = toggleEditor
+  // "=" turns the editor mode on and off
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
+      if (e.key === "=" && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); toggleRef.current() }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   // start from this browser's unsaved draft, if any, and fetch the latest saved version
   useEffect(() => {
@@ -164,6 +222,27 @@ export function ChickenPatio() {
         <select aria-label="Câmera" title="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
           {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Modo editor"
+            aria-pressed={editorOn}
+            title={access.canEdit ? "Modo editor (=)" : "Modo editor: este Pátio não é seu"}
+            onClick={toggleEditor}
+            className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", editorOn ? "border-[#ffd166] bg-[#ffd166]/15 text-white" : "border-white/15 text-[#b9c7b9]", !access.canEdit && "opacity-60")}
+          >
+            <PencilRuler className="h-4 w-4" />
+          </button>
+          {editHint && !access.canEdit && (
+            <div role="dialog" aria-label="Sem permissão para editar" className="absolute right-0 top-11 z-[130] w-64 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-3 font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
+              <p>{access.reason === "default" ? "Este é o Pátio padrão: só o admin edita." : access.reason === "notAllowed" ? "O dono deste Pátio não liberou a edição para você." : "Este Pátio não é seu."} Crie um Pátio seu (uma cópia do padrão) para editar.</p>
+              <div className="mt-2 flex gap-2">
+                <button type="button" onClick={startNewPatio} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">Criar meu Pátio</button>
+                <button type="button" onClick={() => setEditHint(false)} className="h-8 rounded-md border border-white/20 px-3">Fechar</button>
+              </div>
+            </div>
+          )}
+        </div>
         <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
@@ -186,14 +265,15 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} />
+      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editorOn} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortal engine={engine} href="/" world={portalWorld} label="Back to the globe?" arrival={false} />
       <ChickenPortalArrival engine={engine} />
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} />
+      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} elements={patio?.layout.elements} />
       {/* the trees in front of her (half see-through) */}
-      <ParquinhoForeground screens={pq.screens} fgRef={fgRef} />
+      <ParquinhoForeground screens={pq.screens} elements={patio?.layout.elements} editing={editorOn} />
+      {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={pq.screens} onChange={changeLayout} onClose={() => setEditorOn(false)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Ajustes do Parquinho" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">

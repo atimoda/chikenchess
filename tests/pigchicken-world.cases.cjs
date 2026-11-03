@@ -13,15 +13,20 @@ test('the world is the same on every screen: platforms are in fixed units', () =
   assert.equal(world.sceneAt(1919), 0); assert.equal(world.sceneAt(1920), 1)
 })
 
-test('vertical camera: still on a tall screen, follows her on a short one', () => {
-  // desktop 963 px tall, ground strip 30 px: the whole world fits, the camera never moves
+test('vertical camera: still on a tall screen on the ground floor, rises with her above y = 500 up to 3000 px higher', () => {
+  // desktop 963 px tall, ground strip 30 px: the ground floor fits, the camera stays while she is below y = 500
   const tall = world.cameraYRange(933)
-  assert.equal(tall.hi, tall.lo)
-  assert.equal(world.cameraYStep(tall.lo, { worldY: 300, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.lo)
+  assert.equal(tall.hi - tall.lo, world.WORLD_GROUND_Y - world.WORLD_TOP)
+  assert.equal(world.WORLD_TOP, -3000)
+  assert.equal(world.cameraYStep(tall.lo, { worldY: 600, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.lo)
+  // above y = 500 the camera keeps her where y = 500 was
+  assert.equal(world.cameraYStep(tall.lo, { worldY: 300, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.lo + 200)
+  // never past the world's new top
+  assert.equal(world.cameraYStep(tall.lo, { worldY: -5000, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.hi)
   // phone held upright: ground kept 578 px from the top; jumping high raises the camera, but never past the world's top
   const short = world.cameraYRange(578)
   assert.ok(short.hi > short.lo)
-  const up = world.cameraYStep(short.lo, { worldY: 300, groundScreen: 578, viewTop: 65, dt: 1, lag: 6 })
+  const up = world.cameraYStep(short.lo, { worldY: 600, groundScreen: 578, viewTop: 65, dt: 1, lag: 6 })
   assert.ok(up > short.lo && up <= short.hi)
   // standing on the ground: the ground stays at its place
   assert.equal(world.cameraYStep(short.lo, { worldY: world.WORLD_GROUND_Y, groundScreen: 578, viewTop: 65, dt: 1, lag: 6 }), short.lo)

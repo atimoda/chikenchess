@@ -4,7 +4,8 @@
 // They stand on the ground in the foreground, in front of her, half see-through (ParquinhoForeground). Each tree is its own small
 // SVG so its breeze only repaints itself.
 import { memo } from "react"
-import { SCENE_W, WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { defaultTrees } from "@/lib/pigchicken/layout"
 
 type Rand = () => number
 function rng(seed: number): Rand {
@@ -38,7 +39,7 @@ const TRUNKS = muted(["#5a3a24", "#4a2f1e", "#6a4430", "#3f2a1c"])
 const BLOSSOMS = [["#e88aa8", "#f6aec4", "#ffd4e1"], ["#d9718f", "#ec96b0", "#fbc2d3"], ["#eea7b8", "#f8c6d2", "#fff0f4"], ["#c95c74", "#df8198", "#f4b1c1"]].map(muted)
 const BLOSSOM_TRUNKS = muted(["#3b2418", "#2f1d14", "#4a2c1d"])
 
-type Tree = { kind: "pine" | "blossom"; x: number; h: number; flip: boolean; seed: number; delay: number }
+export type Tree = { kind: "pine" | "blossom"; x: number; h: number; flip: boolean; seed: number; delay: number }
 
 // a pine: a crooked trunk that leans its own way, and 4 to 6 flat canopies stepping up it
 function Pine({ seed }: { seed: number }) {
@@ -103,25 +104,38 @@ function Blossom({ seed }: { seed: number }) {
   )
 }
 
-// the trees of a world `screens` scenes wide (the temple, after them, has its own)
-function treesFor(screens: number): Tree[] {
-  const out: Tree[] = []
-  for (let s = 0; s < screens; s++) {
-    const r = rng(9173 + s * 7919)
-    const count = 3 + Math.floor(r() * 2)
-    for (let i = 0; i < count; i++) {
-      // spread over the scene; the first scene keeps its start clear for the portal
-      const lo = s === 0 ? 320 : 60
-      const slot = (SCENE_W - lo - 60) / count
-      const x = s * SCENE_W + lo + slot * (i + between(r, 0.15, 0.85))
-      out.push({ kind: r() < 0.62 ? "pine" : "blossom", x, h: between(r, 0.62, 1), flip: r() < 0.5, seed: Math.floor(r() * 2 ** 31), delay: r() * 7 })
-    }
-  }
-  return out
-}
+// the trees of a world `screens` scenes wide (the temple, after them, has its own): seeded in lib/pigchicken/layout.ts
+export function treesFor(screens: number): Tree[] { return defaultTrees(screens) }
 
 // the box each tree's SVG gets (tree units, base at 0 in the middle of the bottom)
-const BOX_W = 420, BOX_H = 480
+export const TREE_BOX_W = 420, TREE_BOX_H = 480
+const BOX_W = TREE_BOX_W, BOX_H = TREE_BOX_H
+
+// one tree's art filling its box (w x h, base in the middle of the bottom); the Pátio's layout places it
+export const TreeArt = memo(function TreeArt({ kind, seed, flip, delay = 0 }: { kind: Tree["kind"]; seed: number; flip?: boolean; delay?: number }) {
+  return (
+    <svg aria-hidden="true" className="absolute inset-0 h-full w-full" style={{ overflow: "visible" }} viewBox={`${-BOX_W / 2} ${-BOX_H} ${BOX_W} ${BOX_H}`} preserveAspectRatio="none">
+      <g transform={flip ? "scale(-1 1)" : undefined}>
+        <g className="pt-tree" style={{ animationDelay: `${-delay}s` }}>
+          {kind === "pine" ? <Pine seed={seed} /> : <Blossom seed={seed} />}
+        </g>
+      </g>
+    </svg>
+  )
+})
+
+// the trees' breeze and falling petals (once per page)
+export function TreeStyles() {
+  return (
+    <style>{`
+      .pt-tree { transform-box: fill-box; transform-origin: 50% 100%; animation: pt-breeze 7s ease-in-out infinite; }
+      .pt-petal { animation: pt-fall 9s linear infinite; }
+      @keyframes pt-breeze { 0%, 100% { transform: skewX(0deg); } 50% { transform: skewX(-1deg); } }
+      @keyframes pt-fall { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 0.8; } 100% { transform: translate(-90px, 170px) rotate(240deg); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .pt-tree, .pt-petal { animation: none !important; } }
+    `}</style>
+  )
+}
 
 export const PatioTrees = memo(function PatioTrees({ screens }: { screens: number }) {
   return (
