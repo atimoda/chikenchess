@@ -11,6 +11,7 @@ export const CHANGELOG = [
         'Pátio da Galinha: o portal agora fica parado perto do começo do Pátio, ela chega ao lado dele, e entrar nele leva de volta ao globo (“Back to the globe?”). Nos dois portais, com o botão à mostra, apertar correr ou pegar (Shift / E, X no gamepad) também confirma a entrada.',
         'Pátio da Galinha: chegar correndo num portal (segurando correr enquanto anda) já entra direto, sem parar para confirmar.',
         'Pátio da Galinha: segurando Pegar (E, X no gamepad, ou o botão Pegar no toque) enquanto anda, ela pega sozinha cada item por onde passa, como se apertasse Pegar em cima de cada um.',
+        'PigChicKen: arremessar agora vai para qualquer direção da mira, em 360°. Enquanto você segura para carregar, o item é puxado para trás, no sentido contrário, como um estilingue, e um trajeto pontilhado mostra para onde ele vai, sumindo da metade para o fim.',
         'Pátio da Galinha: cabeçalho transparente, o botão de voltar é o mesmo botão Globo das partidas, e árvores no estilo das do templo, cada uma diferente, ficam em primeiro plano nas cenas, meio transparentes para não esconder o jogo.',
         'Templo do Gongo: o terraço logo abaixo da balaustrada virou plataforma em todo o templo, e o aviso do gongo fica em cima da trave de madeira dele.',
       ] },

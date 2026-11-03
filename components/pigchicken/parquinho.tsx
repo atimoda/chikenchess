@@ -491,7 +491,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.inventory[combat.current], sw = combat.swing
       const art = h ? ITEM_SVG[h.item] : undefined
-      engine.setHeld(art ? { svg: art, angle: ang, kick: combat.kick } : null)
+      // charging a throw: the item points where it will fly (all the way round) and is pulled back the other
+      // way as the charge grows, like a slingshot; at full charge it trembles
+      const charge = h && !sw ? combat.throwCharge : 0
+      const pull = charge > 0 ? 6 + 30 * charge + (charge >= 1 ? Math.sin(now / 25) * 1.5 : 0) : 0
+      engine.setHeld(art ? { svg: art, angle: charge > 0 ? combat.throwAngle : ang, kick: combat.kick + pull } : null)
       engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
       const muzzle = muzzleAt(ang)
       const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
@@ -508,6 +512,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath)
+      if (charge > 0) drawThrowPath(ctx, combat.predictThrow({ x: origin.x + camX, y: origin.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY })))
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       drawInventory(ctx, combat, getTouchLayout().offsets.inventory)
       if (wh.open || wheelDrawn) { wctx.clearRect(0, 0, window.innerWidth, window.innerHeight); wheelDrawn = false }
@@ -1110,6 +1115,26 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
   if (combat.throwCharge > 0 && combat.inventory[combat.current]) {
     ctx.strokeStyle = "#7bdff2"; ctx.lineWidth = 3
     ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 14, -Math.PI / 2, -Math.PI / 2 + combat.throwCharge * Math.PI * 2); ctx.stroke()
+  }
+  ctx.restore()
+}
+
+// where a throw let go now would fly: a dotted arc, solid for its first half and fading out over the second
+function drawThrowPath(ctx: Ctx, pts: { x: number; y: number }[]) {
+  if (pts.length < 2) return
+  const len: number[] = [0]
+  for (let i = 1; i < pts.length; i++) len.push(len[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y))
+  const total = len[len.length - 1]
+  if (total < 1) return
+  ctx.save()
+  ctx.fillStyle = "#7bdff2"
+  let j = 1
+  for (let at = 14; at < total; at += 14) {
+    while (j < pts.length - 1 && len[j] < at) j++
+    const a = pts[j - 1], b = pts[j], seg = len[j] - len[j - 1] || 1, u = (at - len[j - 1]) / seg
+    const t = at / total
+    ctx.globalAlpha = 0.9 * (t < 0.5 ? 1 : Math.max(0, 1 - (t - 0.5) / 0.5))
+    ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, 2.6, 0, Math.PI * 2); ctx.fill()
   }
   ctx.restore()
 }
