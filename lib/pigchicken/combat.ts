@@ -20,7 +20,9 @@ export type NoteInfo = { midi: number; color: string; sym: string; wave: number;
 // a converted enemy leaving the scene: aliens become birds, zombies become happy people
 export type Critter = { kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number }
 
-export type Box = { l: number; t: number; r: number; b: number }
+// a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
+// beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through)
+export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean }
 export type Owned = { item: ItemId; ammo: number; durability: number }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
@@ -440,7 +442,8 @@ export function createCombat() {
   }
 
   type StepCtx = { boxes: Box[]; groundY: number }
-  const boxAt = (boxes: Box[], x: number, y: number) => boxes.find(b => x >= b.l && x <= b.r && y >= b.t && y <= b.b)
+  const boxAt = (boxes: Box[], x: number, y: number, note = false) => boxes.find(b => (note ? b.notes === true : b.shots !== false) && x >= b.l && x <= b.r && y >= b.t && y <= b.b)
+  const solidAt = (boxes: Box[], x: number, y: number) => boxes.find(b => b.solid !== false && x >= b.l && x <= b.r && y >= b.t && y <= b.b)
   // moves a projectile one step; true when it is gone
   function stepBullet(b: Bullet, dt: number, { boxes, groundY }: StepCtx, dry = false): boolean {
     const px = b.x, py = b.y
@@ -471,7 +474,7 @@ export function createCombat() {
     // walls and the floor: explode, bounce (with a fuse) or stop
     for (let k = 1; k <= steps; k++) {
       const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
-      const box = b.ghost ? undefined : boxAt(boxes, x, y)
+      const box = boxAt(boxes, x, y, !!b.ghost)
       const floor = y >= groundY
       if (!box && !floor) continue
       if (b.fuse > 0) {
@@ -547,7 +550,7 @@ export function createCombat() {
     let x = muzzle.x, y = muzzle.y, hit: Target | null = null
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
-      if (y >= ctx.groundY || (!d.instrument && boxAt(ctx.boxes, x, y))) break
+      if (y >= ctx.groundY || boxAt(ctx.boxes, x, y, d.instrument)) break
       hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
@@ -765,7 +768,7 @@ export function createCombat() {
         throwT = 0
       }
 
-      const inBox = (x: number, y: number) => boxAt(boxes, x, y)
+      const inBox = (x: number, y: number) => solidAt(boxes, x, y)
 
       // projectiles
       const ctx = { boxes, groundY }
@@ -784,7 +787,7 @@ export function createCombat() {
             hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y); t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
-        const top = boxes.find(b => t.x >= b.l && t.x <= b.r && py <= b.t && t.y >= b.t)
+        const top = boxes.find(b => b.solid !== false && t.x >= b.l && t.x <= b.r && py <= b.t && t.y >= b.t)
         const side = !top && inBox(t.x, t.y)
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
         const floor = top ? top.t : t.y >= groundY ? groundY : null
@@ -803,7 +806,7 @@ export function createCombat() {
         if (world && !p.resting) {
           const py = p.y
           p.vy += ITEM_GRAVITY * dt; p.y += p.vy * dt
-          const top = boxes.find(b => p.x >= b.l && p.x <= b.r && py <= b.t && p.y >= b.t)
+          const top = boxes.find(b => b.solid !== false && p.x >= b.l && p.x <= b.r && py <= b.t && p.y >= b.t)
           if (top) { p.y = top.t; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
