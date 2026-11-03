@@ -12,7 +12,7 @@ import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } fr
 import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
 import { createCombat, TIP_TIME, type Box, type Combat, type Pickup, type Swing } from "@/lib/pigchicken/combat"
 import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
-import { loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { loadItems, subscribeItems, type ItemId, type PathShow } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
@@ -624,9 +624,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       extraList.forEach(([id, eng]) => { combat.use(id); drawSwing(ctx, combat, eng.getState().shoulder) })
       combat.use("p1")
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
-      const showPath = armed && (d.pathShow === "always" || (d.pathShow !== "off" && fire) || (d.pathShow === "holdAim" && aimLock))
+      const shows = (v: PathShow) => armed && (v === "always" || (v !== "off" && fire) || (v === "holdAim" && aimLock))
+      const showPath = shows(d.pathShow), showLand = shows(d.landShow)
       const tints = colorsRef.current
-      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath, tints?.p1 ?? "#ffffff")
+      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath, showLand, tints?.p1 ?? "#ffffff")
       if (charge > 0) drawThrowPath(ctx, combat.predictThrow({ x: origin.x + camX, y: origin.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY })))
       // the other local players' reticles, each in their own color, where their item points
       extraList.forEach(([id, eng]) => {
@@ -642,9 +643,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           const power = xd.fireMode === "charge" ? xd.chargeMin + (1 - xd.chargeMin) * combat.fireCharge : 1
           xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
         }
-        const xShow = xArmed && (xd.pathShow === "always" || (xd.pathShow !== "off" && !!extraPrev.get(id)?.fire))
+        const xFire = !!extraPrev.get(id)?.fire
+        const xShow = xArmed && (xd.pathShow === "always" || (xd.pathShow !== "off" && xFire))
+        const xLand = xArmed && (xd.landShow === "always" || (xd.landShow !== "off" && xFire))
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
-        drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xs.scale, xpath, xShow, tints?.[id] ?? "#ffffff")
+        drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xs.scale, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
       })
       combat.use("p1")
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
@@ -1316,7 +1319,7 @@ function drawDummyTip(ctx: Ctx, g: Combat["targets"][number], x: number, time: n
   ctx.restore()
 }
 
-function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean, tint: string) {
+function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
   const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
   const t = performance.now() / 1000
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
@@ -1380,16 +1383,19 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     else if (d.reticle === "grenade") {
       path.forEach((p, i) => { if (i % 3 === 0) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fill() } })
     } else { ctx.setLineDash([3, 5]); line(origin.x, origin.y, end.x, end.y); ctx.setLineDash([]) }
-    ctx.strokeStyle = color; ctx.lineWidth = 2
-    line(end.x - 6, end.y - 6, end.x + 6, end.y + 6); line(end.x - 6, end.y + 6, end.x + 6, end.y - 6)
-    ctx.strokeStyle = "rgba(255,170,70,0.7)"; ctx.setLineDash([6, 5])
-    ctx.beginPath(); ctx.arc(end.x, end.y, d.explodeRadius || 20, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([])
+    // where it lands, with the blast's radius (per item: always, or only with the fire button held, …)
+    if (showLand) {
+      ctx.strokeStyle = color; ctx.lineWidth = 2
+      line(end.x - 6, end.y - 6, end.x + 6, end.y + 6); line(end.x - 6, end.y + 6, end.x + 6, end.y - 6)
+      ctx.strokeStyle = "rgba(255,170,70,0.7)"; ctx.setLineDash([6, 5])
+      ctx.beginPath(); ctx.arc(end.x, end.y, d.explodeRadius || 20, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([])
+    }
     // where the mouse (or the stick) points, so the aim is never lost while the marker shows the landing
     ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([])
     ctx.beginPath(); ctx.arc(rx, ry, 7, 0, Math.PI * 2); ctx.stroke()
     ctx.beginPath(); ctx.arc(rx, ry, 1.5, 0, Math.PI * 2); ctx.fill()
     // the fuse: a ring that empties in the fuse's time
-    if (d.fuse > 0) { ctx.strokeStyle = "#ff6b5b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(end.x, end.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, d.fuse / 6)); ctx.stroke() }
+    if (showLand && d.fuse > 0) { ctx.strokeStyle = "#ff6b5b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(end.x, end.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, d.fuse / 6)); ctx.stroke() }
   } else if (d.reticle === "bow" && path) {
     // bow: a half moon that fills with the charge, and a short path that gets longer
     const c = combat.fireCharge
@@ -1416,7 +1422,7 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 8, -Math.PI / 2, -Math.PI / 2 + combat.fireCharge * Math.PI * 2); ctx.stroke()
   }
   if (combat.reloading) {
-    const at = end && d.reticle !== "laser" ? end : { x: rx, y: ry }
+    const at = end && d.reticle !== "laser" && (showLand || (d.reticle !== "impact" && d.reticle !== "grenade")) ? end : { x: rx, y: ry }
     ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3
     ctx.beginPath(); ctx.arc(at.x, at.y, 18, -Math.PI / 2, -Math.PI / 2 + combat.reloading * Math.PI * 2); ctx.stroke()
   }
