@@ -62,8 +62,29 @@ function lobby(r: Row | null): PatioLobby | null {
   return { ...info(r), layout: normalizeLayout(r.layout), people }
 }
 
-export const fetchPatioLobby = async (id: string) => lobby(await onlineRpc<Row | null>('patio_lobby_get', { p_id: id }))
-export const fetchDefaultPatio = async () => lobby(await onlineRpc<Row | null>('patio_default'))
+// Egress: with the revision this browser already holds, the server leaves the layout out (layout: null here) and
+// sends only the rest (names, people, favourites, plays). A server without migration 202611040001 does not know
+// the extra argument: the call is repeated without it, once, and the full row is read from then on.
+let knownRevisionUnsupported = false
+async function withKnownRevision(name: string, args: Record<string, unknown>, known: Record<string, unknown> | null) {
+  if (!known || knownRevisionUnsupported) return onlineRpc<Row | null>(name, args)
+  try { return await onlineRpc<Row | null>(name, { ...args, ...known }) } catch (e) {
+    if (!isPatioServerMissing(e)) throw e
+    knownRevisionUnsupported = true
+    return onlineRpc<Row | null>(name, args)
+  }
+}
+const knownRevision = (revision?: number | null) => (typeof revision === 'number' && revision > 0 ? revision : null)
+/** knownRevision: the revision whose layout this browser has (then `layout` is null when it is still current). */
+export const fetchPatioLobby = async (id: string, known?: number | null) => {
+  const rev = knownRevision(known)
+  return lobby(await withKnownRevision('patio_lobby_get', { p_id: id }, rev ? { p_known_revision: rev } : null))
+}
+/** known: the default lobby this browser keeps (then `layout` is null when it is still that lobby at that revision). */
+export const fetchDefaultPatio = async (known?: { id: string | null; revision: number } | null) => {
+  const rev = knownRevision(known?.revision)
+  return lobby(await withKnownRevision('patio_default', {}, known?.id && rev ? { p_known_id: known.id, p_known_revision: rev } : null))
+}
 export async function savePatioLobby(id: string, layout: PatioLayout, revision: number) {
   const r = await onlineRpc<Row>('patio_lobby_save', { p_id: id, p_layout: layout, p_revision: revision })
   return { revision: num(r.revision), updatedAt: str(r.updated_at) }
