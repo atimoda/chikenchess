@@ -104,3 +104,36 @@ test('each local player keeps their own throw angle', () => {
   c.use('p2'); at(Math.PI, {}); c.use('p1')
   assert.equal(c.throwAngle, -1)
 })
+
+test('consumables go after the weapons; Fire uses the dose and puts its effect on her, the newest replacing the old one', () => {
+  const { DEFAULT_ITEMS } = loadTs('lib/pigchicken/items.ts')
+  const c = createCombat()
+  c.give('maryjane'); c.give('pistol'); c.give('flute'); c.give('cok')
+  assert.deepEqual(names(c), ['flute', 'pistol', 'maryjane', 'cok', null])
+  assert.equal(c.effect, null)
+  // Maryjane: the buddha state, +33% final speed, eased start (slow, then fast)
+  step(c, { slot: 3 }); for (let i = 0; i < 20; i++) step(c)
+  step(c, { fire: true, firePressed: true })
+  assert.equal(c.effect.item, 'maryjane'); assert.equal(c.effect.look, 'buddha')
+  assert.equal(c.effect.speed, 1.33); assert.equal(c.effect.curve, 'superIn'); assert.equal(c.effect.accel, 1)
+  assert.equal(c.effect.total, DEFAULT_ITEMS.maryjane.effectTime)
+  // the one dose is gone: so is the item, her hands are empty
+  assert.deepEqual(names(c), ['flute', 'pistol', 'cok', null])
+  assert.equal(c.held, null)
+  // Cok replaces it: -22% final speed, +33% acceleration
+  step(c, { fire: false }); step(c, { slot: 3 }); for (let i = 0; i < 40; i++) step(c)
+  step(c, { fire: true, firePressed: true })
+  assert.equal(c.effect.item, 'cok'); assert.equal(c.effect.speed, 0.78); assert.equal(c.effect.accel, 1.33); assert.equal(c.effect.curve, 'linear')
+  // it wears off
+  const left = c.effect.left
+  for (let t = 0; t < left + 0.1; t += 0.016) step(c)
+  assert.equal(c.effect, null)
+})
+
+test('each local player has their own effect', () => {
+  const c = createCombat()
+  c.give('maryjane'); step(c, { fire: true, firePressed: true })
+  assert.equal(c.effect.item, 'maryjane')
+  c.use('p2'); assert.equal(c.effect, null)
+  c.use('p1'); assert.equal(c.effect.item, 'maryjane')
+})

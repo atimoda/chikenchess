@@ -5,12 +5,13 @@
 // An element is a box (x, y = its top-left corner before turning; w, h) turned by `rot` degrees around its centre.
 // The game's things (dummy, rack, button) are drawn by the game itself (canvas) and never turn; for them the box's
 // bottom middle is where they stand.
-import { INSTRUMENT_IDS, WEAPON_IDS, type ItemId } from './items'
+import { CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, type ItemId } from './items'
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
 import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, WORLD_TOP } from './world'
 import type { Box } from './combat'
 
-export const LAYOUT_VERSION = 1
+// v2: the consumables' racks (Maryjane, Cok); a layout saved before gets them once
+export const LAYOUT_VERSION = 2
 // the widest world the Pátio offers (its width setting): the default layout covers it, a narrower world hides the rest
 export const LAYOUT_MAX_SCREENS = 8
 export const LAYOUT_MAX_ELEMENTS = 1500
@@ -140,6 +141,15 @@ export function defaultTrees(screens: number): TreeSeed[] {
   return out
 }
 
+// the consumables' racks: on the floor of the second scene, between the horde buttons and the dummies
+function consumableRacks(): LayoutElement[] {
+  const d = ELEMENT_DEFS.rack
+  return CONSUMABLE_IDS.map((id, i) => {
+    const cx = SCENE_W * (1.45 + i * 0.08)
+    return { id: `rack-${id}`, kind: 'rack' as ElementKind, x: r1(cx - d.w / 2), y: r1(WORLD_GROUND_Y - d.h), w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: { item: id } }
+  })
+}
+
 export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREENS)): PatioLayout {
   const out: LayoutElement[] = []
   const G = WORLD_GROUND_Y
@@ -162,6 +172,7 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   const rack = ELEMENT_DEFS.rack
   WEAPON_IDS.forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, G - rack.h, rack.w, rack.h, { item: id })) })
   INSTRUMENT_IDS.forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, SHELF_TOP - rack.h, rack.w, rack.h, { item: id })) })
+  out.push(...consumableRacks())
   // the horde buttons on the second scene
   HORDE_BUTTONS.forEach((id, i) => { const cx = SCENE_W * (1.06 + i * 0.09); out.push(base('button', `btn-${id}`, cx - 20, G - 46 - 40, 40, 40, { action: id })) })
   // the training dummies, each with its own tip
@@ -188,7 +199,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.message = String(p.message ?? '').trim().slice(0, 280)
     params.maxHp = Math.round(clamp(num(p.maxHp, DUMMY_DEFAULTS.maxHp), DUMMY_HP_RANGE.min, DUMMY_HP_RANGE.max))
   } else if (kind === 'rack') {
-    params.item = ([...WEAPON_IDS, ...INSTRUMENT_IDS] as ItemId[]).includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
+    params.item = RACK_ITEM_IDS.includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
   } else if (kind === 'button') {
     params.action = HORDE_BUTTONS.includes(p.action as HordeButton) ? (p.action as HordeButton) : 'aliens'
   } else if (kind === 'pine' || kind === 'blossom') {
@@ -221,6 +232,15 @@ export function normalizeLayout(raw: unknown): PatioLayout | null {
     if (seen.has(el.id)) el.id = newElementId(el.kind)
     seen.add(el.id)
     elements.push(el)
+  }
+  // saved before the consumables existed (v1): their racks join it once, unless one already holds that item
+  const v = (raw as { v?: unknown }).v
+  if (!(typeof v === 'number' && v >= 2)) {
+    consumableRacks().forEach(r => {
+      if (elements.length >= LAYOUT_MAX_ELEMENTS || elements.some(e => e.kind === 'rack' && e.params.item === r.params.item)) return
+      if (seen.has(r.id)) r.id = newElementId('rack')
+      seen.add(r.id); elements.push(r)
+    })
   }
   return { v: LAYOUT_VERSION, elements }
 }

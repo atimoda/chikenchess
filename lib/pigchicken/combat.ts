@@ -1,6 +1,6 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
-import { DEFAULT_ITEMS, type ItemDef, type ItemId } from './items'
+import { DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
 import type { WeaponSound } from './sfx'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
@@ -49,6 +49,8 @@ export type DummyState = { params: DummyParams; stage: number; tipT: number; cra
 // how long the tip stays up after it is destroyed (and after each hit while wrecked)
 export const TIP_TIME = 8
 export const TIP_AGAIN = 5
+// a consumable's effect on her (one at a time: a new one replaces it); the numbers are taken when it is used
+export type Effect = { item: ItemId; left: number; total: number; speed: number; accel: number; curve: AccelCurve; ramp: number; look: EffectLook }
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
@@ -84,6 +86,7 @@ export function createCombat() {
   // the item in her wing when the throw started charging; another one in the wing (switched, grabbed) calls the
   // throw off until the button is let go, so the new item is never thrown by mistake
   let throwItem: Owned | null = null, throwVoid = false
+  let effect: Effect | null = null
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
@@ -285,24 +288,24 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; effect: Effect | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
     inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, effect,
   })
   const blank = (): Loadout => ({
     inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, effect: null,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody } = l)
+    ;({ cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, effect } = l)
     active = id
   }
 
@@ -340,6 +343,17 @@ export function createCombat() {
     stopBeam()
     cur = i; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; cooldown = Math.max(cooldown, 0.15)
     if (held()) sound('equip')
+  }
+
+  // a consumable: one dose puts its effect on her (replacing the one running); the last dose ends the item
+  function consume(h: Owned, d: ItemDef, at: { x: number; y: number }) {
+    effect = { item: h.item, left: d.effectTime, total: d.effectTime, speed: d.effectSpeed, accel: d.effectAccel, curve: d.effectCurve, ramp: d.effectRamp, look: d.effectLook }
+    cooldown = 1 / Math.max(0.1, d.rate)
+    sound('equip', h.item)
+    const color = d.effectLook === 'buddha' ? '#ffd166' : d.effectLook === 'fizz' ? '#f3e1c7' : '#7bdff2'
+    burst(at.x, at.y, 16, color, 170, 3)
+    addText(at.x, at.y - 40, d.effectLook === 'buddha' ? `${d.name}: estado búdico` : d.name, color)
+    if (d.mag > 0) { h.ammo--; if (h.ammo <= 0) removeHeld() }
   }
 
   function startReload() {
@@ -640,6 +654,8 @@ export function createCombat() {
     get throwAngle() { return throwAngle },
     // a throw called off (she switched items while charging): nothing happens until the button is let go
     get throwVoid() { return throwVoid },
+    // the consumable's effect on the current player (null: none)
+    get effect() { return effect },
     predictThrow,
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
@@ -744,7 +760,10 @@ export function createCombat() {
       // fire: with an item it shoots; with empty hands (or an item without ammo) it is a wing slap
       const h = held()
       const canFire = body.state !== 'slide' || d.slideFire
-      if (!h || d.mag === 0) {
+      if (effect) { effect.left -= dt; if (effect.left <= 0) effect = null }
+      if (h && d.consumable) {
+        if (input.firePressed && cooldown <= 0) consume(h, d, origin)
+      } else if (!h || d.mag === 0) {
         if (input.firePressed && meleeCool <= 0) melee(origin, true, body.scale)
       } else if (canFire) {
         const spreadDeg = this.spread(body)

@@ -15,7 +15,7 @@ import {
   newElementId, normalizeElement, settleLayout, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
-import { DEFAULT_ITEMS, INSTRUMENT_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
@@ -399,6 +399,7 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
           <select value={el.params.item} onChange={e => set({ item: e.target.value as ItemId })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
             <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
           </select>
         </label>
       )}
@@ -429,6 +430,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
   { group: "Armas", items: WEAPON_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Instrumentos", items: INSTRUMENT_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Habilidades especiais", items: CONSUMABLE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
 ]
 
 function Thumb({ entry }: { entry: Entry }) {

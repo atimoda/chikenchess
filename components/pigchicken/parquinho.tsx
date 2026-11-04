@@ -5,14 +5,14 @@
 // arrows > facing, drawn as a reticle. Firing, hitting and throwing only flash for now; the items come next.
 // The world is in fixed units (lib/pigchicken/world.ts): the same size on every screen, which only changes the crop.
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
-import type { ChickenEngine } from "@/lib/chicken/engine"
+import type { ChickenEngine, ChickenGame } from "@/lib/chicken/engine"
 import { chickenBindName, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
 import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
-import { createCombat, TIP_TIME, type Box, type Combat, type Pickup, type Swing } from "@/lib/pigchicken/combat"
+import { createCombat, TIP_TIME, type Box, type Combat, type Effect, type Pickup, type Swing } from "@/lib/pigchicken/combat"
 import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
-import { loadItems, subscribeItems, type ItemId, type PathShow } from "@/lib/pigchicken/items"
+import { curvePower, loadItems, subscribeItems, type ItemId, type PathShow } from "@/lib/pigchicken/items"
 import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
@@ -452,7 +452,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         moveLock: !wh.open && act.throw && armed && !combat.throwVoid,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
         backpedal: S.backpedal,
-        speedMult: d.weight,
+        ...effectGame(combat.effect, d.weight),
       })
 
       // ---------- combat (world coordinates) ----------
@@ -518,7 +518,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false })
         markHover(combat, grabLabel(controls, devs))
-        eng.setGame({ moveLock: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: null, backpedal: S.backpedal, speedMult: xd.weight })
+        eng.setGame({ moveLock: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: null, backpedal: S.backpedal, ...effectGame(combat.effect, xd.weight) })
         const xh = combat.inventory[combat.current], xsw = combat.swing
         const xart = xh ? ITEM_SVG[xh.item] : undefined
         eng.setHeld(xart ? { svg: xart, angle: combat.aimAngle, kick: combat.kick } : null)
@@ -686,7 +686,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       window.removeEventListener("wheel", onWheel)
       window.removeEventListener("keydown", onKey)
       window.removeEventListener("resize", fit)
-      engine.setGame({ gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1 })
+      engine.setGame({ gameMode: false, moveLock: false, aimFace: null, backpedal: 1, ...effectGame(null, 1) })
       engine.setHeld(null)
       engine.setSwing(null)
       engine.setBounds(null)
@@ -831,6 +831,11 @@ type Ctx = CanvasRenderingContext2D
 
 // flat item art, pointing right with the grip at (0, 0)
 // an item's art fitted into maxW x maxH around the current origin (centred), or with its grip at the origin
+// a consumable's effect on her movement and look (none: her own)
+function effectGame(e: Effect | null, weight: number): ChickenGame {
+  return { speedMult: weight * (e?.speed ?? 1), accelMult: e?.accel ?? 1, accelPower: e ? curvePower(e.curve) : 1, accelRamp: e?.ramp ?? 0.5, aura: e?.look ?? "none" }
+}
+
 function drawItem(ctx: Ctx, item: ItemId, maxW: number, maxH: number, atGrip = false) {
   const im = itemImage(item)
   if (!im) return
@@ -1489,6 +1494,19 @@ function drawInventory(ctx: Ctx, combat: Combat, row: number, offset?: { x: numb
     }
     if (o) { ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 2); drawItem(ctx, o.item, size - 6, size - 8); ctx.restore() }
     if (numbers && i < 9) { ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10) }
+  }
+  // the effect running on her (a consumable): its item in a circle, the ring emptying as the time runs out
+  const e = combat.effect
+  if (e) {
+    const r = size / 2 - 2, cx = x0 - 8 - r, cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
+    const tint = e.look === "buddha" ? "#ffd166" : e.look === "fizz" ? "#f3e1c7" : "#7bdff2"
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill()
+    ctx.save(); ctx.translate(cx, cy); drawItem(ctx, e.item, r * 1.3, r * 1.3); ctx.restore()
+    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+    // the last 3 seconds blink
+    ctx.strokeStyle = tint; ctx.globalAlpha = e.left < 3 && Math.floor(e.left * 4) % 2 ? 0.35 : 1
+    ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke()
+    ctx.globalAlpha = 1
   }
   ctx.restore()
 }

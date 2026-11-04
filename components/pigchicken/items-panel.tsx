@@ -5,7 +5,7 @@
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ARPS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, WEAPON_IDS, loadItems, saveItems, subscribeItems, type Arp, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, WEAPON_IDS, loadItems, saveItems, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
 import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { cn } from "@/lib/utils"
 
@@ -17,13 +17,19 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "release", label: "Ao soltar o botão" },
 ]
 
-// what each item uses; the wing has no ammo, projectile or throw
-const HIDDEN: Partial<Record<ItemId, string[]>> = { wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão"] }
+// what each item uses; the wing has no ammo, projectile or throw; a consumable has its effect (and its doses), a slap and a throw
+const CONSUMABLE_HIDES = ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Explosão", "Música"]
+const HIDDEN: Partial<Record<ItemId, string[]>> = {
+  wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito"],
+  ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
+}
+// a consumable's doses are the magazine's number
+const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", unit: "", group: "Efeito", hint: "Cada Atirar usa uma; 0 = nunca acaba" }
 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   const [sel, setSel] = useState<ItemId>("pistol")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Projétil: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Projétil: true, Efeito: true })
   useEffect(() => {
     setItems(loadItems())
     return subscribeItems(setItems)
@@ -41,6 +47,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
         <select aria-label="Item" value={sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
           <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
+          <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value="wing">{items.wing.name}</option>
         </select>
         <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do código" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
@@ -48,7 +55,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <p className="px-4 pt-3 text-[10px] text-[#93a79a]">Família: {it.family}. Vale na hora no Parquinho e fica salvo neste navegador. Duplo clique numa barra volta o valor do código.</p>
-        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Música" || it.instrument)).map(g => (
+        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Música" || it.instrument) && (g !== "Efeito" || it.consumable)).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a] hover:text-white">{g}</summary>
             <div className="grid gap-3 px-4 pb-4">
@@ -106,7 +113,23 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <label className="flex items-center justify-between gap-3"><span>Carga em glissando</span><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                 </>
               )}
-              {ITEM_PARAM_META.filter(m => m.group === g).map(m => {
+              {g === "Efeito" && (
+                <>
+                  <label className="flex items-center justify-between gap-3">
+                    <span>Curva da arrancada</span>
+                    <select value={it.effectCurve} onChange={e => { const v = e.target.value as AccelCurve; update(d => { d.effectCurve = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                      {ACCEL_CURVES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex items-center justify-between gap-3">
+                    <span>Estado (visual)</span>
+                    <select value={it.effectLook} onChange={e => { const v = e.target.value as EffectLook; update(d => { d.effectLook = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                      {EFFECT_LOOKS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                  </label>
+                </>
+              )}
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const fill = Math.max(0, Math.min(100, ((v - m.min) / (m.max - m.min)) * 100))
                 return (
@@ -114,7 +137,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     <div className="relative h-9 overflow-hidden rounded-md bg-[#22302a]" onDoubleClick={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })}>
                       <div className="absolute inset-y-0 left-0 bg-primary/50" style={{ width: `${fill}%` }} />
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-2 px-3 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)]">
-                        <span className="truncate">{it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : m.label}</span>
+                        <span className="truncate">{m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : m.label}</span>
                         <output className={cn("shrink-0 font-bold tabular-nums", changed && "text-amber-300")}>{v}{m.unit ? ` ${m.unit}` : ""}</output>
                       </div>
                       <input type="range" aria-label={m.label} min={m.min} max={m.max} step={m.step} value={v} onChange={e => { const n = Number(e.target.value); update(d => { (d as Record<string, unknown>)[m.key] = n }) }} onPointerUp={e => e.currentTarget.blur()} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />

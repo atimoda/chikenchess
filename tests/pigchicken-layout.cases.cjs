@@ -19,7 +19,8 @@ test('the default layout is the Pátio the code always drew: same platform boxes
   const trees = lay.elements.filter(e => e.kind === 'pine' || e.kind === 'blossom')
   assert.equal(trees.length, L.defaultTrees(L.LAYOUT_MAX_SCREENS).length)
   trees.forEach(t => { assert.equal(t.layer, 'frontGhost'); assert.equal(t.solid, false) })
-  assert.equal(lay.elements.filter(e => e.kind === 'rack').length, 16)
+  // 8 weapons, 8 instruments and the 2 consumables (Maryjane, Cok)
+  assert.equal(lay.elements.filter(e => e.kind === 'rack').length, 18)
   assert.equal(lay.elements.filter(e => e.kind === 'button').length, 4)
   const dummies = lay.elements.filter(e => e.kind === 'dummy')
   assert.equal(dummies.length, 5)
@@ -29,7 +30,7 @@ test('the default layout is the Pátio the code always drew: same platform boxes
 })
 
 test('layouts from storage are cleaned: unknown kinds dropped, turns snapped, the game things never turn or collide', () => {
-  const lay = L.normalizeLayout({ elements: [
+  const lay = L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [
     { kind: 'castle', x: 0, y: 0 },
     { id: 'a', kind: 'platform', x: 10, y: 20, w: 3, h: 50, rot: 50, layer: 'nowhere', solid: false, notes: true, opacity: 3 },
     { id: 'a', kind: 'dummy', x: 0, y: 0, w: 46, h: 112, rot: 90, layer: 'front', solid: true, params: { message: 'x'.repeat(400), maxHp: 99999 } },
@@ -97,4 +98,18 @@ test('gravity: an element falls onto the solid element under it, or the ground, 
   // the flag survives normalizing
   assert.equal(L.normalizeElement(box).gravity, true)
   assert.equal(L.normalizeElement({ ...box, gravity: false }).gravity, undefined)
+})
+
+test('a layout saved before the consumables gets their racks once; one that already has them (or is v2) does not', () => {
+  const old = L.normalizeLayout({ v: 1, elements: [{ id: 'r', kind: 'rack', params: { item: 'maryjane' } }] })
+  const items = old.elements.filter(e => e.kind === 'rack').map(e => e.params.item)
+  assert.deepEqual(items.sort(), ['cok', 'maryjane'])
+  assert.equal(old.v, L.LAYOUT_VERSION)
+  const cok = old.elements.find(e => e.params.item === 'cok')
+  assert.equal(cok.y + cok.h, world.WORLD_GROUND_Y)
+  // saved again (v2), a rack the editor removed stays removed
+  const again = L.normalizeLayout({ ...old, elements: old.elements.filter(e => e.params.item !== 'cok') })
+  assert.equal(again.elements.length, 1)
+  // a rack can hold a consumable
+  assert.equal(L.createElement('rack', 0, 0, { item: 'cok' }).params.item, 'cok')
 })

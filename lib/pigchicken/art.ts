@@ -20,6 +20,24 @@ function picture(p: Pic): Art {
     svg: `<g transform="rotate(${p.rot})"><image href="${p.src}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" preserveAspectRatio="none"/></g>`,
   }
 }
+// a red gummy bear standing at (cx, cy), translucent like the real candy: a darker rim, a lighter core and a shine
+function gummyBear(cx: number, cy: number, rot: number) {
+  const parts = (dx: number, dy: number, k: number) => `
+      <circle cx="${cx - 4.6 * k + dx}" cy="${cy - 10.4 * k + dy}" r="${2.7 * k}"/><circle cx="${cx + 4.6 * k + dx}" cy="${cy - 10.4 * k + dy}" r="${2.7 * k}"/>
+      <circle cx="${cx + dx}" cy="${cy - 6.4 * k + dy}" r="${5.6 * k}"/>
+      <ellipse cx="${cx + dx}" cy="${cy + 3 * k + dy}" rx="${6.2 * k}" ry="${6.8 * k}"/>
+      <ellipse cx="${cx - 6.4 * k + dx}" cy="${cy + 0.6 * k + dy}" rx="${2.5 * k}" ry="${3.4 * k}"/><ellipse cx="${cx + 6.4 * k + dx}" cy="${cy + 0.6 * k + dy}" rx="${2.5 * k}" ry="${3.4 * k}"/>
+      <ellipse cx="${cx - 3.8 * k + dx}" cy="${cy + 9.4 * k + dy}" rx="${3.2 * k}" ry="${2.6 * k}"/><ellipse cx="${cx + 3.8 * k + dx}" cy="${cy + 9.4 * k + dy}" rx="${3.2 * k}" ry="${2.6 * k}"/>`
+  return `<g transform="rotate(${rot} ${cx} ${cy})">
+    <g fill="#a3101f">${parts(0, 0, 1.08)}</g>
+    <g fill="#e3192f">${parts(0, 0, 1)}</g>
+    <g fill="#ff5b6b" opacity="0.55">${parts(-0.6, -0.6, 0.62)}</g>
+    <ellipse cx="${cx - 2.2}" cy="${cy - 8.6}" rx="1.8" ry="1.1" fill="#fff" opacity="0.75"/>
+    <ellipse cx="${cx - 3}" cy="${cy + 0.6}" rx="1.2" ry="2.6" fill="#fff" opacity="0.5"/>
+    <circle cx="${cx - 1.8}" cy="${cy - 6.4}" r="0.7" fill="#7a0a16"/><circle cx="${cx + 1.8}" cy="${cy - 6.4}" r="0.7" fill="#7a0a16"/>
+  </g>`
+}
+
 const I = '/pigchicken/instruments/'
 
 const ART: Partial<Record<ItemId, Art>> = {
@@ -107,6 +125,25 @@ const ART: Partial<Record<ItemId, Art>> = {
   violin: picture({ src: `${I}violin.png`, iw: 123, ih: 320, len: 135, gx: 0.5, gy: 0.6, rot: 90 }),
   keys: picture({ src: `${I}keys.png`, iw: 119, ih: 375, len: 150, gx: 0.7, gy: 0.55, rot: 90 }),
   harp: picture({ src: `${I}harp.png`, iw: 162, ih: 229, len: 100, gx: 0.2, gy: 0.55, rot: 0 }),
+  // special abilities (consumables)
+  // Maryjane: a little pile of red gummy bears
+  maryjane: {
+    box: [-9, -32, 50, 46],
+    svg: `${gummyBear(5, -10, -16)}${gummyBear(26, -12, 14)}${gummyBear(15, -2, 2)}`,
+  },
+  // Cok: a little glass soda bottle with its contoured waist, the dark drink inside, the red label and cap
+  cok: {
+    box: [-20, -15, 78, 30],
+    svg: `<path d="M-15 -8 Q-16 -11 -12 -11.5 L-3 -11 Q2 -8.6 6 -8.6 Q11 -8.6 15 -11 L21 -11 Q27 -10 31 -7 L41 -4.6 L47 -4.6 L47 4.6 L41 4.6 L31 7 Q27 10 21 11 L15 11 Q11 8.6 6 8.6 Q2 8.6 -3 11 L-12 11.5 Q-16 11 -15 8 Z" fill="#cfe3d8" opacity="0.55"/>
+    <path d="M-13.5 -7.5 Q-14 -9.8 -11 -10 L-3 -9.6 Q2 -7.4 6 -7.4 Q11 -7.4 15 -9.6 L21 -9.6 Q26.5 -8.6 30 -6 L33 -5 L33 5 L30 6 Q26.5 8.6 21 9.6 L15 9.6 Q11 7.4 6 7.4 Q2 7.4 -3 9.6 L-11 10 Q-14 9.8 -13.5 7.5 Z" fill="#3b1a0c"/>
+    <path d="M30 -6 L33 -5 L33 5 L30 6 Q31.5 0 30 -6 Z" fill="#6b3416"/>
+    ${[[-7, -4, 1.1], [-2, 3, 0.8], [11, -2, 1], [18, 4, 0.7], [24, -3, 0.9]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#a0602e" opacity="0.8"/>`).join('')}
+    <rect x="-1" y="-9.4" width="19" height="18.8" rx="1.5" fill="#d7192a"/>
+    <text x="8.5" y="3" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="700" font-size="8.5" fill="#fff">Cok</text>
+    <path d="M-12 -8.6 L28 -8 M34 -3.6 L45 -3.6" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+    <rect x="47" y="-5.6" width="5.2" height="11.2" rx="1" fill="#d7192a"/>
+    <path d="M48 -5.6 L48 5.6 M49.8 -5.6 L49.8 5.6 M51.4 -5.6 L51.4 5.6" stroke="#9c0f1c" stroke-width="0.6"/>`,
+  },
   tambourine: {
     box: [-8, -24, 46, 48],
     svg: `<circle cx="14" cy="0" r="20" fill="#e8d3a6" stroke="#9a5b2e" stroke-width="5"/>
