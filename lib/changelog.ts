@@ -11,6 +11,8 @@ export const CHANGELOG = [
         'Novo botão Arpeggiator na linha de botões abaixo do MIDI, na partida e no Criativo: um clique transforma as notas da variação num arpejo com a configuração atual. Segure o botão (ou clique com o botão direito) para abrir as configurações: ordem (Up, Down, Up/Down, As played, Walk, Random, Chord), Rate com tercina e pontuada, Octaves, Length, Gate, Swing, Chord/Above e o Rhythm com uma barra de acento por passo. Mexer nas configurações reaplica na hora, sempre a partir do MIDI original, sem acumular.',
       ] },
       { title: 'Pátio', items: [
+        'PigChicKen: o trajeto pontilhado do arremesso volta a seguir a mira com outros players locais no Pátio (antes ele ficava preso na direção do outro player). Enquanto segura Arremessar com um item, a galinha para de andar e correr. Trocar de item durante a carga cancela o arremesso: soltar o botão não arremessa o item novo.',
+        'PigChicKen: na Granada, o X de onde ela cai e o círculo do dano agora só aparecem enquanto você segura Atirar, como no Pandeiro.',
         'PigChicKen: a roda do inventário fica aberta só enquanto você segura o botão dela; ao soltar ela fecha e equipa o item escolhido, se houver. Com a roda aberta e um item escolhido, apertar atirar, pular ou correr também equipa o item e fecha a roda.',
         'Controles do boneco: ícones de teclado e gamepad acima do nome de cada tipo de input, e Cmd esq. deixa de ser tecla de chocar.',
         'PigChicKen: no Pandeiro, o X de onde ele cai e o círculo do dano só aparecem enquanto você segura Atirar. Cada arma de explosão ganhou a opção “Onde cai (círculo do dano)” no painel de itens (Sempre, Com o tiro segurado, …); o Lança-foguetes e as outras continuam mostrando o tempo todo.',

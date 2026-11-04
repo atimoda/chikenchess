@@ -73,3 +73,34 @@ test('each local player has their own items (loadouts) in the same world', () =>
   c.use('p2')
   assert.deepEqual(names(c), [null])
 })
+
+test('switching items while a throw charges calls the throw off until the button is let go', () => {
+  const c = createCombat()
+  c.give('pistol'); c.give('rifle')
+  const first = c.held.item
+  step(c, { throwHeld: true }); step(c, { throwHeld: true })
+  assert.ok(c.throwCharge > 0)
+  step(c, { throwHeld: true, slot: 1 })
+  assert.notEqual(c.held.item, first)
+  assert.equal(c.throwCharge, 0)
+  assert.equal(c.throwVoid, true)
+  // still held: no charge; let go: nothing is thrown
+  step(c, { throwHeld: true }); assert.equal(c.throwCharge, 0)
+  const held = c.held.item
+  step(c, { throwReleased: true })
+  assert.equal(c.thrown.length, 0)
+  assert.equal(c.held.item, held)
+  assert.equal(c.throwVoid, false)
+  // the next press throws as usual
+  step(c, { throwHeld: true }); step(c, { throwReleased: true })
+  assert.equal(c.thrown.length, 1)
+})
+
+test('each local player keeps their own throw angle', () => {
+  const c = createCombat()
+  c.give('pistol')
+  const at = (angle, over) => c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, angle, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...over }, [], 1000, () => {})
+  at(-1, { throwHeld: true })
+  c.use('p2'); at(Math.PI, {}); c.use('p1')
+  assert.equal(c.throwAngle, -1)
+})

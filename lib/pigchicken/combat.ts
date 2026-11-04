@@ -81,6 +81,9 @@ export function createCombat() {
   let aimAngle = 0
   // the throw goes where the aim points, all the way round (not slowed by a heavy item's turn rate)
   let throwAngle = 0
+  // the item in her wing when the throw started charging; another one in the wing (switched, grabbed) calls the
+  // throw off until the button is let go, so the new item is never thrown by mistake
+  let throwItem: Owned | null = null, throwVoid = false
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
@@ -280,18 +283,18 @@ export function createCombat() {
   // ---------- loadouts: one per local player ----------
   type Loadout = {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
-    throwT: number; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
+    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
-    inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, chargeT, prevFire, aimAngle, pumpT, swing,
+    inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody,
   })
   const blank = (): Loadout => ({
-    inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
+    inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
     beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null,
   })
   function useLoadout(id: string) {
@@ -299,7 +302,7 @@ export function createCombat() {
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody } = l)
+    ;({ cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody } = l)
     active = id
   }
 
@@ -635,6 +638,8 @@ export function createCombat() {
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     get throwAngle() { return throwAngle },
+    // a throw called off (she switched items while charging): nothing happens until the button is let go
+    get throwVoid() { return throwVoid },
     predictThrow,
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
@@ -786,9 +791,16 @@ export function createCombat() {
       prevFire = input.fire
       if (input.melee && meleeCool <= 0) melee(origin, !h, body.scale)
 
-      // throw: hold to charge, let go to throw what she holds
-      if (input.throwHeld) throwT += dt
-      if (input.throwReleased) {
+      // throw: hold to charge, let go to throw what she holds; another item in the wing while charging
+      // (switched, grabbed) calls the throw off completely, until the button is let go
+      if (throwVoid || (throwT > 0 && held() !== throwItem)) {
+        throwT = 0; throwItem = null
+        throwVoid = input.throwHeld
+      } else if (input.throwHeld) {
+        if (throwT === 0) throwItem = held()
+        throwT += dt
+      }
+      if (input.throwReleased && !throwVoid && throwT > 0) {
         const t = held()
         if (t) {
           const p = Math.min(1, throwT / Math.max(0.05, d.throwCharge))
@@ -799,7 +811,7 @@ export function createCombat() {
           // the next item in the wing: the first one (empty hands when she has none)
           cur = 0
         }
-        throwT = 0
+        throwT = 0; throwItem = null
       }
 
       const inBox = (x: number, y: number) => solidAt(boxes, x, y)
