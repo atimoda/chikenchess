@@ -32,7 +32,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyF', 'Key:KeyG', null], keys2: ['Key:End', null], pad: ['Pad:b5', null, null], group: 'items' },
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:KeyQ', null, null], keys2: ['Key:Delete', null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Backslash', null], pad: [null, null, null], group: 'items' },
-  // hold to open the inventory wheel, aim at an item (mouse / right stick) and let go; a quick tap leaves it open
+  // the inventory wheel stays open while held: aim at an item (mouse / right stick) and let go (or fire / jump / run)
   { key: 'itemWheel', label: 'Roda do inventário (segure e solte no item)', keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b8', null, null], group: 'items' },
   // X on the gamepad also runs: grabbing only acts while she stands on an item
   { key: 'grab', label: 'Pegar / trocar item (em cima dele)', keys: ['Key:KeyE', null, null], keys2: ['Key:Slash', null], pad: ['Pad:b2', null, null], group: 'items' },
@@ -143,6 +143,8 @@ export function loadChickenControls(): ChickenControls {
       // controls saved before the secondary keyboard could grab (03/11): / takes grab there, if it is free
       if (!saved?.grabKeys2 && !base.keys2.grab.some(Boolean) && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:Slash') || base.keys2[a.key].includes('Key:Slash'))) base.keys2.grab[0] = 'Key:Slash'
     }
+    // Cmd esq. is no longer a brood key (03/11): controls that still have it on brood lose it (once)
+    if (!saved?.noCmdBrood) KEYBOARD_INPUT_TYPES.forEach(k => { base[k].down = base[k].down.map(t => t === 'Key:MetaLeft' ? null : t) })
     // one key, one action, on one keyboard type: the primary keyboard wins
     const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
     CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = base.keys2[a.key].map(t => t && primary.has(t) ? null : t) })
@@ -151,7 +153,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, grabKeys2: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, grabKeys2: true, noCmdBrood: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

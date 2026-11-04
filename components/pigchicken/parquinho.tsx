@@ -217,10 +217,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
     let lead = 0, shake = 0, shakeT = 0, prevVy = 0
     const shakePhase = [Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3]
-    // the inventory wheel: open, left open by a quick tap of its button (sticky), when it opened, the slice under
-    // the pointer / stick (-1 none); slotsShown: the bar's slot count the page knows
-    const wh = { open: false, sticky: false, at: 0, hover: -1 }
-    let slotsShown = 1, wheelDrawn = false
+    // the inventory wheel: open (only while its button is held), when it opened, the slice under the pointer / stick
+    // (-1 none); slotsShown: the bar's slot count the page knows; fireBlock: the fire press that confirmed an item
+    // does not shoot until it is let go; prevFire: fire held last frame (raw, the wheel does not mask it)
+    const wh = { open: false, at: 0, hover: -1 }
+    let slotsShown = 1, wheelDrawn = false, fireBlock = false, prevFire = false
     // horde settings, changed by shooting their buttons
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
@@ -346,25 +347,24 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (noMouse() && (mouse || mouseBtn.fire || mouseBtn.melee)) { mouse = null; mouseBtn.fire = false; mouseBtn.melee = false }
       const rightStick = stickFor(devs, 1, an.deadzoneR), leftStick = stickFor(devs, 0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
 
-      // ---------- the inventory wheel: hold its button, point at an item (mouse, right stick, touch) and let go ----------
+      // ---------- the inventory wheel: open while its button is held; point at an item (mouse, right stick, touch) ----------
+      // letting go of the button closes it and equips the item pointed at; fire, jump or run pressed with an item
+      // pointed at equips it and closes the wheel too
       const slots = combat.inventory, nSlots = slots.length
       if (nSlots !== slotsShown) { slotsShown = nSlots; setInvSlots(nSlots) }
       let wheelPick = 0
       const showWheel = (on: boolean) => {
         if (wh.open === on) return
-        wh.open = on; wh.sticky = false; wh.at = now; wh.hover = -1
+        wh.open = on; wh.at = now; wh.hover = -1
         wheelPtr.current = null; wheelTap.current = null
         setWheelOpen(on)
       }
-      const wheelDown = act.itemWheel && !prev.itemWheel, wheelUp = !act.itemWheel && !!prev.itemWheel
-      if (wheelDown) {
-        if (!wh.open) showWheel(true)
-        else { if (wh.hover >= 0) wheelPick = wh.hover + 1; showWheel(false) }
-      } else if (wheelUp && wh.open && !wh.sticky) {
-        // let go on an item: equip it; a quick tap with nothing chosen leaves the wheel open
-        if (wh.hover >= 0) { wheelPick = wh.hover + 1; showWheel(false) }
-        else if (now - wh.at < 300) wh.sticky = true
-        else showWheel(false)
+      const confirmWheel = () => { if (wh.hover >= 0 && wh.hover < nSlots) wheelPick = wh.hover + 1; showWheel(false) }
+      if (act.itemWheel && !prev.itemWheel && !wh.open) showWheel(true)
+      else if (!act.itemWheel && wh.open) confirmWheel()
+      else if (wh.open && wh.hover >= 0) {
+        const firePressed = act.fire && !prevFire
+        if (firePressed || (act.jump && !prev.jump) || (act.run && !prev.run)) { if (firePressed) fireBlock = true; confirmWheel() }
       }
       if (wh.open) {
         const g = wheelGeom()
@@ -455,7 +455,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
 
       // ---------- combat (world coordinates) ----------
-      const fire = !wh.open && (act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
+      if (fireBlock && !act.fire) fireBlock = false
+      prevFire = act.fire
+      const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
       let pick = 0
       if (act.nextItem && !prev.nextItem) pick = 1
       if (act.prevItem && !prev.prevItem) pick = -1
