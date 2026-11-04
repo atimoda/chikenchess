@@ -5,7 +5,7 @@
 // clucking sound, saved in this browser.
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { X } from "lucide-react"
+import { Gamepad2, Keyboard, X, type LucideIcon } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import {
   CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, KEYBOARD_INPUT_TYPES, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames,
@@ -20,6 +20,9 @@ const CHICKEN_PATIO_PATH = "/patio"
 
 type Listen = { kind: ChickenInputType; action: ChickenAction; slot: number } | null
 const COLUMNS = CHICKEN_INPUT_TYPES.flatMap(t => Array.from({ length: t.slots }, (_, slot) => ({ type: t, slot })))
+
+// the icon above each input type's label in the bind grid (the secondary keyboard's carries a small 2)
+const INPUT_ICONS: Record<ChickenInputType, LucideIcon> = { keys: Keyboard, keys2: Keyboard, pad: Gamepad2 }
 
 const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
   { value: "auto", label: "Automático" },
@@ -107,7 +110,13 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
       <div className="grid w-max min-w-full items-center gap-x-1.5 gap-y-1.5 text-xs" style={{ gridTemplateColumns: cols }}>
         <span />
         {CHICKEN_INPUT_TYPES.map(t => (
-          <span key={t.id} style={{ gridColumn: `span ${t.slots}` }} className="border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">{t.label}</span>
+          <span key={t.id} style={{ gridColumn: `span ${t.slots}` }} className="flex flex-col items-center gap-1 border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">
+            <span className="relative" aria-hidden="true">
+              {(() => { const Icon = INPUT_ICONS[t.id]; return <Icon className="h-5 w-5" /> })()}
+              {t.id === "keys2" && <span className="absolute -right-2 -top-1 font-mono text-[9px] font-bold leading-none">2</span>}
+            </span>
+            {t.label}
+          </span>
         ))}
         {CHICKEN_ACTIONS.map((a, i) => (
           <div key={a.key} className="contents">
