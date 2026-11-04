@@ -60,6 +60,7 @@ let saved: SavedChickenConfig | null = null
 let preview: ChickenConfig | null = null
 let fetchedAt = 0
 let request: Promise<SavedChickenConfig> | null = null
+let knownRevisionUnsupported = false
 const listeners = new Set<(config: ChickenConfig) => void>()
 
 const savedNow = () => (typeof window === 'undefined' ? readCache() : (saved ??= readCache()))
@@ -100,16 +101,31 @@ export function refreshChickenConfig(force = false): Promise<SavedChickenConfig>
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
   if (!onlineConfigured || !url || !key || typeof window === 'undefined') return Promise.resolve(savedNow())
-  request = fetch(`${url}/rest/v1/rpc/chicken_config`, {
+  // Egress: the revision cached here goes along and the server leaves the config out while it is still current.
+  // A server without migration 202611040001 rejects the argument (404): the call is repeated without it, once.
+  const held = savedNow()
+  const call = (known: number | null) => fetch(`${url}/rest/v1/rpc/chicken_config`, {
     method: 'POST',
     headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: '{}',
+    body: known ? JSON.stringify({ p_known_revision: known }) : '{}',
     cache: 'no-store',
     signal: AbortSignal.timeout(8000),
   })
+  const known = held.revision > 0 && !knownRevisionUnsupported ? held.revision : null
+  request = call(known)
+    .then(response => {
+      if (known && response.status === 404) { knownRevisionUnsupported = true; return call(null) }
+      return response
+    })
     .then(async response => {
       if (!response.ok) throw new Error(`chicken_config ${response.status}`)
-      return adopt(parseRow(await response.json()))
+      const row: unknown = await response.json()
+      // unchanged: only the revision came back, the cached config stands
+      if (known && row && typeof row === 'object' && !('config' in row) && Number((row as { revision?: unknown }).revision) === known) {
+        fetchedAt = Date.now()
+        return savedNow()
+      }
+      return adopt(parseRow(row))
     })
     .catch(() => { fetchedAt = Date.now(); return savedNow() })
     .finally(() => { request = null })

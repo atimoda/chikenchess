@@ -806,6 +806,34 @@ test('chicken config: anyone reads, only the admin saves, with revision check an
   const read=await rpc(other,'chicken_config')
   assert.equal(read.revision,2)
   assert.equal(read.config.params.walkSpeed,220)
+  // egress: the cached revision is still current, so only the revision comes back
+  assert.deepEqual(Object.keys(await rpc(other,'chicken_config',[2])).sort(),['revision','updated_at'])
+  assert.equal((await rpc(other,'chicken_config',[1])).config.params.walkSpeed,220)
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
+  assert.equal((await db.query('select public.chicken_config(2) as result')).rows[0].result.config,undefined)
   await assert.rejects(asUser(other,'select * from online_private.chicken_config'),/permission denied/)
   assert.equal((await admin('select count(*)::int as n from online_private.chicken_config_history')).rows[0].n,2)
+})
+test('patio: the layout is left out when the caller already holds that revision',async()=>{
+  const [owner,other]=[ids[3],ids[4]]
+  const id='b1000000-0000-4000-8000-000000000001'
+  const layout={elements:[{id:'a',kind:'box',x:1,y:2}]}
+  assert.equal((await rpc(owner,'patio_lobby_save',[id,layout,0])).revision,1)
+  assert.equal((await rpc(owner,'patio_lobby_save',[id,layout,1])).revision,2)
+  const full=await rpc(other,'patio_lobby_get',[id])
+  assert.deepEqual(full.layout,layout)
+  const lean=await rpc(other,'patio_lobby_get',[id,2])
+  assert.equal(lean.layout,undefined)
+  assert.deepEqual({...lean,layout:full.layout},full)
+  assert.deepEqual((await rpc(other,'patio_lobby_get',[id,1])).layout,layout)
+  try {
+    await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({app_metadata:{access_level:'admin'}})])
+    await rpc(owner,'patio_lobby_set_default',[id])
+  } finally { await db.query("select set_config('request.jwt.claims','',false)") }
+  assert.deepEqual((await rpc(other,'patio_default')).layout,layout)
+  assert.equal((await rpc(other,'patio_default',[id,2])).layout,undefined)
+  assert.deepEqual((await rpc(other,'patio_default',[id,1])).layout,layout)
+  assert.deepEqual((await rpc(other,'patio_default',[ids[0],2])).layout,layout)
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
+  assert.equal((await db.query('select public.patio_lobby_get($1,2) as result',[id])).rows[0].result.layout,undefined)
 })

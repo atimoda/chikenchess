@@ -65,10 +65,14 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
     setSave({ kind: "idle", text: "" })
     if (!patioOnlineAvailable()) return
     try {
-      const row = id ? await fetchPatioLobby(id) : await fetchDefaultPatio()
+      // the layout comes only when the server's revision differs from this browser's copy (otherwise it is the same)
+      const row = id
+        ? await fetchPatioLobby(id, local.dbId === id ? local.revision : null)
+        : await fetchDefaultPatio({ id: local.dbId, revision: local.revision })
       if (seq !== loadSeq.current) return
       // the admin's default is kept in this browser too, so a new Pátio copies it (opening it keeps it below)
-      if (id) void fetchDefaultPatio().then(def => {
+      const keptDefault = id ? loadPatio(null) : null
+      if (keptDefault) void fetchDefaultPatio({ id: keptDefault.dbId, revision: keptDefault.revision }).then(def => {
         if (!def?.layout) return
         const d = loadPatio(null)
         if (d.dbId === def.id && d.revision === def.revision) return
@@ -88,7 +92,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
       put(keepPatio(next))
       setRemote(row)
       if (stale) setSave({ kind: "conflict", text: "Este Pátio foi salvo em outro lugar depois das suas mudanças neste navegador.", remote: row })
-      if (ctx.current.isAccount && !played.current.has(row.id)) { played.current.add(row.id); playedPatioLobby(row.id).then(() => fetchPatioLobby(row.id)).then(r => { if (r && cur.current?.dbId === r.id) setRemote(r) }).catch(() => {}) }
+      if (ctx.current.isAccount && !played.current.has(row.id)) { played.current.add(row.id); playedPatioLobby(row.id).then(() => fetchPatioLobby(row.id, row.revision)).then(r => { if (r && cur.current?.dbId === r.id) setRemote(r) }).catch(() => {}) }
     } catch (e) {
       if (seq === loadSeq.current && !isPatioServerMissing(e)) setSave({ kind: "local", text: patioErrorMessage(e) })
     }
@@ -97,7 +101,8 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
   const refreshRemote = useCallback(async () => {
     const p = cur.current
     if (!p?.dbId || !patioOnlineAvailable()) return
-    try { const row = await fetchPatioLobby(p.dbId); if (row && cur.current?.dbId === row.id) setRemote(row) } catch { /* keep what we have */ }
+    // only the panels' data (people, favourites, plays) is needed here: the layout at p.revision is ours already
+    try { const row = await fetchPatioLobby(p.dbId, p.revision); if (row && cur.current?.dbId === row.id) setRemote(row) } catch { /* keep what we have */ }
   }, [])
 
   // ---------- saving to the database ----------
