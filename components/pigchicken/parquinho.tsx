@@ -447,8 +447,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
-        // brooding does not freeze her: "frente + chocar" walks at its own speed (0 keeps her still), aiming with the item
-        moveLock: false,
+        // brooding does not freeze her: "frente + chocar" walks at its own speed (0 keeps her still), aiming with the item;
+        // charging a throw stops her walk / run (not a throw called off by switching items)
+        moveLock: !wh.open && act.throw && armed && !combat.throwVoid,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
         backpedal: S.backpedal,
         speedMult: d.weight,
@@ -515,7 +516,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false })
         markHover(combat, grabLabel(controls, devs))
-        eng.setGame({ moveLock: false, aimFace: null, backpedal: S.backpedal, speedMult: xd.weight })
+        eng.setGame({ moveLock: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: null, backpedal: S.backpedal, speedMult: xd.weight })
         const xh = combat.inventory[combat.current], xsw = combat.swing
         const xart = xh ? ITEM_SVG[xh.item] : undefined
         eng.setHeld(xart ? { svg: xart, angle: combat.aimAngle, kick: combat.kick } : null)

@@ -329,7 +329,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // point-and-click: any control of her own cancels the walk to the clicked spot
     if (goal && (dir !== 0 || J || Dk || C || U || S.held || S.cl)) goal = null
     const auto = !!goal && goalStep(dt)
-    if (auto) dir = Math.sign(goal!.x - S.x)
+    if (auto && !game.moveLock) dir = Math.sign(goal!.x - S.x)
     buildSegs(); heldDir = dir
     S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt);
     if (S.held) { heldStep(dt); return }
