@@ -5,8 +5,11 @@ export const CHANGELOG = [
   {
     version: '1.15.0',
     date: '04/11/2026',
-    title: 'Galinha: boost de velocidade ao levantar',
+    title: 'Galinha: boost ao levantar e habilidades especiais Maryjane e Cok',
     groups: [
+      { title: 'Pátio', items: [
+        'PigChicKen: duas habilidades especiais novas, em suportes no chão da segunda cena (entre os botões da horda e os bonecos). Pegue e aperte Atirar para usar. Maryjane (balinhas de ursinho vermelhas) coloca a galinha no estado búdico por 15 s: auréola dourada, brilho em volta e olhos semicerrados, velocidade final 33% maior e arrancada “ease-super-in” (começa devagar e termina rápido). Cok (garrafinha de vidro) faz o contrário por 15 s: velocidade final 22% menor e aceleração 33% maior, com bolhinhas subindo em volta dela. Um efeito por vez: usar o outro substitui o que estava valendo. Um círculo ao lado do inventário mostra o efeito e o tempo que falta. No painel de itens, o grupo “Efeito” regula doses, duração, velocidade, aceleração, curva e tempo da arrancada.',
+      ] },
       { title: 'Galinha', items: [
         'Levantar andando (de agachada, chocando ou do slide, segurando esquerda ou direita) dá um impulso curto de velocidade que vai sumindo suavemente. No Pátio da Galinha, em “Agachar e slide”, os novos ajustes “Boost de velocidade ao levantar” (padrão 1,3×; 1 desliga) e “Duração do boost ao levantar” (padrão 0,4 s) regulam o efeito. Levantar parada não muda nada.',
       ] },

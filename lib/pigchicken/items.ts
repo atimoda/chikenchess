@@ -12,10 +12,24 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
 ]
 export type ItemId = 'wing' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp'
+  | 'maryjane' | 'cok'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // each family's reticle shows what matters for it
 export type Reticle = 'dot' | 'circle' | 'cross' | 'cone' | 'laser' | 'impact' | 'grenade' | 'bow'
+// consumables: how her walk / run picks up speed while the effect lasts. linear: at a steady rate (her own
+// acceleration); superIn ("ease-super-in"): it starts slow and ends fast, reaching full speed in `effectRamp` seconds
+export type AccelCurve = 'linear' | 'easeIn' | 'superIn'
+export const ACCEL_CURVES: { value: AccelCurve; label: string; power: number }[] = [
+  { value: 'linear', label: 'Linear (a aceleração dela)', power: 1 },
+  { value: 'easeIn', label: 'Ease in (começa devagar)', power: 2 },
+  { value: 'superIn', label: 'Ease super in (lento, depois rápido)', power: 3 },
+]
+// the state an effect puts her in (drawn on her): buddha: a golden halo, a calm glow and half-closed eyes; fizz: bubbles
+export type EffectLook = 'none' | 'buddha' | 'fizz'
+export const EFFECT_LOOKS: { value: EffectLook; label: string }[] = [
+  { value: 'none', label: 'Nenhum' }, { value: 'buddha', label: 'Estado búdico (auréola dourada)' }, { value: 'fizz', label: 'Gás (bolhinhas)' },
+]
 
 export type ItemDef = {
   id: ItemId
@@ -97,12 +111,22 @@ export type ItemDef = {
   strum: number // s between the notes of a chord (pellets)
   ringNotes: number // notes it lets out in a circle when it bursts (with a fuse or on impact)
   gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
+  // consumables (Fire uses one dose; `mag` is the doses, the last one used ends the item). One effect at a time:
+  // a new one replaces the one running
+  consumable: boolean
+  effectTime: number // s the effect lasts
+  effectSpeed: number // × her final speed (walk, run, in the air)
+  effectAccel: number // × her acceleration
+  effectCurve: AccelCurve
+  effectRamp: number // s to full speed with an eased curve
+  effectLook: EffectLook
 }
 
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false,
+  consumable: false, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
 }
 
 const PISTOL: ItemDef = {
@@ -246,13 +270,36 @@ const HARP: ItemDef = {
   instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true,
 }
 
+// ---------- consumables (special abilities): Fire uses a dose and puts an effect on her for a while ----------
+const CONSUMABLE = {
+  ...WING, reticle: 'dot' as Reticle, fireMode: 'semi' as FireMode, rate: 2, mag: 1, reloadTime: 0.2, autoReload: false,
+  meleeDamage: 4, meleeRange: 70, durability: 0, throwDamage: 4, throwMin: 275, throwSpeed: 900, throwCharge: 0.8,
+  muzzleX: 10, muzzleY: -6, length: 0, consumable: true,
+}
+// Maryjane: red gummy bears. The buddha state: a third faster, and every start is slow at first and fast at the end
+const MARYJANE: ItemDef = {
+  ...CONSUMABLE, id: 'maryjane', name: 'Maryjane', family: 'Habilidades especiais',
+  effectTime: 15, effectSpeed: 1.33, effectAccel: 1, effectCurve: 'superIn', effectRamp: 0.6, effectLook: 'buddha',
+}
+// Cok: a little glass bottle of soda. The opposite: slower in the end, but quicker off the mark
+const COK: ItemDef = {
+  ...CONSUMABLE, id: 'cok', name: 'Cok', family: 'Habilidades especiais',
+  effectTime: 15, effectSpeed: 0.78, effectAccel: 1.33, effectCurve: 'linear', effectRamp: 0.5, effectLook: 'fizz',
+}
+
 export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP,
+  maryjane: MARYJANE, cok: COK,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']
-export const ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, 'wing']
+export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
+// the items a rack can hold
+export const RACK_ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS]
+export const ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing']
+// the multiplier of the effect's speed-up curve (1 = linear)
+export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
 const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true }
 export const ARPS: { value: Arp; label: string }[] = [
@@ -315,6 +362,10 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'stun', label: 'Paralisa', min: 0, max: 3, step: 0.1, unit: 's', group: 'Música', hint: 'O inimigo fica parado depois da nota' },
   { key: 'strum', label: 'Rasgueado', min: 0, max: 0.1, step: 0.002, unit: 's', group: 'Música', hint: 'Intervalo entre as notas do acorde' },
   { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },
+  { key: 'effectTime', label: 'Duração do efeito', min: 1, max: 120, step: 1, unit: 's', group: 'Efeito', hint: 'Um efeito por vez: o novo substitui o anterior' },
+  { key: 'effectSpeed', label: 'Velocidade final', min: 0.3, max: 2.5, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%; 0,78 = −22%' },
+  { key: 'effectAccel', label: 'Aceleração', min: 0.3, max: 3, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%' },
+  { key: 'effectRamp', label: 'Tempo da arrancada', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Efeito', hint: 'Com curva ease: quanto leva até a velocidade final' },
 ]
 export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]
 
@@ -342,6 +393,8 @@ export function loadItems(): Record<ItemId, ItemDef> {
       if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
       if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
       if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
+      if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
+      if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
     })
   } catch { /* storage unavailable */ }
   return out

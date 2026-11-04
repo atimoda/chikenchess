@@ -7,8 +7,8 @@ export const INVENTORY_MAX = 13
 
 // the order of the groups in the inventory: instruments, weapons, other items (mobility, consumables...)
 export type ItemGroup = 0 | 1 | 2
-// the "other" items (none yet): they go after the weapons
-const OTHER_ITEMS = new Set<ItemId>([])
+// the "other" items (consumables: Maryjane, Cok): they go after the weapons
+const OTHER_ITEMS = new Set<ItemId>(['maryjane', 'cok'])
 export function itemGroup(id: ItemId, instrument: boolean): ItemGroup {
   if (instrument) return 0
   return OTHER_ITEMS.has(id) ? 2 : 1

@@ -15,7 +15,10 @@ import { mixGain } from '../pigchicken/mixer'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
-export type ChickenGame = { gameMode?: boolean; moveLock?: boolean; aimFace?: number | null; backpedal?: number; speedMult?: number }
+// accelMult scales her acceleration; accelPower > 1 eases each start (1 linear, 3 "ease-super-in": slow, then fast),
+// reaching full speed in accelRamp seconds; aura draws a state on her (a consumable's effect in the Pátio)
+export type ChickenAura = 'none' | 'buddha' | 'fizz'
+export type ChickenGame = { gameMode?: boolean; moveLock?: boolean; aimFace?: number | null; backpedal?: number; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; aura?: ChickenAura }
 export type ChickenEngine = {
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
@@ -89,20 +92,35 @@ const BOW_MARKUP = `
   <path d="M-1.5 ${-BOW_LEN} L3 ${-BOW_LEN + 1.5} L2.5 ${-BOW_LEN + 6} Z" fill="#6b3f1f"/>
   <rect x="-2.5" y="-5" width="6.5" height="11" rx="1.5" fill="#1d1a18"/>
   <circle cx="0.8" cy="0.5" r="1.3" fill="#f4f1e8"/>`
+// the states a consumable puts her in: the buddha state's calm golden glow behind her and halo behind her head;
+// a soda's fizz, little bubbles rising around her
+const AURA_MARKUP = `<g data-part="aura" style="display:none">
+    <ellipse cx="0" cy="-110" rx="120" ry="140" fill="url(#chk-buddhaGlow)"><animate attributeName="opacity" values="0.75;1;0.75" dur="3.2s" repeatCount="indefinite"/></ellipse>
+  </g>
+  <g data-part="fizz" style="display:none">
+    ${[[-62, 0, 6], [-32, 0.7, 4.5], [8, 1.5, 7], [38, 0.35, 5], [66, 1.1, 6], [-12, 1.9, 4]].map(([x, d, r]) =>
+      `<circle cx="${x}" r="${r}" fill="rgba(255,255,255,0.12)" stroke="#fff3df" stroke-width="2.6" opacity="0"><animate attributeName="cy" values="-20;-210" dur="2.2s" begin="${d}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0.9;0" dur="2.2s" begin="${d}s" repeatCount="indefinite"/></circle>`).join('')}
+  </g>`
+const HALO_MARKUP = `<g data-part="halo" style="display:none">
+    <circle cx="34" cy="-204" r="34" fill="none" stroke="#ffd166" stroke-width="9" opacity="0.22"/>
+    <circle cx="34" cy="-204" r="34" fill="none" stroke="#ffe08a" stroke-width="3.5" opacity="0.95"><animate attributeName="opacity" values="0.7;1;0.7" dur="2.4s" repeatCount="indefinite"/></circle>
+  </g>`
 const SVG_MARKUP = `
   <defs>
     <clipPath id="chk-wingClip"><path d="${LOOK_ART.WING}"/></clipPath>
     <pattern id="chk-pearlDots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.35" fill="#eef1f5"/><circle cx="5.5" cy="5.5" r="1.35" fill="#eef1f5"/></pattern>
+    <radialGradient id="chk-buddhaGlow"><stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/><stop offset="0.6" stop-color="#ffd166" stop-opacity="0.22"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient>
   </defs>
   <ellipse data-part="shadow" rx="60" ry="7" fill="#000" opacity="0.35"/>
   <g data-part="root" style="pointer-events: visiblePainted; cursor: grab; touch-action: none">
+    ${AURA_MARKUP}
     ${legMarkup('Back', -26)}${legMarkup('Front', -14)}
     <g data-part="body">
       <g data-part="wingBack"><g data-part="artWingBack"></g></g>
       <g data-part="tail"><g data-part="artTail"></g></g>
       <g data-part="artTorso"></g>
       <g data-part="neck"><g data-part="artNeck"></g>
-        <g data-part="head"><g data-part="artComb"></g><g data-part="artFace"></g><g data-part="artBeak"></g><g data-part="artWattle"></g>
+        <g data-part="head">${HALO_MARKUP}<g data-part="artComb"></g><g data-part="artFace"></g><g data-part="artBeak"></g><g data-part="artWattle"></g>
           <circle data-part="sclera" cx="51" cy="-192" r="4.6" fill="#fff8e1"/>
           <circle data-part="pupil" cx="52.5" cy="-192" r="2.8" fill="#1f1a17"/>
           <ellipse data-part="lid" cx="51" cy="-197.4" rx="5.4" ry="0" fill="#f7b21b"/>
@@ -153,7 +171,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldArt', 'heldBow'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldArt', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -282,7 +300,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return ((a % 360) + 540) % 360 - 180
   }
   let bounds: { lo: number; hi: number } | null = null
-  const game: Required<ChickenGame> = { gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1 }
+  const game: Required<ChickenGame> = { gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, aura: 'none' }
+  let auraShown: ChickenAura = 'none'
+  function showAura() {
+    if (game.aura === auraShown) return
+    auraShown = game.aura
+    el.aura.style.display = auraShown === 'buddha' ? '' : 'none'
+    el.halo.style.display = auraShown === 'buddha' ? '' : 'none'
+    el.fizz.style.display = auraShown === 'fizz' ? '' : 'none'
+  }
   const wallLo = () => bounds ? bounds.lo : 0, wallHi = () => bounds ? bounds.hi : W
 
   // ---------- simulation state ----------
@@ -406,6 +432,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (!S.grounded) target += S.airBoost || 0
       }
       let rate = (dir !== 0 && (!brooding || broodWalking)) ? R.acceleration : R.deceleration
+      // speeding up (not braking or turning back): a consumable scales it, and an eased curve starts slow and
+      // ends fast, the rate growing with the share of the final speed she has (same ramp time whatever the speed)
+      if (dir !== 0 && Math.abs(target) > Math.abs(S.vx) && S.vx * target >= 0) {
+        rate *= game.accelMult
+        const n = game.accelPower
+        if (n > 1) {
+          const p = clamp(Math.abs(S.vx) / Math.max(1, Math.abs(target)), 0.03, 1)
+          rate = (Math.abs(target) / Math.max(0.05, game.accelRamp)) * n * Math.pow(p, (n - 1) / n) * game.accelMult
+        }
+      }
       if (!S.grounded) rate *= R.airControl
       S.vx = approach(S.vx, target, rate * dt)
       if (!S.grounded && D) { const cap = R.walkSpeed * (RUN ? R.runMultiplier : 1) * R.airSpeed * R.fallSideSpeed + Math.abs(S.airBoost || 0); S.vx = clamp(S.vx, -cap, cap) }
@@ -1002,6 +1038,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.broodT = st === 'brood' ? (S.broodT || 0) + dt : 0
     let lid = st === 'brood' ? clamp((S.broodT - R.broodEyeDelay) / 0.35, 0, 1) * 0.55 : 0
     if (blink.t >= 0) { blink.t += dt; const b = blink.t / 0.14; lid = Math.max(lid, b < 0.5 ? b * 2 : 2 - b * 2); if (b >= 1) blink.t = -1 }
+    // the buddha state: calm, half-closed eyes
+    if (game.aura === 'buddha') lid = Math.max(lid, 0.45)
     pose.lid = lid
     pose.shiftY = shiftY
     render()
@@ -1167,7 +1205,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (drag.on) drag.ox -= dx
     },
     setBounds(next) { bounds = next },
-    setGame(next) { Object.assign(game, next) },
+    setGame(next) { Object.assign(game, next); showAura() },
     setSwing(next) { swingNow = next },
     heldPoint(angle, x, y) {
       const p = shoulder(), k = R.scale * pose.puff
