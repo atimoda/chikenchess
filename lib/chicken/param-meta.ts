@@ -59,6 +59,8 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Agachar e slide', key: 'slideFriction', label: 'Atrito do slide', unit: 'px/s²', min: 50, max: 3000, step: 25},
   { group: 'Agachar e slide', key: 'slideTurnBoost', label: 'Impulso da virada no slide', unit: '×', min: 0, max: 3, step: 0.05},
   { group: 'Agachar e slide', key: 'slideMinSpeed', label: 'Velocidade mínima do slide', unit: 'px/s', min: 10, max: 300, step: 5},
+  { group: 'Agachar e slide', key: 'standBoost', label: 'Boost de velocidade ao levantar', unit: '×', min: 1, max: 3, step: 0.05, hint: 'levantar andando (de agachada, chocando ou do slide); 1 = sem boost' },
+  { group: 'Agachar e slide', key: 'standBoostTime', label: 'Duração do boost ao levantar', unit: 's', min: 0.05, max: 2, step: 0.05},
   { group: 'Chocar', key: 'broodDepth', label: 'Descida do corpo ao chocar', unit: 'px', min: 10, max: 90, step: 1},
   { group: 'Chocar', key: 'broodSpeed', label: 'Velocidade da descida', unit: '×', min: 1, max: 40, step: 0.5},
   { group: 'Chocar', key: 'broodEyeDelay', label: 'Fecha os olhos depois de', unit: 's', min: 0, max: 5, step: 0.1},

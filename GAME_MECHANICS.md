@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 03/11/2026 — v1.14.0 (inventário do PigChicKen agrupado, só com os itens que ela tem mais uma casa vazia, até 13 itens, e nova roda do inventário).
+Atualizado em 04/11/2026 — v1.15.0 (boost de velocidade ao levantar andando).
 
 ## Leitura por assunto
 

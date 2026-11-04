@@ -372,6 +372,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     S.runIntent = runIntent
     S.boostT = Math.max(0, S.boostT - dt)
+    // standing up (from crouching, brooding or sliding) while walking: a short speed boost that fades out;
+    // standing up still, leaving the ground or letting go of / turning the direction ends it
+    const low = S.grounded && (crouching || brooding || S.sliding)
+    if (S.wasLow && !low && S.grounded && dir !== 0 && R.standBoost > 1) { S.standT = R.standBoostTime; S.standDir = dir }
+    S.wasLow = low
+    if (low || !S.grounded || dir !== S.standDir) S.standT = 0
 
     // horizontal
     if (S.sliding && dir !== 0 && dir * S.vx < 0) {
@@ -391,6 +397,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         // aiming behind her while walking: she walks backwards, slower
         if (game.aimFace && dir !== 0 && dir !== game.aimFace) target *= game.backpedal
         target *= game.speedMult
+        if (S.standT > 0) {
+          const f = S.standT / Math.max(0.01, R.standBoostTime)
+          target *= 1 + (R.standBoost - 1) * f * f * (3 - 2 * f)
+        }
         if (runIntent && S.boostT > 0) target += dir * R.runBoost * (S.boostT / Math.max(0.01, R.runBoostTime))
         // the jump's sideways kick lasts until she lands, instead of fading into the air speed
         if (!S.grounded) target += S.airBoost || 0
@@ -403,6 +413,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (dir !== 0 && !brooding) S.face = dir
       if (game.aimFace && !brooding && !S.sliding) S.face = game.aimFace
     }
+
+    S.standT = Math.max(0, (S.standT || 0) - dt)
 
     // on a floating floor, brood + jump drops through it; so does down (crouch) + jump with no sideways direction
     // held (with a direction it is the normal super jump up)
