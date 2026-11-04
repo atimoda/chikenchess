@@ -3,6 +3,16 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '1.15.0',
+    date: '04/11/2026',
+    title: 'Galinha: boost de velocidade ao levantar',
+    groups: [
+      { title: 'Galinha', items: [
+        'Levantar andando (de agachada, chocando ou do slide, segurando esquerda ou direita) dá um impulso curto de velocidade que vai sumindo suavemente. No Pátio da Galinha, em “Agachar e slide”, os novos ajustes “Boost de velocidade ao levantar” (padrão 1,3×; 1 desliga) e “Duração do boost ao levantar” (padrão 0,4 s) regulam o efeito. Levantar parada não muda nada.',
+      ] },
+    ],
+  },
+  {
     version: '1.14.0',
     date: '03/11/2026',
     title: 'PigChicKen: inventário organizado e roda do inventário',

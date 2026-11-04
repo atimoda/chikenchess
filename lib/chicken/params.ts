@@ -50,6 +50,8 @@ export const CHICKEN_PARAMS = {
   slideFriction: 450,
   slideTurnBoost: 3,
   slideMinSpeed: 60,
+  standBoost: 1.3,
+  standBoostTime: 0.4,
   // Chocar
   broodDepth: 60,
   broodSpeed: 10,
