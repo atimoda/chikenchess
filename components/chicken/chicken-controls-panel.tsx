@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 const CHICKEN_PATIO_PATH = "/patio"
 
 type Listen = { kind: ChickenInputType; action: ChickenAction; slot: number } | null
-const COLUMNS = CHICKEN_INPUT_TYPES.flatMap(t => Array.from({ length: t.slots }, (_, slot) => ({ type: t, slot })))
+const COLUMNS = CHICKEN_INPUT_TYPES.flatMap((t, i) => Array.from({ length: t.slots }, (_, slot) => ({ type: t, slot, column: 2 + CHICKEN_INPUT_TYPES.slice(0, i).reduce((n, t) => n + t.slots + 1, 0) + slot })))
 
 // the icon above each input type's label in the bind grid (the secondary keyboard's carries a small 2)
 const INPUT_ICONS: Record<ChickenInputType, LucideIcon> = { keys: Keyboard, keys2: Keyboard, pad: Gamepad2 }
@@ -104,13 +104,13 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   useEffect(() => () => setChickenControlsListening(false), [])
 
   // one list of actions; the bind columns are grouped by input type
-  const cols = `clamp(7.5rem, 30vw, 14rem) repeat(${COLUMNS.length}, 4.75rem)`
+  const cols = `clamp(7.5rem, 30vw, 14rem) ${CHICKEN_INPUT_TYPES.map(t => `repeat(${t.slots}, 4.75rem)`).join(" 0px ")}`
   const grid = (
     <div className="overflow-x-auto">
       <div className="grid w-max min-w-full items-center gap-x-1.5 gap-y-1.5 text-xs" style={{ gridTemplateColumns: cols }}>
         <span />
         {CHICKEN_INPUT_TYPES.map(t => (
-          <span key={t.id} style={{ gridColumn: `span ${t.slots}` }} className="flex flex-col items-center gap-1 border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">
+          <span key={t.id} style={{ gridColumn: `${COLUMNS.find(c => c.type.id === t.id)!.column} / span ${t.slots}` }} className="flex flex-col items-center gap-1 border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">
             <span className="relative" aria-hidden="true">
               {(() => { const Icon = INPUT_ICONS[t.id]; return <Icon className="h-5 w-5" /> })()}
               {t.id === "keys2" && <span className="absolute -right-2 -top-1 font-mono text-[9px] font-bold leading-none">2</span>}
@@ -121,16 +121,17 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
         {CHICKEN_ACTIONS.map((a, i) => (
           <div key={a.key} className="contents">
             {a.group === "items" && CHICKEN_ACTIONS[i - 1]?.group !== "items" && (
-              <span style={{ gridColumn: `span ${COLUMNS.length + 1}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
+              <span style={{ gridColumn: `span ${COLUMNS.length + CHICKEN_INPUT_TYPES.length}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
             )}
             <span className="sticky left-0 z-[1] truncate bg-[#101713] pr-1 text-[#b9c7b9]" title={a.label}>{a.label}</span>
-            {COLUMNS.map(({ type, slot }) => {
+            {COLUMNS.map(({ type, slot, column }) => {
               const kind = type.id
               const on = listen?.kind === kind && listen.action === a.key && listen.slot === slot
               return (
                 <button
                   key={`${kind}-${slot}`}
                   type="button"
+                  style={{ gridColumn: column }}
                   title={`${type.label}: clique e aperte ${type.device === "gamepad" ? "um botão" : "uma tecla"}; botão direito apaga`}
                   onClick={() => setListen(on ? null : { kind, action: a.key, slot })}
                   onContextMenu={e => { e.preventDefault(); assign(null, { kind, action: a.key, slot }) }}
@@ -193,10 +194,14 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             ))}
           </div>
           <p className="text-[11px] text-[#8a9a8a]">Analógico à esquerda e botões de pular, chocar e correr à direita. Automático mostra em telas de toque.</p>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={controls.touchRunGrab} onChange={e => { const v = e.target.checked; update(c => { c.touchRunGrab = v }) }} className="accent-[var(--primary)]" />
+            Correr também pega itens do chão
+          </label>
           {editLayout && (
             <>
               <button type="button" onClick={() => { startTouchLayoutEdit(); onOpenChange(false) }} className="h-8 justify-self-start rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25">Editar posição dos botões</button>
-              <p className="text-[11px] text-[#8a9a8a]">Arraste os analógicos, os botões e o inventário para onde ficarem melhor e toque em Ok.</p>
+              <p className="text-[11px] text-[#8a9a8a]">Arraste cada botão individualmente, os analógicos e o inventário para onde ficarem melhor e toque em Ok.</p>
             </>
           )}
         </section>

@@ -80,7 +80,7 @@ export function LocalChickens({ players, lead, groundHeight, engines }: {
       if (!eng) {
         eng = createChickenEngine(host, { groundHeight: groundRef.current, fixedScale: true, look: p.look })
         eng.setGame({ gameMode: true })
-        const st = lead.getState()
+        const st = lead.getMotionState()
         // next to the nearest player (for now: the first one), alternating sides
         eng.dropAt(st.x + (i % 2 ? -1 : 1) * (90 + 50 * Math.floor(i / 2)))
         map.set(p.id, eng)

@@ -31,6 +31,43 @@ test('dragging a touch control stays inside the screen', () => {
   assert.deepEqual(layout.clampDelta(rect, 900, -900, 400, 700), { x: 196, y: -496 })
 })
 
+test('legacy groups split into independent offsets and individual positions take priority', () => {
+  const saved = { actions: { x: -80, y: 15 }, items: { x: 21, y: -35 }, throw: { x: 7, y: 9 } }
+  const store = { 'chickenchess-chicken-touch-layout-v1': JSON.stringify(saved) }
+  globalThis.window = { localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v } } }
+  const offsets = layout.getTouchLayout().offsets
+  for (const id of ['run', 'down', 'jump']) assert.deepEqual(offsets[id], saved.actions)
+  for (const id of ['melee', 'itemWheel']) assert.deepEqual(offsets[id], saved.items)
+  assert.deepEqual(offsets.throw, saved.throw)
+  layout.setTouchOffset('run', { x: 1, y: 2 })
+  assert.deepEqual(layout.getTouchLayout().offsets.down, saved.actions)
+  layout.finishTouchLayoutEdit()
+  const persisted = JSON.parse(store['chickenchess-chicken-touch-layout-v1'])
+  assert.deepEqual(persisted.run, { x: 1, y: 2 })
+  assert.deepEqual(persisted.jump, saved.actions)
+  assert.equal(persisted.actions, undefined)
+  assert.equal(persisted.items, undefined)
+  layout.resetTouchLayout(); layout.finishTouchLayoutEdit()
+})
+
+test('touch Run grabs by default, old preferences inherit it and disabling persists', () => {
+  let raw = JSON.stringify({ touch: 'on' })
+  globalThis.window = { localStorage: { getItem: () => raw, setItem: (_, v) => { raw = v } }, dispatchEvent() {} }
+  assert.equal(controls.defaultChickenControls().touchRunGrab, true)
+  assert.equal(controls.loadChickenControls().touchRunGrab, true)
+  const custom = controls.loadChickenControls()
+  custom.touchRunGrab = false
+  controls.saveChickenControls(custom)
+  assert.equal(controls.loadChickenControls().touchRunGrab, false)
+  const held = controls.virtualActionHeld
+  assert.equal(held({ run: true }, 'grab', true), true)
+  assert.equal(held({ run: true }, 'grab', false), false)
+  assert.equal(held({ run: true }, 'run', false), true)
+  assert.equal(held({ run: false }, 'grab', true), false)
+  assert.equal(held({ grab: true, run: false }, 'grab', false), true)
+  assert.equal(held({}, 'grab', true), false, 'physical Run never creates a virtual grab')
+})
+
 test('the layout is kept on Ok and edit mode shows until then', () => {
   const store = {}
   globalThis.window = { localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v } }, dispatchEvent() {} }

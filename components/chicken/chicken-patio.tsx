@@ -3,6 +3,7 @@
 // Pátio da Galinha: the game's playground where the player chicken is tuned. The panel edits a draft of
 // the central configuration (lib/chicken/config.ts) that the chicken here follows live; "Salvar padrão"
 // (admin account only) saves it for every screen that draws the chicken.
+import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { Crosshair, FolderOpen, Gamepad2, Maximize, Minimize, PencilRuler, Save, SlidersHorizontal, Swords, Users, X } from "lucide-react"
@@ -70,6 +71,7 @@ function writeDraft(next: ChickenConfig | null) {
 const fmt = (v: number, step: number) => (step >= 1 ? String(Math.round(v)) : v.toFixed(Math.min(3, String(step).split(".")[1]?.length ?? 2)))
 
 export function ChickenPatio() {
+  useGamePageScrollLock()
   const online = useOnline()
   const isAdmin = isAdminUser(online.user)
   // same first render on the server and in the browser; the cached and saved versions come in the effect

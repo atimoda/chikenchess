@@ -41,7 +41,7 @@ Retorno do Redmi Note 13 Pro: o jogo voltou a lagar depois dos controles de soun
 
 Os kits salvos, o editor e a exportação Strudel não mudam; só a saída do runtime no aparelho restrito. Kits sem esses campos soam como antes (testes em `sound-design.cases.cjs` e `dynamics.cases.cjs`). Não é aprovação de desempenho no aparelho físico.
 
-No globo, além do portal leve (ver `map.md`), a galinha procura a lista de plataformas (`[data-chicken-platform]`) no DOM cinco vezes por segundo, em vez de a cada quadro; as caixas continuam medidas a cada quadro.
+No globo, além do portal leve (ver `map.md`), a galinha procura a lista de plataformas (`[data-chicken-platform]`) no DOM cinco vezes por segundo; desde 05/11, as medidas por quadro são compartilhadas entre as galinhas locais (ver renderização do Pátio abaixo).
 
 ### Otimização de arraste e exportação — 16/09
 
@@ -56,3 +56,17 @@ Notas explícitas são agrupadas por início/duração e controles compatíveis;
 ### Sons param fora da aba — 01/11, v1.12.0
 
 Ao sair da aba ou do app (aba oculta, outro app, tela bloqueada, `pagehide`), todo `AudioContext` do jogo em execução é suspenso e volta a rodar quando a aba reaparece (`lib/audio-focus.ts`, montado no layout raiz). Os contextos são reunidos ao envolver o construtor de `AudioContext`, então vale para música, efeitos, galinha, portal e lobby. Um contexto criado com a aba oculta nasce suspenso; um já suspenso ou fechado não é tocado. O runtime musical mantém a própria suspensão e retomada.
+
+
+### Renderização do Pátio — 05/11, v1.16.0
+
+- **Escopo:** todas as cenas do Parquinho e o Templo, inclusive editor e players locais. Mudanças apenas na renderização/consulta de geometria; simulação, música, colisões, contatos dos portais e persistência continuam avançando pelas mesmas regras.
+- **Gatilho/retorno do cenário:** `watchCameraRegion` compara limites numéricos com a câmera, usando margem de 192 px em todas as bordas (inclui a deriva das nuvens). Fora dela, a região fica invisível e suas animações CSS pausam; ao retornar ou redimensionar o viewport, a arte reaparece e a animação retoma da fase pausada, sem recriar o layout. Remover uma região limpa sua inscrição; desmontar o mundo limpa seguidores. O editor mantém seleção/colisores e o layout salvo, mesmo quando sua arte está fora da câmera.
+- **Templo:** arquitetura e muro/frisos são SVGs estáticos separados das quatro árvores e seis lanternas; cada ornamento animado tem sua superfície pequena e referências de filtro/gradiente locais. A ordem de sobreposição, cores, névoa e pisos permanece. Luz das janelas só invalida a arquitetura nas transições de fase; animar pétalas/lanternas não redesenha o prédio. Movimento reduzido continua desativando as animações. As sete camadas do parallax recebem transformações diretas, sem variável CSS herdada pelo mundo nem `will-change` de superfície larga.
+- **Canvas:** desenho de racks, pickups, alvos, bichos, projéteis, rastros, explosões, textos e bombas é descartado fora do enquadramento com margem para a arte; rastros/explosões que cruzam a borda continuam visíveis. Balões ativos dos bonecos continuam presos à tela, inclusive com o boneco distante. A simulação e os efeitos sonoros não são descartados por visibilidade.
+- **Mira:** previsão balística só é calculada quando o caminho ou marcador de impacto tem uso visível; a retícula básica conserva seu desenho com a previsão oculta. Recarregar o arco conserva o anel no ponto previsto. Throw continua exibindo sua trajetória durante a carga. Vale para cada player local, com as mesmas regras anteriores de mostrar caminho/impacto.
+- **Orçamento de pixels:** os canvases do Pátio usam DPR 1 em `isLiteDevice()` (inclui toque/iPad; override `lite`/`full` existente) e até DPR 2 no desktop. O canvas da roda tem buffer 1×1 e fica oculto quando fechada; abrir aloca a resolução atual, resize a refaz e fechar libera o buffer grande. Tamanho lógico, gestos e posições permanecem.
+- **Geometria:** colisores do mundo usam os limites já fornecidos pelo layout e o deslocamento numérico da câmera; os demais elementos DOM são medidos uma vez por quadro, compartilhados pelas galinhas locais. Mudança da câmera invalida as medidas; alterações de limites são lidas no próximo quadro, e a lista de elementos continua atualizada a cada 200 ms. As matrizes do rig são reutilizadas até a próxima renderização/resize, e consultas apenas de posição não medem o ombro. O cabeçalho é medido no resize/ResizeObserver, sem consulta a cada quadro. O cache de matrizes/medidas também beneficia o engine compartilhado no globo, preservando seus colisores DOM.
+- **Portais:** fora da tela, param somente sorteio/desenho de raios/faíscas; contatos, chegada e bloqueio até saída completa continuam sendo processados para todos os atores. Uma transição de entrada tem prioridade e continua animando mesmo fora do enquadramento; retorno à câmera retoma o desenho sem acumular partículas. No Pátio o centro vem das coordenadas do mundo/câmera; o portal fixo do globo conserva a medida no resize.
+
+Validação de FPS/CPU por Chromium é comparação local, não aprovação do Safari no iPad Pro 2018 físico. Regras e qualidade musical não foram alteradas.

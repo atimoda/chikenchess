@@ -1,5 +1,7 @@
 "use client"
 
+import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
+
 /* global DynamicsCompressorNode */
 
 import { useState, useEffect, useRef } from "react"
@@ -969,28 +971,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [isMobile, setIsMobile] = useState(false)
   const [isIntro, setIsIntro] = useState(true)
 
-  // phones and tablets: the globe is a one-screen app, the page itself never scrolls (dragging a button used to move it)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px), (pointer: coarse)')
-    const html = document.documentElement.style, body = document.body.style
-    const saved = { hOver: html.overflow, hOb: html.overscrollBehavior, bOver: body.overflow, bOb: body.overscrollBehavior, bPos: body.position, bInset: body.inset, bW: body.width }
-    const apply = () => {
-      if (mq.matches) {
-        html.overflow = 'hidden'; html.overscrollBehavior = 'none'
-        body.overflow = 'hidden'; body.overscrollBehavior = 'none'; body.position = 'fixed'; body.inset = '0'; body.width = '100%'
-      } else {
-        html.overflow = saved.hOver; html.overscrollBehavior = saved.hOb
-        body.overflow = saved.bOver; body.overscrollBehavior = saved.bOb; body.position = saved.bPos; body.inset = saved.bInset; body.width = saved.bW
-      }
-    }
-    apply()
-    mq.addEventListener('change', apply)
-    return () => {
-      mq.removeEventListener('change', apply)
-      html.overflow = saved.hOver; html.overscrollBehavior = saved.hOb
-      body.overflow = saved.bOver; body.overscrollBehavior = saved.bOb; body.position = saved.bPos; body.inset = saved.bInset; body.width = saved.bW
-    }
-  }, [])
+  useGamePageScrollLock()
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)

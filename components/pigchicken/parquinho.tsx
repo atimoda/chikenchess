@@ -14,7 +14,7 @@ import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, TIP_TIME, type Box, type Combat, type Effect, type Pickup, type Swing } from "@/lib/pigchicken/combat"
 import { quickSwitchStep, itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
-import { curvePower, loadItems, subscribeItems, type ItemId, type PathShow } from "@/lib/pigchicken/items"
+import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
@@ -28,6 +28,10 @@ import { getTouchLayout } from "@/lib/chicken/touch-layout"
 import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { defaultLayout, elementsInWorld, layoutBoxes, type LayoutElement } from "@/lib/pigchicken/layout"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
+import { SceneryVisibilityStyles } from "./scenery-region"
+import { isLiteDevice } from "@/lib/performance"
+import { setPlatformWorldOffset } from "@/lib/chicken/platform-geometry"
+import { intersectsView, needsTrajectory, patioPixelRatio, trajectoryVisible, type ViewRect } from "@/lib/pigchicken/viewport"
 import { moveLiveCamera } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, TreeStyles } from "@/components/pigchicken/patio-layout"
 import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
@@ -50,7 +54,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
   const width = worldScenes(screens) * SCENE_W
   const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
   return (
-    <div ref={worldRef} className="pointer-events-none absolute left-0 top-0 will-change-transform" style={{ width, height: WORLD_GROUND_Y }}>
+    <div ref={worldRef} data-chicken-world className="pointer-events-none absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
       <ParallaxBackdrop worldW={width} />
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
@@ -74,6 +78,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       )}
       {/* the Pátio's layout (lib/pigchicken/layout.ts): the scenery behind the platforms, then the platforms' layer */}
       <TreeStyles />
+      <SceneryVisibilityStyles />
       <LayoutLayerView elements={shown} layer="back" editing={editing} />
       <LayoutLayerView elements={shown} layer="scene" editing={editing} />
       {/* what she stands on: the layout's solid elements (invisible boxes; the art is in the layers) */}
@@ -83,7 +88,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
           <div key={`tp-${i}`} data-chicken-id={`tp-${i}`} className="absolute rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" style={{ left: templeScene(screens) * SCENE_W + p.x, top: WORLD_GROUND_Y - p.bottom - p.h, width: p.w, height: p.h, background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" }} />
         ))}
         {TEMPLE_ROOF_LINES.map(l => (
-          <div key={l.id} data-chicken-id={`tp-${l.id}`} data-chicken-line={lineAttr(l.pts)} className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }} />
+          <div key={l.id} data-chicken-id={`tp-${l.id}`} data-chicken-world-box={`${templeScene(screens) * SCENE_W},0,${SCENE_W},${WORLD_GROUND_Y}`} data-chicken-line={lineAttr(l.pts)} className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }} />
         ))}
       </div>
     </div>
@@ -278,13 +283,20 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the platforms the shots hit, in world units (the same boxes the world draws)
     let worldBoxes: Box[] = []
     const header = document.querySelector("main header")
+    let drawnCamX = NaN, drawnCamY = NaN
+    let viewTop = header?.getBoundingClientRect().bottom ?? 0
+    const measureHeader = () => { viewTop = header?.getBoundingClientRect().bottom ?? 0 }
+    const headerObserver = new ResizeObserver(measureHeader)
+    if (header) headerObserver.observe(header)
     const fit = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      const dpr = patioPixelRatio(window.devicePixelRatio, isLiteDevice())
       canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
-      wctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      wheelDrawn = true
+      // Allocate the wheel's full buffer only while it is open.
+      wheelCanvas.width = 1; wheelCanvas.height = 1
+      wheelCanvas.style.display = "none"
+      wheelDrawn = false
+      measureHeader()
     }
     fit()
     window.addEventListener("resize", fit)
@@ -292,12 +304,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now
       const S = settingsRef.current
-      let st = engine.getState()
+      let st = engine.getMotionState()
       const viewW = st.width, worldW = SCENE_W * worldScenes(S.screens)
       if (!placed) {
         place()
         // she starts by the entrance portal (world x), not in the middle of the screen
-        if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getState() }
+        if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getMotionState() }
       }
       if (templeFor !== S.screens) placeTemple(S.screens)
       if (syncedElements !== elementsRef.current || syncedScreens !== S.screens) {
@@ -321,7 +333,6 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const groundScreen = st.height - groundHRef.current
       const yr = cameraYRange(groundScreen)
       if (oy === null) oy = yr.lo
-      const viewTop = header ? header.getBoundingClientRect().bottom : 0
       const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt: snapToPortal ? 1 : dt, lag: snapToPortal ? 1 : S.lag })
       const others = extras?.current ? [...extras.current.values()] : []
       if (next !== camX || nextOy !== oy) {
@@ -331,19 +342,20 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       // her ground is the world's, wherever the camera puts it on the screen
       if (Math.abs(st.groundY - (G + oy)) > 0.01) engine.setGroundHeight(st.height - G - oy)
-      st = engine.getState()
+      st = engine.getMotionState()
       const camY = oy
       const walls = cameraBounds(camX, { mode: S.camera, viewW, worldW })
       engine.setBounds(walls)
       others.forEach(o => {
-        const os = o.getState()
+        const os = o.getMotionState()
         if (Math.abs(os.groundY - (G + camY)) > 0.01) o.setGroundHeight(os.height - G - camY)
         o.setBounds(walls)
       })
-      if (worldRef.current) {
-        worldRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
-        // the parallax layers follow the camera at their own rates (parallax.tsx)
-        worldRef.current.style.setProperty("--camx", String(Math.round(camX * 10) / 10))
+      if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY)) {
+        const world = worldRef.current
+        world.style.transform = `translate3d(${-camX}px,${camY}px,0)`
+        setPlatformWorldOffset(world, -camX, camY)
+        drawnCamX = camX; drawnCamY = camY
       }
       if (fgRef?.current) fgRef.current.style.transform = `translate3d(${-camX}px,${camY}px,0)`
       // the layers above the chicken and the editor's handles follow the same camera
@@ -408,7 +420,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (leftStick) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
       const held = !liveStick && stickOwner.owns ? heldStick : null
       // her shoulder as drawn (it turns with her body on walls)
-      const origin = st.shoulder
+      const origin = engine.getState().shoulder
       // a quick tap on the on-screen right stick: aim at the nearest enemy (dummies when none is left) and fire for a moment
       if (tapShot.current) { if (!wh.open) autoUntil = now + 260; tapShot.current = 0 }
       let autoAt: { x: number; y: number } | null = null
@@ -499,7 +511,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
       // Register every local player before the shared projectile update, including its owner.
       combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? [])].map(eng => {
-        const st = eng.getState(), x = st.x + camX, y = st.y - camY
+        const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
         return { box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
       }))
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
@@ -512,7 +524,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- the other local players: their own items (a loadout each), in the same world ----------
       const extraList = extras?.current ? [...extras.current.entries()] : []
       extraList.forEach(([id, eng]) => {
-        const xs = eng.getState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
+        const xs = eng.getMotionState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
         combat.use(id)
         const xd = combat.def(), xArmed = !!combat.inventory[combat.current]
         // aim: their gamepad's right stick; else up (looking up) or straight ahead
@@ -520,7 +532,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const rs = stickFor(devs, 1, an.deadzoneR)
         const ahead = xs.face >= 0 ? 0 : Math.PI
         const angle = rs ? Math.atan2(rs.y, rs.x) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
-        const xo = xs.shoulder
+        const xo = eng.getState().shoulder
         const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
         const xpick = quickSwitchStep(xa, xp, eng.isShiftHeld())
         const xin = {
@@ -599,8 +611,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       lookTargets.length = 0
       lookTargets.push({ x: body.x, y: body.y - 170 * st.scale })
       inWorld()
-      drawWorld(ctx, combat, camX)
-      drawTempleShots(ctx, temple, camX)
+      const view = { x: camX, y: viewTop - camY, w: viewW, h: st.height - viewTop }
+      drawWorld(ctx, combat, camX, view)
+      drawTempleShots(ctx, temple, camX, view)
       ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
@@ -632,21 +645,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const rx = reticle.x, ry = reticle.y
       const dist = aim.target ? Math.hypot(rx - muzzle.x, ry - muzzle.y) : stickDistance
       // weapons whose reticle shows where the shot lands: the path a shot fired now would take
+      const showPath = armed && trajectoryVisible(d.pathShow, fire, aimLock)
+      const showLand = armed && trajectoryVisible(d.landShow, fire, aimLock)
       let path: { x: number; y: number }[] | null = null
-      if (armed && ["laser", "impact", "grenade", "bow"].includes(d.reticle)) {
+      if (armed && needsTrajectory(d.reticle, showPath, showLand, !!combat.reloading)) {
         const power = d.fireMode === "charge" ? d.chargeMin + (1 - d.chargeMin) * combat.fireCharge : 1
         path = combat.predict({ x: muzzle.x + camX, y: muzzle.y - camY }, ang, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
       }
       inWorld()
-      drawBeam(ctx, combat, camX)
-      extraList.forEach(([id]) => { combat.use(id); drawBeam(ctx, combat, camX) })
+      drawBeam(ctx, combat, camX, view)
+      extraList.forEach(([id]) => { combat.use(id); drawBeam(ctx, combat, camX, view) })
       combat.use("p1")
       ctx.restore()
       extraList.forEach(([id, eng]) => { combat.use(id); drawSwing(ctx, combat, eng.getState().shoulder) })
       combat.use("p1")
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
-      const shows = (v: PathShow) => armed && (v === "always" || (v !== "off" && fire) || (v === "holdAim" && aimLock))
-      const showPath = shows(d.pathShow), showLand = shows(d.landShow)
       const tints = colorsRef.current
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
       if (charge > 0) { const from = engine.heldPoint(combat.throwAngle, 0, 0); drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY }))) }
@@ -655,18 +668,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const at = extraAim.get(id)
         if (!at) return
         combat.use(id)
-        const xd = combat.def(), xs = eng.getState()
+        const xd = combat.def(), xs = eng.getMotionState()
         const xArmed = !!combat.inventory[combat.current]
         const xdist = S.reticleDist * at.reach
         const xrx = at.muzzle.x + Math.cos(at.angle) * xdist, xry = at.muzzle.y + Math.sin(at.angle) * xdist
+        const xFire = !!extraPrev.get(id)?.fire
+        const xShow = xArmed && trajectoryVisible(xd.pathShow, xFire, false)
+        const xLand = xArmed && trajectoryVisible(xd.landShow, xFire, false)
         let xpath: { x: number; y: number }[] | null = null
-        if (xArmed && ["laser", "impact", "grenade", "bow"].includes(xd.reticle)) {
+        if (xArmed && needsTrajectory(xd.reticle, xShow, xLand, !!combat.reloading)) {
           const power = xd.fireMode === "charge" ? xd.chargeMin + (1 - xd.chargeMin) * combat.fireCharge : 1
           xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
         }
-        const xFire = !!extraPrev.get(id)?.fire
-        const xShow = xArmed && (xd.pathShow === "always" || (xd.pathShow !== "off" && xFire))
-        const xLand = xArmed && (xd.landShow === "always" || (xd.landShow !== "off" && xFire))
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
         if (combat.throwCharge > 0 && combat.held) {
@@ -681,8 +694,19 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawInventory(ctx, combat, 0, invOff)
       extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, invOff) })
       combat.use("p1")
-      if (wh.open || wheelDrawn) { wctx.clearRect(0, 0, window.innerWidth, window.innerHeight); wheelDrawn = false }
-      if (wh.open) { drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110)); wheelDrawn = true }
+      if (wh.open) {
+        if (wheelCanvas.width !== canvas.width || wheelCanvas.height !== canvas.height) {
+          wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
+          const dpr = canvas.width / window.innerWidth
+          wctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+          wheelCanvas.style.display = ""
+        }
+        wctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
+        drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110)); wheelDrawn = true
+      } else if (wheelDrawn) {
+        wheelCanvas.width = 1; wheelCanvas.height = 1
+        wheelCanvas.style.display = "none"; wheelDrawn = false
+      }
       drawTempleHud(ctx, temple, combat.music, inTemple, INV_TOP + INV_SIZE + 12)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
@@ -699,6 +723,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     raf = requestAnimationFrame(frame)
     return () => {
+      headerObserver.disconnect()
       cancelAnimationFrame(raf)
       unsub()
       unsubItems()
@@ -722,7 +747,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       document.body.classList.remove("pigchicken-play")
       if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(window.innerHeight - groundHRef.current).lo - oy)
       engine.setGroundHeight(groundHRef.current)
-      if (worldRef.current) worldRef.current.style.transform = ""
+      if (worldRef.current) { worldRef.current.style.transform = ""; setPlatformWorldOffset(worldRef.current, 0, 0) }
       moveLiveCamera(0, 0)
     }
   }, [engine, worldRef, spawnX, fgRef])
@@ -778,6 +803,10 @@ const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 
 function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; bottom: number; grabOffer: "" | "take" | "equip" }) {
   const { editing } = useTouchLayout()
+  useEffect(() => {
+    if (editing) ["melee", "throw", "itemWheel", "grab", "fire"].forEach(a => engine.setVirtual(a as ChickenAction, false))
+    return () => { ["melee", "throw", "itemWheel", "grab", "fire"].forEach(a => engine.setVirtual(a as ChickenAction, false)) }
+  }, [editing, engine])
   const press = useRef<{ t: number; x: number; y: number; far: boolean } | null>(null)
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const ref = useRef<HTMLDivElement>(null)
@@ -801,6 +830,7 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
     if (e && e.type === "pointerup" && p && !p.far && performance.now() - p.t < 250) tapRef.current = performance.now()
     pid.current = null; setKnob({ x: 0, y: 0 }); aimRef.current = null; setFire(false)
   }
+  useEffect(() => { if (editing) release() }, [editing])
   useEffect(() => () => { aimRef.current = null; if (firing.current) engine.setVirtual("fire", false) }, [engine, aimRef])
   const button = (label: string, action: ChickenAction, tone = "border-white/30 bg-white/10 text-white/80") => (
     <button
@@ -811,6 +841,7 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
       onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); engine.setVirtual(action, true) }}
       onPointerUp={() => engine.setVirtual(action, false)}
       onPointerCancel={() => engine.setVirtual(action, false)}
+      onLostPointerCapture={() => engine.setVirtual(action, false)}
       onContextMenu={e => e.preventDefault()}
     >
       {label}
@@ -820,12 +851,12 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
     <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
       <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
         {/* standing on an item: grab it (blue) or equip the one she already carries (grey) */}
-        {(grabOffer || editing) && <Movable id="grab" className="relative">{button((grabOffer || "take") === "take" ? "Pegar" : "Equipar", "grab", (grabOffer || "take") === "take" ? "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white" : "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white")}</Movable>}
-        <Movable id="items" className="relative flex flex-col gap-2">
-          {button("Punch", "melee")}
-          {button("Throw", "throw")}
-          {button("Roda", "itemWheel")}
-        </Movable>
+        {(grabOffer || editing) && <Movable id="grab" className="absolute" style={{ right: 184, top: (STICK - 48) / 2 }}>{button((grabOffer || "take") === "take" ? "Pegar" : "Equipar", "grab", (grabOffer || "take") === "take" ? "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white" : "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white")}</Movable>}
+        <div className="relative flex flex-col gap-2">
+          <Movable id="melee" className="relative">{button("Punch", "melee")}</Movable>
+          <Movable id="throw" className="relative">{button("Throw", "throw")}</Movable>
+          <Movable id="itemWheel" className="relative">{button("Roda", "itemWheel")}</Movable>
+        </div>
         <Movable id="aim" className="relative">
         <div
           ref={ref}
@@ -911,9 +942,10 @@ function drawNote(ctx: Ctx, b: Combat["bullets"][number], x: number, pulse: numb
 }
 
 // the violin's beam: a vibrating string of light from the muzzle, with notes running along it
-function drawBeam(ctx: Ctx, combat: Combat, camX: number) {
+function drawBeam(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
   const b = combat.beam
   if (!b) return
+  if (!intersectsView({ x: Math.min(b.x1, b.x2), y: Math.min(b.y1, b.y2), w: Math.abs(b.x2 - b.x1), h: Math.abs(b.y2 - b.y1) }, view, 32)) return
   const x1 = b.x1 - camX, x2 = b.x2 - camX, len = Math.hypot(x2 - x1, b.y2 - b.y1) || 1
   const ux = (x2 - x1) / len, uy = (b.y2 - b.y1) / len, t = performance.now() / 1000
   ctx.save()
@@ -1009,6 +1041,7 @@ function swingAngle(sw: Swing) {
 function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
   const sw = combat.swing
   if (!sw) return
+  if (!intersectsView({ x: origin.x - sw.reach, y: origin.y - sw.reach, w: sw.reach * 2, h: sw.reach * 2 }, { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, 8)) return
   // the swing: a faint fan over the whole hit area, and a trail behind the wing tip
   const k = 1 - sw.t / sw.time
   const a0 = sw.angle - sw.dir * sw.arc / 2, now = swingAngle(sw)
@@ -1107,17 +1140,20 @@ function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
   if (g.state !== "dead") harmonyBar(ctx, g, x, g.y - g.h - 9, 44)
 }
 
-function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
+function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
+  const visible = (x: number, y: number, w = 160, h = 240) => intersectsView({ x: x - w / 2, y: y - h, w, h }, view, 32)
   const X = (x: number) => x - camX
   const t = performance.now() / 1000
   const floorY = combat.targets.find(t => t.kind === "dummy")?.y ?? WORLD_GROUND_Y
   combat.racks.forEach(r => {
     const x = X(r.x), groundY = r.y ?? floorY
+    if (!visible(r.x, groundY)) return
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
     ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
   })
   combat.pickups.forEach(p => {
+    if (!visible(p.x, p.y + 40)) return
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3
     ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
     ctx.save(); ctx.translate(x, y - 8)
@@ -1132,10 +1168,12 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     ctx.restore()
   })
   combat.thrown.forEach(o => {
+    if (!visible(o.x, o.y + 80)) return
     ctx.save(); ctx.translate(X(o.x), o.y); ctx.rotate(o.angle); drawItem(ctx, o.owned.item, 64, 34); ctx.restore()
   })
-  combat.critters.forEach(c => { if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
+  combat.critters.forEach(c => { if (!visible(c.x, c.y + 60)) return; if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
   combat.targets.forEach(g => {
+    if (!visible(g.x, g.y + 60, Math.max(320, g.w + 160), g.h + 240)) return
     const x = X(g.x)
     if (g.state === "converted") return
     if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
@@ -1148,6 +1186,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   })
   const pulse = Math.pow(1 - combat.music.beatPhase, 3)
   combat.bullets.forEach(b => {
+    if (!visible(b.x, b.y + 100, Math.max(200, b.size * 2 + 64))) return
     const len = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / len, uy = b.vy / len, x = X(b.x)
     ctx.lineCap = "round"
     if (b.note) drawNote(ctx, b, x, pulse)
@@ -1170,10 +1209,12 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     }
   })
   combat.tracers.forEach(t => {
+    if (!intersectsView({ x: Math.min(t.x1, t.x2), y: Math.min(t.y1, t.y2), w: Math.abs(t.x2 - t.x1), h: Math.abs(t.y2 - t.y1) }, view, 8)) return
     ctx.strokeStyle = `rgba(255,245,200,${Math.min(1, t.life * 10)})`; ctx.lineWidth = 2
     ctx.beginPath(); ctx.moveTo(X(t.x1), t.y1); ctx.lineTo(X(t.x2), t.y2); ctx.stroke()
   })
   combat.booms.forEach(b => {
+    if (!intersectsView({ x: b.x - b.r, y: b.y - b.r, w: b.r * 2, h: b.r * 2 }, view, 8)) return
     if (b.color) {
       // an instrument's burst: rings of colour opening out
       const k = 1 - b.life / 0.5
@@ -1186,16 +1227,17 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
     ctx.fillStyle = `rgba(255,170,70,${0.45 * (1 - k)})`; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = `rgba(255,240,200,${0.8 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * k, 0, Math.PI * 2); ctx.stroke()
   })
-  combat.sparks.forEach(s => { ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
+  combat.sparks.forEach(s => { if (!visible(s.x, s.y + s.size, s.size * 2, s.size * 2)) return; ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
   ctx.globalAlpha = 1
   ctx.font = "bold 13px ui-monospace, monospace"; ctx.textAlign = "center"
   combat.texts.forEach(tx => {
+    if (!visible(tx.x, tx.y + 40, tx.text.length * (tx.size ?? 13) + 32, 100)) return
     ctx.font = tx.size ? `bold ${tx.size}px ui-sans-serif, system-ui, sans-serif` : "bold 13px ui-monospace, monospace"
     ctx.globalAlpha = Math.min(1, tx.life * 2); ctx.fillStyle = "#000"; ctx.fillText(tx.text, X(tx.x) + 1, tx.y + 1); ctx.fillStyle = tx.color; ctx.fillText(tx.text, X(tx.x), tx.y)
   })
   ctx.globalAlpha = 1
   // the tips of destroyed dummies, above everything
-  combat.targets.forEach(g => { if (g.dummy) drawDummyTip(ctx, g, X(g.x), t) })
+  combat.targets.forEach(g => { if (g.dummy && (g.dummy.tipT > 0 || visible(g.x, g.y, 400, g.h + 300))) drawDummyTip(ctx, g, X(g.x), t) })
 }
 
 // a steady pseudo-random number per dummy, so its cracks stay in the same place
@@ -1400,23 +1442,23 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     })
     ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill()
     ctx.globalAlpha = 1
-  } else if (d.reticle === "laser" && end) {
+  } else if (d.reticle === "laser") {
     // sniper: a thin laser from the muzzle to whatever it hits, and a circle with a cross that closes while still
-    if (showPath) { ctx.strokeStyle = "rgba(255,80,80,0.75)"; ctx.lineWidth = 1; line(origin.x, origin.y, end.x, end.y) }
+    if (showPath && end) { ctx.strokeStyle = "rgba(255,80,80,0.75)"; ctx.lineWidth = 1; line(origin.x, origin.y, end.x, end.y) }
     ctx.strokeStyle = color; ctx.lineWidth = 1.5
     const r = 10 + gap
     ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke()
     line(rx - r - 6, ry, rx - 4, ry); line(rx + 4, ry, rx + r + 6, ry); line(rx, ry - r - 6, rx, ry - 4); line(rx, ry + 4, rx, ry + r + 6)
-    if (showPath) { ctx.fillStyle = "#ff5050"; ctx.beginPath(); ctx.arc(end.x, end.y, 2.5, 0, Math.PI * 2); ctx.fill() }
-  } else if ((d.reticle === "impact" || d.reticle === "grenade") && path && end) {
+    if (showPath && end) { ctx.fillStyle = "#ff5050"; ctx.beginPath(); ctx.arc(end.x, end.y, 2.5, 0, Math.PI * 2); ctx.fill() }
+  } else if ((d.reticle === "impact" || d.reticle === "grenade")) {
     // launchers and grenades: the path (dotted for the grenade) and where it lands, with the blast's radius
     ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5
-    if (!showPath) { /* path hidden: only where it lands */ }
+    if (!showPath || !path || !end) { /* path hidden: only where it lands */ }
     else if (d.reticle === "grenade") {
       path.forEach((p, i) => { if (i % 3 === 0) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fill() } })
     } else { ctx.setLineDash([3, 5]); line(origin.x, origin.y, end.x, end.y); ctx.setLineDash([]) }
     // where it lands, with the blast's radius (per item: always, or only with the fire button held, …)
-    if (showLand) {
+    if (showLand && end) {
       ctx.strokeStyle = color; ctx.lineWidth = 2
       line(end.x - 6, end.y - 6, end.x + 6, end.y + 6); line(end.x - 6, end.y + 6, end.x + 6, end.y - 6)
       ctx.strokeStyle = "rgba(255,170,70,0.7)"; ctx.setLineDash([6, 5])
@@ -1427,16 +1469,16 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     ctx.beginPath(); ctx.arc(rx, ry, 7, 0, Math.PI * 2); ctx.stroke()
     ctx.beginPath(); ctx.arc(rx, ry, 1.5, 0, Math.PI * 2); ctx.fill()
     // the fuse: a ring that empties in the fuse's time
-    if (showLand && d.fuse > 0) { ctx.strokeStyle = "#ff6b5b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(end.x, end.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, d.fuse / 6)); ctx.stroke() }
-  } else if (d.reticle === "bow" && path) {
+    if (showLand && end && d.fuse > 0) { ctx.strokeStyle = "#ff6b5b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(end.x, end.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, d.fuse / 6)); ctx.stroke() }
+  } else if (d.reticle === "bow") {
     // bow: a half moon that fills with the charge, and a short path that gets longer
     const c = combat.fireCharge
-    const n = Math.max(2, Math.round(path.length * (0.25 + 0.75 * c)))
-    if (showPath) {
+    const n = Math.max(2, Math.round((path?.length ?? 0) * (0.25 + 0.75 * c)))
+    if (showPath && path) {
       ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4])
       ctx.beginPath(); path.slice(0, n).forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([])
     }
-    const tip = showPath ? path[n - 1] : { x: rx, y: ry }
+    const tip = showPath && path ? path[n - 1] : { x: rx, y: ry }
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2); ctx.stroke()
   } else {
     // pistol: a dot and four short ticks that open a little with the spread

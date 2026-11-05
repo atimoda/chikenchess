@@ -1,5 +1,6 @@
 // Drawing of the Templo do Gongo (canvas, screen pixels): its aliens, the gong totem, bombs and fire, and the HUD
 // (hearts, score, the rhythm "pista" with the beats coming, the judgement of each press and the stage banners).
+import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { ALIEN_FRAMES } from "@/lib/pigchicken/enemies"
 import { lookDir, lookRows, type Point } from "@/lib/pigchicken/eyes"
 import type { Combat } from "@/lib/pigchicken/combat"
@@ -368,9 +369,11 @@ export function drawResetStone(ctx: Ctx, g: Target, x: number, temple: Temple) {
 }
 
 // bombs (red orbs with a white core) and the dragon's fire
-export function drawTempleShots(ctx: Ctx, temple: Temple, camX: number) {
+export function drawTempleShots(ctx: Ctx, temple: Temple, camX: number, view: ViewRect) {
   const t = performance.now() / 1000
   temple.state.bombs.forEach(b => {
+    const trailX = b.x - b.vx * 0.048, trailY = b.y - b.vy * 0.048
+    if (!intersectsView({ x: Math.min(b.x, trailX) - 20, y: Math.min(b.y, trailY) - 20, w: Math.abs(b.x - trailX) + 40, h: Math.abs(b.y - trailY) + 40 }, view)) return
     const x = b.x - camX
     if (b.kind === "fire") {
       for (let i = 4; i >= 0; i--) {

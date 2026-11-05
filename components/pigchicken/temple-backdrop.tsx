@@ -2,6 +2,10 @@
 // upturned eaves, red columns, a painted beam band, white marble balustrades, a red wall in front, old trees and
 // lanterns that sway, in the Pátio's dusk (the sky and the mountains behind are parallax.tsx's). Plain SVG in world units (one scene: 1920 x WORLD_GROUND_Y); the lanterns
 // light up when a stage is cleared (data-temple on the world element, set by the Parquinho).
+"use client"
+
+import { memo } from "react"
+import { SceneryRegion } from "./scenery-region"
 import { SCENE_W, WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 
 const G = WORLD_GROUND_Y
@@ -113,13 +117,13 @@ function Hall({ cx, half, base, colTop, upper, dim = 1 }: { cx: number; half: nu
   )
 }
 
-function Lantern({ x, y, d = 0 }: { x: number; y: number; d?: number }) {
+function Lantern({ x, y, d = 0, prefix }: { x: number; y: number; d?: number; prefix: string }) {
   return (
     <g className="tp-lantern" style={{ transformOrigin: `${x}px ${y}px`, animationDelay: `${-d}s` }}>
       <line x1={x} y1={y} x2={x} y2={y + 26} stroke="#3a2a1b" strokeWidth={2} />
-      <circle className="tp-glow" cx={x} cy={y + 50} r={46} fill="url(#tp-glow)" />
+      <circle className="tp-glow" cx={x} cy={y + 50} r={46} fill={`url(#${prefix}glow)`} />
       <rect x={x - 12} y={y + 24} width={24} height={6} rx={2} fill="#ffd166" />
-      <ellipse cx={x} cy={y + 50} rx={24} ry={22} fill="url(#tp-lanternbody)" />
+      <ellipse cx={x} cy={y + 50} rx={24} ry={22} fill={`url(#${prefix}lanternbody)`} />
       <path d={`M ${x - 12} ${y + 30} Q ${x - 22} ${y + 50} ${x - 12} ${y + 70} M ${x} ${y + 28} L ${x} ${y + 72} M ${x + 12} ${y + 30} Q ${x + 22} ${y + 50} ${x + 12} ${y + 70}`} stroke="#9d0208" strokeWidth={2} fill="none" />
       <rect x={x - 12} y={y + 70} width={24} height={6} rx={2} fill="#ffd166" />
       <path d={`M ${x - 4} ${y + 76} l 0 16 M ${x} ${y + 76} l 0 20 M ${x + 4} ${y + 76} l 0 16`} stroke="#ffb703" strokeWidth={2} />
@@ -167,83 +171,117 @@ function Blossom({ x, base, h = 1 }: { x: number; base: number; h?: number }) {
 // the temple sits in the Pátio's own scenery (parallax.tsx: sky, sun, clouds, mountains): it only draws itself.
 // Everything is muted (less saturation, a little darker) except the roofs' walkable edges, drawn last in bright
 // gold so the floors she can climb stand out; the far pavilion and the trees behind sit in the haze.
-export function TempleBackdrop({ left }: { left: number }) {
+
+function TempleStaticDefs({ prefix }: { prefix: string }) {
   return (
-    <svg aria-hidden="true" className="absolute top-0" style={{ left, width: SCENE_W, height: G + 160, overflow: "visible" }} viewBox={`0 0 ${SCENE_W} ${G + 160}`}>
       <defs>
-        <filter id="tp-muted" colorInterpolationFilters="sRGB">
+        <filter id={`${prefix}-muted`} colorInterpolationFilters="sRGB">
           <feColorMatrix type="saturate" values="0.42" />
           <feComponentTransfer><feFuncR type="linear" slope="0.8" /><feFuncG type="linear" slope="0.8" /><feFuncB type="linear" slope="0.84" /></feComponentTransfer>
         </filter>
         {/* the haze: half the colour, half the dusk's mauve-blue */}
-        <filter id="tp-haze" colorInterpolationFilters="sRGB">
+        <filter id={`${prefix}-haze`} colorInterpolationFilters="sRGB">
           <feColorMatrix type="matrix" values="0.32 0.06 0.04 0 0.2  0.04 0.32 0.04 0 0.19  0.04 0.06 0.34 0 0.25  0 0 0 1 0" />
         </filter>
-        <pattern id="tp-tiles" width="14" height="12" patternUnits="userSpaceOnUse">
+        <pattern id={`${prefix}-tiles`} width="14" height="12" patternUnits="userSpaceOnUse">
           <rect width="14" height="12" fill="#d9a43a" />
           <rect x="10" width="4" height="12" fill="#a8752a" />
           <rect y="10" width="14" height="2" fill="#bf8c33" />
         </pattern>
-        <linearGradient id="tp-roofshade" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-roofshade`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#ffffff" stopOpacity="0.08" />
           <stop offset="0.6" stopColor="#ffffff" stopOpacity="0" />
           <stop offset="1" stopColor="#2a1400" stopOpacity="0.4" />
         </linearGradient>
-        <pattern id="tp-band" width="60" height="26" patternUnits="userSpaceOnUse">
+        <pattern id={`${prefix}-band`} width="60" height="26" patternUnits="userSpaceOnUse">
           <rect width="60" height="26" fill="#2b5d5a" />
           <rect y="0" width="60" height="2" fill="#c9a24e" />
           <rect y="24" width="60" height="2" fill="#c9a24e" />
           <ellipse cx="30" cy="13" rx="14" ry="5" fill="#33607f" stroke="#c9a24e" strokeWidth="1" />
         </pattern>
-        <pattern id="tp-lattice" width="14" height="14" patternUnits="userSpaceOnUse">
+        <pattern id={`${prefix}-lattice`} width="14" height="14" patternUnits="userSpaceOnUse">
           <rect width="14" height="14" fill="#6a1d16" />
           <path d="M 0 7 L 14 7 M 7 0 L 7 14" stroke="#a87a34" strokeWidth="1.2" />
         </pattern>
-        <radialGradient id="tp-warm" cx="0.5" cy="0.6" r="0.7">
+        <radialGradient id={`${prefix}-warm`} cx="0.5" cy="0.6" r="0.7">
           <stop offset="0" stopColor="#ffcf73" stopOpacity="0.5" />
           <stop offset="1" stopColor="#ff9f43" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="tp-column" x1="0" y1="0" x2="1" y2="0">
+        <linearGradient id={`${prefix}-column`} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="#7a2018" />
           <stop offset="0.4" stopColor="#b2382b" />
           <stop offset="1" stopColor="#6a1a13" />
         </linearGradient>
-        <linearGradient id="tp-undershade" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-undershade`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#1a0402" stopOpacity="0.55" />
           <stop offset="1" stopColor="#1a0402" stopOpacity="0" />
         </linearGradient>
-        <linearGradient id="tp-redwall" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-redwall`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#8a2a20" />
           <stop offset="1" stopColor="#6e1f17" />
         </linearGradient>
-        <pattern id="tp-wall" width="80" height="20" patternUnits="userSpaceOnUse">
+        <pattern id={`${prefix}-wall`} width="80" height="20" patternUnits="userSpaceOnUse">
           <rect width="80" height="20" fill="#93302a" />
           <rect y="19" width="80" height="1" fill="#7a2620" />
         </pattern>
-        <linearGradient id="tp-wallshade" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-wallshade`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#1a0603" stopOpacity="0.45" />
           <stop offset="0.3" stopColor="#1a0603" stopOpacity="0" />
           <stop offset="1" stopColor="#1a0603" stopOpacity="0.25" />
         </linearGradient>
-        <pattern id="tp-coping" width="16" height="16" patternUnits="userSpaceOnUse">
+        <pattern id={`${prefix}-coping`} width="16" height="16" patternUnits="userSpaceOnUse">
           <rect width="16" height="16" fill="#b88a3a" />
           <rect x="12" width="4" height="16" fill="#8f6626" />
         </pattern>
-        <pattern id="tp-stone" width="120" height="40" patternUnits="userSpaceOnUse">
+        <pattern id={`${prefix}-stone`} width="120" height="40" patternUnits="userSpaceOnUse">
           <rect width="120" height="40" fill="#6f6a66" />
           <rect x="0" y="0" width="60" height="20" fill="#75706b" />
           <path d="M 0 0 L 120 0 M 0 20 L 120 20 M 30 0 L 30 20 M 90 20 L 90 40" stroke="#57534f" strokeWidth="2" />
         </pattern>
-        <radialGradient id="tp-glow">
+        <radialGradient id={`${prefix}-glow`}>
           <stop offset="0" stopColor="#ffd166" stopOpacity="0.6" />
           <stop offset="1" stopColor="#ffd166" stopOpacity="0" />
         </radialGradient>
-        <radialGradient id="tp-lanternbody" cx="0.4" cy="0.35" r="0.7">
+        <radialGradient id={`${prefix}-lanternbody`} cx="0.4" cy="0.35" r="0.7">
           <stop offset="0" stopColor="#e0675a" />
           <stop offset="0.6" stopColor="#c23a35" />
           <stop offset="1" stopColor="#8a1d1b" />
         </radialGradient>
       </defs>
+  )
+}
+
+type OverlayProps = { left: number; id: string; box: { x: number; y: number; w: number; h: number }; haze?: boolean; children: React.ReactNode }
+function TempleOverlay({ left, id, box, haze, children }: OverlayProps) {
+  const prefix = `tp-${id}-`
+  return (
+    <SceneryRegion bounds={{ ...box, x: box.x + left }} className="absolute" style={{ left: left + box.x, top: box.y, width: box.w, height: box.h, transform: "translate3d(0,0,0)" }}>
+      <svg aria-hidden="true" width={box.w} height={box.h} viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}>
+        <defs>
+          <filter id={`${prefix}tint`} colorInterpolationFilters="sRGB">
+            {haze ? <feColorMatrix type="matrix" values="0.32 0.06 0.04 0 0.2  0.04 0.32 0.04 0 0.19  0.04 0.06 0.34 0 0.25  0 0 0 1 0" /> : <>
+              <feColorMatrix type="saturate" values="0.42" />
+              <feComponentTransfer><feFuncR type="linear" slope="0.8" /><feFuncG type="linear" slope="0.8" /><feFuncB type="linear" slope="0.84" /></feComponentTransfer>
+            </>}
+          </filter>
+          <radialGradient id={`${prefix}glow`}><stop offset="0" stopColor="#ffd166" stopOpacity="0.6" /><stop offset="1" stopColor="#ffd166" stopOpacity="0" /></radialGradient>
+          <radialGradient id={`${prefix}lanternbody`} cx="0.4" cy="0.35" r="0.7"><stop offset="0" stopColor="#e0675a" /><stop offset="0.6" stopColor="#c23a35" /><stop offset="1" stopColor="#8a1d1b" /></radialGradient>
+        </defs>
+        <g filter={`url(#${prefix}tint)`}>{children}</g>
+      </svg>
+    </SceneryRegion>
+  )
+}
+
+// Static architecture and each animated ornament own separate paint surfaces.
+// Their order matches the original SVG: far trees, halls, front trees/lanterns, wall and roof edges.
+export const TempleBackdrop = memo(function TempleBackdrop({ left }: { left: number }) {
+  return <>
+    <TempleOverlay left={left} id="far-pine" haze box={{ x: 1080, y: 380, w: 320, h: 450 }}><Pine x={1230} base={800} h={0.95} /></TempleOverlay>
+    <TempleOverlay left={left} id="far-blossom" haze box={{ x: 1380, y: 450, w: 370, h: 440 }}><Blossom x={1560} base={800} h={0.9} /></TempleOverlay>
+    <SceneryRegion bounds={{ x: left - 64, y: 350, w: SCENE_W + 128, h: G + 160 - 350 }}>
+      <svg data-temple-static="halls" aria-hidden="true" className="absolute top-0" style={{ left, width: SCENE_W, height: G + 160, overflow: "visible" }} viewBox={`0 0 ${SCENE_W} ${G + 160}`}>
+      <TempleStaticDefs prefix="tp" />
       <style>{`
         .tp-lantern { animation: tp-sway 3.2s ease-in-out infinite; }
         .tp-glow { opacity: 0.25; transition: opacity 0.6s; }
@@ -262,8 +300,6 @@ export function TempleBackdrop({ left }: { left: number }) {
       `}</style>
       {/* in the haze, behind: two trees and the far pavilion (scenery, not climbable) */}
       <g filter="url(#tp-haze)">
-        <Pine x={1230} base={800} h={0.95} />
-        <Blossom x={1560} base={800} h={0.9} />
         <Hall cx={1420} half={150} base={790} colTop={660} upper={{ half: 110, top: 560, ridge: 470 }} />
       </g>
       <g filter="url(#tp-muted)">
@@ -286,22 +322,30 @@ export function TempleBackdrop({ left }: { left: number }) {
           <circle cx={1730} cy={420} r={12} fill="#ffd166" stroke="#c98a1c" strokeWidth={2} />
           <rect x={1570} y={790} width={320} height={12} fill="#ece7da" />
         </g>
-        {/* trees in front of the halls, by the wall */}
-        <Pine x={110} base={830} h={0.95} />
-        <Blossom x={1890} base={830} h={0.8} />
-        {/* lanterns hanging from the eaves */}
-        {[200, 430, 890, 1120, 1630, 1830].map((x, i) => <Lantern key={x} x={x} y={i < 4 ? 642 : 650} d={i * 0.7} />)}
+      </g>
+      </svg>
+    </SceneryRegion>
+    <TempleOverlay left={left} id="front-pine" box={{ x: -55, y: 390, w: 340, h: 480 }}><Pine x={110} base={830} h={0.95} /></TempleOverlay>
+    <TempleOverlay left={left} id="front-blossom" box={{ x: 1730, y: 500, w: 350, h: 390 }}><Blossom x={1890} base={830} h={0.8} /></TempleOverlay>
+    {[200, 430, 890, 1120, 1630, 1830].map((x, i) => {
+      const y = i < 4 ? 642 : 650, id = `lantern-${i}`
+      return <TempleOverlay key={id} left={left} id={id} box={{ x: x - 65, y: y - 8, w: 130, h: 160 }}><Lantern x={x} y={y} d={i * 0.7} prefix={`tp-${id}-`} /></TempleOverlay>
+    })}
+    <SceneryRegion bounds={{ x: left - 64, y: 350, w: SCENE_W + 128, h: G + 160 - 350 }}>
+      <svg data-temple-static="wall" aria-hidden="true" className="absolute top-0" style={{ left, width: SCENE_W, height: G + 160, overflow: "visible" }} viewBox={`0 0 ${SCENE_W} ${G + 160}`}>
+      <TempleStaticDefs prefix="tpf" />
+      <g filter="url(#tpf-muted)">
         {/* white marble balustrade */}
         <rect x={0} y={810} width={SCENE_W} height={8} fill="#d8d3c8" />
         <rect x={0} y={836} width={SCENE_W} height={6} fill="#bfb9ad" />
         {Array.from({ length: 49 }, (_, i) => <rect key={i} x={i * 40} y={800} width={10} height={44} rx={2} fill="#dcd7cb" />)}
         {/* the red wall in front, with its glazed coping */}
-        <rect x={0} y={842} width={SCENE_W} height={16} fill="url(#tp-coping)" />
+        <rect x={0} y={842} width={SCENE_W} height={16} fill="url(#tpf-coping)" />
         <rect x={0} y={856} width={SCENE_W} height={4} fill="#5a3a10" />
-        <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tp-wall)" />
-        <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tp-wallshade)" />
+        <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tpf-wall)" />
+        <rect x={0} y={860} width={SCENE_W} height={G - 860} fill="url(#tpf-wallshade)" />
         {/* the courtyard's stone floor where she walks */}
-        <rect x={0} y={G} width={SCENE_W} height={160} fill="url(#tp-stone)" />
+        <rect x={0} y={G} width={SCENE_W} height={160} fill="url(#tpf-stone)" />
         <rect x={0} y={G} width={SCENE_W} height={3} fill="#9a938a" />
       </g>
       {/* the floors she can climb: the roofs' top edges and the eaves, bright on a dark rim */}
@@ -311,6 +355,7 @@ export function TempleBackdrop({ left }: { left: number }) {
           <polyline points={lineAttr(l.pts)} fill="none" stroke="#f2cf72" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
         </g>
       ))}
-    </svg>
-  )
-}
+      </svg>
+    </SceneryRegion>
+  </>
+})

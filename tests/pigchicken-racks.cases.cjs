@@ -90,3 +90,18 @@ test('layout edits update delays without resetting the rack, and moving/revealin
   sync.sync([{...el,x:4000}],4);step(c,.01)
   assert.equal(c.pickups.length,1);assert.equal(c.pickups[0].id,id);assert.equal(c.pickups[0].x,4038)
 })
+
+test('touch Run collects an offered rack item only when enabled and releases its grab source',()=>{
+  const {virtualActionHeld}=loadTs('lib/chicken/controls.ts')
+  for(const enabled of [false,true]){
+    const c=createCombat();c.addRack(0,'pistol',1000,0)
+    step(c,.016)
+    const active={run:true}
+    step(c,.016,{grabHeld:virtualActionHeld(active,'grab',enabled)})
+    assert.equal(c.held?.item??null,enabled?'pistol':null)
+    active.run=false
+    assert.equal(virtualActionHeld(active,'grab',enabled),false)
+    // Dedicated Grab remains usable with the preference disabled.
+    if(!enabled){step(c,.016,{grab:true,grabHeld:true});assert.equal(c.held.item,'pistol')}
+  }
+})

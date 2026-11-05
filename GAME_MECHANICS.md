@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 05/11/2026 — v1.16.0 (Bicada, Shift + Próximo item e ajuste de andar de costas).
+Atualizado em 05/11/2026 — v1.16.0 (Bicada, arremessos, controles touch individuais, página fixa no Pátio/globo e desempenho do Pátio).
 
 ## Leitura por assunto
 

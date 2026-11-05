@@ -144,7 +144,7 @@ function ChatBubble({ msg, engine }: { msg: ChickenChatMessage; engine: ChickenE
       raf = requestAnimationFrame(frame)
       const box = ref.current, tail = tailRef.current
       if (!box || !tail) return
-      const s = engine.getState()
+      const s = engine.getMotionState()
       const h = HEAD_TOP * s.scale
       // the head's top, turned with her when she clings to a slope or wall
       const fwd = s.face * HEAD_FWD * s.scale

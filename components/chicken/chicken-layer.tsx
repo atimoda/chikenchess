@@ -64,7 +64,7 @@ export function Movable({ id, className = "", style, children }: { id: TouchCont
   }
   const up = () => { drag.current = null }
   return (
-    <div ref={ref} className={className} style={{ ...style, transform: off ? `translate(${off.x}px, ${off.y}px)` : undefined }}>
+    <div ref={ref} data-touch-control={id} className={className} style={{ ...style, transform: off ? `translate(${off.x}px, ${off.y}px)` : undefined }}>
       {children}
       {editing && (
         <div
@@ -188,6 +188,9 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
   const active = useRef<Partial<Record<ChickenAction, boolean>>>({})
   const pointerId = useRef<number | null>(null)
 
+  const { editing } = useTouchLayout()
+  useEffect(() => { if (editing) { set("run", false); set("down", false); set("jump", false) } }, [editing])
+
   const apply = (next: Partial<Record<ChickenAction, boolean>>) => {
     (["left", "right", "up", "crouch"] as const).forEach(a => {
       const on = !!next[a]
@@ -209,6 +212,7 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
   }
   const release = () => { pointerId.current = null; setKnob({ x: 0, y: 0 }); apply({}); setTouchMoveStick(null) }
 
+  useEffect(() => { if (editing) release() }, [editing])
   useEffect(() => () => { apply({}); setTouchMoveStick(null) }, [])
 
   return (
@@ -232,17 +236,20 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
       </div>
       </Movable>
       {/* buttons in one row, centred on the stick's vertical centre */}
-      <Movable id="actions" className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
-        <TouchButton label="Correr" action="run" set={set} size={54}><Footprints className="h-6 w-6" /></TouchButton>
-        <TouchButton label="Chocar" action="down" set={set} size={54}><Egg className="h-6 w-6" /></TouchButton>
-        <TouchButton label="Pular" action="jump" set={set} size={68}><ChevronsUp className="h-8 w-8" /></TouchButton>
-      </Movable>
+      <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
+        <Movable id="run" className="relative"><TouchButton label="Correr" action="run" set={set} size={54}><Footprints className="h-6 w-6" /></TouchButton></Movable>
+        <Movable id="down" className="relative"><TouchButton label="Chocar" action="down" set={set} size={54}><Egg className="h-6 w-6" /></TouchButton></Movable>
+        <Movable id="jump" className="relative"><TouchButton label="Pular" action="jump" set={set} size={68}><ChevronsUp className="h-8 w-8" /></TouchButton></Movable>
+      </div>
     </div>
   )
 }
 
 function TouchButton({ label, action, set, size, style, children }: { label: string; action: ChickenAction; set: (action: ChickenAction, on: boolean) => void; size: number; style?: React.CSSProperties; children: ReactNode }) {
   const [down, setDown] = useState(false)
+  const setRef = useRef(set)
+  setRef.current = set
+  useEffect(() => () => setRef.current(action, false), [action])
   const press = (on: boolean) => { setDown(on); set(action, on) }
   return (
     <button

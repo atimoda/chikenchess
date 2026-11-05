@@ -9,6 +9,7 @@
 // near the start of its world, that leads back to the globe (the same ring, placed in world units: `world`).
 // On either, pressing run or grab (Shift / E, the gamepad's X) while the button shows confirms it too, and
 // arriving running (run held while she moves) goes straight in without stopping to confirm.
+import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
@@ -269,6 +270,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   const transitionRef = useRef<{ at: number; engine: ChickenEngine | null; timer: ReturnType<typeof setTimeout> } | null>(null)
   const [flashAt, setFlashAt] = useState<{ x: number; y: number } | null>(null)
   const [host, setHost] = useState<HTMLElement | null>(null)
+  const worldRef = useRef(world)
+  worldRef.current = world
   const worldD = world?.d
   useEffect(() => { if (world) setHost(world.host.current) }, [world])
 
@@ -381,7 +384,12 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
           measured = 0; slowFrames = 0
         }
       }
-      if (inWorld) box = canvas.getBoundingClientRect()
+      const world = worldRef.current
+      if (inWorld && world) {
+        const left = world.x - size / 2 - liveCamera.x
+        const top = world.groundY + 6 - d - PAD + liveCamera.y
+        box = { ...box, left, top, right: left + size, bottom: top + size }
+      }
       const pcx = box.left + cx, pcy = box.top + cy
       centerRef.current = { x: pcx, y: pcy }
       if (enteredAt) enteringEngine?.setPortalEntry({ x: pcx, y: pcy, durationMs: ENTER_MS })
@@ -414,7 +422,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       if (!enteredAt) {
         const characters = runtime.actors?.() ?? (eng ? [eng] : [])
         for (const actor of characters) {
-          const st = actor.getState()
+          const st = actor.getMotionState()
           const gate = portalGate(actor, portalId).update(st, { x: pcx, y: pcy, r }, actor.peekActions())
           suppressed ||= gate.blocked
           near = Math.max(near, 1 - Math.hypot(st.x - pcx, st.y - 80 * st.scale - pcy) / (r * 3.5))
@@ -428,6 +436,10 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
         setShowInstruction(!!(runtime.enabled && visibleRef.current && onScreen && !suppressed && label.trim() && (candidate || hovered || runtime.instructionMode === 'always')))
       }
+      // Contact/arrival gates above still run for offscreen local players. Only
+      // the decorative canvas work sleeps; a transition always keeps drawing.
+      const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+      if (!onScreen && !enteredAt) { sparks.length = 0; arcs = []; nextStrands = now; return }
       const enterT = enteredAt ? Math.min(1, (now - enteredAt) / ENTER_MS) : 0
       const target = 1 + near * 0.8 + enterT * 2.4
       power += (target - power) * Math.min(1, dt * 8)

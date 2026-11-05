@@ -1,9 +1,12 @@
 // The Pátio's scenery behind everything: a dusk sky, a low sun, soft clouds, mountain ranges and tree lines, in
 // layers that follow the camera at different rates (parallax) along the whole world, the temple included.
-// The camera's x reaches the layers as the CSS variable --camx on the world element (set every frame by
-// ParquinhoPlay): a layer with depth p moves p * camX to the right, so on screen it scrolls (1 - p) as fast as
+// live-camera moves each layer directly: a layer with depth p moves p * camX to the right,
+// so on screen it scrolls (1 - p) as fast as
 // the ground. The art is generated once from a fixed seed, so it is the same on every screen and every visit.
-import { memo } from "react"
+"use client"
+
+import { memo, useEffect, useRef } from "react"
+import { followParallax, watchCameraRegion } from "@/lib/pigchicken/live-camera"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 
 const G = WORLD_GROUND_Y
@@ -85,11 +88,25 @@ function clouds(w: number, seed: number) {
 
 // one parallax layer: depth p (0 = with the ground, 1 = fixed on the screen)
 function Layer({ p, w, children }: { p: number; w: number; children: React.ReactNode }) {
+  const ref = useRef<SVGSVGElement>(null)
+  useEffect(() => ref.current ? followParallax(ref.current, p) : undefined, [p])
   return (
-    <svg aria-hidden="true" className="absolute" viewBox={`0 0 ${w} ${G + 40}`} style={{ left: -PAD_L, top: 0, width: w, height: G + 40, overflow: "visible", transform: `translate3d(calc(var(--camx, 0) * ${p}px), 0, 0)`, willChange: "transform" }}>
+    <svg ref={ref} aria-hidden="true" className="absolute" viewBox={`0 0 ${w} ${G + 40}`} style={{ left: -PAD_L, top: 0, width: w, height: G + 40, overflow: "hidden" }}>
       {children}
     </svg>
   )
+}
+
+function Cloud({ c }: { c: ReturnType<typeof clouds>[number] }) {
+  const ref = useRef<SVGGElement>(null)
+  useEffect(() => {
+    const l = Math.min(...c.lobes.map(l => l.dx - l.rx)) - c.drift - 16
+    const r = Math.max(...c.lobes.map(l => l.dx + l.rx)) + c.drift + 16
+    return ref.current ? watchCameraRegion(ref.current, { x: -PAD_L + c.x + l, y: c.y - 100, w: r - l, h: 200 }, 0.9) : undefined
+  }, [c])
+  return <g ref={ref} className="px-cloud" style={{ ["--d" as string]: `${c.drift}s`, ["--a" as string]: `${c.drift}px` }} opacity={c.o} filter="url(#px-soft)">
+    {c.lobes.map((l, k) => <ellipse key={k} cx={c.x + l.dx} cy={c.y + l.dy} rx={l.rx} ry={l.ry} fill={k === c.lobes.length - 1 ? "#b79fa6" : "#d9d3e2"} />)}
+  </g>
 }
 
 export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW }: { worldW: number }) {
@@ -131,11 +148,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW }: { wor
           @keyframes px-drift { from { transform: translateX(calc(var(--a) * -1)); } to { transform: translateX(var(--a)); } }
           @media (prefers-reduced-motion: reduce) { .px-cloud { animation: none; } }
         `}</style>
-        {clouds(wCloud, 11).map((c, i) => (
-          <g key={i} className="px-cloud" style={{ ["--d" as string]: `${c.drift}s`, ["--a" as string]: `${c.drift}px` }} opacity={c.o} filter="url(#px-soft)">
-            {c.lobes.map((l, k) => <ellipse key={k} cx={c.x + l.dx} cy={c.y + l.dy} rx={l.rx} ry={l.ry} fill={k === c.lobes.length - 1 ? "#b79fa6" : "#d9d3e2"} />)}
-          </g>
-        ))}
+        {clouds(wCloud, 11).map((c, i) => <Cloud key={i} c={c} />)}
       </Layer>
       <Layer p={0.82} w={wFar}><path d={ridge(wFar, 3, 720, 190, 1.3)} fill="#4d4d68" />{haze(wFar, "px-h1", 560, 0.7)}</Layer>
       <Layer p={0.66} w={wMid}><path d={ridge(wMid, 7, 790, 160, 1.7)} fill="#3d3f58" />{haze(wMid, "px-h2", 680, 0.55)}</Layer>

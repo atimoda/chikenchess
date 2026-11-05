@@ -2,12 +2,12 @@
 // browser. Edit mode is a flag on the same store: while it is on, the controls show and can be dragged, and
 // "Ok" saves the layout and ends it.
 
-export type TouchControlId = 'move' | 'actions' | 'aim' | 'items' | 'grab' | 'inventory'
+export type TouchControlId = 'move' | 'run' | 'down' | 'jump' | 'aim' | 'melee' | 'throw' | 'itemWheel' | 'grab' | 'inventory'
 export type TouchOffset = { x: number; y: number }
 export type TouchLayout = { offsets: Partial<Record<TouchControlId, TouchOffset>>; editing: boolean }
 
 const STORE = 'chickenchess-chicken-touch-layout-v1'
-const IDS: TouchControlId[] = ['move', 'actions', 'aim', 'items', 'grab', 'inventory']
+const IDS: TouchControlId[] = ['move', 'run', 'down', 'jump', 'aim', 'melee', 'throw', 'itemWheel', 'grab', 'inventory']
 
 const EMPTY: TouchLayout = { offsets: {}, editing: false }
 let state: TouchLayout | null = null
@@ -18,7 +18,9 @@ function read(): TouchLayout['offsets'] {
     const saved = JSON.parse(window.localStorage.getItem(STORE) ?? 'null')
     const out: TouchLayout['offsets'] = {}
     for (const id of IDS) {
-      const v = saved?.[id]
+      // Split legacy groups without moving any of their buttons. Individual positions win.
+      const group = ['run', 'down', 'jump'].includes(id) ? 'actions' : ['melee', 'throw', 'itemWheel'].includes(id) ? 'items' : null
+      const v = saved?.[id] ?? (group ? saved?.[group] : null)
       if (v && Number.isFinite(v.x) && Number.isFinite(v.y)) out[id] = { x: v.x, y: v.y }
     }
     return out

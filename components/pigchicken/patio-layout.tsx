@@ -8,6 +8,7 @@ import { ELEMENT_DEFS, elementBounds, elementFloorLine, type LayoutElement, type
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { followCamera } from "@/lib/pigchicken/live-camera"
 import { TreeArt, TreeStyles } from "./patio-trees"
+import { SceneryRegion } from "./scenery-region"
 
 // one element's art filling its box
 export const ElementArt = memo(function ElementArt({ el }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h"> }) {
@@ -27,20 +28,21 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
         if (ELEMENT_DEFS[el.kind].entity || el.layer !== layer) return null
         if (el.hidden && !editing) return null
         return (
-          <div
+          <SceneryRegion
             key={el.id}
+            bounds={elementBounds(el)}
             aria-hidden="true"
             data-patio-el={el.id}
             className="absolute"
             style={{
               left: el.x, top: el.y, width: el.w, height: el.h,
-              transform: el.rot ? `rotate(${el.rot}deg)` : undefined,
+              transform: el.rot ? `translate3d(0,0,0) rotate(${el.rot}deg)` : (el.kind === "pine" || el.kind === "blossom") ? "translate3d(0,0,0)" : undefined,
               opacity: el.hidden ? 0.35 * el.opacity : el.opacity,
               outline: el.hidden ? "2px dashed rgba(255,255,255,0.5)" : undefined,
             }}
           >
             <ElementArt el={el} />
-          </div>
+          </SceneryRegion>
         )
       })}
     </>
@@ -56,7 +58,7 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
         if (!el.solid || ELEMENT_DEFS[el.kind].entity) return null
         const b = elementBounds(el)
         const line = elementFloorLine(el)
-        return <div key={el.id} data-chicken-id={el.id} data-chicken-line={line ?? undefined} className="absolute" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />
+        return <div key={el.id} data-chicken-id={el.id} data-chicken-world-box={`${b.x},${b.y},${b.w},${b.h}`} data-chicken-line={line ?? undefined} className="absolute" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />
       })}
     </div>
   )
@@ -68,7 +70,7 @@ export function FollowLayer({ z, opacity = 1, width, children }: { z: number; op
   useEffect(() => (ref.current ? followCamera(ref.current) : undefined), [])
   return (
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: z, opacity }}>
-      <div ref={ref} className="absolute left-0 top-0 will-change-transform" style={{ width, height: WORLD_GROUND_Y }}>
+      <div ref={ref} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
         {children}
       </div>
     </div>

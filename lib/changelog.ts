@@ -5,9 +5,12 @@ export const CHANGELOG = [
   {
     version: '1.16.0',
     date: '05/11/2026',
-    title: 'Bicada, reposição de itens e ajustes de arremesso',
+    title: 'Bicada, arremessos, controles touch e desempenho do Pátio',
     groups: [
       { title: 'Pátio', items: [
+        'O Pátio reduz o trabalho fora da tela e separa as animações do cenário do Templo do Gongo, evitando redesenhar o prédio inteiro a cada quadro. Mira, inventário e portais também usam menos processamento; em aparelhos de toque, o canvas usa resolução mais leve.',
+        'No tablet/celular, arrastar o fundo ou os botões do cabeçalho do Pátio não rola mais a página. O bloqueio também vale no globo, preservando a rolagem dentro dos painéis.',
+        'Correr no touch também pega itens do chão por padrão. A opção pode ser desligada em Controles do boneco → Na tela (celular). Cada botão touch agora pode ser posicionado individualmente; layouts antigos são preservados. A lista de movimentos ganhou rótulos mais curtos e mais espaço entre os tipos de input.',
         'Nova bind Deselecionar item, padrão F: deixa as mãos vazias sem perder itens, inclusive com inventário cheio. Cancela arremessos e ataques em preparação, fecha a roda sem equipar e pode ser personalizada nos controles.',
         'Ao começar Throw, o item e a asa agora transitam da pose atual para a pose de arremesso, sem saltar de posição/ângulo. Novo controle Velocidade da transição do arremesso em Ajustes → Arremesso (1×: cerca de 0,2 s). Cancelar ou trocar de item limpa a pose, inclusive ao reequipar depois.',
         'Ajustes ganhou a seção Arremesso, reunindo parada no ar, a nova parada no chão e o ângulo visual. No chão, o padrão é 90% de redução: carregar Throw permite caminhar/correr a 10% da velocidade em vez de travar totalmente. Os valores 0% e 100% permitem movimento normal ou parada total.',

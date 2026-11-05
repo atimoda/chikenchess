@@ -22,14 +22,14 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', null, null], keys2: ['Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
   { key: 'right', label: 'Direita', keys: ['Key:KeyD', null, null], keys2: ['Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
   { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', null, null], keys2: ['Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
-  { key: 'down', label: 'Chocar / cair / travar mira (com item)', keys: ['Key:ControlLeft', null, null], keys2: ['Key:ArrowDown', 'Key:ControlRight'], pad: ['Pad:b6', null, null] },
+  { key: 'down', label: 'Chocar / cair / travar mira', keys: ['Key:ControlLeft', null, null], keys2: ['Key:ArrowDown', 'Key:ControlRight'], pad: ['Pad:b6', null, null] },
   { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], keys2: ['Key:PageDown', null], pad: ['Pad:a1+', 'Pad:b13', null] },
   { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], keys2: ['Key:PageUp', null], pad: ['Pad:b0', 'Pad:b11', null] },
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b5', 'Pad:b2', null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyX', 'Key:KeyV', null], keys2: ['Key:Insert', null], pad: ['Pad:b7', null, null], group: 'items' },
   { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyZ', 'Key:KeyB', null], keys2: ['Key:Home', null], pad: ['Pad:b1', null, null], group: 'items' },
-  { key: 'throw', label: 'Arremessar item (segure p/ força)', keys: ['Key:KeyG', null, null], keys2: ['Key:End', null], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:End', null], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:Tab', null, null], keys2: ['Key:Delete', null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'deselectItem', label: 'Deselecionar item', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Backslash', null], pad: [null, null, null], group: 'items' },
@@ -49,6 +49,7 @@ export type ChickenControls = {
   keys2: Record<ChickenAction, Slots>
   pad: Record<ChickenAction, Slots>
   touch: ChickenTouchMode
+  touchRunGrab: boolean
   sound: boolean
   analog: ChickenAnalog
 }
@@ -59,7 +60,7 @@ const EVENT = 'chickenchess-chicken-controls'
 export function defaultChickenControls(): ChickenControls {
   const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
   CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
-  return { keys, keys2, pad, touch: 'auto', sound: true, analog: { ...DEFAULT_ANALOG } }
+  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG } }
 }
 
 // The binds of one action on one input type (the players panel reads a player's inputs through this)
@@ -83,6 +84,7 @@ export function loadChickenControls(): ChickenControls {
     // Add the new default only after legacy Throw migrations have freed F.
     if (!Array.isArray(saved?.keys?.deselectItem)) base.keys.deselectItem = [null, null, null]
     if (saved?.touch === 'on' || saved?.touch === 'off' || saved?.touch === 'auto') base.touch = saved.touch
+    if (typeof saved?.touchRunGrab === 'boolean') base.touchRunGrab = saved.touchRunGrab
     if (typeof saved?.sound === 'boolean') base.sound = saved.sound
     const num = (v: unknown, lo: number, hi: number, d: number) => typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d
     const an = saved?.analog ?? {}
@@ -286,4 +288,9 @@ export function readTouchMoveStick(deadzone: number): { x: number; y: number; ma
   if (!touchMove || touchMove.len <= deadzone || touchMove.len === 0) return null
   const mag = Math.min(1, (touchMove.len - deadzone) / Math.max(0.01, 1 - deadzone))
   return { x: touchMove.x, y: touchMove.y, mag }
+}
+
+// Only the on-screen Run source also grabs; physical Run bindings keep their own behavior.
+export function virtualActionHeld(active: Partial<Record<ChickenAction, boolean>>, action: ChickenAction, runGrab: boolean): boolean {
+  return !!active[action] || (action === 'grab' && runGrab && !!active.run)
 }

@@ -10,9 +10,10 @@ import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
-import { CHICKEN_ACTIONS, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { directionalJumpImpulse } from './jump-impulse'
 import { createThrowTransition } from './throw-transition'
+import { chickenPlatformElements, chickenPlatformRects } from './platform-geometry'
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
 
@@ -25,6 +26,7 @@ export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwChargi
 export type ChickenEngine = {
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
+  getMotionState: () => Omit<ChickenState, 'shoulder'>
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
@@ -192,6 +194,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
   })
 
+  const rigMatrices = new Map<SVGGraphicsElement, DOMMatrix | null>()
+  function rigMatrix(node: SVGGraphicsElement) {
+    if (!rigMatrices.has(node)) rigMatrices.set(node, node.getCTM())
+    return rigMatrices.get(node)!
+  }
+
   // ---------- look ----------
   let tailSwing = 1
   function paintLook(look: ChickenLook) {
@@ -217,6 +225,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const R = { ...CHICKEN_PARAMS, ...config.params } as ChickenParams
   let W = window.innerWidth, H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
+    rigMatrices.clear()
     W = window.innerWidth; H = window.innerHeight; groundY = H - opts.groundHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
@@ -245,7 +254,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   rebind()
   const virtOk = () => !devices || devices.includes('touch') || devices.includes('mouse')
-  const input = (a: ChickenAction) => keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && !!virt[a])
+  const input = (a: ChickenAction) => keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && virtualActionHeld(virt, a, controls.touchRunGrab))
   const tapped = (a: ChickenAction) => keyBinds[a].some(t => pressed.has(t)) || (virtOk() && virtTapped.has(a))
   const usedKey = (tok: string) => usedKeys.has(tok)
   const onKeyDown = (e: KeyboardEvent) => {
@@ -621,7 +630,6 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- colliders ----------
   let SEGS: Seg[] = []
-  let boxCache: Element[] | null = null, boxCacheAt = 0
   function buildSegs() {
     const out: Seg[] = []
     const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false) => {
@@ -629,17 +637,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
       out.push({ id, ax, ay, bx, by, len, ang: a, wall: !floor && Math.min(a, 180 - a) > 45, solid })
     }
-    // the platform list is looked up a few times a second, not on every frame (their boxes still are)
-    const now = performance.now()
-    if (!boxCache || now - boxCacheAt > 200) {
-      const found = new Set<Element>()
-      document.querySelectorAll('[data-chicken-platform], [data-chicken-platforms] > *').forEach(e => found.add(e))
-      boxCache = [...found]; boxCacheAt = now
-    }
-    const boxes = boxCache
     let n = 0
-    boxes.forEach(e => {
-      const r = e.getBoundingClientRect()
+    chickenPlatformRects(frameNow).forEach(({ el: e, rect: r }) => {
       if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > H) return
       const id = (e as HTMLElement).dataset.chickenId || (e as HTMLElement).id || `box${n++}`
       // a shaped floor (curved or sloped roofs): `data-chicken-line="x,y x,y …"` in the element's own pixels,
@@ -674,7 +673,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // elements without an id get one, so standing on a box survives re-ordering of the DOM
   let autoId = 0
   const tagBoxes = () => {
-    document.querySelectorAll('[data-chicken-platform], [data-chicken-platforms] > *').forEach(e => {
+    chickenPlatformElements(performance.now()).forEach(e => {
       const h = e as HTMLElement
       if (!h.dataset.chickenId) h.dataset.chickenId = `chk${autoId++}`
     })
@@ -1103,6 +1102,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const vis = { x: 0, y: 0, a: 0 }, turn = { t: 1, x: 0, y: 0, a: 0 }
   let frameDt = 1 / 60, frameNow = performance.now()
   function renderPortal(now: number) {
+    rigMatrices.clear()
     const p = portalEntry!
     const t = clamp((now - p.start) / p.duration, 0, 1), u = smooth(t), k = p.mode === 'arrive' ? u : 1 - u
     const fromX = p.fromX + p.dx, fromY = p.fromY + p.dy
@@ -1119,6 +1119,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   function startTurn() { if (R.clingTurnTime > 0) { turn.t = 0; turn.x = vis.x; turn.y = vis.y; turn.a = vis.a } }
   function render() {
+    rigMatrices.clear()
     const s = R.scale, sq = S.squash
     const sx = s * (1 + sq * 0.08) * S.face, sy = s * (1 - sq * 0.1)
     let vx = S.cl ? S.cl.px : S.x, vy = S.cl ? S.cl.py : S.y, va = S.cl ? S.cl.phi * DEG : 0
@@ -1180,7 +1181,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const upright = consumableAngle
       const contact = consumable.upright === -90 ? { x: 52, y: 0 } : { x: 15, y: -10 }
       const r = upright / DEG
-      const head = el.head.getCTM(), pivot = el.heldPivot.getCTM()
+      const head = reach > 0 ? el.head.getCTM() : null, pivot = reach > 0 ? el.heldPivot.getCTM() : null
       if (head && pivot && reach > 0) {
         const mouth = new DOMPoint(CHICKEN_MOUTH.x, CHICKEN_MOUTH.y).matrixTransform(head).matrixTransform(pivot.inverse())
         handX += (mouth.x - (contact.x * Math.cos(r) - contact.y * Math.sin(r)) - handX) * reach; handY += (mouth.y - (contact.x * Math.sin(r) + contact.y * Math.cos(r)) - handY) * reach
@@ -1246,9 +1247,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // Stick/touch aim takes priority over a mouse left elsewhere on the page.
     let px = 1.4, py = 0
     if (game.lookAngle != null || pointer) {
-      const r = el.sclera.getBoundingClientRect()
-      let dx = game.lookAngle != null ? Math.cos(game.lookAngle) * 100 : pointer!.x - (r.left + r.width / 2)
-      const dy = game.lookAngle != null ? Math.sin(game.lookAngle) * 100 : pointer!.y - (r.top + r.height / 2)
+      const r = game.lookAngle == null ? el.sclera.getBoundingClientRect() : null
+      let dx = game.lookAngle != null ? Math.cos(game.lookAngle) * 100 : pointer!.x - (r!.left + r!.width / 2)
+      const dy = game.lookAngle != null ? Math.sin(game.lookAngle) * 100 : pointer!.y - (r!.top + r!.height / 2)
       dx *= S.face
       const a = -(pose.body + pose.neck + pose.head + va * S.face) / DEG
       const rx = dx * Math.cos(a) - dy * Math.sin(a), ry = dx * Math.sin(a) + dy * Math.cos(a)
@@ -1292,7 +1293,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // her shoulder (the item's pivot) on the screen, from the drawn rig
   function shoulder() {
-    const m = el.heldPivot.getCTM()
+    const m = rigMatrix(el.heldPivot)
     return m ? { x: m.e, y: m.f } : { x: S.x, y: S.y - 112 * R.scale }
   }
 
@@ -1300,6 +1301,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const throwing = (game.throwHeld || game.throwCharging) && !S.cl && !S.held ? clamp(1 - (S.grounded ? R.throwGroundStop : R.throwAirStop) / 100, 0, 1) : 1
     const preparing = S.shocking ? clamp(1 - (S.grounded ? R.shockingGroundStop : R.shockingAirStop) / 100, 0, 1) : 1
     return throwing * preparing
+  }
+
+  function motionState(): Omit<ChickenState, 'shoulder'> {
+    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, held: !!S.held, width: W, height: H, groundY }
   }
 
   return {
@@ -1347,8 +1352,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (on && !virt[action]) virtTapped.add(action)
       virt[action] = on
     },
-    // while clinging, S.x is the distance along the wall: report where she is drawn
-    getState: () => ({ x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, shoulder: shoulder(), vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, held: !!S.held, width: W, height: H, groundY }),
+    // Full snapshots remain eager; camera/contact queries need no SVG geometry.
+    getState: () => ({ ...motionState(), shoulder: shoulder() }),
+    getMotionState: motionState,
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
@@ -1390,7 +1396,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     heldPoint(angle, x, y) {
       // The trajectory and release use the resting hand, not the hand pulled
       // back while charging; otherwise each frame would move the origin again.
-      const hand = heldItem?.atHand && !swingNow ? el.heldPivot.getCTM() : null
+      const hand = heldItem?.atHand && !swingNow ? rigMatrix(el.heldPivot) : null
       const r = (pose.wing + handAimAngle(rigAngle(angle * DEG))) / DEG
       const hx = HAND_DX * Math.cos(r) - HAND_DY * Math.sin(r), hy = HAND_DX * Math.sin(r) + HAND_DY * Math.cos(r)
       const p = hand ? new DOMPoint(hx, hy).matrixTransform(hand) : shoulder()
@@ -1403,7 +1409,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     rigPoint(point) {
       const node = point === 'neck' ? el.body : point === 'hand' ? el.wing : el.head
       const at = point === 'neck' ? { x: PIV.neck[0], y: PIV.neck[1] } : point === 'hand' ? CHICKEN_HAND : CHICKEN_MOUTH
-      const m = node.getCTM()
+      const m = rigMatrix(node)
       const p = m ? new DOMPoint(at.x, at.y).matrixTransform(m) : shoulder()
       return { x: p.x, y: p.y }
     },

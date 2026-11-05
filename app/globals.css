@@ -158,6 +158,11 @@ select[data-city-dropdown] option:focus {
   }
 }
 
+/* Sliders in one-screen worlds drag natively without turning into a page pan. */
+html[data-game-page-locked] input[type="range"] {
+  touch-action: none;
+}
+
 /* Keep the targeting hand across the board, widgets and empty screen space. */
 html[data-power-targeting-cursor="grab"],
 html[data-power-targeting-cursor="grab"] * {
