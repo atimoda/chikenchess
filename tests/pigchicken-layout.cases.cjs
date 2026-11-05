@@ -3,6 +3,44 @@ const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const world = loadTs('lib/pigchicken/world.ts')
 const L = loadTs('lib/pigchicken/layout.ts')
+const H = loadTs('lib/pigchicken/houses.ts')
+const T = loadTs('lib/pigchicken/trampoline.ts')
+
+test('trampoline saves its strength and aim and uses only a one-way landing surface', () => {
+  const el = L.createElement('trampoline', 500, world.WORLD_GROUND_Y - 28)
+  assert.deepEqual(el.params.trampoline, { strength: 3, angle: 0 })
+  assert.equal(el.y + el.h, world.WORLD_GROUND_Y)
+  assert.deepEqual(L.layoutBoxes([el]), [])
+  assert.equal(L.layoutFloorBelow([el], 500, el.y - 50), el.y)
+  const layout = L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [
+    { ...el, rot: 45, solid: false, notes: true, params: { trampoline: { strength: 9, angle: -70 } } },
+  ] })
+  const [saved] = layout.elements
+  assert.equal(saved.rot, 0)
+  assert.deepEqual(saved.params.trampoline, { strength: 5, angle: -35 })
+  assert.equal(L.layoutBoxes([saved])[0].notes, true)
+  assert.equal(L.layoutBoxes([saved])[0].solid, false)
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(layout))), layout)
+})
+
+test('trampoline levels have distinct pads and increasing height with symmetric aim', () => {
+  const gravity = 1200
+  const levels = T.TRAMPOLINE_LEVELS
+  assert.equal(levels.length, 5)
+  assert.equal(new Set(levels.map(level => level.pad)).size, 5)
+  levels.forEach(({ height }, index) => {
+    const { vx, vy } = T.trampolineVelocity({ strength: index + 1, angle: 0 }, gravity)
+    assert.equal(vx, 0)
+    assert.ok(vy < 0)
+    assert.ok(Math.abs(vy ** 2 / (2 * gravity) - height) < 1e-8)
+    if (index > 0) assert.ok(height > levels[index - 1].height)
+  })
+  const left = T.trampolineVelocity({ strength: 3, angle: -25 }, gravity)
+  const right = T.trampolineVelocity({ strength: 3, angle: 25 }, gravity)
+  assert.ok(right.vx > 0)
+  assert.equal(left.vx, -right.vx)
+  assert.equal(left.vy, right.vy)
+})
 
 test('the default layout is the Pátio the code always drew: same platform boxes and ids', () => {
   const lay = L.defaultLayout()
@@ -26,7 +64,7 @@ test('the default layout is the Pátio the code always drew: same platform boxes
   assert.equal(dummies.length, 5)
   dummies.forEach(d => { assert.ok(d.params.message.length > 0); assert.equal(d.y + d.h, world.WORLD_GROUND_Y) })
   // a narrower world hides what is past its last scene
-  assert.ok(L.elementsInWorld(lay, 1).every(e => e.x + e.w / 2 < world.SCENE_W))
+  assert.ok(L.elementsInWorld(lay, 1).filter(e => !e.region).every(e => e.x + e.w / 2 < world.SCENE_W))
 })
 
 test('layouts from storage are cleaned: unknown kinds dropped, turns snapped, the game things never turn or collide', () => {
@@ -109,7 +147,7 @@ test('a layout saved before the consumables gets their racks once; one that alre
   assert.equal(cok.y + cok.h, world.WORLD_GROUND_Y)
   // saved again (v2), a rack the editor removed stays removed
   const again = L.normalizeLayout({ ...old, elements: old.elements.filter(e => e.params.item !== 'cok') })
-  assert.equal(again.elements.length, 1)
+  assert.equal(again.elements.filter(e => e.kind === 'rack').length, 1)
   // a rack can hold a consumable
   assert.equal(L.createElement('rack', 0, 0, { item: 'cok' }).params.item, 'cok')
 })
@@ -155,4 +193,169 @@ test('duplicating a portal copies its entire pair into a new independent link, p
   assert.equal(L.portalPartner(copy[0],[...pair,...copy]).id,copy[1].id)
   copy[1].params.portalLabel='Outro'
   assert.equal(pair[1].params.portalLabel,'Voltar')
+})
+
+test('the demo follows the Temple at every Parquinho width and upgrades a legacy default only once', () => {
+  const raw = { v: 2, elements: [{ id: 'kept', kind: 'platform', x: 200 }] }
+  const personal = L.normalizeLayout(raw)
+  assert.deepEqual(personal.elements.filter(e => e.kind !== 'portal').map(e => e.id), ['kept'])
+  const defaultPatio = L.normalizeLayout(raw, true)
+  const demo = defaultPatio.elements.filter(e => e.kind === 'house')
+  assert.ok(demo.length > 0)
+  for (const screens of [1, 4, 8]) {
+    assert.equal(world.villageScene(screens), world.templeScene(screens) + 1)
+    assert.equal(world.worldScenes(screens), world.villageScene(screens) + 1)
+    const projected = L.elementsInWorld(defaultPatio, screens).filter(e => e.kind === 'house')
+    assert.equal(projected.length, demo.length)
+    assert.equal(projected[0].x, demo[0].x + world.villageScene(screens) * world.SCENE_W)
+    assert.deepEqual(L.storeElementPosition(projected[0], screens), demo[0])
+  }
+  const edited = { ...defaultPatio, elements: defaultPatio.elements.filter(e => e.id !== demo[0].id) }
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(edited)), true), edited)
+})
+
+test('both default shortcuts resolve a partner and return to the start at different world widths', () => {
+  const layout = L.defaultLayout()
+  for (const screens of [1, 4, 8]) {
+    const portals = L.elementsInWorld(layout, screens).filter(e => e.kind === 'portal')
+    for (const [index, scene] of [[0, world.templeScene(screens)], [2, world.villageScene(screens)]]) {
+      const entry = portals[index]
+      const exit = L.portalPartner(entry, portals)
+      assert.equal(Math.floor((exit.x + exit.w / 2) / world.SCENE_W), scene)
+      assert.equal(L.portalPartner(exit, portals), entry)
+      assert.equal(Math.floor(entry.x / world.SCENE_W), 0)
+    }
+  }
+})
+
+test('older layouts gain editable shortcuts once, preserving custom pairs and saved moves', () => {
+  const existing = L.createPortalPair(560, 280)
+  existing.forEach(p => { p.params.portalPairId = 'shortcut-village' })
+  const layout = L.normalizeLayout({ v: 3, elements: existing })
+  assert.equal(layout.elements.length, 6)
+  assert.equal(L.portalPartner(layout.elements[0], layout.elements).id, existing[1].id)
+  const worldView = L.elementsInWorld(layout, 4)
+  const exit = worldView.find(p => p.id === 'shortcut-village-return')
+  const entry = L.portalPartner(exit, worldView)
+  assert.equal(entry.params.portalLabel, 'Vila dos Telhados')
+  const moved = L.storeElementPosition({ ...exit, x: exit.x + 95, y: exit.y - 50 }, 4)
+  assert.equal(moved.region, 'village')
+  const saved = L.normalizeLayout(JSON.parse(JSON.stringify({ ...layout, elements: layout.elements.map(p => p.id === moved.id ? moved : p) })))
+  const narrow = L.elementsInWorld(saved, 1)
+  const projected = narrow.find(p => p.id === moved.id)
+  assert.equal(projected.x, moved.x + world.villageScene(1) * world.SCENE_W)
+  assert.equal(projected.y, moved.y)
+  assert.equal(L.portalPartner(projected, narrow).id, entry.id)
+  const removed = { ...saved, elements: saved.elements.filter(p => p.id !== entry.id && p.id !== exit.id) }
+  assert.deepEqual(L.normalizeLayout(removed), removed)
+})
+
+test('a full legacy layout keeps all its elements when shortcut pairs are added', () => {
+  const old = { v: 3, elements: Array.from({ length: 1500 }, (_, i) => ({ id: `old-${i}`, kind: 'platform' })) }
+  const current = L.normalizeLayout(old)
+  assert.equal(current.elements.length, 1504)
+  assert.equal(current.elements[1499].id, 'old-1499')
+  assert.equal(current.elements.filter(el => el.kind === 'portal').length, 4)
+  assert.deepEqual(L.normalizeLayout(current), current)
+})
+
+test('every house style survives storage and has independent roof, sill and lintel geometry', () => {
+  for (const style of Object.keys(H.HOUSE_STYLES)) {
+    const house = H.housePreset(style, 7549)
+    const element = L.normalizeElement({ kind: 'house', params: { house }, solid: false, rot: 45 })
+    assert.deepEqual(element.params.house, house)
+    assert.deepEqual(L.normalizeElement(JSON.parse(JSON.stringify(element))), element)
+    assert.equal(element.solid, true)
+    assert.equal(element.rot, 0)
+    assert.deepEqual(L.layoutBoxes([element]), [])
+    assert.equal(H.houseWallTexture(house), H.houseWallTexture(H.housePreset(style, 7549)))
+  }
+  const house = H.normalizeHouse({ style: 'cliff', roof: 'gable', pitch: 25, windowShape: 'arch', doorShape: 'round', wall: 'url(evil)', windowSize: 999 })
+  assert.match(house.wall, /^#[a-f0-9]{6}$/)
+  assert.equal(house.windowSize, 130)
+  const lines = H.houseSurfaces(house, 200, 400)
+  assert.deepEqual(lines[0].points, [[0, 112], [100, 12], [200, 112]])
+  assert.deepEqual(lines.find(l => l.id === 'base').points, [[14, 400], [186, 400]])
+  for (const [i, opening] of H.houseOpenings(house).entries()) {
+    const o = H.openingGeometry(house, opening)
+    const cap = lines.find(l => l.id === `lintel-${i}`)
+    assert.deepEqual(cap.points, [[(o.left - 2) * 2, o.y * 4], [(o.right + 2) * 2, o.y * 4]])
+    const sill = lines.find(l => l.id === `sill-${i}`)
+    if (o.kind === 'door') assert.equal(sill, undefined)
+    else assert.equal(sill.points[0][1], (o.y + o.h) * 4)
+  }
+})
+
+test('new houses use the larger scale and palette randomness honors the selected style', () => {
+  const e = L.createElement('house', 0, 0)
+  assert.deepEqual({ w: e.w, h: e.h }, { w: 380, h: 550 })
+  const choices = Array.from({ length: 30 }, (_, i) => H.randomHouse('random', i * 2654435761 >>> 0))
+  assert.ok(new Set(choices.map(({ house }) => house.style)).size >= 5)
+  assert.ok(new Set(choices.map(({ house }) => house.floors)).size >= 3)
+  assert.ok(new Set(choices.map(({ w }) => w)).size > 10)
+  for (const { house } of choices) assert.deepEqual(H.normalizeHouse(house), house)
+  const pick = H.randomHouse('nordic', 520)
+  assert.equal(pick.house.style, 'nordic')
+  assert.deepEqual(pick, H.randomHouse('nordic', 520))
+})
+
+test('the editable ridge survives a layout round trip and rejects non-walkable point order', () => {
+  const V = loadTs('lib/pigchicken/village.ts')
+  const initial = V.VILLAGE_RIDGE
+  const split = V.splitRidgeSegment(initial, 0)
+  assert.equal(split.length, initial.length + 1)
+  assert.deepEqual(split[1], [367, 897])
+  const moved = V.moveRidgePoint(split, 1, 700, 650)
+  assert.deepEqual(moved[1], [432, 650])
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify({ ...L.defaultLayout(), terrain: moved }))).terrain, moved)
+  assert.equal(L.normalizeLayout({ v: 3, elements: [] }).terrain, undefined)
+  assert.equal(L.normalizeLayout({ v: 3, elements: [], terrain: [[24, 800], [20, 810]] }).terrain, undefined)
+  assert.equal(L.normalizeLayout({ v: 3, elements: [], terrain: [[0, 800], [100, 925]] }).terrain, undefined)
+})
+
+test('all tree styles produce bounded deterministic variation and round-trip with the layout', () => {
+  const T = loadTs('lib/pigchicken/trees.ts')
+  const styles = Object.keys(T.TREE_STYLES)
+  assert.equal(styles.length, 9)
+  for (const style of styles) {
+    const { tree, w, h } = T.randomTree(style, 52354)
+    assert.deepEqual(T.randomTree(style, 52354), { tree, w, h })
+    assert.notDeepEqual(T.randomTree(style, 784).tree, tree)
+    assert.equal(tree.style, style)
+    const el = L.createElement('tree', 800, 420, { tree })
+    const saved = L.normalizeLayout(JSON.parse(JSON.stringify({ v: L.LAYOUT_VERSION, elements: [el] })))
+    assert.deepEqual(saved.elements[0].params.tree, tree)
+    assert.deepEqual(L.layoutBoxes(saved.elements), [])
+    assert.deepEqual(T.treeSurfaces(tree), { floors: [], walls: [] })
+    const g = T.treeGeometry(tree)
+    assert.equal(g.crowns.length, tree.density)
+    assert.equal(g.branches.length, tree.branches)
+  }
+  const invalid = T.normalizeTree({ style: 'constructor', seed: Infinity, trunkWidth: 500, density: 0, particles: 8, leafColor: 'url(evil)' })
+  assert.equal(invalid.style, 'pine')
+  assert.equal(invalid.trunkWidth, 38)
+  assert.equal(invalid.density, 1)
+  assert.equal(invalid.particles, 4)
+  assert.match(invalid.leafColor, /^#[a-f0-9]{6}$/)
+  const legacy = L.normalizeElement({ kind: 'blossom', x: 100, y: 200, params: { seed: 70, flip: true }, rot: 45 })
+  assert.deepEqual(legacy.params, { seed: 70, flip: true })
+  assert.equal(legacy.rot, 45)
+})
+
+test('tree supports are independently selectable and follow mirror, resize and rotation', () => {
+  const T = loadTs('lib/pigchicken/trees.ts')
+  const tree = T.treePreset('palm', 56)
+  const geometry = T.treeGeometry(tree)
+  assert.deepEqual(T.treeSurfaces({ ...tree, walkBranches: true }).floors, geometry.branches)
+  assert.equal(T.treeSurfaces({ ...tree, walkCrown: true }).floors.length, geometry.crowns.length)
+  const trunk = { ...tree, climbTrunk: true }
+  const supports = T.treeSurfaces(trunk)
+  assert.deepEqual(supports.walls[0], geometry.trunk.slice(0, 2))
+  assert.deepEqual(supports.floors[0], geometry.trunk.slice(1, 3))
+  const el = { x: 100, y: 200, w: 500, h: 250, rot: 0 }
+  const [x, y] = supports.walls[0][0]
+  assert.deepEqual(L.treeWorldSurfaces(el, trunk).walls[0][0], [100 + x * 5, 200 + y * 2.5])
+  assert.deepEqual(L.treeWorldSurfaces(el, { ...trunk, flip: true }).walls[0][0], [100 + (100 - x) * 5, 200 + y * 2.5])
+  const rotated = L.treeWorldSurfaces({ ...el, rot: 90 }, trunk).walls[0][0]
+  assert.deepEqual(rotated.map(Math.round), [225, Math.round(325 + (x - 50) * 5)])
 })

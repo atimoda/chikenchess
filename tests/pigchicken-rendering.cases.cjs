@@ -2,7 +2,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const { intersectsView, trajectoryVisible, needsTrajectory, patioPixelRatio } = loadTs('lib/pigchicken/viewport.ts')
-const { chickenPlatformRects, setPlatformWorldOffset } = loadTs('lib/chicken/platform-geometry.ts')
+const { chickenPlatformLines, chickenPlatformRects, setPlatformWorldOffset } = loadTs('lib/chicken/platform-geometry.ts')
 
 test('render culling keeps viewport edges, crossing trails and overlapping explosions', () => {
   const view = { x: 7000, y: 200, w: 1024, h: 768 }
@@ -95,4 +95,25 @@ test('scenery visibility uses camera/parallax bounds, wakes on return/resize, an
     assert.equal(listeners.size, 0)
     global.window = old
   }
+})
+
+test('house surfaces share a parsed collider without joining the sill and lintel', () => {
+  const el = { dataset: { chickenLine: '0,30 50,3 100,30|20,60 40,60|20,76 40,76' } }
+  const lines = chickenPlatformLines(el)
+  assert.deepEqual(lines, [[[0, 30], [50, 3], [100, 30]], [[20, 60], [40, 60]], [[20, 76], [40, 76]]])
+  assert.equal(chickenPlatformLines(el), lines)
+  el.dataset.chickenLine = '0,12 100,12'
+  assert.deepEqual(chickenPlatformLines(el), [[[0, 12], [100, 12]]])
+})
+
+test('custom tree climbable lines are cached independently of their one-way floors', () => {
+  const { chickenPlatformWalls } = loadTs('lib/chicken/platform-geometry.ts')
+  const el = { dataset: { chickenWalls: '20,80 30,5|45,80 36,5', chickenLine: '30,5 36,5' } }
+  const walls = chickenPlatformWalls(el)
+  assert.deepEqual(walls, [[[20, 80], [30, 5]], [[45, 80], [36, 5]]])
+  assert.equal(chickenPlatformWalls(el), walls)
+  el.dataset.chickenWalls = '21,80 30,5'
+  assert.deepEqual(chickenPlatformWalls(el), [[[21, 80], [30, 5]]])
+  delete el.dataset.chickenWalls
+  assert.equal(chickenPlatformWalls(el), null)
 })

@@ -3,10 +3,12 @@
 // Pátio da Galinha: the game's playground where the player chicken is tuned. The panel edits a draft of
 // the central configuration (lib/chicken/config.ts) that the chicken here follows live; "Salvar padrão"
 // (admin account only) saves it for every screen that draws the chicken.
+import { PatioDisclosure } from "@/components/ui/patio-disclosure"
+import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Crosshair, FolderOpen, Gamepad2, Maximize, Minimize, PencilRuler, Save, SlidersHorizontal, Swords, Users, X } from "lucide-react"
+import { Crosshair, FolderOpen, Gamepad2, Maximize, Minimize, Pencil, Save, SlidersHorizontal, Swords, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -292,9 +294,7 @@ export function ChickenPatio() {
     }
   }
 
-  const savedLabel = saved.updatedAt
-    ? `Versão salva ${saved.revision} · ${new Date(saved.updatedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`
-    : "Nada salvo ainda: valendo o padrão do código"
+  const patioName = patio?.name ?? (patio?.id ? "Pátio sem nome" : "Pátio da Galinha")
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]">
@@ -308,10 +308,17 @@ export function ChickenPatio() {
         >
           <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo"><GlobeGridIcon maskId="patio" /></Link>
         </Button>
-        <div className="hidden min-w-0 shrink sm:block">
-          <h1 className="truncate font-mono text-sm font-bold" title="O Pátio aberto">{patio?.name ?? (patio?.id ? "Lobby não salvo" : "Pátio da Galinha")}</h1>
-          <p className="truncate font-mono text-[11px] text-[#93a79a]">{savedLabel}</p>
-        </div>
+        <button type="button" aria-label="Playgrounds" aria-pressed={openOpen} title="Playgrounds" onClick={() => setOpenOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", openOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <FolderOpen className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label="Salvar Pátio" aria-pressed={saveOpen} title={patio?.dirty ? "Salvar Pátio (há mudanças)" : "Salvar Pátio"} onClick={() => setSaveOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", saveOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Save className="h-4 w-4" />
+          {patio?.dirty && <span aria-hidden="true" className={cn("absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full", pl.save.kind === "conflict" || pl.save.kind === "error" ? "bg-[#ff8a7a]" : "bg-[#ffd166]")} />}
+        </button>
+        <h1 className="hidden min-w-0 items-baseline gap-1.5 whitespace-nowrap font-mono text-sm font-bold sm:flex">
+          <span className="truncate" title={patioName}>{patioName}</span>
+          {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
+        </h1>
         {/* the lobby switcher and the players, right after the Pátio's name */}
         <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => { changeLobby(s => moveLocalsTo(s, target)); openPatioLobby(target.id) }} />
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
@@ -321,13 +328,6 @@ export function ChickenPatio() {
         {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
         <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <ChickenChatButton open={chatOpen} onToggle={() => setChatOpen(v => !v)} />
-        <button type="button" aria-label="Playgrounds" aria-pressed={openOpen} title="Playgrounds" onClick={() => setOpenOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", openOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <FolderOpen className="h-4 w-4" />
-        </button>
-        <button type="button" aria-label="Salvar Pátio" aria-pressed={saveOpen} title={patio?.dirty ? "Salvar Pátio (há mudanças)" : "Salvar Pátio"} onClick={() => setSaveOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", saveOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Save className="h-4 w-4" />
-          {patio?.dirty && <span aria-hidden="true" className={cn("absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full", pl.save.kind === "conflict" || pl.save.kind === "error" ? "bg-[#ff8a7a]" : "bg-[#ffd166]")} />}
-        </button>
         <div className="relative">
           <button
             type="button"
@@ -337,7 +337,7 @@ export function ChickenPatio() {
             onClick={toggleEditor}
             className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", editorOn ? "border-[#ffd166] bg-[#ffd166]/15 text-white" : "border-white/15 text-[#b9c7b9]", !access.canEdit && "opacity-60")}
           >
-            <PencilRuler className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
           </button>
           {editHint && !access.canEdit && (
             <div role="dialog" aria-label="Sem permissão para editar" className="fixed right-3 top-14 z-[130] w-64 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-3 font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
@@ -386,7 +386,7 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editorOn} />
+      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} terrain={patio?.layout.terrain} editing={editorOn} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editorOn} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
@@ -509,10 +509,9 @@ export function ChickenPatio() {
 
 function Group({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: (open: boolean) => void; children: React.ReactNode }) {
   return (
-    <details open={open} onToggle={e => onToggle((e.currentTarget as HTMLDetailsElement).open)} className="border-b border-white/10">
-      <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a] hover:text-white">{title}</summary>
+    <PatioDisclosure title={title} open={open} onToggle={onToggle}>
       <div className="grid gap-3 px-4 pb-4">{children}</div>
-    </details>
+    </PatioDisclosure>
   )
 }
 
@@ -540,38 +539,12 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
     )
   }
   const n = value as number
-  const fill = Math.max(0, Math.min(100, ((n - meta.min) / (meta.max - meta.min)) * 100))
-  return (
-    <div className="grid gap-1" title={meta.hint}>
-      <div className="relative h-10 overflow-hidden rounded-md bg-[#22302a]" onDoubleClick={() => onChange(meta.key, saved.params[meta.key])}>
-        <div className="absolute inset-y-0 left-0 bg-primary/50" style={{ width: `${fill}%` }} />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-2 px-3 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)]">
-          <span className="min-w-0 truncate"><CombinationLabel meta={meta} /></span>
-          <output className={cn("shrink-0 font-bold tabular-nums", changed && "text-amber-300")}>{fmt(n, meta.step)}{meta.unit ? ` ${meta.unit}` : ""}</output>
-        </div>
-        <input
-          type="range"
-          aria-label={meta.label}
-          min={Math.min(meta.min, n)}
-          max={Math.max(meta.max, n)}
-          step={meta.step}
-          value={n}
-          onChange={e => onChange(meta.key, Number(e.target.value))}
-          // give the keyboard back to the chicken after dragging
-          onPointerUp={e => e.currentTarget.blur()}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        />
-      </div>
-      {meta.hint && <span className="text-[10px] text-[#93a79a]">{meta.hint}</span>}
-    </div>
-  )
+  return <PatioRange label={<CombinationLabel meta={meta} />} name={meta.label} min={meta.min} max={meta.max} step={meta.step}
+    value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed}
+    onChange={value => onChange(meta.key, value)} onReset={() => onChange(meta.key, saved.params[meta.key])} />
 }
 
 function PqRange({ label, unit, min, max, step, value, onChange, hint, format }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string; format?: (v: number) => string }) {
-  return (
-    <label className="grid gap-1" title={hint}>
-      <span className="flex justify-between gap-2"><span>{label}</span><output className="tabular-nums text-white">{format ? format(value) : `${value}${unit ? ` ${unit}` : ""}`}</output></span>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} onPointerUp={e => e.currentTarget.blur()} className="accent-[var(--primary)]" />
-    </label>
-  )
+  return <PatioRange label={label} min={min} max={max} step={step} value={value} onChange={onChange} hint={hint}
+    display={format ? format(value) : `${value}${unit ? ` ${unit}` : ""}`} />
 }

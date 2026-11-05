@@ -5,7 +5,7 @@
 import type { Combat, Target } from './combat'
 import { DUMMY_DEFAULTS } from './dummies'
 import { SCENE_W } from './world'
-import type { LayoutElement } from './layout'
+import { elementWorldX, type LayoutElement } from './layout'
 import { rackRespawnDelay } from './racks'
 
 type Rack = Combat['racks'][number]
@@ -22,8 +22,8 @@ export function createLayoutSync(combat: Combat) {
     for (const el of elements) {
       if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'button') continue
       seen.add(el.id)
-      const cx = el.x + el.w / 2, bottom = el.y + el.h
-      const inside = cx < end
+      const cx = elementWorldX(el, screens) + el.w / 2, bottom = el.y + el.h
+      const inside = !!el.region || cx < end
       if (el.kind === 'rack') {
         let r = racks.get(el.id)
         const item = el.params.item!

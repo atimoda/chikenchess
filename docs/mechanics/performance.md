@@ -58,7 +58,7 @@ Notas explícitas são agrupadas por início/duração e controles compatíveis;
 Ao sair da aba ou do app (aba oculta, outro app, tela bloqueada, `pagehide`), todo `AudioContext` do jogo em execução é suspenso e volta a rodar quando a aba reaparece (`lib/audio-focus.ts`, montado no layout raiz). Os contextos são reunidos ao envolver o construtor de `AudioContext`, então vale para música, efeitos, galinha, portal e lobby. Um contexto criado com a aba oculta nasce suspenso; um já suspenso ou fechado não é tocado. O runtime musical mantém a própria suspensão e retomada.
 
 
-### Renderização do Pátio — 05/11, v1.16.0
+### Renderização do Pátio — 05/11, v2.0.0
 
 - **Escopo:** todas as cenas do Parquinho e o Templo, inclusive editor e players locais. Mudanças apenas na renderização/consulta de geometria; simulação, música, colisões, contatos dos portais e persistência continuam avançando pelas mesmas regras.
 - **Gatilho/retorno do cenário:** `watchCameraRegion` compara limites numéricos com a câmera, usando margem de 192 px em todas as bordas (inclui a deriva das nuvens). Fora dela, a região fica invisível e suas animações CSS pausam; ao retornar ou redimensionar o viewport, a arte reaparece e a animação retoma da fase pausada, sem recriar o layout. Remover uma região limpa sua inscrição; desmontar o mundo limpa seguidores. O editor mantém seleção/colisores e o layout salvo, mesmo quando sua arte está fora da câmera.
@@ -70,3 +70,15 @@ Ao sair da aba ou do app (aba oculta, outro app, tela bloqueada, `pagehide`), to
 - **Portais:** fora da tela, param somente sorteio/desenho de raios/faíscas; contatos, chegada e bloqueio até saída completa continuam sendo processados para todos os atores. Uma transição de entrada tem prioridade e continua animando mesmo fora do enquadramento; retorno à câmera retoma o desenho sem acumular partículas. No Pátio o centro vem das coordenadas do mundo/câmera; o portal fixo do globo conserva a medida no resize.
 
 Validação de FPS/CPU por Chromium é comparação local, não aprovação do Safari no iPad Pro 2018 físico. Regras e qualidade musical não foram alteradas.
+
+#### Vila dos Telhados e casas
+
+Cada casa é um SVG estático, sem filtros animados. Os revestimentos reutilizam pequenos ladrilhos vetoriais com variação de posição e desgaste pela semente salva. Mover a câmera usa as mesmas regiões de cenário e suspende a pintura das casas fora de vista. Mudar estilo, dimensões ou fachada atualiza a arte e os pisos daquela casa. Cada casa tem um único nó com as linhas de piso independentes em coordenadas numéricas. A leitura das linhas é compartilhada pelos bonecos e reutilizada enquanto a geometria permanece igual. O motor só percorre os segmentos das casas próximas do boneco em simulação, inclusive em multiplayer local fora da câmera principal.
+
+O chão editável da Vila usa o mesmo perfil numérico no SVG e no colisor, com até 48 pontos. Arrastar um ponto atualiza o perfil durante o gesto. A prévia de inserção da casa move apenas sua representação temporária e cria um novo elemento ao soltar no Pátio.
+
+#### Árvores paramétricas
+
+Cada árvore é um SVG memoizado. Os grupos de folhas usam caminhos compostos por cor, e os galhos e a textura da casca são agrupados em caminhos. A semente é avaliada quando os parâmetros mudam. O balanço usa uma transformação CSS da copa e os efeitos usam até quatro partículas, com duas visíveis em ponteiros de toque. Movimento reduzido desliga os efeitos animados. Os cartões usam arte estática, e as regiões existentes suspendem a pintura e a animação fora da câmera. A estratégia aplica ao cenário 2D o princípio de agrupar vegetação e descartá-la fora da vista. [Foliage Mode no Unreal](https://dev.epicgames.com/documentation/unreal-engine/foliage-mode-in-unreal-engine#culling-settings)
+
+Árvores decorativas não criam colisores. Quando há apoios, um nó numérico leva os pisos e as bordas escaláveis, com leitura em cache e descarte relativo a cada boneco. A geometria física fica estática durante o jogo. A copa pisável fica sem balanço para alinhar a arte aos apoios.

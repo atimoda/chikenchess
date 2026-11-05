@@ -50,7 +50,7 @@ function read(key: string): PatioRecord | null {
     const raw = storage()?.getItem(KEY + key)
     if (!raw) return null
     const v = JSON.parse(raw) as Partial<PatioRecord>
-    const layout = normalizeLayout(v.layout)
+    const layout = normalizeLayout(v.layout, key === 'default')
     if (!layout) return null
     return {
       id: key === 'default' ? null : key, layout, creatorId: typeof v.creatorId === 'string' ? v.creatorId : null,

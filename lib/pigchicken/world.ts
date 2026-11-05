@@ -53,7 +53,8 @@ export const SCENE_PLATFORMS: { x: number; bottom: number; w: number; h: number 
 export const TEMPLE_PLATFORMS: { x: number; bottom: number; w: number; h: number }[] = []
 // the scene index of the temple and the whole world's width in scenes
 export const templeScene = (screens: number) => screens
-export const worldScenes = (screens: number) => screens + 1
+export const villageScene = (screens: number) => screens + 1
+export const worldScenes = (screens: number) => screens + 2
 
 // every platform of a world `screens` scenes wide, with a stable id (and the temple's, when asked)
 export function worldPlatforms(screens: number, temple = false): (WorldBox & { id: string })[] {

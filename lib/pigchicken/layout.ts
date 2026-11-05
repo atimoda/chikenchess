@@ -7,15 +7,21 @@
 // bottom middle is where they stand.
 import { CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, type ItemId } from './items'
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
-import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, WORLD_TOP } from './world'
+import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, WORLD_TOP, templeScene, villageScene, worldScenes } from './world'
 import type { Box } from './combat'
 import { rackRespawnDelay } from './racks'
+import { HOUSE_SIZE, housePreset, houseRoof, newHouseSeed, normalizeHouse, type HouseParams } from './houses'
+import { TREE_SIZE, newTreeSeed, normalizeTree, treePreset, treeSurfaces, type TreeParams, type TreePoint } from './trees'
+import { normalizeTrampoline, type TrampolineParams } from './trampoline'
+import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge, type RidgePoint } from './village'
 
-// v2: the consumables' racks (Maryjane, Cok); a layout saved before gets them once
-export const LAYOUT_VERSION = 2
+// v2 adds consumable racks, v3 adds houses and scene-local positions, and v4 stores shortcut portals.
+export const LAYOUT_VERSION = 4
 // the widest world the Pátio offers (its width setting): the default layout covers it, a narrower world hides the rest
 export const LAYOUT_MAX_SCREENS = 8
-export const LAYOUT_MAX_ELEMENTS = 1500
+const LEGACY_MAX_ELEMENTS = 1500
+// Reserve space to migrate both shortcut pairs without dropping existing elements.
+export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 4
 
 // the layers, back to front. back: behind the platforms; scene: the platforms' own; behind: in front of the game's
 // things (dummies, racks, shots) but behind the characters; front: in front of the characters; frontGhost: in front,
@@ -33,7 +39,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'house', 'tree', 'trampoline'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -44,11 +50,15 @@ export type ElementParams = {
   item?: ItemId; respawnDelay?: number // rack, seconds after pickup
   action?: HordeButton // button
   seed?: number; flip?: boolean // trees
+  house?: HouseParams
+  tree?: TreeParams
+  trampoline?: TrampolineParams
   portalPairId?: string; portalLabel?: string; portalInstruction?: 'always' | 'hover'
 }
 
 export type LayoutElement = {
   id: string; kind: ElementKind
+  region?: 'temple' | 'village' // x is scene-local in these two regions
   x: number; y: number; w: number; h: number; rot: number
   layer: LayoutLayer; locked: boolean
   // she stands on it and bumps its sides · bullets stop at it · the instruments' notes stop at it
@@ -60,7 +70,7 @@ export type LayoutElement = {
   gravity?: boolean
   params: ElementParams
 }
-export type PatioLayout = { v: number; elements: LayoutElement[] }
+export type PatioLayout = { v: number; elements: LayoutElement[]; terrain?: RidgePoint[] }
 
 export type ElementDef = {
   label: string; group: string
@@ -75,12 +85,15 @@ export type ElementDef = {
 export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   platform: { label: 'Plataforma', group: 'Plataformas', w: 230, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
   terrace: { label: 'Terraço do templo', group: 'Plataformas', w: 269, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
+  trampoline: { label: 'Trampolim', group: 'Plataformas', w: 230, h: 56, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 72, minH: 20 },
   pillar: { label: 'Pilar / parede', group: 'Plataformas', w: 96, h: 288, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
   pine: { label: 'Pinheiro', group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
   blossom: { label: 'Ameixeira florida', group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
   dummy: { label: 'Alvo de treino', group: 'Alvos', w: 46, h: 112, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 40 },
   rack: { label: 'Suporte de item', group: 'Itens', w: 76, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 76, minH: 62 },
   button: { label: 'Botão da horda', group: 'Botões', w: 40, h: 40, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 20 },
+  tree: { label: 'Árvore', group: 'Árvores', ...TREE_SIZE, layer: 'scene', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 100, minH: 100 },
+  house: { label: 'Casa', group: 'Casas', ...HOUSE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 100 },
   portal: { label: 'Par de portais', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
 }
 
@@ -104,6 +117,8 @@ export function createElement(kind: ElementKind, cx: number, cy: number, params:
 }
 
 export function defaultParams(kind: ElementKind): ElementParams {
+  if (kind === 'house') return { house: housePreset('cliff', newHouseSeed()) }
+  if (kind === 'tree') return { tree: treePreset('pine', newTreeSeed()) }
   if (kind === 'dummy') return { message: DUMMY_DEFAULTS.message, maxHp: DUMMY_DEFAULTS.maxHp }
   if (kind === 'rack') return { item: WEAPON_IDS[0] }
   if (kind === 'button') return { action: 'aliens' }
@@ -116,6 +131,29 @@ export function createPortalPair(cx: number, cy: number): [LayoutElement, Layout
   const a = createElement('portal', cx, cy), b = createElement('portal', cx + 240, cy)
   a.params.portalPairId = a.id; b.params.portalPairId = a.id
   return [a, b]
+}
+
+function shortcutPortals(existing: LayoutElement[] = []): LayoutElement[] {
+  const used = new Set(existing.flatMap(el => el.params.portalPairId ? [el.id, el.params.portalPairId] : [el.id]))
+  const reserveId = (base: string) => {
+    let id = base
+    for (let suffix = 2; used.has(id); suffix++) id = `${base}-${suffix}`
+    used.add(id)
+    return id
+  }
+  const d = ELEMENT_DEFS.portal
+  const portal = (id: string, pairId: string, cx: number, label: string, region?: LayoutElement['region']) => normalizeElement({
+    id, kind: 'portal', region, x: cx - d.w / 2, y: WORLD_GROUND_Y - d.h + 6,
+    params: { portalPairId: pairId, portalLabel: label, portalInstruction: 'always' },
+  })!
+  const temple = reserveId('shortcut-temple')
+  const village = reserveId('shortcut-village')
+  return [
+    portal(temple, temple, 395, 'Templo do Gongo'),
+    portal(reserveId('shortcut-temple-return'), temple, 125, 'Voltar ao início do Pátio', 'temple'),
+    portal(village, village, 620, 'Vila dos Telhados'),
+    portal(reserveId('shortcut-village-return'), village, 150, 'Voltar ao início do Pátio', 'village'),
+  ]
 }
 
 export function portalPartner(portal: LayoutElement, elements: LayoutElement[]) {
@@ -174,6 +212,17 @@ function consumableRacks(): LayoutElement[] {
   })
 }
 
+function villageHouses(): LayoutElement[] {
+  return VILLAGE_HOUSES.map(([x, bottom, w, h, palette, roof, floors], i) => normalizeElement({
+    id: `village-house-${i}`, kind: 'house', region: 'village', x, y: bottom - h, w, h,
+    params: { house: {
+      ...housePreset('cliff', 4537 + i * 71791), ...VILLAGE_COLORS[palette], roof, floors,
+      pitch: 17 + i % 5 * 3, wear: 35 + i % 4 * 8, texture: i % 4 === 0 ? 'boards' : 'auto',
+      windows: i % 7 === 0 ? 3 : 2, door: i >= 8, doorPosition: i % 2 ? 'left' : 'right',
+    } },
+  })!)
+}
+
 export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREENS)): PatioLayout {
   const out: LayoutElement[] = []
   const G = WORLD_GROUND_Y
@@ -202,7 +251,7 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   HORDE_BUTTONS.forEach((id, i) => { const cx = SCENE_W * (1.06 + i * 0.09); out.push(base('button', `btn-${id}`, cx - 20, G - 46 - 40, 40, 40, { action: id })) })
   // the training dummies, each with its own tip
   ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach((f, i) => { const d = ELEMENT_DEFS.dummy; out.push(base('dummy', `dummy-${i}`, SCENE_W * f - d.w / 2, G - d.h, d.w, d.h, { message: dummyTip(i), maxHp: DUMMY_DEFAULTS.maxHp })) })
-  return { v: LAYOUT_VERSION, elements: out }
+  return { v: LAYOUT_VERSION, elements: [...out, ...villageHouses(), ...shortcutPortals()] }
 }
 
 // ---------- cleaning what comes from storage, the database or another player ----------
@@ -215,7 +264,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   if (!ELEMENT_KINDS.includes(kind)) return null
   const d = ELEMENT_DEFS[kind]
   const id = typeof e.id === 'string' && e.id.length > 0 && e.id.length <= 64 ? e.id : newElementId(kind)
-  const w = r1(clamp(num(e.w, d.w), d.minW, 20000)), h = r1(clamp(num(e.h, d.h), d.minH, 6000))
+  const w = kind === 'portal' ? d.w : r1(clamp(num(e.w, d.w), d.minW, 20000))
+  const h = kind === 'portal' ? d.h : r1(clamp(num(e.h, d.h), d.minH, 6000))
   const rot = d.rotatable ? ((Math.round(num(e.rot, 0) / 45) * 45) % 360 + 360) % 360 : 0
   const layer = d.entity ? d.layer : LAYERS.includes(e.layer as LayoutLayer) ? (e.layer as LayoutLayer) : d.layer
   const p = (e.params && typeof e.params === 'object' ? e.params : {}) as Record<string, unknown>
@@ -228,6 +278,12 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.respawnDelay = rackRespawnDelay(params.item, typeof p.respawnDelay === 'number' ? p.respawnDelay : undefined)
   } else if (kind === 'button') {
     params.action = HORDE_BUTTONS.includes(p.action as HordeButton) ? (p.action as HordeButton) : 'aliens'
+  } else if (kind === 'house') {
+    params.house = normalizeHouse(p.house)
+  } else if (kind === 'tree') {
+    params.tree = normalizeTree(p.tree)
+  } else if (kind === 'trampoline') {
+    params.trampoline = normalizeTrampoline(p.trampoline)
   } else if (kind === 'portal') {
     params.portalPairId = typeof p.portalPairId === 'string' ? p.portalPairId.slice(0, 64) : ''
     params.portalLabel = String(p.portalLabel ?? 'Entrar no portal?').slice(0, 100)
@@ -236,11 +292,15 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.seed = Math.floor(clamp(num(p.seed, 1), 0, 2 ** 31))
     params.flip = !!p.flip
   }
+  const region = e.region === 'temple' || e.region === 'village' ? e.region : undefined
+  const x = region
+    ? clamp(r1(num(e.x, 0)), -w / 2, SCENE_W - w / 2 - 0.1)
+    : r1(clamp(num(e.x, 0), -2000, SCENE_W * worldScenes(LAYOUT_MAX_SCREENS)))
   return {
-    id, kind,
-    x: r1(clamp(num(e.x, 0), -2000, SCENE_W * (LAYOUT_MAX_SCREENS + 2))), y: r1(clamp(num(e.y, 0), WORLD_TOP - 1000, WORLD_GROUND_Y + 200)),
-    w: kind === 'portal' ? d.w : w, h: kind === 'portal' ? d.h : h, rot, layer, locked: !!e.locked,
-    solid: d.entity ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
+    id, kind, ...(region ? { region } : {}),
+    x, y: r1(clamp(num(e.y, 0), WORLD_TOP - 1000, WORLD_GROUND_Y + 200)),
+    w, h, rot, layer, locked: !!e.locked,
+    solid: kind === 'house' || kind === 'trampoline' ? true : kind === 'tree' || d.entity ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
     shots: d.entity ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
     notes: d.entity ? false : !!e.notes,
     hidden: d.entity ? false : !!e.hidden,
@@ -250,13 +310,15 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   }
 }
 
-export function normalizeLayout(raw: unknown): PatioLayout | null {
+export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | null {
   if (!raw || typeof raw !== 'object') return null
   const list = (raw as { elements?: unknown }).elements
   if (!Array.isArray(list)) return null
+  const v = (raw as { v?: unknown }).v
+  const hasStoredShortcuts = typeof v === 'number' && v >= 4
   const seen = new Set<string>()
   const elements: LayoutElement[] = []
-  for (const item of list.slice(0, LAYOUT_MAX_ELEMENTS)) {
+  for (const item of list.slice(0, hasStoredShortcuts ? LAYOUT_MAX_ELEMENTS : LEGACY_MAX_ELEMENTS)) {
     const el = normalizeElement(item)
     if (!el) continue
     if (seen.has(el.id)) el.id = newElementId(el.kind)
@@ -264,15 +326,22 @@ export function normalizeLayout(raw: unknown): PatioLayout | null {
     elements.push(el)
   }
   // saved before the consumables existed (v1): their racks join it once, unless one already holds that item
-  const v = (raw as { v?: unknown }).v
   if (!(typeof v === 'number' && v >= 2)) {
     consumableRacks().forEach(r => {
-      if (elements.length >= LAYOUT_MAX_ELEMENTS || elements.some(e => e.kind === 'rack' && e.params.item === r.params.item)) return
+      if (elements.length >= LEGACY_MAX_ELEMENTS || elements.some(e => e.kind === 'rack' && e.params.item === r.params.item)) return
       if (seen.has(r.id)) r.id = newElementId('rack')
       seen.add(r.id); elements.push(r)
     })
   }
-  return { v: LAYOUT_VERSION, elements }
+  if (isDefault && !(typeof v === 'number' && v >= 3)) {
+    for (const house of villageHouses()) {
+      if (elements.length >= LEGACY_MAX_ELEMENTS) break
+      if (!seen.has(house.id)) elements.push(house)
+    }
+  }
+  if (!hasStoredShortcuts) elements.push(...shortcutPortals(elements))
+  const terrain = normalizeVillageRidge((raw as { terrain?: unknown }).terrain)
+  return { v: LAYOUT_VERSION, elements, ...(terrain ? { terrain } : {}) }
 }
 
 // ---------- geometry: the turned box, its bounds and the floor of a sloped one ----------
@@ -307,10 +376,40 @@ export function elementFloorLine(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' |
   return [left, top, right].map(p => `${r1(p[0] - b.x)},${r1(p[1] - b.y)}`).join(' ')
 }
 
-// the elements inside a world `screens` scenes wide (the temple comes after them and keeps its own things)
+// Existing Parquinho positions stay fixed. The appended scenes keep local positions when its width changes.
+function regionOrigin(region: LayoutElement['region'], screens: number) {
+  if (region === 'village') return villageScene(screens) * SCENE_W
+  if (region === 'temple') return templeScene(screens) * SCENE_W
+  return 0
+}
+
+export const elementWorldX = (el: LayoutElement, screens: number) => el.x + regionOrigin(el.region, screens)
+
 export function elementsInWorld(layout: PatioLayout, screens: number) {
   const end = screens * SCENE_W
-  return layout.elements.filter(e => e.x + e.w / 2 < end)
+  return layout.elements.flatMap(el => {
+    if (el.region) return [{ ...el, x: elementWorldX(el, screens) }]
+    return el.x + el.w / 2 < end ? [el] : []
+  })
+}
+
+export function storeElementPosition(el: LayoutElement, screens: number): LayoutElement {
+  const cx = Math.min(el.x + el.w / 2, worldScenes(screens) * SCENE_W - 0.1)
+  const region = cx >= regionOrigin('village', screens) ? 'village' : cx >= regionOrigin('temple', screens) ? 'temple' : undefined
+  const { region: _old, ...base } = el
+  return { ...base, x: cx - el.w / 2 - regionOrigin(region, screens), ...(region ? { region } : {}) }
+}
+
+export function treeWorldSurfaces(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' | 'rot'>, tree: TreeParams) {
+  const angle = el.rot * Math.PI / 180
+  const cos = Math.cos(angle), sin = Math.sin(angle)
+  const cx = el.x + el.w / 2, cy = el.y + el.h / 2
+  const transform = ([x, y]: TreePoint): TreePoint => {
+    const dx = ((tree.flip ? 50 - x : x - 50) / 100) * el.w, dy = ((y - 50) / 100) * el.h
+    return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos]
+  }
+  const { floors, walls } = treeSurfaces(tree)
+  return { floors: floors.map(line => line.map(transform)), walls: walls.map(line => line.map(transform)) }
 }
 
 // what the shots, notes and items lying around meet (combat's boxes)
@@ -318,9 +417,10 @@ export function layoutBoxes(elements: LayoutElement[]): Box[] {
   const G = WORLD_GROUND_Y
   const out: Box[] = []
   elements.forEach(e => {
-    if (ELEMENT_DEFS[e.kind].entity || (!e.solid && !e.shots && !e.notes)) return
+    const solid = e.solid && e.kind !== 'house' && e.kind !== 'trampoline'
+    if (ELEMENT_DEFS[e.kind].entity || (!solid && !e.shots && !e.notes)) return
     const b = elementBounds(e)
-    out.push({ l: b.x, t: b.y, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid: e.solid, shots: e.shots, notes: e.notes })
+    out.push({ l: b.x, t: b.y, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid, shots: e.shots, notes: e.notes })
   })
   return out
 }
@@ -331,8 +431,9 @@ export const sameLayout = (a: PatioLayout | null, b: PatioLayout | null) => JSON
 function surfaceTop(el: LayoutElement, l: number, r: number): number {
   const b = elementBounds(el)
   const line = elementFloorLine(el)
-  if (!line) return b.y
-  const pts = line.split(' ').map(p => p.split(',').map(Number)).map(([x, y]) => [b.x + x, b.y + y] as const)
+  const roof = el.kind === 'house' && el.params.house ? houseRoof(el.params.house).map(([x, y]) => [x * el.w / 100, y * el.h / 100]) : null
+  if (!line && !roof) return b.y
+  const pts = (roof ?? line!.split(' ').map(p => p.split(',').map(Number))).map(([x, y]) => [b.x + x, b.y + y] as const)
   const xs = [l, r, ...pts.map(p => p[0]).filter(x => x > l && x < r)]
   let best = Infinity
   for (const x of xs) {
@@ -343,6 +444,30 @@ function surfaceTop(el: LayoutElement, l: number, r: number): number {
     }
   }
   return Number.isFinite(best) ? best : b.y
+}
+
+export function settleLayoutInWorld(layout: PatioLayout, screens: number, skip?: string | null): PatioLayout {
+  if (!layout.elements.some(el => el.gravity)) return layout
+  const visible = elementsInWorld(layout, screens)
+  const settled = settleLayout(visible, skip)
+  if (visible === settled) return layout
+  const heights = new Map(settled.map(el => [el.id, el.y]))
+  return { ...layout, elements: layout.elements.map(el => {
+    const y = heights.get(el.id)
+    return y === undefined || y === el.y ? el : { ...el, y }
+  }) }
+}
+
+export function layoutFloorBelow(elements: LayoutElement[], x: number, y: number) {
+  let floor = WORLD_GROUND_Y
+  for (const el of elements) {
+    if (!el.solid || ELEMENT_DEFS[el.kind].entity) continue
+    const b = elementBounds(el)
+    if (x < b.x || x > b.x + b.w) continue
+    const top = el.kind === 'house' ? surfaceTop(el, x, x) : b.y
+    if (top >= y && top < floor) floor = top
+  }
+  return floor
 }
 
 // gravity: each element with `gravity` falls straight down until its bounds rest on a solid element below it or on

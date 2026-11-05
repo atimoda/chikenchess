@@ -149,7 +149,8 @@ test('the music has sections: groove, call and answer, riff, breakdown and build
 
 test('the temple is one more scene after the Parquinho, with no loose platforms (its roofs are the floors)', () => {
   const world = loadTs('lib/pigchicken/world.ts')
-  assert.equal(world.worldScenes(4), 5)
+  assert.equal(world.templeScene(4), 4)
+  assert.equal(world.worldScenes(4), 6)
   assert.equal(world.worldPlatforms(4).length, 18)
   const all = world.worldPlatforms(4, true)
   assert.equal(all.length, 18)

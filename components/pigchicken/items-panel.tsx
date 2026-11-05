@@ -2,6 +2,7 @@
 
 // Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
 // picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
+import { PatioRange } from "@/components/ui/patio-range"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
@@ -132,20 +133,11 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && !(sel === "peck" && m.key === "durability")).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
-                const fill = Math.max(0, Math.min(100, ((v - m.min) / (m.max - m.min)) * 100))
-                return (
-                  <div key={m.key} className="grid gap-1" title={m.hint}>
-                    <div className="relative h-9 overflow-hidden rounded-md bg-[#22302a]" onDoubleClick={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })}>
-                      <div className="absolute inset-y-0 left-0 bg-primary/50" style={{ width: `${fill}%` }} />
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-2 px-3 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)]">
-                        <span className="truncate">{m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : m.label}</span>
-                        <output className={cn("shrink-0 font-bold tabular-nums", changed && "text-amber-300")}>{v}{m.unit ? ` ${m.unit}` : ""}</output>
-                      </div>
-                      <input type="range" aria-label={m.label} min={m.min} max={m.max} step={m.step} value={v} onChange={e => { const n = Number(e.target.value); update(d => { (d as Record<string, unknown>)[m.key] = n }) }} onPointerUp={e => e.currentTarget.blur()} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
-                    </div>
-                    {m.hint && <span className="text-[10px] text-[#93a79a]">{m.hint}</span>}
-                  </div>
-                )
+                const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : m.label
+                return <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
+                  display={`${v}${m.unit ? ` ${m.unit}` : ""}`} changed={changed} hint={m.hint}
+                  onChange={n => update(d => { (d as Record<string, unknown>)[m.key] = n })}
+                  onReset={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })} />
               })}
             </div>
           </details>

@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { ChickenPortal, playPortalSound } from '@/components/chicken/chicken-portal'
 import type { ChickenEngine } from '@/lib/chicken/engine'
 import { portalGate, PORTAL_TRANSITION_MS } from '@/lib/chicken/portal'
-import { elementsInWorld, portalPartner, type LayoutElement } from '@/lib/pigchicken/layout'
+import { elementsInWorld, LAYOUT_VERSION, portalPartner, type LayoutElement } from '@/lib/pigchicken/layout'
 
 export function PatioPortals({ engine, extras, worldRef, elements, screens, editing }: {
   engine: ChickenEngine | null
@@ -14,7 +14,7 @@ export function PatioPortals({ engine, extras, worldRef, elements, screens, edit
   screens: number
   editing: boolean
 }) {
-  const portals = useMemo(() => elementsInWorld({ v: 2, elements: elements ?? [] }, screens).filter(e => e.kind === 'portal'), [elements, screens])
+  const portals = useMemo(() => elementsInWorld({ v: LAYOUT_VERSION, elements: elements ?? [] }, screens).filter(e => e.kind === 'portal'), [elements, screens])
   const actors = useCallback(() => [...(engine ? [engine] : []), ...extras.current.values()], [engine, extras])
   return <>{portals.map(el => {
     const destination = portalPartner(el, portals)

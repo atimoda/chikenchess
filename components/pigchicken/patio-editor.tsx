@@ -6,25 +6,36 @@
 // layers and collisions, Edit (elements with params), duplicate and delete. Ctrl+Z / Ctrl+Shift+Z undo and redo.
 // The game keeps running underneath: the keyboard moves her, and a click on empty space still shoots (with
 // something selected, the first click there only clears the selection).
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
+import { PatioDisclosure } from "@/components/ui/patio-disclosure"
+import { PatioRange } from "@/components/ui/patio-range"
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Mountain, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
-  ELEMENT_DEFS, HORDE_BUTTONS, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutBoxes,
-  newElementId, normalizeElement, settleLayout, createPortalPair, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
+  ELEMENT_DEFS, HORDE_BUTTONS, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow,
+  newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
+import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
-import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
+import { SCENE_W, WORLD_GROUND_Y, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { ElementArt } from "./patio-layout"
+import { HOUSE_STYLE_LABELS, HousePanel } from "./house-panel"
+import { HOUSE_SIZE, randomHouse, type HouseParams, type HouseStyle } from "@/lib/pigchicken/houses"
+import { TREE_SIZE, TREE_STYLES, randomTree, treePreset, type TreeParams } from "@/lib/pigchicken/trees"
+import { CustomTreeArt } from "./tree-art"
+import { TreePanel } from "./tree-panel"
+import { TerrainEditor } from "./terrain-editor"
+import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
 
 const UI = "header, aside, button, input, select, textarea, a, label, [data-chicken-ignore], [role='dialog']"
 const HISTORY_MAX = 80
 
+type Draft = { kind: "house"; value: HouseParams } | { kind: "tree"; value: TreeParams }
 type Change = (next: PatioLayout) => void
 type Gesture = { kind: "move" | "resize" | "rotate"; id: string; pointer: number; sx: number; sy: number; start: LayoutElement; corner?: [number, number]; moved: boolean }
 
@@ -68,14 +79,16 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
   const gesture = useRef<Gesture | null>(null)
   // every change lets the elements with gravity fall onto what is under them
   const commit = useCallback((next: PatioLayout, step?: string) => {
-    history.commit({ ...next, elements: settleLayout(next.elements, gesture.current?.moved ? gesture.current.id : null) }, step)
-  }, [history.commit])
+    history.commit(settleLayoutInWorld(next, screens, gesture.current?.moved ? gesture.current.id : null), step)
+  }, [history.commit, screens])
   const [selected, setSelected] = useState<string | null>(null)
   const [panel, setPanel] = useState<"" | "layers" | "edit" | "delete">("")
   const layoutRef = useRef(layout)
   layoutRef.current = layout
-  const sel = layout.elements.find(e => e.id === selected) ?? null
   const shown = useMemo(() => elementsInWorld(layout, screens), [layout, screens])
+  const sel = shown.find(e => e.id === selected) ?? null
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [terrainOpen, setTerrainOpen] = useState(false)
   const selectedRef = useRef(selected)
   selectedRef.current = selected
 
@@ -84,38 +97,74 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
   useEffect(() => { if (selected && !layout.elements.some(e => e.id === selected)) select(null) }, [layout, selected, select])
 
   const update = useCallback((el: LayoutElement, step?: string) => {
-    const clean = normalizeElement(el)
+    const clean = normalizeElement(storeElementPosition(el, screens))
     if (clean) commit(replaceEl(layoutRef.current, clean), step)
-  }, [commit])
+  }, [commit, screens])
   const remove = useCallback((id: string) => {
     const el = layoutRef.current.elements.find(e => e.id === id)
     const partner = el ? portalPartner(el, layoutRef.current.elements) : null
     if (partner?.locked) return
     commit({ ...layoutRef.current, elements: layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id) }); select(null)
   }, [commit, select])
+  const append = useCallback((elements: LayoutElement[], worldPosition = true) => {
+    const current = layoutRef.current
+    if (current.elements.length + elements.length > LAYOUT_MAX_ELEMENTS) return false
+    const added = elements.map(el => normalizeElement(worldPosition ? storeElementPosition(el, screens) : el)!)
+    commit({ ...current, elements: [...current.elements, ...added] })
+    select(added[0].id)
+    return true
+  }, [commit, screens, select])
   const duplicate = useCallback((el: LayoutElement) => {
     if (el.kind === 'portal') {
-      const pair = duplicatePortalPair(el, layoutRef.current.elements)
-      commit({ ...layoutRef.current, elements: [...layoutRef.current.elements, ...pair] }); select(pair[0].id); return
+      const elements = layoutRef.current.elements
+      const source = elements.find(e => e.id === el.id)
+      if (source) append(duplicatePortalPair(source, elements), false)
+      return
     }
-    const copy = normalizeElement({ ...structuredClone(el), id: newElementId(el.kind), x: el.x + 32, y: el.y - 32, locked: false })!
-    commit({ ...layoutRef.current, elements: [...layoutRef.current.elements, copy] })
-    select(copy.id)
-  }, [commit, select])
-  // the floor right under a point: the ground, or the top of a solid element
-  const floorBelow = useCallback((x: number, y: number) => {
-    let best = WORLD_GROUND_Y
-    layoutBoxes(elementsInWorld(layoutRef.current, screens)).forEach(b => { if (b.solid !== false && x >= b.l && x <= b.r && b.t >= y && b.t < best) best = b.t })
-    return best
-  }, [screens])
+    append([{ ...structuredClone(el), id: newElementId(el.kind), x: el.x + 32, y: el.y - 32, locked: false }])
+  }, [append])
+  const floorBelow = useCallback((x: number, y: number) =>
+    layoutFloorBelow(elementsInWorld(layoutRef.current, screens), x, y), [screens])
   const add = useCallback((el: LayoutElement) => {
-    const added = el.kind === 'portal' ? createPortalPair(el.x + el.w / 2, el.y + el.h / 2) : [el]
-    commit({ ...layoutRef.current, elements: [...layoutRef.current.elements, ...added] }); select(added[0].id)
-  }, [commit, select])
+    append(el.kind === 'portal' ? createPortalPair(el.x + el.w / 2, el.y + el.h / 2) : [el])
+  }, [append])
+
+  const placement = usePatioPlacement((el, clientX, clientY) => {
+    const point = screenToWorld(clientX, clientY)
+    if (append([{ ...el, x: point.x - el.w / 2, y: point.y - el.h }]) && draft) {
+      setDraft(null)
+      setPanel('edit')
+    }
+  })
+  const openDraft = (next: Draft) => {
+    select(null)
+    setTerrainOpen(false)
+    setDraft(next)
+  }
+  const edit = (el: LayoutElement) => {
+    if (el.locked || !ELEMENT_DEFS[el.kind].editable) return
+    setDraft(null)
+    setTerrainOpen(false)
+    setSelected(el.id)
+    setPanel('edit')
+  }
+  const randomHouseElement = (style: HouseStyle) => {
+    const { house, w, h } = randomHouse(style)
+    return { ...createElement('house', 0, 0, { house }), w, h }
+  }
+
+  const selectedTree = sel?.kind === "tree" ? sel.params.tree : sel?.kind === "pine" || sel?.kind === "blossom"
+    ? { ...treePreset(sel.kind === "pine" ? "pine" : "plum", sel.params.seed ?? 1), flip: !!sel.params.flip, climbTrunk: sel.solid }
+    : undefined
 
   // keyboard: Esc clears the selection, Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) undo and redo, Ctrl+D duplicates
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Escape') {
+        if (placement.cancel()) { e.preventDefault(); return }
+        if (draft) { e.preventDefault(); setDraft(null); return }
+        if (terrainOpen) { e.preventDefault(); setTerrainOpen(false); return }
+      }
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
       const mod = e.ctrlKey || e.metaKey
@@ -124,13 +173,13 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
       if (mod && e.code === "KeyY") { e.preventDefault(); forward(); return }
       if (mod && e.code === "KeyD") {
         e.preventDefault()
-        const el = layoutRef.current.elements.find(x => x.id === selectedRef.current)
+        const el = elementsInWorld(layoutRef.current, screens).find(x => x.id === selectedRef.current)
         if (el && !el.locked) duplicate(el)
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [back, forward, duplicate, select])
+  }, [back, forward, duplicate, select, placement.cancel, draft, screens, terrainOpen])
 
   // with something selected, the first click on empty space only clears the selection (it does not shoot)
   useEffect(() => {
@@ -155,8 +204,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
     gesture.current = { kind, id: el.id, pointer: e.pointerId, sx: e.clientX, sy: e.clientY, start: el, corner, moved: false }
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
   }
-  const onMove = (e: React.PointerEvent) => {
-    const g = gesture.current
+  const onMove = (e: React.PointerEvent, g = gesture.current) => {
     if (!g || g.pointer !== e.pointerId) return
     const dx = e.clientX - g.sx, dy = e.clientY - g.sy
     if (!g.moved && Math.hypot(dx, dy) < 3) return
@@ -184,6 +232,11 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
     const g = gesture.current
     if (!g || g.pointer !== e.pointerId) return
     gesture.current = null
+    // Apply the release coordinates even if a fast final pointer move was coalesced.
+    if (g.kind === "move" && e.type === "pointerup" && (g.moved || Math.hypot(e.clientX - g.sx, e.clientY - g.sy) >= 3)) {
+      onMove(e, g)
+      return
+    }
     // a click on the turn handle (no drag) turns it 45°
     if (g.kind === "rotate" && !g.moved) update({ ...g.start, rot: snap45(g.start.rot + 45) })
     // let go: with gravity it falls now (in the same undo step as the drag)
@@ -209,8 +262,10 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
       <div data-patio-editor className="pointer-events-none fixed inset-0 z-[203] overflow-hidden">
         <div ref={worldRef} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
           {shown.map(el => (
-            <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} />
+            <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
           ))}
+          {terrainOpen && <TerrainEditor left={villageScene(screens) * SCENE_W} terrain={layout.terrain} onClose={() => setTerrainOpen(false)}
+            onChange={(terrain, step) => history.commit({ ...layoutRef.current, terrain }, step)} />}
           {sel && (
             <Toolbar
               el={sel}
@@ -229,17 +284,38 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
         </div>
       </div>
       {sel && panel === "layers" && <LayersPanel el={sel} onChange={el => update(el)} onClose={() => setPanel("")} />}
-      {sel && panel === "edit" && <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} />}
-      <Palette onAdd={add} floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />
+      {sel && panel === "edit" && !draft && (sel.kind === 'house' && sel.params.house
+        ? <HousePanel key={sel.id} house={sel.params.house} dimensions={sel} onChange={(house, step) => update({ ...sel, params: { house } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
+        : selectedTree
+          ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
+            onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
+          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} />)}
+      <Palette onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
+        bindHouse={house => placement.bind(() => randomHouseElement(house.style), () => openDraft({ kind: "house", value: house }))}
+        bindTree={tree => placement.bind(() => {
+          const next = randomTree(tree.style)
+          return { ...createElement("tree", 0, 0, { tree: next.tree }), w: next.w, h: next.h }
+        }, () => openDraft({ kind: "tree", value: tree }))}
+        canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
+        terrainOpen={terrainOpen} onTerrain={() => { select(null); setTerrainOpen(!terrainOpen) }}
+        floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />
+      {draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
+        previewDrag={placement.bind(() => createElement('house', 0, 0, { house: draft.value }))} />}
+      {draft?.kind === "tree" && <TreePanel tree={draft.value} onChange={value => setDraft({ kind: "tree", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
+        previewDrag={placement.bind(() => createElement('tree', 0, 0, { tree: draft.value }))} />}
+      {placement.ghost && <div ref={placement.ghostRef} aria-hidden="true" className="pointer-events-none fixed z-[260] opacity-75"
+        style={{ left: -placement.ghost.w / 2, top: -placement.ghost.h, width: placement.ghost.w, height: placement.ghost.h }}>
+        <ElementArt el={placement.ghost} />
+      </div>}
     </>
   )
 }
 
 // one element's hit area (turned like it) with its corners when selected
-const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp }: {
+const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp, edit }: {
   el: LayoutElement; selected: boolean
   begin: (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => void
-  onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void
+  onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void; edit: (el: LayoutElement) => void
 }) {
   const d = ELEMENT_DEFS[el.kind]
   return (
@@ -249,12 +325,13 @@ const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp }: {
       data-sel={selected || undefined}
       data-locked={el.locked || undefined}
       aria-label={d.label}
-      className="pointer-events-auto absolute touch-none"
+      className={cn("pointer-events-auto absolute touch-none", el.kind === "portal" && "z-[1]")}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
       onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
+      onDoubleClick={e => { e.stopPropagation(); edit(el) }}
       onContextMenu={e => e.preventDefault()}
     >
       {selected && !el.locked && d.resizable && ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as [number, number][]).map(([sx, sy]) => (
@@ -288,7 +365,7 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
   // kept on the screen side of the element when it is near the world's top
   const top = Math.max(b.y - 46, -2990)
   return (
-    <div data-chicken-ignore className="pointer-events-auto absolute flex items-center gap-1 font-mono text-[11px]" style={{ left: b.x + b.w, top, transform: "translateX(-100%)" }} onPointerDown={e => e.stopPropagation()}>
+    <div data-chicken-ignore className="pointer-events-auto absolute z-[2] flex items-center gap-1 font-mono text-[11px]" style={{ left: b.x + b.w, top, transform: "translateX(-100%)" }} onPointerDown={e => e.stopPropagation()}>
       <span className="mr-1 whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-white/80">{d.label}</span>
       <button type="button" className={cn(TOOL, el.locked && "border-amber-300 text-amber-300")} title={el.locked ? "Destrancar" : "Trancar (bloqueia mover, redimensionar, girar e apagar)"} aria-label={el.locked ? "Destrancar" : "Trancar"} aria-pressed={el.locked} onClick={onLock}>
         {el.locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
@@ -366,23 +443,29 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
         ))}
       </div>
       <div className="grid gap-3 border-t border-white/10 pt-3">
-        <Toggle label="Pisar (sólido)" hint="A galinha fica em cima e bate dos lados" checked={el.solid} onChange={v => onChange({ ...el, solid: v })} />
+        {el.kind === 'house'
+          ? <p className="text-[#93a79a]">Base, telhado, peitoris e vergas são pisos de mão única. A galinha pode saltar através da fachada.</p>
+          : el.kind === 'tree' ? <p className="text-[#93a79a]">Configure os apoios no Editor de árvores.</p>
+          : el.kind === 'trampoline' ? <p className="text-[#93a79a]">O tampo impulsiona a galinha ao pousar.</p>
+          : <Toggle label="Pisar (sólido)" hint="A galinha fica em cima e bate dos lados" checked={el.solid} onChange={v => onChange({ ...el, solid: v })} />}
         <Toggle label="Bloqueia tiros" hint="Balas, granadas e o feixe param nele" checked={el.shots} onChange={v => onChange({ ...el, shots: v })} />
         <Toggle label="Bloqueia notas" hint="As notas dos instrumentos param nele" checked={el.notes} onChange={v => onChange({ ...el, notes: v })} />
         <Toggle label="Invisível no jogo" hint="Só aparece no modo editor" checked={el.hidden} onChange={v => onChange({ ...el, hidden: v })} />
-        <label className="grid gap-1">
-          <span className="flex justify-between"><span>Opacidade</span><output className="tabular-nums text-white">{Math.round(el.opacity * 100)}%</output></span>
-          <input type="range" min={10} max={100} step={5} value={Math.round(el.opacity * 100)} onChange={e => onChange({ ...el, opacity: Number(e.target.value) / 100 })} onPointerUp={e => e.currentTarget.blur()} className="accent-[var(--primary)]" />
-        </label>
+        <PatioRange label="Opacidade" min={10} max={100} step={5} value={Math.round(el.opacity * 100)}
+          display={`${Math.round(el.opacity * 100)}%`} onChange={v => onChange({ ...el, opacity: v / 100 })} />
       </div>
     </FloatingPanel>
   )
 }
 
-// the Edit panel of the elements with params: training dummy, rack, horde button, trees
+// the Edit panel for elements that do not have their own customizer
 function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void }) {
   const set = (p: ElementParams, step?: string) => onChange({ ...el, params: { ...el.params, ...p } }, step)
   const [msg, setMsg] = useState(el.params.message ?? "")
+  const editSession = useId()
+  const sliderGesture = useRef(0)
+  const endSlider = () => { sliderGesture.current++ }
+  const bounce = el.params.trampoline
   return (
     <FloatingPanel id="patio-edit" aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
@@ -403,10 +486,8 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
             />
             <span className="text-right text-[10px] text-[#93a79a]">{msg.length}/280</span>
           </label>
-          <label className="grid gap-1">
-            <span className="flex justify-between"><span>Vida total</span><output className="tabular-nums text-white">{el.params.maxHp}</output></span>
-            <input type="range" min={DUMMY_HP_RANGE.min} max={DUMMY_HP_RANGE.max} step={10} value={el.params.maxHp ?? 100} onChange={e => set({ maxHp: Number(e.target.value) }, `hp:${el.id}`)} onPointerUp={e => e.currentTarget.blur()} className="accent-[var(--primary)]" />
-          </label>
+          <PatioRange label="Vida total" min={DUMMY_HP_RANGE.min} max={DUMMY_HP_RANGE.max} step={10} value={el.params.maxHp ?? 100}
+            onChange={v => set({ maxHp: v }, `hp:${el.id}`)} />
         </>
       )}
       {el.kind === "portal" && <>
@@ -422,6 +503,18 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
             <option value="always">Sempre visível</option>
           </select>
         </label>
+      </>}
+      {el.kind === "trampoline" && bounce && <>
+        <div className="grid h-24 shrink-0 place-items-center rounded-md border border-white/10 bg-[#0b110e]" aria-label="Prévia do trampolim">
+          <div className="relative h-12 w-48"><ElementArt el={el} /></div>
+        </div>
+        <PatioRange label="Força do impulso" min={1} max={TRAMPOLINE_LEVELS.length} value={bounce.strength}
+          display={`Nível ${bounce.strength}`} onEnd={endSlider}
+          onChange={strength => set({ trampoline: { ...bounce, strength } }, `bounce-strength:${editSession}:${sliderGesture.current}`)} />
+        <PatioRange label="Direção do impulso" min={-TRAMPOLINE_ANGLE} max={TRAMPOLINE_ANGLE} value={bounce.angle}
+          display={bounce.angle === 0 ? "Vertical" : `${Math.abs(bounce.angle)}° ${bounce.angle < 0 ? "←" : "→"}`} onEnd={endSlider}
+          onChange={angle => set({ trampoline: { ...bounce, angle } }, `bounce-angle:${editSession}:${sliderGesture.current}`)} />
+        <p className="text-[#93a79a]">Pouse por cima para quicar. Segure Agachar ou Chocar para atravessar.</p>
       </>}
       {el.kind === "rack" && <>
         <label className="grid gap-1">
@@ -446,12 +539,7 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
           </select>
         </label>
       )}
-      {(el.kind === "pine" || el.kind === "blossom") && (
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => set({ seed: Math.floor(Math.random() * 2 ** 31) })} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary">Sortear outra árvore</button>
-          <button type="button" onClick={() => set({ flip: !el.params.flip })} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary">Espelhar</button>
-        </div>
-      )}
+
     </FloatingPanel>
   )
 }
@@ -460,8 +548,7 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
 type Entry = { key: string; kind: ElementKind; label: string; params?: ElementParams }
 const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }] },
-  { group: "Plataformas", items: (["platform", "terrace", "pillar"] as ElementKind[]).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
-  { group: "Árvores", items: (["pine", "blossom"] as ElementKind[]).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
+  { group: "Plataformas", items: (["platform", "terrace", "pillar", "trampoline"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
   { group: "Armas", items: WEAPON_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
@@ -482,9 +569,26 @@ function Thumb({ entry }: { entry: Entry }) {
   return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><ElementArt el={{ kind: entry.kind, params: { seed: 4242 }, w: d.w, h: d.h }} /></span>
 }
 
-function Palette({ onAdd, floorBelow, onClose, undo, redo, canUndo, canRedo }: { onAdd: (el: LayoutElement) => void; floorBelow: (x: number, y: number) => number; onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean }) {
+const PALETTE_CARD = "flex min-h-16 cursor-grab touch-none flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-[#0b110e] px-1 py-1.5 text-center text-[10px] leading-tight hover:border-[#ffd166] active:cursor-grabbing disabled:opacity-50"
+
+function PaletteSection({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true)
+  return <PatioDisclosure title={title} open={open} onToggle={setOpen}>
+    {open && <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,96px),1fr))] gap-1.5 px-4 pb-4">
+      {children}
+    </div>}
+  </PatioDisclosure>
+}
+
+function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, terrainOpen, onTerrain, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
+  onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
+  bindTree: (tree: TreeParams) => PatioPlacementHandlers
+  canAddScenery: boolean; hidden: boolean; draggingScenery: boolean; terrainOpen: boolean; onTerrain: () => void
+  floorBelow: (x: number, y: number) => number; onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
+}) {
+  const [housePreviews] = useState(() => (Object.keys(HOUSE_STYLE_LABELS) as HouseStyle[]).map(style => randomHouse(style).house))
+  const [treePreviews] = useState(() => (Object.keys(TREE_STYLES) as TreeParams["style"][]).map(style => randomTree(style).tree))
   const [drag, setDrag] = useState<{ entry: Entry; x: number; y: number; pointer: number } | null>(null)
-  const paletteRef = useRef<HTMLDivElement>(null)
   const start = (entry: Entry) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault(); e.stopPropagation()
@@ -500,6 +604,7 @@ function Palette({ onAdd, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       // dummies and racks stand on the floor right under where they were dropped
       if (el.kind === "dummy" || el.kind === "rack") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       onAdd(el)
     }
     setDrag(null)
@@ -507,36 +612,48 @@ function Palette({ onAdd, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
   const d = drag ? ELEMENT_DEFS[drag.entry.kind] : null
   return (
     <>
-      <FloatingPanel id="patio-palette" aria-label="Elementos do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(260, vw - 24), h: vw < 640 ? Math.min(300, vh * 0.38) : Math.min(560, vh - 80) })} minW={180} minH={140} className="rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <FloatingPanel id="patio-palette" aria-label="Elementos do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(260, vw - 24), h: vw < 640 ? Math.min(300, vh * 0.38) : Math.min(560, vh - 80) })} minW={180} minH={140} className={cn("rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]", hidden && "hidden", draggingScenery && "pointer-events-none opacity-0")}>
         <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-1.5 border-b border-white/10 px-3 py-2">
           <h2 className="flex-1 text-sm text-white">Modo editor</h2>
           <button type="button" className={TOOL} disabled={!canUndo} onClick={undo} title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><Undo2 className="h-4 w-4" /></button>
           <button type="button" className={TOOL} disabled={!canRedo} onClick={redo} title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer"><Redo2 className="h-4 w-4" /></button>
           <button type="button" className={TOOL} onClick={onClose} title="Sair do modo editor (=)" aria-label="Sair do modo editor"><X className="h-4 w-4" /></button>
         </div>
-        <div ref={paletteRef} className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-          <p className="py-2 text-[10px] leading-relaxed text-[#93a79a]">Arraste um elemento para o Pátio. Clique num elemento para selecionar; arraste para mover e pelos cantos para redimensionar (Shift mantém a proporção).</p>
+        <div className="min-h-0 flex-1 overflow-y-auto pb-3 pt-2">
+          <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", terrainOpen && "border-primary text-primary")}
+            aria-pressed={terrainOpen} onClick={onTerrain}><Mountain size={16} /> Editar chão da Vila</button>
+          <PaletteSection title="Casas">
+            {housePreviews.map(house => (
+              <button key={house.style} type="button" title="Clique para abrir no criador ou arraste para sortear uma casa"
+                {...bindHouse(house)} disabled={!canAddScenery} className={PALETTE_CARD}>
+                <span className="relative h-12" style={{ aspectRatio: `${HOUSE_SIZE.w} / ${HOUSE_SIZE.h}` }}>
+                  <ElementArt el={{ kind: 'house', params: { house }, ...HOUSE_SIZE }} />
+                </span>
+                <span>{HOUSE_STYLE_LABELS[house.style]}</span>
+              </button>
+            ))}
+          </PaletteSection>
+          <PaletteSection title="Árvores">
+            {treePreviews.map(tree => (
+              <button key={tree.style} type="button" title="Clique para editar ou arraste para sortear uma árvore"
+                {...bindTree(tree)} disabled={!canAddScenery} className={PALETTE_CARD}>
+                <span className="relative h-12" style={{ aspectRatio: `${TREE_SIZE.w} / ${TREE_SIZE.h}` }}>
+                  <CustomTreeArt tree={tree} animate={false} />
+                </span>
+                <span>{TREE_STYLES[tree.style].label}</span>
+              </button>
+            ))}
+          </PaletteSection>
           {ENTRIES.map(g => (
-            <section key={g.group} className="mb-2">
-              <h3 className="mb-1 text-[10px] uppercase tracking-widest text-[#93a79a]">{g.group}</h3>
-              <div className="grid grid-cols-2 gap-1.5">
-                {g.items.map(entry => (
-                  <button
-                    key={entry.key}
-                    type="button"
-                    title={`Arraste para o Pátio: ${entry.label}`}
-                    className="flex min-h-16 cursor-grab touch-none flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-[#0b110e] px-1 py-1.5 text-center text-[10px] leading-tight hover:border-[#ffd166] active:cursor-grabbing"
-                    onPointerDown={start(entry)}
-                    onPointerMove={move}
-                    onPointerUp={end}
-                    onPointerCancel={() => setDrag(null)}
-                  >
-                    <span className="flex h-9 items-center justify-center"><Thumb entry={entry} /></span>
-                    <span>{entry.label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
+            <PaletteSection key={g.group} title={g.group}>
+              {g.items.map(entry => (
+                <button key={entry.key} type="button" title={`Arraste para o Pátio: ${entry.label}`} className={PALETTE_CARD}
+                  onPointerDown={start(entry)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}>
+                  <span className="flex h-9 items-center justify-center"><Thumb entry={entry} /></span>
+                  <span>{entry.label}</span>
+                </button>
+              ))}
+            </PaletteSection>
           ))}
         </div>
       </FloatingPanel>

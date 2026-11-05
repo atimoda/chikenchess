@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 05/11/2026 — v1.16.0 (Bicada, arremessos, controles touch individuais, página fixa no Pátio/globo e desempenho do Pátio).
+Atualizado em 05/11/2026 — v2.0.0 (Vila dos Telhados, criadores de casas e árvores, trampolins, bicada, arremessos, controles touch e desempenho do Pátio).
 
 ## Leitura por assunto
 
@@ -13,6 +13,9 @@ Atualizado em 05/11/2026 — v1.16.0 (Bicada, arremessos, controles touch indivi
 | Forma global, atribuições por peça e harmonia por compasso | [Arranjo global](docs/mechanics/arrangement.md#arranjo-global-e-atribuições-por-peça--0210) |
 | Regras, transições e BPM | [Estados e Eventos](docs/mechanics/states-and-events.md#estados-e-eventos--v032) |
 | Piano roll, seções e slides | [Editor](docs/mechanics/editor.md#editor-de-variações--v0414) e [Arranjo global](docs/mechanics/arrangement.md#arranjo-global-e-atribuições-por-peça--0210) |
+| Pátio, portais, Vila dos Telhados e criador de casas | [Pátio da Galinha](docs/mechanics/map.md#pátio-da-galinha-e-configuração-central-0111-v1120) e [Vila dos Telhados](docs/mechanics/map.md#vila-dos-telhados-e-criador-de-casas) |
+| Árvores e apoios no Pátio | [Editor de árvores](docs/mechanics/map.md#editor-de-árvores-do-pátio) |
+| Trampolim e força do impulso | [Trampolim do Pátio](docs/mechanics/map.md#trampolim-do-pátio) |
 | Globo e cidades | [Mapa](docs/mechanics/map.md#mapa-e-entrada-na-fase) |
 | Admin e catálogos locais | [Admin](docs/mechanics/admin.md#admin-e-catálogos-locais--0810-v110) |
 | Partidas simultâneas e retorno ao globo | [1v1 casual online](docs/mechanics/online.md#1v1-casual-online--0410-v100) |

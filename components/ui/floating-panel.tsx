@@ -21,17 +21,20 @@ const EDGES: { edge: Edge; className: string; cursor: string }[] = [
 
 const KEEP = 48 // px of the panel that always stays on the screen
 
-function fit(r: Rect, minW: number, minH: number): Rect {
+function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean): Rect {
   const vw = window.innerWidth, vh = window.innerHeight
   const w = Math.max(Math.min(minW, vw), Math.min(r.w, vw)), h = Math.max(Math.min(minH, vh), Math.min(r.h, vh))
-  return { w, h, x: Math.min(vw - KEEP, Math.max(KEEP - w, r.x)), y: Math.min(vh - KEEP, Math.max(0, r.y)) }
+  const x = keepInViewport ? Math.min(vw - w, Math.max(0, r.x)) : Math.min(vw - KEEP, Math.max(KEEP - w, r.x))
+  const y = Math.min(vh - (keepInViewport ? h : KEEP), Math.max(0, r.y))
+  return { w, h, x, y }
 }
 
-export function FloatingPanel({ id, initial, minW = 240, minH = 160, className, children, ...rest }: {
+export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewport = false, className, children, ...rest }: {
   id: string
   initial: (vw: number, vh: number) => Rect
   minW?: number
   minH?: number
+  keepInViewport?: boolean
   className?: string
   children: React.ReactNode
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
@@ -42,8 +45,8 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, className, 
   useEffect(() => {
     let r = initial(window.innerWidth, window.innerHeight)
     try { const saved = JSON.parse(window.localStorage.getItem(key) || "null"); if (saved && [saved.x, saved.y, saved.w, saved.h].every(Number.isFinite)) r = saved } catch { /* ignore */ }
-    setRect(fit(r, minW, minH))
-    const onResize = () => setRect(cur => cur && fit(cur, minW, minH))
+    setRect(fit(r, minW, minH, keepInViewport))
+    const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport))
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
   }, [key])
@@ -68,7 +71,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, className, 
       if (o.edge.includes("w")) { w = Math.max(minW, s.w - dx); w = Math.min(w, s.x + s.w); x = s.x + s.w - w }
       if (o.edge.includes("n")) { h = Math.max(minH, s.h - dy); h = Math.min(h, s.y + s.h); y = s.y + s.h - h }
     }
-    setRect(fit({ x, y, w, h }, minW, minH))
+    setRect(fit({ x, y, w, h }, minW, minH, keepInViewport))
   }
   const end = (e: React.PointerEvent<HTMLElement>) => {
     if (op.current?.pointer !== e.pointerId) return

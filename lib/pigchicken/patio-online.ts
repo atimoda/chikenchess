@@ -59,7 +59,7 @@ function lobby(r: Row | null): PatioLobby | null {
     userId: String(p.user_id), name: str(p.display_name) ?? 'Jogador', points: num(p.points), goldenEggs: num(p.golden_eggs), wins: num(p.wins),
     editedAt: str(p.edited_at), playedAt: str(p.played_at),
   })) : []
-  return { ...info(r), layout: normalizeLayout(r.layout), people }
+  return { ...info(r), layout: normalizeLayout(r.layout, r.is_default === true), people }
 }
 
 // Egress: with the revision this browser already holds, the server leaves the layout out (layout: null here) and

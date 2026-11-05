@@ -25,7 +25,7 @@ import { mixGain } from "@/lib/pigchicken/mixer"
 import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
-import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
+import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { defaultLayout, elementsInWorld, layoutBoxes, type LayoutElement } from "@/lib/pigchicken/layout"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
@@ -33,12 +33,14 @@ import { isLiteDevice } from "@/lib/performance"
 import { setPlatformWorldOffset } from "@/lib/chicken/platform-geometry"
 import { intersectsView, needsTrajectory, patioPixelRatio, trajectoryVisible, type ViewRect } from "@/lib/pigchicken/viewport"
 import { moveLiveCamera } from "@/lib/pigchicken/live-camera"
-import { FollowLayer, LayoutColliders, LayoutLayerView, TreeStyles } from "@/components/pigchicken/patio-layout"
+import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
 import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
+import type { RidgePoint } from "@/lib/pigchicken/village"
+import { VillageBackdrop, VillageCollider } from "@/components/pigchicken/village-backdrop"
 
 const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
@@ -49,9 +51,10 @@ const SOURCE_LABEL: Record<AimSource, string> = {
 // the code's own Pátio, when the page gives no layout
 const DEFAULT_ELEMENTS = defaultLayout().elements
 const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean }) {
-  // the Parquinho's scenes, then the temple (Templo do Gongo, the aliens' mini-game)
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, terrain }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; terrain?: RidgePoint[] }) {
+  // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
+  const villageLeft = villageScene(screens) * SCENE_W
   const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
   return (
     <div ref={worldRef} data-chicken-world className="pointer-events-none absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
@@ -65,9 +68,15 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
         </div>
       ))}
       <TempleBackdrop left={templeScene(screens) * SCENE_W} />
+      <VillageBackdrop left={villageLeft} ridge={terrain} />
       {debug && (
         <div className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: templeScene(screens) * SCENE_W }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 1} · Templo do Gongo</span>
+        </div>
+      )}
+      {debug && (
+        <div className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: villageLeft }}>
+          <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 2} · Vila dos Telhados</span>
         </div>
       )}
       {/* the temple's roofs: floors with their own curves (drawn only in debug) */}
@@ -77,13 +86,14 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
         </svg>
       )}
       {/* the Pátio's layout (lib/pigchicken/layout.ts): the scenery behind the platforms, then the platforms' layer */}
-      <TreeStyles />
+      <PatioTreeStyles />
       <SceneryVisibilityStyles />
       <LayoutLayerView elements={shown} layer="back" editing={editing} />
       <LayoutLayerView elements={shown} layer="scene" editing={editing} />
       {/* what she stands on: the layout's solid elements (invisible boxes; the art is in the layers) */}
       <LayoutColliders elements={shown} />
       <div data-chicken-platforms className="absolute inset-0">
+        <VillageCollider left={villageLeft} ridge={terrain} />
         {TEMPLE_PLATFORMS.map((p, i) => (
           <div key={`tp-${i}`} data-chicken-id={`tp-${i}`} className="absolute rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" style={{ left: templeScene(screens) * SCENE_W + p.x, top: WORLD_GROUND_Y - p.bottom - p.h, width: p.w, height: p.h, background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" }} />
         ))}
@@ -557,7 +567,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- the temple's mini-game ----------
       const tL = templeScene(S.screens) * SCENE_W
-      const inTemple = body.x >= tL
+      const inTemple = body.x >= tL && body.x < tL + SCENE_W
       const events = combat.music.events.splice(0)
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,

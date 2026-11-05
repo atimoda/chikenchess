@@ -3,11 +3,19 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '1.16.0',
+    version: '2.0.0',
     date: '05/11/2026',
-    title: 'Bicada, arremessos, controles touch e desempenho do Pátio',
+    title: 'Vila dos Telhados, criadores de casas e árvores, trampolins e novos controles do Pátio',
     groups: [
       { title: 'Pátio', items: [
+        'O Modo editor ganhou nove estilos de árvores com prévia e sorteio por estilo. Personalize o tronco, os galhos, a copa, as cores e efeitos de vento, pétalas, folhas ou pólen. Troncos escaláveis e apoios nos galhos e grupos de folhas podem ser ligados separadamente.',
+        'Arraste Trampolim da seção Plataformas e dê dois cliques para editar. Escolha a direção do impulso e um de cinco níveis de força. Cada nível tem sua própria cor e quantidade de molas.',
+        'Abrir e Salvar ficam logo à direita do globo no cabeçalho do Pátio. O título mostra o nome do Pátio atual e acrescenta “(não salvo)” na mesma linha quando há alterações pendentes.',
+        'Os portais de ida e volta do Templo do Gongo e da Vila dos Telhados podem ser selecionados e movidos no Modo editor. Cada posição fica salva com o Pátio.',
+        'O Pátio padrão ganhou a Vila dos Telhados, uma vila colorida em degraus depois do Templo do Gongo. Dá para andar pelas inclinações dos telhados e pousar nos peitoris e acima das janelas e portas. Dois portais perto da entrada fazem a ida e a volta pelo Templo e pela Vila.',
+        'No Modo editor, o criador de casas combina dez estilos com telhados, revestimentos, cores e fachadas ajustáveis. Veja a prévia, sorteie variações e insira a casa onde quiser no Pátio. As casas ficam no layout e podem ser redimensionadas, editadas ou duplicadas.',
+        'O criador de casas agora tem prévia fixa para arrastar ao Pátio e setas para experimentar a próxima opção dos seletores. Cada estilo ganhou um cartão com prévia na paleta. Arraste o cartão para sortear uma casa daquele estilo. As seções usam os títulos expansíveis de Ajustes e ganham colunas ao alargar o painel. Casas novas ficaram maiores e suas bases também são plataformas.',
+        'O Modo editor tem um ícone de lápis no cabeçalho. Dois cliques abrem os parâmetros de uma casa ou outro elemento editável. O ícone de montanha permite editar a encosta da Vila, com pontos móveis e histórico. Os sliders do Pátio seguem o visual do painel Ajustes.',
         'O Pátio reduz o trabalho fora da tela e separa as animações do cenário do Templo do Gongo, evitando redesenhar o prédio inteiro a cada quadro. Mira, inventário e portais também usam menos processamento; em aparelhos de toque, o canvas usa resolução mais leve.',
         'No tablet/celular, arrastar o fundo ou os botões do cabeçalho do Pátio não rola mais a página. O bloqueio também vale no globo, preservando a rolagem dentro dos painéis.',
         'Correr no touch também pega itens do chão por padrão. A opção pode ser desligada em Controles do boneco → Na tela (celular). Cada botão touch agora pode ser posicionado individualmente; layouts antigos são preservados. A lista de movimentos ganhou rótulos mais curtos e mais espaço entre os tipos de input.',

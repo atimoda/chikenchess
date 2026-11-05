@@ -13,7 +13,8 @@ import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { directionalJumpImpulse } from './jump-impulse'
 import { createThrowTransition } from './throw-transition'
-import { chickenPlatformElements, chickenPlatformRects } from './platform-geometry'
+import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce } from './platform-geometry'
+import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampoline'
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
 
@@ -70,7 +71,7 @@ export type ChickenEngine = {
   destroy: () => void
 }
 
-type Seg = { id: string; ax: number; ay: number; bx: number; by: number; len: number; ang: number; wall: boolean; solid: boolean }
+type Seg = { id: string; ax: number; ay: number; bx: number; by: number; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams }
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
@@ -632,23 +633,49 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let SEGS: Seg[] = []
   function buildSegs() {
     const out: Seg[] = []
-    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false) => {
+    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams) => {
       const len = Math.hypot(bx - ax, by - ay); if (len < 4) return
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
-      out.push({ id, ax, ay, bx, by, len, ang: a, wall: !floor && Math.min(a, 180 - a) > 45, solid })
+      out.push({ id, ax, ay, bx, by, len, ang: a, wall: climbable || (!floor && Math.min(a, 180 - a) > 45), solid, bounce })
     }
     let n = 0
     chickenPlatformRects(frameNow).forEach(({ el: e, rect: r }) => {
-      if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > H) return
-      const id = (e as HTMLElement).dataset.chickenId || (e as HTMLElement).id || `box${n++}`
+      const node = e as HTMLElement
+      if (r.width < 8 || r.height < 8) return
+      // A local player can be outside the main camera. Cull shaped surfaces relative to this actor.
+      if (node.dataset.chickenNearby !== undefined) {
+        if (!S.cl && (r.right < S.x - 300 || r.left > S.x + 300 || r.bottom < S.y - 300 || r.top > S.y + 300)) return
+      } else if (r.bottom < 0 || r.top > H) return
+      const id = node.dataset.chickenId || node.id || `box${n++}`
+      const bounce = chickenPlatformBounce(e)
+      if (bounce) {
+        if (r.top < groundY - 4) add(id + ':bounce', r.left, r.top, r.right, r.top, false, true, false, bounce)
+        return
+      }
       // a shaped floor (curved or sloped roofs): `data-chicken-line="x,y x,y …"` in the element's own pixels,
       // one-way floors along the line (never walls, however steep a piece is)
-      const line = linePoints(e as HTMLElement)
-      if (line) {
-        for (let i = 1; i < line.length; i++) {
-          const [ax, ay] = line[i - 1], [bx, by] = line[i]
-          if (r.top + Math.max(ay, by) < groundY - 4) add(`${id}:l${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, true)
-        }
+      const lines = chickenPlatformLines(e)
+      const walls = chickenPlatformWalls(e)
+      if (lines || walls) {
+        walls?.forEach((line, group) => {
+          for (let i = 1; i < line.length; i++) {
+            const [ax, ay] = line[i - 1], [bx, by] = line[i]
+            if (Math.min(ay, by) + r.top >= groundY) continue
+            if (ay === by) {
+              if (r.top + ay < groundY - 4) add(`${id}:w${group}:${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, true)
+            } else {
+              add(`${id}:w${group}:${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, true, false, true)
+            }
+          }
+        })
+        lines?.forEach((line, group) => {
+          for (let i = 1; i < line.length; i++) {
+            const [ax, ay] = line[i - 1], [bx, by] = line[i]
+            if (ax !== bx && r.top + Math.max(ay, by) < groundY - 4) {
+              add(`${id}:l${group ? `${group}:` : ''}${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, true)
+            }
+          }
+        })
         return
       }
       if (r.top < groundY - 4) add(id + ':top', r.left, r.top, r.right, r.top)
@@ -658,17 +685,6 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     })
     add('screen:left', wallLo(), 0, wallLo(), groundY, true); add('screen:right', wallHi(), 0, wallHi(), groundY, true)
     SEGS = out
-  }
-  // the points of a shaped floor, parsed once per attribute value
-  const lineCache = new WeakMap<HTMLElement, { src: string; pts: number[][] }>()
-  function linePoints(e: HTMLElement) {
-    const src = e.dataset.chickenLine
-    if (!src) return null
-    const c = lineCache.get(e)
-    if (c && c.src === src) return c.pts
-    const pts = src.trim().split(/\s+/).map(p => p.split(',').map(Number)).filter(p => p.length === 2 && p.every(Number.isFinite))
-    lineCache.set(e, { src, pts })
-    return pts
   }
   // elements without an id get one, so standing on a box survives re-ordering of the DOM
   let autoId = 0
@@ -690,6 +706,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return best
   }
   function land(y: number, sg: Seg | null) {
+    if (sg?.bounce) {
+      const { vx, vy } = trampolineVelocity(sg.bounce, R.gravity)
+      fallFrom(S.x, y, S.vx + vx, vy)
+      S.airBoost = vx
+      S.squash = 1
+      S.justLanded = false
+      S.burst = R.jumpFlaps / Math.max(1, R.jumpFlapRate)
+      sfx('jump')
+      return
+    }
     S.justLanded = !S.grounded
     S.y = y; S.vy = 0; S.grounded = true; S.jumpIndex = -1; S.squash = 1; S.airBoost = 0
     S.plat = sg ? sg.id : null; S.platAx = sg ? sg.ax : 0

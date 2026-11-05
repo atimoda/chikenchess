@@ -2,6 +2,7 @@
 
 // The Pátio header's volume button and its popup: the master volume on top and one slider per sound layer
 // (lib/pigchicken/mixer.ts). Everything is saved in this browser and heard at once.
+import { PatioRange } from "@/components/ui/patio-range"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { Volume1, Volume2, VolumeX, X } from "lucide-react"
@@ -44,11 +45,6 @@ export function VolumeButton({ className }: { className?: string }) {
 
 function VolumeRange({ label, hint, value, onChange, strong }: { label: string; hint?: string; value: number; onChange: (v: number) => void; strong?: boolean }) {
   const pct = Math.round(value * 100)
-  return (
-    <label className="grid gap-1" title={hint}>
-      <span className="flex justify-between gap-2"><span className={cn(strong && "font-bold text-white")}>{label}</span><output className="tabular-nums text-white">{pct}%</output></span>
-      <input type="range" min={0} max={100} step={5} value={pct} onChange={e => onChange(Number(e.target.value) / 100)} onPointerUp={e => e.currentTarget.blur()} className="accent-[var(--primary)]" />
-      {hint && <span className="text-[10px] text-[#93a79a]">{hint}</span>}
-    </label>
-  )
+  return <PatioRange label={strong ? <strong>{label}</strong> : label} name={label} min={0} max={100} step={5}
+    value={pct} display={`${pct}%`} hint={hint} onChange={v => onChange(v / 100)} />
 }
