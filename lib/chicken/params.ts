@@ -1,5 +1,5 @@
 // Default movement, animation and sound tuning for the player chicken: the "Leve" class saved in the
-// "Pátio da Caipira" prototype (2026-10-29), plus the prototype defaults for settings added after it.
+// "Pátio da Caipira" prototype (2026-10-29), retuned from the user's live Pátio settings on 2026-11-04.
 // The game reads the central configuration (config.ts), saved in the Pátio da Galinha (/patio); these
 // values are its fallback and fill any setting the saved version lacks.
 // Distances are in screen pixels at full size; the engine scales the ones in CHICKEN_PX_PARAMS on small screens.
@@ -19,9 +19,15 @@ export const CHICKEN_PARAMS = {
   clingBend: 10,
   wallJump: 0.8,
   // Movimento
-  maxSpeed: 1900,
+  maxSpeed: 1500,
   fallSideSpeed: 0.5,
   airControl: 0.55,
+  backpedal: 55,
+  // Arremesso
+  throwAirStop: 80,
+  throwGroundStop: 90,
+  throwPoseAngle: 45,
+  throwPoseSpeed: 1,
   // Corrida
   runBoost: 410,
   runBoostTime: 0.3,
@@ -66,11 +72,19 @@ export const CHICKEN_PARAMS = {
   fastFall: 2,
   // Combinações
   broodWalk: 0.4,
+  broodStandOnMove: false,
   crouchRunSpeed: 1.6,
   crouchJumpBoost: 0,
-  broodJumpBoost: 0,
-  broodJumpFlaps: 2,
-  runBroodJumpBoost: 100,
+  broodJumpBoost: 255,
+  airBroodJumpBoost: 570,
+  broodJumpVerticalBoost: 570,
+  shockingGroundStop: 100,
+  shockingAirStop: 80,
+  shockingBodyDepth: 12,
+  shockingLegBend: 12,
+  broodJumpFlaps: 1,
+  runBroodJumpBoost: 575,
+  airRunBroodJumpBoost: 905,
   crouchRunJumpBoost: 0,
   crouchRunBroodJumpBoost: 0,
   // Voo
@@ -126,7 +140,7 @@ export const CHICKEN_PARAMS = {
 
 export type ChickenParams = typeof CHICKEN_PARAMS
 
-export const CHICKEN_PX_PARAMS: (keyof ChickenParams)[] = ['walkSpeed', 'acceleration', 'deceleration', 'jumpPush', 'climbSpeed', 'maxSpeed', 'runBoost', 'slideFriction', 'slideMinSpeed', 'jumpHeight', 'gravity', 'terminalVelocity', 'crouchJumpBoost', 'broodJumpBoost', 'runBroodJumpBoost', 'crouchRunJumpBoost', 'crouchRunBroodJumpBoost']
+export const CHICKEN_PX_PARAMS: (keyof ChickenParams)[] = ['walkSpeed', 'acceleration', 'deceleration', 'jumpPush', 'climbSpeed', 'maxSpeed', 'runBoost', 'slideFriction', 'slideMinSpeed', 'jumpHeight', 'gravity', 'terminalVelocity', 'crouchJumpBoost', 'broodJumpBoost', 'airBroodJumpBoost', 'broodJumpVerticalBoost', 'runBroodJumpBoost', 'airRunBroodJumpBoost', 'crouchRunJumpBoost', 'crouchRunBroodJumpBoost']
 
 // Cluck samples in public/audio/chicken, by type (the ones switched on in the class)
 export const CHICKEN_CLUCKS: Record<string, string[]> = {

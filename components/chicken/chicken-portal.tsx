@@ -4,7 +4,8 @@
 // ground strip, half transparent, rising behind the footer buttons. While the player chicken is touching it
 // (walked, jumped, flew or was dropped into it), an "Enter playground?" button floats above the ring;
 // clicking or tapping it makes the portal flare, play a soft sound and the game goes to the Pátio (/patio).
-// The Pátio shows a short arrival burst around her (ChickenPortalArrival) and has its own portal, standing
+// The destination portal spawns her with an inverse shrink/fade and waits for a full exit before re-arming.
+// The Pátio has its own portal, standing
 // near the start of its world, that leads back to the globe (the same ring, placed in world units: `world`).
 // On either, pressing run or grab (Shift / E, the gamepad's X) while the button shows confirms it too, and
 // arriving running (run held while she moves) goes straight in without stopping to confirm.
@@ -16,11 +17,11 @@ import { CHICKEN_GROUND_H } from "./chicken-layer"
 import { isLiteDevice } from "@/lib/performance"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
 import { mixGain } from "@/lib/pigchicken/mixer"
+import { markPortalArrival, takePortalArrival, portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 
-const ARRIVAL_KEY = "chickenchess:portal-arrival"
 const PAD = 34 // room around the ring for the glow, arcs and sparks
 const OPACITY = 0.5 // the ring is half transparent
-const ENTER_MS = 750 // from the touch to the navigation
+const ENTER_MS = PORTAL_TRANSITION_MS // from the touch to the navigation
 
 type Strand = { pts: { a: number; r: number }[]; w: number; alpha: number }
 type Spark = { a: number; r: number; vr: number; va: number; life: number; max: number; size: number }
@@ -222,19 +223,31 @@ export function chickenPortalAvoid(vw: number): [number, number][] {
 // a portal standing in a moving world (the Pátio): its centre x and the ground's y in the world element's units
 export type ChickenPortalWorld = { host: React.RefObject<HTMLElement | null>; x: number; groundY: number; d: number }
 
-export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", arrival = true, modeSwitch = false }: {
+export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", modeSwitch = false, id, actors, onEnter, enabled = true, instructionMode = 'hover' }: {
   engine: ChickenEngine | null
   href?: string
   visible?: boolean
   // placed in the world (moves with its camera) instead of the screen's bottom-right corner
   world?: ChickenPortalWorld
   label?: string
-  // tell the next page she came through a portal (the Pátio's arrival burst)
-  arrival?: boolean
+  id?: string
+  actors?: () => ChickenEngine[]
+  onEnter?: (actor: ChickenEngine) => boolean
+  enabled?: boolean
+  instructionMode?: 'always' | 'hover'
   // under the button, an online / local switch: how the Pátio's lobby starts (local by default)
   modeSwitch?: boolean
 }) {
   const router = useRouter()
+  const local = !!onEnter
+  const portalId = id ?? (world ? 'patio' : 'globe')
+  const runtimeRef = useRef({ actors, onEnter, enabled, instructionMode })
+  runtimeRef.current = { actors, onEnter, enabled, instructionMode }
+  const candidateRef = useRef<ChickenEngine | null>(null)
+  const arrivalReady = useRef<ChickenEngine | null>(null)
+  const arrivalChecked = useRef(new WeakSet<ChickenEngine>())
+  const pointerRef = useRef<{ x: number; y: number } | null>(null)
+  const [showInstruction, setShowInstruction] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const flashRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef(engine)
@@ -253,12 +266,25 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   const pickMode = (mode: LobbyMode) => { setEntryMode(mode); saveEntryMode(mode) }
   // the ring's centre on the screen, kept up to date by the animation (the button and the flash follow it)
   const centerRef = useRef<{ x: number; y: number } | null>(null)
+  const transitionRef = useRef<{ at: number; engine: ChickenEngine | null; timer: ReturnType<typeof setTimeout> } | null>(null)
   const [flashAt, setFlashAt] = useState<{ x: number; y: number } | null>(null)
   const [host, setHost] = useState<HTMLElement | null>(null)
   const worldD = world?.d
   useEffect(() => { if (world) setHost(world.host.current) }, [world])
 
-  useEffect(() => { router.prefetch(href) }, [router, href])
+  useEffect(() => { if (!local) router.prefetch(href) }, [router, href, local])
+  useEffect(() => {
+    const move = (e: PointerEvent) => { if (e.pointerType === 'mouse') pointerRef.current = { x: e.clientX, y: e.clientY } }
+    window.addEventListener('pointermove', move)
+    return () => window.removeEventListener('pointermove', move)
+  }, [])
+  useEffect(() => () => {
+    const transition = transitionRef.current
+    if (!transition) return
+    clearTimeout(transition.timer)
+    transition.engine?.setPortalEntry(null)
+    transitionRef.current = null
+  }, [href])
 
   // size and place: in the right corner of the ground
   useEffect(() => {
@@ -298,8 +324,9 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     const sparks: Spark[] = []
     let rot = 0, last = performance.now(), nextStrands = 0, drawnAt = 0
     let power = 1 // glow strength: rises as she comes close, flares on entering
-    let touchingNow = false, enteredAt = 0, raf = 0
-    let slowFrames = 0, measured = 0, keyWas = false
+    let enteredAt = transitionRef.current?.at ?? 0, raf = 0
+    let slowFrames = 0, measured = 0
+    let enteringEngine = transitionRef.current?.engine ?? null
     // the corner's canvas is fixed: its place only changes with the window (one in the world is read every frame)
     const inWorld = !!worldD
     let box = canvas.getBoundingClientRect()
@@ -307,25 +334,39 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     window.addEventListener("resize", onResize)
 
     const enter = () => {
-      if (enteredAt) return
+      if (enteredAt || !runtimeRef.current.enabled || !candidateRef.current) return
+      const center = centerRef.current
+      if (!center) return
       enteredAt = performance.now()
-      touchingNow = false
+      enteringEngine = candidateRef.current
+      portalGate(enteringEngine, portalId).block()
+      enteringEngine?.setPortalEntry({ ...center, durationMs: ENTER_MS })
       setTouching(false)
-      setFlashAt(centerRef.current)
+      setFlashAt(runtimeRef.current.onEnter ? null : centerRef.current)
       setEntering(true)
       playPortalSound("enter")
-      if (arrival) try { window.sessionStorage.setItem(ARRIVAL_KEY, String(Date.now())) } catch { /* private mode */ }
-      window.setTimeout(() => router.push(href), ENTER_MS)
+      if (!runtimeRef.current.onEnter) markPortalArrival(href === '/' ? 'globe' : 'patio')
+      const actor = enteringEngine
+      transitionRef.current = { at: enteredAt, engine: actor, timer: setTimeout(() => {
+        const teleport = runtimeRef.current.onEnter
+        if (!teleport) { router.push(href); return }
+        actor?.setPortalEntry(null)
+        if (actor) teleport(actor)
+        enteredAt = 0; enteringEngine = null; transitionRef.current = null
+        setEntering(false); setTouching(false); setShowInstruction(false)
+      }, ENTER_MS) }
     }
 
     enterRef.current = enter
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
+      enteredAt = transitionRef.current?.at ?? 0
+      enteringEngine = transitionRef.current?.engine ?? null
       const elapsed = now - last
       // hidden (city popup open) or tab in the background: nothing to draw
       if (!visibleRef.current && !enteredAt) {
-        if (touchingNow) { touchingNow = false; setTouching(false) }
+        setTouching(false); setShowInstruction(false); candidateRef.current = null
         last = now; return
       }
       // lite ring at ~30 fps
@@ -343,6 +384,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       if (inWorld) box = canvas.getBoundingClientRect()
       const pcx = box.left + cx, pcy = box.top + cy
       centerRef.current = { x: pcx, y: pcy }
+      if (enteredAt) enteringEngine?.setPortalEntry({ x: pcx, y: pcy, durationMs: ENTER_MS })
       // the button floats over the ring, kept inside the screen
       const btn = buttonRef.current
       if (btn) {
@@ -351,24 +393,40 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         btn.style.top = `${pcy - r - 10 - btn.offsetHeight}px`
       }
 
-      // ---------- the chicken ----------
+      // ---------- characters and destination arrival ----------
       let near = 0
+      const runtime = runtimeRef.current
       const eng = engineRef.current
-      if (eng && !enteredAt) {
-        const st = eng.getState()
-        const bodyY = st.y - 80 * st.scale
-        const dx = st.x - pcx, dy = bodyY - pcy
-        // touching: her body inside the ring; she has to move a bit further out to let go (no flicker at the edge)
-        const k = touchingNow ? 1.15 : 1
-        const inside = Math.abs(dx) < r * 0.55 * k && Math.abs(dy) < r * 0.95 * k
-        if (inside !== touchingNow) { touchingNow = inside; setTouching(inside) }
-        near = Math.max(0, 1 - Math.hypot(dx, dy) / (r * 3.5))
-        // run or grab pressed while the button shows: go in; arriving running (run held while she moves)
-        // goes straight in too, with no stop to confirm
-        const a = eng.peekActions(), key = a.run || a.grab
-        const runningIn = a.run && Math.abs(st.vx) > 40
-        if (touchingNow && ((key && !keyWas) || runningIn)) { keyWas = key; enter(); return }
-        keyWas = key
+      if (eng && !runtime.onEnter && !enteredAt) {
+        // The world's initial camera/spawn runs in its first frame. Place the
+        // arrival afterwards, so that setup cannot overwrite the destination.
+        if (arrivalReady.current !== eng) arrivalReady.current = eng
+        else if (!arrivalChecked.current.has(eng)) {
+          arrivalChecked.current.add(eng)
+          if (takePortalArrival(portalId)) {
+            portalGate(eng, portalId).block()
+            eng.arriveAtPortal({ x: pcx, y: pcy, durationMs: ENTER_MS })
+            playPortalSound('arrive')
+          }
+        }
+      }
+      let candidate: ChickenEngine | null = null, suppressed = false
+      if (!enteredAt) {
+        const characters = runtime.actors?.() ?? (eng ? [eng] : [])
+        for (const actor of characters) {
+          const st = actor.getState()
+          const gate = portalGate(actor, portalId).update(st, { x: pcx, y: pcy, r }, actor.peekActions())
+          suppressed ||= gate.blocked
+          near = Math.max(near, 1 - Math.hypot(st.x - pcx, st.y - 80 * st.scale - pcy) / (r * 3.5))
+          if (runtime.enabled && gate.touching && !candidate) candidate = actor
+          if (runtime.enabled && gate.enter) { candidateRef.current = actor; enter(); return }
+        }
+        candidateRef.current = candidate
+        setTouching(!!candidate)
+        const pointer = pointerRef.current
+        const hovered = pointer && Math.hypot(pointer.x - pcx, pointer.y - pcy) <= r
+        const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+        setShowInstruction(!!(runtime.enabled && visibleRef.current && onScreen && !suppressed && label.trim() && (candidate || hovered || runtime.instructionMode === 'always')))
       }
       const enterT = enteredAt ? Math.min(1, (now - enteredAt) / ENTER_MS) : 0
       const target = 1 + near * 0.8 + enterT * 2.4
@@ -416,8 +474,11 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       if (flashRef.current && enteredAt) flashRef.current.style.opacity = String(Math.min(1, enterT * enterT * 1.15))
     }
     raf = requestAnimationFrame(frame)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); enterRef.current = null }
-  }, [layout, router, href, arrival, worldD, host])
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener("resize", onResize); enterRef.current = null
+    }
+  }, [layout, router, href, worldD, host, portalId, label])
 
   if (!layout || (world && !host)) return null
   const size = layout.d + PAD * 2
@@ -443,7 +504,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   return (
     <>
       {world && host ? createPortal(canvas, host) : canvas}
-      {touching && visible && !entering && (
+      {showInstruction && visible && !entering && (
         <div
           data-chicken-ignore
           ref={el => { buttonRef.current = el; if (el && Math.abs(el.offsetWidth - buttonW) > 1) setButtonW(el.offsetWidth) }}
@@ -453,15 +514,16 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
           <button
             type="button"
             onClick={() => enterRef.current?.()}
-            title="Clique, ou aperte correr / pegar"
-            className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95"
+            disabled={!touching}
+            title={touching ? "Clique, ou aperte correr / pegar" : "Aproxime o boneco para entrar"}
+            className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 disabled:cursor-default"
           >
             {label}
           </button>
           {modeSwitch && <EntryModeSwitch mode={entryMode} onChange={pickMode} />}
         </div>
       )}
-      {entering && (
+      {entering && flashAt && (
         <div
           ref={flashRef}
           aria-hidden="true"
@@ -498,55 +560,4 @@ function EntryModeSwitch({ mode, onChange }: { mode: LobbyMode; onChange: (mode:
       {side("local", "local")}
     </div>
   )
-}
-
-// On the Pátio: if she just came through the portal, a burst of blue lightning around her and the
-// arrival shimmer.
-export function ChickenPortalArrival({ engine }: { engine: ChickenEngine | null }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [active, setActive] = useState(false)
-
-  useEffect(() => {
-    try {
-      const at = Number(window.sessionStorage.getItem(ARRIVAL_KEY))
-      window.sessionStorage.removeItem(ARRIVAL_KEY)
-      if (at && Date.now() - at < 8000) setActive(true)
-    } catch { /* private mode */ }
-  }, [])
-
-  useEffect(() => {
-    if (!active || !engine) return
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext("2d")
-    if (!canvas || !ctx) return
-    const lite = isLiteDevice()
-    const dpr = lite ? 1 : Math.min(2, window.devicePixelRatio || 1)
-    canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    playPortalSound("arrive")
-    const start = performance.now(), DUR = 1100
-    let raf = 0, strands: Strand[] = [], next = 0
-    const frame = (now: number) => {
-      const t = Math.max(0, (now - start) / DUR)
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
-      if (t >= 1) { setActive(false); return }
-      const st = engine.getState()
-      const cx = st.x, cy = st.y - 80 * st.scale
-      const r = (60 + 90 * Math.sqrt(t)) * Math.max(0.6, st.scale)
-      if (now >= next) { strands = makeStrands(3, r, 7); next = now + 50 }
-      // the screen fades in from the portal's flash
-      ctx.fillStyle = `rgba(3,6,30,${Math.max(0, 1 - t * 3)})`
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
-      ctx.globalAlpha = OPACITY * Math.max(0, 1 - t)
-      if (lite) drawRingLite(ctx, cx, cy, r, strands, now / 400, 1.6 - t, null)
-      else drawRing(ctx, cx, cy, r, strands, now / 400, 1.6 - t)
-      ctx.globalAlpha = 1
-      raf = requestAnimationFrame(frame)
-    }
-    raf = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(raf)
-  }, [active, engine])
-
-  if (!active) return null
-  return <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[250] h-full w-full" />
 }

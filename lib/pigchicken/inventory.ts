@@ -5,6 +5,14 @@ import type { ItemId } from './items'
 
 export const INVENTORY_MAX = 13
 
+// Direction is sampled on the action's press, so changing Shift while the
+// button remains held never causes a second switch. Explicit Previous wins.
+export function quickSwitchStep(current: { nextItem?: boolean; prevItem?: boolean }, previous: { nextItem?: boolean; prevItem?: boolean }, shift: boolean): -1 | 0 | 1 {
+  if (current.prevItem && !previous.prevItem) return -1
+  if (current.nextItem && !previous.nextItem) return shift ? -1 : 1
+  return 0
+}
+
 // the order of the groups in the inventory: instruments, weapons, other items (mobility, consumables...)
 export type ItemGroup = 0 | 1 | 2
 // the "other" items (consumables: Maryjane, Cok): they go after the weapons

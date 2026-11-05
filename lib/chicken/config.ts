@@ -18,12 +18,28 @@ export const defaultChickenConfig = (): ChickenConfig => ({ params: { ...CHICKEN
 
 const SFX_VALUES = new Set(['', 'all', ...Object.keys(CHICKEN_CLUCKS)])
 
+function legacyBackpedal() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem('pigchicken-parquinho-v1') || 'null')?.backpedal
+    // The former 70% default takes the new 55%; preserve explicit custom tuning.
+    return typeof v === 'number' && Number.isFinite(v) && v !== 0.7 ? Math.round(Math.max(0.2, Math.min(1, v)) * 100) : null
+  } catch { return null }
+}
+
+function storedBackpedal() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(CACHE) || 'null')?.config?.params?.backpedal
+    return typeof v === 'number' && Number.isFinite(v) ? v : null
+  } catch { return null }
+}
+
 /** Keeps only known settings with the right type; anything missing or broken falls back to the default. */
 export function normalizeChickenConfig(raw: unknown): ChickenConfig {
   const out = defaultChickenConfig()
   const src = (raw && typeof raw === 'object' ? raw : {}) as { params?: Record<string, unknown>; look?: Record<string, unknown> }
   const params = src.params && typeof src.params === 'object' ? src.params : {}
   const target = out.params as Record<string, unknown>
+  if (params.backpedal === undefined) out.params.backpedal = storedBackpedal() ?? legacyBackpedal() ?? out.params.backpedal
   // a version saved before 'runBroodJumpBoost' existed still has the old crouch-run speed (1): drop it so the new default applies
   const legacy = !('runBroodJumpBoost' in params)
   for (const [key, def] of Object.entries(CHICKEN_PARAMS)) {
@@ -45,7 +61,7 @@ export function normalizeChickenConfig(raw: unknown): ChickenConfig {
 export const sameChickenConfig = (a: ChickenConfig, b: ChickenConfig) => JSON.stringify(normalizeChickenConfig(a)) === JSON.stringify(normalizeChickenConfig(b))
 
 function readCache(): SavedChickenConfig {
-  const fallback = { config: defaultChickenConfig(), revision: 0, updatedAt: null }
+  const fallback = { config: normalizeChickenConfig(null), revision: 0, updatedAt: null }
   try {
     const raw = typeof window === 'undefined' ? null : window.localStorage.getItem(CACHE)
     if (!raw) return fallback
@@ -54,6 +70,18 @@ function readCache(): SavedChickenConfig {
   } catch {
     return fallback
   }
+}
+
+// Run before the old settings panel writes its new shape, which no longer has
+// backpedal. This preserves custom browser tuning in the central cache once.
+export function migrateLegacyBackpedal() {
+  try {
+    const previous = JSON.parse(window.localStorage.getItem(CACHE) || 'null')
+    if (previous?.config?.params?.backpedal !== undefined) return
+    if (legacyBackpedal() === null) return
+    const next = readCache()
+    window.localStorage.setItem(CACHE, JSON.stringify(next))
+  } catch { /* storage unavailable */ }
 }
 
 let saved: SavedChickenConfig | null = null

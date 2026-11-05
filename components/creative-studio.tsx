@@ -827,7 +827,7 @@ export function CreativeStudio() {
             activeSquares={boardActiveSquares}
             musicPulseMonitor={music.pulseMonitor}
             analysisArrows={analysisArrows}
-            onEmptySquarePointerDown={boardPan.startPan}
+            onEmptySquarePointerDown={boardPan.enabled ? boardPan.startPan : undefined}
             onBoardClick={square => {
               const piece = boardPieces.find(item => item.square === square)
               // Updating the instrument editors can compile every variation.

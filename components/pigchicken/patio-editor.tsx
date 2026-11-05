@@ -12,9 +12,10 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
   ELEMENT_DEFS, HORDE_BUTTONS, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutBoxes,
-  newElementId, normalizeElement, settleLayout, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
+  newElementId, normalizeElement, settleLayout, createPortalPair, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
+import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
@@ -86,8 +87,17 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
     const clean = normalizeElement(el)
     if (clean) commit(replaceEl(layoutRef.current, clean), step)
   }, [commit])
-  const remove = useCallback((id: string) => { commit({ ...layoutRef.current, elements: layoutRef.current.elements.filter(e => e.id !== id) }); select(null) }, [commit, select])
+  const remove = useCallback((id: string) => {
+    const el = layoutRef.current.elements.find(e => e.id === id)
+    const partner = el ? portalPartner(el, layoutRef.current.elements) : null
+    if (partner?.locked) return
+    commit({ ...layoutRef.current, elements: layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id) }); select(null)
+  }, [commit, select])
   const duplicate = useCallback((el: LayoutElement) => {
+    if (el.kind === 'portal') {
+      const pair = duplicatePortalPair(el, layoutRef.current.elements)
+      commit({ ...layoutRef.current, elements: [...layoutRef.current.elements, ...pair] }); select(pair[0].id); return
+    }
     const copy = normalizeElement({ ...structuredClone(el), id: newElementId(el.kind), x: el.x + 32, y: el.y - 32, locked: false })!
     commit({ ...layoutRef.current, elements: [...layoutRef.current.elements, copy] })
     select(copy.id)
@@ -98,7 +108,10 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
     layoutBoxes(elementsInWorld(layoutRef.current, screens)).forEach(b => { if (b.solid !== false && x >= b.l && x <= b.r && b.t >= y && b.t < best) best = b.t })
     return best
   }, [screens])
-  const add = useCallback((el: LayoutElement) => { commit({ ...layoutRef.current, elements: [...layoutRef.current.elements, el] }); select(el.id) }, [commit, select])
+  const add = useCallback((el: LayoutElement) => {
+    const added = el.kind === 'portal' ? createPortalPair(el.x + el.w / 2, el.y + el.h / 2) : [el]
+    commit({ ...layoutRef.current, elements: [...layoutRef.current.elements, ...added] }); select(added[0].id)
+  }, [commit, select])
 
   // keyboard: Esc clears the selection, Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) undo and redo, Ctrl+D duplicates
   useEffect(() => {
@@ -210,6 +223,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
               onUp={onUp}
               onDuplicate={() => duplicate(sel)}
               onDelete={() => remove(sel.id)}
+              deleteBlocked={!!portalPartner(sel, layout.elements)?.locked}
             />
           )}
         </div>
@@ -263,10 +277,11 @@ const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp }: {
 const TOOL = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-[#101713]/95 text-[#dfe8df] transition-colors hover:border-primary hover:text-white disabled:opacity-40"
 
 // the selected element's bar, over its top-right corner
-function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onUp, onDuplicate, onDelete }: {
+function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onUp, onDuplicate, onDelete, deleteBlocked }: {
   el: LayoutElement; panel: string; setPanel: (p: "" | "layers" | "edit" | "delete") => void
   onLock: () => void; onGravity: () => void; onRotate: (e: React.PointerEvent) => void; onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void
   onDuplicate: () => void; onDelete: () => void
+  deleteBlocked: boolean
 }) {
   const d = ELEMENT_DEFS[el.kind]
   const b = elementBounds(el)
@@ -303,7 +318,8 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
             <button
               type="button"
               className={cn(TOOL, "hover:border-red-400 hover:text-red-300", panel === "delete" && "border-red-400 text-red-300")}
-              title="Apagar (clique duplo apaga sem confirmar)"
+              title={deleteBlocked ? "Destranque o outro portal para apagar o par" : "Apagar (clique duplo apaga sem confirmar)"}
+              disabled={deleteBlocked}
               aria-label="Apagar"
               onClick={() => setPanel(panel === "delete" ? "" : "delete")}
               onDoubleClick={onDelete}
@@ -312,7 +328,7 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
             </button>
             {panel === "delete" && (
               <div role="dialog" aria-label="Confirmar" className="absolute right-0 top-10 flex items-center gap-2 whitespace-nowrap rounded-lg border border-red-400/60 bg-[#101713] px-3 py-2 text-white shadow-lg">
-                <span>Apagar?</span>
+                <span>{el.kind === 'portal' ? 'Apagar os dois portais do par?' : 'Apagar?'}</span>
                 <button type="button" className="h-7 rounded-md border border-red-400 bg-red-500/80 px-2 font-bold" onClick={onDelete}>Apagar</button>
                 <button type="button" className="h-7 rounded-md border border-white/20 px-2" onClick={() => setPanel("")}>Não</button>
               </div>
@@ -393,16 +409,35 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
           </label>
         </>
       )}
-      {el.kind === "rack" && (
+      {el.kind === "portal" && <>
+        <p className="text-[#93a79a]">Este portal leva ao outro portal do mesmo par. Mova cada um separadamente. Duplicar ou apagar afeta o par inteiro.</p>
+        <label className="grid gap-1">
+          <span>Texto da instrução / confirmação</span>
+          <input aria-label="Texto do portal" maxLength={100} value={el.params.portalLabel ?? ''} onChange={e => set({ portalLabel: e.target.value }, `portal-label:${el.id}`)} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
+        </label>
+        <label className="grid gap-1">
+          <span>Mostrar instrução</span>
+          <select aria-label="Visibilidade da instrução do portal" value={el.params.portalInstruction ?? 'hover'} onChange={e => set({ portalInstruction: e.target.value as 'always' | 'hover' })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+            <option value="hover">Ao encostar ou passar o ponteiro</option>
+            <option value="always">Sempre visível</option>
+          </select>
+        </label>
+      </>}
+      {el.kind === "rack" && <>
         <label className="grid gap-1">
           <span>Item do suporte</span>
-          <select value={el.params.item} onChange={e => set({ item: e.target.value as ItemId })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+          <select aria-label="Item do suporte" value={el.params.item} onChange={e => { const item = e.target.value as ItemId; set({ item, respawnDelay: rackRespawnDelay(item) }) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
             <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
           </select>
         </label>
-      )}
+        <label className="grid gap-1">
+          <span>Tempo de reposição (s)</span>
+          <input aria-label="Tempo de reposição do item" type="number" min={0} max={RACK_DELAY_MAX} step={0.1} value={el.params.respawnDelay ?? rackRespawnDelay(el.params.item ?? 'pistol')} onChange={e => { if (e.target.value !== '') set({ respawnDelay: Number(e.target.value) }, `rack-delay:${el.id}`) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
+          <span className="text-[10px] text-[#93a79a]">Espera após pegar o item. Consumíveis: 0,1 s por padrão; armas e instrumentos: 2 s. Zero repõe imediatamente.</span>
+        </label>
+      </>}
       {el.kind === "button" && (
         <label className="grid gap-1">
           <span>Ação ao acertar</span>
@@ -424,6 +459,7 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
 // ---------- the palette: drag an element onto the Pátio ----------
 type Entry = { key: string; kind: ElementKind; label: string; params?: ElementParams }
 const ENTRIES: { group: string; items: Entry[] }[] = [
+  { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }] },
   { group: "Plataformas", items: (["platform", "terrace", "pillar"] as ElementKind[]).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Árvores", items: (["pine", "blossom"] as ElementKind[]).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },

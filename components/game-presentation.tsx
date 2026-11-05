@@ -386,9 +386,9 @@ export function GameActionRow({ visible, children }: { visible: boolean; childre
   </div>
 }
 
-export function GlobeGridIcon({ className, ...props }: React.ComponentProps<"svg">) {
-  const maskId = React.useId();
-  const safeMaskId = `globe-grid-mask-${maskId.replace(/:/g, "")}`;
+export function GlobeGridIcon({ className, maskId, ...props }: React.ComponentProps<"svg"> & { maskId: string }) {
+  // Each screen owns a stable SVG namespace, independent of the hydration tree.
+  const safeMaskId = `globe-grid-mask-${maskId}`;
   return (
     <svg
       aria-hidden="true"

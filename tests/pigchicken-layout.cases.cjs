@@ -113,3 +113,46 @@ test('a layout saved before the consumables gets their racks once; one that alre
   // a rack can hold a consumable
   assert.equal(L.createElement('rack', 0, 0, { item: 'cok' }).params.item, 'cok')
 })
+
+test('inserting a portal creates two independently positioned, linked non-solid entrances', () => {
+  const [a,b] = L.createPortalPair(300,400)
+  assert.notEqual(a.id,b.id)
+  assert.equal(a.params.portalPairId,b.params.portalPairId)
+  assert.equal(b.x-a.x,240)
+  assert.equal(a.params.portalInstruction,'hover')
+  for (const p of [a,b]) { assert.equal(p.kind,'portal'); assert.equal(p.solid,false); assert.equal(p.shots,false) }
+  assert.equal(L.portalPartner(a,[a,b]),b)
+  b.x+=500; b.y-=250
+  assert.equal(L.portalPartner(a,[a,b]),b)
+  assert.equal(L.portalPartner(a,[a]),null)
+  assert.deepEqual(L.layoutBoxes([a,b]),[])
+})
+
+test('portal pairs and instruction settings survive save/load, without accepting invalid links or modes', () => {
+  const [a,b]=L.createPortalPair(100,600)
+  a.params.portalLabel='Ir para o alto'
+  a.params.portalInstruction='always'
+  const layout=L.normalizeLayout(JSON.parse(JSON.stringify({v:L.LAYOUT_VERSION,elements:[a,b]})))
+  assert.equal(layout.elements[0].params.portalLabel,'Ir para o alto')
+  assert.equal(layout.elements[0].params.portalInstruction,'always')
+  assert.equal(L.portalPartner(layout.elements[0],layout.elements).id,b.id)
+  const invalid=L.normalizeElement({...a,w:1000,h:500,rot:45,solid:true,params:{portalPairId:123,portalLabel:'x'.repeat(200),portalInstruction:'bad'}})
+  assert.equal(invalid.params.portalPairId,'')
+  assert.equal(invalid.params.portalLabel.length,100)
+  assert.equal(invalid.params.portalInstruction,'hover')
+  assert.equal(invalid.w,150);assert.equal(invalid.h,150);assert.equal(invalid.rot,0);assert.equal(invalid.solid,false)
+})
+
+test('duplicating a portal copies its entire pair into a new independent link, preserving settings', () => {
+  const pair=L.createPortalPair(300,400)
+  pair[1].x+=600;pair[1].params.portalLabel='Voltar'
+  const copy=L.duplicatePortalPair(pair[0],pair)
+  assert.equal(copy.length,2)
+  assert.notEqual(copy[0].params.portalPairId,pair[0].params.portalPairId)
+  assert.equal(copy[0].params.portalPairId,copy[1].params.portalPairId)
+  assert.equal(copy[1].x-copy[0].x,pair[1].x-pair[0].x)
+  assert.equal(copy[1].params.portalLabel,'Voltar')
+  assert.equal(L.portalPartner(copy[0],[...pair,...copy]).id,copy[1].id)
+  copy[1].params.portalLabel='Outro'
+  assert.equal(pair[1].params.portalLabel,'Voltar')
+})

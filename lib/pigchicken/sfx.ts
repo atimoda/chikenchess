@@ -2,7 +2,7 @@
 // Each item has its own shot; equipping, dry fire, aiming, reloading and explosions share a few recipes.
 import type { ItemId } from './items'
 
-export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick'
+export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat'
 
 let ac: AudioContext | null = null, master: GainNode | null = null, noise: AudioBuffer | null = null
 let volume = 0.6
@@ -68,6 +68,23 @@ export function playWeaponSound(kind: WeaponSound, item: ItemId | null) {
   const a = audio()
   if (!a || !master || volume <= 0) return
   switch (kind) {
+    // Three round, wet gulps; food has two nasal, softly crunchy chews.
+    case 'drink':
+      for (let i = 0; i < 3; i++) {
+        const at = i * 0.21
+        tone(a, { at, gain: 0.18, attack: 0.025, decay: 0.11 }, 'sine', 280, 95)
+        tone(a, { at: at + 0.035, gain: 0.07, attack: 0.008, decay: 0.075 }, 'triangle', 520, 170)
+        hiss(a, { at: at + 0.05, gain: 0.035, decay: 0.06 }, 'bandpass', 700, 240, 3)
+      }
+      break
+    case 'eat':
+      for (let i = 0; i < 2; i++) {
+        const at = i * 0.28
+        tone(a, { at, gain: 0.075, attack: 0.045, decay: 0.16 }, 'triangle', 210, 125)
+        hiss(a, { at: at + 0.08, gain: 0.1, attack: 0.015, decay: 0.1 }, 'bandpass', 1200, 450, 2)
+        tone(a, { at: at + 0.12, gain: 0.06, attack: 0.01, decay: 0.08 }, 'sine', 340, 180)
+      }
+      break
     case 'shot': (SHOTS[item ?? 'pistol'] ?? SHOTS.pistol)!(a); break
     // dry fire: a small, flat click of the hammer
     case 'dry': click(a, 0, 0.12, 2200); tone(a, { gain: 0.05, decay: 0.03 }, 'square', 900, 700); break

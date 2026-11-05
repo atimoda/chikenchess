@@ -359,7 +359,7 @@ export function createTemple(seed = 1) {
         // the head is safe while its body is there
         if (a.sp === 'dragonHead') t.shield = dragonBody > 0 ? 1 : 0
       }
-      t.x = a.x + t.vx * 0.05; t.y = a.y + d.h / 2
+      t.x = a.x + t.vx * 0.05 + (t.blast?.x ?? 0); t.y = a.y + d.h / 2 + (t.blast?.y ?? 0)
       if (a.sp === 'drum') t.shield = drumOpen(beatPhase) ? 0 : 1
       a.charge = Math.max(0, a.charge - dt * 0.3)
       // touching her hurts (divers, minis flying low, the dragon)

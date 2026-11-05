@@ -6,6 +6,7 @@ import type { Combat, Target } from './combat'
 import { DUMMY_DEFAULTS } from './dummies'
 import { SCENE_W } from './world'
 import type { LayoutElement } from './layout'
+import { rackRespawnDelay } from './racks'
 
 type Rack = Combat['racks'][number]
 const AWAY = -1e6
@@ -28,11 +29,12 @@ export function createLayoutSync(combat: Combat) {
         const item = el.params.item!
         if (!r || r.item !== item) {
           if (r) combat.racks.splice(combat.racks.indexOf(r), 1)
-          combat.addRack(cx, item, bottom)
+          combat.addRack(cx, item, bottom, el.params.respawnDelay)
           r = combat.racks[combat.racks.length - 1]
           racks.set(el.id, r)
         }
         r.x = inside ? cx : AWAY; r.y = bottom
+        r.respawnDelay = rackRespawnDelay(item, el.params.respawnDelay)
         continue
       }
       let t = targets.get(el.id)

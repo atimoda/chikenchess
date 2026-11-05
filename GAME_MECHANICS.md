@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 04/11/2026 — v1.15.0 (boost de velocidade ao levantar andando).
+Atualizado em 05/11/2026 — v1.16.0 (Bicada, Shift + Próximo item e ajuste de andar de costas).
 
 ## Leitura por assunto
 

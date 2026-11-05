@@ -375,8 +375,8 @@ export function OnlineMatchBoard({
   const powerCardsRef = useRef<HTMLDivElement | null>(null);
   const boardResize = useBoardResize({ boardRef, enabled: !isPortraitMobile, reservedHeight: powerDisplay === "cards" ? () => (powerCardsRef.current?.offsetWidth ?? 0) * BOARD_CARDS_RESIZE_RATIO : undefined });
   const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits });
-  const boardPan = useBoardPan({ boardRef, enabled: !isPortraitMobile && introPhase >= 3 });
-  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isPortraitMobile && introPhase >= 3 && powerDisplay === "cards" });
+  const boardPan = useBoardPan({ boardRef, enabled: !isMobile && introPhase >= 3 });
+  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isMobile && introPhase >= 3 && powerDisplay === "cards" });
   const queuedPieces = useRef(
     new Map<string, { instrument: Instrument; effects?: SquareEffects }>(),
   );
@@ -1374,7 +1374,7 @@ export function OnlineMatchBoard({
           title="Voltar ao mapa"
           onClick={onBack}
         >
-          <GlobeGridIcon />
+          <GlobeGridIcon maskId="online" />
         </Button>
         <div
           className={cn(
@@ -1572,7 +1572,7 @@ export function OnlineMatchBoard({
               squareEggs={movePreview ? [] : squareEggs}
               squareEggsFadeAt={squareEggsFadeAt}
               showRankedMoveMarks={false}
-              onEmptySquarePointerDown={boardPan.startPan}
+              onEmptySquarePointerDown={boardPan.enabled ? boardPan.startPan : undefined}
             />
           </div>
           <div

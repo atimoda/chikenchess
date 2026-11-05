@@ -14,10 +14,12 @@ import {
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
+import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
 import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
-import { ChickenPortal, ChickenPortalArrival, type ChickenPortalWorld } from "./chicken-portal"
+import { ChickenPortal, type ChickenPortalWorld } from "./chicken-portal"
+import { PatioPortals } from "@/components/pigchicken/patio-portals"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -302,7 +304,7 @@ export function ChickenPatio() {
           size="icon"
           className="shrink-0 text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all"
         >
-          <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo"><GlobeGridIcon /></Link>
+          <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo"><GlobeGridIcon maskId="patio" /></Link>
         </Button>
         <div className="hidden min-w-0 shrink sm:block">
           <h1 className="truncate font-mono text-sm font-bold" title="O Pátio aberto">{patio?.name ?? (patio?.id ? "Lobby não salvo" : "Pátio da Galinha")}</h1>
@@ -385,8 +387,8 @@ export function ChickenPatio() {
       <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editorOn} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
-      <ChickenPortal engine={engine} href="/" world={portalWorld} label="Back to the globe?" arrival={false} />
-      <ChickenPortalArrival engine={engine} />
+      <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editorOn} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
+      <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={pq.screens} editing={editorOn} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} />
       {/* the trees in front of her (half see-through) */}
@@ -427,7 +429,6 @@ export function ChickenPatio() {
           <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
           <PqRange label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
           <PqRange label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
-          <PqRange label="Andar de costas" unit="%" min={20} max={100} step={5} value={Math.round(pq.backpedal * 100)} onChange={v => setPqValue("backpedal", v / 100)} hint="Velocidade ao andar mirando para trás" />
           <PqRange label="Mira parada volta para o analógico esquerdo" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo volta a mirar (as setas não miram). No fim da barra (∞) a mira fica sempre onde você deixou" />
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
           <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
@@ -514,12 +515,12 @@ function Group({ title, open, onToggle, children }: { title: string; open: boole
 }
 
 function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void }) {
-  const value = draft.params[meta.key]
-  const changed = value !== saved.params[meta.key]
+  const value = draft.params[meta.key] ?? defaultChickenConfig().params[meta.key]
+  const changed = value !== (saved.params[meta.key] ?? defaultChickenConfig().params[meta.key])
   if (meta.type === "bool") {
     return (
       <label className="flex items-center justify-between gap-3" title={meta.hint}>
-        <span className={cn(changed && "text-amber-300")}>{meta.label}</span>
+        <span className={cn(changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
         <input type="checkbox" checked={!!value} onChange={e => onChange(meta.key, e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
       </label>
     )
@@ -527,7 +528,7 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
   if (meta.type === "select") {
     return (
       <label className="flex items-center justify-between gap-3">
-        <span className={cn("min-w-0", changed && "text-amber-300")}>{meta.label}</span>
+        <span className={cn("min-w-0", changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
         <select value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
           <option value="">sem som</option>
           <option value="all">sorteio</option>
@@ -543,7 +544,7 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
       <div className="relative h-10 overflow-hidden rounded-md bg-[#22302a]" onDoubleClick={() => onChange(meta.key, saved.params[meta.key])}>
         <div className="absolute inset-y-0 left-0 bg-primary/50" style={{ width: `${fill}%` }} />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-2 px-3 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)]">
-          <span className="truncate">{meta.label}</span>
+          <span className="min-w-0 truncate"><CombinationLabel meta={meta} /></span>
           <output className={cn("shrink-0 font-bold tabular-nums", changed && "text-amber-300")}>{fmt(n, meta.step)}{meta.unit ? ` ${meta.unit}` : ""}</output>
         </div>
         <input

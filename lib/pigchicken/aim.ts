@@ -63,6 +63,20 @@ export function resolveAim(i: AimInput): Aim {
   return fromVec(i.face || 1, 0, 'facing', 1, false)
 }
 
+// Keep the cursor's radius around the grip while the weapon is still turning.
+// Measuring cursor-to-muzzle distance and reusing it along another angle makes a
+// fast reversal push the reticle away by up to twice the barrel length.
+export function reticleAtAngle(target: { x: number; y: number }, grip: { x: number; y: number }, muzzle: { x: number; y: number }, angle: number) {
+  const dx = Math.cos(angle), dy = Math.sin(angle)
+  const mx = muzzle.x - grip.x, my = muzzle.y - grip.y
+  const radius = Math.hypot(target.x - grip.x, target.y - grip.y)
+  const along = mx * dx + my * dy, across = mx * dy - my * dx
+  // Circle/ray-line intersection. Signed travel also handles a cursor closer
+  // than the barrel; very close cursors fall back to the nearest point on the line.
+  const travel = -along + Math.sqrt(Math.max(0, radius * radius - across * across))
+  return { x: muzzle.x + dx * travel, y: muzzle.y + dy * travel, distance: Math.abs(travel) }
+}
+
 // The mouse (or the aim stick) takes the aim after moving `grabPx`; it gives it back when the arrows / left stick are
 // used and it has been still for `idleS` seconds. `idleS` = Infinity: it never gives it back (the aim stays put).
 export function createMouseOwner(grabPx = 8) {

@@ -453,8 +453,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const powerCardsRef = useRef<HTMLDivElement | null>(null)
   const boardResize = useBoardResize({ boardRef: boardAreaRef, enabled: !isPortraitMobile, scale: boardScale, reservedHeight: powerDisplay === "cards" ? () => (powerCardsRef.current?.offsetWidth ?? 0) * BOARD_CARDS_RESIZE_RATIO : undefined })
   const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits })
-  const boardPan = useBoardPan({ boardRef: boardAreaRef, enabled: !isPortraitMobile && introPhase >= 3 })
-  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isPortraitMobile && introPhase >= 3 && powerDisplay === "cards" })
+  const boardPan = useBoardPan({ boardRef: boardAreaRef, enabled: !isMobile && introPhase >= 3 })
+  const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isMobile && introPhase >= 3 && powerDisplay === "cards" })
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
@@ -2069,7 +2069,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               introPhase < 3 && "relative z-[111]"
             )}
           >
-            <GlobeGridIcon />
+            <GlobeGridIcon maskId="campaign" />
           </Button>
 
           <div
@@ -2263,7 +2263,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onDragOverSquare={(from, to) => {
                     if (music.engineActive) music.audition(from, to)
                   }}
-                  onEmptySquarePointerDown={boardPan.startPan}
+                  onEmptySquarePointerDown={boardPan.enabled ? boardPan.startPan : undefined}
                 />
                 {stockfishDebugOn && codeBackdropOn && introPhase === 3 && <StockfishDebugOverlay
                   cityColor={city.color}

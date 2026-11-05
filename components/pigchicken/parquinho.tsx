@@ -8,12 +8,14 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import type { ChickenEngine, ChickenGame } from "@/lib/chicken/engine"
 import { chickenBindName, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
-import { createMouseOwner, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
+import { createMouseOwner, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
+import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
+import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, TIP_TIME, type Box, type Combat, type Effect, type Pickup, type Swing } from "@/lib/pigchicken/combat"
-import { itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
+import { quickSwitchStep, itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { curvePower, loadItems, subscribeItems, type ItemId, type PathShow } from "@/lib/pigchicken/items"
-import { ITEM_SVG, itemImage } from "@/lib/pigchicken/art"
+import { itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
 import { ALIEN_FRAMES, ALIEN_PATTERNS, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData } from "@/lib/pigchicken/enemies"
@@ -221,6 +223,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // (-1 none); slotsShown: the bar's slot count the page knows; fireBlock: the fire press that confirmed an item
     // does not shoot until it is let go; prevFire: fire held last frame (raw, the wheel does not mask it)
     const wh = { open: false, at: 0, hover: -1 }
+    let cancelPecks = false
+    const cancelPeckInput = () => { cancelPecks = true; mouseBtn.fire = false }
+    window.addEventListener("blur", cancelPeckInput)
+    window.addEventListener("pointercancel", cancelPeckInput)
     let slotsShown = 1, wheelDrawn = false, fireBlock = false, prevFire = false
     // horde settings, changed by shooting their buttons
     const horde = { zombies: 6, pattern: 0 }
@@ -244,7 +250,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
-    let placed = false, offerShown = "", templeFor = -1
+    let placed = false, offerShown = "", templeFor = -1, wasPortalArrival = false
     // the temple's things move with the world's width: the gong and its racks
     let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null
     const templeRacks: Combat["racks"] = []
@@ -308,12 +314,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const worldX = camX + st.x
       // the look-ahead: the view leans toward the side she faces (and slides over when she turns around)
       if (!st.held) lead = leadStep(lead, st.face, S.camera === "follow" ? S.lookAhead : 0, S.lookAheadSpeed, dt)
-      const next = st.held ? camX : cameraStep(camX, { mode: S.camera, worldX, viewW, worldW, dt, deadband: S.deadband, lag: S.lag, lead })
+      const portalArrival = st.state === 'portalArrival'
+      const snapToPortal = portalArrival && !wasPortalArrival
+      wasPortalArrival = portalArrival
+      const next = st.held ? camX : cameraStep(camX, { mode: snapToPortal ? 'follow' : S.camera, worldX, viewW, worldW, dt: snapToPortal ? 1 : dt, deadband: snapToPortal ? 0 : S.deadband, lag: snapToPortal ? 1 : S.lag, lead: snapToPortal ? 0 : lead })
       const groundScreen = st.height - groundHRef.current
       const yr = cameraYRange(groundScreen)
       if (oy === null) oy = yr.lo
       const viewTop = header ? header.getBoundingClientRect().bottom : 0
-      const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt, lag: S.lag })
+      const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt: snapToPortal ? 1 : dt, lag: snapToPortal ? 1 : S.lag })
       const others = extras?.current ? [...extras.current.values()] : []
       if (next !== camX || nextOy !== oy) {
         engine.shift(camX - next, nextOy - oy)
@@ -360,7 +369,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         setWheelOpen(on)
       }
       const confirmWheel = () => { if (wh.hover >= 0 && wh.hover < nSlots) wheelPick = wh.hover + 1; showWheel(false) }
-      if (act.itemWheel && !prev.itemWheel && !wh.open) showWheel(true)
+      if (act.deselectItem && !prev.deselectItem) showWheel(false)
+      else if (act.itemWheel && !prev.itemWheel && !wh.open) showWheel(true)
       else if (!act.itemWheel && wh.open) confirmWheel()
       else if (wh.open && wh.hover >= 0) {
         const firePressed = act.fire && !prevFire
@@ -448,10 +458,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
         // brooding does not freeze her: "frente + chocar" walks at its own speed (0 keeps her still), aiming with the item;
-        // charging a throw stops her walk / run (not a throw called off by switching items)
-        moveLock: !wh.open && act.throw && armed && !combat.throwVoid,
+        // a held Throw uses the bird's ground/air slowdown (switching items cancels it)
+        throwHeld: !wh.open && act.throw && armed && !combat.throwVoid,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
-        backpedal: S.backpedal,
+        lookAngle: aim.source === 'rightStick' || aim.source === 'leftStick' || aim.source === 'touch' ? aim.angle : null,
         ...effectGame(combat.effect, d.weight),
       })
 
@@ -459,11 +469,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (fireBlock && !act.fire) fireBlock = false
       prevFire = act.fire
       const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
-      let pick = 0
-      if (act.nextItem && !prev.nextItem) pick = 1
-      if (act.prevItem && !prev.prevItem) pick = -1
+      let pick = quickSwitchStep(act, prev, engine.isShiftHeld())
       if (wheel) { pick = wheel > 0 ? 1 : -1; wheel = 0 }
       const input = {
+        deselect: act.deselectItem && !prev.deselectItem,
+        cancelFire: cancelPecks || wh.open || fireBlock || document.hidden || st.held || st.state.startsWith('portal'),
         fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
         throwHeld: act.throw && !wh.open, throwReleased: !act.throw && !!prev.throw && !wh.open,
         reload: act.reload && !prev.reload, pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab,
@@ -487,8 +497,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
       buttonLabels.aliens = "SOLTAR ALIENS"; buttonLabels.pattern = `PADRÃO: ${ALIEN_PATTERNS[horde.pattern].label.toUpperCase()}`
       buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
+      // Register every local player before the shared projectile update, including its owner.
+      combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? [])].map(eng => {
+        const st = eng.getState(), x = st.x + camX, y = st.y - camY
+        return { box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
+      }))
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
-      combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy))
+      combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
+      engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
       pickupMarks.clear()
       markHover(combat, grabLabel(controls, devs))
@@ -506,23 +522,23 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const angle = rs ? Math.atan2(rs.y, rs.x) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
         const xo = xs.shoulder
         const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
-        let xpick = 0
-        if (xa.nextItem && !xp.nextItem) xpick = 1
-        if (xa.prevItem && !xp.prevItem) xpick = -1
+        const xpick = quickSwitchStep(xa, xp, eng.isShiftHeld())
         const xin = {
+          deselect: xa.deselectItem && !xp.deselectItem,
+          cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab,
         }
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
-        combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false })
+        combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
-        eng.setGame({ moveLock: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: null, backpedal: S.backpedal, ...effectGame(combat.effect, xd.weight) })
-        const xh = combat.inventory[combat.current], xsw = combat.swing
-        const xart = xh ? ITEM_SVG[xh.item] : undefined
-        eng.setHeld(xart ? { svg: xart, angle: combat.aimAngle, kick: combat.kick } : null)
+        eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: rs ? angle : null, ...effectGame(combat.effect, xd.weight) })
+        const xsw = combat.swing
+        eng.setPeck(combat.peck)
         eng.setSwing(xsw ? { angle: swingAngle(xsw), reach: xsw.range, t: Math.min(1, xsw.t / (xsw.time * 0.3), (xsw.time - xsw.t) / (xsw.time * 0.3)) } : null)
+        eng.setHeld(heldItemPose(combat, now))
       })
       extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraAim.delete(id); combat.drop(id) } })
       combat.use("p1")
@@ -591,11 +607,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the item itself is drawn inside her rig, in front of her body and of the wing; in a swing the wing
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.inventory[combat.current], sw = combat.swing
-      const art = h ? ITEM_SVG[h.item] : undefined
-      // charging a throw: the item points where it will fly (all the way round) and is pulled back the other
-      // way as the charge grows, like a slingshot; at full charge it trembles
       const charge = h && !sw ? combat.throwCharge : 0
-      const pull = charge > 0 ? 6 + 30 * charge + (charge >= 1 ? Math.sin(now / 25) * 1.5 : 0) : 0
       // the violin: while it plays, the bow goes back and forth across the strings with the mouse's movement
       // (a full stroke every BOW_STROKE_PX), or once a beat when the mouse rests or another control aims
       if (combat.beam) {
@@ -606,13 +618,19 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         }
       }
       bowing.travel = 0
-      engine.setHeld(art ? { svg: art, angle: charge > 0 ? combat.throwAngle : ang, kick: combat.kick + pull, bow: h && d.beam && charge <= 0 ? { x: VIOLIN_BOW_X, stroke: bowing.stroke } : null } : null)
+      engine.setPeck(combat.peck)
       engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
+      engine.setHeld(heldItemPose(combat, now, h && d.beam ? { x: VIOLIN_BOW_X, stroke: bowing.stroke } : null))
       const muzzle = muzzleAt(ang)
-      const dist = aim.target ? Math.hypot(aim.target.x - muzzle.x, aim.target.y - muzzle.y) : S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
-      // (while the aim shakes the reticle shakes with it, off the cursor)
+      // Keep the delayed reticle on the cursor's radius around the grip, not a
+      // distance measured from a muzzle that is still pointing the other way.
       const free = d.turnRate > 0 || !aim.target || shake > 0
-      const rx = free || !aim.target ? muzzle.x + adx * dist : aim.target.x, ry = free || !aim.target ? muzzle.y + ady * dist : aim.target.y
+      const stickDistance = S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
+      const reticle = aim.target
+        ? free ? reticleAtAngle(aim.target, engine.heldPoint(ang, 0, 0), muzzle, ang) : aim.target
+        : { x: muzzle.x + adx * stickDistance, y: muzzle.y + ady * stickDistance }
+      const rx = reticle.x, ry = reticle.y
+      const dist = aim.target ? Math.hypot(rx - muzzle.x, ry - muzzle.y) : stickDistance
       // weapons whose reticle shows where the shot lands: the path a shot fired now would take
       let path: { x: number; y: number }[] | null = null
       if (armed && ["laser", "impact", "grenade", "bow"].includes(d.reticle)) {
@@ -630,8 +648,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const shows = (v: PathShow) => armed && (v === "always" || (v !== "off" && fire) || (v === "holdAim" && aimLock))
       const showPath = shows(d.pathShow), showLand = shows(d.landShow)
       const tints = colorsRef.current
-      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, st.scale, path, showPath, showLand, tints?.p1 ?? "#ffffff")
-      if (charge > 0) drawThrowPath(ctx, combat.predictThrow({ x: origin.x + camX, y: origin.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY })))
+      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
+      if (charge > 0) { const from = engine.heldPoint(combat.throwAngle, 0, 0); drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY }))) }
       // the other local players' reticles, each in their own color, where their item points
       extraList.forEach(([id, eng]) => {
         const at = extraAim.get(id)
@@ -650,7 +668,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xShow = xArmed && (xd.pathShow === "always" || (xd.pathShow !== "off" && xFire))
         const xLand = xArmed && (xd.landShow === "always" || (xd.landShow !== "off" && xFire))
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
-        drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xs.scale, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
+        drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
+        if (combat.throwCharge > 0 && combat.held) {
+          const from = eng.heldPoint(combat.throwAngle, 0, 0)
+          drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY })))
+        }
       })
       combat.use("p1")
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
@@ -665,13 +687,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
         const h = combat.inventory[combat.current]
-        const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
+        const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.consumable ? CONSUMABLE_LIMITS[h.item] : d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
         const k = combat.kills, cv = combat.converted
         const shown = h && d.mag > 0 ? Math.ceil(h.ammo) : 0
         const item2 = h ? item.replace(`${h.ammo}/`, `${shown}/`) : item
         const m = combat.music
         hudRef.current.textContent = `${item2} · ${m.zone.name} ${chordName(m.chord())} ${[0, 1, 2, 3].map(i => (Math.floor(m.beat) % 4 === i ? "●" : "·")).join("")}${combat.enemies || k.aliens || k.zombies || cv.birds || cv.people ? ` · inimigos: ${combat.enemies} · aliens ${k.aliens} · zumbis ${k.zombies} · passarinhos ${cv.birds} · curados ${cv.people} · mordidas ${k.bites}` : ""} · mira: ${SOURCE_LABEL[aim.source]}${aimLock ? " (travada)" : ""} · ${S.camera === "follow" ? "câmera seguindo" : S.camera === "scenes" ? `cena ${sceneAt(worldX) + 1}` : "câmera fixa"}`
       }
+      cancelPecks = false
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
@@ -679,6 +702,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       cancelAnimationFrame(raf)
       unsub()
       unsubItems()
+      window.removeEventListener("blur", cancelPeckInput)
+      window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerdown", onDown)
       window.removeEventListener("pointerup", onUp)
@@ -686,9 +711,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       window.removeEventListener("wheel", onWheel)
       window.removeEventListener("keydown", onKey)
       window.removeEventListener("resize", fit)
-      engine.setGame({ gameMode: false, moveLock: false, aimFace: null, backpedal: 1, ...effectGame(null, 1) })
+      engine.setGame({ gameMode: false, throwCharging: false, throwHeld: false, aimFace: null, lookAngle: null, ...effectGame(null, 1) })
       engine.setHeld(null)
       engine.setSwing(null)
+      engine.setPeck(null)
       engine.setBounds(null)
       drone.set(null)
       templeDraw.temple = null
@@ -1124,9 +1150,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number) {
   combat.bullets.forEach(b => {
     const len = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / len, uy = b.vy / len, x = X(b.x)
     ctx.lineCap = "round"
-    if (b.item === "tambourine" && b.fuse > 0) {
-      ctx.save(); ctx.translate(x, b.y); ctx.rotate(b.t * 9); drawItem(ctx, "tambourine", 34, 34); ctx.restore()
-    } else if (b.note) drawNote(ctx, b, x, pulse)
+    if (b.note) drawNote(ctx, b, x, pulse)
     else if (b.item === "grenade") {
       ctx.fillStyle = "#4b5320"; ctx.beginPath(); ctx.arc(x, b.y, b.size, 0, Math.PI * 2); ctx.fill()
       // the fuse blinks faster as it runs out
@@ -1327,7 +1351,7 @@ function drawDummyTip(ctx: Ctx, g: Combat["targets"][number], x: number, time: n
   ctx.restore()
 }
 
-function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, scale: number, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
+function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
   const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
   const t = performance.now() / 1000
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
@@ -1412,11 +1436,6 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
       ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4])
       ctx.beginPath(); path.slice(0, n).forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([])
     }
-    const r = 26 * scale + 10
-    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 4
-    ctx.beginPath(); ctx.arc(origin.x, origin.y, r, ang - Math.PI / 2, ang + Math.PI / 2); ctx.stroke()
-    ctx.strokeStyle = c >= 1 ? "#ffd166" : color
-    ctx.beginPath(); ctx.arc(origin.x, origin.y, r, ang - Math.PI / 2 * c, ang + Math.PI / 2 * c); ctx.stroke()
     const tip = showPath ? path[n - 1] : { x: rx, y: ry }
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2); ctx.stroke()
   } else {
@@ -1424,19 +1443,10 @@ function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number },
     ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => line(rx + ux * gap, ry + uy * gap, rx + ux * (gap + 8), ry + uy * (gap + 8)))
     ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill()
   }
-  // grenade charge: a ring around her filling up
-  if (armed && d.reticle === "grenade" && combat.fireCharge > 0) {
-    ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 8, -Math.PI / 2, -Math.PI / 2 + combat.fireCharge * Math.PI * 2); ctx.stroke()
-  }
   if (combat.reloading) {
     const at = end && d.reticle !== "laser" && (showLand || (d.reticle !== "impact" && d.reticle !== "grenade")) ? end : { x: rx, y: ry }
     ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3
     ctx.beginPath(); ctx.arc(at.x, at.y, 18, -Math.PI / 2, -Math.PI / 2 + combat.reloading * Math.PI * 2); ctx.stroke()
-  }
-  if (combat.throwCharge > 0 && combat.inventory[combat.current]) {
-    ctx.strokeStyle = "#7bdff2"; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(origin.x, origin.y, 26 * scale + 14, -Math.PI / 2, -Math.PI / 2 + combat.throwCharge * Math.PI * 2); ctx.stroke()
   }
   ctx.restore()
 }
@@ -1566,7 +1576,7 @@ function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number) {
     ctx.fillText(GROUP_NAMES[itemGroup(o.item, d.instrument)].toUpperCase(), 0, -22)
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 17px ui-sans-serif, system-ui, sans-serif"
     ctx.fillText(d.name, 0, 0, rIn * 1.7)
-    const info = [d.mag > 0 ? `${Math.ceil(o.ammo)}/${d.mag}` : "", d.durability > 0 ? `${o.durability} golpes` : ""].filter(Boolean).join(" · ")
+    const info = [d.mag > 0 ? `${Math.ceil(o.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[o.item] : d.mag}` : "", d.durability > 0 ? `${o.durability} golpes` : ""].filter(Boolean).join(" · ")
     if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, 0, 20) }
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "bold 15px ui-sans-serif, system-ui, sans-serif"

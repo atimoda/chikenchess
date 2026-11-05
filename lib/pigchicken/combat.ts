@@ -1,8 +1,11 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
-import { DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
+import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
 import type { WeaponSound } from './sfx'
+import { rackRespawnDelay } from './racks'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS } from './music'
 import type { Drum, Held, VoiceId } from './synth'
@@ -28,6 +31,7 @@ export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
   note?: NoteInfo; ring?: number // instruments: the note it carries; notes it lets out when it bursts
+  explodePush?: number // snapshot of the item's blast force when fired
   ghost?: boolean // goes through walls and floating platforms (instruments' notes)
 }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
@@ -43,6 +47,7 @@ export type Target = {
   // the share of each hit it blocks (1 = immune right now): the temple's drums between beats, the dragon's head
   shield?: number
   // training dummies: their own params, the stage they are in, how long the tip bubble shows, the crack's jolt
+  blast?: BlastMotion
   dummy?: DummyState
 }
 export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
@@ -62,6 +67,8 @@ export type Body = { x: number; y: number; face: number; scale: number; grounded
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
+  deselect?: boolean // empty hands without dropping anything; cancels prepared actions
+  cancelFire?: boolean // UI, focus loss or a grabbed/portal chicken cancels preparation
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
   grabHeld?: boolean // Pegar held down: every item she passes over is taken as if grab were pressed on it
 }
@@ -80,13 +87,16 @@ export function createCombat() {
   const inv: Owned[] = []
   let cur = 0
   let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
+  let peck: Peck | null = null, peckPrep = 0, peckCool = 0
   let aimAngle = 0
   // the throw goes where the aim points, all the way round (not slowed by a heavy item's turn rate)
   let throwAngle = 0
   // the item in her wing when the throw started charging; another one in the wing (switched, grabbed) calls the
   // throw off until the button is let go, so the new item is never thrown by mistake
   let throwItem: Owned | null = null, throwVoid = false
+  let consumption: { item: ItemId; left: number; total: number } | null = null
   let effect: Effect | null = null
+  let blastActors: { box: BlastBox; push: (vx: number, vy: number) => void }[] = []
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
@@ -112,7 +122,7 @@ export function createCombat() {
   let view = { l: 0, r: 1280 }
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   // y: the floor the rack stands on (a platform's top), or the ground when unset
-  const racks: { x: number; item: ItemId; t: number; label: string; y?: number }[] = []
+  const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number }[] = []
   let swing: Swing | null = null
   // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
   const music = createConductor()
@@ -132,7 +142,7 @@ export function createCombat() {
   // the held item leaves (broke, thrown): her hands are empty (the empty slot, at the end)
   const removeHeld = () => { inv.splice(cur, 1); cur = inv.length }
   const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
-  const fresh = (item: ItemId): Owned => ({ item, ammo: items[item].mag, durability: items[item].durability })
+  const fresh = (item: ItemId): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability })
 
   function addText(x: number, y: number, text: string, color = '#ffffff') { texts.push({ x, y, text, life: 0.9, color }) }
   function burst(x: number, y: number, n: number, color: string, speed = 220, size = 3) {
@@ -269,12 +279,12 @@ export function createCombat() {
     const away = Math.sign(t.x - (lastBody?.x ?? t.x)) || 1
     if (t.kind === 'alien') {
       const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
-      critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160), vy: -rand(140, 220), t: 0, color, face: away, groundY: 0 })
+      critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160) + (t.blast?.vx ?? 0), vy: -rand(140, 220) + (t.blast?.vy ?? 0), t: 0, color, face: away, groundY: 0 })
       conv.birds++
       chord.forEach((m, i) => out.note('bird', m + 12, i * 0.06, 0.1, 0.6))
       burst(t.x, top, 16, color, 200, 4)
     } else {
-      critters.push({ kind: 'person', x: t.x, y: t.y, vx: away * rand(230, 290), vy: 0, t: 0, color: '#ff6b9a', face: away, groundY: t.y })
+      critters.push({ kind: 'person', x: t.x, y: t.y, vx: away * rand(230, 290) + (t.blast?.vx ?? 0), vy: t.blast?.vy ?? 0, t: 0, color: '#ff6b9a', face: away, groundY: t.y })
       conv.people++
       chord.concat(chord[0] + 12).forEach((m, i) => out.note('keys', m, i * 0.08, 0.25, 0.6))
       texts.push({ x: t.x, y: top - 40, text: '♥', life: 1.2, color: '#ff6b9a', size: 26 })
@@ -284,38 +294,55 @@ export function createCombat() {
   let lastBody: Body | null = null
 
   // ---------- loadouts: one per local player ----------
+  type Consumption = { item: ItemId; left: number; total: number } | null
   type Loadout = {
+    peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; effect: Effect | null
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effect: Effect | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
-    inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, effect,
+    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect,
   })
   const blank = (): Loadout => ({
-    inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, effect: null,
+    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effect: null,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, effect } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
     active = id
   }
 
-  // can she take this item? (one of each item)
-  const canTake = (p: Pickup) => p.noPick <= 0 && !inv.some(o => o.item === p.owned.item)
+  // One slot per type; consumables can top up their existing stack.
+  const canTake = (p: Pickup) => p.noPick <= 0 && (!inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
 
   // grab with room: the item goes into its group's place and she holds it (picking up is always the player's choice)
   function pickUp(p: Pickup) {
-    if (!canTake(p) || !room()) return false
-    stopBeam()
+    if (!canTake(p)) return false
+    const stack = inv.find(o => o.item === p.owned.item)
+    if (stack) {
+      const amount = Math.min(p.owned.ammo, (CONSUMABLE_LIMITS[stack.item] ?? 0) - stack.ammo)
+      stack.ammo += amount; p.owned.ammo -= amount
+      if (p.owned.ammo > 0) pickups.push(p)
+      sound('equip', stack.item)
+      addText(p.x, p.y - 30, `+${amount} ${items[stack.item].name}`, '#7bdff2')
+      return true
+    }
+    if (!room()) return false
+    stopBeam(); peck = null; peckPrep = 0
+    const limit = CONSUMABLE_LIMITS[p.owned.item]
+    if (limit && p.owned.ammo > limit) {
+      pickups.push({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
+      p.owned.ammo = limit
+    }
     cur = insertSorted(inv, p.owned, groupOf); reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
@@ -340,25 +367,27 @@ export function createCombat() {
   function equip(i: number) {
     i = wrapSlot(i, slotCount(inv.length))
     if (i === cur) return
-    stopBeam()
+    stopBeam(); peck = null; peckPrep = 0
     cur = i; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; cooldown = Math.max(cooldown, 0.15)
     if (held()) sound('equip')
   }
 
   // a consumable: one dose puts its effect on her (replacing the one running); the last dose ends the item
   function consume(h: Owned, d: ItemDef, at: { x: number; y: number }) {
+    consumption = { item: h.item, left: 0.7, total: 0.7 }
     effect = { item: h.item, left: d.effectTime, total: d.effectTime, speed: d.effectSpeed, accel: d.effectAccel, curve: d.effectCurve, ramp: d.effectRamp, look: d.effectLook }
-    cooldown = 1 / Math.max(0.1, d.rate)
-    sound('equip', h.item)
+    cooldown = Math.max(0.7, 1 / Math.max(0.1, d.rate))
+    sound(d.consumeKind === 'liquid' ? 'drink' : 'eat', h.item)
     const color = d.effectLook === 'buddha' ? '#ffd166' : d.effectLook === 'fizz' ? '#f3e1c7' : '#7bdff2'
     burst(at.x, at.y, 16, color, 170, 3)
     addText(at.x, at.y - 40, d.effectLook === 'buddha' ? `${d.name}: estado búdico` : d.name, color)
-    if (d.mag > 0) { h.ammo--; if (h.ammo <= 0) removeHeld() }
+    h.ammo--; if (h.ammo <= 0) removeHeld()
   }
 
   function startReload() {
     const h = held(); if (!h) return
     const d = items[h.item]
+    if (d.consumable) return
     if (d.mag > 0 && h.ammo < d.mag && reloadT <= 0) { reloadT = d.reloadTime; sound('reload') }
   }
 
@@ -402,7 +431,7 @@ export function createCombat() {
       const a = aimAngle + u * spreadDeg * DEG
       const b: Bullet = {
         x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage: damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
-        item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, fuse: d.fuse, bounce: d.bounce,
+        item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
       }
       if (d.instrument) {
         const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
@@ -425,6 +454,18 @@ export function createCombat() {
   }
 
   function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
+    const strength = b ? b.explodePush ?? items[b.item].explodePush : 0
+    blastActors.forEach(actor => {
+      const push = explosionImpulse(x, y, r, strength, actor.box)
+      if (push) actor.push(push.x, push.y)
+    })
+    targets.forEach(t => {
+      if (t.kind === 'button' || t.deadT > 0) return
+      const push = explosionImpulse(x, y, r, strength, { l: t.x - t.w / 2, r: t.x + t.w / 2, t: t.y - t.h, b: t.y })
+      if (!push) return
+      const m = t.blast ??= { x: 0, y: 0, vx: 0, vy: 0 }
+      m.vx += push.x; m.vy += push.y
+    })
     if (b?.note) { musicBurst(x, y, r, damage, b); return }
     booms.push({ x, y, r, life: 0.35 })
     sound('explode', null)
@@ -434,7 +475,7 @@ export function createCombat() {
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
       const dist = Math.hypot(cx - x, cy - y)
       if (dist > r) return
-      hitTarget(t, damage * (1 - dist / r), Math.sign(t.x - x || 1) * 420 * (1 - dist / r), cx, cy)
+      hitTarget(t, damage * (1 - dist / r), 0, cx, cy)
     })
   }
 
@@ -450,7 +491,7 @@ export function createCombat() {
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
       const dist = Math.hypot(cx - x, cy - y)
       if (dist > r) return
-      harmonize(t, amount * (1 - 0.5 * dist / r), Math.sign(t.x - x || 1) * 500 * (1 - dist / r), cx, cy, note, items[b.item].stun)
+      harmonize(t, amount * (1 - 0.5 * dist / r), 0, cx, cy, note, items[b.item].stun)
     })
     const n = Math.round(b.ring ?? 0)
     for (let i = 0; i < n; i++) {
@@ -631,6 +672,7 @@ export function createCombat() {
   })
 
   return {
+    setBlastActors(actors: { box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
     // Local players: each one has their own items, aim, cooldowns and swing (a loadout); the world (targets,
     // enemies, shots, pickups, music) is shared. use(id) makes that player's loadout the current one; the
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
@@ -644,11 +686,16 @@ export function createCombat() {
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
     get kick() { return kick },
     get swing() { return swing },
+    get peck(): PeckPose | null {
+      if (held()) return null
+      if (peck) return peckPose(peck)
+      return peckPrep > 0 ? { angle: aimAngle, pull: items.peck.peckPull * Math.min(1, peckPrep / 0.12), reach: items.peck.meleeRange, thrust: 0 } : null
+    },
     // the item she stands on that grab would take (drawn with a blue outline)
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
-    get hoverSwaps() { return !room() },
+    get hoverSwaps() { return !room() && !inv.some(o => o.item === hover?.owned.item) },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     get throwAngle() { return throwAngle },
@@ -656,6 +703,7 @@ export function createCombat() {
     get throwVoid() { return throwVoid },
     // the consumable's effect on the current player (null: none)
     get effect() { return effect },
+    get consumption() { return consumption },
     predictThrow,
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
@@ -672,12 +720,16 @@ export function createCombat() {
     item(id: ItemId): ItemDef { return items[id] },
     // creative mode / tests: put an item straight into the inventory (in its group's place) and hold it
     give(item: ItemId) {
-      if (inv.some(o => o.item === item) || !room()) return
+      if (item === 'peck' || item === 'wing') return
+      peck = null; peckPrep = 0
+      const stack = inv.find(o => o.item === item)
+      if (stack) { if (CONSUMABLE_LIMITS[item]) stack.ammo = Math.min(CONSUMABLE_LIMITS[item]!, stack.ammo + 1); return }
+      if (!room()) return
       stopBeam(); cur = insertSorted(inv, fresh(item), groupOf); sound('equip', item)
     },
     setItems(next: Record<ItemId, ItemDef>) {
       items = next
-      inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
+      inv.forEach(o => { if (o) { o.ammo = Math.min(o.ammo, CONSUMABLE_LIMITS[o.item] ?? items[o.item].mag); if (items[o.item].durability > 0 && o.durability <= 0) o.durability = items[o.item].durability } })
     },
     // a training dummy with its own params (the tip it shows when destroyed, its total life); returns its id
     addTarget(x: number, y: number, params?: Partial<DummyParams>) {
@@ -705,7 +757,7 @@ export function createCombat() {
     spawnZombies(groundY: number, playerX: number, count: number) { spawnZombies(targets, env(groundY, playerX, 0), count) },
     clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
-    addRack(x: number, item: ItemId, y?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y }) },
+    addRack(x: number, item: ItemId, y?: number, respawnDelay?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay) }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
       const d = def()
@@ -718,9 +770,20 @@ export function createCombat() {
     },
 
     // world: false steps only the current player's loadout (another local player in the same frame)
-    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean } = {}) {
+    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      if (input.deselect) {
+        stopBeam(); peck = null; peckPrep = 0; swing = null; consumption = null
+        cur = inv.length; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0
+        throwT = 0; throwItem = null; throwVoid = input.throwHeld
+        input = { ...input, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, pick: 0, slot: 0, grab: false, grabHeld: false }
+      }
       const d = def()
+      if (consumption) {
+        consumption.left -= dt
+        if (consumption.left <= 0) consumption = null
+        input = { ...input, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, grab: false, grabHeld: false }
+      }
       // aim turns at the item's speed
       if (d.turnRate > 0) {
         let diff = Math.atan2(Math.sin(targetAngle - aimAngle), Math.cos(targetAngle - aimAngle))
@@ -741,7 +804,11 @@ export function createCombat() {
 
       // switching items
       if (input.slot) { if (input.slot <= slotCount(inv.length)) equip(input.slot - 1) }
-      else if (input.pick) equip(cur + input.pick)
+      else if (input.pick) {
+        // A full inventory has no displayed empty slot; F can still leave it unequipped.
+        const from = !room() && !held() ? (input.pick > 0 ? -1 : inv.length) : cur
+        equip(from + input.pick)
+      }
       const dNow = def()
       if (beam && (!input.fire || !dNow.beam)) stopBeam()
 
@@ -757,13 +824,50 @@ export function createCombat() {
       if (input.reload) startReload()
       if (pumpT > 0) { pumpT -= dt; if (pumpT <= 0) sound('pump') }
 
-      // fire: with an item it shoots; with empty hands (or an item without ammo) it is a wing slap
+      // A peck is armed only by a fresh Fire press with empty hands. UI/selection/Golpe
+      // cancel it, so a later release can never strike with a newly selected item.
+      peckCool = Math.max(0, peckCool - dt)
+      if (held() || input.cancelFire || input.melee || body.state.startsWith('portal') || body.state === 'held') { peck = null; peckPrep = 0 }
+      if (peck) {
+        peck.t += dt
+        if (!peck.hit && peck.t >= peck.time * PECK_CONTACT) {
+          peck.hit = true
+          const at = opts.peckOrigin ?? origin, d = items.peck
+          // Sweep a narrow cone from the neck base; solid scenery stops the beak.
+          const hit = new Set<number>()
+          const arc = Math.min(160, Math.max(0, d.meleeArc)) * DEG
+          for (let ray = 0; ray <= 8; ray++) {
+            const a = peck.angle + (ray / 8 - 0.5) * arc
+            for (let r = 0; r <= peck.reach; r += 3) {
+              const x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r
+              if (y > groundY || boxAt(boxes, x, y)) break
+              targets.forEach(t => {
+                if (hit.has(t.id) || t.deadT > 0 || x < t.x - t.w / 2 || x > t.x + t.w / 2 || y < t.y - t.h || y > t.y) return
+                hit.add(t.id)
+                hitTarget(t, d.meleeDamage, Math.cos(peck!.angle) * d.meleePush, x, y)
+              })
+            }
+          }
+        }
+        if (peck.t >= peck.time) peck = null
+      }
+      // Fire with an item shoots; Golpe continues to use the wing/item.
       const h = held()
       const canFire = body.state !== 'slide' || d.slideFire
       if (effect) { effect.left -= dt; if (effect.left <= 0) effect = null }
-      if (h && d.consumable) {
+      if (!h) {
+        if (!input.cancelFire && !input.melee && body.state !== 'held' && !body.state.startsWith('portal')) {
+          if (input.firePressed && peckCool <= 0 && meleeCool <= 0 && !peck) peckPrep = dt
+          else if (input.fire && peckPrep > 0) peckPrep += dt
+          if (!input.fire && prevFire && peckPrep > 0) {
+            const p = items.peck
+            peck = { angle: targetAngle, pull: p.peckPull * Math.min(1, peckPrep / 0.12), reach: p.meleeRange, t: 0, time: Math.max(0.05, p.meleeTime), hit: false }
+            peckPrep = 0; peckCool = Math.max(p.meleeCooldown, p.meleeTime); sound('swing', null)
+          }
+        }
+      } else if (h && d.consumable) {
         if (input.firePressed && cooldown <= 0) consume(h, d, origin)
-      } else if (!h || d.mag === 0) {
+      } else if (d.mag === 0) {
         if (input.firePressed && meleeCool <= 0) melee(origin, true, body.scale)
       } else if (canFire) {
         const spreadDeg = this.spread(body)
@@ -825,7 +929,8 @@ export function createCombat() {
           const p = Math.min(1, throwT / Math.max(0.05, d.throwCharge))
           const { vx, vy } = throwVelocity(throwAngle, p, body.vx)
           sound('throw', null)
-          thrown.push({ x: origin.x, y: origin.y, vx, vy, spin: (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
+          const throwFrom = opts.throwOrigin ?? origin
+          thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin: (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
           removeHeld(); reloadT = 0
           // the next item in the wing: the first one (empty hands when she has none)
           cur = 0
@@ -886,7 +991,7 @@ export function createCombat() {
       // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
       if (!input.grabHeld) heldTaken.clear()
       const grabNow = !!input.grab || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
-      if (grabNow && hover && pickups.includes(hover)) {
+      if (grabNow && hover && pickups.includes(hover) && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId
         pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null
         heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
@@ -897,16 +1002,32 @@ export function createCombat() {
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
       if (!world) return
-      // racks: the creative mode always has the item to pick up again
+      // Each rack owns its pickup, so neighbouring racks and dropped copies
+      // cannot suppress its refill. A partially collected stack still occupies it.
       racks.forEach(r => {
-        const near = pickups.some(p => p.owned.item === r.item && Math.abs(p.x - r.x) < 60)
-        if (near) { r.t = 0; return }
+        if (r.pickupId !== undefined) {
+          const active = pickups.find(p => p.id === r.pickupId)
+          if (active) {
+            if (r.spawnX !== r.x || r.spawnY !== r.y) {
+              active.x = r.x; active.y = (r.y ?? groundY) - 60; active.vy = 0; active.resting = false
+              r.spawnX = r.x; r.spawnY = r.y
+            }
+            r.t = 0; return
+          }
+          r.pickupId = undefined; r.t = 0
+          if (r.respawnDelay > 0) return
+        }
         r.t += dt
-        if (r.t > 2) { pickups.push({ id: nextId++, owned: fresh(r.item), x: r.x, y: (r.y ?? groundY) - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0 }
+        if (r.t + 1e-9 >= r.respawnDelay) {
+          r.pickupId = nextId++
+          r.spawnX = r.x; r.spawnY = r.y
+          pickups.push({ id: r.pickupId, owned: fresh(r.item), x: r.x, y: (r.y ?? groundY) - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0
+        }
       })
 
       // targets: knockback, wobble, fall and come back
       // enemies move; the ones that finished dying leave
+      targets.forEach(t => { if (t.blast) { t.x -= t.blast.x; t.y -= t.blast.y } })
       const e = env(groundY, body.x, body.y)
       stepFormations(targets, dt, e)
       for (let i = targets.length - 1; i >= 0; i--) {
@@ -921,6 +1042,12 @@ export function createCombat() {
         t.x += t.vx * dt; t.vx *= Math.pow(0.004, dt)
         t.x += (t.home - t.x) * Math.min(1, 1.5 * dt)
         if (t.dummy) { t.dummy.tipT = Math.max(0, t.dummy.tipT - dt); t.dummy.crackT = Math.max(0, t.dummy.crackT - dt) }
+      })
+
+      targets.forEach(t => {
+        if (!t.blast) return
+        stepBlastMotion(t.blast, dt)
+        t.x += t.blast.x; t.y += t.blast.y
       })
 
       // every target: the stillness of a note wears off; answers cool down

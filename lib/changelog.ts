@@ -3,14 +3,54 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '1.15.0',
-    date: '04/11/2026',
-    title: 'Galinha: boost ao levantar e habilidades especiais Maryjane e Cok',
+    version: '1.16.0',
+    date: '05/11/2026',
+    title: 'Bicada, reposição de itens e ajustes de arremesso',
     groups: [
       { title: 'Pátio', items: [
-        'PigChicKen: duas habilidades especiais novas, em suportes no chão da segunda cena (entre os botões da horda e os bonecos). Pegue e aperte Atirar para usar. Maryjane (balinhas de ursinho vermelhas) coloca a galinha no estado búdico por 15 s: auréola dourada, brilho em volta e olhos semicerrados, velocidade final 33% maior e arrancada “ease-super-in” (começa devagar e termina rápido). Cok (garrafinha de vidro) faz o contrário por 15 s: velocidade final 22% menor e aceleração 33% maior, com bolhinhas subindo em volta dela. Um efeito por vez: usar o outro substitui o que estava valendo. Um círculo ao lado do inventário mostra o efeito e o tempo que falta. No painel de itens, o grupo “Efeito” regula doses, duração, velocidade, aceleração, curva e tempo da arrancada.',
+        'Nova bind Deselecionar item, padrão F: deixa as mãos vazias sem perder itens, inclusive com inventário cheio. Cancela arremessos e ataques em preparação, fecha a roda sem equipar e pode ser personalizada nos controles.',
+        'Ao começar Throw, o item e a asa agora transitam da pose atual para a pose de arremesso, sem saltar de posição/ângulo. Novo controle Velocidade da transição do arremesso em Ajustes → Arremesso (1×: cerca de 0,2 s). Cancelar ou trocar de item limpa a pose, inclusive ao reequipar depois.',
+        'Ajustes ganhou a seção Arremesso, reunindo parada no ar, a nova parada no chão e o ângulo visual. No chão, o padrão é 90% de redução: carregar Throw permite caminhar/correr a 10% da velocidade em vez de travar totalmente. Os valores 0% e 100% permitem movimento normal ou parada total.',
+        'Novo Ângulo de Arremesso em Ajustes → Arremesso, com padrão 45°: durante Throw, todos os tipos de item inclinam visualmente para cima. O ajuste não altera a direção física nem a trajetória do arremesso.',
+        'Suportes de itens ganharam Tempo de reposição no editor, de 0 a 300 segundos. Consumíveis repõem em 0,1 s por padrão; armas e instrumentos mantêm 2 s. Cada suporte repõe sua própria coleta, mesmo perto de outro do mesmo item.',
+        'Na mira normal com consumíveis, a asa inclina no máximo 25° para cada lado da pose padrão e o item permanece de pé com uma leve inclinação. Durante Throw, a asa fica livre e o item recebe o Ângulo de Arremesso.',
+        'Nova Bicada: sem item selecionado, segurar Atirar recolhe o pescoço e já mantém o bico alinhado com a mira, acompanhando sua direção; soltar lança o bico na direção da mira, com retorno automático. Golpe conserva a asada. Itens → Armas → Bicada permite ajustar dano, alcance, arco, intervalo, duração, empurrão e recuo do pescoço para todos os jogadores locais, no Parquinho e no Templo. Padrões: alcance de 85 px, arco de 160°, intervalo de 0,1 s e duração de 0,16 s.',
+        'Segurar Shift ao apertar Próximo item seleciona o item anterior. Funciona também com binds personalizados e outros jogadores locais; mudar Shift com o botão ainda apertado não troca de item novamente.',
+        'Andar de costas passou do painel Câmera de Mira para Ajustes → Movimento, com padrão de 55% da velocidade normal. Valores antigos personalizados são preservados na configuração da galinha.',
+      ] },
+    ],
+  },
+  {
+    version: '1.15.0',
+    date: '04/11/2026',
+    title: 'Boost ao levantar, habilidades Maryjane e Cok e tabuleiro estável no mobile',
+    groups: [
+      { title: 'ChickenChess', items: [
+        'No mobile, rolar a partida e voltar rapidamente ao topo não desloca mais o tabuleiro nem as cartas por cima dos outros elementos. Casas vazias permitem rolar a página; o arraste das peças continua funcionando. A correção vale também para o Criativo.',
+      ] },
+      { title: 'Pátio', items: [
+        'Portais só entram automaticamente com Correr segurado naquele momento, sem reaproveitar apertos antigos. O boneco surge no centro do portal de destino, crescendo e ganhando opacidade; instrução e retorno ficam bloqueados até ele sair completamente do anel, inclusive na volta ao globo.',
+        'Modo editor ganhou Par de portais: arrastar cria duas entradas ligadas, que podem ser posicionadas separadamente. Cada uma permite texto próprio e instrução sempre visível ou ao encostar/passar o ponteiro. Duplicar e apagar trabalham com o par inteiro; os vínculos são salvos com o Pátio.',
+        'Confirmar a entrada num portal agora para o boneco imediatamente e o faz desaparecer encolhendo e ficando transparente até o centro do anel, tanto na ida ao Pátio quanto na volta ao globo.',
+        'Pandeiro dispara uma nota musical. A asa gira livremente com a mira e durante Throw; granadas acompanham o giro, e consumíveis ficam de pé na mão com uma leve inclinação. Comidas ganham som de mastigação e bebidas, som de goles; o estado búdico mantém o brilho sem o círculo amarelo no rosto. Os olhos acompanham a mira dos analógicos e do toque.',
+        'No teclado, Throw fica somente no G, Próximo item passa para Tab e Roda do inventário para Q; rótulos de Roda e Pegar foram encurtados. Os antigos padrões migram preservando controles personalizados.',
+        'Ao carregar Throw, a asa agora estica junto com o item e mantém a mão na empunhadura. Maryjane e Cok ficam na ponta da asa e também podem ser arremessados, levando as unidades da pilha sem consumi-las.',
+        'Virar rapidamente de lado com o mouse não afasta mais a marca da mira durante o giro das armas. O giro lento configurado para cada item continua funcionando.',
+        'No gamepad, RB e X ficam em Correr e Y em Throw; Golpe vai para B, Chocar fica no LT e X continua Pegar. Granadas e pandeiro ficam na mão da asa e recuam ao carregar Atirar, como no Throw. Os círculos de carga ficam ocultos; a animação e a trajetória mostram a força do arremesso.',
+        'Explosões da bazuca, granada, teclado e pandeiro agora lançam os personagens para longe do centro, incluindo quem disparou. Atirar perto dos próprios pés pode jogar a galinha para cima. Cada item ganhou o controle “Empurrão da explosão” no grupo Explosão; 0 desliga o empurrão.',
+        'Armas e instrumentos agora giram normalmente com a mira em 360°, sem virar o desenho do avesso ao passar por certos ângulos; ao virar o boneco de lado, acompanham seu espelhamento e o da asa. A saída dos disparos e o arco do violino acompanham essa rotação.',
+        'Corrigido o aviso de carregamento do ícone de voltar ao globo que podia aparecer ao abrir o Pátio no navegador.',
+        'Maryjane e Cok ficam na ponta da asa e vão até a boca ao consumir. Agora é possível acumular até 13 Maryjanes e 3 Coks, em um slot por tipo; recarregar não repõe esses itens.',
+        'PigChicKen: duas habilidades especiais novas, em suportes no chão da segunda cena (entre os botões da horda e os bonecos). Pegue e aperte Atirar para usar. Maryjane (balinhas de ursinho vermelhas) coloca a galinha no estado búdico por 15 s: brilho dourado em volta e olhos semicerrados, velocidade final 33% maior e arrancada “ease-super-in” (começa devagar e termina rápido). Cok (garrafinha de vidro) faz o contrário por 15 s: velocidade final 22% menor e aceleração 33% maior, com bolhinhas subindo em volta dela. Um efeito por vez: usar o outro substitui o que estava valendo. Um círculo ao lado do inventário mostra o efeito e o tempo que falta. No painel de itens, o grupo “Efeito” regula doses, duração, velocidade, aceleração, curva e tempo da arrancada.',
       ] },
       { title: 'Galinha', items: [
+        'Novo shocking jump em duas etapas: segure Chocar e aperte Pulo para preparar, baixar o corpo e dobrar as pernas; solte Pulo para saltar. A preparação reduz o movimento em 100% no chão e 80% no ar, com ajustes próprios para redução, corpo e pernas. Soltar Chocar antes cancela. As Combinações mostram a sequência com ícones.',
+        'Encostada numa plataforma vertical a partir do chão, a galinha agora agarra e sobe ao apertar Cima.',
+        'Os ajustes de impulso lateral (255 px/s no chão e 570 px/s no ar) e vertical (570 px/s) do pulo chocando limitam um impulso extra na direção do analógico de movimento ou teclado, somado ao pulo normal no chão e no ar; apontar só para o lado mantém a subida normal, sem impulso vertical extra. Durante a carga de Throw, a ave pode virar para os lados sem voltar a andar. No gamepad, R3 também pula, L3 abre a Roda do inventário, Select deixa de abri-la e Menu/Start passa a Recarregar.',
+        'Padrões da galinha ajustados a partir do popup Ajustes: limite da virada no slide de 1500 px/s, uma batida de asa no pulo chocando, impulso correndo de 575 px/s no chão e 905 px/s no ar.',
+        'Novo ajuste “Parada no ar durante o arremesso”, com padrão 80%: carregar Throw ou uma granada reduz o movimento aéreo para 20%. Em 100%, a ave fica suspensa até soltar ou cancelar a carga.',
+        'Nova opção “Chocando fixo: levantar ao andar”. Na galinha, vem desligada: andar conserva a pose de chocar; para levantar, aperte Chocar novamente, pule ou segure Correr junto de esquerda/direita. Quem preferir o retorno automático pode ligar a opção em Combinações.',
+        'Pular chocando correndo ganhou impulsos separados para chão (padrão 575 px/s) e ar (905 px/s). No ar, é preciso segurar uma direção lateral. O controle de batidas de asa do pulo chocando agora mostra as batidas mesmo enquanto Chocar mantém a pose de queda rápida.',
         'Levantar andando (de agachada, chocando ou do slide, segurando esquerda ou direita) dá um impulso curto de velocidade que vai sumindo suavemente. No Pátio da Galinha, em “Agachar e slide”, os novos ajustes “Boost de velocidade ao levantar” (padrão 1,3×; 1 desliga) e “Duração do boost ao levantar” (padrão 0,4 s) regulam o efeito. Levantar parada não muda nada.',
       ] },
     ],

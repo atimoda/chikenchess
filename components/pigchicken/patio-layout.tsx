@@ -11,6 +11,7 @@ import { TreeArt, TreeStyles } from "./patio-trees"
 
 // one element's art filling its box
 export const ElementArt = memo(function ElementArt({ el }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h"> }) {
+  if (el.kind === "portal") return <div className="absolute inset-0 rounded-full border-[3px] border-[#7cc4ff] bg-blue-950/60 shadow-[0_0_8px_#408cff,inset_0_0_8px_#408cff]" />
   if (el.kind === "pine" || el.kind === "blossom") return <TreeArt kind={el.kind} seed={el.params.seed ?? 1} flip={el.params.flip} delay={((el.params.seed ?? 0) % 70) / 10} />
   if (el.kind === "terrace") return <div className="absolute inset-0 rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" style={{ background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" }} />
   if (el.kind === "pillar") return <div className="absolute inset-0 rounded-md border border-primary/30 bg-[#16241b] bg-[repeating-linear-gradient(0deg,transparent_0,transparent_46px,rgba(255,255,255,0.04)_46px,rgba(255,255,255,0.04)_48px)]" />

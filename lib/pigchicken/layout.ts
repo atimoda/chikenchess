@@ -9,6 +9,7 @@ import { CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, type ItemId 
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
 import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, WORLD_TOP } from './world'
 import type { Box } from './combat'
+import { rackRespawnDelay } from './racks'
 
 // v2: the consumables' racks (Maryjane, Cok); a layout saved before gets them once
 export const LAYOUT_VERSION = 2
@@ -32,7 +33,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -40,9 +41,10 @@ export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: 'Solta
 
 export type ElementParams = {
   message?: string; maxHp?: number // dummy
-  item?: ItemId // rack
+  item?: ItemId; respawnDelay?: number // rack, seconds after pickup
   action?: HordeButton // button
   seed?: number; flip?: boolean // trees
+  portalPairId?: string; portalLabel?: string; portalInstruction?: 'always' | 'hover'
 }
 
 export type LayoutElement = {
@@ -79,6 +81,7 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   dummy: { label: 'Alvo de treino', group: 'Alvos', w: 46, h: 112, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 40 },
   rack: { label: 'Suporte de item', group: 'Itens', w: 76, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 76, minH: 62 },
   button: { label: 'Botão da horda', group: 'Botões', w: 40, h: 40, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 20 },
+  portal: { label: 'Par de portais', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
 }
 
 const r1 = (v: number) => Math.round(v * 10) / 10
@@ -104,8 +107,29 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'dummy') return { message: DUMMY_DEFAULTS.message, maxHp: DUMMY_DEFAULTS.maxHp }
   if (kind === 'rack') return { item: WEAPON_IDS[0] }
   if (kind === 'button') return { action: 'aliens' }
+  if (kind === 'portal') return { portalLabel: 'Entrar no portal?', portalInstruction: 'hover' }
   if (kind === 'pine' || kind === 'blossom') return { seed: Math.floor(Math.random() * 2 ** 31), flip: Math.random() < 0.5 }
   return {}
+}
+
+export function createPortalPair(cx: number, cy: number): [LayoutElement, LayoutElement] {
+  const a = createElement('portal', cx, cy), b = createElement('portal', cx + 240, cy)
+  a.params.portalPairId = a.id; b.params.portalPairId = a.id
+  return [a, b]
+}
+
+export function portalPartner(portal: LayoutElement, elements: LayoutElement[]) {
+  if (portal.kind !== 'portal' || !portal.params.portalPairId) return null
+  const peers = elements.filter(e => e.kind === 'portal' && e.params.portalPairId === portal.params.portalPairId)
+  return peers.length === 2 ? peers.find(e => e.id !== portal.id) ?? null : null
+}
+
+export function duplicatePortalPair(portal: LayoutElement, elements: LayoutElement[]) {
+  const partner = portalPartner(portal, elements)
+  if (!partner) return createPortalPair(portal.x + portal.w / 2 + 32, portal.y + portal.h / 2 - 32)
+  const pair = [portal, partner].map(e => ({ ...structuredClone(e), id: newElementId('portal'), x: e.x + 32, y: e.y - 32, locked: false }))
+  pair.forEach(e => { e.params.portalPairId = pair[0].id })
+  return pair
 }
 
 // ---------- the default layout: the Pátio as the code always drew it ----------
@@ -146,7 +170,7 @@ function consumableRacks(): LayoutElement[] {
   const d = ELEMENT_DEFS.rack
   return CONSUMABLE_IDS.map((id, i) => {
     const cx = SCENE_W * (1.45 + i * 0.08)
-    return { id: `rack-${id}`, kind: 'rack' as ElementKind, x: r1(cx - d.w / 2), y: r1(WORLD_GROUND_Y - d.h), w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: { item: id } }
+    return { id: `rack-${id}`, kind: 'rack' as ElementKind, x: r1(cx - d.w / 2), y: r1(WORLD_GROUND_Y - d.h), w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: { item: id, respawnDelay: rackRespawnDelay(id) } }
   })
 }
 
@@ -155,6 +179,7 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   const G = WORLD_GROUND_Y
   const base = (kind: ElementKind, id: string, x: number, y: number, w: number, h: number, params: ElementParams = {}): LayoutElement => {
     const d = ELEMENT_DEFS[kind]
+    if (kind === 'rack') params = { ...params, respawnDelay: rackRespawnDelay(params.item ?? 'pistol', params.respawnDelay) }
     return { id, kind, x: r1(x), y: r1(y), w: r1(w), h: r1(h), rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params }
   }
   for (let s = 0; s < LAYOUT_MAX_SCREENS; s++) {
@@ -200,8 +225,13 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.maxHp = Math.round(clamp(num(p.maxHp, DUMMY_DEFAULTS.maxHp), DUMMY_HP_RANGE.min, DUMMY_HP_RANGE.max))
   } else if (kind === 'rack') {
     params.item = RACK_ITEM_IDS.includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
+    params.respawnDelay = rackRespawnDelay(params.item, typeof p.respawnDelay === 'number' ? p.respawnDelay : undefined)
   } else if (kind === 'button') {
     params.action = HORDE_BUTTONS.includes(p.action as HordeButton) ? (p.action as HordeButton) : 'aliens'
+  } else if (kind === 'portal') {
+    params.portalPairId = typeof p.portalPairId === 'string' ? p.portalPairId.slice(0, 64) : ''
+    params.portalLabel = String(p.portalLabel ?? 'Entrar no portal?').slice(0, 100)
+    params.portalInstruction = p.portalInstruction === 'always' ? 'always' : 'hover'
   } else if (kind === 'pine' || kind === 'blossom') {
     params.seed = Math.floor(clamp(num(p.seed, 1), 0, 2 ** 31))
     params.flip = !!p.flip
@@ -209,7 +239,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   return {
     id, kind,
     x: r1(clamp(num(e.x, 0), -2000, SCENE_W * (LAYOUT_MAX_SCREENS + 2))), y: r1(clamp(num(e.y, 0), WORLD_TOP - 1000, WORLD_GROUND_Y + 200)),
-    w, h, rot, layer, locked: !!e.locked,
+    w: kind === 'portal' ? d.w : w, h: kind === 'portal' ? d.h : h, rot, layer, locked: !!e.locked,
     solid: d.entity ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
     shots: d.entity ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
     notes: d.entity ? false : !!e.notes,

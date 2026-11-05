@@ -6,11 +6,14 @@
 // floating box: its horizontal edges are one-way floors, its sides are walls she grabs when her feet
 // touch them in the air with no movement control held. The screen sides are solid (rigid) walls she climbs by pushing into them, and the
 // ground sits `groundHeight` px above the bottom of the viewport.
+import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenLook } from './look-art'
-import { CHICKEN_CLUCKS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
+import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
-import { CHICKEN_ACTIONS, isChickenControlsListening, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
-import { allKeyTokens, keyTokensFor, padTokensFor, type InputDeviceId } from './input-devices'
+import { CHICKEN_ACTIONS, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { directionalJumpImpulse } from './jump-impulse'
+import { createThrowTransition } from './throw-transition'
+import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
@@ -18,14 +21,19 @@ export type ChickenState = { x: number; y: number; angle: number; shoulder: { x:
 // accelMult scales her acceleration; accelPower > 1 eases each start (1 linear, 3 "ease-super-in": slow, then fast),
 // reaching full speed in accelRamp seconds; aura draws a state on her (a consumable's effect in the Pátio)
 export type ChickenAura = 'none' | 'buddha' | 'fizz'
-export type ChickenGame = { gameMode?: boolean; moveLock?: boolean; aimFace?: number | null; backpedal?: number; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; aura?: ChickenAura }
+export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; aura?: ChickenAura }
 export type ChickenEngine = {
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
-  // the same, without using up the quick taps getActions keeps for its next read (for a second reader, e.g. a portal)
+  // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
   peekActions: () => Record<ChickenAction, boolean>
+  isShiftHeld: () => boolean
+  // Freeze gameplay and shrink/fade the drawn rig into a screen-space portal centre.
+  // Repeated calls update the target without restarting; null cancels the transition.
+  setPortalEntry: (entry: { x: number; y: number; durationMs: number } | null) => void
+  arriveAtPortal: (arrival: { x: number; y: number; durationMs: number }) => void
   // camera moved: move her (and everything she keeps in screen coordinates) by dx, dy pixels
   shift: (dx: number, dy?: number) => void
   // left and right walls in screen pixels; null = the screen edges
@@ -38,15 +46,18 @@ export type ChickenEngine = {
   // The wing turns with it: its tip follows the aim.
   // `bow`: a bow played across it (the violin), held by the wing: `x` is where it crosses the strings (rig units
   // along the item), `stroke` 0..1 how far the bow has slid (0: played at its frog, 1: at its tip)
-  setHeld: (held: { svg: string; angle: number; kick: number; bow?: { x: number; stroke: number } | null } | null) => void
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in.
+  setPeck: (peck: PeckPose | null) => void
   setSwing: (swing: { angle: number; reach: number; t: number } | null) => void
   // a point on the held item's drawing (rig units, x forward from the grip, y down) on the screen when the
   // item points at `angle` (screen radians); her shoulder for (0, 0)
   heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
-  // a push (px/s), e.g. a weapon's recoil; only while she is in the air
-  impulse: (vx: number, vy: number) => void
+  rigPoint: (point: 'hand' | 'mouth' | 'neck') => { x: number; y: number }
+  // A push (px/s), e.g. recoil, only in the air by default. Blast=true also launches
+  // her off the floor/wall and keeps its sideways impulse until landing.
+  impulse: (vx: number, vy: number, blast?: boolean) => void
   // the input devices this chicken listens to (local players: each drives their own); null = every device
   setDevices: (devices: InputDeviceId[] | null) => void
   getDevices: () => InputDeviceId[] | null
@@ -61,6 +72,7 @@ type Seg = { id: string; ax: number; ay: number; bx: number; by: number; len: nu
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
+const CONSUMABLE_WING_AIM_LIMIT = 25
 // leg chain (bird anatomy): hip, hidden inside the body -> knee at the belly -> ankle (bends back) -> foot joint -> toes
 const LEG = { F: { hx: -14 }, B: { hx: -26 } } as const
 const LF = 30, LT = 32, LS = 40, HIP_Y = -88, FOOT_Y = -3, NECK_LEN = 56
@@ -70,7 +82,10 @@ const PIV: Record<string, [number, number]> = {
   body: [0, -62], neck: [24, -124], head: [40, -178], wing: [14, -120], tail: [-52, -110],
 }
 // the wing's tip (its far back corner) seen from its pivot at the shoulder, in rig units: the swing aims it
-const WING_TIP_DEG = Math.atan2(28, -58) * 180 / Math.PI, WING_TIP_LEN = Math.hypot(58, 28)
+export const CHICKEN_HAND = { x: -44, y: -92 } as const
+export const CHICKEN_MOUTH = { x: 70, y: -188 } as const
+const HAND_DX = CHICKEN_HAND.x - PIV.wing[0], HAND_DY = CHICKEN_HAND.y - PIV.wing[1]
+const WING_TIP_DEG = Math.atan2(HAND_DY, HAND_DX) * 180 / Math.PI, WING_TIP_LEN = Math.hypot(HAND_DX, HAND_DY)
 const rot = (k: string, a: number) => `rotate(${a.toFixed(2)} ${PIV[k][0]} ${PIV[k][1]})`
 const legMarkup = (k: 'Front' | 'Back', x: number) => `
   <g data-part="leg${k}Wrap"><g data-part="leg${k}">
@@ -92,7 +107,7 @@ const BOW_MARKUP = `
   <path d="M-1.5 ${-BOW_LEN} L3 ${-BOW_LEN + 1.5} L2.5 ${-BOW_LEN + 6} Z" fill="#6b3f1f"/>
   <rect x="-2.5" y="-5" width="6.5" height="11" rx="1.5" fill="#1d1a18"/>
   <circle cx="0.8" cy="0.5" r="1.3" fill="#f4f1e8"/>`
-// the states a consumable puts her in: the buddha state's calm golden glow behind her and halo behind her head;
+// Consumable states: the buddha state's calm golden glow behind her;
 // a soda's fizz, little bubbles rising around her
 const AURA_MARKUP = `<g data-part="aura" style="display:none">
     <ellipse cx="0" cy="-110" rx="120" ry="140" fill="url(#chk-buddhaGlow)"><animate attributeName="opacity" values="0.75;1;0.75" dur="3.2s" repeatCount="indefinite"/></ellipse>
@@ -171,7 +186,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldArt', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldArt', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -199,14 +214,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   paintLook(ownLook ?? config.look)
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
-  const R = { ...config.params } as ChickenParams
+  const R = { ...CHICKEN_PARAMS, ...config.params } as ChickenParams
   let W = window.innerWidth, H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     W = window.innerWidth; H = window.innerHeight; groundY = H - opts.groundHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
-    const P = config.params
+    const P = { ...CHICKEN_PARAMS, ...config.params }
     Object.assign(R, P)
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
     R.scale = P.scale * vf
@@ -218,6 +233,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let controls: ChickenControls = loadChickenControls()
   const unsubscribe = subscribeChickenControls(c => { controls = c; rebind() })
   const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
+  const shifts = new Set<string>()
   const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>()
   let pad: Partial<Record<ChickenAction, boolean>> = {}
   // the devices she listens to (null: all of them) and, from them, the keys of each action
@@ -233,6 +249,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const tapped = (a: ChickenAction) => keyBinds[a].some(t => pressed.has(t)) || (virtOk() && virtTapped.has(a))
   const usedKey = (tok: string) => usedKeys.has(tok)
   const onKeyDown = (e: KeyboardEvent) => {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') shifts.add(e.code)
     ensureAudio()
     if (isChickenControlsListening() || isTextField(e.target) || (e.target as HTMLElement | null)?.closest?.('[role="dialog"], [role="alertdialog"]')) return
     const tok = 'Key:' + e.code
@@ -243,8 +260,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (!e.repeat) { pressed.add(tok); gameTaps.add(tok) }
     held.add(tok)
   }
-  const onKeyUp = (e: KeyboardEvent) => { held.delete('Key:' + e.code) }
-  const onBlur = () => { held.clear(); Object.keys(virt).forEach(k => { virt[k as ChickenAction] = false }) }
+  const onKeyUp = (e: KeyboardEvent) => { held.delete('Key:' + e.code); shifts.delete(e.code) }
+  const onBlur = () => { held.clear(); shifts.clear(); Object.keys(virt).forEach(k => { virt[k as ChickenAction] = false }) }
   let pointer: { x: number; y: number } | null = null
   const onPointerMove = (e: PointerEvent) => { pointer = { x: e.clientX, y: e.clientY }; moveDrag(e) }
   window.addEventListener('keydown', onKeyDown)
@@ -290,7 +307,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   // ---------- game hooks ----------
-  let heldItem: { svg: string; angle: number; kick: number; bow?: { x: number; stroke: number } | null } | null = null, heldSvg = ''
+  let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = ''
+  const throwTransition = createThrowTransition()
+  let peckNow: PeckPose | null = null
   let swingNow: { angle: number; reach: number; t: number } | null = null
   // screen angle (degrees) -> her rig: undo the root's turn, the mirror when facing left, and the body's lean
   const rigAngle = (screenDeg: number) => {
@@ -299,14 +318,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     a -= pose.body
     return ((a % 360) + 540) % 360 - 180
   }
+  const handAimAngle = (angle: number) => heldItem?.consumable && !swingNow && !(heldItem.pull && heldItem.pull > 0) ? clamp(angle, -CONSUMABLE_WING_AIM_LIMIT, CONSUMABLE_WING_AIM_LIMIT) : angle
   let bounds: { lo: number; hi: number } | null = null
-  const game: Required<ChickenGame> = { gameMode: false, moveLock: false, aimFace: null, backpedal: 1, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, aura: 'none' }
+  const game: Required<ChickenGame> = { gameMode: false, throwHeld: false, throwCharging: false, aimFace: null, lookAngle: null, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, aura: 'none' }
   let auraShown: ChickenAura = 'none'
   function showAura() {
     if (game.aura === auraShown) return
     auraShown = game.aura
     el.aura.style.display = auraShown === 'buddha' ? '' : 'none'
-    el.halo.style.display = auraShown === 'buddha' ? '' : 'none'
+    el.halo.style.display = 'none'
     el.fizz.style.display = auraShown === 'fizz' ? '' : 'none'
   }
   const wallLo = () => bounds ? bounds.lo : 0, wallHi = () => bounds ? bounds.hi : W
@@ -316,6 +336,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const pose: any = { tibF: 0, tibB: 0, toeF: 0, toeB: 0, sway: 0, bob: 0, body: 0, neck: 0, head: 0, wing: 0, wingBack: 0, tail: 0, legF: 0, shinF: 0, legB: 0, shinB: 0, sink: 0, legSink: 0, lid: 0, puff: 1, ik: 1, shiftY: 0 }
   const idle = { next: 1, neck: 0, head: 0 }
   const blink = { next: 2, t: -1 }
+  let portalEntry: { mode: 'enter' | 'arrive'; x: number; y: number; start: number; duration: number; fromX: number; fromY: number; dx: number; dy: number; transform: string } | null = null
   const headAnchor: any = { x: null, from: 0, to: 0, t: 1, lastContact: null }
   const feet: any = {
     F: { hip: -14, x: null, stepping: false, t: 0, from: 0, to: 0, lift: 0 },
@@ -337,25 +358,32 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function step(dt: number) {
     pollPad()
     const Lh = input('left'), Rh = input('right'), U = input('up'), Dk = input('down'), C = input('crouch'), J = input('jump'), RUN = input('run')
-    const jumpPressed = (J && !prevJump) || (tapped('jump') && !(J && prevJump))
+    let jumpPressed = (J && !prevJump) || (tapped('jump') && !(J && prevJump))
     const crouchPressed = tapped('crouch') || (C && !S.prevCrouch)
     const downPressed = (Dk && !S.prevD) || tapped('down')
     prevJump = J; S.prevCrouch = C; pressed.clear(); virtTapped.clear()
-    // letting go of brood with nothing else held keeps her brooding until another control is used
+    // Releasing Brood at rest latches it. Chickens keep this pose until Brood again, Jump or Run with a direction;
+    // other bird profiles can opt into the previous automatic stand-up behavior.
     const others = Lh || Rh || U || C || J || RUN
-    if (S.broodLatch && (others || S.held || S.cl || !S.grounded)) S.broodLatch = false
+    const leaveBrood = R.broodStandOnMove ? others : jumpPressed || (RUN && Lh !== Rh)
+    if (S.broodLatch && (leaveBrood || S.held || S.cl || !S.grounded)) S.broodLatch = false
     // pressing brood again while latched gets her up into the normal idle (until brood is released)
     if (S.broodLatch && downPressed) { S.broodLatch = false; S.broodOff = true }
     if (S.prevD && !Dk && !others && S.grounded && !S.held && !S.cl && !S.broodOff) S.broodLatch = true
     if (!Dk) S.broodOff = false
     S.prevD = Dk
     const D = (Dk && !S.broodOff) || S.broodLatch
-    let dir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
-    if (game.moveLock) dir = 0
+    // Shocking jump: hold Jump with Brood to prepare, then release Jump to
+    // launch. Releasing Brood first cancels; normal jumps still fire on press.
+    if (S.shocking && !Dk) S.shocking = false
+    if (jumpPressed && D && !S.cl && !S.held) { S.shocking = true; jumpPressed = false }
+    if (S.shocking && !J) { S.shocking = false; jumpPressed = Dk }
+    const inputDir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
+    let dir = inputDir
     // point-and-click: any control of her own cancels the walk to the clicked spot
     if (goal && (dir !== 0 || J || Dk || C || U || S.held || S.cl)) goal = null
     const auto = !!goal && goalStep(dt)
-    if (auto && !game.moveLock) dir = Math.sign(goal!.x - S.x)
+    if (auto && !game.throwHeld) dir = Math.sign(goal!.x - S.x)
     buildSegs(); heldDir = dir
     S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt);
     if (S.held) { heldStep(dt); return }
@@ -378,6 +406,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         S.y += dy
       }
     }
+    const motionDt = dt * movementFactor()
     const speed0 = Math.abs(S.vx)
     const brooding = S.grounded && D
     // walking while brooding: a share of the walk speed (0 keeps her still)
@@ -421,7 +450,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (!S.grounded) mult *= R.airSpeed * (D ? R.fallSideSpeed : 1)
         target = dir * R.walkSpeed * mult
         // aiming behind her while walking: she walks backwards, slower
-        if (game.aimFace && dir !== 0 && dir !== game.aimFace) target *= game.backpedal
+        if (game.aimFace && dir !== 0 && dir !== game.aimFace) target *= R.backpedal / 100
         target *= game.speedMult
         if (S.standT > 0) {
           const f = S.standT / Math.max(0.01, R.standBoostTime)
@@ -443,11 +472,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         }
       }
       if (!S.grounded) rate *= R.airControl
-      S.vx = approach(S.vx, target, rate * dt)
+      S.vx = approach(S.vx, target, rate * motionDt)
       if (!S.grounded && D) { const cap = R.walkSpeed * (RUN ? R.runMultiplier : 1) * R.airSpeed * R.fallSideSpeed + Math.abs(S.airBoost || 0); S.vx = clamp(S.vx, -cap, cap) }
-      // brooding keeps the side she faced when she sat down, even walking the other way
-      if (dir !== 0 && !brooding) S.face = dir
-      if (game.aimFace && !brooding && !S.sliding) S.face = game.aimFace
+    }
+    // Throw reduces motion without blocking movement input or facing.
+    // secondary aim still has priority, including while brooding or sliding in Throw.
+    const facingDir = game.throwHeld ? inputDir : dir
+    if ((!brooding && !S.sliding) || game.throwHeld) {
+      if (facingDir !== 0) S.face = facingDir
+      if (game.aimFace) S.face = game.aimFace
     }
 
     S.standT = Math.max(0, (S.standT || 0) - dt)
@@ -461,8 +494,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     } else if (jumpPressed) {
       const fromGround = S.grounded
       S.jumpIndex = S.grounded ? 0 : S.jumpIndex + 1
+      // Every jump keeps its normal takeoff, including air jumps and super jumps.
+      // Brood's directional impulse is added separately below; horizontal input
+      // must never remove the normal upward jump.
       S.vy = -jumpVelocity(S.jumpIndex)
-      // super jump: holding crouch scales the jump height (air jumps too); negative pushes her down
       if (C) S.vy *= Math.sign(R.superJump) * Math.sqrt(Math.abs(R.superJump))
       S.grounded = false; S.sliding = false; S.plat = null
       // each button combination has its own sideways boost (towards where she faces) and sound
@@ -470,10 +505,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       let kind = fromGround ? 'jump' : 'airJump', boost = 0, flaps = R.jumpFlaps
       if (dir !== 0 && C && RUN && D) { kind = 'crouchRunBroodJump'; boost = R.crouchRunBroodJumpBoost }
       else if (dir !== 0 && C && RUN) { kind = 'crouchRunJump'; boost = R.crouchRunJumpBoost }
-      else if (dir !== 0 && RUN && D) { kind = 'runBroodJump'; boost = R.runBroodJumpBoost; flaps = R.broodJumpFlaps }
-      else if (D) { kind = 'broodJump'; boost = R.broodJumpBoost; flaps = R.broodJumpFlaps }
+      else if (dir !== 0 && RUN && D) { kind = 'runBroodJump'; boost = fromGround ? R.runBroodJumpBoost : R.airRunBroodJumpBoost; flaps = R.broodJumpFlaps }
+      else if (D) { kind = 'broodJump'; boost = fromGround ? R.broodJumpBoost : R.airBroodJumpBoost; flaps = R.broodJumpFlaps }
       else if (C) { kind = 'superJump'; boost = R.crouchJumpBoost }
-      S.airBoost = (dir !== 0 ? dir * R.jumpPush : 0) + hd * boost
+      if (D) {
+        flaps = R.broodJumpFlaps
+        const stick = stickFor(devices, 0, controls.analog.deadzoneL) ?? (virtOk() ? readTouchMoveStick(controls.analog.deadzoneL) : null)
+        // Brood itself (LT/Control) is not a movement direction. ArrowDown is
+        // movement even though the secondary keyboard also binds it to Brood.
+        const downDirection = C || held.has('Key:ArrowDown')
+        const direction = stick ? { x: stick.x * stick.mag, y: stick.y * stick.mag } : { x: inputDir, y: (downDirection ? 1 : 0) - (U ? 1 : 0) }
+        const impulse = directionalJumpImpulse(direction, boost, R.broodJumpVerticalBoost)
+        S.airBoost = impulse.x
+        S.vy += impulse.y
+      } else S.airBoost = (dir !== 0 ? dir * R.jumpPush : 0) + hd * boost
       S.vx += S.airBoost
       S.burst = flaps / Math.max(1, R.jumpFlapRate)
       sfx(kind)
@@ -485,9 +530,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       let g = R.gravity, term = R.terminalVelocity
       if (D) { g *= R.fastFall; term *= R.fastFall; mode = 'fastFall' }
       else if (J && !jumpPressed) { mode = 'fly'; if (S.vy > 0) { g /= R.flyFallDivisor; term /= R.flyFallDivisor } }
-      S.vy = Math.min(term, S.vy + g * dt)
+      S.vy = Math.min(term, S.vy + g * motionDt)
       const prevY = S.y
-      S.y += S.vy * dt
+      S.y += S.vy * motionDt
       // floating floors are one-way: land on the highest one crossed while falling (holding down goes through)
       if (S.vy > 0) {
         let best: { sg: Seg; y: number } | null = null
@@ -498,17 +543,17 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         })
         if (best) land((best as { sg: Seg; y: number }).y, (best as { sg: Seg; y: number }).sg)
       }
-      if (S.y >= groundY) land(groundY, null)
+      if (S.y >= groundY && S.vy >= 0) land(groundY, null)
     }
-    S.x += S.vx * dt
+    S.x += S.vx * motionDt
     const margin = 40 * R.scale
     if (S.x < wallLo() + margin) { S.x = wallLo() + margin; S.vx = 0 }
     if (S.x > wallHi() - margin) { S.x = wallHi() - margin; S.vx = 0 }
 
     if (S.grounded && !S.sliding && (!brooding || broodWalking) && !crouching && dir !== 0) stepUp()
     // walking to a clicked spot never grabs the screen walls
-    if (tryCling(auto ? 0 : dir)) return
-    const speed = Math.abs(S.vx)
+    if (!S.shocking && tryCling(auto ? 0 : dir, U)) return
+    const speed = Math.abs(S.vx) * movementFactor()
     let st: string
     if (!S.grounded) st = mode || 'jump'
     else if (brooding) st = 'brood'
@@ -519,7 +564,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     else st = 'idle'
     if (st !== S.prevState) sfx('st_' + st)
     S.prevState = st
-    S.state = st
+    S.state = S.shocking ? 'shockingPrepare' : st
     updateFeet(dt, st, speed)
     animate(dt, st, U, speed)
   }
@@ -665,19 +710,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // walls: solid ones grab when pushing toward them; floating ones when her feet touch them in the
   // air while no movement control is held
-  function tryCling(dir: number) {
+  function tryCling(dir: number, up = false) {
     const bodyY = S.y - 40 * R.scale, footY = S.y - 4 * R.scale
     for (const sg of SEGS) {
       if (!sg.wall || (S.clCool > 0 && sg.id === S.clLast)) continue
-      if (!sg.solid && (S.grounded || S.noGrab)) continue
-      const py = sg.solid ? bodyY : footY, reach = (sg.solid ? 46 : 24) * R.scale
+      const climbFromGround = up && S.grounded
+      if (!sg.solid && !climbFromGround && (S.grounded || S.noGrab)) continue
+      const py = sg.solid || climbFromGround ? bodyY : footY, reach = (sg.solid || climbFromGround ? 46 : 24) * R.scale
       if (py < Math.min(sg.ay, sg.by) || py > Math.max(sg.ay, sg.by)) continue
       const wx = sg.ax + (sg.bx - sg.ax) * (py - sg.ay) / ((sg.by - sg.ay) || 1e-6)
       const dx = wx - S.x
       if (Math.abs(dx) > reach) continue
       const toward = Math.sign(dx) || 1
-      if (sg.solid && !(dir === toward || (!S.grounded && S.vx * toward > 60))) continue
+      if (sg.solid && !climbFromGround && !(dir === toward || (!S.grounded && S.vx * toward > 60))) continue
       attach(sg, wx, py)
+      if (climbFromGround) clingStep(frameDt, dir, 1, false, input('run'))
       return true
     }
     return false
@@ -790,14 +837,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return !!n && (el.root.contains(n) || !!n.closest?.('[data-chicken-ignore], [role="dialog"], [role="alertdialog"]'))
   }
   const onTapDown = (e: PointerEvent) => {
-    tap = e.button === 0 && !game.gameMode && !ignoreTap(e.target) ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null
+    tap = !portalEntry && e.button === 0 && !game.gameMode && !ignoreTap(e.target) ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null
   }
   const onTapUp = (e: PointerEvent) => {
     if (!tap || tap.id !== e.pointerId) return
     const t = tap; tap = null
     if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 8 || performance.now() - t.t > 600 || S.held) return
     const m = 40 * R.scale
-    goal = { x: clamp(e.clientX, m, W - m), y: e.clientY, checkT: 0.3, checkX: S.x }; S.broodLatch = false
+    goal = { x: clamp(e.clientX, m, W - m), y: e.clientY, checkT: 0.3, checkX: S.x }
+    if (R.broodStandOnMove) S.broodLatch = false
   }
   window.addEventListener('pointerdown', onTapDown, true)
   window.addEventListener('pointerup', onTapUp, true)
@@ -826,7 +874,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     animate(dt, 'held', false, 0)
   }
   const onRootDown = (e: PointerEvent) => {
-    if (e.button !== 0 || game.gameMode) return
+    if (portalEntry || e.button !== 0 || game.gameMode) return
     e.preventDefault(); e.stopPropagation(); ensureAudio()
     drag.id = e.pointerId; drag.x0 = e.clientX; drag.y0 = e.clientY; drag.on = false
   }
@@ -984,6 +1032,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       k = 18
     }
     if (U && (st === 'walk' || st === 'run' || st === 'crouch' || !S.grounded)) { t.neck -= 10; t.head -= 30 }
+    if (S.shocking) {
+      t.sink = R.broodDepth + R.shockingBodyDepth
+      t.legSink = R.broodDepth + R.shockingLegBend
+      t.ik = 1; t.tuck = 0
+      t.wing = 8; t.wingBack = 6
+    }
 
     pose.bob = ease(pose.bob, t.bob, 30, dt)
     pose.sway = ease(pose.sway, t.sway, 20, dt)
@@ -1009,7 +1063,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const ax = gx * w + tg[0] * (1 - w), ay = gy * w + tg[1] * (1 - w)
       const extra = (f.lift || 0) * 0.6 + (t.tuck || 0) * (1 - w)
       let fa: number, ta: number, sa: number, toeW: number, lk = legK
-      if (f.stepping && !f.settle && S.grounded && w > 0.9) {
+      if (!S.shocking && f.stepping && !f.settle && S.grounded && w > 0.9) {
         [fa, ta, sa, toeW] = swingPose(key, f, shiftY, st === 'crouch' ? R.crouchSwing : 1); lk = 160
         const kx = hx + LF * Math.cos(fa / DEG), ky = HIP_Y + LF * Math.sin(fa / DEG)
         const fx = kx + LT * Math.cos(ta / DEG) + LS * Math.cos(sa / DEG), fy = ky + LT * Math.sin(ta / DEG) + LS * Math.sin(sa / DEG)
@@ -1025,7 +1079,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       pose['toe' + key] = ease(pose['toe' + key], toeW - (sa - 90), lk === 160 ? 160 : 40, dt)
     })
 
-    if (flapping && st !== 'fastFall') {
+    if (!S.shocking && flapping && (st !== 'fastFall' || S.burst > 0)) {
       const f = (1 - Math.cos(S.flapPhase)) / 2
       pose.wing = 15 + f * 95; pose.wingBack = 10 + f * 85
     } else {
@@ -1047,7 +1101,22 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // grabbing / letting go a wall swings the drawing from the old pose into the new one
   const vis = { x: 0, y: 0, a: 0 }, turn = { t: 1, x: 0, y: 0, a: 0 }
-  let frameDt = 1 / 60
+  let frameDt = 1 / 60, frameNow = performance.now()
+  function renderPortal(now: number) {
+    const p = portalEntry!
+    const t = clamp((now - p.start) / p.duration, 0, 1), u = smooth(t), k = p.mode === 'arrive' ? u : 1 - u
+    const fromX = p.fromX + p.dx, fromY = p.fromY + p.dy
+    const x = p.mode === 'arrive' ? fromX : fromX + (p.x - fromX) * u
+    const y = p.mode === 'arrive' ? fromY : fromY + (p.y - fromY) * u
+    el.root.setAttribute('transform', `translate(${x} ${y}) scale(${k}) translate(${-fromX} ${-fromY}) translate(${p.dx} ${p.dy}) ${p.transform}`)
+    el.root.setAttribute('opacity', String(k))
+    el.shadow.setAttribute('opacity', '0')
+    if (p.mode === 'arrive' && t >= 1) {
+      portalEntry = null
+      el.root.style.pointerEvents = 'visiblePainted'
+      render()
+    }
+  }
   function startTurn() { if (R.clingTurnTime > 0) { turn.t = 0; turn.x = vis.x; turn.y = vis.y; turn.a = vis.a } }
   function render() {
     const s = R.scale, sq = S.squash
@@ -1063,21 +1132,67 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.body.setAttribute('transform', `translate(${pose.sway.toFixed(2)} ${(pose.bob + pose.sink + R.legBend - 2).toFixed(2)}) ${rot('body', pose.body)} translate(0 -62) scale(${pose.puff.toFixed(3)}) translate(0 62)`)
     el.neck.setAttribute('transform', rot('neck', pose.neck))
     el.head.setAttribute('transform', rot('head', pose.head))
+    el.artNeck.removeAttribute('transform')
+    if (peckNow) {
+      // Compress the neck toward its base on press; on release extend the same
+      // chain along the screen aim. The head keeps its size and turns with the beak.
+      const p = peckNow, a = rigAngle(p.angle * DEG), u = p.thrust
+      const short = Math.max(0.15, 1 - p.pull / NECK_LEN)
+      const len = short + ((p.reach / Math.max(0.01, s * pose.puff) - 30) / NECK_LEN - short) * u
+      const neckA = pose.neck + (a + 73.5 - pose.neck) * u
+      const base = PIV.neck, tip = PIV.head
+      el.neck.setAttribute('transform', `rotate(${neckA} ${base[0]} ${base[1]})`)
+      // Aim the beak immediately, independently of how far the neck has retracted
+      // or extended. Undo the parent transform, including facing and jump squash.
+      const parent = el.neck.getCTM()?.inverse()
+      const dx = Math.cos(p.angle), dy = Math.sin(p.angle)
+      const headA = parent ? Math.atan2(parent.b * dx + parent.d * dy, parent.a * dx + parent.c * dy) * DEG : a - neckA
+      el.artNeck.setAttribute('transform', `translate(${base[0]} ${base[1]}) rotate(-73.5) scale(${Math.max(0.15, len)} 1) rotate(73.5) translate(${-base[0]} ${-base[1]})`)
+      el.head.setAttribute('transform', `translate(${(tip[0] - base[0]) * (len - 1)} ${(tip[1] - base[1]) * (len - 1)}) ${rot('head', headA)}`)
+    }
     // the swing: the wing tip points along the blow and the wing stretches out to the end of its reach
     let tipRig = 0, wingLen = 0
-    // the held item's turn in her rig (and its mirror when it points behind her)
+    // Rotate continuously with the aim; inherit the body's mirror only when she changes facing.
     const heldA = heldItem && !swingNow ? rigAngle(heldItem.angle * DEG) : 0
-    const heldFlip = Math.abs(heldA) > 90 ? -1 : 1
+    const throwTilt = heldItem?.throwing && !swingNow ? -S.face * R.throwPoseAngle : 0
+    const heldArtA = heldItem && !swingNow ? rigAngle(heldItem.angle * DEG + throwTilt) : 0
     // the bow: it slides across the strings and the wing holds it by the frog (its tip reaches the frog)
     const bow = heldItem && !swingNow ? heldItem.bow : null
     el.heldBow.style.display = bow ? '' : 'none'
-    if (bow) {
+    const consumable = heldItem && !swingNow ? heldItem.consumable : null
+    // Aim rotates the wing, while food/bottles keep their own upright pose in
+    // screen space, with only a small sway. Consumption uses the mouth pose.
+    const consumableAngle = consumable ? rigAngle((consumable.upright === 0 && S.face < 0 ? 180 : consumable.upright) + (consumable.progress !== undefined ? 0 : Math.sin(heldItem!.angle) * 12) + throwTilt) : 0
+    const restAngle = (pose.wing + (heldItem?.atHand ? handAimAngle(heldA) : 0)) / DEG
+    const restHandX = HAND_DX * Math.cos(restAngle) - HAND_DY * Math.sin(restAngle)
+    const restHandY = HAND_DX * Math.sin(restAngle) + HAND_DY * Math.cos(restAngle)
+    let handX = restHandX, handY = restHandY
+    const wingToHand = () => {
+      const b = Math.atan2(handY, handX) * DEG
+      const [px, py] = PIV.wing
+      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b}) scale(${Math.hypot(handX, handY) / WING_TIP_LEN} 1) rotate(${-WING_TIP_DEG}) translate(${-px} ${-py})`)
+    }
+    if (consumable) {
+      const pull = heldItem?.pull ?? 0
+      handX -= Math.cos(heldA / DEG) * pull; handY -= Math.sin(heldA / DEG) * pull
+      const progress = consumable.progress ?? 0
+      const reach = smooth(clamp(progress <= 0.65 ? progress / 0.65 : (1 - progress) / 0.35, 0, 1))
+      const upright = consumableAngle
+      const contact = consumable.upright === -90 ? { x: 52, y: 0 } : { x: 15, y: -10 }
+      const r = upright / DEG
+      const head = el.head.getCTM(), pivot = el.heldPivot.getCTM()
+      if (head && pivot && reach > 0) {
+        const mouth = new DOMPoint(CHICKEN_MOUTH.x, CHICKEN_MOUTH.y).matrixTransform(head).matrixTransform(pivot.inverse())
+        handX += (mouth.x - (contact.x * Math.cos(r) - contact.y * Math.sin(r)) - handX) * reach; handY += (mouth.y - (contact.x * Math.sin(r) + contact.y * Math.cos(r)) - handY) * reach
+      }
+      wingToHand()
+    } else if (bow) {
       const ux = Math.cos((90 + BOW_TILT) / DEG), uy = Math.sin((90 + BOW_TILT) / DEG)
       const along = 14 + clamp(bow.stroke, 0, 1) * (BOW_LEN - 28)
       const fx = bow.x + ux * along, fy = uy * along
       el.heldBow.setAttribute('transform', `translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(${BOW_TILT})`)
       // the frog in her body's frame, from the shoulder: the held item's own transform applied to it
-      const qx = fx - heldItem!.kick, qy = fy * heldFlip, r = heldA / DEG
+      const qx = fx - heldItem!.kick, qy = fy, r = heldA / DEG
       const vx = qx * Math.cos(r) - qy * Math.sin(r), vy = qx * Math.sin(r) + qy * Math.cos(r)
       const b = Math.atan2(vy, vx) * DEG, stretch = clamp(Math.hypot(vx, vy) / WING_TIP_LEN, 0.6, 1.5)
       const [px, py] = PIV.wing
@@ -1092,6 +1207,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       tipRig = b
       const [px, py] = PIV.wing
       el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / WING_TIP_LEN).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+    } else if (heldItem?.atHand) {
+      // Move the grip and anatomical hand together through the charge pullback.
+      handX -= Math.cos(heldA / DEG) * heldItem.kick
+      handY -= Math.sin(heldA / DEG) * heldItem.kick
+      wingToHand()
     } else if (heldItem) {
       // holding an item: the wing keeps its own pivot (the shoulder) and pose, and turns by the aim's angle
       // in the same direction as the item, flap included
@@ -1101,9 +1221,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       let a: number, at = ''
       // swinging: the item rides on the wing tip and turns with it
       if (swingNow) { a = tipRig; at = ` translate(${wingLen.toFixed(1)} 0)`; a = ((a % 360) + 540) % 360 - 180 }
-      else a = heldA
-      const flip = Math.abs(a) > 90 ? ' scale(1 -1)' : ''
-      el.held.setAttribute('transform', `rotate(${a.toFixed(1)})${at}${flip} translate(${(-heldItem.kick).toFixed(1)} 0)`)
+      else a = heldArtA
+      el.held.style.opacity = consumable?.progress !== undefined ? String(1 - clamp((consumable.progress - 0.75) / 0.25, 0, 1)) : '1'
+      el.held.setAttribute('transform', consumable
+        ? `translate(${handX} ${handY}) rotate(${consumableAngle})`
+        : `${heldItem.atHand && !swingNow ? `translate(${handX} ${handY}) ` : ''}rotate(${a.toFixed(1)})${at} translate(${(-(heldItem.atHand && !swingNow ? 0 : heldItem.kick)).toFixed(1)} 0)` )
+      if (throwTransition.active() && heldItem.throwing && !swingNow && consumable?.progress === undefined) {
+        const angle = consumable ? consumableAngle : a
+        const atHand = !!consumable || heldItem.atHand
+        const x = atHand ? handX : -heldItem.kick * Math.cos(angle / DEG)
+        const y = atHand ? handY : -heldItem.kick * Math.sin(angle / DEG)
+        const animated = throwTransition.sample({ x, y, angle, handX: x, handY: y }, frameNow, R.throwPoseSpeed)
+        el.held.setAttribute('transform', `translate(${animated.x} ${animated.y}) rotate(${animated.angle})`)
+        handX = animated.handX; handY = animated.handY; wingToHand()
+      }
     }
     el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
     el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
@@ -1112,12 +1243,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     ;(['F', 'B'] as const).forEach(k => { ['leg', 'tib', 'shin', 'toe'].forEach(b => { el[b + k].setAttribute('transform', rot(b + k, pose[b + k])) }) })
     el.lid.setAttribute('ry', (5.4 * pose.lid).toFixed(2))
     el.lid.setAttribute('cy', (-197.4 + 5.4 * pose.lid).toFixed(2))
-    // the eye follows the pointer
+    // Stick/touch aim takes priority over a mouse left elsewhere on the page.
     let px = 1.4, py = 0
-    if (pointer) {
+    if (game.lookAngle != null || pointer) {
       const r = el.sclera.getBoundingClientRect()
-      let dx = pointer.x - (r.left + r.width / 2)
-      const dy = pointer.y - (r.top + r.height / 2)
+      let dx = game.lookAngle != null ? Math.cos(game.lookAngle) * 100 : pointer!.x - (r.left + r.width / 2)
+      const dy = game.lookAngle != null ? Math.sin(game.lookAngle) * 100 : pointer!.y - (r.top + r.height / 2)
       dx *= S.face
       const a = -(pose.body + pose.neck + pose.head + va * S.face) / DEG
       const rx = dx * Math.cos(a) - dy * Math.sin(a), ry = dx * Math.sin(a) + dy * Math.cos(a)
@@ -1134,9 +1265,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   let last = performance.now(), raf = 0, tagT = 0
   function frame(now: number) {
+    frameNow = now
     const dt = Math.min(1 / 30, (now - last) / 1000); last = now; frameDt = dt
     tagT -= dt; if (tagT <= 0) { tagBoxes(); tagT = 0.5 }
-    if (!isChickenControlsListening()) step(dt); else render()
+    if (portalEntry) renderPortal(now)
+    else if (!isChickenControlsListening()) step(dt); else render()
     raf = requestAnimationFrame(frame)
   }
   tagBoxes()
@@ -1163,7 +1296,51 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return m ? { x: m.e, y: m.f } : { x: S.x, y: S.y - 112 * R.scale }
   }
 
+  function movementFactor() {
+    const throwing = (game.throwHeld || game.throwCharging) && !S.cl && !S.held ? clamp(1 - (S.grounded ? R.throwGroundStop : R.throwAirStop) / 100, 0, 1) : 1
+    const preparing = S.shocking ? clamp(1 - (S.grounded ? R.shockingGroundStop : R.shockingAirStop) / 100, 0, 1) : 1
+    return throwing * preparing
+  }
+
   return {
+    isShiftHeld: () => shifts.size > 0 && (!devices || devices.includes('kb1') || devices.includes('kb2')),
+    setPortalEntry(entry) {
+      if (!entry) {
+        if (!portalEntry) return
+        portalEntry = null
+        el.root.setAttribute('opacity', '1')
+        el.root.style.pointerEvents = 'visiblePainted'
+        render()
+        return
+      }
+      if (portalEntry) { portalEntry.x = entry.x; portalEntry.y = entry.y; return }
+      // Keep the current pose (including an interrupted turn), with the same body
+      // centre used by the portal's overlap test; physics and inputs stop now.
+      const m = el.root.getCTM()
+      const centre = m ? new DOMPoint(0, -80).matrixTransform(m) : { x: S.x, y: S.y - 80 * R.scale }
+      portalEntry = { ...entry, mode: 'enter', start: performance.now(), duration: Math.max(1, entry.durationMs), fromX: centre.x, fromY: centre.y, dx: 0, dy: 0, transform: el.root.getAttribute('transform') || '' }
+      S.vx = 0; S.vy = 0; S.airBoost = 0; S.held = false
+      throwTransition.reset()
+      goal = null; tap = null; drag.id = null; drag.on = false
+      pressed.clear(); virtTapped.clear(); gameTaps.clear()
+      el.root.style.pointerEvents = 'none'
+      renderPortal(portalEntry.start)
+    },
+    arriveAtPortal(arrival) {
+      throwTransition.reset()
+      portalEntry = null
+      S.cl = null; S.plat = null; S.held = false; S.grounded = false
+      S.x = arrival.x; S.y = arrival.y + 80 * R.scale
+      S.vx = 0; S.vy = 0; S.airBoost = 0; S.shocking = false; S.broodLatch = false; S.sliding = false
+      S.state = 'idle'; S.jumpIndex = -1; S.burst = 0; S.squash = 0; turn.t = 1
+      goal = null; tap = null; drag.id = null; drag.on = false
+      pressed.clear(); virtTapped.clear(); gameTaps.clear(); plantFeet()
+      el.root.setAttribute('opacity', '1')
+      render()
+      portalEntry = { ...arrival, mode: 'arrive', start: performance.now(), duration: Math.max(1, arrival.durationMs), fromX: arrival.x, fromY: arrival.y, dx: 0, dy: 0, transform: el.root.getAttribute('transform') || '' }
+      el.root.style.pointerEvents = 'none'
+      renderPortal(portalEntry.start)
+    },
     setGroundHeight(h) { if (h !== opts.groundHeight) { opts.groundHeight = h; resize() } },
     setVirtual(action, on) {
       ensureAudio()
@@ -1171,20 +1348,22 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       virt[action] = on
     },
     // while clinging, S.x is the distance along the wall: report where she is drawn
-    getState: () => ({ x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, shoulder: shoulder(), vx: S.vx, vy: S.vy, face: S.face, scale: R.scale, grounded: !!S.grounded, state: S.state, held: !!S.held, width: W, height: H, groundY }),
+    getState: () => ({ x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, shoulder: shoulder(), vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, held: !!S.held, width: W, height: H, groundY }),
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t))) })
       gameTaps.clear()
       return out
     },
     peekActions() {
       const out = {} as Record<ChickenAction, boolean>
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t))) })
+      pollPad()
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && input(a.key) })
       return out
     },
     shift(dx, dy = 0) {
+      if (portalEntry) { portalEntry.dx += dx; portalEntry.dy += dy }
       if (dy) {
         if (!S.cl) S.y += dy
         else S.cl.py += dy
@@ -1206,23 +1385,62 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     setBounds(next) { bounds = next },
     setGame(next) { Object.assign(game, next); showAura() },
-    setSwing(next) { swingNow = next },
+    setPeck(next) { if (!portalEntry) peckNow = next },
+    setSwing(next) { swingNow = next; if (next) throwTransition.reset() },
     heldPoint(angle, x, y) {
-      const p = shoulder(), k = R.scale * pose.puff
-      const flip = Math.abs(rigAngle(angle * DEG)) > 90 ? -1 : 1
+      // The trajectory and release use the resting hand, not the hand pulled
+      // back while charging; otherwise each frame would move the origin again.
+      const hand = heldItem?.atHand && !swingNow ? el.heldPivot.getCTM() : null
+      const r = (pose.wing + handAimAngle(rigAngle(angle * DEG))) / DEG
+      const hx = HAND_DX * Math.cos(r) - HAND_DY * Math.sin(r), hy = HAND_DX * Math.sin(r) + HAND_DY * Math.cos(r)
+      const p = hand ? new DOMPoint(hx, hy).matrixTransform(hand) : shoulder()
+      const k = R.scale * pose.puff
       const c = Math.cos(angle), sn = Math.sin(angle)
-      // the item's "down" on the screen: a quarter turn from where it points, mirrored when she faces left
-      const yy = y * flip * (S.face < 0 ? -1 : 1)
+      // Local down inherits the body mirror; aim alone never changes its sign.
+      const yy = y * (S.face < 0 ? -1 : 1)
       return { x: p.x + k * (x * c - yy * sn), y: p.y + k * (x * sn + yy * c) }
     },
+    rigPoint(point) {
+      const node = point === 'neck' ? el.body : point === 'hand' ? el.wing : el.head
+      const at = point === 'neck' ? { x: PIV.neck[0], y: PIV.neck[1] } : point === 'hand' ? CHICKEN_HAND : CHICKEN_MOUTH
+      const m = node.getCTM()
+      const p = m ? new DOMPoint(at.x, at.y).matrixTransform(m) : shoulder()
+      return { x: p.x, y: p.y }
+    },
     setHeld(next) {
+      if (portalEntry) return
+      const changed = (next?.itemKey ?? next?.svg) !== (heldItem?.itemKey ?? heldItem?.svg) || next?.svg !== heldItem?.svg
+      const ended = !!heldItem?.throwing && !next?.throwing
+      if (changed || !next?.throwing || swingNow || next?.consumable?.progress !== undefined) throwTransition.reset()
+      else if (next.throwing && !heldItem?.throwing && heldItem) {
+        const m = el.held.transform.baseVal.consolidate()?.matrix
+        const wing = el.wing.getCTM(), pivot = el.heldPivot.getCTM()
+        if (m && wing && pivot) {
+          const hand = new DOMPoint(CHICKEN_HAND.x, CHICKEN_HAND.y).matrixTransform(wing).matrixTransform(pivot.inverse())
+          throwTransition.start({ x: m.e, y: m.f, angle: Math.atan2(m.b, m.a) * DEG, handX: hand.x, handY: hand.y }, performance.now())
+        }
+      }
       heldItem = next
       const svgArt = next ? next.svg : ''
       if (svgArt !== heldSvg) { heldSvg = svgArt; el.heldArt.innerHTML = svgArt }
+      // A different/cancelled item must have its normal pose immediately; never
+      // leave the previous Throw transform attached to freshly equipped art.
+      if (changed || ended) {
+        const previousDt = frameDt
+        frameDt = 0; render(); frameDt = previousDt
+      }
     },
-    impulse(vx, vy) {
-      if (S.grounded || S.cl || S.held) return
-      S.vx += vx; S.vy += vy
+    impulse(vx, vy, blast = false) {
+      if (portalEntry || S.held) return
+      if (blast) {
+        const state = { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y }
+        fallFrom(state.x, state.y, S.vx + vx, S.vy + vy)
+        S.broodLatch = false; S.sliding = false; S.clCool = 0.3
+        S.airBoost = vx
+      } else {
+        if (S.grounded || S.cl) return
+        S.vx += vx; S.vy += vy
+      }
     },
     setDevices(next) {
       if (next === devices || (next && devices && next.length === devices.length && next.every((d, i) => d === devices![i]))) return
@@ -1236,8 +1454,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       ownLook = next
       paintLook(next ?? config.look)
     },
-    dropAt(x) { fallFrom(clamp(x, 40 * R.scale, W - 40 * R.scale), -160 * R.scale, 0, 0) },
+    dropAt(x) { if (!portalEntry) fallFrom(clamp(x, 40 * R.scale, W - 40 * R.scale), -160 * R.scale, 0, 0) },
     destroy() {
+      throwTransition.reset()
       cancelAnimationFrame(raf)
       unsubscribe()
       unsubscribeConfig()

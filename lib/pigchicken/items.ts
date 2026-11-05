@@ -10,7 +10,7 @@ export type PathShow = 'off' | 'hold' | 'holdAim' | 'always'
 export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
-export type ItemId = 'wing' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
+export type ItemId = 'wing' | 'peck' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp'
   | 'maryjane' | 'cok'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
@@ -59,6 +59,7 @@ export type ItemDef = {
   pellets: number // projectiles per shot, spread across the cone
   hitscan: boolean // the shot arrives at once (it still stops at walls)
   explodeRadius: number // px; 0 = no explosion
+  explodePush: number // radial impulse, px/s at the centre; 0 disables knockback
   explodeDamage: number // at the centre, fading to the edge
   fuse: number // s before it explodes; 0 = on impact
   bounce: number // speed kept when bouncing off the floor (with a fuse)
@@ -88,7 +89,8 @@ export type ItemDef = {
   meleeTime: number // s the swing takes to sweep its arc
   durability: number // melee hits on a target before it breaks (0 = never)
   meleePush: number // knockback px/s
-  // throw (RB)
+  peckPull: number // rig units the neck retracts while preparing a peck
+  // Throw: per-item launch strength, charge time and impact damage
   throwDamage: number
   throwMin: number // px/s with no charge (a tap)
   throwSpeed: number // px/s at full charge
@@ -111,9 +113,10 @@ export type ItemDef = {
   strum: number // s between the notes of a chord (pellets)
   ringNotes: number // notes it lets out in a circle when it bursts (with a fuse or on impact)
   gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
-  // consumables (Fire uses one dose; `mag` is the doses, the last one used ends the item). One effect at a time:
+  // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
   consumable: boolean
+  consumeKind: 'food' | 'liquid'
   effectTime: number // s the effect lasts
   effectSpeed: number // × her final speed (walk, run, in the air)
   effectAccel: number // × her acceleration
@@ -124,15 +127,15 @@ export type ItemDef = {
 
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
-  instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
+  peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false,
-  consumable: false, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
+  consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
 }
 
 const PISTOL: ItemDef = {
   id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off', landShow: 'always',
   fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, chargeTime: 0, chargeMin: 0.3,
-  speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, fuse: 0, bounce: 0,
+  speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
@@ -180,7 +183,7 @@ const SNIPER: ItemDef = {
 const LAUNCHER: ItemDef = {
   ...PISTOL, id: 'launcher', name: 'Lança-foguetes', family: 'Lançadores', reticle: 'impact',
   fireMode: 'semi', rate: 1, mag: 1, reloadTime: 1.6,
-  speed: 900, damage: 0, range: 1600, size: 6, explodeRadius: 130, explodeDamage: 80,
+  speed: 900, damage: 0, range: 1600, size: 6, explodeRadius: 130, explodeDamage: 80, explodePush: 1100,
   spreadBase: 1, spreadShot: 0, spreadMax: 2, spreadMove: 1, spreadAir: 2,
   recoilKick: 16, recoilPush: 500, weight: 0.8, turnRate: 300,
   muzzleX: 96, muzzleY: -17, length: 120, meleeDamage: 26, durability: 50, throwDamage: 35,
@@ -189,7 +192,7 @@ const LAUNCHER: ItemDef = {
 const GRENADE: ItemDef = {
   ...PISTOL, id: 'grenade', name: 'Granada', family: 'Granadas', reticle: 'grenade', pathShow: 'hold', landShow: 'hold',
   fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3,
-  speed: 1100, drop: 1500, damage: 0, range: 4000, size: 8, explodeRadius: 140, explodeDamage: 90, fuse: 2.5, bounce: 0.45,
+  speed: 1100, drop: 1500, damage: 0, range: 4000, size: 8, explodeRadius: 140, explodeDamage: 90, explodePush: 1250, fuse: 2.5, bounce: 0.45,
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
   recoilKick: 0, recoilPush: 0,
   muzzleX: 8, muzzleY: -4, length: 0, meleeDamage: 10, meleeRange: 80, durability: 20, throwDamage: 15,
@@ -204,11 +207,17 @@ const BOW: ItemDef = {
   muzzleX: 28, muzzleY: 0, length: 40, meleeDamage: 12, durability: 25, throwDamage: 15,
 }
 
-// no item: firing and hitting are both a wing slap
+// Empty hands: Golpe keeps the wing slap; Fire prepares a separate beak strike.
 const WING: ItemDef = {
   ...PISTOL, id: 'wing', name: 'Asa (sem item)', family: 'Sem item',
   mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
   meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeCooldown: 0.35, durability: 0, meleePush: 180, throwDamage: 0,
+}
+
+const PECK: ItemDef = {
+  ...WING, id: 'peck', name: 'Bicada', family: 'Sem item',
+  meleeDamage: 12, meleeRange: 85, meleeArc: 160, meleeCooldown: 0.1, meleeTime: 0.16, meleePush: 220,
+  chargeTime: 0.12, peckPull: 38,
 }
 
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
@@ -253,14 +262,14 @@ const VIOLIN: ItemDef = {
 // Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
 const KEYS: ItemDef = {
   ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: 'Teclado', family: 'Teclas', reticle: 'impact',
-  rate: 1.2, mag: 3, reloadTime: 1.4, speed: 650, size: 14, explodeRadius: 150, explodeDamage: 45, damage: 0,
+  rate: 1.2, mag: 3, reloadTime: 1.4, speed: 650, size: 14, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0,
   recoilKick: 6, muzzleX: 82, muzzleY: -9, length: 82,
   instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6,
 }
-// Percussão → grenade: a tambourine thrown with a fuse; it jingles and lets out notes in a circle
+// Percussion fires a musical note with a fuse, then lets out notes in a circle.
 const TAMBOURINE: ItemDef = {
   ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
-  mag: 3, fuse: 1.6, explodeRadius: 120, explodeDamage: 20, size: 14, muzzleX: 14, muzzleY: 0, length: 20,
+  mag: 3, fuse: 1.6, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 14, muzzleX: 14, muzzleY: 0, length: 20,
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10,
 }
 // Harpas → bow: the charge is a glissando, the note rises with the charge and flies far and precise
@@ -284,20 +293,22 @@ const MARYJANE: ItemDef = {
 // Cok: a little glass bottle of soda. The opposite: slower in the end, but quicker off the mark
 const COK: ItemDef = {
   ...CONSUMABLE, id: 'cok', name: 'Cok', family: 'Habilidades especiais',
+  consumeKind: 'liquid',
   effectTime: 15, effectSpeed: 0.78, effectAccel: 1.33, effectCurve: 'linear', effectRamp: 0.5, effectLook: 'fizz',
 }
 
 export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = {
-  wing: WING, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
+  wing: WING, peck: PECK, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP,
   maryjane: MARYJANE, cok: COK,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']
+export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // the items a rack can hold
 export const RACK_ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS]
-export const ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing']
+export const ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing', 'peck']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
@@ -309,6 +320,7 @@ export const ARPS: { value: Arp; label: string }[] = [
 
 type Meta = { key: keyof ItemDef; label: string; min: number; max: number; step: number; unit?: string; group: string; hint?: string }
 export const ITEM_PARAM_META: Meta[] = [
+  { key: 'peckPull', label: 'Recuo do pescoço', min: 0, max: 50, step: 1, unit: 'u', group: 'Bicada' },
   { key: 'rate', label: 'Cadência', min: 0.5, max: 20, step: 0.5, unit: 'tiros/s', group: 'Disparo' },
   { key: 'burst', label: 'Tiros por rajada', min: 2, max: 6, step: 1, group: 'Disparo' },
   { key: 'mag', label: 'Pente', min: 0, max: 60, step: 1, unit: 'tiros', group: 'Disparo', hint: '0 = sem munição' },
@@ -323,6 +335,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'size', label: 'Tamanho', min: 1, max: 12, step: 1, unit: 'px', group: 'Projétil' },
   { key: 'pellets', label: 'Projéteis por tiro', min: 1, max: 16, step: 1, group: 'Projétil', hint: 'Chumbos em leque' },
   { key: 'explodeRadius', label: 'Raio da explosão', min: 0, max: 400, step: 10, unit: 'px', group: 'Explosão', hint: '0 = não explode' },
+  { key: 'explodePush', label: 'Empurrão da explosão', min: 0, max: 3000, step: 50, unit: 'px/s', group: 'Explosão', hint: 'Impulso para longe do centro; diminui até a borda. Inclui quem disparou. 0 = sem empurrão.' },
   { key: 'explodeDamage', label: 'Dano da explosão', min: 0, max: 200, step: 1, group: 'Explosão', hint: 'No centro; cai até a borda' },
   { key: 'fuse', label: 'Pavio', min: 0, max: 6, step: 0.1, unit: 's', group: 'Explosão', hint: '0 = explode ao bater' },
   { key: 'bounce', label: 'Quique', min: 0, max: 0.9, step: 0.05, unit: '×', group: 'Explosão', hint: 'Com pavio' },
@@ -384,6 +397,13 @@ export function loadItems(): Record<ItemId, ItemDef> {
         const v = s[m.key]
         if (typeof v === 'number' && Number.isFinite(v)) (out[id] as Record<string, unknown>)[m.key] = Math.min(m.max, Math.max(m.min, v))
       })
+      // Update untouched Bicada defaults saved before v4, preserving custom tuning.
+      if (id === 'peck' && !(saved._v >= 4)) {
+        const old = { meleeRange: 105, meleeArc: 30, meleeCooldown: 0.4, meleeTime: 0.24 }
+        for (const key of Object.keys(old) as (keyof typeof old)[]) {
+          if (s[key] === old[key]) out.peck[key] = DEFAULT_ITEMS.peck[key]
+        }
+      }
       // saved before the sniper fired on release (v2): it takes the new mode
       if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && !(saved._v >= 2))) out[id].fireMode = s.fireMode
       if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
@@ -401,7 +421,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
 }
 
 export function saveItems(items: Record<ItemId, ItemDef>) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 3 })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 4 })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

@@ -10,6 +10,7 @@ const PAN_THRESHOLD = 12
 const VISIBLE_MARGIN = 96
 
 export interface BoardPanOffset { x: number; y: number }
+const ZERO_OFFSET: BoardPanOffset = { x: 0, y: 0 }
 
 /**
  * Session-only board pan: dragging an empty square moves the board (and what follows it) with a
@@ -17,7 +18,7 @@ export interface BoardPanOffset { x: number; y: number }
  * board back where the gesture started; a viewport resize keeps it reachable.
  */
 export function useBoardPan({ boardRef, enabled }: { boardRef: RefObject<HTMLElement | null>; enabled: boolean }) {
-  const [offset, setOffset] = useState<BoardPanOffset>({ x: 0, y: 0 })
+  const [offset, setOffset] = useState<BoardPanOffset>(ZERO_OFFSET)
   const [panning, setPanning] = useState(false)
   const offsetRef = useRef(offset)
   offsetRef.current = offset
@@ -41,6 +42,9 @@ export function useBoardPan({ boardRef, enabled }: { boardRef: RefObject<HTMLEle
   }, [])
 
   useEffect(() => {
+    // Mobile browser chrome resizes the viewport while scrolling. A board outside
+    // the scrolled viewport must not be clamped back into view when pan is disabled.
+    if (!enabled) return
     const move = (event: PointerEvent) => {
       const current = gesture.current
       if (!current || current.pointerId !== event.pointerId) return
@@ -73,7 +77,7 @@ export function useBoardPan({ boardRef, enabled }: { boardRef: RefObject<HTMLEle
     window.addEventListener("keydown", key)
     window.addEventListener("resize", resize)
     return () => {
-      gesture.current = null
+      finish(true)
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", up)
       window.removeEventListener("pointercancel", cancel)
@@ -81,12 +85,12 @@ export function useBoardPan({ boardRef, enabled }: { boardRef: RefObject<HTMLEle
       window.removeEventListener("keydown", key)
       window.removeEventListener("resize", resize)
     }
-  }, [boardRef, clamp, finish])
+  }, [boardRef, clamp, finish, enabled])
 
   useEffect(() => {
     if (enabled) return
     finish(true)
-    setOffset(current => current.x === 0 && current.y === 0 ? current : { x: 0, y: 0 })
+    setOffset(ZERO_OFFSET)
   }, [enabled, finish])
 
   const startPan = useCallback((event: ReactPointerEvent<HTMLElement>) => {
@@ -96,5 +100,6 @@ export function useBoardPan({ boardRef, enabled }: { boardRef: RefObject<HTMLEle
     gesture.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, origin: offsetRef.current, rect, moved: false }
   }, [boardRef, enabled])
 
-  return { offset, panning, startPan, enabled, translate: `${offset.x}px ${offset.y}px` }
+  const appliedOffset = enabled ? offset : ZERO_OFFSET
+  return { offset: appliedOffset, panning: enabled && panning, startPan, enabled, translate: `${appliedOffset.x}px ${appliedOffset.y}px` }
 }
