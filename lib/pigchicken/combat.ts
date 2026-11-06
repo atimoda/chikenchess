@@ -634,6 +634,8 @@ export function createCombat() {
     return points
   }
 
+  // a blow pressed while the last one is still going interrupts it: the new one starts right away (with no
+  // interval, every note of a song can be hit)
   function melee(wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown

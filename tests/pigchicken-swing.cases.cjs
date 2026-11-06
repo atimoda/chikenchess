@@ -127,8 +127,8 @@ test('each item has its own combo: order, window and the hit arc of each blow', 
   items.wing.meleeArcFlat = 300
   c.setItems(items)
   const kinds = []
-  for (let i = 0; i < 3; i++) { step(c, { melee: true }); kinds.push(c.swing.kind); run(c, items.wing.meleeCooldown + 0.02) }
-  // the cooldown leaves 0.17 s after each blow: longer than the 0.1 s window, so every blow starts over
+  for (let i = 0; i < 3; i++) { step(c, { melee: true }); kinds.push(c.swing.kind); run(c, items.wing.meleeTime + 0.15) }
+  // 0.15 s after each blow ends: longer than the 0.1 s window, so every blow starts over
   assert.deepEqual(kinds, ['spin', 'spin', 'spin'])
   items.wing.comboWindow = 0.5; c.setItems(items)
   run(c, 1)
@@ -148,5 +148,33 @@ test('the combo order is saved and checked when loading', () => {
     assert.equal(it.pistol.comboWindow, 0.8); assert.equal(it.pistol.meleeArcUp, 200)
     assert.deepEqual(it.smg.combo, DEFAULT_ITEMS.smg.combo)
     assert.deepEqual(it.rifle.combo, DEFAULT_ITEMS.rifle.combo)
+  } finally { globalThis.window = previous }
+})
+
+test('golpes have no interval: a new blow interrupts the one still going and starts right away', () => {
+  for (const id of Object.keys(DEFAULT_ITEMS)) if (id !== 'peck') assert.equal(DEFAULT_ITEMS[id].meleeCooldown, 0, id)
+  const c = createCombat(); c.addTarget(60, 30)
+  const t = c.targets[0], hp = t.hp
+  step(c, { melee: true })
+  const first = c.swing
+  step(c, { melee: true })
+  assert.notEqual(c.swing, first, 'a new swing, in the middle of the first one')
+  assert.equal(c.swing.kind, 'up', 'and the combo carries on')
+  assert.ok(c.swing.t < 0.02)
+  run(c, DEFAULT_ITEMS.wing.meleeTime * swing.SWING_PHASES.prep + 0.02)
+  assert.equal(t.hp, hp - DEFAULT_ITEMS.wing.meleeDamage, 'only the new blow lands')
+})
+
+test('items saved with an interval between blows go back to none (the Bicada keeps its own)', () => {
+  const { loadItems } = loadTs('lib/pigchicken/items.ts')
+  const previous = globalThis.window
+  try {
+    let saved = { _v: 4, pistol: { meleeCooldown: 0.45 }, wing: { meleeCooldown: 0.8 }, peck: { meleeCooldown: 0.3 } }
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    let it = loadItems()
+    assert.deepEqual([it.pistol.meleeCooldown, it.wing.meleeCooldown, it.peck.meleeCooldown], [0, 0, 0.3])
+    saved = { ...saved, _v: 5 }
+    it = loadItems()
+    assert.deepEqual([it.pistol.meleeCooldown, it.wing.meleeCooldown], [0.45, 0.8], 'set again after the change, it stays')
   } finally { globalThis.window = previous }
 })
