@@ -5,7 +5,7 @@ export const CHANGELOG = [
   {
     version: '2.1.0',
     date: '06/11/2026',
-    title: 'Golpe com rastro de ar, Bicada que anula bombas e a primeira fase de notas',
+    title: 'Golpe com rastro de ar, Bicada que anula bombas, fase de notas e o Taco',
     groups: [
       { title: 'Pátio', items: [
         'O Golpe ganhou preparação, golpe rápido, continuação e recuperação, com um rastro de ar creme que se desfaz soltando fiapos. O acerto acontece no instante do golpe, com um clarão e um tranco curto na tela.',
@@ -17,6 +17,7 @@ export const CHANGELOG = [
         'A Bicada agora defende: acertar o bico numa bomba ou no fogo do Templo do Gongo anula o projétil numa nuvenzinha, sem perder coração.',
         'Golpes sem espera: o intervalo entre golpes agora é zero em todos os itens, e um golpe novo interrompe o anterior na hora, para dar para acertar notas seguidas. Em Itens → Golpe, cada item pode desligar essa interrupção.',
         'Templo do Gongo: um disco perto da pedra Recomeçar toca a música Teste das Notas, a primeira fase do modo guitar hero. Os aliens chegam de vários lados em volta da galinha e atiram notas de luz no tempo da música; rebata cada uma com qualquer golpe quando ela chegar no anel em volta dela (PERFEITO, BOM ou FORA) e mande de volta nos aliens para virarem passarinhos. A Bicada só anula a nota. Notas perdidas baixam a barra de afinação.',
+        'Novo item Taco, só de golpe: a nota rebatida sai mais rápida com um tok de madeira. Cada item agora transforma as notas que rebate do seu jeito (a Flauta sobe uma oitava, o Trompete faz power chord, o Violão dedilha a tríade, a Submetralhadora faz um rufo…), e em Itens → Rebate dá para montar a cadeia de transformações, o snap e a velocidade de cada um. Nas fases, o leque fixa a nota e o item enfeita.',
       ] },
     ],
   },
