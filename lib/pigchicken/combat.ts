@@ -634,8 +634,12 @@ export function createCombat() {
     return points
   }
 
-  // a blow pressed while the last one is still going interrupts it: the new one starts right away (with no
-  // interval, every note of a song can be hit)
+  // a blow pressed while the last one is still going interrupts it and the new one starts right away (with no
+  // interval, every note of a song can be hit), unless the item says not to: then it waits for the move to end
+  function canSwing(wing: boolean) {
+    const d = wing ? items.wing : def()
+    return d.meleeInterrupt || !swing || swing.t >= swing.time
+  }
   function melee(wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
@@ -1003,7 +1007,7 @@ export function createCombat() {
       } else if (h && d.consumable) {
         if (input.firePressed && cooldown <= 0) consume(h, d, origin)
       } else if (d.mag === 0) {
-        if (input.firePressed && meleeCool <= 0) melee(true, body.scale)
+        if (input.firePressed && meleeCool <= 0 && canSwing(true)) melee(true, body.scale)
       } else if (canFire) {
         const spreadDeg = this.spread(body)
         const ctx = { boxes, groundY }
@@ -1047,7 +1051,7 @@ export function createCombat() {
         }
       }
       prevFire = input.fire
-      if (input.melee && meleeCool <= 0) melee(!h, body.scale)
+      if (input.melee && meleeCool <= 0 && canSwing(!h)) melee(!h, body.scale)
 
       // throw: hold to charge, let go to throw what she holds; another item in the wing while charging
       // (switched, grabbed) calls the throw off completely, until the button is let go

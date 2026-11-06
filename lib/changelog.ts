@@ -15,7 +15,7 @@ export const CHANGELOG = [
         'Novas teclas padrão no teclado principal: V atira, C dá o golpe, X também choca e Z também arremessa. Controles salvos nos padrões antigos passam para os novos; teclas personalizadas ficam como estão.',
         'Em Itens → Golpe, cada item tem espessura, duração, fiapos, opacidade e cor do rastro. Nos instrumentos, o rastro pega a cor da nota do acorde.',
         'A Bicada agora defende: acertar o bico numa bomba ou no fogo do Templo do Gongo anula o projétil numa nuvenzinha, sem perder coração.',
-        'Golpes sem espera: o intervalo entre golpes agora é zero em todos os itens, e um golpe novo interrompe o anterior na hora, para dar para acertar notas seguidas.',
+        'Golpes sem espera: o intervalo entre golpes agora é zero em todos os itens, e um golpe novo interrompe o anterior na hora, para dar para acertar notas seguidas. Em Itens → Golpe, cada item pode desligar essa interrupção.',
         'Templo do Gongo: um disco perto da pedra Recomeçar toca a música Teste das Notas, a primeira fase do modo guitar hero. Os aliens chegam de vários lados em volta da galinha e atiram notas de luz no tempo da música; rebata cada uma com qualquer golpe quando ela chegar no anel em volta dela (PERFEITO, BOM ou FORA) e mande de volta nos aliens para virarem passarinhos. A Bicada só anula a nota. Notas perdidas baixam a barra de afinação.',
       ] },
     ],

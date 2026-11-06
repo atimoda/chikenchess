@@ -178,3 +178,18 @@ test('items saved with an interval between blows go back to none (the Bicada kee
     assert.deepEqual([it.pistol.meleeCooldown, it.wing.meleeCooldown], [0.45, 0.8], 'set again after the change, it stays')
   } finally { globalThis.window = previous }
 })
+
+test('an item can turn the interruption off: a blow pressed mid-move then waits for it to end', () => {
+  assert.ok(Object.values(DEFAULT_ITEMS).every(d => d.meleeInterrupt === true))
+  const c = createCombat()
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.wing.meleeInterrupt = false
+  c.setItems(items)
+  step(c, { melee: true })
+  const first = c.swing
+  step(c, { melee: true })
+  assert.equal(c.swing, first, 'still the first blow')
+  run(c, items.wing.meleeTime)
+  step(c, { melee: true })
+  assert.notEqual(c.swing, first, 'once it is over, the next one goes')
+})
