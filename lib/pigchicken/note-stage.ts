@@ -8,7 +8,8 @@
 // game (the aliens' hit points live in the combat's targets).
 import type { Target } from './combat'
 import type { Conductor } from './music'
-import { DEGREE_COLORS } from './music'
+import { DEGREE_COLORS, SCALES } from './music'
+import type { RebateRule } from './transforms'
 import { fanAngleOf, fanNoteAt, fanNotes, songFan, type Fan } from './fan'
 import { aimShot, type NoteGrade, type NoteShot, type NoteShotEvent } from './note-shots'
 import { SPECIES, multOf, type Species } from './temple'
@@ -44,11 +45,15 @@ export type SongAlien = {
   shot?: Partial<ShotType>
   fire?: Partial<FireSound>
   notes: SongNote[]
+  rule?: RebateRule
 }
 // which note a rebate plays: the stage's fan (default), the fan mirrored (only the height counts, like the
 // instruments' aim) or the note sequenced
 export type NoteMode = 'fan' | 'angle' | 'sequenced'
-export type Song = { id: string; name: string; intro: string; music: StageMusic; fan: Fan; noteMode: NoteMode; introBars: number; aliens: SongAlien[] }
+// rule: whose transformations count for its notes (each alien can have its own); by default the stage's fan fixes
+// the note and the taco ornaments it
+export type Song = { id: string; name: string; intro: string; music: StageMusic; fan: Fan; noteMode: NoteMode; rule?: RebateRule; introBars: number; aliens: SongAlien[] }
+export const STAGE_RULE: RebateRule = 'ambiente-taco'
 
 // the ring where the notes arrive (px from the fan's centre), where an alien touches her, and the default distance
 export const ARRIVE_R = 72, CONTACT_R = 46, SPAWN_DIST = 470
@@ -337,7 +342,7 @@ export function createNoteStage() {
         if (arrive - now < 0.05) continue // too late to fire this one (the alien came in late)
         const v = aimShot(a.x, a.y, tx, ty, arrive - now)
         const color = shot.color === 'degree' ? DEGREE_COLORS[music.degreeOf(n.midi) % DEGREE_COLORS.length] : shot.color
-        io.fire({ x: a.x, y: a.y, vx: v.vx, vy: v.vy, midi: n.midi, color, size: shot.size, glow: shot.glow, arriveAt: arrive, source: SOURCE })
+        io.fire({ x: a.x, y: a.y, vx: v.vx, vy: v.vy, midi: n.midi, color, size: shot.size, glow: shot.glow, arriveAt: arrive, source: SOURCE, ...(def.rule ? { rule: def.rule } : {}) })
         s.fired++
         t.flash = 0.08; t.tint = color
         const fs = { ...FIRE_DEFAULT, ...def.fire }
@@ -384,12 +389,19 @@ export function createNoteStage() {
     get song() { return song() },
     // the song's music while it plays
     get music(): StageMusic | null { return active() ? song().music : null },
-    // the note a rebate plays: by the stage's fan (where the note is around her), the fan mirrored, or as sequenced
-    noteFor(shot: NoteShot): number | null {
+    // the note base a rebate takes from the stage: by the stage's fan (where the note is around her), the fan
+    // mirrored, or as sequenced
+    noteFor(shot: Pick<NoteShot, 'x' | 'y' | 'source'>): number | null {
       if (!active() || shot.source !== SOURCE) return null
       const sg = song(), ang = Math.atan2(shot.y - s.center.y, shot.x - s.center.x)
       if (sg.noteMode === 'sequenced') return null
       return fanNoteAt(sg.noteMode === 'angle' ? { ...sg.fan, mirrored: true, open: 180, start: 90, dir: -1 } : sg.fan, ang)
+    },
+    // the ambience of a note rebated in the stage: the fan's note as base, the song's scale, its rule and the combo
+    noteEnv(shot: NoteShot) {
+      if (!active() || shot.source !== SOURCE) return null
+      const z = song().music.zone
+      return { base: this.noteFor(shot), fit: { root: z.root, steps: SCALES[z.scale].steps }, rule: shot.rule ?? song().rule ?? STAGE_RULE, combo: s.combo }
     },
     reset(io: Pick<NoteStageIO, 'targets' | 'fx' | 'clearShots'>) { removeAliens(io, false); io.clearShots(SOURCE); Object.assign(s, newStageState()) },
   }

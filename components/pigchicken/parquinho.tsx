@@ -268,7 +268,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     combat.setMusicOut({
       note: (voice, midi, at, dur, vel) => { playNote(voice, midi, { at, dur, vel }) },
       hold: (voice, midi) => playNote(voice, midi, { sustain: true, vel: 0.8 }),
-      drum: (kind, at) => playDrum(kind, at),
+      drum: (kind, at, vel) => playDrum(kind, at, vel ?? 1),
     })
     // the temple's mini-game (its state is plain data, stepped with the beats: ready to be shared in multiplayer)
     const temple = createTemple(Math.floor(Math.random() * 2 ** 31))
@@ -276,7 +276,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the note stage (the guitar hero mode): the disc by the reset stone plays its song
     const stage = createNoteStage()
     templeDraw.stage = stage
-    combat.setNoteRule(shot => stage.noteFor(shot))
+    combat.setNoteEnv(shot => stage.noteEnv(shot))
     const templeSounds: TempleSound[] = []
     const stageSounds: NoteStageSound[] = []
     let templeShown = ""
@@ -304,7 +304,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // and the disc: strike it to play the note stage's song
       combat.addButton(0, G - 4, "disc", 84, 130)
       disc = combat.targets[combat.targets.length - 1]
-      ;(["pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
+      ;(["bat", "pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
     const placeTemple = (screens: number) => {
@@ -312,7 +312,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (gong) { gong.x = gong.home = L + GONG_X }
       if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
       if (disc) { disc.x = disc.home = L + DISC_X }
-      templeRacks.forEach((r, i) => { r.x = L + 80 + i * 100 })
+      templeRacks.forEach((r, i) => { r.x = L + 60 + i * 90 })
       templeFor = screens
     }
     // the platforms the shots hit, in world units (the same boxes the world draws)

@@ -2,6 +2,7 @@
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
 import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
+import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule } from './transforms'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
@@ -9,7 +10,7 @@ import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './i
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
-import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS } from './music'
+import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
 
@@ -17,8 +18,10 @@ import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type Du
 export type MusicOut = {
   note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number) => void
   hold: (voice: VoiceId, midi: number) => Held | null
-  drum: (kind: Drum, at: number) => void
+  drum: (kind: Drum, at: number, vel?: number) => void
 }
+// the ambience where a note is rebated (the song tells it): what it forces, the scale it fits, whose rule counts
+export type NoteEnvFn = (shot: NoteShot, angle: number) => (Partial<NoteEnv> & { rule?: RebateRule; combo?: number }) | null
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
@@ -140,7 +143,7 @@ export function createCombat() {
   // says which note a rebate plays (the song's fan; by default the note sequenced)
   const noteShots: NoteShot[] = []
   const noteEvents: NoteShotEvent[] = []
-  let noteRule: ((shot: NoteShot, angle: number) => number | null) | null = null
+  let noteEnv: NoteEnvFn | null = null
   // a peck defending at (x, y) cancels what is there, in a little cloud (parriedBy: the player who did it)
   let parriedBy = ''
   function parryAt(x: number, y: number, r: number, color: string) {
@@ -706,17 +709,44 @@ export function createCombat() {
     for (const n of noteShots) {
       if (n.state !== 'incoming' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, n.x, n.y, n.size)) continue
       const off = music.time - n.arriveAt, grade = judgeNote(off)
-      const midi = noteRule?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? n.midi
-      const speed = Math.max(REBATE_SPEED, Math.hypot(n.vx, n.vy) * 1.6)
-      n.vx = Math.cos(aimAngle) * speed; n.vy = Math.sin(aimAngle) * speed
-      n.state = 'rebated'; n.t = 0; n.grade = grade
-      n.color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
-      const d = sw.item ? def() : null
-      const voice: VoiceId = d?.instrument ? d.voice : 'bells'
-      out.note(voice, midi, music.toGrid(), grade === 'fora' ? 0.2 : 0.4, grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25)
+      // what it plays: the sequenced note through the ambience (the stage's fan, the zone's scale) and the item's
+      // chain of transformations, in the order the note's rule says
+      const d = sw.wing ? items.wing : def()
+      const env = noteEnv?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? null
+      const z = music.zone
+      const harmony = { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() }
+      const voice: VoiceId = d.instrument ? d.voice : 'bells'
+      const seq: NoteOut = { midi: n.midi, at: 0, dur: grade === 'fora' ? 0.2 : 0.4, vel: grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25, voice }
+      const notes = rebateSound(seq, env?.rule ?? n.rule ?? DEFAULT_RULE, d.rebateChain, { base: env?.base ?? null, fit: env?.fit ?? harmony }, {
+        ...harmony, combo: env?.combo ?? 0, angle: aimAngle, rand: Math.random, byAngle: (a, oct) => music.noteFor(a, 'scale', oct),
+      })
+      const grid = music.toGrid()
+      notes.forEach(o => { if (o.drum) out.drum(o.drum, grid + o.at, o.vel); else out.note(o.voice ?? voice, o.midi, grid + o.at, o.dur, o.vel) })
+      if (d.rebateTok) out.drum('wood', grid, 0.9)
+      const main = notes.find(o => !o.drum)?.midi ?? n.midi
+      // off where she aims, pulled toward the nearest character by the item's snap
+      const dir = snapAngle(n.x, n.y, aimAngle, d.rebateSnap * DEG, d.rebateSnapForce, origin)
+      const speed = Math.max(REBATE_SPEED, Math.hypot(n.vx, n.vy) * 1.6) * Math.max(0.1, d.rebateSpeed)
+      n.vx = Math.cos(dir) * speed; n.vy = Math.sin(dir) * speed
+      n.state = 'rebated'; n.t = 0; n.grade = grade; n.midi = main
+      n.color = DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length]
       burst(n.x, n.y, grade === 'perfect' ? 12 : 6, n.color, grade === 'perfect' ? 260 : 160, 3)
-      noteEvents.push({ kind: 'rebate', shot: n, grade, off, player: active, midi })
+      noteEvents.push({ kind: 'rebate', shot: n, grade, off, player: active, midi: main, notes })
     }
+  }
+
+  // a rebate's direction pulled toward the nearest character (enemy, dummy or another player) within `snap` of it
+  function snapAngle(x: number, y: number, angle: number, snap: number, force: number, origin: { x: number; y: number }) {
+    if (snap <= 0 || force <= 0) return angle
+    let best = 0, bestAbs = Infinity
+    const consider = (cx: number, cy: number) => {
+      let diff = Math.atan2(cy - y, cx - x) - angle
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+      if (Math.abs(diff) <= snap && Math.abs(diff) < bestAbs) { bestAbs = Math.abs(diff); best = diff }
+    }
+    targets.forEach(t => { if (t.kind !== 'button' && t.deadT <= 0 && t.state !== 'converted') consider(t.x, t.y - t.h / 2) })
+    blastActors.forEach(a => { if (origin.x < a.box.l || origin.x > a.box.r || origin.y < a.box.t || origin.y > a.box.b) consider((a.box.l + a.box.r) / 2, (a.box.t + a.box.b) / 2) })
+    return bestAbs === Infinity ? angle : angle + best * Math.min(1, force)
   }
 
   // the notes in flight, once per world step: incoming ones the peck cancels, ones that reach a player or come too
@@ -812,7 +842,8 @@ export function createCombat() {
     fireNoteShot(n: Omit<NoteShot, 'id' | 'state' | 't'>) { const shot: NoteShot = { ...n, id: nextId++, state: 'incoming', t: 0 }; noteShots.push(shot); return shot },
     get noteShots() { return noteShots as readonly NoteShot[] },
     get noteEvents() { return noteEvents },
-    setNoteRule(rule: ((shot: NoteShot, angle: number) => number | null) | null) { noteRule = rule },
+    // the ambience a note is rebated in (the stage's fan, the zone): its base note, its scale, the note's rule, the combo
+    setNoteEnv(fn: NoteEnvFn | null) { noteEnv = fn },
     clearNoteShots(source?: string) { for (let i = noteShots.length - 1; i >= 0; i--) if (!source || noteShots[i].source === source) noteShots.splice(i, 1) },
     get peck(): PeckPose | null {
       if (held()) return null
@@ -1007,7 +1038,8 @@ export function createCombat() {
       } else if (h && d.consumable) {
         if (input.firePressed && cooldown <= 0) consume(h, d, origin)
       } else if (d.mag === 0) {
-        if (input.firePressed && meleeCool <= 0 && canSwing(true)) melee(true, body.scale)
+        // an item only for hitting (the taco): Atirar swings it too
+        if (input.firePressed && meleeCool <= 0 && canSwing(false)) melee(false, body.scale)
       } else if (canFire) {
         const spreadDeg = this.spread(body)
         const ctx = { boxes, groundY }

@@ -80,9 +80,9 @@ test('any melee blow rebates a note in its arc: judged, played and sent off wher
   }
 })
 
-test('the note rule picks the note a rebate plays; without one it plays the note sequenced', () => {
+test('the ambience can set the note a rebate plays; without one it plays the note sequenced', () => {
   const c = createCombat()
-  c.setNoteRule(() => 74)
+  c.setNoteEnv(() => ({ base: 74, rule: 'ambiente-taco' }))
   noteAtTheBlow(c, 0)
   step(c, { melee: true }); run(c, 0.2)
   assert.equal(c.noteEvents.find(e => e.kind === 'rebate').midi, 74)
