@@ -9,11 +9,11 @@
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Mountain, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Mountain, Music, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
-  ELEMENT_DEFS, HORDE_BUTTONS, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
+  ELEMENT_DEFS, HORDE_BUTTONS, isMusicElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
   newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
@@ -22,7 +22,12 @@ import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, MELEE_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
-import { SCENE_W, WORLD_GROUND_Y, villageScene, worldScenes } from "@/lib/pigchicken/world"
+import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
+import { ZONES, zoneLabel } from "@/lib/pigchicken/music"
+import { TEMPLE_IDLE } from "@/lib/pigchicken/temple-music"
+import { defaultSoundZone, soundZoneLabel } from "@/lib/pigchicken/sound-zones"
+import { LanesFields, SoundZoneFields, SurfaceRebateFields } from "./sound-zone-panels"
+import { LanesArt } from "./sound-zone-art"
 import { ElementArt } from "./patio-layout"
 import { HOUSE_STYLE_LABELS, HousePanel } from "./house-panel"
 import { houseDraftSize, randomHouse, type HouseParams, type HouseStyle } from "@/lib/pigchicken/houses"
@@ -89,6 +94,9 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
   const sel = shown.find(e => e.id === selected) ?? null
   const [draft, setDraft] = useState<Draft | null>(null)
   const [terrainOpen, setTerrainOpen] = useState(false)
+  // the "Zonas sonoras" layer: each zone painted with its label, the scenes' zones under them, the surfaces that
+  // rebate notes outlined and the fixed lanes' notes
+  const [soundLayer, setSoundLayer] = useState(false)
   const selectedRef = useRef(selected)
   selectedRef.current = selected
 
@@ -261,7 +269,8 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
       `}</style>
       <div data-patio-editor className="pointer-events-none fixed inset-0 z-[203] overflow-hidden">
         <div ref={worldRef} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
-          {shown.map(el => (
+          {soundLayer && <SoundLayer elements={shown} screens={screens} />}
+          {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => (
             <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
           ))}
           {terrainOpen && <TerrainEditor left={villageScene(screens) * SCENE_W} terrain={layout.terrain} onClose={() => setTerrainOpen(false)}
@@ -290,6 +299,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
           : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} />)}
+      {soundLayer && <SoundLayerLabels elements={shown} onEdit={edit} />}
       <Palette onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
         bindHouse={house => placement.bind(() => randomHouseElement(house.style), () => openDraft({ kind: "house", value: house }))}
         bindTree={tree => placement.bind(() => {
@@ -298,6 +308,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
         terrainOpen={terrainOpen} onTerrain={() => { select(null); setTerrainOpen(!terrainOpen) }}
+        soundLayer={soundLayer} onSoundLayer={() => setSoundLayer(!soundLayer)}
         floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />
       {draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
@@ -442,7 +453,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
           </label>
         ))}
       </div>
-      <div className="grid gap-3 border-t border-white/10 pt-3">
+      {isMusicElement(el.kind) ? <p className="border-t border-white/10 pt-3 text-[#93a79a]">{el.kind === "zone" ? "A zona sonora é invisível no jogo e não tem colisões." : "As faixas não têm colisões: só mudam as notas que passam por elas."}</p> : <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-t border-white/10 pt-3">
         {el.kind === 'house'
           ? <p className="text-[#93a79a]">Base, telhado, peitoris e vergas são pisos de mão única. A galinha pode saltar através da fachada.</p>
           : el.kind === 'tree' ? <p className="text-[#93a79a]">Configure os apoios no Editor de árvores.</p>
@@ -452,10 +463,11 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
           checked={occludesColliders(el)} onChange={v => onChange({ ...el, occludesColliders: v })} />
         <Toggle label="Bloqueia tiros" hint="Balas, granadas e o feixe param nele" checked={el.shots} onChange={v => onChange({ ...el, shots: v })} />
         <Toggle label="Bloqueia notas" hint="As notas dos instrumentos param nele" checked={el.notes} onChange={v => onChange({ ...el, notes: v })} />
+        <SurfaceRebateFields rebate={el.rebate} onChange={rebate => { const { rebate: _old, ...rest } = el; onChange(rebate ? { ...rest, rebate } : rest) }} />
         <Toggle label="Invisível no jogo" hint="Só aparece no modo editor" checked={el.hidden} onChange={v => onChange({ ...el, hidden: v })} />
         <PatioRange label="Opacidade" min={10} max={100} step={5} value={Math.round(el.opacity * 100)}
           display={`${Math.round(el.opacity * 100)}%`} onChange={v => onChange({ ...el, opacity: v / 100 })} />
-      </div>
+      </div>}
     </FloatingPanel>
   )
 }
@@ -533,6 +545,8 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
           <span className="text-[10px] text-[#93a79a]">Espera após pegar o item. Consumíveis: 0,1 s por padrão; armas e instrumentos: 2 s. Zero repõe imediatamente.</span>
         </label>
       </>}
+      {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
+      {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
       {el.kind === "button" && (
         <label className="grid gap-1">
           <span>Ação ao acertar</span>
@@ -552,6 +566,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }] },
   { group: "Plataformas", items: (["platform", "terrace", "pillar", "trampoline"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
+  { group: "Música", items: (["zone", "lanes"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
   { group: "Armas", items: [...MELEE_IDS, ...WEAPON_IDS].map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Instrumentos", items: INSTRUMENT_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
@@ -566,9 +581,10 @@ function Thumb({ entry }: { entry: Entry }) {
     return <svg aria-hidden="true" viewBox={ITEM_BOX[item]!.join(" ")} className="h-8 w-12" preserveAspectRatio="xMidYMid meet" dangerouslySetInnerHTML={{ __html: ITEM_SVG[item]! }} />
   }
   if (entry.kind === "dummy") return <span className="relative block h-9 w-6"><span className="absolute inset-x-0 top-0 h-6 rounded-md bg-[#d9cfb8]" /><span className="absolute left-1/2 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#d6453d] bg-[#f4f1e8]" /><span className="absolute bottom-0 left-1/2 h-3 w-1 -translate-x-1/2 bg-[#5b4630]" /></span>
+  if (entry.kind === "zone") return <span className="flex h-7 w-10 items-center justify-center rounded-md border-2 border-dashed border-[#7b8cff] bg-[#7b8cff]/20 text-[13px] text-[#7b8cff]">♫</span>
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
   const k = Math.min(48 / d.w, 34 / d.h)
-  return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><ElementArt el={{ kind: entry.kind, params: { seed: 4242 }, w: d.w, h: d.h }} /></span>
+  return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><ElementArt el={{ kind: entry.kind, params: isMusicElement(entry.kind) ? defaultParams(entry.kind) : { seed: 4242 }, w: d.w, h: d.h }} editing /></span>
 }
 
 const PALETTE_CARD = "flex min-h-16 cursor-grab touch-none flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-[#0b110e] px-1 py-1.5 text-center text-[10px] leading-tight hover:border-[#ffd166] active:cursor-grabbing disabled:opacity-50"
@@ -582,10 +598,11 @@ function PaletteSection({ title, children }: { title: string; children: React.Re
   </PatioDisclosure>
 }
 
-function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, terrainOpen, onTerrain, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
+function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, terrainOpen, onTerrain, soundLayer, onSoundLayer, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
   onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
   bindTree: (tree: TreeParams) => PatioPlacementHandlers
   canAddScenery: boolean; hidden: boolean; draggingScenery: boolean; terrainOpen: boolean; onTerrain: () => void
+  soundLayer: boolean; onSoundLayer: () => void
   floorBelow: (x: number, y: number) => number; onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
 }) {
   const [housePreviews] = useState(() => (Object.keys(HOUSE_STYLE_LABELS) as HouseStyle[]).map(style => randomHouse(style).house))
@@ -607,6 +624,8 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
       // dummies and racks stand on the floor right under where they were dropped
       if (el.kind === "dummy" || el.kind === "rack") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
+      // a new zone starts as the next scene's, so walking in changes the music right away
+      if (el.kind === "zone") el.params = { zone: defaultSoundZone(ZONES[(sceneAt(p.x) + 1) % ZONES.length]) }
       onAdd(el)
     }
     setDrag(null)
@@ -624,6 +643,8 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
         <div className="min-h-0 flex-1 overflow-y-auto pb-3 pt-2">
           <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", terrainOpen && "border-primary text-primary")}
             aria-pressed={terrainOpen} onClick={onTerrain}><Mountain size={16} /> Editar chão da Vila</button>
+          <button type="button" className={cn(TOOL, "ml-4 mt-1.5 h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas sonoras, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
+            aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas sonoras</button>
           <PaletteSection title="Casas">
             {housePreviews.map(house => {
               const size = houseDraftSize(house)
@@ -663,9 +684,65 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
       {/* what is being dragged, at its real size in the world */}
       {drag && d && (
         <div aria-hidden="true" className="pointer-events-none fixed z-[215] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: drag.y - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
-          {d.entity ? <div className="absolute inset-0 flex items-center justify-center bg-[#ffd166]/15"><Thumb entry={drag.entry} /></div> : <ElementArt el={{ kind: drag.entry.kind, params: { seed: 4242 }, w: d.w, h: d.h }} />}
+          {d.entity ? <div className="absolute inset-0 flex items-center justify-center bg-[#ffd166]/15"><Thumb entry={drag.entry} /></div> : <ElementArt el={{ kind: drag.entry.kind, params: isMusicElement(drag.entry.kind) ? defaultParams(drag.entry.kind) : { seed: 4242 }, w: d.w, h: d.h }} editing />}
         </div>
       )}
     </>
+  )
+}
+
+// ---------- the "Zonas sonoras" layer ----------
+
+// under everything: each scene's own zone along its floor, the surfaces that rebate notes outlined and the fixed
+// lanes with their notes
+function SoundLayer({ elements, screens }: { elements: LayoutElement[]; screens: number }) {
+  const scenes = worldScenes(screens)
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {Array.from({ length: scenes }, (_, s) => {
+        const z = s === templeScene(screens) ? TEMPLE_IDLE : ZONES[s % ZONES.length]
+        return (
+          <div key={s} className="absolute" style={{ left: s * SCENE_W, top: WORLD_GROUND_Y - 30, width: SCENE_W, height: 30, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
+            <span className="absolute left-3 top-1 whitespace-nowrap font-mono text-[13px]" style={{ color: z.color }}>Cena {s + 1} · {zoneLabel(z)}</span>
+          </div>
+        )
+      })}
+      {elements.map(el => {
+        if (el.kind === "lanes" && el.params.lanes) {
+          return <div key={el.id} className="absolute" style={{ left: el.x, top: el.y, width: el.w, height: el.h, outline: "1px dashed rgba(255,255,255,0.5)" }}><LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing labels /></div>
+        }
+        if (!el.rebate) return null
+        const b = elementBounds(el)
+        return (
+          <div key={el.id} className="absolute rounded-sm" style={{ left: b.x - 3, top: b.y - 3, width: b.w + 6, height: b.h + 6, outline: "3px solid #ffd166", boxShadow: "0 0 12px #ffd166" }}>
+            <span className="absolute -top-6 left-0 whitespace-nowrap rounded bg-black/75 px-1.5 font-mono text-[11px] text-[#ffd166]">♪ rebate · {el.rebate.mode === "chain" ? "cadeia própria" : el.rebate.mode === "delegate" ? "delega ao taco" : "não muda"}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// over everything: each zone painted with its colour and its label, which opens its settings
+function SoundLayerLabels({ elements, onEdit }: { elements: LayoutElement[]; onEdit: (el: LayoutElement) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => (ref.current ? followCamera(ref.current) : undefined), [])
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[204] overflow-hidden">
+      <div ref={ref} className="absolute left-0 top-0">
+        {elements.map(el => {
+          const z = el.kind === "zone" ? el.params.zone : undefined
+          if (!z) return null
+          return (
+            <div key={el.id} className="absolute" style={{ left: el.x, top: el.y, width: el.w, height: el.h, background: `${z.color}24`, border: `2px ${z.music ? "solid" : "dashed"} ${z.color}` }}>
+              <button type="button" data-chicken-ignore onClick={() => onEdit(el)} title="Abrir a configuração da zona"
+                className="pointer-events-auto absolute left-2 top-2 max-w-[calc(100%-16px)] truncate rounded bg-black/80 px-2 py-1 text-left font-mono text-[13px] hover:bg-black" style={{ color: z.color }}>
+                ♫ {soundZoneLabel(z)} · prioridade {z.priority}{z.music ? "" : " · só rebates"}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }

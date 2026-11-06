@@ -310,7 +310,7 @@ export function createNoteStage() {
       } else if (e.kind === 'miss') {
         s.counts.miss++; s.combo = 0; s.afina -= AFINA_MISS
         judge('miss'); io.sound({ kind: 'miss' })
-      } else { s.counts.parry++; judge('parry') }
+      } else if (e.kind === 'parry') { s.counts.parry++; judge('parry') }
     }
 
     // the aliens: gone (shot down or turned into birds), moving, firing their notes, touching her
