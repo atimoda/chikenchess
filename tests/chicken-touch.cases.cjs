@@ -232,7 +232,7 @@ test('X stays secondary Run, and the RB-only default migrates without replacing 
 
 test('keyboard defaults and legacy bindings migrate to G Throw, Tab next and Q wheel', () => {
   const d = controls.defaultChickenControls()
-  assert.deepEqual(d.keys.throw.filter(Boolean), ['Key:KeyG'])
+  assert.deepEqual(d.keys.throw.filter(Boolean), ['Key:KeyG', 'Key:KeyZ'])
   assert.equal(d.keys.nextItem[0], 'Key:Tab')
   assert.equal(d.keys.itemWheel[0], 'Key:KeyQ')
   const previous = globalThis.window
@@ -243,7 +243,7 @@ test('keyboard defaults and legacy bindings migrate to G Throw, Tab next and Q w
     saved.keys.itemWheel = ['Key:Tab', null, null]
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     const migrated = controls.loadChickenControls()
-    assert.deepEqual(migrated.keys.throw.filter(Boolean), ['Key:KeyG'])
+    assert.deepEqual(migrated.keys.throw.filter(Boolean), ['Key:KeyG', 'Key:KeyZ'])
     assert.equal(migrated.keys.nextItem[0], 'Key:Tab')
     assert.equal(migrated.keys.itemWheel[0], 'Key:KeyQ')
     saved.keys.throw = ['Key:KeyT', null, null]
@@ -317,5 +317,30 @@ test('Deselect item defaults to F and migrates only when free, preserving custom
     assert.deepEqual(controls.loadChickenControls().keys.deselectItem, [null, null, null])
     saved.keys.deselectItem = ['Key:KeyH', null, null]
     assert.equal(controls.loadChickenControls().keys.deselectItem[0], 'Key:KeyH')
+  } finally { globalThis.window = previous }
+})
+
+test('primary keyboard: V fires, C strikes, X broods and Z throws; the previous defaults migrate, custom binds stay', () => {
+  const d = controls.defaultChickenControls().keys
+  assert.deepEqual([d.fire, d.melee, d.down, d.throw, d.crouch], [['Key:KeyV', null, null], ['Key:KeyC', null, null], ['Key:ControlLeft', 'Key:KeyX', null], ['Key:KeyG', 'Key:KeyZ', null], ['Key:KeyS', null, null]])
+  const previous = globalThis.window
+  try {
+    const flags = { padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, grabKeys2: true, noCmdBrood: true }
+    const saved = { ...controls.defaultChickenControls(), ...flags }
+    Object.assign(saved.keys, { fire: ['Key:KeyX', 'Key:KeyV', null], melee: ['Key:KeyZ', 'Key:KeyB', null], crouch: ['Key:KeyS', 'Key:KeyC', null], down: ['Key:ControlLeft', null, null], throw: ['Key:KeyG', null, null] })
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    let k = controls.loadChickenControls().keys
+    assert.deepEqual([k.fire, k.melee, k.crouch, k.down, k.throw], [['Key:KeyV', null, null], ['Key:KeyC', null, null], ['Key:KeyS', null, null], ['Key:ControlLeft', 'Key:KeyX', null], ['Key:KeyG', 'Key:KeyZ', null]])
+    // custom: fire on X only and crouch keeping C stay; melee cannot take C and keeps its keys
+    saved.keys.fire = ['Key:KeyX', null, null]
+    saved.keys.crouch = ['Key:KeyC', null, null]
+    k = controls.loadChickenControls().keys
+    assert.deepEqual(k.fire, ['Key:KeyX', null, null]); assert.deepEqual(k.crouch, ['Key:KeyC', null, null])
+    assert.deepEqual(k.melee, ['Key:KeyZ', 'Key:KeyB', null])
+    assert.deepEqual(k.down, ['Key:ControlLeft', null, null])
+    // once saved with the flag, nothing moves again
+    saved.keyboardVCXZ = true
+    saved.keys.fire = ['Key:KeyX', 'Key:KeyV', null]
+    assert.deepEqual(controls.loadChickenControls().keys.fire, ['Key:KeyX', 'Key:KeyV', null])
   } finally { globalThis.window = previous }
 })

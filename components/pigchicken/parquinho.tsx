@@ -15,6 +15,7 @@ import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, TIP_TIME, type Box, type Combat, type Effect, type Pickup, type Swing } from "@/lib/pigchicken/combat"
+import { ellipsePoint, swingPose, trailSpan } from "@/lib/pigchicken/swing"
 import { quickSwitchStep, itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { itemImage } from "@/lib/pigchicken/art"
@@ -577,7 +578,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: rs ? angle : null, ...effectGame(combat.effect, xd.weight) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
-        eng.setSwing(xsw ? { angle: swingAngle(xsw), reach: xsw.range, t: Math.min(1, xsw.t / (xsw.time * 0.3), (xsw.time - xsw.t) / (xsw.time * 0.3)) } : null)
+        eng.setSwing(rigSwing(xsw))
         eng.setHeld(heldItemPose(combat, now))
       })
       extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraAim.delete(id); combat.drop(id) } })
@@ -593,6 +594,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         fx: { burst: combat.burst, text: combat.addText },
         hurt: dir => engine.impulse(dir * 420, -380),
         sound: e => templeSounds.push(e),
+        parry: (x, y, r, color) => combat.parry(x, y, r, color),
       }
       temple.step(dt, io)
       templeSounds.splice(0).forEach(e => playTempleSound(e, mixGain("effects")))
@@ -635,7 +637,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- draw ----------
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
       // the world's things stay under the header, like the world itself
-      const inWorld = () => { ctx.save(); ctx.beginPath(); ctx.rect(0, viewTop, viewW, st.height - viewTop); ctx.clip(); ctx.translate(0, camY) }
+      // a blow that lands jolts the world for a moment
+      let jolt = swingShake(combat.swing)
+      extraList.forEach(([id]) => { combat.use(id); jolt = Math.max(jolt, swingShake(combat.swing)) })
+      combat.use("p1")
+      const jx = jolt ? (Math.random() * 2 - 1) * jolt : 0, jy = jolt ? (Math.random() * 2 - 1) * jolt : 0
+      const inWorld = () => { ctx.save(); ctx.beginPath(); ctx.rect(0, viewTop, viewW, st.height - viewTop); ctx.clip(); ctx.translate(jx, camY + jy) }
       lookTargets.length = 0
       lookTargets.push({ x: body.x, y: body.y - 170 * st.scale })
       inWorld()
@@ -660,7 +667,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       bowing.travel = 0
       engine.setPeck(combat.peck)
-      engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
+      engine.setSwing(rigSwing(sw))
       engine.setHeld(heldItemPose(combat, now, h && d.beam ? { x: VIOLIN_BOW_X, stroke: bowing.stroke } : null))
       const muzzle = muzzleAt(ang)
       // Keep the delayed reticle on the cursor's radius around the grip, not a
@@ -722,7 +729,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawInventory(ctx, combat, 0, invOff)
       extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, invOff) })
       combat.use("p1")
-      if (wh.open) {
+      // over her: the front half of a horizontal blow, and the item wheel
+      const fronts: [string, { x: number; y: number }][] = []
+      if (combat.swing?.kind === "flat") fronts.push(["p1", origin])
+      extraList.forEach(([id, eng]) => { combat.use(id); if (combat.swing?.kind === "flat") fronts.push([id, eng.getState().shoulder]) })
+      combat.use("p1")
+      if (wh.open || fronts.length) {
         if (wheelCanvas.width !== canvas.width || wheelCanvas.height !== canvas.height) {
           wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
           const dpr = canvas.width / window.innerWidth
@@ -730,7 +742,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           wheelCanvas.style.display = ""
         }
         wctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
-        drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110)); wheelDrawn = true
+        fronts.forEach(([id, at]) => { combat.use(id); drawSwing(wctx, combat, at, "front") })
+        combat.use("p1")
+        if (wh.open) drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110))
+        wheelDrawn = true
       } else if (wheelDrawn) {
         wheelCanvas.width = 1; wheelCanvas.height = 1
         wheelCanvas.style.display = "none"; wheelDrawn = false
@@ -1061,24 +1076,127 @@ function harmonyBar(ctx: Ctx, g: Combat["targets"][number], x: number, y: number
   ctx.fillStyle = grad; ctx.fillRect(x - w / 2, y, w * Math.min(1, v / g.maxHp), 5)
 }
 
-// where the blow is now: it sweeps across its arc in sw.time, downward in front of her
-function swingAngle(sw: Swing) {
-  return sw.angle + sw.dir * (-sw.arc / 2 + sw.arc * Math.min(1, sw.t / sw.time))
+// the wing's pose for the rig: where the blow is now and how much of the swing pose it takes (none once it is over)
+function rigSwing(sw: Swing | null) {
+  if (!sw || sw.t >= sw.time) return null
+  const p = swingPose(sw)
+  return { angle: p.angle, reach: p.reach, t: p.blend }
 }
 
-function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
+// the blow's air: a cream crescent along the sweep, thick at the tip and thin at the tail, that appears in a frame or
+// two and dissolves from the tail, letting off a few curls; a flash where it hit. The horizontal blow is a flattened
+// ellipse: its back half is drawn behind her (layer "back"), its front half over her (layer "front")
+function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back") {
   const sw = combat.swing
-  if (!sw) return
-  if (!intersectsView({ x: origin.x - sw.reach, y: origin.y - sw.reach, w: sw.reach * 2, h: sw.reach * 2 }, { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, 8)) return
-  // the swing: a faint fan over the whole hit area, and a trail behind the wing tip
-  const k = 1 - sw.t / sw.time
-  const a0 = sw.angle - sw.dir * sw.arc / 2, now = swingAngle(sw)
+  if (!sw || sw.trail.opacity <= 0) return
+  if (!intersectsView({ x: origin.x - sw.reach - 40, y: origin.y - sw.reach - 40, w: sw.reach * 2 + 80, h: sw.reach * 2 + 80 }, { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, 8)) return
+  if (layer === "front" && sw.kind !== "flat") return
+  const span = trailSpan(sw)
   ctx.save()
   ctx.translate(origin.x, origin.y)
-  ctx.fillStyle = sw.wing ? `rgba(255,236,179,${0.18 * k})` : `rgba(255,209,102,${0.2 * k})`
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, sw.reach, a0, now, sw.dir < 0); ctx.closePath(); ctx.fill()
-  ctx.strokeStyle = `rgba(255,255,255,${0.7 * k})`; ctx.lineWidth = 3
-  ctx.beginPath(); ctx.arc(0, 0, sw.reach, a0, now, sw.dir < 0); ctx.stroke()
+  if (span && span.head > span.tail) {
+    const { tail, head, fade, sweep } = span
+    const alpha = sw.trail.opacity * (1 - fade * fade)
+    const R = sw.reach, W = Math.min(sw.trail.width, R * 0.6)
+    // points along the crescent from the tail to the head: outer edge at the reach, inner edge in by the thickness,
+    // which grows toward the head (the tip of the blow)
+    const n = Math.max(8, Math.ceil((head - tail) / 0.06))
+    const at = (p: number, r: number) => {
+      if (sw.kind === "flat") { const e = ellipsePoint(sw.angle, sw.dir, -sweep / 2 + p); return { x: e.x * r, y: e.y * r, z: e.z } }
+      const a = sw.angle - sw.dir * sweep / 2 + sw.dir * p
+      return { x: Math.cos(a) * r, y: Math.sin(a) * r, z: 0 }
+    }
+    const outer: { x: number; y: number; z: number }[] = [], inner: { x: number; y: number }[] = []
+    for (let i = 0; i <= n; i++) {
+      const p = tail + (head - tail) * (i / n), k = i / n
+      outer.push(at(p, R))
+      inner.push(at(p, R - W * (0.12 + 0.88 * Math.pow(k, 0.7))))
+    }
+    // the flat blow: only the half on this layer (behind her: z < 0)
+    const keep = (i: number) => sw.kind !== "flat" || (layer === "back" ? outer[i].z < 0.05 : outer[i].z > -0.05)
+    const runs: number[][] = []
+    let run: number[] = []
+    for (let i = 0; i <= n; i++) { if (keep(i)) run.push(i); else if (run.length) { runs.push(run); run = [] } }
+    if (run.length) runs.push(run)
+    const col = sw.trail.color
+    runs.forEach(r => {
+      if (r.length < 2) return
+      ctx.beginPath()
+      r.forEach((i, j) => j ? ctx.lineTo(outer[i].x, outer[i].y) : ctx.moveTo(outer[i].x, outer[i].y))
+      for (let j = r.length - 1; j >= 0; j--) ctx.lineTo(inner[r[j]].x, inner[r[j]].y)
+      ctx.closePath()
+      ctx.globalAlpha = alpha; ctx.fillStyle = col; ctx.fill()
+      // a brighter rim along the outer edge
+      ctx.beginPath(); r.forEach((i, j) => j ? ctx.lineTo(outer[i].x, outer[i].y) : ctx.moveTo(outer[i].x, outer[i].y))
+      ctx.globalAlpha = alpha * 0.9; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke()
+    })
+    // the curls: little arcs that come loose from the crescent and drift away as it dissolves
+    if (layer === "back" || sw.kind === "flat") {
+      const wisps = sw.trail.wisps
+      ctx.strokeStyle = col; ctx.lineCap = "round"
+      for (let w = 0; w < wisps; w++) {
+        const h = hash01(sw.seed * 97 + w * 13.7)
+        const p = sweep * (0.15 + 0.8 * (w + h * 0.6) / Math.max(1, wisps))
+        if (p < tail || p > head) continue
+        const base = at(p, R - W * (0.3 + 0.5 * h))
+        if (!keep(Math.round((p - tail) / Math.max(1e-6, head - tail) * n))) continue
+        const out = Math.hypot(base.x, base.y) || 1, drift = 8 + 26 * fade
+        const cx = base.x + base.x / out * drift, cy = base.y + base.y / out * drift - 6 * fade
+        const rr = 3 + 5 * h + 4 * fade
+        ctx.globalAlpha = alpha * 0.85; ctx.lineWidth = 2 * (1 - fade) + 0.6
+        ctx.beginPath(); ctx.arc(cx, cy, rr, h * 6, h * 6 + Math.PI * (1.1 + 0.5 * h)); ctx.stroke()
+      }
+    }
+  }
+  // the impact: a white flash where it hit, for a moment
+  const since = sw.t - sw.hitAt
+  if (layer === "back" && sw.hits > 0 && since < 0.12) {
+    const k = since / 0.12
+    sw.impacts.forEach(p => {
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffffff"
+      ctx.beginPath()
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + sw.seed, r = i % 2 ? 5 : 14 + 10 * k
+        ctx.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r)
+      }
+      ctx.closePath(); ctx.fill()
+    })
+  }
+  ctx.restore()
+}
+// the screen's jolt when a blow lands (px, fading over 0.1 s)
+function swingShake(sw: Swing | null) {
+  if (!sw || sw.hits <= 0) return 0
+  const since = sw.t - sw.hitAt
+  return since < 0.1 ? 2.5 * (1 - since / 0.1) : 0
+}
+const hash01 = (v: number) => { const s = Math.sin(v * 12.9898) * 43758.5453; return s - Math.floor(s) }
+
+// a damaging note or projectile cancelled by a peck: a little cloud that puffs out and fades. Drawn whole on a
+// small canvas first, so the overlapping puffs fade as one cloud
+let puffCanvas: HTMLCanvasElement | null = null
+function drawPuff(ctx: Ctx, x: number, y: number, p: Combat["puffs"][number]) {
+  const k = p.t / p.life, grow = 1 - (1 - k) * (1 - k), S = 96, dpr = 2
+  if (!puffCanvas) { puffCanvas = document.createElement("canvas"); puffCanvas.width = puffCanvas.height = S * dpr }
+  const c = puffCanvas.getContext("2d")!
+  c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, S, S); c.translate(S / 2, S / 2)
+  const pts = Array.from({ length: 5 }, (_, i) => {
+    const a = i / 5 * Math.PI * 2 + p.seed * 6, d = 4 + 10 * grow
+    return { x: Math.cos(a) * d, y: Math.sin(a) * d * 0.7, r: (5 + 4 * hash01(p.seed + i)) * (0.5 + 0.7 * grow) }
+  })
+  pts.push({ x: 0, y: 0, r: 6 + 5 * grow })
+  const cloud = () => { c.beginPath(); pts.forEach(b => { c.moveTo(b.x + b.r, b.y); c.arc(b.x, b.y, b.r, 0, Math.PI * 2) }) }
+  c.strokeStyle = "rgba(90,90,100,0.55)"; c.lineWidth = 3; cloud(); c.stroke()
+  c.fillStyle = p.color; cloud(); c.fill()
+  // three little curls flying off
+  c.strokeStyle = p.color; c.lineWidth = 1.5; c.lineCap = "round"
+  for (let i = 0; i < 3; i++) {
+    const a = -Math.PI / 2 + (i - 1) * 0.9 + p.seed, d = 12 + 18 * grow
+    c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, 3 + 2 * grow, a, a + Math.PI * 1.3); c.stroke()
+  }
+  ctx.save()
+  ctx.globalAlpha = k < 0.35 ? 1 : 1 - (k - 0.35) / 0.65
+  ctx.drawImage(puffCanvas, x - S / 2, y - 10 * grow - S / 2, S, S)
   ctx.restore()
 }
 
@@ -1255,6 +1373,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
     ctx.fillStyle = `rgba(255,170,70,${0.45 * (1 - k)})`; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = `rgba(255,240,200,${0.8 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * k, 0, Math.PI * 2); ctx.stroke()
   })
+  combat.puffs.forEach(p => { if (visible(p.x, p.y + 30, 60, 60)) drawPuff(ctx, X(p.x), p.y, p) })
   combat.sparks.forEach(s => { if (!visible(s.x, s.y + s.size, s.size * 2, s.size * 2)) return; ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
   ctx.globalAlpha = 1
   ctx.font = "bold 13px ui-monospace, monospace"; ctx.textAlign = "center"

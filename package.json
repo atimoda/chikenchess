@@ -1,6 +1,6 @@
 {
   "name": "chikenchess",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "prebuild": "npm run admin:check && npm run build:powered-analysis",
@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "start": "next start",
     "test:music": "node --test tests/music.test.cjs",
-    "test:pigchicken": "node --test tests/pigchicken-rendering.cases.cjs tests/chicken-throw-transition.cases.cjs tests/pigchicken-racks.cases.cjs tests/pigchicken-peck.cases.cjs tests/chicken-portal.cases.cjs tests/pigchicken-explosion.cases.cjs tests/pigchicken-world.cases.cjs tests/pigchicken-temple.cases.cjs tests/pigchicken-inventory.cases.cjs tests/chicken-lobby.cases.cjs tests/pigchicken-dummies.cases.cjs tests/pigchicken-layout.cases.cjs tests/pigchicken-patio-save.cases.cjs",
+    "test:pigchicken": "node --test tests/pigchicken-rendering.cases.cjs tests/chicken-throw-transition.cases.cjs tests/pigchicken-racks.cases.cjs tests/pigchicken-peck.cases.cjs tests/pigchicken-swing.cases.cjs tests/chicken-portal.cases.cjs tests/pigchicken-explosion.cases.cjs tests/pigchicken-world.cases.cjs tests/pigchicken-temple.cases.cjs tests/pigchicken-inventory.cases.cjs tests/chicken-lobby.cases.cjs tests/pigchicken-dummies.cases.cjs tests/pigchicken-layout.cases.cjs tests/pigchicken-patio-save.cases.cjs",
     "typecheck": "tsc --noEmit",
     "build:online": "node scripts/build-online.mjs",
     "build:powered-analysis": "node scripts/build-powered-analysis.mjs",
