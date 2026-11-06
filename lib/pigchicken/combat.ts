@@ -1,7 +1,8 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
-import { SWING_COMBO, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
+import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
+import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
@@ -135,6 +136,27 @@ export function createCombat() {
   // the pecks defending right now (one per local player) and the little clouds of what they cancelled
   const parryZones = new Map<string, ParryZone>()
   const puffs: Puff[] = []
+  // note shots (tiros-nota) in flight, what happened to them this frame (the song reads it), and the rule that
+  // says which note a rebate plays (the song's fan; by default the note sequenced)
+  const noteShots: NoteShot[] = []
+  const noteEvents: NoteShotEvent[] = []
+  let noteRule: ((shot: NoteShot, angle: number) => number | null) | null = null
+  // a peck defending at (x, y) cancels what is there, in a little cloud (parriedBy: the player who did it)
+  let parriedBy = ''
+  function parryAt(x: number, y: number, r: number, color: string) {
+    for (const [id, z] of parryZones) {
+      const dx = x - z.x, dy = y - z.y, dist = Math.hypot(dx, dy)
+      if (dist > z.reach + r) continue
+      let diff = Math.atan2(dy, dx) - z.angle
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+      if (Math.abs(diff) > z.arc / 2 && dist > 14 + r) continue
+      puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color })
+      sound('puff', null)
+      parriedBy = id
+      return true
+    }
+    return false
+  }
   // the combo: which blow of the sequence came last and how long ago the last swing ended (s)
   let swingCombo = 0, swingGap = Infinity
   // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
@@ -671,6 +693,58 @@ export function createCombat() {
     }
   }
 
+  // a blow rebates the incoming notes in its sector during the golpe and the continuação: judged against when the
+  // note should arrive, it plays (the song's rule picks the note) and flies off where she aims
+  function rebateNotes(sw: Swing, origin: { x: number; y: number }) {
+    if (sw.t < sw.hitAt || sw.t > sw.hitAt + sw.time * (SWING_PHASES.strike + SWING_PHASES.follow)) return
+    for (const n of noteShots) {
+      if (n.state !== 'incoming' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, n.x, n.y, n.size)) continue
+      const off = music.time - n.arriveAt, grade = judgeNote(off)
+      const midi = noteRule?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? n.midi
+      const speed = Math.max(REBATE_SPEED, Math.hypot(n.vx, n.vy) * 1.6)
+      n.vx = Math.cos(aimAngle) * speed; n.vy = Math.sin(aimAngle) * speed
+      n.state = 'rebated'; n.t = 0; n.grade = grade
+      n.color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+      const d = sw.item ? def() : null
+      const voice: VoiceId = d?.instrument ? d.voice : 'bells'
+      out.note(voice, midi, music.toGrid(), grade === 'fora' ? 0.2 : 0.4, grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25)
+      burst(n.x, n.y, grade === 'perfect' ? 12 : 6, n.color, grade === 'perfect' ? 260 : 160, 3)
+      noteEvents.push({ kind: 'rebate', shot: n, grade, off, player: active, midi })
+    }
+  }
+
+  // the notes in flight, once per world step: incoming ones the peck cancels, ones that reach a player or come too
+  // late are missed; rebated ones fill the harmony of the first alien or zombie they meet
+  function stepNoteShots(dt: number) {
+    for (let i = noteShots.length - 1; i >= 0; i--) {
+      const n = noteShots[i]
+      n.t += dt; n.x += n.vx * dt; n.y += n.vy * dt
+      if (n.state === 'incoming') {
+        if (parryAt(n.x, n.y, n.size, n.color)) { noteEvents.push({ kind: 'parry', shot: n, player: parriedBy }); noteShots.splice(i, 1); continue }
+        // it can still be rebated a little after it should have arrived (it flies on into her): touching a player
+        // only counts once it is past the good window
+        const late = music.time - n.arriveAt
+        const hitHer = late > NOTE_GOOD && blastActors.some(a => n.x + n.size > a.box.l && n.x - n.size < a.box.r && n.y + n.size > a.box.t && n.y - n.size < a.box.b)
+        if (hitHer || late > NOTE_LATE) {
+          n.state = 'missed'; n.t = 0
+          noteEvents.push({ kind: 'miss', shot: n })
+          if (hitHer) { burst(n.x, n.y, 6, '#9aa0a8', 120, 2); noteShots.splice(i, 1) }
+        }
+        continue
+      }
+      if (n.state === 'missed') { if (n.t > 0.6) noteShots.splice(i, 1); continue }
+      const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'converted' &&
+        n.x + n.size > t.x - t.w / 2 && n.x - n.size < t.x + t.w / 2 && n.y + n.size > t.y - t.h && n.y - n.size < t.y)
+      if (hit) {
+        const note: NoteInfo = { midi: n.midi, color: n.color, sym: '♪', wave: 0, phase: 0, voice: 'bells' }
+        // (a full harmony turns it into a bird)
+        harmonize(hit, hit.maxHp * REBATE_HARMONY, Math.sign(n.vx) * 120, n.x, n.y, note, 0.3)
+        noteShots.splice(i, 1); continue
+      }
+      if (n.t > REBATE_LIFE) noteShots.splice(i, 1)
+    }
+  }
+
   // the violin: a held note in a beam from the muzzle to the first thing it meets; its pitch follows the aim and the chord
   function stepBeam(d: ItemDef, h: Owned, dt: number, muzzle: { x: number; y: number }, ctx: StepCtx) {
     const dx = Math.cos(aimAngle), dy = Math.sin(aimAngle)
@@ -727,19 +801,13 @@ export function createCombat() {
     get puffs() { return puffs as readonly Puff[] },
     get parryZones() { return [...parryZones.values()] },
     // a damaging note or projectile at (x, y), radius r: a peck defending there cancels it in a little cloud
-    parry(x: number, y: number, r = 0, color = '#f4f1ea') {
-      for (const z of parryZones.values()) {
-        const dx = x - z.x, dy = y - z.y, dist = Math.hypot(dx, dy)
-        if (dist > z.reach + r) continue
-        let diff = Math.atan2(dy, dx) - z.angle
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff))
-        if (Math.abs(diff) > z.arc / 2 && dist > 14 + r) continue
-        puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color })
-        sound('puff', null)
-        return true
-      }
-      return false
-    },
+    parry(x: number, y: number, r = 0, color = '#f4f1ea') { return parryAt(x, y, r, color) },
+    // note shots: fire one (a note spawner), what happened to them this frame, which note a rebate plays
+    fireNoteShot(n: Omit<NoteShot, 'id' | 'state' | 't'>) { const shot: NoteShot = { ...n, id: nextId++, state: 'incoming', t: 0 }; noteShots.push(shot); return shot },
+    get noteShots() { return noteShots as readonly NoteShot[] },
+    get noteEvents() { return noteEvents },
+    setNoteRule(rule: ((shot: NoteShot, angle: number) => number | null) | null) { noteRule = rule },
+    clearNoteShots(source?: string) { for (let i = noteShots.length - 1; i >= 0; i--) if (!source || noteShots[i].source === source) noteShots.splice(i, 1) },
     get peck(): PeckPose | null {
       if (held()) return null
       if (peck) return peckPose(peck)
@@ -857,6 +925,7 @@ export function createCombat() {
       if (swing) {
         swing.t += dt
         if (!swing.hit && swing.t >= swing.hitAt) strike(swing, origin)
+        rebateNotes(swing, origin)
         if (swing.t > swing.life) swing = null
       }
       if (!swing || swing.t > swing.time) swingGap += dt
@@ -1007,6 +1076,7 @@ export function createCombat() {
       // projectiles
       const ctx = { boxes, groundY }
       if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
+      if (world) stepNoteShots(dt)
       if (world) for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
       if (world) for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
 
