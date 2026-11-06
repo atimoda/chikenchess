@@ -344,3 +344,19 @@ test('primary keyboard: V fires, C strikes, X broods and Z throws; the previous 
     assert.deepEqual(controls.loadChickenControls().keys.fire, ['Key:KeyX', 'Key:KeyV', null])
   } finally { globalThis.window = previous }
 })
+
+test('the bottom inventory bar keeps its own position, apart from the phone stack', () => {
+  const store = {}
+  const previous = globalThis.window
+  globalThis.window = { localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v } } }
+  try {
+    layout.resetTouchLayout()
+    layout.setTouchOffset('inventory', { x: -40, y: 10 })
+    layout.setTouchOffset('inventoryBar', { x: 30, y: -12 })
+    layout.finishTouchLayoutEdit()
+    const persisted = JSON.parse(store['chickenchess-chicken-touch-layout-v1'])
+    assert.deepEqual(persisted.inventoryBar, { x: 30, y: -12 })
+    assert.deepEqual(persisted.inventory, { x: -40, y: 10 })
+    layout.resetTouchLayout(); layout.finishTouchLayoutEdit()
+  } finally { globalThis.window = previous }
+})

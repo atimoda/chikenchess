@@ -20,7 +20,7 @@ import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
-import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
+import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, type ChickenPortalWorld } from "./chicken-portal"
 import { PatioPortals } from "@/components/pigchicken/patio-portals"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
@@ -31,7 +31,7 @@ import { GamePreferences } from "@/components/game-preferences"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { BAR_GROUND_H, INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -87,7 +87,8 @@ export function ChickenPatio() {
   const showTouch = useChickenTouch(), portrait = usePortrait()
   const lifted = showTouch && portrait
   const controlsBottom = lifted ? 16 : undefined
-  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : CHICKEN_GROUND_H
+  // on desktop and tablet the world rises so her ground sits above the inventory bar at the bottom
+  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : BAR_GROUND_H
   // tela cheia: segue o estado real do navegador (Esc também sai)
   const [fullscreen, setFullscreen] = useState(false)
   useEffect(() => {
