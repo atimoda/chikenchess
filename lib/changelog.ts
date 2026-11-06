@@ -11,6 +11,7 @@ export const CHANGELOG = [
         'O Golpe ganhou preparação, golpe rápido, continuação e recuperação, com um rastro de ar creme que se desfaz soltando fiapos. O acerto acontece no instante do golpe, com um clarão e um tranco curto na tela.',
         'Golpes em sequência alternam para baixo, para cima, na horizontal ao redor da galinha e um giro de 360° no quarto, que acerta em volta toda.',
         'Em Itens → Combo, cada item define a ordem dos golpes (até seis), a janela para o próximo golpe continuar a sequência e o arco de acerto dos golpes para cima e horizontal.',
+        'No desktop e no tablet, a barra de itens fica embaixo, no centro, com casas maiores, a tecla de cada uma, a munição e o desgaste. Ao trocar de item, o nome aparece por um instante. O mundo subiu para a galinha não ficar atrás da barra.',
         'Novas teclas padrão no teclado principal: V atira, C dá o golpe, X também choca e Z também arremessa. Controles salvos nos padrões antigos passam para os novos; teclas personalizadas ficam como estão.',
         'Em Itens → Golpe, cada item tem espessura, duração, fiapos, opacidade e cor do rastro. Nos instrumentos, o rastro pega a cor da nota do acorde.',
         'A Bicada agora defende: acertar o bico numa bomba ou no fogo do Templo do Gongo anula o projétil numa nuvenzinha, sem perder coração.',

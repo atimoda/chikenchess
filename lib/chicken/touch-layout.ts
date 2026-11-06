@@ -2,12 +2,12 @@
 // browser. Edit mode is a flag on the same store: while it is on, the controls show and can be dragged, and
 // "Ok" saves the layout and ends it.
 
-export type TouchControlId = 'move' | 'run' | 'down' | 'jump' | 'aim' | 'melee' | 'throw' | 'itemWheel' | 'grab' | 'inventory'
+export type TouchControlId = 'move' | 'run' | 'down' | 'jump' | 'aim' | 'melee' | 'throw' | 'itemWheel' | 'grab' | 'inventory' | 'inventoryBar'
 export type TouchOffset = { x: number; y: number }
 export type TouchLayout = { offsets: Partial<Record<TouchControlId, TouchOffset>>; editing: boolean }
 
 const STORE = 'chickenchess-chicken-touch-layout-v1'
-const IDS: TouchControlId[] = ['move', 'run', 'down', 'jump', 'aim', 'melee', 'throw', 'itemWheel', 'grab', 'inventory']
+const IDS: TouchControlId[] = ['move', 'run', 'down', 'jump', 'aim', 'melee', 'throw', 'itemWheel', 'grab', 'inventory', 'inventoryBar']
 
 const EMPTY: TouchLayout = { offsets: {}, editing: false }
 let state: TouchLayout | null = null

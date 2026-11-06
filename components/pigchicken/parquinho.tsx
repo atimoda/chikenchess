@@ -154,6 +154,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // where the page keeps the ground on the screen (raised above the touch controls on a phone held upright)
   const groundHRef = useRef(groundHeight)
   groundHRef.current = groundHeight
+  const liftedRef = useRef(lifted)
+  liftedRef.current = lifted
   const touchAim = useRef<Stick | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
@@ -725,9 +727,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.use("p1")
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       // one inventory per local player, stacked in the top right corner (the avatars sit to their right)
-      const invOff = getTouchLayout().offsets.inventory
-      drawInventory(ctx, combat, 0, invOff)
-      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, invOff) })
+      const barBottom = !liftedRef.current
+      const invOff = getTouchLayout().offsets[barBottom ? "inventoryBar" : "inventory"]
+      drawInventory(ctx, combat, 0, barBottom, null, now, invOff)
+      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, barBottom, tints?.[id] ?? null, now, barBottom ? undefined : invOff) })
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []
@@ -750,7 +753,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         wheelCanvas.width = 1; wheelCanvas.height = 1
         wheelCanvas.style.display = "none"; wheelDrawn = false
       }
-      drawTempleHud(ctx, temple, combat.music, inTemple, INV_TOP + INV_SIZE + 12)
+      drawTempleHud(ctx, temple, combat.music, inTemple, barBottom ? INV_STACK.top : INV_TOP + INV_SIZE + 12)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
         const h = combat.inventory[combat.current]
@@ -804,17 +807,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       {/* the inventory bar is drawn on the canvas; these invisible slots sit on top of it so a click or a tap
           equips that item. In edit mode the Movable's drag handle covers them, so dragging never equips. */}
       {engine && (
-        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE }}>
+        <Movable
+          id={lifted ? "inventory" : "inventoryBar"}
+          className={lifted ? "pointer-events-none fixed z-[190]" : "pointer-events-none fixed inset-x-0 mx-auto z-[190]"}
+          style={lifted ? { right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE } : { bottom: BAR.bottom + BAR.tab, width: BAR_W(invSlots), height: BAR.size }}
+        >
           {!editing && (
-            <div data-chicken-ignore className="flex h-full" style={{ gap: INV_GAP }}>
+            <div data-chicken-ignore className="flex h-full" style={{ gap: lifted ? 3 : BAR.gap }}>
               {Array.from({ length: invSlots }, (_, i) => (
                 <button
                   key={i}
                   type="button"
                   tabIndex={-1}
                   aria-label={`Equipar item ${i + 1} do inventário`}
-                  className="pointer-events-auto h-full shrink-0 rounded-sm bg-transparent"
-                  style={{ width: INV_SIZE, touchAction: "none" }}
+                  className="pointer-events-auto h-full shrink-0 rounded-md bg-transparent"
+                  style={{ width: lifted ? INV_SIZE : BAR.size, touchAction: "none" }}
                   // pointerdown (not click): instant on touch, and preventDefault keeps focus off the button so Space stays a game key
                   onPointerDown={e => { e.preventDefault(); e.stopPropagation(); slotTap.current = i + 1 }}
                   onContextMenu={e => e.preventDefault()}
@@ -1662,49 +1669,121 @@ function drawThrowPath(ctx: Ctx, pts: { x: number; y: number }[]) {
 
 const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
 const INV_W = (n: number) => n * INV_SIZE + (n - 1) * INV_GAP
-// the inventories' stack: top right, one row per local player, the player's avatar at the right end of the row
+// the inventories' stack on a phone held upright: top right, one row per local player, the player's avatar at the
+// right end of the row (the avatars stay there on every screen)
 export const INV_STACK = { top: 64, right: 12, size: INV_SIZE, rowGap: 6, avatarGap: 6 }
 const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_STACK.rowGap)
 const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap
+// the hotbar at the bottom (desktop and tablet): big slots apart from each other, the key numbers under them; the
+// world is lifted so her ground sits above it
+export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16 }
+export const BAR_GROUND_H = 100
+const BAR_W = (n: number) => n * BAR.size + (n - 1) * BAR.gap
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
-// the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls).
-// Only her items show, plus one empty slot while there is room (instruments, weapons, then the other items).
-// The slots touch each other, with a thin line between them; the current one is outlined in yellow.
-function drawInventory(ctx: Ctx, combat: Combat, row: number, offset?: { x: number; y: number }) {
-  const slots = combat.inventory, n = slots.length
-  const size = INV_SIZE, w = INV_W(n)
-  const x0 = Math.round(window.innerWidth - invRight - w + (offset?.x ?? 0)), y = invRowY(row) + (offset?.y ?? 0)
-  // the slot numbers (keys 1-9) are the first player's
-  const numbers = row === 0 && (desktopPointer?.matches ?? true)
-  ctx.save()
-  ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "left"
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x0, y, w, size)
-  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1
-  ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, size - 1)
-  ctx.beginPath()
-  for (let i = 1; i < n; i++) { const x = x0 + i * size + 0.5; ctx.moveTo(x, y); ctx.lineTo(x, y + size) }
-  ctx.stroke()
-  for (let i = 0; i < n; i++) {
-    const x = x0 + i * size, o = slots[i]
-    if (i === combat.current) {
-      ctx.fillStyle = "rgba(255,209,102,0.22)"; ctx.fillRect(x, y, size, size)
-      ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, size - 2, size - 2)
-    }
-    if (o) { ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 2); drawItem(ctx, o.item, size - 6, size - 8); ctx.restore() }
-    if (numbers && i < 9) { ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10) }
+// where a player's bar sits: at the bottom, the first player in the middle, the second on the right, the third on
+// the left, more above the middle; on a phone held upright, the old stack in the top right corner
+function invGeom(row: number, n: number, bottom: boolean, offset?: { x: number; y: number }) {
+  const W = window.innerWidth, H = window.innerHeight
+  if (!bottom) {
+    const w = INV_W(n)
+    return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size: INV_SIZE, gap: 3, w, tabs: false }
   }
+  const w = BAR_W(n), baseY = H - BAR.bottom - BAR.tab - BAR.size
+  const x = row === 1 ? W - BAR.side - w : row === 2 ? BAR.side : (W - w) / 2
+  const y = baseY - (row >= 3 ? (row - 2) * (BAR.size + BAR.tab + 30) : 0)
+  return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size: BAR.size, gap: BAR.gap, w, tabs: true }
+}
+// the item's name over the bar for a moment after switching (per player row)
+const invPill = new Map<number, { key: string; at: number }>()
+const PILL_TIME = 1500
+function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath()
+}
+// the inventory bar, moved by the player's saved offset (edit mode of the touch controls). Only her items show, plus
+// one empty slot while there is room (instruments, weapons, then the other items). Each slot is a glass tile; the
+// current one glows teal. A badge counts the ammo or the doses, a thin line shows what is left of an item that wears.
+function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }) {
+  const slots = combat.inventory, n = slots.length
+  const g = invGeom(row, n, bottom, offset), { size, gap } = g
+  const x0 = g.x, y = g.y
+  // the slot numbers (keys 1-9) are the first player's, with a mouse
+  const numbers = g.tabs && row === 0 && (desktopPointer?.matches ?? true)
+  const r = bottom ? 9 : 5
+  ctx.save()
+  ctx.textBaseline = "middle"
+  for (let i = 0; i < n; i++) {
+    const x = x0 + i * (size + gap), o = slots[i], on = i === combat.current
+    roundRect(ctx, x, y, size, size, r)
+    if (on) { ctx.save(); ctx.shadowColor = "rgba(64,224,208,0.85)"; ctx.shadowBlur = bottom ? 14 : 8; ctx.fillStyle = "rgba(38,92,88,0.62)"; ctx.fill(); ctx.restore() }
+    else { ctx.fillStyle = "rgba(48,58,52,0.5)"; ctx.fill() }
+    ctx.lineWidth = on ? 2.5 : 1; ctx.strokeStyle = on ? "#5ee8d8" : "rgba(255,255,255,0.22)"; ctx.stroke()
+    // a soft light along the top edge: glass
+    ctx.save(); roundRect(ctx, x + 1, y + 1, size - 2, size * 0.45, r - 1); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill(); ctx.restore()
+    if (o) {
+      ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size - (bottom ? 12 : 6), size - (bottom ? 14 : 8)); ctx.restore()
+      const d = combat.item(o.item)
+      // the badge: ammo left (or doses), in the bottom right corner
+      if (d.mag > 0) {
+        const t = String(Math.ceil(o.ammo))
+        ctx.font = `bold ${bottom ? 12 : 9}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "right"
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.strokeText(t, x + size - 4, y + size - (bottom ? 9 : 6))
+        ctx.fillStyle = o.ammo <= 0 ? "#ff8c69" : "#ffffff"; ctx.fillText(t, x + size - 4, y + size - (bottom ? 9 : 6))
+      }
+      // what is left of an item that wears out with hits
+      if (d.durability > 0 && o.durability < d.durability) {
+        const k = Math.max(0, o.durability / d.durability), bw = size - 12
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x + 6, y + size - 4, bw, 2)
+        ctx.fillStyle = k > 0.5 ? "#7bd88f" : k > 0.25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x + 6, y + size - 4, bw * k, 2)
+      }
+    }
+    // the key number under the slot (keys 1-9)
+    if (numbers && i < 9) {
+      const tx = x + size / 2, tw = 16, th = 13, ty = y + size + 3
+      roundRect(ctx, tx - tw / 2, ty, tw, th, 3); ctx.fillStyle = on ? "rgba(38,92,88,0.9)" : "rgba(18,22,26,0.72)"; ctx.fill()
+      ctx.lineWidth = 1; ctx.strokeStyle = on ? "#5ee8d8" : "rgba(255,255,255,0.28)"; ctx.stroke()
+      ctx.font = "bold 9px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = on ? "#ffffff" : "rgba(255,255,255,0.75)"
+      ctx.fillText(String(i + 1), tx, ty + th / 2 + 0.5)
+    }
+  }
+  // the other local players: a dot of their colour at the start of the bar
+  if (color && row > 0) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x0 - 8, y + size / 2, 4, 0, Math.PI * 2); ctx.fill() }
   // the effect running on her (a consumable): its item in a circle, the ring emptying as the time runs out
   const e = combat.effect
   if (e) {
-    const r = size / 2 - 2, cx = x0 - 8 - r, cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
+    const er = size / 2 - 2, cx = x0 - (color && row > 0 ? 18 : 8) - er, cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
     const tint = e.look === "buddha" ? "#ffd166" : e.look === "fizz" ? "#f3e1c7" : "#7bdff2"
-    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill()
-    ctx.save(); ctx.translate(cx, cy); drawItem(ctx, e.item, r * 1.3, r * 1.3); ctx.restore()
-    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.fill()
+    ctx.save(); ctx.translate(cx, cy); drawItem(ctx, e.item, er * 1.3, er * 1.3); ctx.restore()
+    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.stroke()
     // the last 3 seconds blink
     ctx.strokeStyle = tint; ctx.globalAlpha = e.left < 3 && Math.floor(e.left * 4) % 2 ? 0.35 : 1
-    ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(cx, cy, er, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+  // the name of what she just picked up or switched to, over the bar for a moment
+  const held = slots[combat.current] ?? null, key = `${combat.current}:${held?.item ?? ""}`
+  const pill = invPill.get(row)
+  if (!pill) invPill.set(row, { key, at: -Infinity })
+  else if (pill.key !== key) { pill.key = key; pill.at = now }
+  const since = now - (invPill.get(row)?.at ?? -Infinity)
+  if (since < PILL_TIME) {
+    const d = held ? combat.item(held.item) : null
+    const name = d ? d.name : "Mãos vazias"
+    const info = held && d ? [d.mag > 0 ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? `${held.durability} golpes` : ""].filter(Boolean).join(" · ") : ""
+    ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"
+    const nw = ctx.measureText(name).width
+    ctx.font = "11px ui-monospace, monospace"
+    const iw = info ? ctx.measureText(info).width + 14 : 0
+    const icon = held ? 26 : 0, pw = Math.ceil(12 + icon + nw + iw + 12), ph = 26
+    const px = Math.round(bottom ? x0 + g.w / 2 - pw / 2 : x0 + g.w - pw), py = bottom ? y - ph - 10 : y + size + 6
+    ctx.globalAlpha = since > PILL_TIME - 300 ? (PILL_TIME - since) / 300 : 1
+    roundRect(ctx, px, py, pw, ph, 7); ctx.fillStyle = "rgba(24,30,28,0.78)"; ctx.fill()
+    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.stroke()
+    let cx = px + 12
+    if (held) { ctx.save(); ctx.translate(cx + 10, py + ph / 2); drawItem(ctx, held.item, 20, 16); ctx.restore(); cx += icon }
+    ctx.textAlign = "left"; ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"; ctx.fillText(name, cx, py + ph / 2 + 0.5)
+    if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, cx + nw + 14, py + ph / 2 + 0.5) }
     ctx.globalAlpha = 1
   }
   ctx.restore()
