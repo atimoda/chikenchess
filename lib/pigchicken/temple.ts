@@ -43,6 +43,8 @@ export const GONG_FIRST = 5, GONG_NEXT = 3
 // the reset stone (Recomeçar): this many strikes put the temple back at rest, panels and score cleared
 export const RESET_NEED = 3
 export const RESET_X = 1770
+// the disc that plays the note stage's song (the guitar hero mode), left of the reset stone
+export const DISC_X = 1640
 const MAX_HEARTS = 3
 const INTRO = 3.2
 const DRAGON_SEGMENTS = 14
@@ -244,7 +246,7 @@ export function createTemple(seed = 1) {
     // arriving in the temple: the welcome
     if (io.inside && !s.welcomed && s.phase === 'idle') {
       s.welcomed = true
-      banner('Templo do Gongo', `Bata ${GONG_FIRST} vezes no gongo (tiro ou golpe) para começar.`, '#ffd166', 5)
+      banner('Templo do Gongo', `Bata ${GONG_FIRST} vezes no gongo (tiro ou golpe) para começar. Ou bata no disco, perto da pedra Recomeçar, para tocar a música de teste das notas.`, '#ffd166', 6)
     }
     // leaving in the middle of a stage cancels it
     if (active && !io.inside) { s.outsideT += dt; if (s.outsideT > 2.5) { s.outsideT = 0; fail(io, 'Você saiu do templo.') } } else s.outsideT = 0

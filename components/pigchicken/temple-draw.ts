@@ -459,28 +459,31 @@ export function drawTempleHud(ctx: Ctx, temple: Temple, music: Conductor, inside
     ctx.restore()
   }
   // the stage's banner: the title, then what is new
-  const b = s.banner
-  if (b) {
-    const a = Math.min(1, b.t * 4, (b.life - b.t) * 2)
-    const grow = 1 + 0.25 * Math.max(0, 1 - b.t * 5)
-    ctx.save()
-    ctx.globalAlpha = Math.max(0, a)
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"
-    const cx = W / 2, cy = Math.max(top + 120, H * 0.36)
-    const maxW = Math.min(560, W - 40)
-    ctx.font = "15px ui-sans-serif, system-ui, sans-serif"
-    const lines = wrap(ctx, b.sub, maxW - 40)
-    const h = 64 + lines.length * 20
-    ctx.fillStyle = "rgba(10,8,6,0.72)"; ctx.beginPath(); ctx.roundRect(cx - maxW / 2, cy - 40, maxW, h, 14); ctx.fill()
-    ctx.strokeStyle = b.color; ctx.lineWidth = 2; ctx.stroke()
-    ctx.save(); ctx.translate(cx, cy - 10); ctx.scale(grow, grow)
-    ctx.font = "bold 30px ui-sans-serif, system-ui, sans-serif"
-    ctx.shadowColor = b.color; ctx.shadowBlur = 16; ctx.fillStyle = b.color; ctx.fillText(b.title, 0, 0)
-    ctx.restore()
-    ctx.font = "15px ui-sans-serif, system-ui, sans-serif"; ctx.fillStyle = "#f4f1e8"
-    lines.forEach((l, i) => ctx.fillText(l, cx, cy + 28 + i * 20))
-    ctx.restore()
-  }
+  if (s.banner) drawBanner(ctx, s.banner, top)
+}
+
+// a banner in the middle of the screen: the title, then what is new
+export function drawBanner(ctx: Ctx, b: { title: string; sub: string; color: string; t: number; life: number }, top: number) {
+  const W = window.innerWidth, H = window.innerHeight
+  const a = Math.min(1, b.t * 4, (b.life - b.t) * 2)
+  const grow = 1 + 0.25 * Math.max(0, 1 - b.t * 5)
+  ctx.save()
+  ctx.globalAlpha = Math.max(0, a)
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"
+  const cx = W / 2, cy = Math.max(top + 120, H * 0.36)
+  const maxW = Math.min(560, W - 40)
+  ctx.font = "15px ui-sans-serif, system-ui, sans-serif"
+  const lines = wrap(ctx, b.sub, maxW - 40)
+  const h = 64 + lines.length * 20
+  ctx.fillStyle = "rgba(10,8,6,0.72)"; ctx.beginPath(); ctx.roundRect(cx - maxW / 2, cy - 40, maxW, h, 14); ctx.fill()
+  ctx.strokeStyle = b.color; ctx.lineWidth = 2; ctx.stroke()
+  ctx.save(); ctx.translate(cx, cy - 10); ctx.scale(grow, grow)
+  ctx.font = "bold 30px ui-sans-serif, system-ui, sans-serif"
+  ctx.shadowColor = b.color; ctx.shadowBlur = 16; ctx.fillStyle = b.color; ctx.fillText(b.title, 0, 0)
+  ctx.restore()
+  ctx.font = "15px ui-sans-serif, system-ui, sans-serif"; ctx.fillStyle = "#f4f1e8"
+  lines.forEach((l, i) => ctx.fillText(l, cx, cy + 28 + i * 20))
+  ctx.restore()
 }
 
 function wrap(ctx: Ctx, text: string, maxW: number) {

@@ -37,8 +37,10 @@ import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken
 import { intersectsView, needsTrajectory, patioPixelRatio, trajectoryVisible, type ViewRect } from "@/lib/pigchicken/viewport"
 import { moveLiveCamera } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
-import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
-import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
+import { DISC_X, GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
+import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
+import { createNoteStage, type NoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
+import { drawDisc, drawNoteShots, drawNoteStageHud, drawStageFan } from "@/components/pigchicken/note-stage-draw"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
@@ -271,17 +273,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the temple's mini-game (its state is plain data, stepped with the beats: ready to be shared in multiplayer)
     const temple = createTemple(Math.floor(Math.random() * 2 ** 31))
     templeDraw.temple = temple
+    // the note stage (the guitar hero mode): the disc by the reset stone plays its song
+    const stage = createNoteStage()
+    templeDraw.stage = stage
+    combat.setNoteRule(shot => stage.noteFor(shot))
     const templeSounds: TempleSound[] = []
+    const stageSounds: NoteStageSound[] = []
     let templeShown = ""
     // dev only: lets the test scripts reach the combat and the temple
-    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __chickenEngine: engine })
+    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStage: stage, __chickenEngine: engine })
     const drone = createDrone()
     let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
     let placed = false, offerShown = "", templeFor = -1, wasPortalArrival = false
     // the temple's things move with the world's width: the gong and its racks
-    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null
+    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null, disc: Combat["targets"][number] | null = null
     const templeRacks: Combat["racks"] = []
     const G = WORLD_GROUND_Y
     // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
@@ -294,6 +301,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // and the reset stone (Recomeçar): strike it to end the game and clear the panels
       combat.addButton(0, G - 4, "reset", 80, 110)
       resetStone = combat.targets[combat.targets.length - 1]
+      // and the disc: strike it to play the note stage's song
+      combat.addButton(0, G - 4, "disc", 84, 130)
+      disc = combat.targets[combat.targets.length - 1]
       ;(["pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
@@ -301,6 +311,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const L = templeScene(screens) * SCENE_W
       if (gong) { gong.x = gong.home = L + GONG_X }
       if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
+      if (disc) { disc.x = disc.home = L + DISC_X }
       templeRacks.forEach((r, i) => { r.x = L + 80 + i * 100 })
       templeFor = screens
     }
@@ -529,10 +540,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the enemies move inside the scene she is in: the same for every screen size (and every player)
       const sceneL = Math.min(sceneAt(body.x), worldScenes(S.screens) - 1) * SCENE_W
       combat.setView(sceneL, sceneL + SCENE_W)
-      let gongHit = false, resetHit = false
+      let gongHit = false, resetHit = false, discHit = false
       combat.pressed.splice(0).forEach(id => {
         if (id === "gong") gongHit = true
         else if (id === "reset") resetHit = true
+        else if (id === "disc") discHit = true
         else if (id === "aliens") combat.spawnAliens(G, body.x)
         else if (id === "zombies") combat.spawnZombies(G, body.x, horde.zombies)
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
@@ -590,6 +602,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const tL = templeScene(S.screens) * SCENE_W
       const inTemple = body.x >= tL && body.x < tL + SCENE_W
       const events = combat.music.events.splice(0)
+      // the note stage first: while its song plays, the gong is dull and the reset stone stops the song
+      const stageOn = stage.active
+      stage.step(dt, {
+        targets: combat.targets, music: combat.music, sceneL: tL, sceneW: SCENE_W, groundY: G, inside: inTemple,
+        center: { x: body.x, y: body.y - stage.song.fan.centerY * body.scale },
+        discHit, resetHit: resetHit && stageOn, busy: temple.state.phase === "intro" || temple.state.phase === "playing",
+        events: combat.noteEvents.splice(0), fire: n => { combat.fireNoteShot(n) }, clearShots: src => combat.clearNoteShots(src),
+        incoming: combat.noteShots.filter(n => n.state === "incoming" && n.source === "stage").length,
+        fx: { burst: combat.burst, text: combat.addText },
+        push: dir => engine.impulse(dir * 260, -200),
+        sound: e => stageSounds.push(e),
+      })
+      stageSounds.splice(0).forEach(e => playNoteStageSound(e, mixGain("effects")))
+      if (stageOn && gongHit) { gongHit = false; playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
+      if (stageOn) resetHit = false
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
         gongHit, resetHit, firePressed: input.firePressed, beats: events.filter(e => e.kind === "beat").map(e => e.n),
@@ -612,7 +639,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- music: the zone of the scene she is in sets key, scale and tempo; ambience on its beat ----------
       // (in the temple: the stage's music, or the temple at rest)
-      const zone = inTemple ? temple.music?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
+      const templeMusic = stage.music ?? temple.music
+      const zone = inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
       setMusicVolumes(mixGain("notes"), mixGain("ambience"))
@@ -623,7 +651,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (mixGain("ambience") <= 0) return
         if (e.kind === "bar") drone.set(combat.music.chord()[0])
         if (e.kind === "step") {
-          if (templeZone) templeAmbience(temple.music && combat.music.zone.id !== "templo" ? temple.music : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat())
+          if (templeZone) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat())
           else ambience(combat.music.zone, e.n % 16, combat.music.secondsPerBeat())
         }
       })
@@ -651,6 +679,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const view = { x: camX, y: viewTop - camY, w: viewW, h: st.height - viewTop }
       drawWorld(ctx, combat, camX, view)
       drawTempleShots(ctx, temple, camX, view)
+      drawStageFan(ctx, stage, combat.noteShots, camX, combat.music.time, combat.music.beatPhase)
+      drawNoteShots(ctx, combat.noteShots, camX, view)
       ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
@@ -753,7 +783,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         wheelCanvas.width = 1; wheelCanvas.height = 1
         wheelCanvas.style.display = "none"; wheelDrawn = false
       }
-      drawTempleHud(ctx, temple, combat.music, inTemple, barBottom ? INV_STACK.top : INV_TOP + INV_SIZE + 12)
+      const hudTop = barBottom ? INV_STACK.top : INV_TOP + INV_SIZE + 12
+      drawTempleHud(ctx, temple, combat.music, inTemple && !stage.active, hudTop)
+      drawNoteStageHud(ctx, stage, hudTop)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
         const h = combat.inventory[combat.current]
@@ -789,6 +821,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setBounds(null)
       drone.set(null)
       templeDraw.temple = null
+      templeDraw.stage = null
       if (worldRef.current) delete worldRef.current.dataset.temple
       document.body.classList.remove("pigchicken-play")
       if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(window.innerHeight - groundHRef.current).lo - oy)
@@ -1212,7 +1245,7 @@ function drawPuff(ctx: Ctx, x: number, y: number, p: Combat["puffs"][number]) {
 const lookTargets: { x: number; y: number }[] = []
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
-const templeDraw: { temple: Temple | null; charges: Map<number, number> } = { temple: null, charges: new Map() }
+const templeDraw: { temple: Temple | null; stage: NoteStage | null; charges: Map<number, number> } = { temple: null, stage: null, charges: new Map() }
 
 // the hint over the items the local players can grab (set every frame): the first player to stand on one shows theirs
 const pickupMarks = new Map<Pickup, { c: string; t: string }>()
@@ -1333,6 +1366,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }
+    if (g.kind === "button" && g.label === "disc") { if (templeDraw.stage) drawDisc(ctx, g, x, templeDraw.stage); return }
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }
     if (g.kind === "button") { drawButton(ctx, g, x); return }
     drawDummy(ctx, g, x, t)

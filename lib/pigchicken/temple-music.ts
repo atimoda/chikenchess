@@ -4,6 +4,7 @@ import type { Zone } from './music'
 import { scaleNotes } from './music'
 import { audio } from './sfx'
 import { playDrum, playGong, playNote } from './synth'
+import type { NoteStageSound } from './note-stage'
 
 // a layer of the stage's music: each stage adds one or two to the ones before
 export type Layer = 'gong' | 'taiko' | 'wood' | 'hat' | 'bass' | 'snare' | 'pluck' | 'flute' | 'bells' | 'double' | 'crash'
@@ -240,5 +241,24 @@ export function playTempleSound(s: TempleSound, volume: number) {
       playNote('guzheng', s.midi, { at: s.at, vel: 0.75, dur: 0.35 })
       if (s.combo >= 8) playNote('bells', s.midi + 12, { at: s.at, vel: 0.35, dur: 0.3 })
       break
+  }
+}
+
+// ---------- the note stage's sounds (the guitar hero mode) ----------
+export function playNoteStageSound(s: NoteStageSound, volume: number) {
+  if (volume <= 0) return
+  const v = Math.min(1, volume * 1.4)
+  switch (s.kind) {
+    // the firing: a soft note an octave up, just a warning
+    case 'fire': playNote(s.voice, s.midi + 12, { vel: s.vel * v, dur: 0.12 }); break
+    case 'start': [0, 4, 7, 12].forEach((st, i) => playNote('bells', s.root + 12 + st, { at: i * 0.07, vel: 0.45, dur: 0.3 })); playGong(s.root - 12, 0.5, 0.3); break
+    case 'count': playDrum('wood', 0, s.n === 1 ? 0.9 : 0.6); break
+    case 'contact': blip('square', 260, 110, 0.12 * v, 0.2); break
+    case 'miss': blip('triangle', 300, 180, 0.05 * v, 0.12); break
+    case 'bird': blip('sine', 900, 1800, 0.06 * v, 0.1); blip('sine', 1200, 2200, 0.05 * v, 0.1, 0.07); break
+    case 'dull': playGong(55, 0.25); break
+    case 'reset': playTempleSound({ kind: 'reset', hit: s.hit, need: s.need }, volume); break
+    case 'done': playTempleSound({ kind: 'clear', root: s.root, chord: s.chord }, volume); break
+    case 'fail': playTempleSound({ kind: 'fail' }, volume); break
   }
 }

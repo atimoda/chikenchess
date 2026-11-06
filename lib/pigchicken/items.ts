@@ -87,6 +87,7 @@ export type ItemDef = {
   meleeRange: number // px
   meleeArc: number // degrees
   meleeCooldown: number // s
+  meleeInterrupt: boolean // a blow pressed while the last one is still going cuts it off and starts at once
   meleeTime: number // s the swing takes to sweep its arc
   durability: number // melee hits on a target before it breaks (0 = never)
   meleePush: number // knockback px/s
@@ -155,7 +156,7 @@ const PISTOL: ItemDef = {
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
-  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, meleeTime: 0.2, durability: 40, meleePush: 260,
+  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, meleeTime: 0.2, durability: 40, meleePush: 260,
   combo: SWING_COMBO.slice(), comboWindow: COMBO_WINDOW, meleeArcUp: 110, meleeArcFlat: 110,
   trailWidth: 24, trailColor: TRAIL_CREAM, trailTime: 0.2, trailWisps: 4, trailOpacity: 0.7,
   throwDamage: 25, throwMin: 275, throwSpeed: 1100, throwCharge: 1,
@@ -229,7 +230,7 @@ const BOW: ItemDef = {
 const WING: ItemDef = {
   ...PISTOL, id: 'wing', name: 'Asa (sem item)', family: 'Sem item',
   mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
-  meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeArcUp: 120, meleeArcFlat: 120, meleeCooldown: 0.35, durability: 0, meleePush: 180, throwDamage: 0,
+  meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeArcUp: 120, meleeArcFlat: 120, meleeCooldown: 0, durability: 0, meleePush: 180, throwDamage: 0,
   trailWidth: 18, trailWisps: 3,
 }
 
@@ -376,7 +377,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'meleeDamage', label: 'Dano do golpe', min: 0, max: 100, step: 1, group: 'Golpe' },
   { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
   { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe', hint: 'Do golpe para baixo; o giro acerta em volta toda' },
-  { key: 'meleeCooldown', label: 'Intervalo', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Golpe' },
+  { key: 'meleeCooldown', label: 'Intervalo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Golpe', hint: '0 = golpes seguidos sem espera' },
   { key: 'meleeTime', label: 'Duração do giro', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Menos = giro mais rápido' },
   { key: 'meleePush', label: 'Empurrão', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Golpe' },
   { key: 'comboWindow', label: 'Janela do combo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Combo', hint: 'Até quanto tempo depois do fim de um golpe o próximo continua a sequência; depois disso ela recomeça' },
@@ -430,12 +431,14 @@ export function loadItems(): Record<ItemId, ItemDef> {
           if (s[key] === old[key]) out.peck[key] = DEFAULT_ITEMS.peck[key]
         }
       }
+      // saved before blows had no interval (v5): every item's golpe goes back to 0 (the Bicada keeps its own)
+      if (id !== 'peck' && !(saved._v >= 5)) out[id].meleeCooldown = 0
       // saved before the sniper fired on release (v2): it takes the new mode
       if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && !(saved._v >= 2))) out[id].fireMode = s.fireMode
       if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
       // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
       if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(saved._v >= 3))) out[id].landShow = s.landShow
-      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'meleeInterrupt'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
       if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
       if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
       if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
@@ -449,7 +452,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
 }
 
 export function saveItems(items: Record<ItemId, ItemDef>) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 4 })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 5 })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
