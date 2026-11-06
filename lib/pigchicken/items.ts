@@ -89,6 +89,12 @@ export type ItemDef = {
   meleeTime: number // s the swing takes to sweep its arc
   durability: number // melee hits on a target before it breaks (0 = never)
   meleePush: number // knockback px/s
+  // the blow's air trail: thickness at the tip (px), colour, seconds it takes to dissolve, little curls, opacity
+  trailWidth: number
+  trailColor: string
+  trailTime: number
+  trailWisps: number
+  trailOpacity: number
   peckPull: number // rig units the neck retracts while preparing a peck
   // Throw: per-item launch strength, charge time and impact damage
   throwDamage: number
@@ -125,6 +131,9 @@ export type ItemDef = {
   effectLook: EffectLook
 }
 
+// the air a blow leaves behind: cream, like the reference
+export const TRAIL_CREAM = '#fff4dc'
+
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
@@ -140,6 +149,7 @@ const PISTOL: ItemDef = {
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
   meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, meleeTime: 0.2, durability: 40, meleePush: 260,
+  trailWidth: 24, trailColor: TRAIL_CREAM, trailTime: 0.2, trailWisps: 4, trailOpacity: 0.7,
   throwDamage: 25, throwMin: 275, throwSpeed: 1100, throwCharge: 1,
   ...NO_MUSIC,
 }
@@ -212,6 +222,7 @@ const WING: ItemDef = {
   ...PISTOL, id: 'wing', name: 'Asa (sem item)', family: 'Sem item',
   mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
   meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeCooldown: 0.35, durability: 0, meleePush: 180, throwDamage: 0,
+  trailWidth: 18, trailWisps: 3,
 }
 
 const PECK: ItemDef = {
@@ -222,7 +233,7 @@ const PECK: ItemDef = {
 
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
 // melee is the same for all of them (Y): instruments break much sooner than weapons
-const MUSIC_MELEE = { meleeDamage: 10, durability: 12, throwDamage: 10, recoilPush: 0 }
+const MUSIC_MELEE = { meleeDamage: 10, durability: 12, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5 }
 
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
@@ -360,6 +371,10 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'meleeCooldown', label: 'Intervalo', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Golpe' },
   { key: 'meleeTime', label: 'Duração do giro', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Menos = giro mais rápido' },
   { key: 'meleePush', label: 'Empurrão', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Golpe' },
+  { key: 'trailWidth', label: 'Rastro: espessura', min: 2, max: 60, step: 1, unit: 'px', group: 'Golpe', hint: 'Na ponta do golpe; afina até a cauda' },
+  { key: 'trailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Quanto o ar leva pra se desfazer' },
+  { key: 'trailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe', hint: 'Fiapos de ar que se soltam do rastro' },
+  { key: 'trailOpacity', label: 'Rastro: opacidade', min: 0, max: 1, step: 0.05, unit: '×', group: 'Golpe', hint: '0 = sem rastro' },
   { key: 'durability', label: 'Quebra depois de', min: 0, max: 200, step: 1, unit: 'golpes', group: 'Golpe', hint: '0 = nunca quebra' },
   { key: 'throwDamage', label: 'Dano do arremesso', min: 0, max: 100, step: 1, group: 'Arremesso' },
   { key: 'throwMin', label: 'Força mínima', min: 0, max: 2500, step: 25, unit: 'px/s', group: 'Arremesso', hint: 'Só tocar no botão' },
@@ -415,6 +430,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
       if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
       if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
       if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
+      if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
     })
   } catch { /* storage unavailable */ }
   return out

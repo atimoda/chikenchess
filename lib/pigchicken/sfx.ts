@@ -2,7 +2,7 @@
 // Each item has its own shot; equipping, dry fire, aiming, reloading and explosions share a few recipes.
 import type { ItemId } from './items'
 
-export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat'
+export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat' | 'puff'
 
 let ac: AudioContext | null = null, master: GainNode | null = null, noise: AudioBuffer | null = null
 let volume = 0.6
@@ -109,6 +109,8 @@ export function playWeaponSound(kind: WeaponSound, item: ItemId | null) {
     case 'pump': hiss(a, { gain: 0.18, decay: 0.07 }, 'bandpass', 1200, 700, 2); click(a, 0.12, 0.22, 1800); break
     case 'explode': hiss(a, { gain: 0.9, attack: 0.005, decay: 0.9 }, 'lowpass', 1400, 80); tone(a, { gain: 0.7, decay: 0.6 }, 'sine', 70, 28); break
     case 'bounce': tone(a, { gain: 0.08, decay: 0.05 }, 'triangle', 320, 220); break
+    // a projectile cancelled by a peck: a soft breath of air
+    case 'puff': hiss(a, { gain: 0.16, attack: 0.01, decay: 0.22 }, 'bandpass', 2400, 600, 0.8); break
     case 'swing': hiss(a, { gain: 0.12, attack: 0.03, decay: 0.12 }, 'bandpass', 500, 1500, 1.2); break
     case 'bite': hiss(a, { gain: 0.3, decay: 0.12 }, 'bandpass', 700, 300, 1.5); tone(a, { gain: 0.2, decay: 0.15 }, 'square', 160, 90); break
     case 'button': tone(a, { gain: 0.12, decay: 0.08 }, 'square', 880); tone(a, { at: 0.08, gain: 0.12, decay: 0.12 }, 'square', 1320); break

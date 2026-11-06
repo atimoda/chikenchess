@@ -59,6 +59,7 @@ export type TempleAlien = {
   lastHp: number
   x: number; y: number // centre, world units
 }
+export const BOMB_R = 9 // a bomb's radius, for the peck's defence
 export type Bomb = { x: number; y: number; vx: number; vy: number; kind: 'orb' | 'fire'; t: number }
 export type Banner = { title: string; sub: string; color: string; t: number; life: number }
 export type Judge = { grade: 'perfect' | 'good' | 'miss'; t: number }
@@ -101,6 +102,8 @@ export type TempleIO = {
   fx: { burst: (x: number, y: number, n: number, color: string, speed?: number, size?: number) => void; text: (x: number, y: number, text: string, color?: string, size?: number) => void }
   hurt: (dir: number) => void // knock the chicken back
   sound: (s: TempleSound) => void
+  // a peck defending where a bomb is cancels it (it vanishes in a little cloud)
+  parry?: (x: number, y: number, r: number, color: string) => boolean
 }
 
 // the stage's mult: a long rhythm combo multiplies the points
@@ -411,6 +414,7 @@ export function createTemple(seed = 1) {
     for (let i = s.bombs.length - 1; i >= 0; i--) {
       const b = s.bombs[i]
       b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt
+      if (io.parry?.(b.x, b.y, BOMB_R, b.kind === 'fire' ? '#ffd2b8' : '#f4f1ea')) { s.bombs.splice(i, 1); continue }
       const box = io.boxes.find(q => boxContains(q, b.x, b.y))
       const hitHer = Math.abs(b.x - io.body.x) < 26 * io.body.scale + 8 && b.y > io.body.y - 120 * io.body.scale && b.y < io.body.y
       if (hitHer) hurtPlayer(io, b.x)

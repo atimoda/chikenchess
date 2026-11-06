@@ -3,6 +3,19 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '2.1.0',
+    date: '06/11/2026',
+    title: 'Golpe com rastro de ar e Bicada que anula bombas',
+    groups: [
+      { title: 'Pátio', items: [
+        'O Golpe ganhou preparação, golpe rápido, continuação e recuperação, com um rastro de ar creme que se desfaz soltando fiapos. O acerto acontece no instante do golpe, com um clarão e um tranco curto na tela.',
+        'Golpes em sequência alternam para baixo, para cima, na horizontal ao redor da galinha e um giro de 360° no quarto, que acerta em volta toda.',
+        'Em Itens → Golpe, cada item tem espessura, duração, fiapos, opacidade e cor do rastro. Nos instrumentos, o rastro pega a cor da nota do acorde.',
+        'A Bicada agora defende: acertar o bico numa bomba ou no fogo do Templo do Gongo anula o projétil numa nuvenzinha, sem perder coração.',
+      ] },
+    ],
+  },
+  {
     version: '2.0.0',
     date: '05/11/2026',
     title: 'Vila dos Telhados, criadores de casas e árvores, trampolins e novos controles do Pátio',

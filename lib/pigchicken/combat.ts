@@ -1,6 +1,7 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
+import { SWING_COMBO, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
@@ -62,10 +63,13 @@ export const TIP_AGAIN = 5
 export type Effect = { item: ItemId; left: number; total: number; speed: number; accel: number; curve: AccelCurve; ramp: number; look: EffectLook }
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
+// a peck's defence: while the beak is out, damaging notes and projectiles in its cone vanish in a little cloud
+export type ParryZone = { x: number; y: number; angle: number; reach: number; arc: number }
+export type Puff = { x: number; y: number; t: number; life: number; seed: number; color: string }
+export const PARRY_WINDOW = [0.12, 1] as const // fractions of the peck's time when the beak defends
+export const PUFF_LIFE = 0.4
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
-// range: wing reach; reach: wing plus the item's length (the hit area); dir: which way it sweeps (1 = clockwise on screen)
-// time: seconds the sweep takes
-export type Swing = { angle: number; arc: number; range: number; reach: number; t: number; time: number; wing: boolean; dir: number }
+export type { Swing } from './swing'
 
 export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
 export type FrameInput = {
@@ -128,6 +132,11 @@ export function createCombat() {
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number }[] = []
   let swing: Swing | null = null
+  // the pecks defending right now (one per local player) and the little clouds of what they cancelled
+  const parryZones = new Map<string, ParryZone>()
+  const puffs: Puff[] = []
+  // the combo: which blow of the sequence came last and how long ago the last swing ended (s)
+  let swingCombo = 0, swingGap = Infinity
   // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
   const music = createConductor()
   let out: MusicOut = SILENT
@@ -302,18 +311,18 @@ export function createCombat() {
   type Loadout = {
     peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
-    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
+    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effect: Effect | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
-    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing,
+    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, swingCombo, swingGap,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect,
   })
   const blank = (): Loadout => ({
-    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
+    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
     beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effect: null,
   })
   function useLoadout(id: string) {
@@ -321,7 +330,7 @@ export function createCombat() {
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
     active = id
   }
 
@@ -603,36 +612,59 @@ export function createCombat() {
     return points
   }
 
-  function melee(origin: { x: number; y: number }, wing: boolean, scale: number) {
+  function melee(wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
     sound('swing', null)
-    // an instrument hit with Y still sounds: a quick strum of the chord
-    if (!wing && d.instrument) music.chord().forEach((m, i) => out.note(d.voice, m + 12 * d.octave, i * 0.02, 0.15, 0.5))
+    // an instrument hit with Y still sounds: a quick strum of the chord, and its air takes the chord's colour
+    let color = d.trailColor
+    if (!wing && d.instrument) {
+      const chord = music.chord()
+      chord.forEach((m, i) => out.note(d.voice, m + 12 * d.octave, i * 0.02, 0.15, 0.5))
+      if (chord.length) color = DEGREE_COLORS[music.degreeOf(chord[0]) % DEGREE_COLORS.length]
+    }
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
-    // the blow comes down in front of her: clockwise facing right, counterclockwise facing left
-    swing = { angle: aimAngle, arc: d.meleeArc * DEG, range: d.meleeRange, reach, t: 0, time: Math.max(0.02, d.meleeTime), wing, dir: Math.cos(aimAngle) >= 0 ? 1 : -1 }
-    let hits = 0
+    // blows in a row alternate: down, up, horizontal, a full spin. Down comes clockwise facing right
+    swingCombo = nextCombo(swingCombo, swing ? 0 : swingGap)
+    const kind = SWING_COMBO[swingCombo]
+    const face = Math.cos(aimAngle) >= 0 ? 1 : -1
+    const time = Math.max(0.02, d.meleeTime), trailTime = Math.max(0.05, d.trailTime)
+    swing = {
+      angle: aimAngle, arc: kind === 'spin' ? Math.PI * 2 : d.meleeArc * DEG, range: d.meleeRange, reach, t: 0, time, wing,
+      dir: kind === 'up' ? -face : face, kind, combo: swingCombo, hitAt: swingHitAt(time), hit: false, hits: 0,
+      life: swingLife(time, trailTime), impacts: [], seed: Math.random(),
+      trail: { width: d.trailWidth, color, time: trailTime, wisps: Math.round(d.trailWisps), opacity: d.trailOpacity },
+      item: wing ? null : held() ?? null, damage: d.meleeDamage, push: d.meleePush, durability: d.durability > 0, name: d.name,
+    }
+    swingGap = 0
+  }
+
+  // the blow lands at the end of the preparação: everything in its arc is hit once
+  function strike(sw: Swing, origin: { x: number; y: number }) {
+    sw.hit = true
     targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = t.x, cy = t.y - t.h / 2
       const dx = cx - origin.x, dy = cy - origin.y, dist = Math.hypot(dx, dy) - t.w / 2
-      if (dist > reach) return
-      let diff = Math.atan2(dy, dx) - aimAngle
+      if (dist > sw.reach) return
+      let diff = Math.atan2(dy, dx) - sw.angle
       diff = Math.atan2(Math.sin(diff), Math.cos(diff))
-      if (Math.abs(diff) > (d.meleeArc * DEG) / 2 && dist > 10) return
-      hitTarget(t, d.meleeDamage, Math.sign(dx || 1) * d.meleePush, cx - Math.sign(dx) * t.w / 2, cy)
-      hits++
+      if (Math.abs(diff) > sw.arc / 2 && dist > 10) return
+      const hx = cx - Math.sign(dx) * t.w / 2
+      hitTarget(t, sw.damage, Math.sign(dx || 1) * sw.push, hx, cy)
+      sw.impacts.push({ x: hx - origin.x, y: cy - origin.y })
+      sw.hits++
     })
     // items wear out on hits; the wing never breaks
-    const h = held()
-    if (!wing && h && hits > 0 && d.durability > 0) {
-      h.durability -= hits
+    const h = sw.item as Owned | null
+    if (h && sw.hits > 0 && sw.durability && inv.includes(h)) {
+      h.durability -= sw.hits
       if (h.durability <= 0) {
-        removeHeld()
-        burst(origin.x + Math.cos(aimAngle) * 30, origin.y + Math.sin(aimAngle) * 30, 18, '#c9c9c9', 200, 4)
-        addText(origin.x, origin.y - 50, `${d.name} quebrou!`, '#ff8c69')
+        const i = inv.indexOf(h)
+        if (i === cur) removeHeld(); else { inv.splice(i, 1); if (i < cur) cur-- }
+        burst(origin.x + Math.cos(sw.angle) * 30, origin.y + Math.sin(sw.angle) * 30, 18, '#c9c9c9', 200, 4)
+        addText(origin.x, origin.y - 50, `${sw.name} quebrou!`, '#ff8c69')
       }
     }
   }
@@ -682,7 +714,7 @@ export function createCombat() {
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
     use(id: string) { useLoadout(id) },
     get player() { return active },
-    drop(id: string) { if (id !== active) loadouts.delete(id) },
+    drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id) } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
     get current() { return cur },
@@ -690,6 +722,22 @@ export function createCombat() {
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
     get kick() { return kick },
     get swing() { return swing },
+    get puffs() { return puffs as readonly Puff[] },
+    get parryZones() { return [...parryZones.values()] },
+    // a damaging note or projectile at (x, y), radius r: a peck defending there cancels it in a little cloud
+    parry(x: number, y: number, r = 0, color = '#f4f1ea') {
+      for (const z of parryZones.values()) {
+        const dx = x - z.x, dy = y - z.y, dist = Math.hypot(dx, dy)
+        if (dist > z.reach + r) continue
+        let diff = Math.atan2(dy, dx) - z.angle
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+        if (Math.abs(diff) > z.arc / 2 && dist > 14 + r) continue
+        puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color })
+        sound('puff', null)
+        return true
+      }
+      return false
+    },
     get peck(): PeckPose | null {
       if (held()) return null
       if (peck) return peckPose(peck)
@@ -804,7 +852,12 @@ export function createCombat() {
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
       kick = Math.max(0, kick - dt * 60)
       bloom = Math.max(0, bloom - d.spreadRecover * dt)
-      if (swing) { swing.t += dt; if (swing.t > swing.time) swing = null }
+      if (swing) {
+        swing.t += dt
+        if (!swing.hit && swing.t >= swing.hitAt) strike(swing, origin)
+        if (swing.t > swing.life) swing = null
+      }
+      if (!swing || swing.t > swing.time) swingGap += dt
 
       // switching items
       if (input.slot) { if (input.slot <= slotCount(inv.length)) equip(input.slot - 1) }
@@ -855,6 +908,11 @@ export function createCombat() {
         }
         if (peck.t >= peck.time) peck = null
       }
+      const pk = peck as Peck | null, pf = pk ? pk.t / pk.time : -1
+      if (pk && pf >= PARRY_WINDOW[0] && pf <= PARRY_WINDOW[1]) {
+        const at = opts.peckOrigin ?? origin
+        parryZones.set(active, { x: at.x, y: at.y, angle: pk.angle, reach: pk.reach, arc: Math.min(160, Math.max(0, items.peck.meleeArc)) * DEG })
+      } else parryZones.delete(active)
       // Fire with an item shoots; Golpe continues to use the wing/item.
       const h = held()
       const canFire = body.state !== 'slide' || d.slideFire
@@ -872,7 +930,7 @@ export function createCombat() {
       } else if (h && d.consumable) {
         if (input.firePressed && cooldown <= 0) consume(h, d, origin)
       } else if (d.mag === 0) {
-        if (input.firePressed && meleeCool <= 0) melee(origin, true, body.scale)
+        if (input.firePressed && meleeCool <= 0) melee(true, body.scale)
       } else if (canFire) {
         const spreadDeg = this.spread(body)
         const ctx = { boxes, groundY }
@@ -916,7 +974,7 @@ export function createCombat() {
         }
       }
       prevFire = input.fire
-      if (input.melee && meleeCool <= 0) melee(origin, !h, body.scale)
+      if (input.melee && meleeCool <= 0) melee(!h, body.scale)
 
       // throw: hold to charge, let go to throw what she holds; another item in the wing while charging
       // (switched, grabbed) calls the throw off completely, until the button is let go
@@ -1065,6 +1123,7 @@ export function createCombat() {
         if (c.t > 1.2 && c.kind === 'person' && Math.random() < dt * 1.5) texts.push({ x: c.x, y: c.y - 190, text: Math.random() < 0.5 ? '♥' : '♪', life: 0.9, color: '#ff6b9a', size: 18 })
         if (c.y < -120 || c.t > 9 || c.x < view.l - 500 || c.x > view.r + 500) critters.splice(i, 1)
       }
+      for (let i = puffs.length - 1; i >= 0; i--) { puffs[i].t += dt; if (puffs[i].t >= puffs[i].life) puffs.splice(i, 1) }
       for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.life <= 0) sparks.splice(i, 1) }
       for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1) }
     },
