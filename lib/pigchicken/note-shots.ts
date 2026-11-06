@@ -3,7 +3,8 @@
 // cancels them; one that reaches her (or is late) is a missed note. The rebate is judged against the arrival time,
 // with the temple's windows. Combat keeps them (they work in every mode); the song decides what they play.
 
-import type { NoteOut, RebateRule } from './transforms'
+import type { NoteOut, RebateRule, Transform } from './transforms'
+import type { VoiceId } from './synth'
 
 export type NoteGrade = 'perfect' | 'good' | 'fora'
 // the temple's rhythm windows (s): the same PERFEITO / BOM
@@ -28,11 +29,15 @@ export type NoteShot = {
   source: string // who fired it (the stage, an alien kind…)
   rule?: RebateRule // whose transformations count when it is rebated (default: the taco's, then the ambience's)
   grade?: NoteGrade
+  // once rebated: the chain and voice of the item that hit it (a surface that delegates to the taco plays them) and
+  // how many times it bounced off "Rebate notas" surfaces
+  chain?: Transform[]; voice?: VoiceId; bounces?: number
 }
 export type NoteShotEvent =
   | { kind: 'rebate'; shot: NoteShot; grade: NoteGrade; off: number; player: string; midi: number; notes: NoteOut[] }
   | { kind: 'miss'; shot: NoteShot }
   | { kind: 'parry'; shot: NoteShot; player: string }
+  | { kind: 'bounce'; shot: NoteShot; midi: number; notes: NoteOut[] }
 
 export function judgeNote(off: number): NoteGrade {
   const a = Math.abs(off)

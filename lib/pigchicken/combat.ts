@@ -2,7 +2,8 @@
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
 import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
-import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule } from './transforms'
+import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
+import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
@@ -10,7 +11,7 @@ import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './i
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
-import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
+import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
 
@@ -22,6 +23,8 @@ export type MusicOut = {
 }
 // the ambience where a note is rebated (the song tells it): what it forces, the scale it fits, whose rule counts
 export type NoteEnvFn = (shot: NoteShot, angle: number) => (Partial<NoteEnv> & { rule?: RebateRule; combo?: number }) | null
+// what a point of the map plays (the layout's Zonas sonoras and Faixas fixas)
+export type PlaceEnvFn = (x: number, y: number) => PlaceEnv | null
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
@@ -29,8 +32,9 @@ export type NoteInfo = { midi: number; color: string; sym: string; wave: number;
 export type Critter = { kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number }
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
-// beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through)
-export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean; occludedAt?: (x: number, y: number) => boolean }
+// beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through); rebate: the
+// notes (rebated ones and the instruments') bounce off it and play
+export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean; rebate?: SurfaceRebate; occludedAt?: (x: number, y: number) => boolean }
 export const boxContains = (box: Box, x: number, y: number) =>
   x >= box.l && x <= box.r && y >= box.t && y <= box.b && !box.occludedAt?.(x, y)
 const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
@@ -42,6 +46,7 @@ export type Bullet = {
   note?: NoteInfo; ring?: number // instruments: the note it carries; notes it lets out when it bursts
   explodePush?: number // snapshot of the item's blast force when fired
   ghost?: boolean // goes through walls and floating platforms (instruments' notes)
+  bounces?: number // times it bounced off a "Rebate notas" surface
 }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
@@ -144,6 +149,7 @@ export function createCombat() {
   const noteShots: NoteShot[] = []
   const noteEvents: NoteShotEvent[] = []
   let noteEnv: NoteEnvFn | null = null
+  let placeEnv: PlaceEnvFn | null = null
   // a peck defending at (x, y) cancels what is there, in a little cloud (parriedBy: the player who did it)
   let parriedBy = ''
   function parryAt(x: number, y: number, r: number, color: string) {
@@ -572,6 +578,31 @@ export function createCombat() {
         }
       }
     }
+    // the instruments' notes: a "Rebate notas" surface bounces them back, playing (a few times at most); crossing
+    // the map's fixed lanes tunes them to the lane
+    if (b.note) {
+      for (let k = 1; k <= steps && (b.bounces ?? 0) < SURFACE_BOUNCES; k++) {
+        const lx = px + (b.x - px) * (k - 1) / steps, ly = py + (b.y - py) * (k - 1) / steps
+        const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
+        const wall = surfaceHit(boxes, lx, ly, x, y)
+        if (!wall) continue
+        b.x = lx; b.y = ly
+        if (wall.flipX) b.vx = -b.vx; else b.vy = -b.vy
+        b.bounces = (b.bounces ?? 0) + 1
+        if (!dry) {
+          const notes = surfaceSound(wall.box.rebate!, lx, ly, b.note.midi, b.note.voice, items[b.item].rebateChain, undefined)
+          const main = notes.find(o => !o.drum)?.midi
+          if (main !== undefined) b.note = { ...b.note, midi: main, color: DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length] }
+          b.hits.clear()
+          burst(lx, ly, 5, b.note.color, 140, 2)
+        }
+        return false
+      }
+      if (!dry) {
+        const tuned = laneRetune(b.x, b.y)
+        if (tuned !== null && tuned !== b.note.midi) b.note = { ...b.note, midi: tuned, color: DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
+      }
+    }
     // walls and the floor: explode, bounce (with a fuse) or stop
     for (let k = 1; k <= steps; k++) {
       const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
@@ -709,30 +740,69 @@ export function createCombat() {
     for (const n of noteShots) {
       if (n.state !== 'incoming' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, n.x, n.y, n.size)) continue
       const off = music.time - n.arriveAt, grade = judgeNote(off)
-      // what it plays: the sequenced note through the ambience (the stage's fan, the zone's scale) and the item's
-      // chain of transformations, in the order the note's rule says
+      // what it plays: the sequenced note through the ambience (the stage's fan, the map's lanes and zone) and the
+      // item's chain of transformations, in the order the note's rule says
       const d = sw.wing ? items.wing : def()
       const env = noteEnv?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? null
-      const z = music.zone
-      const harmony = { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() }
       const voice: VoiceId = d.instrument ? d.voice : 'bells'
       const seq: NoteOut = { midi: n.midi, at: 0, dur: grade === 'fora' ? 0.2 : 0.4, vel: grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25, voice }
-      const notes = rebateSound(seq, env?.rule ?? n.rule ?? DEFAULT_RULE, d.rebateChain, { base: env?.base ?? null, fit: env?.fit ?? harmony }, {
-        ...harmony, combo: env?.combo ?? 0, angle: aimAngle, rand: Math.random, byAngle: (a, oct) => music.noteFor(a, 'scale', oct),
-      })
-      const grid = music.toGrid()
-      notes.forEach(o => { if (o.drum) out.drum(o.drum, grid + o.at, o.vel); else out.note(o.voice ?? voice, o.midi, grid + o.at, o.dur, o.vel) })
-      if (d.rebateTok) out.drum('wood', grid, 0.9)
+      const notes = noteSound(n.x, n.y, seq, d.rebateChain, env?.rule ?? n.rule, env)
+      playNotes(notes, voice, d.rebateTok)
       const main = notes.find(o => !o.drum)?.midi ?? n.midi
       // off where she aims, pulled toward the nearest character by the item's snap
       const dir = snapAngle(n.x, n.y, aimAngle, d.rebateSnap * DEG, d.rebateSnapForce, origin)
       const speed = Math.max(REBATE_SPEED, Math.hypot(n.vx, n.vy) * 1.6) * Math.max(0.1, d.rebateSpeed)
       n.vx = Math.cos(dir) * speed; n.vy = Math.sin(dir) * speed
-      n.state = 'rebated'; n.t = 0; n.grade = grade; n.midi = main
+      n.state = 'rebated'; n.t = 0; n.grade = grade; n.midi = main; n.chain = d.rebateChain; n.voice = voice; n.bounces = 0
       n.color = DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length]
       burst(n.x, n.y, grade === 'perfect' ? 12 : 6, n.color, grade === 'perfect' ? 260 : 160, 3)
       noteEvents.push({ kind: 'rebate', shot: n, grade, off, player: active, midi: main, notes })
     }
+  }
+
+  // what a note hit at (x, y) plays: through the ambience there (the stage's, else the map's zone and fixed lanes)
+  // and the chain, in the order of the rule. A silent lane plays nothing.
+  function noteSound(x: number, y: number, seq: NoteOut, chain: Transform[], rule: RebateRule | undefined, env: ReturnType<NoteEnvFn> | null): NoteOut[] {
+    const place = env ? null : placeEnv?.(x, y) ?? null
+    const z = place?.zone?.zone ?? music.zone
+    const chord = z.id === music.zone.id ? music.chord(true) : chordOn(z, z.progression[music.bar % z.progression.length], true)
+    const harmony = { root: z.root, steps: SCALES[z.scale].steps, chord, spb: music.secondsPerBeat() }
+    const lane = place?.lane
+    if (lane === null) return []
+    // inside fixed lanes the lane's note is the base and the taco ornaments it (unless the note says otherwise)
+    const r = rule ?? (lane !== undefined ? 'ambiente-taco' : DEFAULT_RULE)
+    return rebateSound(seq, r, chain, { base: env?.base ?? lane ?? null, fit: env?.fit ?? harmony, chain: place?.zone?.chain }, {
+      ...harmony, combo: env?.combo ?? 0, angle: aimAngle, rand: Math.random, byAngle: (a, oct) => music.noteFor(a, 'scale', oct),
+    })
+  }
+  function playNotes(notes: NoteOut[], voice: VoiceId, tok = false) {
+    const grid = music.toGrid()
+    notes.forEach(o => { if (o.drum) out.drum(o.drum, grid + o.at, o.vel); else out.note(o.voice ?? voice, o.midi, grid + o.at, o.dur, o.vel) })
+    if (tok) out.drum('wood', grid, 0.9)
+  }
+  // a note meeting a "Rebate notas" surface between two points: the face it came through (null: it was already
+  // inside, or met none)
+  function surfaceHit(boxes: Box[], px: number, py: number, x: number, y: number) {
+    for (const b of boxes) {
+      if (!b.rebate || !boxContains(b, x, y) || boxContains(b, px, py)) continue
+      const side = px < b.l || px > b.r, top = py < b.t || py > b.b
+      // through a corner: the axis it crossed later decides
+      const flipX = side && (!top || Math.abs(px - (px < b.l ? b.l : b.r)) <= Math.abs(py - (py < b.t ? b.t : b.b)))
+      return { box: b, flipX }
+    }
+    return null
+  }
+  // what a surface plays when a note bounces off it: its chain, the last item's (delegate) or the note as it is
+  function surfaceSound(s: SurfaceRebate, x: number, y: number, midi: number, voice: VoiceId, lastChain: Transform[] | undefined, rule: RebateRule | undefined) {
+    const seq: NoteOut = { midi, at: 0, dur: 0.3, vel: 0.5, voice }
+    const notes = s.mode === 'none' ? noteSound(x, y, seq, [], 'travada', null) : noteSound(x, y, seq, s.mode === 'chain' ? s.chain : lastChain ?? [], rule, null)
+    playNotes(notes, voice)
+    return notes
+  }
+  // a note crossing the map's fixed lanes takes the lane's note (and colour), silently
+  function laneRetune(x: number, y: number): number | null {
+    const lane = placeEnv?.(x, y)?.lane
+    return typeof lane === 'number' ? lane : null
   }
 
   // a rebate's direction pulled toward the nearest character (enemy, dummy or another player) within `snap` of it
@@ -751,9 +821,10 @@ export function createCombat() {
 
   // the notes in flight, once per world step: incoming ones the peck cancels, ones that reach a player or come too
   // late are missed; rebated ones fill the harmony of the first alien or zombie they meet
-  function stepNoteShots(dt: number) {
+  function stepNoteShots(dt: number, ctx: StepCtx) {
     for (let i = noteShots.length - 1; i >= 0; i--) {
       const n = noteShots[i]
+      const px = n.x, py = n.y
       n.t += dt; n.x += n.vx * dt; n.y += n.vy * dt
       if (n.state === 'incoming') {
         if (parryAt(n.x, n.y, n.size, n.color)) { noteEvents.push({ kind: 'parry', shot: n, player: parriedBy }); noteShots.splice(i, 1); continue }
@@ -769,6 +840,21 @@ export function createCombat() {
         continue
       }
       if (n.state === 'missed') { if (n.t > 0.6) noteShots.splice(i, 1); continue }
+      // a "Rebate notas" surface: it bounces back and plays again (a few times at most)
+      const wall = (n.bounces ?? 0) < SURFACE_BOUNCES ? surfaceHit(ctx.boxes, px, py, n.x, n.y) : null
+      if (wall) {
+        n.x = px; n.y = py
+        if (wall.flipX) n.vx = -n.vx; else n.vy = -n.vy
+        n.bounces = (n.bounces ?? 0) + 1; n.t = 0
+        const notes = surfaceSound(wall.box.rebate!, n.x, n.y, n.midi, n.voice ?? 'bells', n.chain, n.rule)
+        const main = notes.find(o => !o.drum)?.midi
+        if (main !== undefined) { n.midi = main; n.color = DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length] }
+        burst(n.x, n.y, 6, n.color, 160, 3)
+        noteEvents.push({ kind: 'bounce', shot: n, midi: n.midi, notes })
+        continue
+      }
+      const tuned = laneRetune(n.x, n.y)
+      if (tuned !== null && tuned !== n.midi) { n.midi = tuned; n.color = DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
       const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'converted' &&
         n.x + n.size > t.x - t.w / 2 && n.x - n.size < t.x + t.w / 2 && n.y + n.size > t.y - t.h && n.y - n.size < t.y)
       if (hit) {
@@ -844,6 +930,8 @@ export function createCombat() {
     get noteEvents() { return noteEvents },
     // the ambience a note is rebated in (the stage's fan, the zone): its base note, its scale, the note's rule, the combo
     setNoteEnv(fn: NoteEnvFn | null) { noteEnv = fn },
+    // what a point of the map plays (its Zonas sonoras and Faixas fixas); the stage's ambience wins over it
+    setPlaceEnv(fn: PlaceEnvFn | null) { placeEnv = fn },
     clearNoteShots(source?: string) { for (let i = noteShots.length - 1; i >= 0; i--) if (!source || noteShots[i].source === source) noteShots.splice(i, 1) },
     get peck(): PeckPose | null {
       if (held()) return null
@@ -1114,7 +1202,7 @@ export function createCombat() {
       // projectiles
       const ctx = { boxes, groundY }
       if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
-      if (world) stepNoteShots(dt)
+      if (world) stepNoteShots(dt, ctx)
       if (world) for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
       if (world) for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
 

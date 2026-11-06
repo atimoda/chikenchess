@@ -14,9 +14,12 @@ import { SceneryRegion } from "./scenery-region"
 import { HouseArt } from "./house-art"
 import { CustomTreeArt, CustomTreeStyles } from "./tree-art"
 import { SceneryWindStyles } from "./scenery-wind-bend"
+import { LanesArt, ZoneArt } from "./sound-zone-art"
 
 // one element's art filling its box
-export const ElementArt = memo(function ElementArt({ el, worldX }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h">; worldX?: number }) {
+export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h">; worldX?: number; editing?: boolean }) {
+  if (el.kind === "zone") return el.params.zone ? <ZoneArt zone={el.params.zone} /> : null
+  if (el.kind === "lanes") return el.params.lanes ? <LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing={editing} /> : null
   if (el.kind === "house") return <HouseArt house={el.params.house ?? normalizeHouse(null)} />
   if (el.kind === "tree" && el.params.tree) return <CustomTreeArt tree={el.params.tree} worldX={worldX} />
   if (el.kind === "trampoline") {
@@ -62,7 +65,7 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
               outline: el.hidden ? "2px dashed rgba(255,255,255,0.5)" : undefined,
             }}
           >
-            <ElementArt el={el} worldX={el.kind === "tree" || el.kind === "pine" || el.kind === "blossom" ? el.x + el.w / 2 : undefined} />
+            <ElementArt el={el} editing={editing} worldX={el.kind === "tree" || el.kind === "pine" || el.kind === "blossom" ? el.x + el.w / 2 : undefined} />
           </SceneryRegion>
         )
       })}

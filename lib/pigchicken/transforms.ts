@@ -281,18 +281,21 @@ export const REBATE_RULES: { value: RebateRule; label: string; hint: string }[] 
 export const DEFAULT_RULE: RebateRule = 'taco-ambiente'
 export const isRebateRule = (v: unknown): v is RebateRule => REBATE_RULES.some(r => r.value === v)
 
-// the ambience where a note was rebated: a base note it forces (a lane of the stage's fan) and the scale it fits to
-export type NoteEnv = { base: number | null; fit: Pick<Harmony, 'root' | 'steps'> | null }
+// the ambience where a note was rebated: a base note it forces (a lane of the stage's fan or of the map's fixed
+// lanes), the scale it fits to and the zone's own chain of transformations
+export type NoteEnv = { base: number | null; fit: Pick<Harmony, 'root' | 'steps'> | null; chain?: Transform[] }
 
-// what a rebated note plays: its sequenced pitch through the ambience and the taco, in the order its rule says
+// what a rebated note plays: its sequenced pitch through the ambience and the taco, in the order its rule says.
+// The ambience: the base note, then the zone's chain, then its scale.
 export function rebateSound(seq: NoteOut, rule: RebateRule, chain: Transform[], env: NoteEnv, c: TransformCtx): NoteOut[] {
   const fit = (notes: NoteOut[]) => env.fit ? notes.map(o => o.drum ? o : { ...o, midi: fitScale(env.fit!, o.midi) }) : notes
+  const ambience = (notes: NoteOut[]) => fit(env.chain?.length ? applyChain(notes, env.chain, c) : notes)
   const based = { ...seq, midi: env.base ?? seq.midi }
   switch (rule) {
     case 'travada': return [seq]
     case 'taco': return applyChain([seq], chain, c)
-    case 'ambiente': return fit([based])
-    case 'ambiente-taco': return applyChain(fit([based]), chain, c)
-    default: return fit(applyChain([seq], chain, c))
+    case 'ambiente': return ambience([based])
+    case 'ambiente-taco': return applyChain(ambience([based]), chain, c)
+    default: return ambience(applyChain([seq], chain, c))
   }
 }

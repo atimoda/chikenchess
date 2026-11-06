@@ -29,7 +29,8 @@ import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
 import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
-import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
+import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
+import { placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
 import { isLiteDevice } from "@/lib/performance"
@@ -317,6 +318,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     // the platforms the shots hit, in world units (the same boxes the world draws)
     let worldBoxes: Box[] = []
+    // the layout's Zonas sonoras and Faixas fixas: what each point of the map plays
+    let worldMusic: { zones: ZoneBox[]; lanes: LanesBox[] } = { zones: [], lanes: [] }
+    combat.setPlaceEnv((x, y) => placeEnvAt(worldMusic.zones, worldMusic.lanes, x, y))
     const header = document.querySelector("main header")
     let drawnCamX = NaN, drawnCamY = NaN
     let viewTop = header?.getBoundingClientRect().bottom ?? 0
@@ -359,6 +363,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
               !nextBoxes.some(box => supports(box) && !box.occludedAt?.(pickup.x, pickup.y))) pickup.resting = false
         }
         worldBoxes = nextBoxes
+        worldMusic = layoutMusic(shown)
       }
       // the button stays while Pegar is held, so holding it while walking keeps taking items
       const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : offerShown && engine.peekActions().grab ? offerShown as "take" | "equip" : ""
@@ -640,7 +645,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- music: the zone of the scene she is in sets key, scale and tempo; ambience on its beat ----------
       // (in the temple: the stage's music, or the temple at rest)
       const templeMusic = stage.music ?? temple.music
-      const zone = inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
+      // a Zona sonora she is in wins over the scene's (not over a song playing in the temple)
+      const inZone = templeMusic && inTemple ? null : zoneAt(worldMusic.zones, body.x, body.y - 90 * body.scale, true)
+      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
       setMusicVolumes(mixGain("notes"), mixGain("ambience"))
