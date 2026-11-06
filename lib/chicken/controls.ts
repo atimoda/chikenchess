@@ -36,7 +36,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   // the inventory wheel stays open while held: aim at an item (mouse / right stick) and let go (or fire / jump / run)
   { key: 'itemWheel', label: 'Roda do inventário', keys: ['Key:KeyQ', null, null], keys2: [null, null], pad: ['Pad:b10', null, null], group: 'items' },
   // RB and X run; X also grabs while standing on an item. Y throws, B hits, LT broods.
-  { key: 'grab', label: 'Pegar / trocar item', keys: ['Key:KeyE', null, null], keys2: ['Key:Slash', null], pad: ['Pad:b2', null, null], group: 'items' },
+  { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', null, null], keys2: ['Key:Slash', null], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: ['Key:Backspace', null], pad: ['Pad:b9', null, null], group: 'items' },
 ]
 

@@ -7,13 +7,21 @@ export const CHANGELOG = [
     date: '05/11/2026',
     title: 'Vila dos Telhados, criadores de casas e árvores, trampolins e novos controles do Pátio',
     groups: [
+      { title: 'ChickenChess e Pátio', items: [
+        'Contador discreto de FPS no canto inferior esquerdo e limite de 240 FPS, ambos ligados por padrão. Em Preferências, é possível desligar cada um separadamente. A escolha acompanha os modos do jogo neste navegador.',
+      ] },
       { title: 'Pátio', items: [
-        'O Modo editor ganhou nove estilos de árvores com prévia e sorteio por estilo. Personalize o tronco, os galhos, a copa, as cores e efeitos de vento, pétalas, folhas ou pólen. Troncos escaláveis e apoios nos galhos e grupos de folhas podem ser ligados separadamente.',
+        'O editor de árvores ganhou setas Próximo, pontas ajustáveis, balanço do tronco e teste de rajada. As folhas se distribuem pelas pontas dos galhos, com frondes na palmeira e raminhos pendentes no salgueiro. Há Ipês de várias cores e árvores gigantes, como a sequoia e o eucalipto Centurião.',
+        'Camada e colisões ganhou “Ocultar colisores atrás”. As fachadas das casas já recortam por padrão os trechos cobertos das rampas e dos outros colisores do cenário. É possível desligar por objeto ou ligar em outros elementos opacos.',
+        'Portais respondem a um novo aperto de Usar dentro do anel. Atravessar correndo, inclusive com o botão compartilhado do gamepad seguro, deixa o boneco seguir.',
+        'O Modo editor ganhou dezoito estilos de árvores e moitas com prévia e sorteio por estilo. Personalize o tronco, os galhos, a copa, as cores e efeitos de vento, pétalas, folhas ou pólen. Troncos escaláveis e apoios nos galhos e grupos de folhas podem ser ligados separadamente.',
         'Arraste Trampolim da seção Plataformas e dê dois cliques para editar. Escolha a direção do impulso e um de cinco níveis de força. Cada nível tem sua própria cor e quantidade de molas.',
         'Abrir e Salvar ficam logo à direita do globo no cabeçalho do Pátio. O título mostra o nome do Pátio atual e acrescenta “(não salvo)” na mesma linha quando há alterações pendentes.',
         'Os portais de ida e volta do Templo do Gongo e da Vila dos Telhados podem ser selecionados e movidos no Modo editor. Cada posição fica salva com o Pátio.',
         'O Pátio padrão ganhou a Vila dos Telhados, uma vila colorida em degraus depois do Templo do Gongo. Dá para andar pelas inclinações dos telhados e pousar nos peitoris e acima das janelas e portas. Dois portais perto da entrada fazem a ida e a volta pelo Templo e pela Vila.',
-        'No Modo editor, o criador de casas combina dez estilos com telhados, revestimentos, cores e fachadas ajustáveis. Veja a prévia, sorteie variações e insira a casa onde quiser no Pátio. As casas ficam no layout e podem ser redimensionadas, editadas ou duplicadas.',
+        'No Modo editor, o criador de casas combina doze estilos com telhados, revestimentos, cores e fachadas ajustáveis. Veja a prévia, sorteie variações e insira a casa onde quiser no Pátio. As casas ficam no layout e podem ser redimensionadas, editadas ou duplicadas.',
+        'O estilo Papel recortado traz casas com blocos de cor, granulado fino e uma porta central. O sorteio alterna proporções e telhados triangulares ou trapezoidais.',
+        'O estilo Cubista traz fachadas facetadas e terraços em perspectiva. Nas versões com muretas, a galinha pode pousar nas quatro bordas marcadas.',
         'O criador de casas agora tem prévia fixa para arrastar ao Pátio e setas para experimentar a próxima opção dos seletores. Cada estilo ganhou um cartão com prévia na paleta. Arraste o cartão para sortear uma casa daquele estilo. As seções usam os títulos expansíveis de Ajustes e ganham colunas ao alargar o painel. Casas novas ficaram maiores e suas bases também são plataformas.',
         'O Modo editor tem um ícone de lápis no cabeçalho. Dois cliques abrem os parâmetros de uma casa ou outro elemento editável. O ícone de montanha permite editar a encosta da Vila, com pontos móveis e histórico. Os sliders do Pátio seguem o visual do painel Ajustes.',
         'O Pátio reduz o trabalho fora da tela e separa as animações do cenário do Templo do Gongo, evitando redesenhar o prédio inteiro a cada quadro. Mira, inventário e portais também usam menos processamento; em aparelhos de toque, o canvas usa resolução mais leve.',

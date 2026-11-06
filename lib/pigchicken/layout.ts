@@ -10,7 +10,8 @@ import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
 import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, WORLD_TOP, templeScene, villageScene, worldScenes } from './world'
 import type { Box } from './combat'
 import { rackRespawnDelay } from './racks'
-import { HOUSE_SIZE, housePreset, houseRoof, newHouseSeed, normalizeHouse, type HouseParams } from './houses'
+import { HOUSE_SIZE, housePreset, houseRoof, houseWallPolygon, newHouseSeed, normalizeHouse, type HouseParams } from './houses'
+import { createCollisionOcclusion, type CollisionMask } from '../chicken/collision-occlusion'
 import { TREE_SIZE, newTreeSeed, normalizeTree, treePreset, treeSurfaces, type TreeParams, type TreePoint } from './trees'
 import { normalizeTrampoline, type TrampolineParams } from './trampoline'
 import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge, type RidgePoint } from './village'
@@ -63,6 +64,7 @@ export type LayoutElement = {
   layer: LayoutLayer; locked: boolean
   // she stands on it and bumps its sides · bullets stop at it · the instruments' notes stop at it
   solid: boolean; shots: boolean; notes: boolean
+  occludesColliders?: boolean
   // only shown in the editor mode (invisible walls and floors)
   hidden: boolean
   opacity: number
@@ -303,6 +305,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     solid: kind === 'house' || kind === 'trampoline' ? true : kind === 'tree' || d.entity ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
     shots: d.entity ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
     notes: d.entity ? false : !!e.notes,
+    ...(!d.entity && typeof e.occludesColliders === 'boolean' ? { occludesColliders: e.occludesColliders } : {}),
     hidden: d.entity ? false : !!e.hidden,
     opacity: r1(clamp(num(e.opacity, 1), 0.1, 1) * 100) / 100,
     ...(e.gravity === true ? { gravity: true } : {}),
@@ -365,6 +368,24 @@ export function elementBounds(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' | 'r
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }
 }
 
+export const TEMPLE_PLATFORM_DEPTH = LAYOUT_MAX_ELEMENTS + 1
+export const layoutCollisionDepth = (el: LayoutElement, index: number) =>
+  1 + LAYERS.indexOf(el.layer) * (LAYOUT_MAX_ELEMENTS + 1) + index
+export const occludesColliders = (el: LayoutElement) =>
+  !ELEMENT_DEFS[el.kind].entity && (el.occludesColliders ?? (el.kind === 'house'))
+
+export function layoutCollisionMasks(elements: LayoutElement[]): CollisionMask[] {
+  const masks: CollisionMask[] = []
+  elements.forEach((el, index) => {
+    if (!occludesColliders(el) || el.hidden || el.opacity < 1 || el.layer === 'frontGhost') return
+    const polygon = el.params.house
+      ? houseWallPolygon(el.params.house).map(([x, y]) => [el.x + x * el.w / 100, el.y + y * el.h / 100] as const)
+      : elementCorners(el)
+    masks.push({ depth: layoutCollisionDepth(el, index), polygon })
+  })
+  return masks
+}
+
 // a sloped element (turned 45°, 135°…) is a ramp: its upper edges are one-way floors. The points are relative
 // to its bounds' top-left, in the format the chicken's engine reads (`data-chicken-line`). Straight ones: null.
 export function elementFloorLine(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' | 'rot'>): string | null {
@@ -416,11 +437,15 @@ export function treeWorldSurfaces(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' 
 export function layoutBoxes(elements: LayoutElement[]): Box[] {
   const G = WORLD_GROUND_Y
   const out: Box[] = []
-  elements.forEach(e => {
+  const occlusion = createCollisionOcclusion(layoutCollisionMasks(elements))
+  elements.forEach((e, index) => {
     const solid = e.solid && e.kind !== 'house' && e.kind !== 'trampoline'
     if (ELEMENT_DEFS[e.kind].entity || (!solid && !e.shots && !e.notes)) return
     const b = elementBounds(e)
-    out.push({ l: b.x, t: b.y, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid, shots: e.shots, notes: e.notes })
+    const box: Box = { l: b.x, t: b.y, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid, shots: e.shots, notes: e.notes }
+    const occludedAt = occlusion?.forBox(layoutCollisionDepth(e, index), box)
+    if (occludedAt) box.occludedAt = occludedAt
+    out.push(box)
   })
   return out
 }

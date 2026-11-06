@@ -1,5 +1,6 @@
 "use client"
 
+import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import type React from "react"
 import { useRef, forwardRef, useEffect, useState } from "react"
 import { isConstrainedDevice } from "@/lib/performance"
@@ -54,7 +55,7 @@ export function SpectrogramCanvas({
 
   useEffect(() => {
     if (!isOn) {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+      if (animationRef.current) cancelGameFrame(animationRef.current)
       const canvas = canvasRef.current
       const ctx = canvas?.getContext("2d")
       if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -62,7 +63,7 @@ export function SpectrogramCanvas({
     }
 
     const animate = (timestamp: number) => {
-      animationRef.current = requestAnimationFrame(animate)
+      animationRef.current = requestGameFrame(animate)
       // Canvas analysis is intentionally capped. Audio scheduling is unaffected.
       if (timestamp - lastFrameRef.current < frameInterval) return
       lastFrameRef.current = timestamp
@@ -139,10 +140,10 @@ export function SpectrogramCanvas({
       }
     }
 
-    animationRef.current = requestAnimationFrame(animate)
+    animationRef.current = requestGameFrame(animate)
 
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+      if (animationRef.current) cancelGameFrame(animationRef.current)
     }
   }, [isOn, isPlaying, cityColor, origin, mirrored, getFrequencyData, frameInterval])
 

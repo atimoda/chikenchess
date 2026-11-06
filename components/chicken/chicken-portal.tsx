@@ -7,8 +7,8 @@
 // The destination portal spawns her with an inverse shrink/fade and waits for a full exit before re-arming.
 // The Pátio has its own portal, standing
 // near the start of its world, that leads back to the globe (the same ring, placed in world units: `world`).
-// On either, pressing run or grab (Shift / E, the gamepad's X) while the button shows confirms it too, and
-// arriving running (run held while she moves) goes straight in without stopping to confirm.
+// Use must be pressed after the chicken enters the ring, even if the binding is shared with Run.
+import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
@@ -18,7 +18,7 @@ import { CHICKEN_GROUND_H } from "./chicken-layer"
 import { isLiteDevice } from "@/lib/performance"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
 import { mixGain } from "@/lib/pigchicken/mixer"
-import { markPortalArrival, takePortalArrival, portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
+import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 
 const PAD = 34 // room around the ring for the glow, arcs and sparks
 const OPACITY = 0.5 // the ring is half transparent
@@ -337,9 +337,9 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     window.addEventListener("resize", onResize)
 
     const enter = () => {
-      if (enteredAt || !runtimeRef.current.enabled || !candidateRef.current) return
+      if (enteredAt || !runtimeRef.current.enabled || !visibleRef.current || !candidateRef.current) return
       const center = centerRef.current
-      if (!center) return
+      if (!center || !touchesPortal(candidateRef.current.getMotionState(), { ...center, r }, true)) return
       enteredAt = performance.now()
       enteringEngine = candidateRef.current
       portalGate(enteringEngine, portalId).block()
@@ -363,27 +363,10 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     enterRef.current = enter
 
     const frame = (now: number) => {
-      raf = requestAnimationFrame(frame)
+      raf = requestGameFrame(frame)
       enteredAt = transitionRef.current?.at ?? 0
       enteringEngine = transitionRef.current?.engine ?? null
       const elapsed = now - last
-      // hidden (city popup open) or tab in the background: nothing to draw
-      if (!visibleRef.current && !enteredAt) {
-        setTouching(false); setShowInstruction(false); candidateRef.current = null
-        last = now; return
-      }
-      // lite ring at ~30 fps
-      if (lite && !enteredAt && now - drawnAt < 30) return
-      drawnAt = now
-      const dt = Math.min(0.05, elapsed / 1000); last = now
-      if (!lite && !enteredAt) {
-        measured++
-        if (elapsed > 28) slowFrames++
-        if (measured >= 90) {
-          if (slowFrames > 45) { lite = true; setup(); strands = makeStrands(strandCount(), r, 6, strandPoints()); arcs = [] }
-          measured = 0; slowFrames = 0
-        }
-      }
       const world = worldRef.current
       if (inWorld && world) {
         const left = world.x - size / 2 - liveCamera.x
@@ -393,17 +376,10 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       const pcx = box.left + cx, pcy = box.top + cy
       centerRef.current = { x: pcx, y: pcy }
       if (enteredAt) enteringEngine?.setPortalEntry({ x: pcx, y: pcy, durationMs: ENTER_MS })
-      // the button floats over the ring, kept inside the screen
-      const btn = buttonRef.current
-      if (btn) {
-        const w = btn.offsetWidth
-        btn.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - w, pcx - w / 2))}px`
-        btn.style.top = `${pcy - r - 10 - btn.offsetHeight}px`
-      }
-
       // ---------- characters and destination arrival ----------
       let near = 0
       const runtime = runtimeRef.current
+      const active = runtime.enabled && visibleRef.current
       const eng = engineRef.current
       if (eng && !runtime.onEnter && !enteredAt) {
         // The world's initial camera/spawn runs in its first frame. Place the
@@ -423,18 +399,38 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         const characters = runtime.actors?.() ?? (eng ? [eng] : [])
         for (const actor of characters) {
           const st = actor.getMotionState()
-          const gate = portalGate(actor, portalId).update(st, { x: pcx, y: pcy, r }, actor.peekActions())
+          const gate = portalGate(actor, portalId).update(st, { x: pcx, y: pcy, r }, actor.peekUse(now), active)
           suppressed ||= gate.blocked
           near = Math.max(near, 1 - Math.hypot(st.x - pcx, st.y - 80 * st.scale - pcy) / (r * 3.5))
-          if (runtime.enabled && gate.touching && !candidate) candidate = actor
-          if (runtime.enabled && gate.enter) { candidateRef.current = actor; enter(); return }
+          if (gate.touching && !candidate) candidate = actor
+          if (gate.enter) { candidateRef.current = actor; enter(); return }
         }
         candidateRef.current = candidate
         setTouching(!!candidate)
         const pointer = pointerRef.current
         const hovered = pointer && Math.hypot(pointer.x - pcx, pointer.y - pcy) <= r
         const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
-        setShowInstruction(!!(runtime.enabled && visibleRef.current && onScreen && !suppressed && label.trim() && (candidate || hovered || runtime.instructionMode === 'always')))
+        setShowInstruction(!!(active && onScreen && !suppressed && (candidate || (label.trim() && (hovered || runtime.instructionMode === 'always')))))
+      }
+      // Contact is sampled every game frame, even when the ring draws at ~30 FPS.
+      if (!visibleRef.current && !enteredAt) { last = now; return }
+      if (lite && !enteredAt && now - drawnAt < 30) return
+      drawnAt = now
+      // The button floats over the ring, kept inside the screen.
+      const btn = buttonRef.current
+      if (btn) {
+        const w = btn.offsetWidth
+        btn.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - w, pcx - w / 2))}px`
+        btn.style.top = `${pcy - r - 10 - btn.offsetHeight}px`
+      }
+      const dt = Math.min(0.05, elapsed / 1000); last = now
+      if (!lite && !enteredAt) {
+        measured++
+        if (elapsed > 28) slowFrames++
+        if (measured >= 90) {
+          if (slowFrames > 45) { lite = true; setup(); strands = makeStrands(strandCount(), r, 6, strandPoints()); arcs = [] }
+          measured = 0; slowFrames = 0
+        }
       }
       // Contact/arrival gates above still run for offscreen local players. Only
       // the decorative canvas work sleeps; a transition always keeps drawing.
@@ -485,9 +481,9 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
 
       if (flashRef.current && enteredAt) flashRef.current.style.opacity = String(Math.min(1, enterT * enterT * 1.15))
     }
-    raf = requestAnimationFrame(frame)
+    raf = requestGameFrame(frame)
     return () => {
-      cancelAnimationFrame(raf)
+      cancelGameFrame(raf)
       window.removeEventListener("resize", onResize); enterRef.current = null
     }
   }, [layout, router, href, worldD, host, portalId, label])
@@ -525,12 +521,14 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         >
           <button
             type="button"
+            aria-label="Usar portal"
+            aria-description={label.trim() || undefined}
             onClick={() => enterRef.current?.()}
             disabled={!touching}
-            title={touching ? "Clique, ou aperte correr / pegar" : "Aproxime o boneco para entrar"}
+            title={touching ? "Usar portal (mesmo comando de Pegar)" : "Aproxime o boneco para usar o portal"}
             className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 disabled:cursor-default"
           >
-            {label}
+            {label.trim() ? label : "Usar"}
           </button>
           {modeSwitch && <EntryModeSwitch mode={entryMode} onChange={pickMode} />}
         </div>

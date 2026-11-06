@@ -299,6 +299,66 @@ test('new houses use the larger scale and palette randomness honors the selected
   assert.deepEqual(pick, H.randomHouse('nordic', 520))
 })
 
+test('house occlusion defaults on for old layouts and follows the facade and paint order', () => {
+  const house = L.normalizeElement({ id: 'wall', kind: 'house', x: 100, y: 300, w: 200, h: 400 })
+  const platform = L.createElement('platform', 200, 500)
+  assert.equal(L.occludesColliders(house), true)
+  assert.equal(L.occludesColliders(platform), false)
+  const [mask] = L.layoutCollisionMasks([platform, house])
+  assert.ok(mask.depth > L.layoutCollisionDepth(platform, 0))
+  assert.deepEqual(mask.polygon, H.houseWallPolygon(house.params.house).map(([x, y]) => [100 + x * 2, 300 + y * 4]))
+  const optOut = L.normalizeElement({ ...house, occludesColliders: false })
+  assert.equal(L.normalizeElement(JSON.parse(JSON.stringify(optOut))).occludesColliders, false)
+  assert.deepEqual(L.layoutCollisionMasks([optOut, { ...house, hidden: true }, { ...house, opacity: .8 }, { ...house, layer: 'frontGhost' }]), [])
+  assert.equal(L.layoutCollisionMasks([{ ...platform, occludesColliders: true, layer: 'front' }, house]).length, 2)
+  assert.ok(L.layoutCollisionDepth({ ...platform, layer: 'front' }, 0) > mask.depth)
+  const [behind] = L.layoutBoxes([platform, house])
+  assert.equal(behind.occludedAt(200, 500), true)
+  assert.equal(behind.occludedAt(90, 500), false)
+  const [inFront] = L.layoutBoxes([house, platform])
+  assert.equal(inFront.occludedAt, undefined)
+})
+
+test('paper houses keep the cutout silhouette when randomized and use its roof and door as supports', () => {
+  const samples = Array.from({ length: 24 }, (_, i) => H.randomHouse('paper', i * 2654435761 >>> 0))
+  assert.deepEqual(new Set(samples.map(({ house }) => house.roof)), new Set(['gable', 'hip']))
+  assert.ok(new Set(samples.map(({ house }) => house.wall)).size > 4)
+  assert.ok(samples.some(({ w, h }) => w >= h))
+  assert.ok(samples.some(({ w, h }) => w < h))
+  for (const { house, w, h } of samples) {
+    assert.deepEqual(H.houseDraftSize(house), { w, h })
+    assert.equal(H.houseWallTexture(house), 'paper')
+    assert.equal(house.roofTexture, 'paper')
+    const openings = H.houseOpenings(house)
+    assert.equal(openings.length, 1)
+    assert.deepEqual([openings[0].kind, openings[0].shape, openings[0].x], ['door', 'rect', 50])
+    const roof = H.houseRoof(house)
+    if (house.roof === 'hip') assert.deepEqual(roof.slice(1, 3), [[12, 3], [88, 3]])
+    const supports = H.houseSurfaces(house, 100, 100)
+    assert.deepEqual(supports.map(({ id }) => id), ['roof', 'lintel-0', 'base'])
+    assert.deepEqual(supports[0].points, roof)
+  }
+})
+
+test('cubist terrace joins all four parapet corners as one-way floors when resized', () => {
+  const samples = Array.from({ length: 24 }, (_, i) => H.randomHouse('cubist', i * 2654435761 >>> 0))
+  assert.deepEqual(new Set(samples.map(({ house }) => house.roof)), new Set(['parapet', 'flat']))
+  for (const { house } of samples) {
+    const terrace = H.normalizeHouse({ ...house, roof: 'parapet' })
+    const corners = H.houseRoof(terrace)
+    assert.equal(corners.length, 5)
+    assert.deepEqual(corners.at(-1), corners[0])
+    assert.equal(new Set(corners.slice(0, 4).map(([x]) => x)).size, 4)
+    assert.deepEqual(H.houseSurfaces(terrace, 200, 400)[0], {
+      id: 'roof', points: corners.map(([x, y]) => [x * 2, y * 4]),
+    })
+    const el = L.normalizeElement({ kind: 'house', params: { house: terrace }, x: 0, y: 0, w: 200, h: 400 })
+    assert.deepEqual(L.normalizeElement(JSON.parse(JSON.stringify(el))), el)
+    const roofAtCenter = L.layoutFloorBelow([el], 100, -20)
+    assert.ok(roofAtCenter < 100, 'a falling actor meets the back rim before the front rim')
+  }
+})
+
 test('the editable ridge survives a layout round trip and rejects non-walkable point order', () => {
   const V = loadTs('lib/pigchicken/village.ts')
   const initial = V.VILLAGE_RIDGE
@@ -316,7 +376,7 @@ test('the editable ridge survives a layout round trip and rejects non-walkable p
 test('all tree styles produce bounded deterministic variation and round-trip with the layout', () => {
   const T = loadTs('lib/pigchicken/trees.ts')
   const styles = Object.keys(T.TREE_STYLES)
-  assert.equal(styles.length, 9)
+  assert.equal(styles.length, 18)
   for (const style of styles) {
     const { tree, w, h } = T.randomTree(style, 52354)
     assert.deepEqual(T.randomTree(style, 52354), { tree, w, h })
@@ -328,7 +388,7 @@ test('all tree styles produce bounded deterministic variation and round-trip wit
     assert.deepEqual(L.layoutBoxes(saved.elements), [])
     assert.deepEqual(T.treeSurfaces(tree), { floors: [], walls: [] })
     const g = T.treeGeometry(tree)
-    assert.equal(g.crowns.length, tree.density)
+    assert.equal(g.crowns.length, tree.crown === 'fronds' ? tree.branches || tree.density : Math.max(tree.density, tree.branches))
     assert.equal(g.branches.length, tree.branches)
   }
   const invalid = T.normalizeTree({ style: 'constructor', seed: Infinity, trunkWidth: 500, density: 0, particles: 8, leafColor: 'url(evil)' })
@@ -340,6 +400,30 @@ test('all tree styles produce bounded deterministic variation and round-trip wit
   const legacy = L.normalizeElement({ kind: 'blossom', x: 100, y: 200, params: { seed: 70, flip: true }, rot: 45 })
   assert.deepEqual(legacy.params, { seed: 70, flip: true })
   assert.equal(legacy.rot, 45)
+})
+
+test('species foliage follows branch tips, uses sharpness in the SVG and preserves new settings', () => {
+  const T = loadTs('lib/pigchicken/trees.ts')
+  const F = loadTs('lib/pigchicken/tree-foliage.ts')
+  const baobab = { ...T.treePreset('baobab', 52), density: 1 }
+  const baobabGeometry = T.treeGeometry(baobab)
+  assert.deepEqual(baobabGeometry.crowns.map(({ x, y }) => [x, y]), baobabGeometry.branches.map(branch => branch.at(-1)))
+  assert.ok(new Set(baobabGeometry.crowns.map(({ y }) => y)).size > 3)
+  const palm = T.treePreset('palm', 53)
+  const fronds = T.treeGeometry(palm).crowns
+  assert.ok(fronds.every(({ frond }) => frond.length > 3 && frond[0][0] === 50 && frond[0][1] === 100 - palm.trunkHeight))
+  assert.notEqual(F.drawTreeFoliage(palm, fronds).leaves, F.drawTreeFoliage({ ...palm, sharpness: 0 }, fronds).leaves)
+  const willow = T.treePreset('willow', 54)
+  assert.match(F.drawTreeFoliage(willow, T.treeGeometry(willow).crowns).twigs, /Q/)
+  const ipes = Array.from({ length: 40 }, (_, seed) => T.treePreset('ipe', seed))
+  assert.equal(new Set(ipes.map(T.treeFlowerColor)).size, 4)
+  const custom = { ...ipes[0], bloom: 'custom', flowerColor: '#43a562', trunkSway: 4, sharpness: 86 }
+  assert.deepEqual(T.normalizeTree(JSON.parse(JSON.stringify(custom))), custom)
+  assert.equal(T.treeFlowerColor(custom), '#43a562')
+  assert.equal(T.normalizeTree({ style: 'palm', wind: 0 }).trunkSway, 1)
+  assert.ok(T.treeDraftSize(T.treePreset('redwood', 56)).h > 1500)
+  assert.ok(T.treeDraftSize(T.treePreset('centurion', 57)).h > 1500)
+  assert.ok(T.treeDraftSize(T.treePreset('tule', 58)).w > 1000)
 })
 
 test('tree supports are independently selectable and follow mirror, resize and rotation', () => {

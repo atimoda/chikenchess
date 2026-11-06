@@ -1,5 +1,6 @@
 "use client"
 
+import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import { useEffect, useRef, useState } from "react"
 import { getCityEras, type CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
@@ -171,7 +172,7 @@ export const CityPopup = ({
 
   const stopSwing = (clearTransform: boolean) => {
     const swing = swingRef.current
-    if (swing?.frame != null) cancelAnimationFrame(swing.frame)
+    if (swing?.frame != null) cancelGameFrame(swing.frame)
     swingRef.current = null
     if (clearTransform && popupWrapperRef.current) popupWrapperRef.current.style.transform = ''
   }
@@ -211,9 +212,9 @@ export const CityPopup = ({
       swing.velocity += acceleration * dt
       swing.angle += swing.velocity * dt * 180 / Math.PI
       if (popupWrapperRef.current) popupWrapperRef.current.style.transform = `rotate(${swing.angle}deg)`
-      swing.frame = requestAnimationFrame(step)
+      swing.frame = requestGameFrame(step)
     }
-    swing.frame = requestAnimationFrame(step)
+    swing.frame = requestGameFrame(step)
   }
 
   useEffect(() => () => {

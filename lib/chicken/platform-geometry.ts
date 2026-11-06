@@ -1,12 +1,21 @@
 import { normalizeTrampoline, type TrampolineParams } from '../pigchicken/trampoline'
+import type { CollisionOcclusion } from './collision-occlusion'
 
 // Shared by local chickens. World colliders already have numeric layout bounds,
 // so following the Pátio camera must not force a DOM layout for every collider.
 type PlatformRect = { left: number; top: number; right: number; bottom: number; width: number; height: number }
 const offsets = new WeakMap<Element, { x: number; y: number }>()
+const worldOcclusions = new WeakMap<Element, NonNullable<CollisionOcclusion>>()
 const worldBoxes = new WeakMap<Element, { source: string; coords: number[] }>()
 let elements: Element[] = [], queriedAt = -Infinity
-let measuredAt = -Infinity, measured: { el: Element; rect: PlatformRect }[] = []
+export type PlatformOcclusion = { clip: NonNullable<CollisionOcclusion>['clip']; depth: number; x: number; y: number }
+let measuredAt = -Infinity, measured: { el: Element; rect: PlatformRect; occlusion?: PlatformOcclusion }[] = []
+
+export function setPlatformWorldOcclusion(world: Element, clip: CollisionOcclusion) {
+  if (clip) worldOcclusions.set(world, clip)
+  else worldOcclusions.delete(world)
+  measuredAt = -Infinity
+}
 
 export function setPlatformWorldOffset(world: Element, x: number, y: number) {
   const old = offsets.get(world)
@@ -30,7 +39,7 @@ export function chickenPlatformRects(now: number) {
     const h = el as HTMLElement, source = h.dataset.chickenWorldBox
     if (source) {
       const world = el.closest('[data-chicken-world]'), offset = world && offsets.get(world)
-      if (offset) {
+      if (world && offset) {
         let box = worldBoxes.get(el)
         if (!box || box.source !== source) {
           box = { source, coords: source.split(',').map(Number) }
@@ -38,7 +47,11 @@ export function chickenPlatformRects(now: number) {
         }
         const [x, y, width, height] = box.coords
         const left = x + offset.x, top = y + offset.y
-        return { el, rect: { left, top, right: left + width, bottom: top + height, width, height } }
+        const clip = worldOcclusions.get(world)?.clip
+        return {
+          el, rect: { left, top, right: left + width, bottom: top + height, width, height },
+          occlusion: clip ? { clip, depth: Number(h.dataset.chickenDepth ?? 0), x: offset.x, y: offset.y } : undefined,
+        }
       }
     }
     return { el, rect: el.getBoundingClientRect() }

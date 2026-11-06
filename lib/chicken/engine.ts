@@ -6,6 +6,7 @@
 // floating box: its horizontal edges are one-way floors, its sides are walls she grabs when her feet
 // touch them in the air with no movement control held. The screen sides are solid (rigid) walls she climbs by pushing into them, and the
 // ground sits `groundHeight` px above the bottom of the viewport.
+import { requestGameFrame, cancelGameFrame } from '../game-frame'
 import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
@@ -13,7 +14,7 @@ import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { directionalJumpImpulse } from './jump-impulse'
 import { createThrowTransition } from './throw-transition'
-import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce } from './platform-geometry'
+import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce, type PlatformOcclusion } from './platform-geometry'
 import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampoline'
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
@@ -32,6 +33,7 @@ export type ChickenEngine = {
   getActions: () => Record<ChickenAction, boolean>
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
   peekActions: () => Record<ChickenAction, boolean>
+  peekUse: (now: number) => boolean
   isShiftHeld: () => boolean
   // Freeze gameplay and shrink/fade the drawn rig into a screen-space portal centre.
   // Repeated calls update the target without restarting; null cancels the transition.
@@ -71,7 +73,7 @@ export type ChickenEngine = {
   destroy: () => void
 }
 
-type Seg = { id: string; ax: number; ay: number; bx: number; by: number; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams }
+type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams }
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
@@ -255,7 +257,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   rebind()
   const virtOk = () => !devices || devices.includes('touch') || devices.includes('mouse')
-  const input = (a: ChickenAction) => keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && virtualActionHeld(virt, a, controls.touchRunGrab))
+  const input = (a: ChickenAction, touchRunGrab = controls.touchRunGrab) => keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && virtualActionHeld(virt, a, touchRunGrab))
   const tapped = (a: ChickenAction) => keyBinds[a].some(t => pressed.has(t)) || (virtOk() && virtTapped.has(a))
   const usedKey = (tok: string) => usedKeys.has(tok)
   const onKeyDown = (e: KeyboardEvent) => {
@@ -283,6 +285,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     pad = {}
     CHICKEN_ACTIONS.forEach(a => { pad[a.key] = controls.pad[a.key].some(t => t && on.has(t)) })
   }
+  let useSampleAt = -Infinity, useSample = false
 
   // ---------- sound ----------
   // one audio context and one set of clucks for every chicken on the page (local players share them)
@@ -407,11 +410,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (sg && fy === null && sg.id.includes(':l')) {
         const base = sg.id.slice(0, sg.id.lastIndexOf(':l'))
         const next = SEGS.find(o => o !== sg && !o.wall && o.id.startsWith(base + ':l') && (() => { const y = floorY(o, S.x); return y !== null && Math.abs(y - S.y) < 10 })())
-        if (next) { sg = next; fy = floorY(next, S.x); S.plat = next.id; S.platAx = next.ax }
+        if (next) { sg = next; fy = floorY(next, S.x); S.plat = next.id; S.platAx = next.anchorX }
       }
       if (!sg || fy === null) { S.grounded = false; S.plat = null; S.vy = 0; S.jumpIndex = 0 }
       else {
-        const dx = sg.ax - S.platAx, dy = fy - S.y; S.platAx = sg.ax
+        const dx = sg.anchorX - S.platAx, dy = fy - S.y; S.platAx = sg.anchorX
         if (dx) { S.x += dx; Object.values(feet).forEach((f: any) => { if (f.x !== null) f.x += dx; f.from += dx; f.to += dx }); if (headAnchor.x !== null) headAnchor.x += dx }
         S.y += dy
       }
@@ -633,13 +636,30 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let SEGS: Seg[] = []
   function buildSegs() {
     const out: Seg[] = []
+    let source: Element | undefined, mask: PlatformOcclusion | undefined
     const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams) => {
       const len = Math.hypot(bx - ax, by - ay); if (len < 4) return
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
-      out.push({ id, ax, ay, bx, by, len, ang: a, wall: climbable || (!floor && Math.min(a, 180 - a) > 45), solid, bounce })
+      const wall = climbable || (!floor && Math.min(a, 180 - a) > 45)
+      const topEdge = id.endsWith(':top')
+      const visible = mask && source && mask.clip(source, id, mask.depth, ax - mask.x, ay - mask.y, bx - mask.x, by - mask.y)
+      if (!visible) {
+        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce })
+        return
+      }
+      const dx = bx - ax, dy = by - ay
+      visible.forEach(([from, to], i) => {
+        const partLen = len * (to - from)
+        if (partLen < 4) return
+        out.push({
+          id: i === 0 ? id : `${id}~${i}`, ax: ax + dx * from, ay: ay + dy * from,
+          bx: ax + dx * to, by: ay + dy * to, anchorX: ax, clipOffset: from * len, topEdge, len: partLen, ang: a, wall, solid, bounce,
+        })
+      })
     }
     let n = 0
-    chickenPlatformRects(frameNow).forEach(({ el: e, rect: r }) => {
+    chickenPlatformRects(frameNow).forEach(({ el: e, rect: r, occlusion }) => {
+      source = e; mask = occlusion
       const node = e as HTMLElement
       if (r.width < 8 || r.height < 8) return
       // A local player can be outside the main camera. Cull shaped surfaces relative to this actor.
@@ -683,6 +703,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const yb = Math.min(r.bottom, groundY)
       if (yb - r.top > 8) { add(id + ':left', r.left, r.top, r.left, yb); add(id + ':right', r.right, r.top, r.right, yb) }
     })
+    mask = undefined
     add('screen:left', wallLo(), 0, wallLo(), groundY, true); add('screen:right', wallHi(), 0, wallHi(), groundY, true)
     SEGS = out
   }
@@ -718,7 +739,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     S.justLanded = !S.grounded
     S.y = y; S.vy = 0; S.grounded = true; S.jumpIndex = -1; S.squash = 1; S.airBoost = 0
-    S.plat = sg ? sg.id : null; S.platAx = sg ? sg.ax : 0
+    S.plat = sg ? sg.id : null; S.platAx = sg ? sg.anchorX : 0
     plantFeet(); sfx('land')
   }
   function standAt(x: number, y: number, sg: Seg | null, face: number) {
@@ -761,7 +782,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const ux = (sg.bx - sg.ax) / sg.len, uy = (sg.by - sg.ay) / sg.len
     const phi = Math.atan2(-n[1], -n[0]) - Math.PI / 2, t = [Math.cos(phi), Math.sin(phi)]
     const sigma = Math.sign(t[0] * ux + t[1] * uy) || 1
-    const along = (px - sg.ax) * ux + (py - sg.ay) * uy
+    const along = (px - sg.ax) * ux + (py - sg.ay) * uy + (sg.clipOffset ?? 0)
     S.cl = { id: sg.id, n, phi, t, sigma, px, py, tilt: 0, lastDir: heldDir, tapDir: 0, tapT: 0 }
     S.x = along * sigma; S.vx = 0; S.face = -t[1] >= 0 ? 1 : -1
     plantFeet(); headAnchor.x = null
@@ -776,6 +797,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function clingStep(dt: number, dir: number, vup: number, jumpPressed: boolean, RUN: boolean) {
     const c = S.cl, sg = segById(c.id)
     if (!sg) { fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), 0, 0); return }
+    const offset = sg.clipOffset ?? 0
+    const before = S.x * c.sigma - offset
+    if (sg.clipOffset !== undefined && (before < -0.01 || before > sg.len + 0.01)) {
+      fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), 0, 0)
+      return
+    }
     const ux = (sg.bx - sg.ax) / sg.len, uy = (sg.by - sg.ay) / sg.len
     if (jumpPressed) {
       // wall jump: away from the surface
@@ -803,7 +830,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     c.lastDir = dir
     const prevPy = c.py
     S.x += S.vx * dt
-    let s = S.x * c.sigma
+    let s = S.x * c.sigma - offset
     c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
     // climbing down onto a floor that meets the wall
     if (c.py > prevPy) {
@@ -820,7 +847,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         const ix = end[0] - c.n[0] * 26 * R.scale
         const f = SEGS.find(f => !f.wall && floorY(f, ix) !== null && Math.abs((floorY(f, ix) as number) - end[1]) < 4)
         if (f) { standAt(ix, floorY(f, ix) as number, f, -Math.sign(c.n[0]) || 1); return }
-        s = clamp(s, 0, sg.len); S.x = s * c.sigma; S.vx = 0; c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
+        s = clamp(s, 0, sg.len); S.x = (s + offset) * c.sigma; S.vx = 0; c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
       } else if (end[1] >= groundY - 3) {
         standAt(end[0] + c.n[0] * 30 * R.scale, groundY, null, Math.sign(c.n[0]) || 1); return
       } else { fallFrom(end[0] + c.n[0] * 30 * R.scale, end[1], 0, 0); return }
@@ -841,7 +868,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const x0 = Math.min(...xs) - 6 * s + Math.min(0, S.face * 18 * s), x1 = Math.max(...xs) + 6 * s + Math.max(0, S.face * 18 * s)
     let best: Seg | null = null, bestY = S.y
     SEGS.forEach(sg => {
-      if (sg.wall || !sg.id.endsWith(':top') || sg.id === S.plat) return
+      if (sg.wall || !sg.topEdge || sg.id === S.plat) return
       const fy = Math.min(sg.ay, sg.by)
       if (fy >= S.y - 2 || fy < S.y - STEP_UP * s) return
       if (Math.max(sg.ax, sg.bx) < x0 || Math.min(sg.ax, sg.bx) > x1) return
@@ -1297,7 +1324,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     tagT -= dt; if (tagT <= 0) { tagBoxes(); tagT = 0.5 }
     if (portalEntry) renderPortal(now)
     else if (!isChickenControlsListening()) step(dt); else render()
-    raf = requestAnimationFrame(frame)
+    raf = requestGameFrame(frame)
   }
   tagBoxes()
   // a random x in [12%, 88%] of the width outside the avoided spans (the plain range if they cover it all)
@@ -1315,7 +1342,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // entrance: falls from above the screen at a random horizontal spot
   // (never above a spot the page asks to avoid, such as the portal: landing in it would leave the screen)
   if (opts.dropIn) fallFrom(dropX(), -160 * R.scale, 0, 0)
-  raf = requestAnimationFrame(frame)
+  raf = requestGameFrame(frame)
 
   // her shoulder (the item's pivot) on the screen, from the drawn rig
   function shoulder() {
@@ -1393,6 +1420,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       pollPad()
       CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && input(a.key) })
       return out
+    },
+    peekUse(now) {
+      if (portalEntry || isChickenControlsListening()) return false
+      if (useSampleAt !== now) {
+        useSampleAt = now
+        pollPad()
+        useSample = input('grab', false)
+      }
+      return useSample
     },
     shift(dx, dy = 0) {
       if (portalEntry) { portalEntry.dx += dx; portalEntry.dy += dy }
@@ -1489,7 +1525,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     dropAt(x) { if (!portalEntry) fallFrom(clamp(x, 40 * R.scale, W - 40 * R.scale), -160 * R.scale, 0, 0) },
     destroy() {
       throwTransition.reset()
-      cancelAnimationFrame(raf)
+      cancelGameFrame(raf)
       unsubscribe()
       unsubscribeConfig()
       window.removeEventListener('keydown', onKeyDown)

@@ -4,6 +4,7 @@ import { useId, useState } from "react"
 import * as Popover from "@radix-ui/react-popover"
 import { Settings2 } from "lucide-react"
 import { Button } from "./ui/button"
+import { FpsCounter, FpsPreferences } from "./fps-preferences"
 import type { PowerDisplay } from "@/hooks/use-power-display"
 import type { ChancePosition } from "@/hooks/use-chance-position"
 import type { SpectrogramMode } from "@/hooks/use-spectrogram-mode"
@@ -21,8 +22,8 @@ export function GamePreferences({
   onAwardAnimationsChange,
   className,
 }: {
-  display: PowerDisplay
-  onDisplayChange: (value: PowerDisplay) => void
+  display?: PowerDisplay
+  onDisplayChange?: (value: PowerDisplay) => void
   chancePosition?: ChancePosition
   onChancePositionChange?: (value: ChancePosition) => void
   spectrogramMode?: SpectrogramMode
@@ -41,7 +42,7 @@ export function GamePreferences({
   const spectrogramLabelId = useId()
   const crossfaderLabelId = useId()
   const awardLabelId = useId()
-  return <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
+  return <><Popover.Root open={open} onOpenChange={setOpen} modal={false}>
     <Popover.Trigger asChild>
       <Button variant="outline" size="icon" aria-label="Preferências" title="Preferências" className={className}>
         <Settings2 className="size-4" />
@@ -49,8 +50,9 @@ export function GamePreferences({
     </Popover.Trigger>
     <Popover.Portal>
       <Popover.Content align="end" sideOffset={4} aria-labelledby={titleId}
-        className="z-[200] min-w-64 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+        className="z-[200] max-h-[var(--radix-popover-content-available-height)] min-w-64 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
         <h2 id={titleId} className="px-2 py-1.5 text-sm font-medium">Preferências</h2>
+        {display && onDisplayChange && <>
         <div className="flex items-center justify-between gap-5 px-2 py-2">
           <div><div className="text-sm font-medium" id={switchLabelId}>Super-power</div>
             <div className="text-xs text-muted-foreground">{display === "cards" ? "Modo cards" : "Modo botões"}</div>
@@ -106,7 +108,9 @@ export function GamePreferences({
             <span className="absolute left-0.5 top-0.5 size-[18px] rounded-full bg-white transition-transform" style={{ transform: awardAnimations ? "translateX(20px)" : undefined }} />
           </button>
         </div>
+        </>}
+        <FpsPreferences />
       </Popover.Content>
     </Popover.Portal>
-  </Popover.Root>
+  </Popover.Root><FpsCounter /></>
 }

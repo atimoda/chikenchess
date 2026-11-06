@@ -1,3 +1,4 @@
+import { requestGameFrame, cancelGameFrame } from './game-frame'
 import type { Square } from "chess.js"
 
 export interface EggFlight {
@@ -68,7 +69,7 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
       if (done) return
       done = true
       window.clearTimeout(timer)
-      window.cancelAnimationFrame(frame)
+      cancelGameFrame(frame)
       egg.remove()
       cleanups.delete(cleanup)
     }
@@ -94,13 +95,13 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
           const curX = x0 + spreadX * e
           const curY = y0 - 50 * e
           egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0) rotate(${360 * e}deg)`
-          frame = window.requestAnimationFrame(tick)
+          frame = requestGameFrame(tick)
           return
         }
 
         if (elapsed < flightStart) {
           egg.style.transform = `translate3d(${xFloat - 11}px,${yFloat - 14}px,0)`
-          frame = window.requestAnimationFrame(tick)
+          frame = requestGameFrame(tick)
           return
         }
 
@@ -115,7 +116,7 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
         egg.style.transform = `translate3d(${curX - 11}px,${curY - 14}px,0) scale(${1 - 0.3 * e}) rotate(-${rotation * e}deg)`
 
         if (p < 1) {
-          frame = window.requestAnimationFrame(tick)
+          frame = requestGameFrame(tick)
         } else if (index >= firstOverflow) {
           // The counter is full: the egg vanishes in a puff, turns grey and drops away.
           showLabel()
@@ -128,7 +129,7 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
       }
 
       egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
-      frame = window.requestAnimationFrame(tick)
+      frame = requestGameFrame(tick)
     } else {
       const tick = (time: number) => {
         if (!startTime) startTime = time
@@ -137,11 +138,11 @@ export function launchEggFlight(flight: EggFlight, counterEl: HTMLElement | null
         const x = x0 + (x1 - x0) * eased
         const y = y0 + (y1 - y0) * eased - arc * 4 * eased * (1 - eased)
         egg.style.transform = `translate3d(${x - 11}px,${y - 14}px,0) scale(${1 - .3 * eased}) rotate(-${rotation * eased}deg)`
-        if (progress < 1) frame = window.requestAnimationFrame(tick)
+        if (progress < 1) frame = requestGameFrame(tick)
         else { cleanup(); finishEgg() }
       }
       egg.style.transform = `translate3d(${x0 - 11}px,${y0 - 14}px,0)`
-      timer = window.setTimeout(() => { frame = window.requestAnimationFrame(tick) }, index * 110)
+      timer = window.setTimeout(() => { frame = requestGameFrame(tick) }, index * 110)
     }
   }
 }

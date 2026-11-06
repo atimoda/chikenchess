@@ -25,7 +25,11 @@ export type Critter = { kind: 'bird' | 'person'; x: number; y: number; vx: numbe
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
 // beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through)
-export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean }
+export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean; occludedAt?: (x: number, y: number) => boolean }
+export const boxContains = (box: Box, x: number, y: number) =>
+  x >= box.l && x <= box.r && y >= box.t && y <= box.b && !box.occludedAt?.(x, y)
+const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
+  x >= box.l && x <= box.r && prevY <= box.t && y >= box.t && !box.occludedAt?.(x, box.t)
 export type Owned = { item: ItemId; ammo: number; durability: number }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
@@ -505,8 +509,8 @@ export function createCombat() {
   }
 
   type StepCtx = { boxes: Box[]; groundY: number }
-  const boxAt = (boxes: Box[], x: number, y: number, note = false) => boxes.find(b => (note ? b.notes === true : b.shots !== false) && x >= b.l && x <= b.r && y >= b.t && y <= b.b)
-  const solidAt = (boxes: Box[], x: number, y: number) => boxes.find(b => b.solid !== false && x >= b.l && x <= b.r && y >= b.t && y <= b.b)
+  const boxAt = (boxes: Box[], x: number, y: number, note = false) => boxes.find(b => (note ? b.notes === true : b.shots !== false) && boxContains(b, x, y))
+  const solidAt = (boxes: Box[], x: number, y: number) => boxes.find(b => b.solid !== false && boxContains(b, x, y))
   // moves a projectile one step; true when it is gone
   function stepBullet(b: Bullet, dt: number, { boxes, groundY }: StepCtx, dry = false): boolean {
     const px = b.x, py = b.y
@@ -541,7 +545,7 @@ export function createCombat() {
       const floor = y >= groundY
       if (!box && !floor) continue
       if (b.fuse > 0) {
-        const fromAbove = floor || (box && py <= box.t)
+        const fromAbove = floor || (box && crossesBoxTop(box, x, py, y))
         if (fromAbove && !dry && Math.abs(b.vy) > 120) sound('bounce', b.item)
         if (fromAbove) { b.y = floor ? groundY - 1 : box!.t - 1; b.vy = -Math.abs(b.vy) * b.bounce; b.vx *= 0.7; if (Math.abs(b.vy) < 60) { b.vy = 0; b.drop = 0; b.vx *= 0.5 } }
         else { b.x = px; b.vx = -b.vx * b.bounce }
@@ -591,7 +595,7 @@ export function createCombat() {
       vy += THROW_GRAVITY * dt; x += vx * dt; y += vy * dt
       points.push({ x, y })
       if (targets.some(g => g.deadT <= 0 && Math.abs(x - g.x) < g.w / 2 + 10 && y > g.y - g.h && y < g.y)) break
-      const top = vy > 0 && ctx.boxes.find(b => x >= b.l && x <= b.r && py <= b.t && y >= b.t)
+      const top = vy > 0 && ctx.boxes.find(b => crossesBoxTop(b, x, py, y))
       if (top) { points[points.length - 1] = { x, y: top.t }; break }
       if (vy > 0 && y >= ctx.groundY) { points[points.length - 1] = { x, y: ctx.groundY }; break }
       if (boxAt(ctx.boxes, x, y)) break
@@ -957,7 +961,7 @@ export function createCombat() {
             hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y); t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
-        const top = boxes.find(b => b.solid !== false && t.x >= b.l && t.x <= b.r && py <= b.t && t.y >= b.t)
+        const top = boxes.find(b => b.solid !== false && crossesBoxTop(b, t.x, py, t.y))
         const side = !top && inBox(t.x, t.y)
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
         const floor = top ? top.t : t.y >= groundY ? groundY : null
@@ -976,7 +980,7 @@ export function createCombat() {
         if (world && !p.resting) {
           const py = p.y
           p.vy += ITEM_GRAVITY * dt; p.y += p.vy * dt
-          const top = boxes.find(b => b.solid !== false && p.x >= b.l && p.x <= b.r && py <= b.t && p.y >= b.t)
+          const top = boxes.find(b => b.solid !== false && crossesBoxTop(b, p.x, py, p.y))
           if (top) { p.y = top.t; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }

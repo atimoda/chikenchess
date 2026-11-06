@@ -5,7 +5,7 @@
 // Everything here is plain data stepped with dt and the conductor's beats, with a seeded random number: the same
 // state, inputs and beats give the same game, so it can later be run by a server and sent to every player
 // (the aliens' hit points live in the combat's targets, like every other enemy).
-import type { Box, Target } from './combat'
+import { boxContains, type Box, type Target } from './combat'
 import type { Conductor } from './music'
 import { SCENE_W } from './world'
 import { STAGE_MUSIC, melodyNote, type TempleSound } from './temple-music'
@@ -411,7 +411,7 @@ export function createTemple(seed = 1) {
     for (let i = s.bombs.length - 1; i >= 0; i--) {
       const b = s.bombs[i]
       b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt
-      const box = io.boxes.find(q => b.x >= q.l && b.x <= q.r && b.y >= q.t && b.y <= q.b)
+      const box = io.boxes.find(q => boxContains(q, b.x, b.y))
       const hitHer = Math.abs(b.x - io.body.x) < 26 * io.body.scale + 8 && b.y > io.body.y - 120 * io.body.scale && b.y < io.body.y
       if (hitHer) hurtPlayer(io, b.x)
       if (hitHer || box || b.y >= G || b.t > 8) {

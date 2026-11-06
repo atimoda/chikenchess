@@ -42,6 +42,7 @@ import { SampleSourceControls } from './music-lab-controls'
 import { MusicTransportReadout, MusicVoiceReadout, MusicVoiceBadge } from './music-playback'
 import { MusicSongPanel, type SongPanelHover } from './music-song-panel'
 import { VersionChangelog } from './version-changelog'
+import { GamePreferences } from './game-preferences'
 import styles from './creative-studio.module.css'
 import { duckSourceOptions } from '@/lib/music/sound-design'
 import LEGACY_KITS from '@/data/music/legacy-kits.json'
@@ -807,6 +808,7 @@ export function CreativeStudio() {
     <header className={`${styles.studio} ${styles.labHeader}`}>
       <Link href="/" aria-label="Back to the world" className={styles.back}><ArrowLeft size={18} /></Link>
       <h1 className={styles.labTitle}>Chickenchess Lab<VersionChangelog /></h1>
+      <GamePreferences />
     </header>
 
     {!portraitPhone && <GameWidgetConnections visible pieceConnections={connections} />}

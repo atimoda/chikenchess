@@ -27,7 +27,9 @@ import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
+import { GamePreferences } from "@/components/game-preferences"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
@@ -185,6 +187,7 @@ export function ChickenPatio() {
   const access = usePatioEditAccess()
   const pl = usePatioLobby({ userId: meId, isAccount, isAdmin, canEdit: access.canEdit })
   const patio = pl.patio
+  useEffect(() => () => clearSceneryWind(), [patio?.id])
   useEffect(() => { void pl.load(lobbyFromUrl()) }, [])
   // a Pátio made here before signing in (its creator is this browser) is mine once I sign in, until it is saved
   const creator = patio && patio.revision === 0 && patio.creatorId === (typeof window === "undefined" ? null : deviceId()) ? (meId ?? patio.creatorId) : patio?.creatorId ?? null
@@ -362,6 +365,7 @@ export function ChickenPatio() {
           <SlidersHorizontal className="h-4 w-4" />
         </button>
         <VolumeButton />
+        <GamePreferences className="border-white/15 bg-transparent text-[#b9c7b9] hover:border-primary" />
         <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>

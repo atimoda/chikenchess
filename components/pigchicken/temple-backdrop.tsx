@@ -4,6 +4,7 @@
 // light up when a stage is cleared (data-temple on the world element, set by the Parquinho).
 "use client"
 
+import { SceneryWindBend } from "./scenery-wind-bend"
 import { memo } from "react"
 import { SceneryRegion } from "./scenery-region"
 import { SCENE_W, WORLD_GROUND_Y } from "@/lib/pigchicken/world"
@@ -132,11 +133,11 @@ function Lantern({ x, y, d = 0, prefix }: { x: number; y: number; d?: number; pr
 }
 
 // a pine like the old ones in temple courtyards: a crooked trunk and flat layered canopies
-function Pine({ x, base, h = 1, flip = false }: { x: number; base: number; h?: number; flip?: boolean }) {
+function Pine({ x, base, h = 1, flip = false, worldX }: { x: number; base: number; h?: number; flip?: boolean; worldX: number }) {
   const f = flip ? -1 : 1
   const pads: [number, number, number][] = [[-70, -150, 70], [60, -210, 80], [-40, -280, 66], [40, -340, 56], [0, -395, 44]]
   return (
-    <g transform={`translate(${x} ${base}) scale(${f * h} ${h})`}><g className="tp-tree">
+    <g transform={`translate(${x} ${base}) scale(${f * h} ${h})`}><SceneryWindBend x={worldX} response={.55}><g className="tp-tree">
       <path d="M -10 0 C -14 -80 22 -120 4 -190 C -8 -240 24 -300 6 -400 L 16 -400 C 34 -300 6 -240 18 -190 C 36 -120 6 -80 12 0 Z" fill="#5a3a24" />
       <path d="M 6 -150 C -20 -150 -40 -146 -60 -150 M 10 -210 C 30 -212 46 -208 62 -210 M 6 -280 C -10 -282 -24 -278 -36 -280" stroke="#5a3a24" strokeWidth={8} strokeLinecap="round" fill="none" />
       {pads.map(([px, py, r], i) => (
@@ -146,15 +147,15 @@ function Pine({ x, base, h = 1, flip = false }: { x: number; base: number; h?: n
           <ellipse cx={px - r * 0.2} cy={py - 4} rx={r * 0.55} ry={r * 0.14} fill="#33573f" />
         </g>
       ))}
-    </g></g>
+    </g></SceneryWindBend></g>
   )
 }
 
 // a plum blossom tree: a dark twisted trunk and pink clouds of flowers (a few petals fall slowly)
-function Blossom({ x, base, h = 1 }: { x: number; base: number; h?: number }) {
+function Blossom({ x, base, h = 1, worldX }: { x: number; base: number; h?: number; worldX: number }) {
   const puffs: [number, number, number][] = [[-60, -200, 54], [10, -240, 64], [70, -196, 50], [-20, -290, 50], [50, -280, 44], [-80, -150, 36], [90, -150, 34]]
   return (
-    <g transform={`translate(${x} ${base}) scale(${h})`}><g className="tp-tree">
+    <g transform={`translate(${x} ${base}) scale(${h})`}><SceneryWindBend x={worldX} response={.55}><g className="tp-tree">
       <path d="M -8 0 C -10 -60 -30 -100 -60 -150 M 0 0 C 4 -80 30 -120 10 -240 M 6 -100 C 30 -130 60 -150 80 -190 M 8 -180 C -10 -220 -20 -250 -20 -290" stroke="#3b2418" strokeWidth={10} strokeLinecap="round" fill="none" />
       {puffs.map(([px, py, r], i) => (
         <g key={i}>
@@ -164,7 +165,7 @@ function Blossom({ x, base, h = 1 }: { x: number; base: number; h?: number }) {
         </g>
       ))}
       {Array.from({ length: 6 }, (_, i) => <circle key={`p${i}`} className="tp-petal" style={{ animationDelay: `${-i * 1.3}s` }} cx={-70 + i * 28} cy={-160} r={4} fill="#f6aec4" />)}
-    </g></g>
+    </g></SceneryWindBend></g>
   )
 }
 
@@ -277,8 +278,8 @@ function TempleOverlay({ left, id, box, haze, children }: OverlayProps) {
 // Their order matches the original SVG: far trees, halls, front trees/lanterns, wall and roof edges.
 export const TempleBackdrop = memo(function TempleBackdrop({ left }: { left: number }) {
   return <>
-    <TempleOverlay left={left} id="far-pine" haze box={{ x: 1080, y: 380, w: 320, h: 450 }}><Pine x={1230} base={800} h={0.95} /></TempleOverlay>
-    <TempleOverlay left={left} id="far-blossom" haze box={{ x: 1380, y: 450, w: 370, h: 440 }}><Blossom x={1560} base={800} h={0.9} /></TempleOverlay>
+    <TempleOverlay left={left} id="far-pine" haze box={{ x: 1080, y: 380, w: 320, h: 450 }}><Pine x={1230} worldX={left + 1230} base={800} h={0.95} /></TempleOverlay>
+    <TempleOverlay left={left} id="far-blossom" haze box={{ x: 1380, y: 450, w: 370, h: 440 }}><Blossom x={1560} worldX={left + 1560} base={800} h={0.9} /></TempleOverlay>
     <SceneryRegion bounds={{ x: left - 64, y: 350, w: SCENE_W + 128, h: G + 160 - 350 }}>
       <svg data-temple-static="halls" aria-hidden="true" className="absolute top-0" style={{ left, width: SCENE_W, height: G + 160, overflow: "visible" }} viewBox={`0 0 ${SCENE_W} ${G + 160}`}>
       <TempleStaticDefs prefix="tp" />
@@ -325,8 +326,8 @@ export const TempleBackdrop = memo(function TempleBackdrop({ left }: { left: num
       </g>
       </svg>
     </SceneryRegion>
-    <TempleOverlay left={left} id="front-pine" box={{ x: -55, y: 390, w: 340, h: 480 }}><Pine x={110} base={830} h={0.95} /></TempleOverlay>
-    <TempleOverlay left={left} id="front-blossom" box={{ x: 1730, y: 500, w: 350, h: 390 }}><Blossom x={1890} base={830} h={0.8} /></TempleOverlay>
+    <TempleOverlay left={left} id="front-pine" box={{ x: -55, y: 390, w: 340, h: 480 }}><Pine x={110} worldX={left + 110} base={830} h={0.95} /></TempleOverlay>
+    <TempleOverlay left={left} id="front-blossom" box={{ x: 1730, y: 500, w: 350, h: 390 }}><Blossom x={1890} worldX={left + 1890} base={830} h={0.8} /></TempleOverlay>
     {[200, 430, 890, 1120, 1630, 1830].map((x, i) => {
       const y = i < 4 ? 642 : 650, id = `lantern-${i}`
       return <TempleOverlay key={id} left={left} id={id} box={{ x: x - 65, y: y - 8, w: 130, h: 160 }}><Lantern x={x} y={y} d={i * 0.7} prefix={`tp-${id}-`} /></TempleOverlay>

@@ -3,6 +3,82 @@ const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const { intersectsView, trajectoryVisible, needsTrajectory, patioPixelRatio } = loadTs('lib/pigchicken/viewport.ts')
 const { chickenPlatformLines, chickenPlatformRects, setPlatformWorldOffset } = loadTs('lib/chicken/platform-geometry.ts')
+const { createFrameGate } = loadTs('lib/game-frame.ts')
+const { createCollisionOcclusion } = loadTs('lib/chicken/collision-occlusion.ts')
+const { createSceneryWind } = loadTs('lib/pigchicken/scenery-wind.ts')
+
+test('wind composes signed gusts by area, expires and cancels without a per-frame loop', () => {
+  const timers = new Map(), nearby = [], distant = []
+  const wind = createSceneryWind((callback, ms) => {
+    const id = Symbol()
+    timers.set(id, { callback, ms })
+    return id
+  }, id => timers.delete(id))
+  wind.watch(100, value => nearby.push(value))
+  const stopWatching = wind.watch(900, value => distant.push(value))
+  const cancel = wind.gust({ strength: 6, durationMs: 850, fromX: 0, toX: 400 })
+  assert.equal(nearby.at(-1), 6)
+  assert.equal(distant.at(-1), 0)
+  wind.gust({ strength: 5, durationMs: 50_000 })
+  assert.equal(nearby.at(-1), 8)
+  assert.equal(distant.at(-1), 5)
+  assert.deepEqual([...timers.values()].map(t => t.ms), [850, 30_000])
+  cancel()
+  assert.equal(nearby.at(-1), 5)
+  wind.gust({ strength: -3, durationMs: 400, fromX: 80, toX: 120 })
+  assert.equal(nearby.at(-1), 2)
+  stopWatching()
+  const size = distant.length
+  ;[...timers.values()].at(-1).callback()
+  assert.equal(nearby.at(-1), 5)
+  wind.clear()
+  assert.equal(nearby.at(-1), 0)
+  assert.equal(distant.length, size)
+  assert.equal(timers.size, 0)
+})
+
+test('collision occlusion cuts intersecting slopes and walls only behind the mask', () => {
+  const { clip } = createCollisionOcclusion([{ depth: 5, polygon: [[20, 20], [80, 20], [80, 80], [20, 80]] }])
+  const node = {}
+  const slope = clip(node, 'slope', 4, 0, 100, 100, 0)
+  assert.deepEqual(slope, [[0, .2], [.8, 1]])
+  assert.equal(clip(node, 'slope', 4, 0, 100, 100, 0), slope)
+  assert.deepEqual(clip(node, 'wall', 4, 50, 0, 50, 100), [[0, .2], [.8, 1]])
+  assert.deepEqual(clip(node, 'covered', 4, 30, 50, 70, 50), [])
+  assert.equal(clip(node, 'base', 4, 0, 80, 100, 80), null)
+  assert.equal(clip(node, 'sky', 4, 0, 10, 100, 10), null)
+  assert.equal(clip(node, 'slope', 5, 0, 100, 100, 0), null)
+  assert.equal(clip(node, 'front', 6, 0, 100, 100, 0), null)
+})
+
+test('overlapping masks merge their cuts and keep visible gaps of concave shapes', () => {
+  const { clip } = createCollisionOcclusion([
+    { depth: 2, polygon: [[10, 10], [50, 10], [50, 40], [40, 40], [40, 20], [20, 20], [20, 40], [10, 40]] },
+    { depth: 3, polygon: [[45, 15], [60, 15], [60, 40], [45, 40]] },
+  ])
+  assert.deepEqual(clip({}, 'floor', 1, 0, 30, 100, 30), [[0, .1], [.2, .4], [.6, 1]])
+})
+
+test('the shared FPS gate keeps native rates up to 240 Hz and caps higher rates', () => {
+  const sample = (hz, limited) => {
+    const gate = createFrameGate()
+    let delivered = 0
+    for (let i = 0; i < hz * 5; i++) {
+      if (gate(Math.round(i * 10000 / hz) / 10, limited)) delivered++
+    }
+    return delivered / 5
+  }
+  for (const hz of [60, 120, 144, 240]) assert.equal(sample(hz, true), hz)
+  for (const hz of [250, 360, 500]) assert.equal(sample(hz, true), 240)
+  assert.equal(sample(360, false), 360)
+  const gate = createFrameGate()
+  assert.equal(gate(0, true), true)
+  assert.equal(gate(1, true), false)
+  assert.equal(gate(1, false), true)
+  assert.equal(gate(2, true), true)
+  assert.equal(gate(3000, true), true)
+  assert.equal(gate(3001, true), false)
+})
 
 test('render culling keeps viewport edges, crossing trails and overlapping explosions', () => {
   const view = { x: 7000, y: 200, w: 1024, h: 768 }

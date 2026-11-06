@@ -1,5 +1,5 @@
 // Portal interaction is per character and per entrance, independent of render rate.
-export type PortalBody = { x: number; y: number; scale: number; vx: number; state: string }
+export type PortalBody = { x: number; y: number; scale: number; state: string }
 export type PortalCircle = { x: number; y: number; r: number }
 export const PORTAL_TRANSITION_MS = 750
 const ARRIVAL_KEY = 'chickenchess:portal-arrival'
@@ -12,19 +12,25 @@ export function overlapsPortal(body: PortalBody, portal: PortalCircle) {
   return Math.hypot(x - portal.x, y - portal.y) <= portal.r
 }
 
+export function touchesPortal(body: PortalBody, circle: PortalCircle, alreadyTouching: boolean) {
+  const dx = body.x - circle.x, dy = body.y - 80 * body.scale - circle.y
+  const k = alreadyTouching ? 1.15 : 1
+  return Math.abs(dx) < circle.r * .55 * k && Math.abs(dy) < circle.r * .95 * k && Math.hypot(dx, dy) < circle.r
+}
+
 export function createPortalGate() {
-  let blocked = false, touching = false, wasRun = false, wasGrab = false
+  let blocked = false, touching = false, wasUsing = false
   return {
     block() { blocked = true; touching = false },
-    update(body: PortalBody, circle: PortalCircle, held: { run: boolean; grab: boolean }) {
+    update(body: PortalBody, circle: PortalCircle, using: boolean, enabled = true) {
       const transiting = body.state === 'portal' || body.state === 'portalArrival'
       const overlaps = overlapsPortal(body, circle)
       if (transiting && overlaps) blocked = true
       if (!transiting && !overlaps) blocked = false
-      const k = touching ? 1.15 : 1
-      touching = !blocked && !transiting && Math.abs(body.x - circle.x) < circle.r * 0.55 * k && Math.abs(body.y - 80 * body.scale - circle.y) < circle.r * 0.95 * k
-      const enter = touching && ((held.run && !wasRun) || (held.grab && !wasGrab) || (held.run && Math.abs(body.vx) > 40))
-      wasRun = held.run; wasGrab = held.grab
+      const wasTouching = touching
+      touching = enabled && !blocked && !transiting && touchesPortal(body, circle, wasTouching)
+      const enter = wasTouching && touching && using && !wasUsing
+      wasUsing = using
       return { touching, enter, blocked: blocked || transiting }
     },
   }

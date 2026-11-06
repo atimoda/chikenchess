@@ -13,7 +13,7 @@ import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Mountain, Pencil, Redo2,
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
-  ELEMENT_DEFS, HORDE_BUTTONS, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow,
+  ELEMENT_DEFS, HORDE_BUTTONS, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
   newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
@@ -25,8 +25,8 @@ import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
 import { SCENE_W, WORLD_GROUND_Y, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { ElementArt } from "./patio-layout"
 import { HOUSE_STYLE_LABELS, HousePanel } from "./house-panel"
-import { HOUSE_SIZE, randomHouse, type HouseParams, type HouseStyle } from "@/lib/pigchicken/houses"
-import { TREE_SIZE, TREE_STYLES, randomTree, treePreset, type TreeParams } from "@/lib/pigchicken/trees"
+import { houseDraftSize, randomHouse, type HouseParams, type HouseStyle } from "@/lib/pigchicken/houses"
+import { TREE_STYLES, randomTree, treeDraftSize, treePreset, type TreeParams } from "@/lib/pigchicken/trees"
 import { CustomTreeArt } from "./tree-art"
 import { TreePanel } from "./tree-panel"
 import { TerrainEditor } from "./terrain-editor"
@@ -287,7 +287,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
       {sel && panel === "edit" && !draft && (sel.kind === 'house' && sel.params.house
         ? <HousePanel key={sel.id} house={sel.params.house} dimensions={sel} onChange={(house, step) => update({ ...sel, params: { house } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
         : selectedTree
-          ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
+          ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
           : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} />)}
       <Palette onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
@@ -300,9 +300,9 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
         terrainOpen={terrainOpen} onTerrain={() => { select(null); setTerrainOpen(!terrainOpen) }}
         floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />
       {draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
-        previewDrag={placement.bind(() => createElement('house', 0, 0, { house: draft.value }))} />}
+        previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
       {draft?.kind === "tree" && <TreePanel tree={draft.value} onChange={value => setDraft({ kind: "tree", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
-        previewDrag={placement.bind(() => createElement('tree', 0, 0, { tree: draft.value }))} />}
+        previewDrag={placement.bind(() => ({ ...createElement('tree', 0, 0, { tree: draft.value }), ...treeDraftSize(draft.value) }))} />}
       {placement.ghost && <div ref={placement.ghostRef} aria-hidden="true" className="pointer-events-none fixed z-[260] opacity-75"
         style={{ left: -placement.ghost.w / 2, top: -placement.ghost.h, width: placement.ghost.w, height: placement.ghost.h }}>
         <ElementArt el={placement.ghost} />
@@ -448,6 +448,8 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
           : el.kind === 'tree' ? <p className="text-[#93a79a]">Configure os apoios no Editor de árvores.</p>
           : el.kind === 'trampoline' ? <p className="text-[#93a79a]">O tampo impulsiona a galinha ao pousar.</p>
           : <Toggle label="Pisar (sólido)" hint="A galinha fica em cima e bate dos lados" checked={el.solid} onChange={v => onChange({ ...el, solid: v })} />}
+        <Toggle label="Ocultar colisores atrás" hint="Em objetos opacos, recorta pisos e paredes cobertos pela fachada ou pela caixa do objeto."
+          checked={occludesColliders(el)} onChange={v => onChange({ ...el, occludesColliders: v })} />
         <Toggle label="Bloqueia tiros" hint="Balas, granadas e o feixe param nele" checked={el.shots} onChange={v => onChange({ ...el, shots: v })} />
         <Toggle label="Bloqueia notas" hint="As notas dos instrumentos param nele" checked={el.notes} onChange={v => onChange({ ...el, notes: v })} />
         <Toggle label="Invisível no jogo" hint="Só aparece no modo editor" checked={el.hidden} onChange={v => onChange({ ...el, hidden: v })} />
@@ -587,7 +589,7 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
   floorBelow: (x: number, y: number) => number; onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
 }) {
   const [housePreviews] = useState(() => (Object.keys(HOUSE_STYLE_LABELS) as HouseStyle[]).map(style => randomHouse(style).house))
-  const [treePreviews] = useState(() => (Object.keys(TREE_STYLES) as TreeParams["style"][]).map(style => randomTree(style).tree))
+  const [treePreviews] = useState(() => (Object.keys(TREE_STYLES) as TreeParams["style"][]).map(style => randomTree(style)))
   const [drag, setDrag] = useState<{ entry: Entry; x: number; y: number; pointer: number } | null>(null)
   const start = (entry: Entry) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
@@ -623,21 +625,22 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
           <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", terrainOpen && "border-primary text-primary")}
             aria-pressed={terrainOpen} onClick={onTerrain}><Mountain size={16} /> Editar chão da Vila</button>
           <PaletteSection title="Casas">
-            {housePreviews.map(house => (
-              <button key={house.style} type="button" title="Clique para abrir no criador ou arraste para sortear uma casa"
+            {housePreviews.map(house => {
+              const size = houseDraftSize(house)
+              return <button key={house.style} type="button" title="Clique para abrir no criador ou arraste para sortear uma casa"
                 {...bindHouse(house)} disabled={!canAddScenery} className={PALETTE_CARD}>
-                <span className="relative h-12" style={{ aspectRatio: `${HOUSE_SIZE.w} / ${HOUSE_SIZE.h}` }}>
-                  <ElementArt el={{ kind: 'house', params: { house }, ...HOUSE_SIZE }} />
+                <span className="relative h-12" style={{ aspectRatio: `${size.w} / ${size.h}` }}>
+                  <ElementArt el={{ kind: 'house', params: { house }, ...size }} />
                 </span>
                 <span>{HOUSE_STYLE_LABELS[house.style]}</span>
               </button>
-            ))}
+            })}
           </PaletteSection>
           <PaletteSection title="Árvores">
-            {treePreviews.map(tree => (
+            {treePreviews.map(({ tree, w, h }) => (
               <button key={tree.style} type="button" title="Clique para editar ou arraste para sortear uma árvore"
                 {...bindTree(tree)} disabled={!canAddScenery} className={PALETTE_CARD}>
-                <span className="relative h-12" style={{ aspectRatio: `${TREE_SIZE.w} / ${TREE_SIZE.h}` }}>
+                <span className="relative h-12 max-w-full" style={{ aspectRatio: `${w} / ${h}` }}>
                   <CustomTreeArt tree={tree} animate={false} />
                 </span>
                 <span>{TREE_STYLES[tree.style].label}</span>

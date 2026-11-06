@@ -4,7 +4,7 @@
 // invisible floors and walls the chicken's engine reads (`data-chicken-platforms`). The game's own things
 // (dummies, racks, buttons) are drawn on the game's canvas (parquinho.tsx) and only placed from here.
 import { memo, useEffect, useMemo, useRef } from "react"
-import { ELEMENT_DEFS, elementBounds, elementFloorLine, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
+import { ELEMENT_DEFS, elementBounds, elementFloorLine, layoutCollisionDepth, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
 import { houseSurfaces, normalizeHouse } from "@/lib/pigchicken/houses"
 import { TRAMPOLINE_DEFAULTS, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
@@ -13,11 +13,12 @@ import { TreeArt, TreeStyles } from "./patio-trees"
 import { SceneryRegion } from "./scenery-region"
 import { HouseArt } from "./house-art"
 import { CustomTreeArt, CustomTreeStyles } from "./tree-art"
+import { SceneryWindStyles } from "./scenery-wind-bend"
 
 // one element's art filling its box
-export const ElementArt = memo(function ElementArt({ el }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h"> }) {
+export const ElementArt = memo(function ElementArt({ el, worldX }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h">; worldX?: number }) {
   if (el.kind === "house") return <HouseArt house={el.params.house ?? normalizeHouse(null)} />
-  if (el.kind === "tree" && el.params.tree) return <CustomTreeArt tree={el.params.tree} />
+  if (el.kind === "tree" && el.params.tree) return <CustomTreeArt tree={el.params.tree} worldX={worldX} />
   if (el.kind === "trampoline") {
     const { strength } = el.params.trampoline ?? TRAMPOLINE_DEFAULTS
     const { pad, trim } = TRAMPOLINE_LEVELS[strength - 1]
@@ -33,7 +34,7 @@ export const ElementArt = memo(function ElementArt({ el }: { el: Pick<LayoutElem
     </svg>
   }
   if (el.kind === "portal") return <div className="absolute inset-0 rounded-full border-[3px] border-[#7cc4ff] bg-blue-950/60 shadow-[0_0_8px_#408cff,inset_0_0_8px_#408cff]" />
-  if (el.kind === "pine" || el.kind === "blossom") return <TreeArt kind={el.kind} seed={el.params.seed ?? 1} flip={el.params.flip} delay={((el.params.seed ?? 0) % 70) / 10} />
+  if (el.kind === "pine" || el.kind === "blossom") return <TreeArt kind={el.kind} seed={el.params.seed ?? 1} flip={el.params.flip} delay={((el.params.seed ?? 0) % 70) / 10} worldX={worldX} />
   if (el.kind === "terrace") return <div className="absolute inset-0 rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" style={{ background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" }} />
   if (el.kind === "pillar") return <div className="absolute inset-0 rounded-md border border-primary/30 bg-[#16241b] bg-[repeating-linear-gradient(0deg,transparent_0,transparent_46px,rgba(255,255,255,0.04)_46px,rgba(255,255,255,0.04)_48px)]" />
   if (el.kind === "platform") return <div className="absolute inset-0 rounded-md border border-primary/30 bg-[#16241b]" />
@@ -61,7 +62,7 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
               outline: el.hidden ? "2px dashed rgba(255,255,255,0.5)" : undefined,
             }}
           >
-            <ElementArt el={el} />
+            <ElementArt el={el} worldX={el.kind === "tree" || el.kind === "pine" || el.kind === "blossom" ? el.x + el.w / 2 : undefined} />
           </SceneryRegion>
         )
       })}
@@ -69,13 +70,13 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
   )
 })
 
-const HouseCollider = memo(function HouseCollider({ id, x, y, w, h, house }: Pick<LayoutElement, 'id' | 'x' | 'y' | 'w' | 'h'> & { house: NonNullable<LayoutElement['params']['house']> }) {
+const HouseCollider = memo(function HouseCollider({ id, x, y, w, h, house, depth }: Pick<LayoutElement, 'id' | 'x' | 'y' | 'w' | 'h'> & { house: NonNullable<LayoutElement['params']['house']>; depth: number }) {
   const lines = useMemo(() => houseSurfaces(house, w, h)
     .map(({ points }) => points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')).join('|'), [house, w, h])
-  return <div data-chicken-id={id} data-chicken-world-box={`${x},${y},${w},${h}`} data-chicken-line={lines} data-chicken-nearby className="absolute" />
+  return <div data-chicken-id={id} data-chicken-depth={depth} data-chicken-world-box={`${x},${y},${w},${h}`} data-chicken-line={lines} data-chicken-nearby className="absolute" />
 })
 
-const TreeCollider = memo(function TreeCollider({ id, x, y, w, h, rot, tree }: Pick<LayoutElement, 'id' | 'x' | 'y' | 'w' | 'h' | 'rot'> & { tree: NonNullable<LayoutElement['params']['tree']> }) {
+const TreeCollider = memo(function TreeCollider({ id, x, y, w, h, rot, tree, depth }: Pick<LayoutElement, 'id' | 'x' | 'y' | 'w' | 'h' | 'rot'> & { tree: NonNullable<LayoutElement['params']['tree']>; depth: number }) {
   const { box, floors, walls } = useMemo(() => {
     const el = { x, y, w, h, rot }
     const b = elementBounds(el)
@@ -85,7 +86,7 @@ const TreeCollider = memo(function TreeCollider({ id, x, y, w, h, rot, tree }: P
     return { box: `${b.x},${b.y},${b.w},${b.h}`, floors: encode(surface.floors), walls: encode(surface.walls) }
   }, [x, y, w, h, rot, tree])
   if (!floors && !walls) return null
-  return <div data-chicken-id={id} data-chicken-world-box={box} data-chicken-line={floors || undefined}
+  return <div data-chicken-id={id} data-chicken-depth={depth} data-chicken-world-box={box} data-chicken-line={floors || undefined}
     data-chicken-walls={walls || undefined} data-chicken-nearby className="absolute" />
 })
 
@@ -94,21 +95,22 @@ const TreeCollider = memo(function TreeCollider({ id, x, y, w, h, rot, tree }: P
 export const LayoutColliders = memo(function LayoutColliders({ elements }: { elements: LayoutElement[] }) {
   return (
     <div data-chicken-platforms className="pointer-events-none absolute inset-0">
-      {elements.map(el => {
+      {elements.map((el, index) => {
+        const depth = layoutCollisionDepth(el, index)
         if (el.kind === "tree" && el.params.tree) {
           const tree = el.params.tree
           if (!tree.climbTrunk && !tree.walkBranches && !tree.walkCrown) return null
-          return <TreeCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} rot={el.rot} tree={tree} />
+          return <TreeCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} rot={el.rot} tree={tree} depth={depth} />
         }
         if (!el.solid || ELEMENT_DEFS[el.kind].entity) return null
         if (el.kind === "trampoline" && el.params.trampoline) {
-          return <div key={el.id} data-chicken-id={el.id} data-chicken-world-box={`${el.x},${el.y},${el.w},${el.h}`}
+          return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${el.x},${el.y},${el.w},${el.h}`}
             data-chicken-bounce={`${el.params.trampoline.strength},${el.params.trampoline.angle}`} data-chicken-nearby className="absolute" />
         }
-        if (el.kind === "house" && el.params.house) return <HouseCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} house={el.params.house} />
+        if (el.kind === "house" && el.params.house) return <HouseCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} house={el.params.house} depth={depth} />
         const b = elementBounds(el)
         const line = elementFloorLine(el)
-        return <div key={el.id} data-chicken-id={el.id} data-chicken-world-box={`${b.x},${b.y},${b.w},${b.h}`} data-chicken-line={line ?? undefined} className="absolute" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />
+        return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${b.x},${b.y},${b.w},${b.h}`} data-chicken-line={line ?? undefined} className="absolute" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />
       })}
     </div>
   )
@@ -127,4 +129,4 @@ export function FollowLayer({ z, opacity = 1, width, children }: { z: number; op
   )
 }
 
-export function PatioTreeStyles() { return <><TreeStyles /><CustomTreeStyles /></> }
+export function PatioTreeStyles() { return <><TreeStyles /><CustomTreeStyles /><SceneryWindStyles /></> }

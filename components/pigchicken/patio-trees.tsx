@@ -6,6 +6,7 @@
 import { memo } from "react"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { defaultTrees } from "@/lib/pigchicken/layout"
+import { SceneryWindBend } from "./scenery-wind-bend"
 
 type Rand = () => number
 function rng(seed: number): Rand {
@@ -112,13 +113,15 @@ export const TREE_BOX_W = 420, TREE_BOX_H = 480
 const BOX_W = TREE_BOX_W, BOX_H = TREE_BOX_H
 
 // one tree's art filling its box (w x h, base in the middle of the bottom); the Pátio's layout places it
-export const TreeArt = memo(function TreeArt({ kind, seed, flip, delay = 0 }: { kind: Tree["kind"]; seed: number; flip?: boolean; delay?: number }) {
+export const TreeArt = memo(function TreeArt({ kind, seed, flip, delay = 0, worldX }: { kind: Tree["kind"]; seed: number; flip?: boolean; delay?: number; worldX?: number }) {
   return (
     <svg aria-hidden="true" className="absolute inset-0 h-full w-full" style={{ overflow: "visible" }} viewBox={`${-BOX_W / 2} ${-BOX_H} ${BOX_W} ${BOX_H}`} preserveAspectRatio="none">
       <g transform={flip ? "scale(-1 1)" : undefined}>
-        <g className="pt-tree" style={{ animationDelay: `${-delay}s` }}>
-          {kind === "pine" ? <Pine seed={seed} /> : <Blossom seed={seed} />}
-        </g>
+        <SceneryWindBend x={worldX} response={flip ? -.55 : .55}>
+          <g className="pt-tree" style={{ animationDelay: `${-delay}s` }}>
+            {kind === "pine" ? <Pine seed={seed} /> : <Blossom seed={seed} />}
+          </g>
+        </SceneryWindBend>
       </g>
     </svg>
   )

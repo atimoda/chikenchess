@@ -2,13 +2,14 @@
 export const HOUSE_ROOFS = {
   gable: 'Duas águas', shed: 'Uma água ↗', reverse: 'Uma água ↘', flat: 'Terraço',
   hip: 'Quatro águas', stepped: 'Escalonado', curved: 'Curvo', mansard: 'Mansarda', tower: 'Torre',
+  parapet: 'Terraço com muretas',
 } as const
 export const WALL_TEXTURES = {
-  auto: 'Automática', smooth: 'Lisa', plaster: 'Reboco', canvas: 'Tela', clapboard: 'Tábuas horizontais',
+  auto: 'Automática', smooth: 'Lisa', plaster: 'Reboco', canvas: 'Tela', paper: 'Papel', clapboard: 'Tábuas horizontais',
   boards: 'Tábuas verticais', corrugated: 'Chapa ondulada', brick: 'Tijolo', stone: 'Pedra',
 } as const
 export const ROOF_TEXTURES = {
-  plain: 'Liso', tile: 'Telha de barro', slate: 'Ardósia', scales: 'Escamas', diamond: 'Losangos', stripes: 'Faixas',
+  plain: 'Liso', tile: 'Telha de barro', slate: 'Ardósia', scales: 'Escamas', diamond: 'Losangos', stripes: 'Faixas', paper: 'Papel',
 } as const
 export const OPENING_SHAPES = { rect: 'Reta', arch: 'Arco', round: 'Redonda' } as const
 export const HOUSE_GLAZING = { dark: 'Escura', warm: 'Luz quente', blue: 'Vidro azul' } as const
@@ -57,6 +58,27 @@ export const HOUSE_STYLES = {
   garden: { label: 'Vila-jardim', roofs: ['gable', 'shed', 'hip'], textures: ['plaster', 'stone', 'smooth'], tiles: 'tile',
     palettes: [['#e9e0c9', '#356d8e', '#f7eed8', '#3d6b8e'], ['#ece2cb', '#b94f37', '#faf0d6', '#bd623a'], ['#dfba48', '#3b776a', '#f4e3aa', '#4e695a'], ['#e8e1c6', '#c09132', '#fbefce', '#596864']],
     floors: 1, windows: 2, pitch: 21, wear: 18, window: 'rect', door: 'rect', glass: 'blue', panes: false, shutters: false },
+  paper: { label: 'Papel recortado', roofs: ['gable', 'hip'], textures: ['paper'], tiles: 'paper',
+    palettes: [
+      ['#dc772d', '#90343e', '#ffebc9', '#eba5ca'],
+      ['#374268', '#da8277', '#ffebc9', '#c75542'],
+      ['#90a05a', '#334e38', '#ffebc9', '#e2aacb'],
+      ['#c6533b', '#6b9bbb', '#ffebc9', '#862e3a'],
+      ['#e7b346', '#497fae', '#ffebc9', '#a03b3e'],
+      ['#7daaba', '#a4773d', '#ffebc9', '#cf593f'],
+      ['#d99193', '#c77535', '#ffebc9', '#44633e'],
+      ['#578573', '#46557b', '#ffebc9', '#954c35'],
+    ],
+    floors: 1, windows: 0, pitch: 29, wear: 24, window: 'rect', door: 'rect', glass: 'blue', panes: false, shutters: false },
+  cubist: { label: 'Cubista', roofs: ['parapet', 'parapet', 'flat'], textures: ['plaster', 'paper', 'stone'], tiles: 'paper',
+    palettes: [
+      ['#b56c41', '#ad7953', '#e8b881', '#744033'],
+      ['#c3824f', '#b78054', '#eeca9d', '#824c44'],
+      ['#ac7256', '#8d6658', '#e8b491', '#69464a'],
+      ['#c18e61', '#a87850', '#ebc798', '#785043'],
+      ['#ac633f', '#9d6b4f', '#e7ad77', '#6e434b'],
+    ],
+    floors: 2, windows: 2, pitch: 30, wear: 54, window: 'arch', door: 'arch', glass: 'dark', panes: true, shutters: false },
 } satisfies Record<string, Style>
 
 export type HouseStyle = keyof typeof HOUSE_STYLES
@@ -83,13 +105,20 @@ export function housePreset(style: HouseStyle = 'cliff', seed = 1): HouseParams 
   const rand = houseRandom(seed)
   const [wall, roofColor, trim, doorColor] = s.palettes[Math.floor(rand() * s.palettes.length)]
   const roof = s.roofs[Math.floor(rand() * s.roofs.length)]
-  return { style, seed, roof, pitch: s.pitch, roofTexture: s.tiles, texture: 'auto', wear: s.wear,
+  return { style, seed, roof, pitch: style === 'paper' && roof === 'hip' ? 22 : s.pitch, roofTexture: s.tiles, texture: 'auto', wear: s.wear,
     wall, roofColor, trim, doorColor, floors: s.floors, windows: s.windows, windowSize: 100, windowShape: s.window,
     doorShape: s.door, door: true, doorPosition: 'center', glass: s.glass, panes: s.panes, shutters: s.shutters }
 }
 
 export const HOUSE_SIZE = { w: 380, h: 550 }
 export type HouseStyleChoice = HouseStyle | 'random'
+
+export function houseDraftSize(house: HouseParams) {
+  if (house.style !== 'paper' && house.style !== 'cubist') return HOUSE_SIZE
+  const rand = houseRandom(house.seed ^ 0xb769a44d)
+  if (house.style === 'cubist') return { w: 350 + Math.floor(rand() * 145), h: 465 + Math.floor(rand() * 130) }
+  return { w: 310 + Math.floor(rand() * 180), h: 390 + Math.floor(rand() * 100) }
+}
 
 export function randomHouse(choice: HouseStyleChoice, seed = newHouseSeed()) {
   const rng = houseRandom(seed ^ 0x91cb57e3)
@@ -98,6 +127,18 @@ export function randomHouse(choice: HouseStyleChoice, seed = newHouseSeed()) {
   const style = choice === 'random' ? pick(Object.keys(HOUSE_STYLES) as HouseStyle[]) : choice
   const d = housePreset(style, seed)
   const traits: Style = HOUSE_STYLES[style]
+  if (style === 'paper') {
+    const house = { ...d, pitch: between(d.pitch - 4, d.pitch + 4), wear: between(12, 38) }
+    return { house, ...houseDraftSize(house) }
+  }
+  if (style === 'cubist') {
+    const house: HouseParams = {
+      ...d, pitch: between(20, 38), wear: between(37, 72), texture: pick(traits.textures),
+      floors: pick([1, 2, 2, 3]), windows: pick([1, 2, 2, 3]), windowSize: between(75, 105),
+      windowShape: pick(['rect', 'arch']), doorPosition: pick(['left', 'center', 'right']),
+    }
+    return { house, ...houseDraftSize(house) }
+  }
   const house: HouseParams = {
     ...d, pitch: between(Math.max(8, d.pitch - 8), Math.min(40, d.pitch + 8)),
     roofTexture: pick([d.roofTexture, d.roofTexture, 'plain', 'tile', 'slate']),
@@ -147,16 +188,39 @@ export function houseRoof(p: HouseParams): Point[] {
   const low = p.pitch + 3
   const mid = 3 + p.pitch * 0.5
   switch (p.roof) {
-    case 'flat': return [[0, low], [100, low]]
+    case 'parapet': {
+      const rand = houseRandom(p.seed ^ 0xe654a4c1)
+      const skew = Math.round(rand() * 9)
+      const rise = Math.round(rand() * p.pitch * .27)
+      const frontLeft: Point = [8, low + 4]
+      const frontRight: Point = [76 + skew, low - rise]
+      const backRight: Point = [95, 4]
+      const backLeft: Point = [16 + skew, 6 + rise]
+      return [frontLeft, frontRight, backRight, backLeft, frontLeft]
+    }
+    case 'flat': return p.style === 'cubist' ? [[8, low + 2], [48, low - 4], [96, low]] : [[0, low], [100, low]]
     case 'shed': return [[0, low], [100, 3]]
     case 'reverse': return [[0, 3], [100, low]]
-    case 'hip': return [[0, low], [27, 3], [73, 3], [100, low]]
+    case 'hip': {
+      const inset = p.style === 'paper' ? 12 : 27
+      return [[0, low], [inset, 3], [100 - inset, 3], [100, low]]
+    }
     case 'stepped': return [[0, low], [23, low], [23, mid], [41, mid], [41, 3], [62, 3], [62, mid], [80, mid], [80, low], [100, low]]
     case 'curved': return [[0, low], [13, low - p.pitch * 0.18], [27, mid], [39, 5], [50, 3], [61, 5], [73, mid], [87, low - p.pitch * 0.18], [100, low]]
     case 'mansard': return [[0, low], [14, mid], [29, 3], [71, 3], [86, mid], [100, low]]
     case 'tower': return [[0, low], [37, mid], [50, 3], [63, mid], [100, low]]
     case 'gable': return [[0, low], [50, 3], [100, low]]
   }
+}
+
+export function houseWallPolygon(p: HouseParams, roof = houseRoof(p)): Point[] {
+  const { left, right, bottom } = HOUSE_WALL
+  if (p.roof === 'parapet' || p.style === 'cubist') {
+    const top = p.roof === 'parapet' ? [roof[0], roof[3], roof[2]] : roof
+    return [...top, HOUSE_BASE[1], HOUSE_BASE[0]]
+  }
+  if (p.style === 'paper') return [[left, p.pitch + 3], [right, p.pitch + 3], [right, bottom], [left, bottom]]
+  return [...roof, [right, roof.at(-1)![1] + 4], [right, bottom], [left, bottom], [left, roof[0][1] + 4]]
 }
 
 export function houseOpenings(p: HouseParams): HouseOpening[] {

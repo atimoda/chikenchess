@@ -13,6 +13,7 @@ import { GlobeComponent } from "./globe-component"
 import type { PopupExitMotion } from "./city-popup"
 import { CampaignCityList } from './campaign-city-list'
 import { VersionChangelog } from './version-changelog'
+import { GamePreferences } from './game-preferences'
 import { OnlineHub } from './online/online-hub'
 import OPENING_PHRASES from '@/data/ui/opening-phrases.json'
 import { isAdminUser } from '@/lib/admin/access'
@@ -1326,6 +1327,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           >
             {isFullscreen ? <Minimize className="w-4 h-4 transition-transform duration-200 group-hover:scale-125" /> : <Maximize className="w-4 h-4 transition-transform duration-200 group-hover:scale-125" />}
           </Button>
+          <GamePreferences className="border-white/10 bg-black/50 text-muted-foreground hover:border-primary" />
           <Button
             type="button"
             variant="outline"

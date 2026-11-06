@@ -1,5 +1,7 @@
 "use client"
 
+import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
+
 // Chat over the chickens: Enter (or the chat button) opens a text field at the bottom of the screen; Enter sends,
 // Esc cancels. The message shows as a speech bubble above the sender's chicken (lib/chicken/chat.ts). While
 // the field has the focus, the game keys go to the text and not to the chicken.
@@ -141,7 +143,7 @@ function ChatBubble({ msg, engine }: { msg: ChickenChatMessage; engine: ChickenE
     if (!engine) return
     let raf = 0
     const frame = () => {
-      raf = requestAnimationFrame(frame)
+      raf = requestGameFrame(frame)
       const box = ref.current, tail = tailRef.current
       if (!box || !tail) return
       const s = engine.getMotionState()
@@ -157,7 +159,7 @@ function ChatBubble({ msg, engine }: { msg: ChickenChatMessage; engine: ChickenE
       tail.style.left = `${Math.min(w - 16, Math.max(16, hx - left))}px`
     }
     frame()
-    return () => cancelAnimationFrame(raf)
+    return () => cancelGameFrame(raf)
   }, [engine])
   if (!engine) return null
   const ms = msg.until - msg.at

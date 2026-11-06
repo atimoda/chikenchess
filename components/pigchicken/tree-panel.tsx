@@ -1,30 +1,20 @@
 "use client"
 
-import { useId, useRef, useState, type ReactNode } from "react"
-import { Dice5, Move, X } from "lucide-react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { Dice5, Move, Wind, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
+import { PatioSelect } from "@/components/ui/patio-select"
+import { gustSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import {
-  TREE_BARKS, TREE_CROWNS, TREE_EFFECTS, TREE_NUMBERS, TREE_SIZE, TREE_STYLES, randomTree, treePreset, type TreeParams,
+  TREE_BARKS, TREE_BLOOMS, TREE_CROWNS, TREE_EFFECTS, TREE_NUMBERS, TREE_STYLES, randomTree, treeDraftSize, treePreset, type TreeParams,
 } from "@/lib/pigchicken/trees"
 import type { PatioPlacementHandlers } from "./use-patio-placement"
 import { CustomTreeArt } from "./tree-art"
 
 const BUTTON = "inline-flex h-8 items-center justify-center gap-1.5 rounded border border-white/15 px-2.5 text-white hover:border-primary"
-const FIELD = "h-8 w-full min-w-0 rounded border border-white/15 bg-[#0b110e] px-2 text-white"
 const STYLES = Object.fromEntries(Object.entries(TREE_STYLES).map(([key, p]) => [key, p.label])) as Record<TreeParams['style'], string>
-
-function Select<K extends string>({ label, options, value, onChange }: {
-  label: string; options: Record<K, string>; value: K; onChange: (value: K) => void
-}) {
-  return <label className="grid grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-2">
-    <span>{label}</span>
-    <select value={value} className={FIELD} onChange={e => onChange(e.target.value as K)}>
-      {Object.entries(options).map(([key, text]) => <option key={key} value={key}>{text as string}</option>)}
-    </select>
-  </label>
-}
 
 function TreeGroup({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true)
@@ -33,19 +23,21 @@ function TreeGroup({ title, children }: { title: string; children: ReactNode }) 
   </PatioDisclosure>
 }
 
-export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dimensions = TREE_SIZE, legacy }: {
+export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dimensions = treeDraftSize(tree), worldX, legacy }: {
   tree: TreeParams; onChange: (tree: TreeParams, step?: string) => void; onClose: () => void
-  previewDrag?: PatioPlacementHandlers; dragging?: boolean; dimensions?: { w: number; h: number }; legacy?: ReactNode
+  previewDrag?: PatioPlacementHandlers; dragging?: boolean; dimensions?: { w: number; h: number }; worldX?: number; legacy?: ReactNode
 }) {
   const session = useId()
   const gesture = useRef(0)
+  const stopGust = useRef<(() => void) | null>(null)
+  useEffect(() => () => stopGust.current?.(), [])
   const end = () => { gesture.current++ }
   const set = (patch: Partial<TreeParams>, key?: string) => onChange({ ...tree, ...patch }, key && `tree:${session}:${key}:${gesture.current}`)
   const range = (key: keyof typeof TREE_NUMBERS, label: string, unit = "", hint?: string) => {
     const [min, max] = TREE_NUMBERS[key]
     return <PatioRange label={label} value={tree[key]} min={min} max={max} display={`${tree[key]}${unit}`} hint={hint} onChange={v => set({ [key]: v }, key)} onEnd={end} />
   }
-  const color = (key: "barkColor" | "leafColor" | "accentColor", label: string) => <label className="flex min-w-0 items-center gap-2">
+  const color = (key: "barkColor" | "leafColor" | "accentColor" | "flowerColor", label: string) => <label className="flex min-w-0 items-center gap-2">
     <input type="color" value={tree[key]} className="h-7 w-8 shrink-0 cursor-pointer rounded bg-transparent" onChange={e => set({ [key]: e.target.value }, key)} onBlur={end} />
     <span>{label}</span>
   </label>
@@ -57,7 +49,7 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
   })
   const art = <span className="absolute inset-x-4 top-1 bottom-4 flex justify-center">
     <span className="relative h-full max-w-full" style={{ aspectRatio: `${dimensions.w} / ${dimensions.h}` }}>
-      {legacy ?? <CustomTreeArt tree={tree} />}
+      {legacy ?? <CustomTreeArt tree={tree} worldX={worldX} />}
     </span>
   </span>
   return <FloatingPanel id="patio-tree" aria-label="Editor de árvores" initial={(vw, vh) => ({
@@ -79,7 +71,7 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <div className="grid gap-2 px-4 pb-2">
         {legacy && <p className="text-[10px] leading-relaxed text-[#a6b5a9]">A primeira alteração aplica a versão paramétrica à árvore original.</p>}
-        <Select label="Estilo" options={STYLES} value={tree.style} onChange={value => style(treePreset(value, tree.seed))} />
+        <PatioSelect label="Estilo" options={STYLES} value={tree.style} onChange={value => style(treePreset(value, tree.seed))} />
         <button type="button" className={`${BUTTON} justify-self-end`} onClick={() => style(randomTree(tree.style).tree)}><Dice5 size={15} /> Sortear</button>
       </div>
       <TreeGroup title="Tronco">
@@ -87,23 +79,33 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
         {range("trunkWidth", "Espessura da base", "%")}
         {range("taper", "Espessura da ponta", "%")}
         {range("lean", "Inclinação lateral", "%")}
-        <Select label="Casca" options={TREE_BARKS} value={tree.bark} onChange={bark => set({ bark })} />
+        <PatioSelect label="Casca" options={TREE_BARKS} value={tree.bark} onChange={bark => set({ bark })} />
         {color("barkColor", "Cor da casca")}
         {toggle("flip", "Espelhar")}
       </TreeGroup>
       <TreeGroup title="Galhos e folhas">
         {range("branches", "Quantidade de galhos")}
         {range("angle", "Inclinação dos galhos", "%")}
-        <Select label="Copa" options={TREE_CROWNS} value={tree.crown} onChange={crown => set({ crown })} />
+        <PatioSelect label="Copa" options={TREE_CROWNS} value={tree.crown} onChange={crown => set({ crown })} />
         {range("spread", "Abertura da copa", "%")}
         {range("density", "Grupos de folhas")}
         {range("leafSize", "Tamanho dos grupos", "%")}
+        {range("sharpness", "Pontas das folhas", "%")}
+        <PatioSelect label="Floração" options={TREE_BLOOMS} value={tree.bloom} onChange={bloom => set({ bloom })} />
+        {tree.bloom === "custom" && color("flowerColor", "Cor das flores")}
         <div className="grid grid-cols-2 gap-2">{color("leafColor", "Folhas")}{color("accentColor", "Destaques")}</div>
       </TreeGroup>
       <TreeGroup title="Movimento e efeitos">
-        {range("wind", "Balanço da copa", "°", tree.walkCrown ? "A copa fica firme enquanto é pisável." : undefined)}
+        {range("trunkSway", "Balanço do tronco", "°", tree.climbTrunk || tree.walkBranches || tree.walkCrown
+          ? "O tronco fica firme com apoios ligados." : "Balanço manual em tempo calmo. Rajadas podem somar movimento.")}
+        {range("wind", "Balanço da copa", "°", tree.walkCrown || (tree.crown === "fronds" && tree.walkBranches)
+          ? "A folhagem com apoios fica firme." : undefined)}
         {range("windPeriod", "Duração do balanço", " s")}
-        <Select label="Efeito" options={TREE_EFFECTS} value={tree.effect}
+        {worldX !== undefined && !legacy && <button type="button" className={`${BUTTON} justify-self-end`} onClick={() => {
+          stopGust.current?.()
+          stopGust.current = gustSceneryWind({ strength: 5, durationMs: 1800, fromX: worldX - 700, toX: worldX + 700 })
+        }}><Wind size={15} /> Testar rajada</button>}
+        <PatioSelect label="Efeito" options={TREE_EFFECTS} value={tree.effect}
           onChange={effect => set({ effect, particles: effect !== "none" && tree.particles === 0 ? 3 : tree.particles })} />
         {tree.effect !== "none" && range("particles", "Quantidade de partículas")}
       </TreeGroup>

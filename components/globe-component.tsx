@@ -11,6 +11,7 @@ import { CityPopup, type PopupExitMotion } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation, sphereFillDistance } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
 import { isConstrainedDevice } from '@/lib/performance'
+import { cancelGameFrame, requestGameFrame } from '@/lib/game-frame'
 import { RealisticEarth } from './globe-realistic'
 import { constrainPopupPosition, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
 
@@ -1423,10 +1424,26 @@ const GlobeContent = ({
   )
 }
 
+function GlobeFrames() {
+    const advance = useThree(state => state.advance)
+    useEffect(() => {
+        let start: number | undefined
+        function tick(now: number) {
+            start ??= now
+            advance((now - start) / 1000)
+            frame = requestGameFrame(tick)
+        }
+        let frame = requestGameFrame(tick)
+        return () => cancelGameFrame(frame)
+    }, [advance])
+    return null
+}
+
 export const GlobeComponent = (props: GlobeProps) => {
     const [constrained] = useState(isConstrainedDevice)
     return (
-        <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={constrained ? 1 : [1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
+        <Canvas frameloop="never" camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={constrained ? 1 : [1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
+            <GlobeFrames />
             <Suspense fallback={null}>
                 <GlobeContent {...props} constrained={constrained} />
             </Suspense>
