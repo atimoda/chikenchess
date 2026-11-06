@@ -8,6 +8,7 @@ import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, WEAPON_IDS, loadItems, saveItems, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
 import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
+import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { cn } from "@/lib/utils"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
@@ -21,7 +22,7 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
 // what each item uses; the wing has no ammo, projectile or throw; a consumable has its effect (and its doses), a slap and a throw
 const CONSUMABLE_HIDES = ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Explosão", "Música"]
 const HIDDEN: Partial<Record<ItemId, string[]>> = {
-  peck: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito"],
+  peck: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Combo"],
   wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
 }
@@ -31,7 +32,7 @@ const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   const [sel, setSel] = useState<ItemId>("pistol")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Projétil: true, Efeito: true, Golpe: true, Bicada: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Projétil: true, Efeito: true, Golpe: true, Combo: true, Bicada: true })
   useEffect(() => {
     setItems(loadItems())
     return subscribeItems(setItems)
@@ -130,6 +131,25 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     </select>
                   </label>
                 </>
+              )}
+              {g === "Combo" && (
+                <div className="grid gap-1.5">
+                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam">Ordem dos golpes</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {it.combo.map((k, i) => (
+                      <select key={i} aria-label={`Golpe ${i + 1} do combo`} value={k} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = v as SwingKind }) }} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-1.5">
+                        {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{i + 1}. {o.label}</option>)}
+                        {it.combo.length > 1 && <option value="">remover</option>}
+                      </select>
+                    ))}
+                    {it.combo.length < COMBO_MAX && (
+                      <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push("down") })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
+                    )}
+                    {it.combo.join() !== base.combo.join() && (
+                      <button type="button" title="Volta a ordem do código" onClick={() => update(d => { d.combo = base.combo.slice() })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+                    )}
+                  </div>
+                </div>
               )}
               {g === "Golpe" && sel !== "peck" && (
                 <label className="flex items-center justify-between gap-3">

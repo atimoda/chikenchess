@@ -118,3 +118,35 @@ test('a temple bomb a peck cancels does not hurt her', () => {
   assert.equal(t.state.hearts, hearts)
   assert.equal(hurt, 0)
 })
+
+test('each item has its own combo: order, window and the hit arc of each blow', () => {
+  const c = createCombat()
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.wing.combo = ['spin', 'flat']
+  items.wing.comboWindow = 0.1
+  items.wing.meleeArcFlat = 300
+  c.setItems(items)
+  const kinds = []
+  for (let i = 0; i < 3; i++) { step(c, { melee: true }); kinds.push(c.swing.kind); run(c, items.wing.meleeCooldown + 0.02) }
+  // the cooldown leaves 0.17 s after each blow: longer than the 0.1 s window, so every blow starts over
+  assert.deepEqual(kinds, ['spin', 'spin', 'spin'])
+  items.wing.comboWindow = 0.5; c.setItems(items)
+  run(c, 1)
+  kinds.length = 0
+  for (let i = 0; i < 3; i++) { step(c, { melee: true }); kinds.push([c.swing.kind, Math.round(c.swing.arc * 180 / Math.PI)]); run(c, items.wing.meleeCooldown + 0.02) }
+  assert.deepEqual(kinds, [['spin', 360], ['flat', 300], ['spin', 360]])
+})
+
+test('the combo order is saved and checked when loading', () => {
+  const { loadItems } = loadTs('lib/pigchicken/items.ts')
+  const previous = globalThis.window
+  try {
+    let saved = { _v: 4, pistol: { combo: ['up', 'spin'], comboWindow: 0.8, meleeArcUp: 200 }, smg: { combo: ['up', 'nope'] }, rifle: { combo: [] } }
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    const it = loadItems()
+    assert.deepEqual(it.pistol.combo, ['up', 'spin'])
+    assert.equal(it.pistol.comboWindow, 0.8); assert.equal(it.pistol.meleeArcUp, 200)
+    assert.deepEqual(it.smg.combo, DEFAULT_ITEMS.smg.combo)
+    assert.deepEqual(it.rifle.combo, DEFAULT_ITEMS.rifle.combo)
+  } finally { globalThis.window = previous }
+})

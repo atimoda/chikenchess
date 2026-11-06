@@ -626,12 +626,14 @@ export function createCombat() {
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
     // blows in a row alternate: down, up, horizontal, a full spin. Down comes clockwise facing right
-    swingCombo = nextCombo(swingCombo, swing ? 0 : swingGap)
-    const kind = SWING_COMBO[swingCombo]
+    const order = d.combo.length ? d.combo : SWING_COMBO
+    swingCombo = nextCombo(swingCombo, swingGap, d.comboWindow, order.length)
+    const kind = order[swingCombo % order.length]
+    const arc = kind === 'spin' ? Math.PI * 2 : (kind === 'up' ? d.meleeArcUp : kind === 'flat' ? d.meleeArcFlat : d.meleeArc) * DEG
     const face = Math.cos(aimAngle) >= 0 ? 1 : -1
     const time = Math.max(0.02, d.meleeTime), trailTime = Math.max(0.05, d.trailTime)
     swing = {
-      angle: aimAngle, arc: kind === 'spin' ? Math.PI * 2 : d.meleeArc * DEG, range: d.meleeRange, reach, t: 0, time, wing,
+      angle: aimAngle, arc, range: d.meleeRange, reach, t: 0, time, wing,
       dir: kind === 'up' ? -face : face, kind, combo: swingCombo, hitAt: swingHitAt(time), hit: false, hits: 0,
       life: swingLife(time, trailTime), impacts: [], seed: Math.random(),
       trail: { width: d.trailWidth, color, time: trailTime, wisps: Math.round(d.trailWisps), opacity: d.trailOpacity },

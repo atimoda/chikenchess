@@ -8,13 +8,18 @@ const DEG = Math.PI / 180
 
 export type SwingKind = 'down' | 'up' | 'flat' | 'spin'
 export type SwingPhase = 'prep' | 'strike' | 'follow' | 'recover' | 'done'
+export const SWING_KINDS: { value: SwingKind; label: string }[] = [
+  { value: 'down', label: 'Para baixo' }, { value: 'up', label: 'Para cima' }, { value: 'flat', label: 'Horizontal' }, { value: 'spin', label: 'Giro 360°' },
+]
+// the default order of a combo (each item can have its own, up to COMBO_MAX blows)
 export const SWING_COMBO: SwingKind[] = ['down', 'up', 'flat', 'spin']
+export const COMBO_MAX = 6
 // fractions of meleeTime; recuperação is what is left (0.40)
 export const SWING_PHASES = { prep: 0.25, strike: 0.1, follow: 0.25 }
 export const SWING_WINDUP = 18 * DEG // how far the wing winds back before the blow
 export const SWING_OVERSHOOT = 13 * DEG // how far it carries on past the arc
 export const SWING_FLAT = 0.3 // the horizontal blow's ellipse: its height over its width
-export const COMBO_WINDOW = 0.45 // s after a blow ends in which the next one carries on the combo
+export const COMBO_WINDOW = 0.45 // default s after a blow ends in which the next one carries on the combo
 
 // the swing's state as combat keeps it. angle: the aim when it started; arc: the hit area's arc; range: the wing's
 // reach; reach: wing plus the item (the hit area and the trail's radius); dir: 1 = clockwise on screen; time: the
@@ -35,8 +40,12 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 const easeOut = (k: number) => 1 - (1 - k) * (1 - k)
 const easeInOut = (k: number) => k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k)
 
-// the next blow of a combo: the first after a pause starts over
-export function nextCombo(prev: number, gap: number) { return gap <= COMBO_WINDOW ? (prev + 1) % SWING_COMBO.length : 0 }
+// the next blow of a combo (its place in the order): within the window it carries on, after a longer pause it
+// starts over
+export function nextCombo(prev: number, gap: number, window: number, length: number) {
+  return gap <= window ? (prev + 1) % Math.max(1, length) : 0
+}
+export const isSwingKind = (v: unknown): v is SwingKind => SWING_KINDS.some(k => k.value === v)
 
 export function swingHitAt(time: number) { return time * SWING_PHASES.prep }
 
