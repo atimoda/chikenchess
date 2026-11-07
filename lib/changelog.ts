@@ -5,7 +5,7 @@ export const CHANGELOG = [
   {
     version: '2.2.0',
     date: '07/11/2026',
-    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens e a jukebox do Templo',
+    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo e o editor de músicas',
     groups: [
       { title: 'Pátio', items: [
         'Cada alien tem duas mortes, as duas no tempo da música: derrubado por golpe, tiro ou arremesso, toca um tambor que depende da espécie (bloco de madeira na água-viva, taiko na concha, palmas na lanterna); convertido por notas, toca um acorde ou arpejo.',
@@ -16,6 +16,8 @@ export const CHANGELOG = [
         'Primeira leva de variações: Sino, Baixo e Neon (água-viva), Flauta, Brasa e Papel (lanterna), Taiko e Bronze (casco), Terças e Eco (gêmeos), Chocalho e Faísca (mini), Palmas, Caixa e Bumbo (tambor, em que rebater vira batida) e Fogo e Jade (dragão, com escala própria).',
         'O disco do Templo do Gongo virou uma jukebox de neon. Bata nela para abrir o painel de músicas: uma grade de capas com a Campanha do Gongo e as músicas, com bpm, tom, duração e recorde. A escolhida é a que o gongo começa. Tocar começa na hora, e Salvar como guarda uma cópia com outro nome neste navegador.',
         'Cada música ganha uma capa desenhada a partir da própria sequência de aliens: Sulco, como um vinil visto de cima, ou Grade, como um piano roll. Nas músicas salvas, dá para trocar o estilo, as cores e o fundo da capa.',
+        'Novo editor de músicas (Editar e Nova música, na jukebox): a música vira uma linha do tempo em compassos, com uma linha por faixa do leque e cada alien como um bloco do aparecimento ao encostar, com as notas em pontos. Arraste no tempo ou entre as faixas, dê duplo clique para criar um alien, Ctrl+clique para pôr nota e botão direito para tirar. Tem copiar, colar no cursor, desfazer e refazer, zoom, grade, tom, escala, bpm e uma prévia do semicírculo em volta da galinha. Tocar daqui toca o rascunho no templo a partir do compasso do cursor.',
+        'As músicas ganham pausas e falas. Uma pausa abre compassos sem aliens, com só o fundo tocando ou em silêncio total. Uma fala tem quem fala (o narrador, o Gongo, a galinha ou um alien do catálogo), o texto, o tempo na tela, o lugar (o banner do meio, um balão sobre quem fala ou uma faixa embaixo do placar) e um blip de voz a cada letra.',
       ] },
     ],
   },

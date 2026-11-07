@@ -12,7 +12,7 @@ import { DEGREE_COLORS, SCALES } from './music'
 import type { RebateRule } from './transforms'
 import { fanAngleOf, fanNoteAt, fanNotes, songFan, type Fan } from './fan'
 import { aimShot, type NoteGrade, type NoteShot, type NoteShotEvent } from './note-shots'
-import { multOf, type Species } from './temple'
+import { GONG_X, multOf, type Species } from './temple'
 import type { StageMusic } from './temple-music'
 import type { VoiceId } from './synth'
 import { stepScale } from './transforms'
@@ -56,7 +56,30 @@ export type SongAlien = {
 export type NoteMode = 'fan' | 'angle' | 'sequenced'
 // rule: whose transformations count for its notes (each alien can have its own); by default the stage's fan fixes
 // the note and the taco ornaments it
-export type Song = { id: string; name: string; intro: string; music: StageMusic; fan: Fan; noteMode: NoteMode; rule?: RebateRule; introBars: number; aliens: SongAlien[] }
+export type Song = {
+  id: string; name: string; intro: string; music: StageMusic; fan: Fan; noteMode: NoteMode; rule?: RebateRule; introBars: number; aliens: SongAlien[]
+  pauses?: SongPause[]; lines?: SongLine[]
+}
+// the Diálogos lane: pauses (bars with no aliens, the background playing or total silence) and lines (someone says
+// something, in a pause or over the aliens). Who: 'gongo', 'galinha', 'narrador' or 'alien:<variation id>'
+export type LinePlace = 'banner' | 'balao' | 'faixa'
+export const LINE_PLACES: { value: LinePlace; label: string }[] = [{ value: 'banner', label: 'Banner' }, { value: 'balao', label: 'Balão' }, { value: 'faixa', label: 'Faixa' }]
+export type SongLine = { beat: number; who: string; text: string; secs: number; place: LinePlace; blip: boolean }
+export type SongPause = { beat: number; bars: number; silent: boolean }
+export const SPEAKERS: { value: string; label: string; color: string; voice: VoiceId; octave: number }[] = [
+  { value: 'narrador', label: 'Narrador', color: '#c9ced6', voice: 'keys', octave: 0 },
+  { value: 'gongo', label: 'Gongo', color: '#ffd166', voice: 'bells', octave: -12 },
+  { value: 'galinha', label: 'Galinha', color: '#f4f1e8', voice: 'bird', octave: 12 },
+]
+// who says a line: its name, colour and voice (an alien speaks in its variation's firing voice)
+export function speakerOf(who: string, catalog: Catalog = BUILTIN_VARIANTS): { name: string; color: string; voice: VoiceId; octave: number; variant: string | null } {
+  const base = SPEAKERS.find(x => x.value === who)
+  if (base) return { name: base.label, color: base.color, voice: base.voice, octave: base.octave, variant: null }
+  const id = who.startsWith('alien:') ? who.slice(6) : ''
+  const v = catalog.find(x => x.id === id)
+  if (v) return { name: v.name, color: v.color, voice: v.fire.voice === 'none' ? 'chip' : v.fire.voice, octave: 12, variant: v.id }
+  return { name: 'Narrador', color: '#c9ced6', voice: 'keys', octave: 0, variant: null }
+}
 export const STAGE_RULE: RebateRule = 'ambiente-taco'
 
 // the ring where the notes arrive (px from the fan's centre), where an alien touches her, and the default distance
@@ -99,7 +122,12 @@ export const SONGS: Song[] = [TEST_SONG]
 // ---------- helpers (pure) ----------
 export const spawnBeat = (a: SongAlien) => a.at ?? Math.min(...a.notes.map(n => n.beat)) - LEAD_BEATS
 export const lastBeat = (a: SongAlien) => Math.max(...a.notes.map(n => n.beat))
-export const songEnd = (s: Song) => Math.max(...s.aliens.map(lastBeat))
+export const pauseEnd = (p: SongPause) => p.beat + p.bars * 4
+// the last beat of a song: its last note, the end of its last pause or its last line
+export const songEnd = (s: Song) => Math.max(...s.aliens.map(lastBeat), ...(s.pauses ?? []).map(pauseEnd), ...(s.lines ?? []).map(l => l.beat + 1))
+export const sortedLines = (s: Song) => [...(s.lines ?? [])].sort((a, b) => a.beat - b.beat)
+// a pause in total silence at this beat
+export const silentAt = (s: Song, beat: number) => (s.pauses ?? []).some(p => p.silent && beat >= p.beat && beat < pauseEnd(p))
 export const noteCount = (s: Song) => s.aliens.reduce((k, a) => k + a.notes.length, 0)
 // the angle an alien comes from (radians): given, or the lane of its middle note
 export function alienAngle(s: Song, a: SongAlien) {
@@ -145,11 +173,25 @@ export function pathAt(p: Path, now: number, spb: number): { dx: number; dy: num
   return { dx, dy, fixed: false }
 }
 
+// an alien's path in a song (times in seconds, beat 0 at t0): what the stage follows and the editor's preview shows
+export function alienPath(sg: Song, a: SongAlien, v: AlienVariant, notes: SongNote[], t0: number, spb: number): Path {
+  const theta = alienAngle(sg, a)
+  const at = (b: number) => t0 + b * spb
+  const beats = notes.map(n => n.beat)
+  return {
+    mode: a.move ?? v.move, theta, r0: a.dist ?? SPAWN_DIST, ts: at(spawnBeat(a)), tEnd: at(Math.max(...beats) + v.after),
+    tMid: at((Math.min(...beats) + Math.max(...beats)) / 2), zig: a.zig ?? v.zig, turn: (a.turn ?? v.turn) * DEG,
+    pass: a.pass ?? v.pass, side: Math.cos(theta) >= 0 ? -1 : 1,
+  }
+}
+
 // ---------- state ----------
 export type StagePhase = 'idle' | 'playing' | 'done' | 'failed'
 export type StageJudge = { grade: NoteGrade | 'miss' | 'parry' | 'contact'; t: number }
 export type StageAlien = { id: number; def: number; v: AlienVariant; notes: SongNote[]; path: Path; c0: { x: number; y: number }; next: number; x: number; y: number }
 export type StageBanner = { title: string; sub: string; color: string; t: number; life: number }
+// a line being said: typed letter by letter; a balloon over who says it (x, y) when it is around, else a strip
+export type StageTalk = { who: string; name: string; color: string; text: string; place: LinePlace; t: number; secs: number; shown: number; x: number; y: number; over: boolean }
 export type NoteStageState = {
   phase: StagePhase; song: number; t: number
   t0: number // conductor time of the song's beat 0 (NaN until its zone is on)
@@ -163,12 +205,17 @@ export type NoteStageState = {
   judge: StageJudge | null
   banner: StageBanner | null
   discRing: number; resetHits: number; resetRing: number; outsideT: number
+  talk: StageTalk[]; said: number // the lines on screen and how many of the song's were said
+  silent: boolean // in a pause of total silence
+  from: number // the beat it started from (the editor's "Tocar daqui")
+  draft: boolean // the editor's song (no record)
 }
 export function newStageState(): NoteStageState {
   return {
     phase: 'idle', song: 0, t: 0, t0: NaN, spawned: 0, aliens: [], anchor: { x: 0, y: 0 }, center: { x: 0, y: 0 },
     score: 0, combo: 0, bestCombo: 0, afina: 1, counts: { perfect: 0, good: 0, fora: 0, miss: 0, parry: 0, birds: 0, kills: 0 },
     fired: 0, judge: null, banner: null, discRing: 9, resetHits: 0, resetRing: 9, outsideT: 0,
+    talk: [], said: 0, silent: false, from: 0, draft: false,
   }
 }
 // how well it went (0..1): perfect counts 1, good 0.6, fora 0.2, missed 0
@@ -187,6 +234,7 @@ export type NoteStageSound =
   | { kind: 'reset'; hit: number; need: number }
   | { kind: 'done'; root: number; chord: number[] }
   | { kind: 'fail' }
+  | { kind: 'blip'; midi: number; voice: VoiceId }
 
 // what the stage needs each frame
 export type NoteStageIO = {
@@ -207,6 +255,7 @@ export type NoteStageIO = {
   sound: (s: NoteStageSound) => void
 }
 export const RESET_NEED = 3
+const TALK_CPS = 26 // letters a second a line is typed at, at least
 
 let nextId = 3_000_000
 
@@ -217,6 +266,9 @@ export function createNoteStage() {
   let songs: Song[] = SONGS
   // the song playing is a copy: the library can change while it plays
   let playing: Song | null = null
+  // the editor asks: play this song (its draft) from a beat, or stop
+  let request: { song: Song; from: number } | 'stop' | null = null
+  let lines: SongLine[] = [], skipped = new Set<number>()
   const song = () => (s.phase !== 'idle' && playing) || songs[s.song] || songs[0] || SONGS[0]
   const order = () => song().aliens.map((a, i) => i).sort((a, b) => spawnBeat(song().aliens[a]) - spawnBeat(song().aliens[b]))
   const banner = (title: string, sub: string, color: string, life = 4) => { s.banner = { title, sub, color, t: 0, life } }
@@ -232,20 +284,25 @@ export function createNoteStage() {
     s.aliens = []
   }
 
-  function start(io: NoteStageIO, i: number) {
+  function start(io: NoteStageIO, i: number, draft?: { song: Song; from: number }) {
     removeAliens(io, false)
     io.clearShots(SOURCE)
     const keep = { discRing: 0, anchor: { ...io.center }, center: { ...io.center } }
-    playing = songs[i] ?? songs[0] ?? SONGS[0]
-    Object.assign(s, newStageState(), keep, { phase: 'playing', song: i })
-    banner(song().name, song().intro, song().music.zone.color, 5)
+    playing = draft ? structuredClone(draft.song) : songs[i] ?? songs[0] ?? SONGS[0]
+    // from a bar: the aliens whose notes are all before it don't come, nor the lines said before it
+    const from = draft ? Math.max(0, Math.floor(draft.from / 4) * 4) : 0
+    lines = sortedLines(playing)
+    Object.assign(s, newStageState(), keep, { phase: 'playing', song: i, from, draft: !!draft, said: from > 0 ? lines.filter(l => l.beat < from).length : 0 })
+    skipped = new Set(from > 0 ? order().filter(k => lastBeat(song().aliens[k]) < from) : [])
+    if (!draft || from === 0) banner(song().name, song().intro, song().music.zone.color, 5)
+    else banner(song().name, `Do compasso ${from / 4 + 1}`, song().music.zone.color, 2.5)
     io.sound({ kind: 'start', root: song().music.zone.root })
   }
 
   function stop(io: NoteStageIO, phase: StagePhase) {
     removeAliens(io, true)
     io.clearShots(SOURCE)
-    s.phase = phase; s.t = 0
+    s.phase = phase; s.t = 0; s.talk = []; s.silent = false
   }
 
   function spawn(io: NoteStageIO, def: number, spb: number) {
@@ -253,14 +310,7 @@ export function createNoteStage() {
     const z = sg.music.zone
     const notes = alienNotes(a, v, { root: z.root, steps: SCALES[z.scale].steps })
     const { w, h } = variantSize(v), color = a.color ?? v.color
-    const theta = alienAngle(sg, a)
-    const at = (b: number) => s.t0 + b * spb
-    const beats = notes.map(n => n.beat)
-    const path: Path = {
-      mode: a.move ?? v.move, theta, r0: a.dist ?? SPAWN_DIST, ts: at(spawnBeat(a)), tEnd: at(Math.max(...beats) + v.after),
-      tMid: at((Math.min(...beats) + Math.max(...beats)) / 2), zig: a.zig ?? v.zig, turn: (a.turn ?? v.turn) * DEG,
-      pass: a.pass ?? v.pass, side: Math.cos(theta) >= 0 ? -1 : 1,
-    }
+    const path = alienPath(sg, a, v, notes, s.t0, spb)
     const c0 = { ...s.anchor }
     const p = pathAt(path, io.music.time, spb)
     const x = c0.x + p.dx, y = c0.y + p.dy
@@ -283,14 +333,22 @@ export function createNoteStage() {
     s.anchor.x += (io.center.x - s.anchor.x) * Math.min(1, dt * 3)
     s.anchor.y += (io.center.y - s.anchor.y) * Math.min(1, dt * 3)
     const music = io.music, spb = music.secondsPerBeat(), now = music.time
-    const sg = song()
 
+    // the editor: play its song from a beat (over the one playing), or stop
+    if (request) {
+      const r = request
+      request = null
+      if (r === 'stop') { if (active()) { stop(io, 'idle'); banner('Música parada', 'Bata no gongo para tocar de novo.', '#7bdff2', 2) } }
+      else if (io.busy) io.sound({ kind: 'dull' })
+      else start(io, s.song, r)
+    }
     // the gong (or the jukebox's Tocar) starts the song (not while the campaign is on, nor twice)
     if (io.discHit) {
       s.discRing = 0
       if (active() || io.busy) io.sound({ kind: 'dull' })
       else start(io, s.song)
     }
+    const sg = song()
     // the reset stone stops it (a few strikes)
     if (s.resetHits > 0 && s.resetRing > 4) s.resetHits = 0
     if (io.resetHit && active()) {
@@ -306,19 +364,26 @@ export function createNoteStage() {
     if (Number.isNaN(s.t0)) {
       if (music.zone.id !== sg.music.zone.id) return
       const barStart = now - (music.beat - 4 * music.bar) * spb
-      s.t0 = barStart + sg.introBars * 4 * spb
+      s.t0 = barStart + (sg.introBars * 4 - s.from) * spb
     }
     const beat = (now - s.t0) / spb
     // the count in: the last bar of the intro
-    if (beat < 0 && beat > -4) {
-      const n = Math.ceil(-beat)
-      const prev = Math.ceil(-(beat - dt / spb))
+    if (beat < s.from && beat > s.from - 4) {
+      const n = Math.ceil(s.from - beat)
+      const prev = Math.ceil(s.from - (beat - dt / spb))
       if (n !== prev) { io.sound({ kind: 'count', n }); io.fx.text(s.center.x, s.center.y - 170, n === 4 ? 'Prepare-se' : String(n), sg.music.zone.color, n === 4 ? 20 : 30) }
     }
 
     // new aliens
     const ord = order()
-    while (s.spawned < ord.length && spawnBeat(sg.aliens[ord[s.spawned]]) <= beat) spawn(io, ord[s.spawned++], spb)
+    while (s.spawned < ord.length && spawnBeat(sg.aliens[ord[s.spawned]]) <= beat) {
+      const k = ord[s.spawned++]
+      if (!skipped.has(k)) spawn(io, k, spb)
+    }
+    // the lines, when their beat comes; a pause in silence quiets the background
+    while (s.said < lines.length && lines[s.said].beat <= beat) say(lines[s.said++])
+    talk(dt, io)
+    s.silent = silentAt(sg, beat)
 
     // what the note shots did
     for (const e of io.events) {
@@ -393,7 +458,47 @@ export function createNoteStage() {
 
     if (s.afina <= 1e-6) { s.afina = 0; fail(io, 'A música desafinou: notas demais passaram.'); return }
     // the end: every alien out and gone, no note left in the air
-    if (s.spawned >= ord.length && !s.aliens.length && io.incoming === 0 && beat > songEnd(sg)) done(io)
+    if (s.spawned >= ord.length && !s.aliens.length && io.incoming === 0 && !s.talk.length && beat > songEnd(sg)) done(io)
+  }
+
+  function say(l: SongLine) {
+    const who = speakerOf(l.who, catalog)
+    const t: StageTalk = { who: l.who, name: who.name, color: who.color, text: l.text, place: l.place, t: 0, secs: l.secs, shown: 0, x: s.center.x, y: s.center.y, over: false }
+    // one banner at a time (the newest); the others pile up
+    if (l.place === 'banner') { s.banner = null; s.talk = s.talk.filter(x => x.place !== 'banner') }
+    s.talk.push(t)
+    if (s.talk.length > 4) s.talk.shift()
+    blips.set(t, l.blip)
+  }
+  const blips = new WeakMap<StageTalk, boolean>()
+  // letter by letter (all of it within the first 60% of its time), a blip of its voice every other letter; a
+  // balloon follows who says it: her, the gong or the nearest alien of its variation
+  function talk(dt: number, io: NoteStageIO) {
+    const z = song().music.zone, steps = SCALES[z.scale].steps
+    for (let i = s.talk.length - 1; i >= 0; i--) {
+      const t = s.talk[i]
+      t.t += dt
+      if (t.t > t.secs) { s.talk.splice(i, 1); continue }
+      const cps = Math.max(TALK_CPS, t.text.length / Math.max(0.3, t.secs * 0.6))
+      const shown = Math.min(t.text.length, Math.floor(t.t * cps))
+      if (blips.get(t)) for (let k = t.shown; k < shown; k++) {
+        const ch = t.text.charCodeAt(k)
+        if (k % 2 || !/[\p{L}\p{N}]/u.test(t.text[k])) continue
+        const who = speakerOf(t.who, catalog)
+        io.sound({ kind: 'blip', voice: who.voice, midi: z.root + 12 + who.octave + steps[ch % steps.length] })
+      }
+      t.shown = shown
+      if (t.place !== 'balao') continue
+      const v = t.who.startsWith('alien:') ? t.who.slice(6) : null
+      if (t.who === 'galinha') { t.x = s.center.x; t.y = s.center.y - 110; t.over = true }
+      else if (t.who === 'gongo') { t.x = io.sceneL + GONG_X; t.y = io.groundY - 300; t.over = true }
+      else if (v) {
+        let best: StageAlien | null = null
+        for (const a of s.aliens) if (a.v.id === v && (!best || Math.hypot(a.x - s.center.x, a.y - s.center.y) < Math.hypot(best.x - s.center.x, best.y - s.center.y))) best = a
+        t.over = !!best
+        if (best) { t.x = best.x; t.y = best.y - 50 }
+      } else t.over = false
+    }
   }
 
   function fail(io: NoteStageIO, why: string) {
@@ -442,6 +547,12 @@ export function createNoteStage() {
       if (!active()) { playing = null; if (s.phase !== 'idle') s.phase = 'idle' }
       return true
     },
+    // the editor's "Tocar daqui" (its song as it is now, from a beat) and "Parar"
+    playDraft(sg: Song, from: number) { request = { song: sg, from } },
+    halt() { request = 'stop' },
+    get silent() { return active() && s.silent },
+    // the song's beat now (NaN while it waits for its zone)
+    beatAt(now: number, spb: number) { return active() ? (now - s.t0) / spb : NaN },
     reset(io: Pick<NoteStageIO, 'targets' | 'fx' | 'clearShots'>) { removeAliens(io, false); io.clearShots(SOURCE); Object.assign(s, newStageState()) },
   }
 }

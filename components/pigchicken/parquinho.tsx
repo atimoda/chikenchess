@@ -42,9 +42,9 @@ import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "
 import { DISC_X, GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { accuracy, createNoteStage, type NoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
-import { JUKEBOX_H, JUKEBOX_W, drawJukebox, drawNoteShots, drawNoteStageHud, drawStageFan } from "@/components/pigchicken/note-stage-draw"
+import { JUKEBOX_H, JUKEBOX_W, drawJukebox, drawNoteShots, drawNoteStageHud, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
-import { CAMPAIGN, CAMPAIGN_ID, loadLibrary, onPlaySong, openJukebox, recordScore, subscribeLibrary, type Library } from "@/lib/pigchicken/song-library"
+import { CAMPAIGN, CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, openJukebox, recordScore, subscribeLibrary, type Library } from "@/lib/pigchicken/song-library"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { BIRDS, UNDEAD_EYE, birdColors, type BirdType } from "@/lib/pigchicken/birds"
 import { undeadSize, type UndeadState } from "@/lib/pigchicken/undead"
@@ -296,6 +296,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // "Tocar" in the jukebox's panel: the song starts now
     let playRequest: string | null = null, jukeRing = 9
     const unsubPlay = onPlaySong(id => { playRequest = id })
+    // the song editor's "Tocar daqui" and "Parar"
+    const unsubDraft = onPlayDraft(r => (r === "stop" ? stage.halt() : stage.playDraft(r.song, r.from)))
     templeDraw.stage = stage
     combat.setNoteEnv(shot => stage.noteEnv(shot))
     const templeSounds: TempleSound[] = []
@@ -652,11 +654,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       stageSounds.splice(0).forEach(e => playNoteStageSound(e, mixGain("effects")))
       if (stageOn && gongHit) { gongHit = false; playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
       // a new record: the song's best score is kept (and the banner says so)
-      if (stage.state.phase === "done" && stage.state.t === 0) {
+      if (stage.state.phase === "done" && stage.state.t === 0 && !stage.state.draft) {
         const s = stage.state
         if (recordScore(stage.song.id, s.score, accuracy(s.counts, s.fired)) && s.banner) s.banner.title += " · novo recorde!"
       }
       if (stageOn) resetHit = false
+      // the editor's playhead
+      nowPlaying.id = stage.active ? stage.song.id : null
+      nowPlaying.beat = stage.beatAt(combat.music.time, combat.music.secondsPerBeat())
+      nowPlaying.draft = stage.state.draft
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
         gongHit, resetHit, firePressed: input.firePressed,
@@ -698,13 +704,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const templeZone = combat.music.zone.id.startsWith("templo")
       events.forEach(e => {
         if (mixGain("ambience") <= 0) return
-        if (e.kind === "bar") drone.set(combat.music.chord()[0])
+        if (e.kind === "bar" && !stage.silent) drone.set(combat.music.chord()[0])
         if (e.kind === "step") {
-          if (templeZone) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat())
+          // a pause in total silence: no background
+          if (templeZone) { if (!stage.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }
           else ambience(combat.music.zone, e.n % 16, combat.music.secondsPerBeat())
         }
       })
-      if (mixGain("ambience") <= 0) drone.set(null)
+      if (mixGain("ambience") <= 0 || stage.silent) drone.set(null)
 
       // ---------- sound ----------
       setWeaponVolume(mixGain("weapons"))
@@ -730,6 +737,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawTempleShots(ctx, temple, camX, view)
       drawStageFan(ctx, stage, combat.noteShots, camX, combat.music.time, combat.music.beatPhase)
       drawNoteShots(ctx, combat.noteShots, camX, view)
+      drawStageTalk(ctx, stage, camX)
       ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
@@ -857,6 +865,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       unsubCatalog()
       unsubLibrary()
       unsubPlay()
+      unsubDraft()
       window.removeEventListener("blur", cancelPeckInput)
       window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)

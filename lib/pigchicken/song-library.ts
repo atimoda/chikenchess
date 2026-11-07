@@ -2,7 +2,8 @@
 // The jukebox in the temple lists the code's songs, the old campaign as its own disc ("Campanha do Gongo") and the
 // ones saved here ("Salvar como"); the one picked is the one the gong starts. Saved in this browser for now, with
 // each song's record.
-import { TEST_SONG, songEnd, type NoteMode, type Song, type SongAlien, type SongNote, type MoveMode } from './note-stage'
+import { LINE_PLACES, SPEAKERS, TEST_SONG, songEnd, type LinePlace, type NoteMode, type Song, type SongAlien, type SongLine, type SongNote, type SongPause, type MoveMode } from './note-stage'
+import { songFan } from './fan'
 import { normalizeLanes, normalizeSoundZone } from './sound-zones'
 import type { Fan } from './fan'
 import type { Layer } from './temple-music'
@@ -41,7 +42,27 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
 const COLOR = /^#[0-9a-f]{6}$/i
 const MOVES: MoveMode[] = ['straight', 'zigzag', 'pass', 'spiral', 'still']
 const LAYERS: Layer[] = ['gong', 'taiko', 'wood', 'hat', 'bass', 'snare', 'pluck', 'flute', 'bells', 'double', 'crash']
-export const SONG_ALIENS_MAX = 400, SONG_NOTES_MAX = 64
+export const SONG_ALIENS_MAX = 400, SONG_NOTES_MAX = 64, SONG_PAUSES_MAX = 64, SONG_LINES_MAX = 200, LINE_TEXT_MAX = 200
+
+const WHO = /^alien:[\w-]{1,60}$/
+function cleanPauses(raw: unknown): SongPause[] {
+  if (!Array.isArray(raw)) return []
+  return raw.slice(0, SONG_PAUSES_MAX).flatMap(p => {
+    const o = p as Partial<SongPause> | null
+    if (!o || typeof o.beat !== 'number' || !Number.isFinite(o.beat)) return []
+    return [{ beat: clamp(o.beat, -64, 100000), bars: clamp(Math.round(num(o.bars, 1)), 1, 16), silent: o.silent === true }]
+  }).sort((a, b) => a.beat - b.beat)
+}
+function cleanLines(raw: unknown): SongLine[] {
+  if (!Array.isArray(raw)) return []
+  return raw.slice(0, SONG_LINES_MAX).flatMap(l => {
+    const o = l as Partial<SongLine> | null
+    if (!o || typeof o.beat !== 'number' || !Number.isFinite(o.beat) || typeof o.text !== 'string') return []
+    const who = typeof o.who === 'string' && (SPEAKERS.some(x => x.value === o.who) || WHO.test(o.who)) ? o.who : 'narrador'
+    const place: LinePlace = LINE_PLACES.some(x => x.value === o.place) ? (o.place as LinePlace) : 'banner'
+    return [{ beat: clamp(o.beat, -64, 100000), who, text: o.text.slice(0, LINE_TEXT_MAX), secs: clamp(num(o.secs, 3), 0.5, 20), place, blip: o.blip !== false }]
+  }).sort((a, b) => a.beat - b.beat)
+}
 
 function cleanNotes(raw: unknown): SongNote[] {
   if (!Array.isArray(raw)) return []
@@ -95,11 +116,13 @@ export function normalizeSong(raw: unknown): LibrarySong | null {
   const fan: Fan = { open: lanes.open, start: lanes.start, dir: lanes.dir, mirrored: lanes.mirrored, centerY: clamp(num((s.fan as { centerY?: unknown } | undefined)?.centerY, 70), 0, 400), content: lanes.content, ...(lanes.widths ? { widths: lanes.widths } : {}) }
   const cv = (s.cover ?? {}) as Partial<SongCover>
   const noteMode: NoteMode = s.noteMode === 'angle' || s.noteMode === 'sequenced' ? s.noteMode : 'fan'
+  const pauses = cleanPauses(s.pauses), lines = cleanLines(s.lines)
   return {
     id: s.id.slice(0, 80), name: (typeof s.name === 'string' && s.name.trim() ? s.name.trim() : 'Música').slice(0, 60),
     intro: typeof s.intro === 'string' ? s.intro.slice(0, 400) : '',
     music: { zone, layers: layers.length ? layers : ['gong', 'taiko'], melody: melody.length ? melody : [0, 1, 2, 3], groove: clamp(Math.round(num(m.groove, 0)), 0, 5) },
     fan, noteMode, ...(isRebateRule(s.rule) ? { rule: s.rule } : {}), introBars: clamp(Math.round(num(s.introBars, 2)), 1, 8), aliens,
+    ...(pauses.length ? { pauses } : {}), ...(lines.length ? { lines } : {}),
     cover: {
       style: cv.style === 'grade' ? 'grade' : 'sulco',
       palette: cv.palette === 'zona' || cv.palette === 'mono' ? cv.palette : 'grau',
@@ -155,6 +178,19 @@ export function saveSongAs(lib: Library, song: LibrarySong, name: string): Libra
   saveMine([...lib.songs, copy]); pickSong(id)
   return copy
 }
+// "Nova música": a short song to start from (one alien, four notes), saved here and picked
+export function newSong(lib: Library, name = 'Nova música'): LibrarySong {
+  const id = songId(name, lib.songs.map(s => s.id))
+  const fan = songFan(62, 'majorPenta')
+  const song: LibrarySong = {
+    id, name, intro: '', noteMode: 'fan', introBars: 2, fan, cover: { ...DEFAULT_COVER },
+    music: { zone: { id: `templo-${id}`, name, root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 5, 3, 4], color: '#7bd88f' }, layers: ['gong', 'taiko', 'wood', 'hat', 'bass'], melody: [0, 1, 2, 4, 3, 2, 1, 0], groove: 1 },
+    aliens: [{ species: 'jelly', notes: [0, 1, 2, 3].map(beat => ({ beat, midi: 62 + [0, 2, 4, 7][beat] })) }],
+    builtin: false,
+  }
+  saveMine([...lib.songs, song]); pickSong(id)
+  return song
+}
 export function updateSong(lib: Library, song: LibrarySong) {
   if (song.builtin) return
   saveMine(lib.songs.map(s => (s.id === song.id ? song : s)))
@@ -181,6 +217,24 @@ const OPEN = 'pigchicken-jukebox', PLAY = 'pigchicken-song-play'
 export const openJukebox = () => window.dispatchEvent(new CustomEvent(OPEN))
 export const onOpenJukebox = (fn: () => void) => { window.addEventListener(OPEN, fn); return () => window.removeEventListener(OPEN, fn) }
 export const playSongNow = (id: string) => window.dispatchEvent(new CustomEvent(PLAY, { detail: id }))
+// the editor: open it on a song; play its draft from a beat; stop
+const EDIT = 'pigchicken-song-edit', DRAFT = 'pigchicken-song-draft'
+export const openSongEditor = (id: string) => window.dispatchEvent(new CustomEvent(EDIT, { detail: id }))
+export const onOpenSongEditor = (fn: (id: string) => void) => {
+  const h = (e: Event) => fn(String((e as CustomEvent).detail))
+  window.addEventListener(EDIT, h)
+  return () => window.removeEventListener(EDIT, h)
+}
+export type DraftRequest = { song: Song; from: number } | 'stop'
+export const playDraft = (song: Song, from: number) => window.dispatchEvent(new CustomEvent(DRAFT, { detail: { song, from } }))
+export const stopDraft = () => window.dispatchEvent(new CustomEvent(DRAFT, { detail: 'stop' }))
+export const onPlayDraft = (fn: (r: DraftRequest) => void) => {
+  const h = (e: Event) => fn((e as CustomEvent).detail as DraftRequest)
+  window.addEventListener(DRAFT, h)
+  return () => window.removeEventListener(DRAFT, h)
+}
+// what the stage plays now (the game writes it each frame; the editor's playhead reads it)
+export const nowPlaying: { id: string | null; beat: number; draft: boolean } = { id: null, beat: NaN, draft: false }
 export const onPlaySong = (fn: (id: string) => void) => {
   const h = (e: Event) => fn(String((e as CustomEvent).detail))
   window.addEventListener(PLAY, h)

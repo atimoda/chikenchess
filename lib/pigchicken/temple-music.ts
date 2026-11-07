@@ -260,5 +260,7 @@ export function playNoteStageSound(s: NoteStageSound, volume: number) {
     case 'reset': playTempleSound({ kind: 'reset', hit: s.hit, need: s.need }, volume); break
     case 'done': playTempleSound({ kind: 'clear', root: s.root, chord: s.chord }, volume); break
     case 'fail': playTempleSound({ kind: 'fail' }, volume); break
+    // a letter of a line: a short note in the voice of who says it
+    case 'blip': playNote(s.voice, s.midi, { vel: 0.16 * v, dur: 0.07 }); break
   }
 }

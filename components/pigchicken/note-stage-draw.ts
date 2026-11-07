@@ -5,7 +5,7 @@ import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import type { Combat } from "@/lib/pigchicken/combat"
 import { SCALES } from "@/lib/pigchicken/music"
 import { fanLanes } from "@/lib/pigchicken/fan"
-import { ARRIVE_R, type NoteStage } from "@/lib/pigchicken/note-stage"
+import { ARRIVE_R, type NoteStage, type StageTalk } from "@/lib/pigchicken/note-stage"
 import type { NoteShot } from "@/lib/pigchicken/note-shots"
 import { multOf } from "@/lib/pigchicken/temple"
 import { drawBanner } from "@/components/pigchicken/temple-draw"
@@ -218,4 +218,69 @@ export function drawNoteStageHud(ctx: Ctx, stage: NoteStage, top: number) {
     ctx.restore()
   }
   if (s.banner) drawBanner(ctx, s.banner, top)
+  // the lines: in the banner, or in a strip under the score (and the balloons whose speaker is not around); the strip
+  // stays up there so it never covers her, the notes coming in or the inventory bar
+  const strips: StageTalk[] = []
+  for (const t of s.talk) {
+    if (t.place === "banner") drawBanner(ctx, { title: t.name, sub: t.text.slice(0, t.shown) || " ", color: t.color, t: t.t, life: t.secs }, top)
+    else if (t.place === "faixa" || !t.over) strips.push(t)
+  }
+  if (strips.length) {
+    const sw = Math.min(640, W - 32), x0 = Math.round((W - sw) / 2)
+    ctx.save()
+    ctx.textBaseline = "middle"
+    let y = top + (stage.active ? 100 : 8)
+    for (const t of strips) {
+      ctx.font = "14px ui-sans-serif, system-ui, sans-serif"
+      const lines = wrapText(ctx, t.text, sw - 24), shown = wrapText(ctx, t.text.slice(0, t.shown), sw - 24)
+      const h = 30 + Math.max(1, lines.length) * 18
+      ctx.globalAlpha = Math.max(0, Math.min(1, t.t * 5, (t.secs - t.t) * 3))
+      ctx.fillStyle = "rgba(6,8,10,0.78)"; ctx.beginPath(); ctx.roundRect(x0, y, sw, h, 10); ctx.fill()
+      ctx.fillStyle = t.color; ctx.fillRect(x0, y + 8, 3, h - 16)
+      ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "left"; ctx.fillStyle = t.color
+      ctx.fillText(t.name.toUpperCase(), x0 + 14, y + 14)
+      ctx.font = "14px ui-sans-serif, system-ui, sans-serif"; ctx.fillStyle = "#f4f1e8"
+      shown.forEach((l, k) => ctx.fillText(l, x0 + 14, y + 33 + k * 18))
+      y += h + 6
+    }
+    ctx.restore()
+  }
+}
+
+function wrapText(ctx: Ctx, text: string, maxW: number) {
+  const out: string[] = []
+  let line = ""
+  text.split(" ").forEach(w => {
+    const next = line ? `${line} ${w}` : w
+    if (ctx.measureText(next).width > maxW && line) { out.push(line); line = w } else line = next
+  })
+  if (line) out.push(line)
+  return out
+}
+
+// a line in a balloon over who says it (world units)
+export function drawStageTalk(ctx: Ctx, stage: NoteStage, camX: number) {
+  for (const t of stage.state.talk) {
+    if (t.place !== "balao" || !t.over) continue
+    ctx.save()
+    ctx.font = "14px ui-sans-serif, system-ui, sans-serif"
+    const lines = wrapText(ctx, t.text.slice(0, t.shown), 240)
+    const full = wrapText(ctx, t.text, 240)
+    const w = Math.max(90, ...full.map(l => ctx.measureText(l).width)) + 24, h = 26 + Math.max(1, full.length) * 18
+    // kept on the screen; the tail still points at who speaks
+    const x = Math.round(Math.max(8, Math.min(window.innerWidth - w - 8, t.x - camX - w / 2))), y = Math.round(t.y - h - 14)
+    const tx = Math.max(x + 16, Math.min(x + w - 16, t.x - camX))
+    ctx.globalAlpha = Math.max(0, Math.min(1, t.t * 6, (t.secs - t.t) * 3))
+    ctx.fillStyle = "rgba(250,247,238,0.96)"; ctx.strokeStyle = t.color; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 12)
+    ctx.moveTo(tx - 8, y + h); ctx.lineTo(tx, y + h + 12); ctx.lineTo(tx + 8, y + h)
+    ctx.fill(); ctx.stroke()
+    ctx.fillStyle = "rgba(250,247,238,0.96)"; ctx.fillRect(tx - 7, y + h - 2, 14, 3)
+    ctx.textBaseline = "middle"; ctx.textAlign = "left"
+    ctx.font = "bold 10px ui-monospace, monospace"; ctx.fillStyle = "#5b5f66"
+    ctx.fillText(t.name.toUpperCase(), x + 12, y + 12)
+    ctx.font = "14px ui-sans-serif, system-ui, sans-serif"; ctx.fillStyle = "#16181c"
+    lines.forEach((l, k) => ctx.fillText(l, x + 12, y + 30 + k * 18))
+    ctx.restore()
+  }
 }

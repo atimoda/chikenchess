@@ -2,14 +2,14 @@
 
 // The jukebox's panel (it opens when she strikes the jukebox in the temple): a grid of covers, the old campaign's
 // disc first, then the songs; the one picked is the one the gong starts. Under the grid, the picked one's numbers
-// (bpm, key, length, record) and its buttons: Tocar (now), Salvar como, and for the ones made here their cover's
-// style and Excluir. Editar and Gerar de MIDI come next.
+// (bpm, key, length, record) and its buttons: Tocar (now), Editar (the timeline), Salvar como, Nova música, and for
+// the ones made here their cover's style and Excluir. Gerar de MIDI comes next.
 import { useEffect, useRef, useState } from "react"
-import { Disc3, Play, Save, Trash2, X } from "lucide-react"
+import { Disc3, Pencil, Play, Plus, Save, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
 import {
-  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, pickSong, playSongNow, saveSongAs,
+  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, openSongEditor, pickSong, playSongNow, saveSongAs,
   songSeconds, subscribeLibrary, updateSong, type Library, type LibrarySong,
 } from "@/lib/pigchicken/song-library"
 import { loadCatalog } from "@/lib/pigchicken/alien-catalog"
@@ -103,7 +103,8 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
         <div className="flex flex-wrap gap-1.5 px-4 pb-3">
           <button type="button" onClick={() => { playSongNow(lib.picked); onClose() }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: NEON }}><Play className="h-4 w-4" />Tocar</button>
           {!isCampaign && <button type="button" onClick={() => setNaming(n => (n === null ? `${picked?.name ?? "Música"} 2` : null))} aria-expanded={naming !== null} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Save className="h-4 w-4" />Salvar como</button>}
-          <button type="button" disabled title="Em breve" className="h-9 rounded-md border border-white/10 px-3 opacity-40">Editar</button>
+          {picked && <button type="button" onClick={() => openSongEditor(picked.id)} title={picked.builtin ? "Esta é do jogo: salve as mudanças com outro nome" : undefined} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Pencil className="h-4 w-4" />Editar</button>}
+          <button type="button" onClick={() => openSongEditor(newSong(lib).id)} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Plus className="h-4 w-4" />Nova música</button>
           <button type="button" disabled title="Em breve" className="h-9 rounded-md border border-white/10 px-3 opacity-40">Gerar de MIDI</button>
           {picked && !picked.builtin && <button type="button" onClick={() => deleteSong(lib, picked.id)} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-[#ff6b5b]"><Trash2 className="h-4 w-4" />Excluir</button>}
         </div>
