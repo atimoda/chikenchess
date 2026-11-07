@@ -837,3 +837,41 @@ test('patio: the layout is left out when the caller already holds that revision'
   await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
   assert.equal((await db.query('select public.patio_lobby_get($1,2) as result',[id])).rows[0].result.layout,undefined)
 })
+test('pigchicken songs: a personal library per account; the admin sees and opens everyone\'s',async()=>{
+  const [me,other]=[ids[3],ids[4]]
+  const song=(name,n=1)=>({name,aliens:Array.from({length:n},()=>({species:'jelly',notes:[{beat:0,midi:62}]}))})
+  assert.deepEqual(await rpc(me,'pigchicken_song_list'),[])
+  const first=await rpc(me,'pigchicken_song_save',['minha',song('Minha'),0])
+  assert.equal(first.revision,1)
+  await assert.rejects(rpc(me,'pigchicken_song_save',['minha',song('Minha',2),0]),/SONG_CONFLICT/)
+  assert.equal((await rpc(me,'pigchicken_song_save',['minha',song('Minha nova',2),1])).revision,2)
+  await assert.rejects(rpc(me,'pigchicken_song_save',['Com Espaço',song('x'),0]),/INVALID_SONG/)
+  await assert.rejects(rpc(me,'pigchicken_song_save',['campanha',song('x'),0]),/INVALID_SONG/)
+  await assert.rejects(rpc(me,'pigchicken_song_save',['sem-aliens',{name:'x'},0]),/INVALID_SONG/)
+  // the list has no bodies; get brings it
+  const list=await rpc(me,'pigchicken_song_list')
+  assert.equal(list.length,1); assert.equal(list[0].name,'Minha nova'); assert.equal(list[0].song,undefined); assert.equal(list[0].owner_name,'Chicken 3')
+  assert.equal((await rpc(me,'pigchicken_song_get',['minha'])).song.aliens.length,2)
+  // the same id in another library is another song; nobody else reads mine
+  await rpc(other,'pigchicken_song_save',['minha',song('Dele'),0])
+  assert.equal((await rpc(me,'pigchicken_song_get',['minha'])).name,'Minha nova')
+  await assert.rejects(rpc(other,'pigchicken_song_get',['minha',me]),/ADMIN_REQUIRED/)
+  await assert.rejects(rpc(other,'pigchicken_song_list_all'),/ADMIN_REQUIRED/)
+  await assert.rejects(asUser(other,'select * from online_private.pigchicken_songs'),/permission denied/)
+  try {
+    await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({app_metadata:{access_level:'admin'}})])
+    const all=await rpc(other,'pigchicken_song_list_all')
+    assert.deepEqual(all.map(s=>[s.owner_id,s.name]).sort(),[[me,'Minha nova'],[other,'Dele']].sort())
+    assert.equal((await rpc(other,'pigchicken_song_get',['minha',me])).song.aliens.length,2)
+  } finally { await db.query("select set_config('request.jwt.claims','',false)") }
+  // guests have no library
+  try {
+    await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({is_anonymous:true})])
+    await assert.rejects(rpc(other,'pigchicken_song_list'),/ACCOUNT_REQUIRED/)
+  } finally { await db.query("select set_config('request.jwt.claims','',false)") }
+  await rpc(me,'pigchicken_song_delete',['minha'])
+  assert.deepEqual(await rpc(me,'pigchicken_song_list'),[])
+  assert.equal((await rpc(other,'pigchicken_song_list')).length,1)
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
+  await assert.rejects(db.query('select public.pigchicken_song_list()'),/permission denied/)
+})

@@ -1,7 +1,8 @@
 // The songs (the guitar hero mode): a song is a stage, its whole sequence of aliens from the first bar to the last.
 // The jukebox in the temple lists the code's songs, the old campaign as its own disc ("Campanha do Gongo") and the
 // ones saved here ("Salvar como"); the one picked is the one the gong starts. Saved in this browser for now, with
-// each song's record.
+// each song's record. Signed in with an account, the saved ones also go to the account (lib/pigchicken/song-online.ts):
+// every change here is marked to be sent, and the sync brings back what was saved on other browsers.
 import { LINE_PLACES, SPEAKERS, TEST_SONG, songEnd, type LinePlace, type NoteMode, type Song, type SongAlien, type SongLine, type SongNote, type SongPause, type MoveMode } from './note-stage'
 import { songFan } from './fan'
 import { normalizeLanes, normalizeSoundZone } from './sound-zones'
@@ -135,7 +136,8 @@ export function normalizeSong(raw: unknown): LibrarySong | null {
 // ---------- the library in this browser ----------
 
 const STORE = 'pigchicken-songs-v1', PICK = 'pigchicken-song-pick-v1', RECORDS = 'pigchicken-song-records-v1'
-const EVENT = 'pigchicken-songs'
+export const LIBRARY_EVENT = 'pigchicken-songs'
+const EVENT = LIBRARY_EVENT
 export type SongRecord = { score: number; accuracy: number }
 export type Library = { songs: LibrarySong[]; picked: string; records: Record<string, SongRecord> }
 
@@ -160,7 +162,26 @@ export function subscribeLibrary(onChange: (l: Library) => void) {
   return () => window.removeEventListener(EVENT, handler)
 }
 export function pickSong(id: string) { write(PICK, id); changed() }
-const saveMine = (songs: LibrarySong[]) => { write(STORE, songs.filter(s => !s.builtin).map(s => ({ ...s, builtin: undefined }))); changed() }
+// the songs saved here, as they are (the sync writes through this, so what it brings is not sent back)
+export function writeMine(songs: LibrarySong[]) { write(STORE, songs.filter(s => !s.builtin).map(s => ({ ...s, builtin: undefined }))); changed() }
+const saveMine = (songs: LibrarySong[], touched: string | null) => {
+  if (touched) markPending(touched, false)
+  writeMine(songs)
+}
+
+// what changed here since the last sync with the account: songs saved and songs deleted
+const PENDING = 'pigchicken-songs-pending-v1'
+export type SongPending = { saved: string[]; deleted: string[] }
+export function loadPending(): SongPending {
+  const p = read(PENDING) as Partial<SongPending> | null
+  const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+  return { saved: ids(p?.saved), deleted: ids(p?.deleted) }
+}
+export function writePending(p: SongPending) { write(PENDING, { saved: [...new Set(p.saved)], deleted: [...new Set(p.deleted)] }) }
+function markPending(id: string, deleted: boolean) {
+  const p = loadPending()
+  writePending(deleted ? { saved: p.saved.filter(x => x !== id), deleted: [...p.deleted, id] } : { saved: [...p.saved, id], deleted: p.deleted.filter(x => x !== id) })
+}
 
 // a new id for a copy (by its name, unique)
 export function songId(name: string, taken: Iterable<string>) {
@@ -175,7 +196,7 @@ export function saveSongAs(lib: Library, song: LibrarySong, name: string): Libra
   const id = songId(name, lib.songs.map(s => s.id))
   const copy: LibrarySong = { ...structuredClone(song), id, name: name.trim().slice(0, 60) || song.name, builtin: false }
   copy.music.zone = { ...copy.music.zone, id: `templo-${id}`, name: copy.name }
-  saveMine([...lib.songs, copy]); pickSong(id)
+  saveMine([...lib.songs, copy], id); pickSong(id)
   return copy
 }
 // "Nova música": a short song to start from (one alien, four notes), saved here and picked
@@ -188,17 +209,18 @@ export function newSong(lib: Library, name = 'Nova música'): LibrarySong {
     aliens: [{ species: 'jelly', notes: [0, 1, 2, 3].map(beat => ({ beat, midi: 62 + [0, 2, 4, 7][beat] })) }],
     builtin: false,
   }
-  saveMine([...lib.songs, song]); pickSong(id)
+  saveMine([...lib.songs, song], id); pickSong(id)
   return song
 }
 export function updateSong(lib: Library, song: LibrarySong) {
   if (song.builtin) return
-  saveMine(lib.songs.map(s => (s.id === song.id ? song : s)))
+  saveMine(lib.songs.map(s => (s.id === song.id ? song : s)), song.id)
 }
 export function deleteSong(lib: Library, id: string) {
   const s = lib.songs.find(x => x.id === id)
   if (!s || s.builtin) return
-  saveMine(lib.songs.filter(x => x.id !== id))
+  markPending(id, true)
+  saveMine(lib.songs.filter(x => x.id !== id), null)
   if (lib.picked === id) pickSong(CAMPAIGN_ID)
 }
 // a better score is kept as the song's record (true: a new record)

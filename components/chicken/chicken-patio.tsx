@@ -37,6 +37,7 @@ import { AlienCatalogPanel } from "@/components/pigchicken/alien-catalog-panel"
 import { JukeboxPanel } from "@/components/pigchicken/jukebox-panel"
 import { SongEditorPanel } from "@/components/pigchicken/song-editor-panel"
 import { onOpenJukebox, onOpenSongEditor } from "@/lib/pigchicken/song-library"
+import { songsOnlineAvailable, startSongSync } from "@/lib/pigchicken/song-online"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
@@ -123,6 +124,9 @@ export function ChickenPatio() {
   const [editingSong, setEditingSong] = useState<string | null>(null)
   useEffect(() => onOpenJukebox(() => setJukeboxOpen(true)), [])
   useEffect(() => onOpenSongEditor(id => { setEditingSong(id); setJukeboxOpen(false) }), [])
+  // the jukebox's songs go to the account of whoever is signed in (guests keep them in this browser)
+  const songUser = online.user && !online.user.is_anonymous && songsOnlineAvailable() ? online.user.id : null
+  useEffect(() => startSongSync(songUser), [songUser])
   useEffect(() => { setPq(loadParquinho()) }, [])
   const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
