@@ -4,6 +4,8 @@ import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
 import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
+import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
+import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
@@ -29,7 +31,11 @@ const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
 // a converted enemy leaving the scene: aliens become birds, zombies become happy people
-export type Critter = { kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number }
+// birds: their type, where they circle or perch, their next whistle and when they leave
+export type Critter = {
+  kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number
+  bird?: BirdId; homeX?: number; homeY?: number; whistleIn?: number
+}
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
 // beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through); rebate: the
@@ -52,7 +58,8 @@ export type Boom = { x: number; y: number; r: number; life: number; color?: stri
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
-export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button'
+// undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
+export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button' | 'undead'
 export type Target = {
   id: number; kind: TargetKind; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number
   face: number; state: string; animT: number; label?: string; data?: unknown
@@ -135,7 +142,7 @@ export function createCombat() {
   let pumpT = 0
   // buttons hit this frame, bites she took, enemies down
   const pressed: string[] = []
-  const kills = { aliens: 0, zombies: 0, bites: 0 }
+  const kills = { aliens: 0, zombies: 0, bites: 0, undead: 0 }
   let view = { l: 0, r: 1280 }
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   // y: the floor the rack stands on (a platform's top), or the ground when unset
@@ -176,7 +183,12 @@ export function createCombat() {
   let beamHeld: Held | null = null, beamMidi = 0
   const critters: Critter[] = []
   let quantizeAll = true
-  const conv = { birds: 0, people: 0, harmonized: 0 }
+  const conv = { birds: 0, people: 0, harmonized: 0, undeadBirds: 0 }
+  // undead waiting to join the world (an alien that just died: it joins on the next world step, so the shot that
+  // killed it does not hit it too); whether a song is playing (they leave once it ends); the place's birds
+  const pendingUndead: Target[] = []
+  let playing = false, undeadBorn = 0
+  let zoneBirds: BirdId[] | null = null
 
   const held = (): Owned | null => inv[cur] ?? null
   const groupOf = (o: Owned) => itemGroup(o.item, !!items[o.item]?.instrument)
@@ -199,6 +211,7 @@ export function createCombat() {
     if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
     if (blocked(t, x, y)) return
     if (t.dummy) { hurtDummy(t, damage, pushX, x, y); return }
+    if (t.kind === 'undead') { hurtUndead(t, damage, x, y); return }
     damage *= 1 - (t.shield ?? 0)
     t.hp -= damage; t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * 0.35; t.vx += pushX
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
@@ -208,6 +221,9 @@ export function createCombat() {
     if (t.kind === 'alien') {
       const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
       t.deadT = ALIEN_DEATH; burst(t.x, t.y - t.h / 2, 24, color, 260, 5); kills.aliens++; sound('alienDie', null)
+      // its physical death on the grid, and the undead it leaves
+      playNotes(deathNotes(deathSoundsFor(t.data).physical, music.chord(true), music.secondsPerBeat()), 'chip')
+      spawnUndead(t, pushX)
     } else if (t.kind === 'zombie') {
       t.state = 'dead'; t.animT = 0; t.deadT = ZOMBIE_TIMES.dead + ZOMBIE_TIMES.fade; kills.zombies++; sound('zombieDie', null)
     }
@@ -291,6 +307,7 @@ export function createCombat() {
   function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number) {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
+    if (t.kind === 'undead' && (t.data as UndeadState).bird) return
     if (blocked(t, x, y)) return
     if (t.dummy) {
       t.flash = 0.12; t.vx += pushX * 0.3
@@ -312,8 +329,9 @@ export function createCombat() {
       if (t.kind === 'alien') out.note('chip', ans + 12, at, 0.12, 0.5)
       else out.note('hum', ans - 12, at, 0.35, 0.6)
     }
-    if (t.harmony >= t.maxHp) convert(t)
+    if (t.harmony >= t.maxHp) fullHarmony(t, note)
   }
+  const fullHarmony = (t: Target, note: Pick<NoteInfo, 'color'>) => { if (t.kind === 'undead') resurrect(t, note.color); else convert(t) }
 
   // full harmony: aliens become birds and fly away, zombies become happy people and run off
   function convert(t: Target) {
@@ -323,9 +341,13 @@ export function createCombat() {
     const away = Math.sign(t.x - (lastBody?.x ?? t.x)) || 1
     if (t.kind === 'alien') {
       const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
-      critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160) + (t.blast?.vx ?? 0), vy: -rand(140, 220) + (t.blast?.vy ?? 0), t: 0, color, face: away, groundY: 0 })
+      // a bird of the place: its own look, flight and whistle
+      const type = BIRDS[pickBird(birdsFor(music.zone.id, zoneBirds))]
+      critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160) + (t.blast?.vx ?? 0), vy: -rand(140, 220) + (t.blast?.vy ?? 0), t: 0, color, face: away, groundY: 0,
+        bird: type.id, homeX: t.x, homeY: top - 60, whistleIn: whistleTime(type) })
       conv.birds++
-      chord.forEach((m, i) => out.note('bird', m + 12, i * 0.06, 0.1, 0.6))
+      // its musical death on the grid
+      playNotes(deathNotes(deathSoundsFor(t.data).musical, chord, music.secondsPerBeat()), 'bird')
       burst(t.x, top, 16, color, 200, 4)
     } else {
       critters.push({ kind: 'person', x: t.x, y: t.y, vx: away * rand(230, 290) + (t.blast?.vx ?? 0), vy: t.blast?.vy ?? 0, t: 0, color: '#ff6b9a', face: away, groundY: t.y })
@@ -336,6 +358,72 @@ export function createCombat() {
     addText(t.x, top - 60, t.kind === 'alien' ? 'virou passarinho!' : 'curado!', '#7bdff2')
   }
   let lastBody: Body | null = null
+
+  // ---------- the undead ----------
+  const harmonyNow = () => { const z = music.zone; return { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() } }
+  const whistleTime = (type: BirdType) => (type.whistle.max > 0 ? rand(type.whistle.min, type.whistle.max) : Infinity)
+  function spawnUndead(t: Target, pushX: number) {
+    const look = t.data as { kind?: string; species?: string } | undefined
+    // the dragon breaks apart: no undead
+    if (look?.kind === 'temple' && (look.species === 'dragon' || look.species === 'dragonHead')) return
+    // too many: the oldest leaves to make room
+    const all = [...targets, ...pendingUndead].filter(g => g.kind === 'undead' && g.deadT <= 0 && (g.data as UndeadState).phase !== 'leave')
+    if (all.length >= UNDEAD_MAX) {
+      const oldest = all.reduce((a, b) => ((a.data as UndeadState).born <= (b.data as UndeadState).born ? a : b))
+      const u = oldest.data as UndeadState
+      u.phase = 'leave'; u.t = 0
+    }
+    pendingUndead.push({
+      id: nextId++, kind: 'undead', home: 0, x: t.x, y: t.y, w: t.w, h: t.h, hp: t.maxHp, maxHp: t.maxHp, flash: 0, wobble: 0, vx: 0, deadT: 0,
+      face: t.face, state: 'undead', animT: 0, harmony: 0,
+      data: newUndead(t.data, Math.sign(pushX) * Math.min(260, Math.abs(pushX) * 0.5) + (t.blast?.vx ?? 0), -260, { ...UNDEAD_DEFAULTS }, undeadBorn++, Math.random),
+    })
+  }
+  // weapons wear it down; at zero it is gone for good
+  function hurtUndead(t: Target, damage: number, x: number, y: number) {
+    t.hp -= damage; t.flash = 0.12
+    addText(x, y - 10, String(Math.round(damage)), '#c9ced6')
+    burst(x, y, 5, '#9aa0a8', 150, 2)
+    if (t.hp > 0) return
+    t.deadT = 0.3; kills.undead++
+    burst(t.x, t.y - t.h / 2, 20, '#8d9096', 240, 4)
+    sound('alienDie', null)
+  }
+  // notes fill an undead's bar: full, it comes back as an undead bird with eyes in the note's colour, singing its
+  // phrase in minor (or diminished)
+  function resurrect(t: Target, color: string) {
+    const u = t.data as UndeadState
+    const type = BIRDS[u.params.bird ?? pickBird(birdsFor(music.zone.id, zoneBirds))]
+    u.bird = type.id; u.phase = 'bird'; u.t = 0; u.eye = color; u.angle = 0; u.vx = 0; u.vy = 0
+    t.harmony = 0; t.hp = t.maxHp; t.state = 'bird'; t.flash = 0.2
+    t.w = 11 * type.pixel; t.h = 8 * type.pixel
+    u.homeX = t.x; u.homeY = t.y - 70; u.whistleIn = whistleTime(type)
+    conv.undeadBirds++
+    const h = harmonyNow()
+    playNotes(birdPhrase(type, h.chord[0] + 12, h, u.params.mode), type.voice)
+    burst(t.x, t.y - t.h / 2, 16, color, 200, 4)
+    addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6')
+  }
+  // a bird whistles: its phrase, and its last note flies to the nearest player, arriving on a beat (she can rebate it)
+  function whistle(x: number, y: number, type: BirdType, undead: UndeadMode | null) {
+    const her = lastBody
+    if (!her || x < view.l - 40 || x > view.r + 40) return
+    const tx = her.x, ty = her.y - 90 * her.scale
+    const dist = Math.hypot(tx - x, ty - y)
+    if (dist > 1100) return
+    const spb = music.secondsPerBeat()
+    const flight = Math.max(0.6, dist / Math.max(60, type.shot.speed))
+    const beats = Math.ceil(music.beat + flight / spb)
+    const T = (beats - music.beat) * spb
+    const h = harmonyNow()
+    const phrase = birdPhrase(type, h.chord[0] + 12, h, undead, 0.4)
+    playNotes(phrase, type.voice)
+    const midi = phrase[phrase.length - 1]?.midi ?? h.chord[0] + 12
+    noteShots.push({
+      id: nextId++, x, y, vx: (tx - x) / T, vy: (ty - y) / T, midi, color: DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length],
+      size: type.shot.size, glow: 0.6, arriveAt: music.time + T, state: 'incoming', t: 0, source: 'bird', ...(type.rule ? { rule: type.rule } : {}),
+    })
+  }
 
   // ---------- loadouts: one per local player ----------
   type Consumption = { item: ItemId; left: number; total: number } | null
@@ -855,7 +943,7 @@ export function createCombat() {
       }
       const tuned = laneRetune(n.x, n.y)
       if (tuned !== null && tuned !== n.midi) { n.midi = tuned; n.color = DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
-      const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'converted' &&
+      const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie' || (t.kind === 'undead' && !(t.data as UndeadState).bird)) && t.deadT <= 0 && t.state !== 'converted' &&
         n.x + n.size > t.x - t.w / 2 && n.x - n.size < t.x + t.w / 2 && n.y + n.size > t.y - t.h && n.y - n.size < t.y)
       if (hit) {
         const note: NoteInfo = { midi: n.midi, color: n.color, sym: '♪', wave: 0, phase: 0, voice: 'bells' }
@@ -874,7 +962,7 @@ export function createCombat() {
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
       if (y >= ctx.groundY || boxAt(ctx.boxes, x, y, d.instrument)) break
-      hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
+      hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && !(t.kind === 'undead' && (t.data as UndeadState).bird) && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
     const midi = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
@@ -894,7 +982,7 @@ export function createCombat() {
       if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
       if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun)
       if (hit.kind === 'button' && hit.flash <= 0) hitTarget(hit, 1, 0, x, y)
-      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) convert(hit)
+      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) fullHarmony(hit, note)
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
   }
@@ -932,6 +1020,10 @@ export function createCombat() {
     setNoteEnv(fn: NoteEnvFn | null) { noteEnv = fn },
     // what a point of the map plays (its Zonas sonoras and Faixas fixas); the stage's ambience wins over it
     setPlaceEnv(fn: PlaceEnvFn | null) { placeEnv = fn },
+    // a song is playing (the undead wait for it to end before leaving); the birds of the place (null: the zone's)
+    setPlaying(on: boolean) { playing = on },
+    setZoneBirds(list: BirdId[] | null) { zoneBirds = list?.length ? list : null },
+    get undead() { return targets.filter(t => t.kind === 'undead' && t.deadT <= 0) },
     clearNoteShots(source?: string) { for (let i = noteShots.length - 1; i >= 0; i--) if (!source || noteShots[i].source === source) noteShots.splice(i, 1) },
     get peck(): PeckPose | null {
       if (held()) return null
@@ -1294,6 +1386,19 @@ export function createCombat() {
         const t = targets[i]
         if ((t.kind === 'alien' || t.kind === 'zombie') && !stepEnemy(t, dt, e)) targets.splice(i, 1)
       }
+      // the undead: fall, lie, get up and wander, fly as birds (and whistle), leave once the music ends
+      targets.push(...pendingUndead.splice(0))
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i]
+        if (t.kind !== 'undead') continue
+        const u = t.data as UndeadState
+        t.animT += dt
+        if (!stepUndead(t, u, dt, { boxes, groundY, viewL: view.l, viewR: view.r, playing, rand: Math.random })) { targets.splice(i, 1); continue }
+        if (u.bird && u.phase === 'bird' && t.deadT <= 0) {
+          u.whistleIn -= dt
+          if (u.whistleIn <= 0) { const type = BIRDS[u.bird]; u.whistleIn = whistleTime(type); whistle(t.x, t.y - t.h / 2, type, u.params.mode) }
+        }
+      }
       targets.forEach(t => {
         if (t.kind !== 'dummy' && t.kind !== 'button') return
         t.flash = Math.max(0, t.flash - dt)
@@ -1316,10 +1421,27 @@ export function createCombat() {
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]
         c.t += dt
-        if (c.kind === 'bird') { c.vy = Math.max(-260, c.vy - 40 * dt); c.x += c.vx * dt + Math.sin(c.t * 9) * 0.6; c.y += c.vy * dt + Math.sin(c.t * 14) * 1.2 }
+        const type = c.kind === 'bird' && c.bird ? BIRDS[c.bird] : null
+        // circling or perched for a while, then away
+        const staying = !!type && type.flight !== 'leave' && c.t < type.stay
+        if (staying && type) {
+          const hx = c.homeX ?? c.x, hy = type.flight === 'perch' ? (c.groundY || (c.groundY = floorUnder({ boxes, groundY }, hx, c.y))) - type.pixel * 4 : (c.homeY ?? c.y)
+          const a = c.t * 1.6
+          const nx = type.flight === 'circle' ? hx + Math.cos(a) * 80 : hx, ny = type.flight === 'circle' ? hy + Math.sin(a) * 30 : hy
+          c.face = nx >= c.x ? 1 : -1
+          c.x += (nx - c.x) * Math.min(1, dt * 2.5); c.y += (ny - c.y) * Math.min(1, dt * 2.5)
+        } else if (c.kind === 'bird') {
+          if (type && type.flight !== 'leave' && c.t - type.stay < dt * 1.5) { c.vx = c.face * rand(110, 160); c.vy = -rand(140, 200) }
+          c.vy = Math.max(-260, c.vy - 40 * dt); c.x += c.vx * dt + Math.sin(c.t * 9) * 0.6; c.y += c.vy * dt + Math.sin(c.t * 14) * 1.2
+        }
+        if (type && c.whistleIn !== undefined) {
+          c.whistleIn -= dt
+          if (c.whistleIn <= 0) { c.whistleIn = whistleTime(type); whistle(c.x, c.y, type, null) }
+        }
         else { c.x += c.vx * dt; c.vy += 1600 * dt; c.y += c.vy * dt; if (c.y >= c.groundY) { c.y = c.groundY; c.vy = Math.random() < 0.02 ? -380 : 0 } }
         if (c.t > 1.2 && c.kind === 'person' && Math.random() < dt * 1.5) texts.push({ x: c.x, y: c.y - 190, text: Math.random() < 0.5 ? '♥' : '♪', life: 0.9, color: '#ff6b9a', size: 18 })
-        if (c.y < -120 || c.t > 9 || c.x < view.l - 500 || c.x > view.r + 500) critters.splice(i, 1)
+        const stay = c.bird ? BIRDS[c.bird].stay : 0
+        if (c.t > stay && (c.y < -120 || c.t > 9 + stay || c.x < view.l - 500 || c.x > view.r + 500)) critters.splice(i, 1)
       }
       for (let i = puffs.length - 1; i >= 0; i--) { puffs[i].t += dt; if (puffs[i].t >= puffs[i].life) puffs.splice(i, 1) }
       for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.life <= 0) sparks.splice(i, 1) }
