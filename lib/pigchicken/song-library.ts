@@ -239,6 +239,10 @@ const OPEN = 'pigchicken-jukebox', PLAY = 'pigchicken-song-play'
 export const openJukebox = () => window.dispatchEvent(new CustomEvent(OPEN))
 export const onOpenJukebox = (fn: () => void) => { window.addEventListener(OPEN, fn); return () => window.removeEventListener(OPEN, fn) }
 export const playSongNow = (id: string) => window.dispatchEvent(new CustomEvent(PLAY, { detail: id }))
+// "Gerar de MIDI": the generator's panel
+const MIDI = 'pigchicken-song-midi'
+export const openMidiGenerator = () => window.dispatchEvent(new CustomEvent(MIDI))
+export const onOpenMidiGenerator = (fn: () => void) => { window.addEventListener(MIDI, fn); return () => window.removeEventListener(MIDI, fn) }
 // the editor: open it on a song; play its draft from a beat; stop
 const EDIT = 'pigchicken-song-edit', DRAFT = 'pigchicken-song-draft'
 export const openSongEditor = (id: string) => window.dispatchEvent(new CustomEvent(EDIT, { detail: id }))

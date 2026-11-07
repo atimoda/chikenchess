@@ -3,17 +3,17 @@
 // The jukebox's panel (it opens when she strikes the jukebox in the temple): a grid of covers, the old campaign's
 // disc first, then the songs; the one picked is the one the gong starts. Under the grid, the picked one's numbers
 // (bpm, key, length, record) and its buttons: Tocar (now), Editar (the timeline), Salvar como, Nova música, and for
-// the ones made here their cover's style and Excluir. Gerar de MIDI comes next. A line says where the songs are kept
+// the ones made here their cover's style and Excluir; Gerar de MIDI opens the generator. A line says where the songs are kept
 // (this browser, or the account), and the admin can list everyone's songs, hear one or copy it.
 import { useEffect, useRef, useState } from "react"
-import { Cloud, CloudOff, Copy, Disc3, Pencil, Play, Plus, Save, Trash2, Users, X } from "lucide-react"
+import { Cloud, CloudOff, Copy, Disc3, FileMusic, Pencil, Play, Plus, Save, Trash2, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import { listAllSongs, songApi, songErrorMessage, subscribeSyncState, syncState, type SongInfo } from "@/lib/pigchicken/song-online"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
 import {
-  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, openSongEditor, pickSong, playDraft, playSongNow, saveSongAs,
+  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, openMidiGenerator, openSongEditor, pickSong, playDraft, playSongNow, saveSongAs,
   songSeconds, subscribeLibrary, updateSong, type Library, type LibrarySong,
 } from "@/lib/pigchicken/song-library"
 import { loadCatalog } from "@/lib/pigchicken/alien-catalog"
@@ -136,7 +136,7 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
           {!isCampaign && <button type="button" onClick={() => setNaming(n => (n === null ? `${picked?.name ?? "Música"} 2` : null))} aria-expanded={naming !== null} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Save className="h-4 w-4" />Salvar como</button>}
           {picked && <button type="button" onClick={() => openSongEditor(picked.id)} title={picked.builtin ? "Esta é do jogo: salve as mudanças com outro nome" : undefined} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Pencil className="h-4 w-4" />Editar</button>}
           <button type="button" onClick={() => openSongEditor(newSong(lib).id)} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Plus className="h-4 w-4" />Nova música</button>
-          <button type="button" disabled title="Em breve" className="h-9 rounded-md border border-white/10 px-3 opacity-40">Gerar de MIDI</button>
+          <button type="button" onClick={() => openMidiGenerator()} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><FileMusic className="h-4 w-4" />Gerar de MIDI</button>
           {picked && !picked.builtin && <button type="button" onClick={() => deleteSong(lib, picked.id)} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-[#ff6b5b]"><Trash2 className="h-4 w-4" />Excluir</button>}
         </div>
         {naming !== null && (
