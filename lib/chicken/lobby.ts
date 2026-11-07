@@ -7,7 +7,9 @@
 import type { ChickenLook } from './look-art'
 import { sortDevices, isPadDevice, type InputDeviceId } from './input-devices'
 
+// an online lobby holds 13 browsers; each computer has at most 4 local players (in Local mode too)
 export const LOBBY_MAX = 13
+export const LOCAL_MAX = 4
 export type LobbyMode = 'local' | 'online'
 export type LobbyPlayerKind = 'local' | 'online' | 'bot'
 
@@ -130,7 +132,7 @@ export function spareDevice(s: LobbyState): InputDeviceId | null {
 export type LobbyResult = { ok: true; state: LobbyState; player?: LobbyPlayer } | { ok: false; state: LobbyState; reason: string }
 
 export function addLocalPlayer(s: LobbyState, now = Date.now(), look?: ChickenLook): LobbyResult {
-  if (s.players.length >= LOBBY_MAX) return { ok: false, state: s, reason: `O lobby já tem ${LOBBY_MAX} players.` }
+  if (localPlayers(s).length >= LOCAL_MAX) return { ok: false, state: s, reason: `Até ${LOCAL_MAX} players locais neste computador.` }
   const n = localPlayers(s).length + 1
   const used = new Set(s.players.map(p => p.name))
   let k = n
@@ -261,20 +263,11 @@ export function saveEntryMode(mode: LobbyMode) {
   try { window.localStorage.setItem(MODE_STORE, mode) } catch { /* storage unavailable */ }
 }
 
-// ---------- online (stub until Supabase is back) ----------
+// ---------- online (the game server: lib/chicken/online-room.ts) ----------
 export type PublicLobby = { id: string; createdAt: number; players: number; name?: string; visibility?: LobbyVisibility; status?: LobbyStatus }
 // the lobby switcher only goes through public lobbies that are online with someone playing
 export const switchableLobby = (l: PublicLobby) => (l.visibility ?? 'public') === 'public' && (l.status ?? 'online') === 'online' && l.players > 0
-export const ONLINE_UNAVAILABLE = 'Online volta quando o servidor (Supabase) voltar. Por enquanto, só players locais.'
 
-// Public lobbies in the order they were opened. Online: fills the last one with room, else opens a new one.
-// Stub: no server yet, so the list is empty and joining fails with ONLINE_UNAVAILABLE.
-export async function listPublicLobbies(): Promise<PublicLobby[]> {
-  return []
-}
-export async function joinOpenLobby(): Promise<{ ok: false; reason: string }> {
-  return { ok: false, reason: ONLINE_UNAVAILABLE }
-}
 // the lobby before / after `currentId` in the chronological list (wraps around); null when there is no other
 export function neighbourLobby(list: PublicLobby[], currentId: string | null, dir: -1 | 1): PublicLobby | null {
   const open = list.filter(l => switchableLobby(l) || l.id === currentId)

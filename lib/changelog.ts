@@ -5,9 +5,13 @@ export const CHANGELOG = [
   {
     version: '2.2.0',
     date: '07/11/2026',
-    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta, o gerador MIDI, seis viagens Classical e pulsos simultâneos',
+    title: 'Pátio online, morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta, o gerador MIDI, seis viagens Classical e pulsos simultâneos',
     groups: [
       { title: 'Pátio', items: [
+        'Pátio online: ligar Online no painel Players (ou no portal do globo) leva você ao lobby público aberto mais antigo do Pátio, com até 13 navegadores. Você vê as galinhas dos outros com o visual, o nome em cima e o item na mão; cada navegador tem uma cor, e quem joga com mais de uma galinha aparece numerada.',
+        'No lobby online, o dono é quem criou o Pátio ou, sem ele, quem chegou primeiro. Só o dono remove players, abre ou fecha o lobby (Público) e marca quem edita. O passador de lobby do cabeçalho anda pelos lobbies públicos abertos. Visitantes jogam só com um nome.',
+        'Até 4 players locais por computador, também no modo Local.',
+        'Novo histórico do chat: uma telinha semitransparente no canto lista as mensagens com o nick de quem enviou e pode ser rolada. Escrever continua igual (Enter), com o balão em cima da galinha.',
         'Cada alien tem duas mortes, as duas no tempo da música: derrubado por golpe, tiro ou arremesso, toca um tambor que depende da espécie (bloco de madeira na água-viva, taiko na concha, palmas na lanterna); convertido por notas, toca um acorde ou arpejo.',
         'Um alien derrubado deixa um morto-vivo: cinza, de olhos vermelhos, ele cai duro girando, quica cada vez menos e fica deitado onde caiu. Depois de um tempo levanta e anda pelo chão como um robô aspirador, virando nas bordas das plataformas e nas paredes. É inofensivo, e a galinha pode subir nele.',
         'Notas enchem a barra do morto-vivo de novo e o trazem de volta como pássaro morto-vivo, com os olhos na cor da nota e o canto em menor. Armas destroem o morto-vivo de vez. Quando a música acaba, cada um vai embora depois do seu próprio tempo; no máximo 40 ficam ao mesmo tempo.',

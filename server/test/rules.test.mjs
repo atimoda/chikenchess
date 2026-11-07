@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { canKick, cleanChat, cleanLooks, freeColor, freePid, ownerOf } from '../src/rules.mjs'
+import { canKick, cleanChat, cleanLooks, freeColor, freePid, ownerOf, uniqueName } from '../src/rules.mjs'
 import { decodeSnapshot, decodeState, encodeSnapshot, encodeState } from '../src/protocol.mjs'
 
 const P = (pid, joinedAt, extra = {}) => ({ pid, joinedAt, userId: null, guest: true, color: pid - 1, ...extra })
@@ -50,4 +50,12 @@ test('protocol: 1 to 4 chickens up, every chicken down', () => {
   const snap = decodeSnapshot(encodeSnapshot([{ pid: 4, ...chickens[0] }], 3))
   assert.equal(snap.tick, 3)
   assert.deepEqual(snap.entries[0], { pid: 4, ...chickens[0] })
+})
+
+test('the same name twice gets a number', () => {
+  const a = { name: 'Player 1' }, b = { name: 'Player 1 2' }
+  assert.equal(uniqueName('Player 1', [a]), 'Player 1 2')
+  assert.equal(uniqueName('Player 1', [a, b]), 'Player 1 3')
+  assert.equal(uniqueName('Player 1', [a], a), 'Player 1')
+  assert.equal(uniqueName('Ana', [a]), 'Ana')
 })
