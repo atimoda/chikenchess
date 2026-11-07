@@ -195,7 +195,7 @@ export type NoteStageIO = {
   sceneL: number; sceneW: number; groundY: number
   inside: boolean // she is in the temple
   center: { x: number; y: number } // her fan's centre (world)
-  discHit: boolean // the disc (jukebox) was struck
+  discHit: boolean // start the song picked (the gong's strikes, or Tocar in the jukebox's panel)
   resetHit: boolean // the reset stone was struck
   busy: boolean // the temple's campaign is on
   events: NoteShotEvent[] // what the note shots did this frame
@@ -213,7 +213,11 @@ let nextId = 3_000_000
 export function createNoteStage() {
   const s = newStageState()
   let catalog: Catalog = BUILTIN_VARIANTS
-  const song = () => SONGS[s.song] ?? SONGS[0]
+  // the songs it can play (the jukebox's library) and the one picked (s.song)
+  let songs: Song[] = SONGS
+  // the song playing is a copy: the library can change while it plays
+  let playing: Song | null = null
+  const song = () => (s.phase !== 'idle' && playing) || songs[s.song] || songs[0] || SONGS[0]
   const order = () => song().aliens.map((a, i) => i).sort((a, b) => spawnBeat(song().aliens[a]) - spawnBeat(song().aliens[b]))
   const banner = (title: string, sub: string, color: string, life = 4) => { s.banner = { title, sub, color, t: 0, life } }
   const active = () => s.phase === 'playing'
@@ -232,6 +236,7 @@ export function createNoteStage() {
     removeAliens(io, false)
     io.clearShots(SOURCE)
     const keep = { discRing: 0, anchor: { ...io.center }, center: { ...io.center } }
+    playing = songs[i] ?? songs[0] ?? SONGS[0]
     Object.assign(s, newStageState(), keep, { phase: 'playing', song: i })
     banner(song().name, song().intro, song().music.zone.color, 5)
     io.sound({ kind: 'start', root: song().music.zone.root })
@@ -280,7 +285,7 @@ export function createNoteStage() {
     const music = io.music, spb = music.secondsPerBeat(), now = music.time
     const sg = song()
 
-    // the disc starts the song (not while the campaign is on, nor twice)
+    // the gong (or the jukebox's Tocar) starts the song (not while the campaign is on, nor twice)
     if (io.discHit) {
       s.discRing = 0
       if (active() || io.busy) io.sound({ kind: 'dull' })
@@ -291,7 +296,7 @@ export function createNoteStage() {
     if (io.resetHit && active()) {
       s.resetRing = 0; s.resetHits++
       io.sound({ kind: 'reset', hit: s.resetHits, need: RESET_NEED })
-      if (s.resetHits >= RESET_NEED) { stop(io, 'idle'); banner('Música parada', 'Bata no disco para tocar de novo.', '#7bdff2', 3); return }
+      if (s.resetHits >= RESET_NEED) { stop(io, 'idle'); banner('Música parada', 'Bata no gongo para tocar de novo.', '#7bdff2', 3); return }
     }
     if (!active()) { if (s.phase !== 'idle' && s.t > 6) s.phase = 'idle'; return }
     // leaving the temple in the middle of the song loses it
@@ -393,7 +398,7 @@ export function createNoteStage() {
 
   function fail(io: NoteStageIO, why: string) {
     stop(io, 'failed')
-    banner('Música perdida', `${why} Bata no disco para tentar de novo.`, '#ff6b5b', 5)
+    banner('Música perdida', `${why} Bata no gongo para tentar de novo.`, '#ff6b5b', 5)
     io.sound({ kind: 'fail' })
   }
 
@@ -401,7 +406,7 @@ export function createNoteStage() {
     stop(io, 'done')
     const acc = Math.round(accuracy(s.counts, s.fired) * 100)
     const c = s.counts
-    banner(`${song().name}: ${acc}%`, `${s.score.toLocaleString('pt-BR')} pontos · ${c.perfect} perfeitas, ${c.good} boas, ${c.fora} fora, ${c.miss} perdidas · combo máximo ${s.bestCombo} · ${c.birds} passarinhos. Bata no disco para tocar de novo.`, '#ffd166', 8)
+    banner(`${song().name}: ${acc}%`, `${s.score.toLocaleString('pt-BR')} pontos · ${c.perfect} perfeitas, ${c.good} boas, ${c.fora} fora, ${c.miss} perdidas · combo máximo ${s.bestCombo} · ${c.birds} passarinhos. Bata no gongo para tocar de novo.`, '#ffd166', 8)
     io.sound({ kind: 'done', root: song().music.zone.root, chord: io.music.chord() })
   }
 
@@ -428,6 +433,15 @@ export function createNoteStage() {
     },
     // the catalogue the song's aliens come from (each one takes its variation when it appears)
     setCatalog(c: Catalog) { catalog = c },
+    // the jukebox's library and the song picked in it (by id; false: not one of the list)
+    setSongs(list: Song[]) { songs = list.length ? list : SONGS; if (s.song >= songs.length) s.song = 0 },
+    select(id: string) {
+      const i = songs.findIndex(x => x.id === id)
+      if (i < 0) return false
+      s.song = i
+      if (!active()) { playing = null; if (s.phase !== 'idle') s.phase = 'idle' }
+      return true
+    },
     reset(io: Pick<NoteStageIO, 'targets' | 'fx' | 'clearShots'>) { removeAliens(io, false); io.clearShots(SOURCE); Object.assign(s, newStageState()) },
   }
 }

@@ -97,38 +97,81 @@ export function drawNoteShots(ctx: Ctx, shots: readonly NoteShot[], camX: number
   ctx.restore()
 }
 
-// the disc: a record on a little stand by the reset stone; strike it to play the test song (it spins while it plays)
-export function drawDisc(ctx: Ctx, g: Target, x: number, stage: NoteStage) {
-  const s = stage.state, t = performance.now() / 1000
-  const ground = g.y + 4, cy = ground - 74, R = 36
-  const k = s.discRing, shake = k < 0.25 ? Math.sin(k * 70) * 3 * (1 - k / 0.25) : 0
-  const color = stage.song.music.zone.color
+// the jukebox: an arched cabinet with neon tubes along its edges, a screen on top with the picked song's cover, a
+// row of buttons, a diamond grille and the speakers below. The neon is green at rest and takes the song's colour
+// while it plays, pulsing on the beat; the big speaker shakes with the bass. Strike it to open the songs.
+export const JUKEBOX_W = 112, JUKEBOX_H = 214
+export function drawJukebox(ctx: Ctx, g: Target, x: number, o: { cover: HTMLCanvasElement; playing: boolean; color: string; beatPhase: number; ring: number }) {
+  const W = JUKEBOX_W, H = JUKEBOX_H, ground = g.y + 4, top = ground - H, l = x - W / 2
+  const k = o.ring, shake = k < 0.25 ? Math.sin(k * 70) * 3 * (1 - k / 0.25) : 0
+  const pulse = o.playing ? Math.pow(1 - o.beatPhase, 3) : 0.35 + 0.15 * Math.sin(performance.now() / 600)
+  const neon = o.playing ? o.color : "#39ff88"
+  const arch = (inset: number) => {
+    const r = W / 2 - inset
+    ctx.beginPath()
+    ctx.moveTo(l + inset, ground - 6)
+    ctx.lineTo(l + inset, top + W / 2)
+    ctx.arc(x, top + W / 2, r, Math.PI, 0)
+    ctx.lineTo(l + W - inset, ground - 6)
+  }
   ctx.save()
   ctx.translate(shake, 0)
-  // the stand
-  ctx.fillStyle = "#3b2f2a"; ctx.fillRect(x - 6, cy + 20, 12, ground - cy - 26)
-  ctx.fillStyle = "#5a4a40"; ctx.fillRect(x - 30, ground - 10, 60, 10)
-  // the record
-  if (!stage.active) { ctx.shadowColor = color; ctx.shadowBlur = 12 + 6 * Math.sin(t * 3) }
-  ctx.fillStyle = g.flash > 0 ? "#3a3a46" : "#16161c"
-  ctx.beginPath(); ctx.arc(x, cy, R, 0, Math.PI * 2); ctx.fill()
-  ctx.shadowBlur = 0
+  // the cabinet
+  ctx.fillStyle = g.flash > 0 ? "#24503a" : "#0f2a1e"
+  arch(0); ctx.closePath(); ctx.fill()
+  ctx.fillStyle = "#08160f"; ctx.fillRect(l + 6, ground - 8, W - 12, 8)
+  // the neon tubes
+  ctx.lineCap = "round"
+  ctx.shadowColor = neon; ctx.shadowBlur = 10 + 14 * pulse
+  ctx.strokeStyle = neon; ctx.globalAlpha = 0.55 + 0.45 * pulse; ctx.lineWidth = 6
+  arch(5); ctx.stroke()
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0
+  ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = 1.5
+  arch(5); ctx.stroke()
+  // the chrome frame inside
+  ctx.strokeStyle = "#8a8f98"; ctx.lineWidth = 3
+  arch(13); ctx.stroke()
+  // the screen: the cover of the song picked
+  const sw = W - 40, sx = x - sw / 2, sy = top + 26, sh = sw * 0.78
+  ctx.fillStyle = "#050507"; ctx.fillRect(sx - 3, sy - 3, sw + 6, sh + 6)
+  const cs = Math.min(sw, sh)
+  ctx.drawImage(o.cover, x - cs / 2, sy + (sh - cs) / 2, cs, cs)
+  ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fillRect(sx, sy, sw, sh * 0.35)
+  // the row of buttons
+  const by = sy + sh + 10
+  for (let i = 0; i < 6; i++) {
+    const bx = sx + 2 + i * ((sw - 4) / 6)
+    ctx.fillStyle = i === 2 ? neon : "#e9e4d0"; ctx.globalAlpha = i === 2 ? 0.6 + 0.4 * pulse : 0.9
+    ctx.fillRect(bx, by, (sw - 4) / 6 - 3, 6)
+  }
+  ctx.globalAlpha = 1
+  // the diamond grille, with its rainbow behind
+  const gy = by + 14, gh = 40, gw = sw - 18
+  const rb = ctx.createLinearGradient(x - gw / 2, 0, x + gw / 2, 0)
+  ;["#ff6b5b", "#ffd166", "#7bd88f", "#4cc9f0", "#c77dff"].forEach((c, i) => rb.addColorStop(i / 4, c))
+  ctx.fillStyle = rb; ctx.globalAlpha = 0.35 + 0.3 * pulse; ctx.fillRect(x - gw / 2, gy, gw, gh); ctx.globalAlpha = 1
+  ctx.save(); ctx.beginPath(); ctx.rect(x - gw / 2, gy, gw, gh); ctx.clip()
+  ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 2
+  for (let d = -gh; d < gw + gh; d += 9) {
+    ctx.beginPath(); ctx.moveTo(x - gw / 2 + d, gy); ctx.lineTo(x - gw / 2 + d + gh, gy + gh); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(x - gw / 2 + d, gy + gh); ctx.lineTo(x - gw / 2 + d + gh, gy); ctx.stroke()
+  }
+  ctx.restore()
+  // two little speakers, then the big one that shakes with the bass
+  const sy2 = gy + gh + 12
+  for (const dx of [-24, 24]) { ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(x + dx, sy2, 8, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#3a3a3a"; ctx.beginPath(); ctx.arc(x + dx, sy2, 3, 0, Math.PI * 2); ctx.fill() }
+  const R = 26, cy = ground - 14 - R, bump = o.playing ? 1 + 0.06 * Math.pow(1 - o.beatPhase, 4) : 1
+  ctx.fillStyle = "#0a0a0a"; ctx.beginPath(); ctx.arc(x, cy, R * bump, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = neon; ctx.shadowColor = neon; ctx.shadowBlur = 6 + 8 * pulse; ctx.lineWidth = 2.5
+  ctx.beginPath(); ctx.arc(x, cy, R * bump - 2, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0
   ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1
-  for (let r = 14; r < R - 2; r += 4) { ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2); ctx.stroke() }
-  // the label turns while the song plays
-  const spin = stage.active ? t * 3.5 : 0
-  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, cy, 11, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(x, cy, 11, spin, spin + Math.PI / 2); ctx.lineTo(x, cy); ctx.fill()
-  ctx.fillStyle = "#f4f1e8"; ctx.beginPath(); ctx.arc(x, cy, 2, 0, Math.PI * 2); ctx.fill()
-  // the sheen
-  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 3
-  ctx.beginPath(); ctx.arc(x, cy, R - 8, spin - 2.4, spin - 1.6); ctx.stroke()
+  for (let r = 6; r < R - 4; r += 4) { ctx.beginPath(); ctx.arc(x, cy, r * bump, 0, Math.PI * 2); ctx.stroke() }
   ctx.restore()
   // its label
   ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
-  const label = stage.active ? "TOCANDO" : "MÚSICA TESTE", w = ctx.measureText(label).width + 12
-  ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, cy - R - 30, w, 16)
-  ctx.fillStyle = color; ctx.fillText(label, x, cy - R - 18)
+  const label = o.playing ? "TOCANDO" : "JUKEBOX", w = ctx.measureText(label).width + 12
+  ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, top - 22, w, 16)
+  ctx.fillStyle = neon; ctx.fillText(label, x, top - 10)
 }
 
 const JUDGE = {

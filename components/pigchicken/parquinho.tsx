@@ -18,7 +18,7 @@ import { createCombat, TIP_TIME, type Box, type Combat, type Effect, type Pickup
 import { ellipsePoint, swingPose, trailSpan } from "@/lib/pigchicken/swing"
 import { quickSwitchStep, itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
-import { loadCatalog, subscribeCatalog } from "@/lib/pigchicken/alien-catalog"
+import { loadCatalog, subscribeCatalog, type Catalog } from "@/lib/pigchicken/alien-catalog"
 import { itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
@@ -41,8 +41,10 @@ import { moveLiveCamera } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
 import { DISC_X, GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
-import { createNoteStage, type NoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
-import { drawDisc, drawNoteShots, drawNoteStageHud, drawStageFan } from "@/components/pigchicken/note-stage-draw"
+import { accuracy, createNoteStage, type NoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
+import { JUKEBOX_H, JUKEBOX_W, drawJukebox, drawNoteShots, drawNoteStageHud, drawStageFan } from "@/components/pigchicken/note-stage-draw"
+import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
+import { CAMPAIGN, CAMPAIGN_ID, loadLibrary, onPlaySong, openJukebox, recordScore, subscribeLibrary, type Library } from "@/lib/pigchicken/song-library"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { BIRDS, UNDEAD_EYE, birdColors, type BirdType } from "@/lib/pigchicken/birds"
 import { undeadSize, type UndeadState } from "@/lib/pigchicken/undead"
@@ -279,11 +281,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the temple's mini-game (its state is plain data, stepped with the beats: ready to be shared in multiplayer)
     const temple = createTemple(Math.floor(Math.random() * 2 ** 31))
     templeDraw.temple = temple
-    // the note stage (the guitar hero mode): the disc by the reset stone plays its song
+    // the note stage (the guitar hero mode): the jukebox by the reset stone picks the song, the gong plays it
     const stage = createNoteStage()
     // the aliens' catalogue (saved in this browser): the song's aliens take their variations from it
-    stage.setCatalog(loadCatalog())
-    const unsubCatalog = subscribeCatalog(c => stage.setCatalog(c))
+    let catalog = loadCatalog()
+    stage.setCatalog(catalog)
+    templeDraw.catalog = catalog
+    const unsubCatalog = subscribeCatalog(c => { catalog = c; templeDraw.catalog = c; stage.setCatalog(c) })
+    // the jukebox's library: the songs and the one picked (the campaign's disc, or a song the gong starts)
+    let library = loadLibrary()
+    const useLibrary = (l: typeof library) => { library = l; templeDraw.library = l; stage.setSongs(l.songs); if (l.picked !== CAMPAIGN_ID) stage.select(l.picked) }
+    useLibrary(library)
+    const unsubLibrary = subscribeLibrary(useLibrary)
+    // "Tocar" in the jukebox's panel: the song starts now
+    let playRequest: string | null = null, jukeRing = 9
+    const unsubPlay = onPlaySong(id => { playRequest = id })
     templeDraw.stage = stage
     combat.setNoteEnv(shot => stage.noteEnv(shot))
     const templeSounds: TempleSound[] = []
@@ -297,7 +309,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
     let placed = false, offerShown = "", templeFor = -1, wasPortalArrival = false
     // the temple's things move with the world's width: the gong and its racks
-    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null, disc: Combat["targets"][number] | null = null
+    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null, jukebox: Combat["targets"][number] | null = null
     const templeRacks: Combat["racks"] = []
     const G = WORLD_GROUND_Y
     // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
@@ -310,9 +322,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // and the reset stone (Recomeçar): strike it to end the game and clear the panels
       combat.addButton(0, G - 4, "reset", 80, 110)
       resetStone = combat.targets[combat.targets.length - 1]
-      // and the disc: strike it to play the note stage's song
-      combat.addButton(0, G - 4, "disc", 84, 130)
-      disc = combat.targets[combat.targets.length - 1]
+      // and the jukebox: strike it to pick a song
+      combat.addButton(0, G - 4, "jukebox", JUKEBOX_W, JUKEBOX_H)
+      jukebox = combat.targets[combat.targets.length - 1]
       ;(["bat", "pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
@@ -320,7 +332,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const L = templeScene(screens) * SCENE_W
       if (gong) { gong.x = gong.home = L + GONG_X }
       if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
-      if (disc) { disc.x = disc.home = L + DISC_X }
+      if (jukebox) { jukebox.x = jukebox.home = L + DISC_X }
       templeRacks.forEach((r, i) => { r.x = L + 60 + i * 90 })
       templeFor = screens
     }
@@ -557,7 +569,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.pressed.splice(0).forEach(id => {
         if (id === "gong") gongHit = true
         else if (id === "reset") resetHit = true
-        else if (id === "disc") discHit = true
+        else if (id === "jukebox") { jukeRing = 0; openJukebox() }
         else if (id === "aliens") combat.spawnAliens(G, body.x)
         else if (id === "zombies") combat.spawnZombies(G, body.x, horde.zombies)
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
@@ -617,6 +629,16 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const events = combat.music.events.splice(0)
       // the note stage first: while its song plays, the gong is dull and the reset stone stops the song
       const stageOn = stage.active
+      jukeRing += dt; templeDraw.jukeRing = jukeRing
+      // what the gong (or Tocar) starts: the song picked, or the campaign
+      const songPicked = library.picked !== CAMPAIGN_ID && stage.select(library.picked)
+      let startCampaign = false
+      if (playRequest !== null) {
+        const id = playRequest
+        playRequest = null
+        if (id === CAMPAIGN_ID) startCampaign = !stageOn
+        else if (stage.select(id) && !stageOn) discHit = true
+      }
       stage.step(dt, {
         targets: combat.targets, music: combat.music, sceneL: tL, sceneW: SCENE_W, groundY: G, inside: inTemple,
         center: { x: body.x, y: body.y - stage.song.fan.centerY * body.scale },
@@ -629,10 +651,17 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
       stageSounds.splice(0).forEach(e => playNoteStageSound(e, mixGain("effects")))
       if (stageOn && gongHit) { gongHit = false; playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
+      // a new record: the song's best score is kept (and the banner says so)
+      if (stage.state.phase === "done" && stage.state.t === 0) {
+        const s = stage.state
+        if (recordScore(stage.song.id, s.score, accuracy(s.counts, s.fired)) && s.banner) s.banner.title += " · novo recorde!"
+      }
       if (stageOn) resetHit = false
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
-        gongHit, resetHit, firePressed: input.firePressed, beats: events.filter(e => e.kind === "beat").map(e => e.n),
+        gongHit, resetHit, firePressed: input.firePressed,
+        // a song picked: the gong's strikes start it (on the next frame, through the stage)
+        song: songPicked ? () => { playRequest = library.picked } : undefined, start: startCampaign, beats: events.filter(e => e.kind === "beat").map(e => e.n),
         fx: { burst: combat.burst, text: combat.addText },
         hurt: dir => engine.impulse(dir * 420, -380),
         sound: e => templeSounds.push(e),
@@ -826,6 +855,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       unsub()
       unsubItems()
       unsubCatalog()
+      unsubLibrary()
+      unsubPlay()
       window.removeEventListener("blur", cancelPeckInput)
       window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)
@@ -1344,7 +1375,7 @@ function drawPuff(ctx: Ctx, x: number, y: number, p: Combat["puffs"][number]) {
 const lookTargets: { x: number; y: number }[] = []
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
-const templeDraw: { temple: Temple | null; stage: NoteStage | null; charges: Map<number, number> } = { temple: null, stage: null, charges: new Map() }
+const templeDraw: { temple: Temple | null; stage: NoteStage | null; charges: Map<number, number>; library: Library | null; catalog: Catalog | null; jukeRing: number } = { temple: null, stage: null, charges: new Map(), library: null, catalog: null, jukeRing: 9 }
 
 // the hint over the items the local players can grab (set every frame): the first player to stand on one shows theirs
 const pickupMarks = new Map<Pickup, { c: string; t: string }>()
@@ -1466,7 +1497,12 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }
-    if (g.kind === "button" && g.label === "disc") { if (templeDraw.stage) drawDisc(ctx, g, x, templeDraw.stage); return }
+    if (g.kind === "button" && g.label === "jukebox") {
+      const st = templeDraw.stage, lib = templeDraw.library
+      const picked = lib?.songs.find(x => x.id === (st?.active ? st.song.id : lib.picked)) ?? null
+      drawJukebox(ctx, g, x, { cover: coverCanvas(picked, 96, templeDraw.catalog ?? undefined), playing: !!st?.active, color: picked?.music.zone.color ?? CAMPAIGN.color, beatPhase: combat.music.beatPhase, ring: templeDraw.jukeRing })
+      return
+    }
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }
     if (g.kind === "button") { drawButton(ctx, g, x); return }
     drawDummy(ctx, g, x, t)
