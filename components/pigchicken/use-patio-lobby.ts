@@ -28,6 +28,9 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
   const [remote, setRemote] = useState<PatioLobby | null>(null)
   const [save, setSave] = useState<PatioSaveState>({ kind: "idle", text: "" })
   const cur = useRef<PatioRecord | null>(null)
+  // the layout as the database last had it (JSON), so a change undone by hand is not saved again
+  const savedJson = useRef<string | null>(null)
+  const markSaved = (layout: PatioLayout | null | undefined) => { savedJson.current = layout ? JSON.stringify(layout) : null }
   const put = (next: PatioRecord) => { cur.current = next; setPatio(next) }
   const ctx = useRef({ userId, isAccount, isAdmin, canEdit, saver, onSaved })
   ctx.current = { userId, isAccount, isAdmin, canEdit, saver, onSaved }
@@ -66,6 +69,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     const p = cur.current
     if (!p || revision <= p.revision) return
     put(keepPatio({ ...p, revision, dirty: false }))
+    markSaved(p.layout)
   }, [])
   useEffect(() => {
     window.addEventListener("pagehide", flushKeep)
@@ -79,6 +83,8 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     const seq = ++loadSeq.current
     const local = loadPatio(id)
     put(local)
+    savedJson.current = null
+    if (!local.dirty && local.revision > 0) markSaved(local.layout)
     setRemote(null)
     setSave({ kind: "idle", text: "" })
     if (!patioOnlineAvailable()) return
@@ -108,6 +114,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
         revision: stale ? base.revision : row.revision, dirty: mine,
       }
       put(keepPatio(next))
+      if (!mine) markSaved(next.layout)
       setRemote(row)
       if (stale) setSave({ kind: "conflict", text: "Este Pátio foi salvo em outro lugar depois das suas mudanças neste navegador.", remote: row })
       if (ctx.current.isAccount && !played.current.has(row.id)) { played.current.add(row.id); playedPatioLobby(row.id).then(() => fetchPatioLobby(row.id, row.revision)).then(r => { if (r && cur.current?.dbId === r.id) setRemote(r) }).catch(() => {}) }
@@ -130,6 +137,12 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     const p = cur.current
     if (!p || saving.current) return false
     if (!p.dirty && !(force && p.revision === 0)) { if (!silent) setSave({ kind: "saved", text: "Tudo salvo." }); return true }
+    // changed and changed back: the database already has exactly this
+    if (p.dirty && p.revision > 0 && !force && revision === undefined && savedJson.current === JSON.stringify(p.layout)) {
+      put(keepPatio({ ...p, dirty: false }))
+      if (!silent) setSave({ kind: "saved", text: "Tudo salvo." })
+      return true
+    }
     if (!ctx.current.canEdit || !ctx.current.saver) return false
     if (!patioOnlineAvailable() || !ctx.current.userId) {
       setSave({ kind: "local", text: patioOnlineAvailable() ? "Entre para salvar no servidor. Ficou salvo neste navegador." : "Sem servidor: ficou salvo neste navegador." })
@@ -150,9 +163,11 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
         creatorId: p.revision === 0 && p.id ? ctx.current.userId : latest.creatorId,
       })
       put(next)
+      markSaved(p.layout)
       setSave({ kind: "saved", text: `Salvo às ${time(res.updatedAt)}.` })
       ctx.current.onSaved?.(res.revision)
-      void refreshRemote()
+      // the panels' data (who edited) is read again after a save by hand; the minute's autosave skips that read
+      if (!silent) void refreshRemote()
       return true
     } catch (e) {
       if (isPatioConflict(e)) {
@@ -183,7 +198,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     if (!p) return
     const row = save.remote ?? (p.dbId ? await fetchPatioLobby(p.dbId).catch(() => null) : null)
     if (choice === "saved") {
-      if (row?.layout) put(keepPatio({ ...p, layout: row.layout, revision: row.revision, dirty: false, name: row.name, godparentId: row.godparentId }))
+      if (row?.layout) { put(keepPatio({ ...p, layout: row.layout, revision: row.revision, dirty: false, name: row.name, godparentId: row.godparentId })); markSaved(row.layout) }
       if (row) setRemote(row)
       setSave({ kind: "saved", text: "Abri a versão salva." })
       return

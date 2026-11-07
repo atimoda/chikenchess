@@ -297,11 +297,19 @@ export function ChickenPatio() {
   // Edit mode live: whoever may edit sends the layout to the lobby a moment after each change; the others' edits
   // arrive here (and the owner's saves move everyone's revision along)
   const sendTimer = useRef<number | null>(null)
+  const lastSent = useRef("")
   const changeLayout = (layout: PatioLayout) => {
     pl.changeLayout(layout)
     if (!netLive || !access.canEdit) return
     if (sendTimer.current) window.clearTimeout(sendTimer.current)
-    sendTimer.current = window.setTimeout(() => { sendTimer.current = null; sendNetLayout(layout) }, 300)
+    sendTimer.current = window.setTimeout(() => {
+      sendTimer.current = null
+      // a change undone before it left: nothing new to send
+      const json = JSON.stringify(layout)
+      if (json === lastSent.current) return
+      lastSent.current = json
+      sendNetLayout(layout)
+    }, 300)
   }
   const liveRef = useRef({ apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby })
   liveRef.current = { apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby }

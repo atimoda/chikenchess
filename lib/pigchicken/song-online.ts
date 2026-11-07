@@ -131,6 +131,7 @@ export function songErrorMessage(e: unknown): string {
 
 // keeps the library in step with the account while this player is signed in (null: songs stay in this browser):
 // once now, a moment after each change here, and when the tab comes back (at most every 30 s)
+const BACK_CHECK_MS = 5 * 60_000
 export function startSongSync(user: string | null, api: SongApi = songApi): () => void {
   if (!user) { setSyncState({ status: 'local', message: '' }); return () => {} }
   let running = false, again = false, stopped = false, last = 0
@@ -156,7 +157,8 @@ export function startSongSync(user: string | null, api: SongApi = songApi): () =
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => { timer = null; void run() }, 1500)
   }
-  const back = () => { if (document.visibilityState === 'visible' && Date.now() - last > 30_000) void run() }
+  // back to the tab: check the account again, at most every 5 minutes (each check lists the songs)
+  const back = () => { if (document.visibilityState === 'visible' && Date.now() - last > BACK_CHECK_MS) void run() }
   window.addEventListener(LIBRARY_EVENT, soon)
   document.addEventListener('visibilitychange', back)
   void run()
