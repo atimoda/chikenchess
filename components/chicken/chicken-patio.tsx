@@ -35,7 +35,8 @@ import { BAR_GROUND_H, INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoW
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { AlienCatalogPanel } from "@/components/pigchicken/alien-catalog-panel"
 import { JukeboxPanel } from "@/components/pigchicken/jukebox-panel"
-import { onOpenJukebox } from "@/lib/pigchicken/song-library"
+import { SongEditorPanel } from "@/components/pigchicken/song-editor-panel"
+import { onOpenJukebox, onOpenSongEditor } from "@/lib/pigchicken/song-library"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
@@ -119,7 +120,9 @@ export function ChickenPatio() {
   const [aliensOpen, setAliensOpen] = useState(false)
   // the jukebox in the temple opens the songs' panel when she strikes it
   const [jukeboxOpen, setJukeboxOpen] = useState(false)
+  const [editingSong, setEditingSong] = useState<string | null>(null)
   useEffect(() => onOpenJukebox(() => setJukeboxOpen(true)), [])
+  useEffect(() => onOpenSongEditor(id => { setEditingSong(id); setJukeboxOpen(false) }), [])
   useEffect(() => { setPq(loadParquinho()) }, [])
   const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
@@ -431,6 +434,7 @@ export function ChickenPatio() {
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {aliensOpen && <AlienCatalogPanel onClose={() => setAliensOpen(false)} />}
       {jukeboxOpen && <JukeboxPanel onClose={() => setJukeboxOpen(false)} />}
+      {editingSong && <SongEditorPanel key={editingSong} songId={editingSong} onClose={() => setEditingSong(null)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
