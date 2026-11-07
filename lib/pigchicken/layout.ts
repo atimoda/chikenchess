@@ -15,6 +15,7 @@ import { createCollisionOcclusion, type CollisionMask } from '../chicken/collisi
 import { TREE_SIZE, newTreeSeed, normalizeTree, treePreset, treeSurfaces, type TreeParams, type TreePoint } from './trees'
 import { normalizeTrampoline, type TrampolineParams } from './trampoline'
 import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge, type RidgePoint } from './village'
+import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, and v4 stores shortcut portals.
 export const LAYOUT_VERSION = 4
@@ -40,7 +41,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'house', 'tree', 'trampoline'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'house', 'tree', 'trampoline', 'zone', 'lanes'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -55,6 +56,8 @@ export type ElementParams = {
   tree?: TreeParams
   trampoline?: TrampolineParams
   portalPairId?: string; portalLabel?: string; portalInstruction?: 'always' | 'hover'
+  zone?: SoundZoneParams // Zona sonora
+  lanes?: LanesParams // Faixas fixas
 }
 
 export type LayoutElement = {
@@ -64,6 +67,8 @@ export type LayoutElement = {
   layer: LayoutLayer; locked: boolean
   // she stands on it and bumps its sides · bullets stop at it · the instruments' notes stop at it
   solid: boolean; shots: boolean; notes: boolean
+  // the notes bounce off it (the "Rebate notas" collision) and play through its chain, the taco's or as they are
+  rebate?: SurfaceRebate
   occludesColliders?: boolean
   // only shown in the editor mode (invisible walls and floors)
   hidden: boolean
@@ -97,7 +102,11 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   tree: { label: 'Árvore', group: 'Árvores', ...TREE_SIZE, layer: 'scene', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 100, minH: 100 },
   house: { label: 'Casa', group: 'Casas', ...HOUSE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 100 },
   portal: { label: 'Par de portais', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
+  zone: { label: 'Zona sonora', group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
+  lanes: { label: 'Faixas fixas', group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
 }
+// the music's elements: no collisions of their own (the zone is never drawn in the game)
+export const isMusicElement = (kind: ElementKind) => kind === 'zone' || kind === 'lanes'
 
 const r1 = (v: number) => Math.round(v * 10) / 10
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
@@ -126,6 +135,8 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'button') return { action: 'aliens' }
   if (kind === 'portal') return { portalLabel: 'Entrar no portal?', portalInstruction: 'hover' }
   if (kind === 'pine' || kind === 'blossom') return { seed: Math.floor(Math.random() * 2 ** 31), flip: Math.random() < 0.5 }
+  if (kind === 'zone') return { zone: defaultSoundZone() }
+  if (kind === 'lanes') return { lanes: defaultLanes() }
   return {}
 }
 
@@ -293,7 +304,13 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   } else if (kind === 'pine' || kind === 'blossom') {
     params.seed = Math.floor(clamp(num(p.seed, 1), 0, 2 ** 31))
     params.flip = !!p.flip
+  } else if (kind === 'zone') {
+    params.zone = normalizeSoundZone(p.zone)
+  } else if (kind === 'lanes') {
+    params.lanes = normalizeLanes(p.lanes)
   }
+  const music = isMusicElement(kind)
+  const rebate = d.entity || music ? undefined : normalizeSurfaceRebate(e.rebate)
   const region = e.region === 'temple' || e.region === 'village' ? e.region : undefined
   const x = region
     ? clamp(r1(num(e.x, 0)), -w / 2, SCENE_W - w / 2 - 0.1)
@@ -302,11 +319,12 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     id, kind, ...(region ? { region } : {}),
     x, y: r1(clamp(num(e.y, 0), WORLD_TOP - 1000, WORLD_GROUND_Y + 200)),
     w, h, rot, layer, locked: !!e.locked,
-    solid: kind === 'house' || kind === 'trampoline' ? true : kind === 'tree' || d.entity ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
-    shots: d.entity ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
-    notes: d.entity ? false : !!e.notes,
-    ...(!d.entity && typeof e.occludesColliders === 'boolean' ? { occludesColliders: e.occludesColliders } : {}),
-    hidden: d.entity ? false : !!e.hidden,
+    solid: kind === 'house' || kind === 'trampoline' ? true : kind === 'tree' || d.entity || music ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
+    shots: d.entity || music ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
+    notes: d.entity || music ? false : !!e.notes,
+    ...(rebate ? { rebate } : {}),
+    ...(!d.entity && !music && typeof e.occludesColliders === 'boolean' ? { occludesColliders: e.occludesColliders } : {}),
+    hidden: kind === 'zone' ? true : d.entity ? false : !!e.hidden,
     opacity: r1(clamp(num(e.opacity, 1), 0.1, 1) * 100) / 100,
     ...(e.gravity === true ? { gravity: true } : {}),
     params,
@@ -372,7 +390,7 @@ export const TEMPLE_PLATFORM_DEPTH = LAYOUT_MAX_ELEMENTS + 1
 export const layoutCollisionDepth = (el: LayoutElement, index: number) =>
   1 + LAYERS.indexOf(el.layer) * (LAYOUT_MAX_ELEMENTS + 1) + index
 export const occludesColliders = (el: LayoutElement) =>
-  !ELEMENT_DEFS[el.kind].entity && (el.occludesColliders ?? (el.kind === 'house'))
+  !ELEMENT_DEFS[el.kind].entity && !isMusicElement(el.kind) && (el.occludesColliders ?? (el.kind === 'house'))
 
 export function layoutCollisionMasks(elements: LayoutElement[]): CollisionMask[] {
   const masks: CollisionMask[] = []
@@ -440,14 +458,25 @@ export function layoutBoxes(elements: LayoutElement[]): Box[] {
   const occlusion = createCollisionOcclusion(layoutCollisionMasks(elements))
   elements.forEach((e, index) => {
     const solid = e.solid && e.kind !== 'house' && e.kind !== 'trampoline'
-    if (ELEMENT_DEFS[e.kind].entity || (!solid && !e.shots && !e.notes)) return
+    if (ELEMENT_DEFS[e.kind].entity || (!solid && !e.shots && !e.notes && !e.rebate)) return
     const b = elementBounds(e)
     const box: Box = { l: b.x, t: b.y, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid, shots: e.shots, notes: e.notes }
+    if (e.rebate) box.rebate = e.rebate
     const occludedAt = occlusion?.forBox(layoutCollisionDepth(e, index), box)
     if (occludedAt) box.occludedAt = occludedAt
     out.push(box)
   })
   return out
+}
+
+// the Zonas sonoras and the Faixas fixas in the world (their bounds), for what a point of the map plays
+export function layoutMusic(elements: LayoutElement[]): { zones: ZoneBox[]; lanes: LanesBox[] } {
+  const zones: ZoneBox[] = [], lanes: LanesBox[] = []
+  for (const e of elements) {
+    if (e.kind === 'zone' && e.params.zone) zones.push({ ...elementBounds(e), id: e.id, zone: e.params.zone })
+    else if (e.kind === 'lanes' && e.params.lanes) lanes.push({ ...elementBounds(e), id: e.id, lanes: e.params.lanes })
+  }
+  return { zones, lanes }
 }
 
 export const sameLayout = (a: PatioLayout | null, b: PatioLayout | null) => JSON.stringify(a) === JSON.stringify(b)

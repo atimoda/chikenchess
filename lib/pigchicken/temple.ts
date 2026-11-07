@@ -43,6 +43,8 @@ export const GONG_FIRST = 5, GONG_NEXT = 3
 // the reset stone (Recomeçar): this many strikes put the temple back at rest, panels and score cleared
 export const RESET_NEED = 3
 export const RESET_X = 1770
+// the jukebox (the songs of the guitar hero mode), left of the reset stone
+export const DISC_X = 1640
 const MAX_HEARTS = 3
 const INTRO = 3.2
 const DRAGON_SEGMENTS = 14
@@ -59,6 +61,7 @@ export type TempleAlien = {
   lastHp: number
   x: number; y: number // centre, world units
 }
+export const BOMB_R = 9 // a bomb's radius, for the peck's defence
 export type Bomb = { x: number; y: number; vx: number; vy: number; kind: 'orb' | 'fire'; t: number }
 export type Banner = { title: string; sub: string; color: string; t: number; life: number }
 export type Judge = { grade: 'perfect' | 'good' | 'miss'; t: number }
@@ -95,12 +98,18 @@ export type TempleIO = {
   body: { x: number; y: number; scale: number }
   boxes: Box[]
   gongHit: boolean // the gong (totem) was struck this frame
+  // a song of the jukebox is picked (not the campaign): the gong's strikes start it instead of the campaign
+  song?: () => void
+  // start the campaign now (the jukebox's Tocar), as if the gong had been struck enough
+  start?: boolean
   resetHit?: boolean // the reset stone was struck this frame
   firePressed: boolean
   beats: number[] // conductor beats that started this frame
   fx: { burst: (x: number, y: number, n: number, color: string, speed?: number, size?: number) => void; text: (x: number, y: number, text: string, color?: string, size?: number) => void }
   hurt: (dir: number) => void // knock the chicken back
   sound: (s: TempleSound) => void
+  // a peck defending where a bomb is cancels it (it vanishes in a little cloud)
+  parry?: (x: number, y: number, r: number, color: string) => boolean
 }
 
 // the stage's mult: a long rhythm combo multiplies the points
@@ -241,7 +250,7 @@ export function createTemple(seed = 1) {
     // arriving in the temple: the welcome
     if (io.inside && !s.welcomed && s.phase === 'idle') {
       s.welcomed = true
-      banner('Templo do Gongo', `Bata ${GONG_FIRST} vezes no gongo (tiro ou golpe) para começar.`, '#ffd166', 5)
+      banner('Templo do Gongo', `Bata ${GONG_FIRST} vezes no gongo (tiro ou golpe) para começar. Bata na jukebox, perto da pedra Recomeçar, para escolher outra música.`, '#ffd166', 6)
     }
     // leaving in the middle of a stage cancels it
     if (active && !io.inside) { s.outsideT += dt; if (s.outsideT > 2.5) { s.outsideT = 0; fail(io, 'Você saiu do templo.') } } else s.outsideT = 0
@@ -254,11 +263,19 @@ export function createTemple(seed = 1) {
         s.gongHits++
         io.sound({ kind: 'gong', hit: s.gongHits, need: s.gongNeed })
         io.fx.text(L + GONG_X, G - 230, `${Math.min(s.gongHits, s.gongNeed)}/${s.gongNeed}`, '#ffd166', 22)
-        if (s.gongHits >= s.gongNeed) {
+        if (s.gongHits >= s.gongNeed && io.song) {
+          s.gongHits = 0
+          io.song()
+        } else if (s.gongHits >= s.gongNeed) {
           const next = s.phase === 'cleared' ? s.stage + 1 : s.phase === 'failed' ? s.stage : 0
           startStage(io, next)
         }
       }
+    }
+
+    if (io.start && !active && !io.song) {
+      s.gongHits = 0
+      startStage(io, s.phase === 'cleared' ? s.stage + 1 : s.phase === 'failed' ? s.stage : 0)
     }
 
     // the reset stone: a few strikes end whatever is on and put the temple back at rest (score and panels cleared)
@@ -411,6 +428,7 @@ export function createTemple(seed = 1) {
     for (let i = s.bombs.length - 1; i >= 0; i--) {
       const b = s.bombs[i]
       b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt
+      if (io.parry?.(b.x, b.y, BOMB_R, b.kind === 'fire' ? '#ffd2b8' : '#f4f1ea')) { s.bombs.splice(i, 1); continue }
       const box = io.boxes.find(q => boxContains(q, b.x, b.y))
       const hitHer = Math.abs(b.x - io.body.x) < 26 * io.body.scale + 8 && b.y > io.body.y - 120 * io.body.scale && b.y < io.body.y
       if (hitHer) hurtPlayer(io, b.x)

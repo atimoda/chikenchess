@@ -15,8 +15,10 @@ import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, TIP_TIME, type Box, type Combat, type Effect, type Pickup, type Swing } from "@/lib/pigchicken/combat"
+import { ellipsePoint, swingPose, trailSpan } from "@/lib/pigchicken/swing"
 import { quickSwitchStep, itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { loadCatalog, subscribeCatalog, type Catalog } from "@/lib/pigchicken/alien-catalog"
 import { itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
@@ -28,7 +30,8 @@ import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
 import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
-import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
+import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
+import { placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
 import { isLiteDevice } from "@/lib/performance"
@@ -36,9 +39,15 @@ import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken
 import { intersectsView, needsTrajectory, patioPixelRatio, trajectoryVisible, type ViewRect } from "@/lib/pigchicken/viewport"
 import { moveLiveCamera } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
-import { GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
-import { TEMPLE_IDLE, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
+import { DISC_X, GONG_X, RESET_X, createTemple, type Temple, type TempleIO } from "@/lib/pigchicken/temple"
+import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
+import { accuracy, createNoteStage, type NoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
+import { JUKEBOX_H, JUKEBOX_W, drawJukebox, drawNoteShots, drawNoteStageHud, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
+import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
+import { CAMPAIGN, CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, openJukebox, recordScore, subscribeLibrary, type Library } from "@/lib/pigchicken/song-library"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
+import { BIRDS, UNDEAD_EYE, birdColors, type BirdType } from "@/lib/pigchicken/birds"
+import { undeadSize, type UndeadState } from "@/lib/pigchicken/undead"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import type { RidgePoint } from "@/lib/pigchicken/village"
@@ -68,6 +77,8 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
   }, [worldRef, occlusion])
   return (
     <div ref={worldRef} data-chicken-world className="pointer-events-none absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
+      {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
+      <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
       <ParallaxBackdrop worldW={width} />
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
@@ -153,6 +164,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // where the page keeps the ground on the screen (raised above the touch controls on a phone held upright)
   const groundHRef = useRef(groundHeight)
   groundHRef.current = groundHeight
+  const liftedRef = useRef(lifted)
+  liftedRef.current = lifted
   const touchAim = useRef<Stick | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
@@ -263,22 +276,42 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     combat.setMusicOut({
       note: (voice, midi, at, dur, vel) => { playNote(voice, midi, { at, dur, vel }) },
       hold: (voice, midi) => playNote(voice, midi, { sustain: true, vel: 0.8 }),
-      drum: (kind, at) => playDrum(kind, at),
+      drum: (kind, at, vel) => playDrum(kind, at, vel ?? 1),
     })
     // the temple's mini-game (its state is plain data, stepped with the beats: ready to be shared in multiplayer)
     const temple = createTemple(Math.floor(Math.random() * 2 ** 31))
     templeDraw.temple = temple
+    // the note stage (the guitar hero mode): the jukebox by the reset stone picks the song, the gong plays it
+    const stage = createNoteStage()
+    // the aliens' catalogue (saved in this browser): the song's aliens take their variations from it
+    let catalog = loadCatalog()
+    stage.setCatalog(catalog)
+    templeDraw.catalog = catalog
+    const unsubCatalog = subscribeCatalog(c => { catalog = c; templeDraw.catalog = c; stage.setCatalog(c) })
+    // the jukebox's library: the songs and the one picked (the campaign's disc, or a song the gong starts)
+    let library = loadLibrary()
+    const useLibrary = (l: typeof library) => { library = l; templeDraw.library = l; stage.setSongs(l.songs); if (l.picked !== CAMPAIGN_ID) stage.select(l.picked) }
+    useLibrary(library)
+    const unsubLibrary = subscribeLibrary(useLibrary)
+    // "Tocar" in the jukebox's panel: the song starts now
+    let playRequest: string | null = null, jukeRing = 9
+    const unsubPlay = onPlaySong(id => { playRequest = id })
+    // the song editor's "Tocar daqui" and "Parar"
+    const unsubDraft = onPlayDraft(r => (r === "stop" ? stage.halt() : stage.playDraft(r.song, r.from)))
+    templeDraw.stage = stage
+    combat.setNoteEnv(shot => stage.noteEnv(shot))
     const templeSounds: TempleSound[] = []
+    const stageSounds: NoteStageSound[] = []
     let templeShown = ""
     // dev only: lets the test scripts reach the combat and the temple
-    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __chickenEngine: engine })
+    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStage: stage, __chickenEngine: engine })
     const drone = createDrone()
     let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
     let placed = false, offerShown = "", templeFor = -1, wasPortalArrival = false
     // the temple's things move with the world's width: the gong and its racks
-    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null
+    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null, jukebox: Combat["targets"][number] | null = null
     const templeRacks: Combat["racks"] = []
     const G = WORLD_GROUND_Y
     // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
@@ -291,18 +324,25 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // and the reset stone (Recomeçar): strike it to end the game and clear the panels
       combat.addButton(0, G - 4, "reset", 80, 110)
       resetStone = combat.targets[combat.targets.length - 1]
-      ;(["pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
+      // and the jukebox: strike it to pick a song
+      combat.addButton(0, G - 4, "jukebox", JUKEBOX_W, JUKEBOX_H)
+      jukebox = combat.targets[combat.targets.length - 1]
+      ;(["bat", "pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
     const placeTemple = (screens: number) => {
       const L = templeScene(screens) * SCENE_W
       if (gong) { gong.x = gong.home = L + GONG_X }
       if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
-      templeRacks.forEach((r, i) => { r.x = L + 80 + i * 100 })
+      if (jukebox) { jukebox.x = jukebox.home = L + DISC_X }
+      templeRacks.forEach((r, i) => { r.x = L + 60 + i * 90 })
       templeFor = screens
     }
     // the platforms the shots hit, in world units (the same boxes the world draws)
     let worldBoxes: Box[] = []
+    // the layout's Zonas sonoras and Faixas fixas: what each point of the map plays
+    let worldMusic: { zones: ZoneBox[]; lanes: LanesBox[] } = { zones: [], lanes: [] }
+    combat.setPlaceEnv((x, y) => placeEnvAt(worldMusic.zones, worldMusic.lanes, x, y))
     const header = document.querySelector("main header")
     let drawnCamX = NaN, drawnCamY = NaN
     let viewTop = header?.getBoundingClientRect().bottom ?? 0
@@ -345,6 +385,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
               !nextBoxes.some(box => supports(box) && !box.occludedAt?.(pickup.x, pickup.y))) pickup.resting = false
         }
         worldBoxes = nextBoxes
+        worldMusic = layoutMusic(shown)
       }
       // the button stays while Pegar is held, so holding it while walking keeps taking items
       const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : offerShown && engine.peekActions().grab ? offerShown as "take" | "equip" : ""
@@ -526,10 +567,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the enemies move inside the scene she is in: the same for every screen size (and every player)
       const sceneL = Math.min(sceneAt(body.x), worldScenes(S.screens) - 1) * SCENE_W
       combat.setView(sceneL, sceneL + SCENE_W)
-      let gongHit = false, resetHit = false
+      let gongHit = false, resetHit = false, discHit = false
       combat.pressed.splice(0).forEach(id => {
         if (id === "gong") gongHit = true
         else if (id === "reset") resetHit = true
+        else if (id === "jukebox") { jukeRing = 0; openJukebox() }
         else if (id === "aliens") combat.spawnAliens(G, body.x)
         else if (id === "zombies") combat.spawnZombies(G, body.x, horde.zombies)
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
@@ -577,7 +619,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: rs ? angle : null, ...effectGame(combat.effect, xd.weight) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
-        eng.setSwing(xsw ? { angle: swingAngle(xsw), reach: xsw.range, t: Math.min(1, xsw.t / (xsw.time * 0.3), (xsw.time - xsw.t) / (xsw.time * 0.3)) } : null)
+        eng.setSwing(rigSwing(xsw))
         eng.setHeld(heldItemPose(combat, now))
       })
       extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraAim.delete(id); combat.drop(id) } })
@@ -587,17 +629,58 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const tL = templeScene(S.screens) * SCENE_W
       const inTemple = body.x >= tL && body.x < tL + SCENE_W
       const events = combat.music.events.splice(0)
+      // the note stage first: while its song plays, the gong is dull and the reset stone stops the song
+      const stageOn = stage.active
+      jukeRing += dt; templeDraw.jukeRing = jukeRing
+      // what the gong (or Tocar) starts: the song picked, or the campaign
+      const songPicked = library.picked !== CAMPAIGN_ID && stage.select(library.picked)
+      let startCampaign = false
+      if (playRequest !== null) {
+        const id = playRequest
+        playRequest = null
+        if (id === CAMPAIGN_ID) startCampaign = !stageOn
+        else if (stage.select(id) && !stageOn) discHit = true
+      }
+      stage.step(dt, {
+        targets: combat.targets, music: combat.music, sceneL: tL, sceneW: SCENE_W, groundY: G, inside: inTemple,
+        center: { x: body.x, y: body.y - stage.song.fan.centerY * body.scale },
+        discHit, resetHit: resetHit && stageOn, busy: temple.state.phase === "intro" || temple.state.phase === "playing",
+        events: combat.noteEvents.splice(0), fire: n => { combat.fireNoteShot(n) }, clearShots: src => combat.clearNoteShots(src),
+        incoming: combat.noteShots.filter(n => n.state === "incoming" && n.source === "stage").length,
+        fx: { burst: combat.burst, text: combat.addText },
+        push: dir => engine.impulse(dir * 260, -200),
+        sound: e => stageSounds.push(e),
+      })
+      stageSounds.splice(0).forEach(e => playNoteStageSound(e, mixGain("effects")))
+      if (stageOn && gongHit) { gongHit = false; playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
+      // a new record: the song's best score is kept (and the banner says so)
+      if (stage.state.phase === "done" && stage.state.t === 0 && !stage.state.draft) {
+        const s = stage.state
+        if (recordScore(stage.song.id, s.score, accuracy(s.counts, s.fired)) && s.banner) s.banner.title += " · novo recorde!"
+      }
+      if (stageOn) resetHit = false
+      // the editor's playhead
+      nowPlaying.id = stage.active ? stage.song.id : null
+      nowPlaying.beat = stage.beatAt(combat.music.time, combat.music.secondsPerBeat())
+      nowPlaying.draft = stage.state.draft
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
-        gongHit, resetHit, firePressed: input.firePressed, beats: events.filter(e => e.kind === "beat").map(e => e.n),
+        gongHit, resetHit, firePressed: input.firePressed,
+        // a song picked: the gong's strikes start it (on the next frame, through the stage)
+        song: songPicked ? () => { playRequest = library.picked } : undefined, start: startCampaign, beats: events.filter(e => e.kind === "beat").map(e => e.n),
         fx: { burst: combat.burst, text: combat.addText },
         hurt: dir => engine.impulse(dir * 420, -380),
         sound: e => templeSounds.push(e),
+        parry: (x, y, r, color) => combat.parry(x, y, r, color),
       }
       temple.step(dt, io)
       templeSounds.splice(0).forEach(e => playTempleSound(e, mixGain("effects")))
       const tp = temple.state.phase
       if (tp !== templeShown) { templeShown = tp; if (worldRef.current) worldRef.current.dataset.temple = tp }
+      // the undead wait for the song (or the gong's campaign) to end before leaving; she rides the ones standing
+      combat.setPlaying(stage.active || tp === "intro" || tp === "playing")
+      const riders = worldRef.current?.querySelector<HTMLElement>("[data-undead-riders]")
+      if (riders) syncRiders(riders, combat.undead)
       // a cleared stage: fireworks over the temple
       if ((tp === "cleared" || tp === "victory") && temple.state.t < (tp === "victory" ? 5 : 2.6) && Math.random() < dt * (tp === "victory" ? 9 : 6)) {
         const colors = ["#ffd166", "#ff4d6d", "#7bdff2", "#7bd88f", "#c77dff"]
@@ -608,7 +691,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- music: the zone of the scene she is in sets key, scale and tempo; ambience on its beat ----------
       // (in the temple: the stage's music, or the temple at rest)
-      const zone = inTemple ? temple.music?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
+      const templeMusic = stage.music ?? temple.music
+      // a Zona sonora she is in wins over the scene's (not over a song playing in the temple)
+      const inZone = templeMusic && inTemple ? null : zoneAt(worldMusic.zones, body.x, body.y - 90 * body.scale, true)
+      combat.setZoneBirds(inZone?.zone.birds ?? null)
+      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
       setMusicVolumes(mixGain("notes"), mixGain("ambience"))
@@ -617,13 +704,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const templeZone = combat.music.zone.id.startsWith("templo")
       events.forEach(e => {
         if (mixGain("ambience") <= 0) return
-        if (e.kind === "bar") drone.set(combat.music.chord()[0])
+        if (e.kind === "bar" && !stage.silent) drone.set(combat.music.chord()[0])
         if (e.kind === "step") {
-          if (templeZone) templeAmbience(temple.music && combat.music.zone.id !== "templo" ? temple.music : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat())
+          // a pause in total silence: no background
+          if (templeZone) { if (!stage.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }
           else ambience(combat.music.zone, e.n % 16, combat.music.secondsPerBeat())
         }
       })
-      if (mixGain("ambience") <= 0) drone.set(null)
+      if (mixGain("ambience") <= 0 || stage.silent) drone.set(null)
 
       // ---------- sound ----------
       setWeaponVolume(mixGain("weapons"))
@@ -635,13 +723,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- draw ----------
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
       // the world's things stay under the header, like the world itself
-      const inWorld = () => { ctx.save(); ctx.beginPath(); ctx.rect(0, viewTop, viewW, st.height - viewTop); ctx.clip(); ctx.translate(0, camY) }
+      // a blow that lands jolts the world for a moment
+      let jolt = swingShake(combat.swing)
+      extraList.forEach(([id]) => { combat.use(id); jolt = Math.max(jolt, swingShake(combat.swing)) })
+      combat.use("p1")
+      const jx = jolt ? (Math.random() * 2 - 1) * jolt : 0, jy = jolt ? (Math.random() * 2 - 1) * jolt : 0
+      const inWorld = () => { ctx.save(); ctx.beginPath(); ctx.rect(0, viewTop, viewW, st.height - viewTop); ctx.clip(); ctx.translate(jx, camY + jy) }
       lookTargets.length = 0
       lookTargets.push({ x: body.x, y: body.y - 170 * st.scale })
       inWorld()
       const view = { x: camX, y: viewTop - camY, w: viewW, h: st.height - viewTop }
       drawWorld(ctx, combat, camX, view)
       drawTempleShots(ctx, temple, camX, view)
+      drawStageFan(ctx, stage, combat.noteShots, camX, combat.music.time, combat.music.beatPhase)
+      drawNoteShots(ctx, combat.noteShots, camX, view)
+      drawStageTalk(ctx, stage, camX)
       ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin)
@@ -660,7 +756,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       bowing.travel = 0
       engine.setPeck(combat.peck)
-      engine.setSwing(sw ? { angle: swingAngle(sw), reach: sw.range, t: Math.min(1, sw.t / (sw.time * 0.3), (sw.time - sw.t) / (sw.time * 0.3)) } : null)
+      engine.setSwing(rigSwing(sw))
       engine.setHeld(heldItemPose(combat, now, h && d.beam ? { x: VIOLIN_BOW_X, stroke: bowing.stroke } : null))
       const muzzle = muzzleAt(ang)
       // Keep the delayed reticle on the cursor's radius around the grip, not a
@@ -718,11 +814,17 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.use("p1")
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
       // one inventory per local player, stacked in the top right corner (the avatars sit to their right)
-      const invOff = getTouchLayout().offsets.inventory
-      drawInventory(ctx, combat, 0, invOff)
-      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, invOff) })
+      const barBottom = !liftedRef.current
+      const invOff = getTouchLayout().offsets[barBottom ? "inventoryBar" : "inventory"]
+      drawInventory(ctx, combat, 0, barBottom, null, now, invOff)
+      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, barBottom, tints?.[id] ?? null, now, barBottom ? undefined : invOff) })
       combat.use("p1")
-      if (wh.open) {
+      // over her: the front half of a horizontal blow, and the item wheel
+      const fronts: [string, { x: number; y: number }][] = []
+      if (combat.swing?.kind === "flat") fronts.push(["p1", origin])
+      extraList.forEach(([id, eng]) => { combat.use(id); if (combat.swing?.kind === "flat") fronts.push([id, eng.getState().shoulder]) })
+      combat.use("p1")
+      if (wh.open || fronts.length) {
         if (wheelCanvas.width !== canvas.width || wheelCanvas.height !== canvas.height) {
           wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
           const dpr = canvas.width / window.innerWidth
@@ -730,12 +832,17 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           wheelCanvas.style.display = ""
         }
         wctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
-        drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110)); wheelDrawn = true
+        fronts.forEach(([id, at]) => { combat.use(id); drawSwing(wctx, combat, at, "front") })
+        combat.use("p1")
+        if (wh.open) drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110))
+        wheelDrawn = true
       } else if (wheelDrawn) {
         wheelCanvas.width = 1; wheelCanvas.height = 1
         wheelCanvas.style.display = "none"; wheelDrawn = false
       }
-      drawTempleHud(ctx, temple, combat.music, inTemple, INV_TOP + INV_SIZE + 12)
+      const hudTop = barBottom ? INV_STACK.top : INV_TOP + INV_SIZE + 12
+      drawTempleHud(ctx, temple, combat.music, inTemple && !stage.active, hudTop)
+      drawNoteStageHud(ctx, stage, hudTop)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
         const h = combat.inventory[combat.current]
@@ -755,6 +862,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       cancelGameFrame(raf)
       unsub()
       unsubItems()
+      unsubCatalog()
+      unsubLibrary()
+      unsubPlay()
+      unsubDraft()
       window.removeEventListener("blur", cancelPeckInput)
       window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)
@@ -771,6 +882,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setBounds(null)
       drone.set(null)
       templeDraw.temple = null
+      templeDraw.stage = null
       if (worldRef.current) delete worldRef.current.dataset.temple
       document.body.classList.remove("pigchicken-play")
       if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(window.innerHeight - groundHRef.current).lo - oy)
@@ -789,17 +901,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       {/* the inventory bar is drawn on the canvas; these invisible slots sit on top of it so a click or a tap
           equips that item. In edit mode the Movable's drag handle covers them, so dragging never equips. */}
       {engine && (
-        <Movable id="inventory" className="pointer-events-none fixed z-[190]" style={{ right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE }}>
+        <Movable
+          id={lifted ? "inventory" : "inventoryBar"}
+          className={lifted ? "pointer-events-none fixed z-[190]" : "pointer-events-none fixed inset-x-0 mx-auto z-[190]"}
+          style={lifted ? { right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE } : { bottom: BAR.bottom + BAR.tab, width: BAR_W(invSlots), height: BAR.size }}
+        >
           {!editing && (
-            <div data-chicken-ignore className="flex h-full" style={{ gap: INV_GAP }}>
+            <div data-chicken-ignore className="flex h-full" style={{ gap: lifted ? 3 : BAR.gap }}>
               {Array.from({ length: invSlots }, (_, i) => (
                 <button
                   key={i}
                   type="button"
                   tabIndex={-1}
                   aria-label={`Equipar item ${i + 1} do inventário`}
-                  className="pointer-events-auto h-full shrink-0 rounded-sm bg-transparent"
-                  style={{ width: INV_SIZE, touchAction: "none" }}
+                  className="pointer-events-auto h-full shrink-0 rounded-md bg-transparent"
+                  style={{ width: lifted ? INV_SIZE : BAR.size, touchAction: "none" }}
                   // pointerdown (not click): instant on touch, and preventDefault keeps focus off the button so Space stays a game key
                   onPointerDown={e => { e.preventDefault(); e.stopPropagation(); slotTap.current = i + 1 }}
                   onContextMenu={e => e.preventDefault()}
@@ -1005,16 +1121,16 @@ function drawZoneBanner(ctx: Ctx, zone: Zone, life: number) {
   ctx.restore()
 }
 
-// the bird an alien becomes: original pixel art, two flaps. '#' body, 'o' eye, '>' beak
+// the bird an alien becomes: original pixel art, two flaps. '#' body, 'w' wing, 'b' belly, 'o' eye, '>' beak
 const BIRD_FRAMES = [
   [
-    "..#......#.",
-    "..##....##.",
-    "...##..##..",
+    "..w......w.",
+    "..ww....ww.",
+    "...ww..ww..",
     "....####...",
     "..#####o#>>",
-    ".########..",
-    "...####....",
+    ".#bbbbbb#..",
+    "...bbbb....",
     "....#.#....",
   ],
   [
@@ -1022,21 +1138,99 @@ const BIRD_FRAMES = [
     "...........",
     "....####...",
     "..#####o#>>",
-    "##########.",
-    "#.######...",
+    "wwwwbbbbb#.",
+    "w.#bbbb#...",
     "...####....",
     "....#.#....",
   ],
 ]
-function drawBird(ctx: Ctx, c: Combat["critters"][number], x: number) {
-  const f = BIRD_FRAMES[Math.floor(c.t / 0.12) % 2], p = 4
-  ctx.save(); ctx.translate(x, c.y); ctx.scale(c.face < 0 ? -1 : 1, 1)
+// a bird of a type (or the old one in its alien's colour), undead ones grey with eyes in their note's colour
+function drawBirdArt(ctx: Ctx, x: number, y: number, face: number, t: number, type: BirdType | null, color: string, undead = false, eye = UNDEAD_EYE, flash = 0) {
+  const f = BIRD_FRAMES[Math.floor(t * (type?.flap ?? 8.3)) % 2], p = type?.pixel ?? 4
+  const c = type ? birdColors(type, undead) : { body: color, wing: color, belly: color, beak: "#ffb347" }
+  ctx.save(); ctx.translate(x, y); ctx.scale(face < 0 ? -1 : 1, 1)
   f.forEach((row, r) => { for (let i = 0; i < row.length; i++) {
     const ch = row[i]; if (ch === ".") continue
-    ctx.fillStyle = ch === "o" ? "#101018" : ch === ">" ? "#ffb347" : c.color
+    ctx.fillStyle = flash > 0 ? "#ffffff" : ch === "o" ? (undead ? eye : "#101018") : ch === ">" ? c.beak : ch === "w" ? c.wing : ch === "b" ? c.belly : c.body
     ctx.fillRect((i - 5.5) * p, (r - 4) * p, p, p)
   } })
+  if (undead) { ctx.globalAlpha = 0.5; ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(1.5 * p, -0.5 * p, p * 1.4, 0, Math.PI * 2); ctx.fill() }
   ctx.restore()
+}
+function drawBird(ctx: Ctx, c: Combat["critters"][number], x: number) {
+  drawBirdArt(ctx, x, c.y, c.face, c.t, c.bird ? BIRDS[c.bird] : null, c.color)
+}
+
+// an undead: the alien it was, grey, stiff and turned as it fell, with red eyes; once resurrected, a grey bird
+function drawUndead(ctx: Ctx, g: Combat["targets"][number], x: number, beatPhase: number, beat: number) {
+  const u = g.data as UndeadState
+  if (u.bird) {
+    ctx.save(); if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.3)
+    drawBirdArt(ctx, x, g.y - g.h / 2, g.face, g.animT, BIRDS[u.bird], "#8d9096", true, u.eye, g.flash)
+    ctx.restore()
+    return
+  }
+  const c = Math.abs(Math.cos(u.angle)), sn = Math.abs(Math.sin(u.angle))
+  const hb = g.h * c + g.w * sn
+  // the alien drawn grey on a small canvas of its own (a filter on the whole scene costs too much per pixel drawn)
+  const art = greyArt(Math.ceil(Math.max(g.w, g.h) * 2.4), a => {
+    const proxy = { ...g, kind: "alien" as const, y: g.h / 2, deadT: 0, flash: 0, data: u.look }
+    if ((u.look as { kind?: string } | undefined)?.kind === "temple") drawTempleAlien(a, proxy, 0, beatPhase, 0, beat, null)
+    else drawAlien(a, proxy, 0)
+  }, g.flash > 0 ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)")
+  ctx.save()
+  if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.3)
+  ctx.translate(x, g.y - hb / 2); ctx.rotate(u.angle)
+  ctx.drawImage(art, -art.width / 2, -art.height / 2)
+  // red eyes, glowing
+  ctx.fillStyle = u.eye; ctx.shadowColor = u.eye; ctx.shadowBlur = 8
+  const ex = Math.max(4, g.w * 0.15), ey = -g.h * 0.08, r = Math.max(2.5, g.w * 0.055)
+  ctx.beginPath(); ctx.arc(-ex, ey, r, 0, Math.PI * 2); ctx.arc(ex, ey, r, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+}
+
+// draws `paint` (centred on 0,0) on a scratch canvas, greys it (saturation blend, then its own shape as a mask) and
+// tints it; the result is reused until the next call
+let greyA: HTMLCanvasElement | null = null, greyB: HTMLCanvasElement | null = null
+function greyArt(size: number, paint: (ctx: Ctx) => void, tint: string) {
+  const make = (c: HTMLCanvasElement | null) => {
+    const el = c ?? document.createElement("canvas")
+    if (el.width !== size || el.height !== size) { el.width = size; el.height = size }
+    const x = el.getContext("2d")!
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, size, size)
+    return [el, x] as const
+  }
+  const [a, ax] = make(greyA), [b, bx] = make(greyB)
+  greyA = a; greyB = b
+  ax.translate(size / 2, size / 2); paint(ax); ax.setTransform(1, 0, 0, 1, 0, 0)
+  bx.drawImage(a, 0, 0)
+  bx.globalCompositeOperation = "saturation"; bx.fillStyle = "#808080"; bx.fillRect(0, 0, size, size)
+  bx.globalCompositeOperation = "source-atop"; bx.fillStyle = tint; bx.fillRect(0, 0, size, size)
+  bx.globalCompositeOperation = "destination-in"; bx.drawImage(a, 0, 0)
+  return b
+}
+
+// the undead she can ride: a thin floor on top of each one that is not falling (the chicken's engine reads them
+// as moving boxes and carries her along)
+const riderEls = new Map<number, HTMLDivElement>()
+function syncRiders(host: HTMLElement, undead: Combat["targets"]) {
+  const seen = new Set<number>()
+  for (const g of undead) {
+    const u = g.data as UndeadState
+    if (u.phase === "fall" || g.deadT > 0) continue
+    const size = u.bird ? { w: g.w, h: g.h * 0.7 } : undeadSize(g, u)
+    const box = `${(g.x - size.w / 2).toFixed(1)},${(g.y - size.h).toFixed(1)},${size.w.toFixed(1)},8`
+    let el = riderEls.get(g.id)
+    if (!el || el.parentElement !== host) {
+      el = document.createElement("div")
+      el.dataset.chickenId = `undead-${g.id}`
+      el.className = "absolute"
+      host.appendChild(el); riderEls.set(g.id, el)
+    }
+    if (el.dataset.chickenWorldBox !== box) el.dataset.chickenWorldBox = box
+    seen.add(g.id)
+  }
+  riderEls.forEach((el, id) => { if (!seen.has(id)) { el.remove(); riderEls.delete(id) } })
 }
 
 // the person a zombie becomes (the zombie art with its colour back), running away happy
@@ -1061,24 +1255,127 @@ function harmonyBar(ctx: Ctx, g: Combat["targets"][number], x: number, y: number
   ctx.fillStyle = grad; ctx.fillRect(x - w / 2, y, w * Math.min(1, v / g.maxHp), 5)
 }
 
-// where the blow is now: it sweeps across its arc in sw.time, downward in front of her
-function swingAngle(sw: Swing) {
-  return sw.angle + sw.dir * (-sw.arc / 2 + sw.arc * Math.min(1, sw.t / sw.time))
+// the wing's pose for the rig: where the blow is now and how much of the swing pose it takes (none once it is over)
+function rigSwing(sw: Swing | null) {
+  if (!sw || sw.t >= sw.time) return null
+  const p = swingPose(sw)
+  return { angle: p.angle, reach: p.reach, t: p.blend }
 }
 
-function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
+// the blow's air: a cream crescent along the sweep, thick at the tip and thin at the tail, that appears in a frame or
+// two and dissolves from the tail, letting off a few curls; a flash where it hit. The horizontal blow is a flattened
+// ellipse: its back half is drawn behind her (layer "back"), its front half over her (layer "front")
+function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back") {
   const sw = combat.swing
-  if (!sw) return
-  if (!intersectsView({ x: origin.x - sw.reach, y: origin.y - sw.reach, w: sw.reach * 2, h: sw.reach * 2 }, { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, 8)) return
-  // the swing: a faint fan over the whole hit area, and a trail behind the wing tip
-  const k = 1 - sw.t / sw.time
-  const a0 = sw.angle - sw.dir * sw.arc / 2, now = swingAngle(sw)
+  if (!sw || sw.trail.opacity <= 0) return
+  if (!intersectsView({ x: origin.x - sw.reach - 40, y: origin.y - sw.reach - 40, w: sw.reach * 2 + 80, h: sw.reach * 2 + 80 }, { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, 8)) return
+  if (layer === "front" && sw.kind !== "flat") return
+  const span = trailSpan(sw)
   ctx.save()
   ctx.translate(origin.x, origin.y)
-  ctx.fillStyle = sw.wing ? `rgba(255,236,179,${0.18 * k})` : `rgba(255,209,102,${0.2 * k})`
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, sw.reach, a0, now, sw.dir < 0); ctx.closePath(); ctx.fill()
-  ctx.strokeStyle = `rgba(255,255,255,${0.7 * k})`; ctx.lineWidth = 3
-  ctx.beginPath(); ctx.arc(0, 0, sw.reach, a0, now, sw.dir < 0); ctx.stroke()
+  if (span && span.head > span.tail) {
+    const { tail, head, fade, sweep } = span
+    const alpha = sw.trail.opacity * (1 - fade * fade)
+    const R = sw.reach, W = Math.min(sw.trail.width, R * 0.6)
+    // points along the crescent from the tail to the head: outer edge at the reach, inner edge in by the thickness,
+    // which grows toward the head (the tip of the blow)
+    const n = Math.max(8, Math.ceil((head - tail) / 0.06))
+    const at = (p: number, r: number) => {
+      if (sw.kind === "flat") { const e = ellipsePoint(sw.angle, sw.dir, -sweep / 2 + p); return { x: e.x * r, y: e.y * r, z: e.z } }
+      const a = sw.angle - sw.dir * sweep / 2 + sw.dir * p
+      return { x: Math.cos(a) * r, y: Math.sin(a) * r, z: 0 }
+    }
+    const outer: { x: number; y: number; z: number }[] = [], inner: { x: number; y: number }[] = []
+    for (let i = 0; i <= n; i++) {
+      const p = tail + (head - tail) * (i / n), k = i / n
+      outer.push(at(p, R))
+      inner.push(at(p, R - W * (0.12 + 0.88 * Math.pow(k, 0.7))))
+    }
+    // the flat blow: only the half on this layer (behind her: z < 0)
+    const keep = (i: number) => sw.kind !== "flat" || (layer === "back" ? outer[i].z < 0.05 : outer[i].z > -0.05)
+    const runs: number[][] = []
+    let run: number[] = []
+    for (let i = 0; i <= n; i++) { if (keep(i)) run.push(i); else if (run.length) { runs.push(run); run = [] } }
+    if (run.length) runs.push(run)
+    const col = sw.trail.color
+    runs.forEach(r => {
+      if (r.length < 2) return
+      ctx.beginPath()
+      r.forEach((i, j) => j ? ctx.lineTo(outer[i].x, outer[i].y) : ctx.moveTo(outer[i].x, outer[i].y))
+      for (let j = r.length - 1; j >= 0; j--) ctx.lineTo(inner[r[j]].x, inner[r[j]].y)
+      ctx.closePath()
+      ctx.globalAlpha = alpha; ctx.fillStyle = col; ctx.fill()
+      // a brighter rim along the outer edge
+      ctx.beginPath(); r.forEach((i, j) => j ? ctx.lineTo(outer[i].x, outer[i].y) : ctx.moveTo(outer[i].x, outer[i].y))
+      ctx.globalAlpha = alpha * 0.9; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke()
+    })
+    // the curls: little arcs that come loose from the crescent and drift away as it dissolves
+    if (layer === "back" || sw.kind === "flat") {
+      const wisps = sw.trail.wisps
+      ctx.strokeStyle = col; ctx.lineCap = "round"
+      for (let w = 0; w < wisps; w++) {
+        const h = hash01(sw.seed * 97 + w * 13.7)
+        const p = sweep * (0.15 + 0.8 * (w + h * 0.6) / Math.max(1, wisps))
+        if (p < tail || p > head) continue
+        const base = at(p, R - W * (0.3 + 0.5 * h))
+        if (!keep(Math.round((p - tail) / Math.max(1e-6, head - tail) * n))) continue
+        const out = Math.hypot(base.x, base.y) || 1, drift = 8 + 26 * fade
+        const cx = base.x + base.x / out * drift, cy = base.y + base.y / out * drift - 6 * fade
+        const rr = 3 + 5 * h + 4 * fade
+        ctx.globalAlpha = alpha * 0.85; ctx.lineWidth = 2 * (1 - fade) + 0.6
+        ctx.beginPath(); ctx.arc(cx, cy, rr, h * 6, h * 6 + Math.PI * (1.1 + 0.5 * h)); ctx.stroke()
+      }
+    }
+  }
+  // the impact: a white flash where it hit, for a moment
+  const since = sw.t - sw.hitAt
+  if (layer === "back" && sw.hits > 0 && since < 0.12) {
+    const k = since / 0.12
+    sw.impacts.forEach(p => {
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffffff"
+      ctx.beginPath()
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + sw.seed, r = i % 2 ? 5 : 14 + 10 * k
+        ctx.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r)
+      }
+      ctx.closePath(); ctx.fill()
+    })
+  }
+  ctx.restore()
+}
+// the screen's jolt when a blow lands (px, fading over 0.1 s)
+function swingShake(sw: Swing | null) {
+  if (!sw || sw.hits <= 0) return 0
+  const since = sw.t - sw.hitAt
+  return since < 0.1 ? 2.5 * (1 - since / 0.1) : 0
+}
+const hash01 = (v: number) => { const s = Math.sin(v * 12.9898) * 43758.5453; return s - Math.floor(s) }
+
+// a damaging note or projectile cancelled by a peck: a little cloud that puffs out and fades. Drawn whole on a
+// small canvas first, so the overlapping puffs fade as one cloud
+let puffCanvas: HTMLCanvasElement | null = null
+function drawPuff(ctx: Ctx, x: number, y: number, p: Combat["puffs"][number]) {
+  const k = p.t / p.life, grow = 1 - (1 - k) * (1 - k), S = 96, dpr = 2
+  if (!puffCanvas) { puffCanvas = document.createElement("canvas"); puffCanvas.width = puffCanvas.height = S * dpr }
+  const c = puffCanvas.getContext("2d")!
+  c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, S, S); c.translate(S / 2, S / 2)
+  const pts = Array.from({ length: 5 }, (_, i) => {
+    const a = i / 5 * Math.PI * 2 + p.seed * 6, d = 4 + 10 * grow
+    return { x: Math.cos(a) * d, y: Math.sin(a) * d * 0.7, r: (5 + 4 * hash01(p.seed + i)) * (0.5 + 0.7 * grow) }
+  })
+  pts.push({ x: 0, y: 0, r: 6 + 5 * grow })
+  const cloud = () => { c.beginPath(); pts.forEach(b => { c.moveTo(b.x + b.r, b.y); c.arc(b.x, b.y, b.r, 0, Math.PI * 2) }) }
+  c.strokeStyle = "rgba(90,90,100,0.55)"; c.lineWidth = 3; cloud(); c.stroke()
+  c.fillStyle = p.color; cloud(); c.fill()
+  // three little curls flying off
+  c.strokeStyle = p.color; c.lineWidth = 1.5; c.lineCap = "round"
+  for (let i = 0; i < 3; i++) {
+    const a = -Math.PI / 2 + (i - 1) * 0.9 + p.seed, d = 12 + 18 * grow
+    c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, 3 + 2 * grow, a, a + Math.PI * 1.3); c.stroke()
+  }
+  ctx.save()
+  ctx.globalAlpha = k < 0.35 ? 1 : 1 - (k - 0.35) / 0.65
+  ctx.drawImage(puffCanvas, x - S / 2, y - 10 * grow - S / 2, S, S)
   ctx.restore()
 }
 
@@ -1087,7 +1384,7 @@ function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }) {
 const lookTargets: { x: number; y: number }[] = []
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
-const templeDraw: { temple: Temple | null; charges: Map<number, number> } = { temple: null, charges: new Map() }
+const templeDraw: { temple: Temple | null; stage: NoteStage | null; charges: Map<number, number>; library: Library | null; catalog: Catalog | null; jukeRing: number } = { temple: null, stage: null, charges: new Map(), library: null, catalog: null, jukeRing: 9 }
 
 // the hint over the items the local players can grab (set every frame): the first player to stand on one shows theirs
 const pickupMarks = new Map<Pickup, { c: string; t: string }>()
@@ -1204,10 +1501,17 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
     if (!visible(g.x, g.y + 60, Math.max(320, g.w + 160), g.h + 240)) return
     const x = X(g.x)
     if (g.state === "converted") return
+    if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }
     if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }
+    if (g.kind === "button" && g.label === "jukebox") {
+      const st = templeDraw.stage, lib = templeDraw.library
+      const picked = lib?.songs.find(x => x.id === (st?.active ? st.song.id : lib.picked)) ?? null
+      drawJukebox(ctx, g, x, { cover: coverCanvas(picked, 96, templeDraw.catalog ?? undefined), playing: !!st?.active, color: picked?.music.zone.color ?? CAMPAIGN.color, beatPhase: combat.music.beatPhase, ring: templeDraw.jukeRing })
+      return
+    }
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }
     if (g.kind === "button") { drawButton(ctx, g, x); return }
     drawDummy(ctx, g, x, t)
@@ -1255,6 +1559,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
     ctx.fillStyle = `rgba(255,170,70,${0.45 * (1 - k)})`; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = `rgba(255,240,200,${0.8 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * k, 0, Math.PI * 2); ctx.stroke()
   })
+  combat.puffs.forEach(p => { if (visible(p.x, p.y + 30, 60, 60)) drawPuff(ctx, X(p.x), p.y, p) })
   combat.sparks.forEach(s => { if (!visible(s.x, s.y + s.size, s.size * 2, s.size * 2)) return; ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
   ctx.globalAlpha = 1
   ctx.font = "bold 13px ui-monospace, monospace"; ctx.textAlign = "center"
@@ -1543,49 +1848,121 @@ function drawThrowPath(ctx: Ctx, pts: { x: number; y: number }[]) {
 
 const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
 const INV_W = (n: number) => n * INV_SIZE + (n - 1) * INV_GAP
-// the inventories' stack: top right, one row per local player, the player's avatar at the right end of the row
+// the inventories' stack on a phone held upright: top right, one row per local player, the player's avatar at the
+// right end of the row (the avatars stay there on every screen)
 export const INV_STACK = { top: 64, right: 12, size: INV_SIZE, rowGap: 6, avatarGap: 6 }
 const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_STACK.rowGap)
 const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap
+// the hotbar at the bottom (desktop and tablet): big slots apart from each other, the key numbers under them; the
+// world is lifted so her ground sits above it
+export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16 }
+export const BAR_GROUND_H = 100
+const BAR_W = (n: number) => n * BAR.size + (n - 1) * BAR.gap
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
-// the inventory bar: top centre, moved by the player's saved offset (edit mode of the touch controls).
-// Only her items show, plus one empty slot while there is room (instruments, weapons, then the other items).
-// The slots touch each other, with a thin line between them; the current one is outlined in yellow.
-function drawInventory(ctx: Ctx, combat: Combat, row: number, offset?: { x: number; y: number }) {
-  const slots = combat.inventory, n = slots.length
-  const size = INV_SIZE, w = INV_W(n)
-  const x0 = Math.round(window.innerWidth - invRight - w + (offset?.x ?? 0)), y = invRowY(row) + (offset?.y ?? 0)
-  // the slot numbers (keys 1-9) are the first player's
-  const numbers = row === 0 && (desktopPointer?.matches ?? true)
-  ctx.save()
-  ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "left"
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x0, y, w, size)
-  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1
-  ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, size - 1)
-  ctx.beginPath()
-  for (let i = 1; i < n; i++) { const x = x0 + i * size + 0.5; ctx.moveTo(x, y); ctx.lineTo(x, y + size) }
-  ctx.stroke()
-  for (let i = 0; i < n; i++) {
-    const x = x0 + i * size, o = slots[i]
-    if (i === combat.current) {
-      ctx.fillStyle = "rgba(255,209,102,0.22)"; ctx.fillRect(x, y, size, size)
-      ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, size - 2, size - 2)
-    }
-    if (o) { ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 2); drawItem(ctx, o.item, size - 6, size - 8); ctx.restore() }
-    if (numbers && i < 9) { ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillText(String(i + 1), x + 3, y + 10) }
+// where a player's bar sits: at the bottom, the first player in the middle, the second on the right, the third on
+// the left, more above the middle; on a phone held upright, the old stack in the top right corner
+function invGeom(row: number, n: number, bottom: boolean, offset?: { x: number; y: number }) {
+  const W = window.innerWidth, H = window.innerHeight
+  if (!bottom) {
+    const w = INV_W(n)
+    return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size: INV_SIZE, gap: 3, w, tabs: false }
   }
+  const w = BAR_W(n), baseY = H - BAR.bottom - BAR.tab - BAR.size
+  const x = row === 1 ? W - BAR.side - w : row === 2 ? BAR.side : (W - w) / 2
+  const y = baseY - (row >= 3 ? (row - 2) * (BAR.size + BAR.tab + 30) : 0)
+  return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size: BAR.size, gap: BAR.gap, w, tabs: true }
+}
+// the item's name over the bar for a moment after switching (per player row)
+const invPill = new Map<number, { key: string; at: number }>()
+const PILL_TIME = 1500
+function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath()
+}
+// the inventory bar, moved by the player's saved offset (edit mode of the touch controls). Only her items show, plus
+// one empty slot while there is room (instruments, weapons, then the other items). Each slot is a glass tile; the
+// current one glows teal. A badge counts the ammo or the doses, a thin line shows what is left of an item that wears.
+function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }) {
+  const slots = combat.inventory, n = slots.length
+  const g = invGeom(row, n, bottom, offset), { size, gap } = g
+  const x0 = g.x, y = g.y
+  // the slot numbers (keys 1-9) are the first player's, with a mouse
+  const numbers = g.tabs && row === 0 && (desktopPointer?.matches ?? true)
+  const r = bottom ? 9 : 5
+  ctx.save()
+  ctx.textBaseline = "middle"
+  for (let i = 0; i < n; i++) {
+    const x = x0 + i * (size + gap), o = slots[i], on = i === combat.current
+    roundRect(ctx, x, y, size, size, r)
+    if (on) { ctx.save(); ctx.shadowColor = "rgba(64,224,208,0.85)"; ctx.shadowBlur = bottom ? 14 : 8; ctx.fillStyle = "rgba(38,92,88,0.62)"; ctx.fill(); ctx.restore() }
+    else { ctx.fillStyle = "rgba(48,58,52,0.5)"; ctx.fill() }
+    ctx.lineWidth = on ? 2.5 : 1; ctx.strokeStyle = on ? "#5ee8d8" : "rgba(255,255,255,0.22)"; ctx.stroke()
+    // a soft light along the top edge: glass
+    ctx.save(); roundRect(ctx, x + 1, y + 1, size - 2, size * 0.45, r - 1); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill(); ctx.restore()
+    if (o) {
+      ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size - (bottom ? 12 : 6), size - (bottom ? 14 : 8)); ctx.restore()
+      const d = combat.item(o.item)
+      // the badge: ammo left (or doses), in the bottom right corner
+      if (d.mag > 0) {
+        const t = String(Math.ceil(o.ammo))
+        ctx.font = `bold ${bottom ? 12 : 9}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "right"
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.strokeText(t, x + size - 4, y + size - (bottom ? 9 : 6))
+        ctx.fillStyle = o.ammo <= 0 ? "#ff8c69" : "#ffffff"; ctx.fillText(t, x + size - 4, y + size - (bottom ? 9 : 6))
+      }
+      // what is left of an item that wears out with hits
+      if (d.durability > 0 && o.durability < d.durability) {
+        const k = Math.max(0, o.durability / d.durability), bw = size - 12
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x + 6, y + size - 4, bw, 2)
+        ctx.fillStyle = k > 0.5 ? "#7bd88f" : k > 0.25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x + 6, y + size - 4, bw * k, 2)
+      }
+    }
+    // the key number under the slot (keys 1-9)
+    if (numbers && i < 9) {
+      const tx = x + size / 2, tw = 16, th = 13, ty = y + size + 3
+      roundRect(ctx, tx - tw / 2, ty, tw, th, 3); ctx.fillStyle = on ? "rgba(38,92,88,0.9)" : "rgba(18,22,26,0.72)"; ctx.fill()
+      ctx.lineWidth = 1; ctx.strokeStyle = on ? "#5ee8d8" : "rgba(255,255,255,0.28)"; ctx.stroke()
+      ctx.font = "bold 9px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = on ? "#ffffff" : "rgba(255,255,255,0.75)"
+      ctx.fillText(String(i + 1), tx, ty + th / 2 + 0.5)
+    }
+  }
+  // the other local players: a dot of their colour at the start of the bar
+  if (color && row > 0) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x0 - 8, y + size / 2, 4, 0, Math.PI * 2); ctx.fill() }
   // the effect running on her (a consumable): its item in a circle, the ring emptying as the time runs out
   const e = combat.effect
   if (e) {
-    const r = size / 2 - 2, cx = x0 - 8 - r, cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
+    const er = size / 2 - 2, cx = x0 - (color && row > 0 ? 18 : 8) - er, cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
     const tint = e.look === "buddha" ? "#ffd166" : e.look === "fizz" ? "#f3e1c7" : "#7bdff2"
-    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill()
-    ctx.save(); ctx.translate(cx, cy); drawItem(ctx, e.item, r * 1.3, r * 1.3); ctx.restore()
-    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.fill()
+    ctx.save(); ctx.translate(cx, cy); drawItem(ctx, e.item, er * 1.3, er * 1.3); ctx.restore()
+    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.stroke()
     // the last 3 seconds blink
     ctx.strokeStyle = tint; ctx.globalAlpha = e.left < 3 && Math.floor(e.left * 4) % 2 ? 0.35 : 1
-    ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(cx, cy, er, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+  // the name of what she just picked up or switched to, over the bar for a moment
+  const held = slots[combat.current] ?? null, key = `${combat.current}:${held?.item ?? ""}`
+  const pill = invPill.get(row)
+  if (!pill) invPill.set(row, { key, at: -Infinity })
+  else if (pill.key !== key) { pill.key = key; pill.at = now }
+  const since = now - (invPill.get(row)?.at ?? -Infinity)
+  if (since < PILL_TIME) {
+    const d = held ? combat.item(held.item) : null
+    const name = d ? d.name : "Mãos vazias"
+    const info = held && d ? [d.mag > 0 ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? `${held.durability} golpes` : ""].filter(Boolean).join(" · ") : ""
+    ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"
+    const nw = ctx.measureText(name).width
+    ctx.font = "11px ui-monospace, monospace"
+    const iw = info ? ctx.measureText(info).width + 14 : 0
+    const icon = held ? 26 : 0, pw = Math.ceil(12 + icon + nw + iw + 12), ph = 26
+    const px = Math.round(bottom ? x0 + g.w / 2 - pw / 2 : x0 + g.w - pw), py = bottom ? y - ph - 10 : y + size + 6
+    ctx.globalAlpha = since > PILL_TIME - 300 ? (PILL_TIME - since) / 300 : 1
+    roundRect(ctx, px, py, pw, ph, 7); ctx.fillStyle = "rgba(24,30,28,0.78)"; ctx.fill()
+    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.stroke()
+    let cx = px + 12
+    if (held) { ctx.save(); ctx.translate(cx + 10, py + ph / 2); drawItem(ctx, held.item, 20, 16); ctx.restore(); cx += icon }
+    ctx.textAlign = "left"; ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"; ctx.fillText(name, cx, py + ph / 2 + 0.5)
+    if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, cx + nw + 14, py + ph / 2 + 0.5) }
     ctx.globalAlpha = 1
   }
   ctx.restore()

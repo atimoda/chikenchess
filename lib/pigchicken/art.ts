@@ -41,6 +41,16 @@ function gummyBear(cx: number, cy: number, rot: number) {
 const I = '/pigchicken/instruments/'
 
 const ART: Partial<Record<ItemId, Art>> = {
+  // Taco: a wooden baseball bat, the knob and the taped handle at the grip, the barrel widening to a rounded end
+  bat: {
+    box: [-12, -9, 98, 18],
+    svg: `<path d="M-6 -2.2 L30 -3 Q56 -7.5 80 -7.2 Q85 -7 85 0 Q85 7 80 7.2 Q56 7.5 30 3 L-6 2.2 Z" fill="#c8894a"/>
+    <path d="M30 -3 Q56 -7.5 80 -7.2 Q84 -7 84.6 -3 Q60 -4.2 30 -1.2 Z" fill="#e2a868" opacity="0.8"/>
+    <path d="M40 4.2 Q60 6 80 5.6" stroke="#9c6331" stroke-width="1" fill="none" opacity="0.7"/>
+    <rect x="-6" y="-2.6" width="22" height="5.2" rx="1.4" fill="#2b2f38"/>
+    <path d="M-2 -2.6 L1 2.6 M3 -2.6 L6 2.6 M8 -2.6 L11 2.6 M13 -2.6 L16 2.6" stroke="#4a5262" stroke-width="1"/>
+    <ellipse cx="-8" cy="0" rx="3.4" ry="4.4" fill="#9c6331"/>`,
+  },
   pistol: {
     box: [-6, -16, 64, 40],
     svg: `<g transform="scale(1.7)">

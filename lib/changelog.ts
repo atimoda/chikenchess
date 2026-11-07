@@ -3,10 +3,24 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
-    version: '2.1.0',
+    version: '2.2.0',
     date: '07/11/2026',
-    title: 'Seis viagens Classical, pulsos simultâneos e ajustes no Criativo',
+    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta, o gerador MIDI, seis viagens Classical e pulsos simultâneos',
     groups: [
+      { title: 'Pátio', items: [
+        'Cada alien tem duas mortes, as duas no tempo da música: derrubado por golpe, tiro ou arremesso, toca um tambor que depende da espécie (bloco de madeira na água-viva, taiko na concha, palmas na lanterna); convertido por notas, toca um acorde ou arpejo.',
+        'Um alien derrubado deixa um morto-vivo: cinza, de olhos vermelhos, ele cai duro girando, quica cada vez menos e fica deitado onde caiu. Depois de um tempo levanta e anda pelo chão como um robô aspirador, virando nas bordas das plataformas e nas paredes. É inofensivo, e a galinha pode subir nele.',
+        'Notas enchem a barra do morto-vivo de novo e o trazem de volta como pássaro morto-vivo, com os olhos na cor da nota e o canto em menor. Armas destroem o morto-vivo de vez. Quando a música acaba, cada um vai embora depois do seu próprio tempo; no máximo 40 ficam ao mesmo tempo.',
+        'Os aliens convertidos viram pássaros de verdade, de cinco tipos (pardal, bem-te-vi, sabiá, canário e coruja), cada um com sua cor, seu canto na escala e seu jeito de voar. Cada lugar tem seus pássaros, e a Zona sonora pode escolher os dela. De vez em quando eles assobiam uma nota que a galinha pode rebater.',
+        'Novo Catálogo de aliens (ícone de fantasma no cabeçalho): cada alien das músicas é uma variação, uma espécie com seus parâmetros de corpo, movimento, tiro, rebate, sons e morto-vivo. Os cartões mostram o desenho animado; clicar abre os parâmetros, com botões para ouvir o disparo e as duas mortes, duplicar e voltar ao padrão. Fica salvo neste navegador.',
+        'Primeira leva de variações: Sino, Baixo e Neon (água-viva), Flauta, Brasa e Papel (lanterna), Taiko e Bronze (casco), Terças e Eco (gêmeos), Chocalho e Faísca (mini), Palmas, Caixa e Bumbo (tambor, em que rebater vira batida) e Fogo e Jade (dragão, com escala própria).',
+        'O disco do Templo do Gongo virou uma jukebox de neon. Bata nela para abrir o painel de músicas: uma grade de capas com a Campanha do Gongo e as músicas, com bpm, tom, duração e recorde. A escolhida é a que o gongo começa. Tocar começa na hora, e Salvar como guarda uma cópia com outro nome neste navegador.',
+        'Cada música ganha uma capa desenhada a partir da própria sequência de aliens: Sulco, como um vinil visto de cima, ou Grade, como um piano roll. Nas músicas salvas, dá para trocar o estilo, as cores e o fundo da capa.',
+        'Novo editor de músicas (Editar e Nova música, na jukebox): a música vira uma linha do tempo em compassos, com uma linha por faixa do leque e cada alien como um bloco do aparecimento ao encostar, com as notas em pontos. Arraste no tempo ou entre as faixas, dê duplo clique para criar um alien, Ctrl+clique para pôr nota e botão direito para tirar. Tem copiar, colar no cursor, desfazer e refazer, zoom, grade, tom, escala, bpm e uma prévia do semicírculo em volta da galinha. Tocar daqui toca o rascunho no templo a partir do compasso do cursor.',
+        'As músicas ganham pausas e falas. Uma pausa abre compassos sem aliens, com só o fundo tocando ou em silêncio total. Uma fala tem quem fala (o narrador, o Gongo, a galinha ou um alien do catálogo), o texto, o tempo na tela, o lugar (o banner do meio, um balão sobre quem fala ou uma faixa embaixo do placar) e um blip de voz a cada letra.',
+        'Quem entra com a conta guarda as músicas nela: cada música salva, editada ou apagada vai para a conta, e as feitas em outro aparelho aparecem na jukebox. Se a mesma música mudou nos dois lugares, a da conta fica e a deste aparelho vira uma cópia. A jukebox diz onde as músicas estão, e o admin vê as músicas de todos, podendo ouvir ou copiar cada uma.',
+        'Novo Gerar de MIDI na jukebox: escolha um arquivo .mid, as faixas que entram e o alien de cada uma (a bateria vira bumbo, caixa, palmas e chocalho), a dificuldade, o tom e os compassos. O gerador alinha as notas na grade, deixa só as que a dificuldade aguenta, encaixa tudo nas faixas do leque e junta as notas seguidas em aliens de 5 a 15 tiros. Dá para ouvir no templo antes, e a música abre no editor para ajustar.',
+      ] },
       { title: 'Música', items: [
         'A campanha Classical ganha três músicas originais: Venice 1725 · Baroque concerto, Copenhagen 1869 · Nordic piano concerto e Paris 1913 · Modernist ballet. Cada uma tem doze seções, novos contrastes, regiões harmônicas e diálogos próprios entre as peças.',
         'Mais contrabaixos arco e pizzicato, piano de cauda em duas mãos, trombone e percussão orquestral gravada — incluindo bumbo sinfônico e tam-tam — ampliam a paleta. Os novos kits alternam ritornelos, solos, cadência de piano, passagens líricas e ritmos assimétricos.',
@@ -18,10 +32,23 @@ export const CHANGELOG = [
     ],
   },
   {
-    version: '2.0.1',
+    version: '2.1.0',
     date: '06/11/2026',
-    title: 'Revisão dos kits Electronic World e ajustes na interface',
+    title: 'Golpe com rastro de ar, Bicada que anula bombas, fase de notas, o Taco, as zonas sonoras e a revisão dos kits Electronic World',
     groups: [
+      { title: 'Pátio', items: [
+        'O Golpe ganhou preparação, golpe rápido, continuação e recuperação, com um rastro de ar creme que se desfaz soltando fiapos. O acerto acontece no instante do golpe, com um clarão e um tranco curto na tela.',
+        'Golpes em sequência alternam para baixo, para cima, na horizontal ao redor da galinha e um giro de 360° no quarto, que acerta em volta toda.',
+        'Em Itens → Combo, cada item define a ordem dos golpes (até seis), a janela para o próximo golpe continuar a sequência e o arco de acerto dos golpes para cima e horizontal.',
+        'No desktop e no tablet, a barra de itens fica embaixo, no centro, com casas maiores, a tecla de cada uma, a munição e o desgaste. Ao trocar de item, o nome aparece por um instante. O mundo subiu para a galinha não ficar atrás da barra.',
+        'Novas teclas padrão no teclado principal: V atira, C dá o golpe, X também choca e Z também arremessa. Controles salvos nos padrões antigos passam para os novos; teclas personalizadas ficam como estão.',
+        'Em Itens → Golpe, cada item tem espessura, duração, fiapos, opacidade e cor do rastro. Nos instrumentos, o rastro pega a cor da nota do acorde.',
+        'A Bicada agora defende: acertar o bico numa bomba ou no fogo do Templo do Gongo anula o projétil numa nuvenzinha, sem perder coração.',
+        'Golpes sem espera: o intervalo entre golpes agora é zero em todos os itens, e um golpe novo interrompe o anterior na hora, para dar para acertar notas seguidas. Em Itens → Golpe, cada item pode desligar essa interrupção.',
+        'Templo do Gongo: um disco perto da pedra Recomeçar toca a música Teste das Notas, a primeira fase do modo guitar hero. Os aliens chegam de vários lados em volta da galinha e atiram notas de luz no tempo da música; rebata cada uma com qualquer golpe quando ela chegar no anel em volta dela (PERFEITO, BOM ou FORA) e mande de volta nos aliens para virarem passarinhos. A Bicada só anula a nota. Notas perdidas baixam a barra de afinação.',
+        'Novo item Taco, só de golpe: a nota rebatida sai mais rápida com um tok de madeira. Cada item agora transforma as notas que rebate do seu jeito (a Flauta sobe uma oitava, o Trompete faz power chord, o Violão dedilha a tríade, a Submetralhadora faz um rufo…), e em Itens → Rebate dá para montar a cadeia de transformações, o snap e a velocidade de cada um. Nas fases, o leque fixa a nota e o item enfeita.',
+        'Modo editor: novo grupo Música. A Zona sonora é um retângulo invisível com tom, escala, andamento e uma cadeia de transformações: ao entrar, a música muda, e as notas rebatidas ali seguem a escala dela. As Faixas fixas desenham um leque ou colunas de notas no mapa que afinam toda nota rebatida ou que passa por elas. Qualquer plataforma pode Rebater notas, fazendo a nota quicar e tocar de novo com a cadeia do taco, a dela ou sem mudar. O botão Zonas sonoras mostra tudo isso no editor.',
+      ] },
       { title: 'Música', items: [
         'New York 1977 ganhou flauta e cordas menos agudas, mais espaço entre as respostas e foco no groove de baixo e guitarra.',
         'Ibiza 1986 foi recomposto: base Balearic Beat com piano, violão, synth suave e percussão, alternando trechos de pista e respiro.',

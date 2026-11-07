@@ -1,13 +1,19 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
+import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
+import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
+import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
+import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
+import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
+import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
-import { createConductor, DEGREE_COLORS, NOTE_SYMBOLS } from './music'
+import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
 
@@ -15,17 +21,26 @@ import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type Du
 export type MusicOut = {
   note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number) => void
   hold: (voice: VoiceId, midi: number) => Held | null
-  drum: (kind: Drum, at: number) => void
+  drum: (kind: Drum, at: number, vel?: number) => void
 }
+// the ambience where a note is rebated (the song tells it): what it forces, the scale it fits, whose rule counts
+export type NoteEnvFn = (shot: NoteShot, angle: number) => (Partial<NoteEnv> & { rule?: RebateRule; combo?: number }) | null
+// what a point of the map plays (the layout's Zonas sonoras and Faixas fixas)
+export type PlaceEnvFn = (x: number, y: number) => PlaceEnv | null
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
 // a converted enemy leaving the scene: aliens become birds, zombies become happy people
-export type Critter = { kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number }
+// birds: their type, where they circle or perch, their next whistle and when they leave
+export type Critter = {
+  kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number
+  bird?: BirdId; homeX?: number; homeY?: number; whistleIn?: number
+}
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
-// beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through)
-export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean; occludedAt?: (x: number, y: number) => boolean }
+// beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through); rebate: the
+// notes (rebated ones and the instruments') bounce off it and play
+export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean; rebate?: SurfaceRebate; occludedAt?: (x: number, y: number) => boolean }
 export const boxContains = (box: Box, x: number, y: number) =>
   x >= box.l && x <= box.r && y >= box.t && y <= box.b && !box.occludedAt?.(x, y)
 const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
@@ -37,12 +52,14 @@ export type Bullet = {
   note?: NoteInfo; ring?: number // instruments: the note it carries; notes it lets out when it bursts
   explodePush?: number // snapshot of the item's blast force when fired
   ghost?: boolean // goes through walls and floating platforms (instruments' notes)
+  bounces?: number // times it bounced off a "Rebate notas" surface
 }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
-export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button'
+// undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
+export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button' | 'undead'
 export type Target = {
   id: number; kind: TargetKind; home: number; x: number; y: number; w: number; h: number; hp: number; maxHp: number; flash: number; wobble: number; vx: number; deadT: number
   face: number; state: string; animT: number; label?: string; data?: unknown
@@ -62,10 +79,13 @@ export const TIP_AGAIN = 5
 export type Effect = { item: ItemId; left: number; total: number; speed: number; accel: number; curve: AccelCurve; ramp: number; look: EffectLook }
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
+// a peck's defence: while the beak is out, damaging notes and projectiles in its cone vanish in a little cloud
+export type ParryZone = { x: number; y: number; angle: number; reach: number; arc: number }
+export type Puff = { x: number; y: number; t: number; life: number; seed: number; color: string }
+export const PARRY_WINDOW = [0.12, 1] as const // fractions of the peck's time when the beak defends
+export const PUFF_LIFE = 0.4
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
-// range: wing reach; reach: wing plus the item's length (the hit area); dir: which way it sweeps (1 = clockwise on screen)
-// time: seconds the sweep takes
-export type Swing = { angle: number; arc: number; range: number; reach: number; t: number; time: number; wing: boolean; dir: number }
+export type { Swing } from './swing'
 
 export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
 export type FrameInput = {
@@ -122,12 +142,39 @@ export function createCombat() {
   let pumpT = 0
   // buttons hit this frame, bites she took, enemies down
   const pressed: string[] = []
-  const kills = { aliens: 0, zombies: 0, bites: 0 }
+  const kills = { aliens: 0, zombies: 0, bites: 0, undead: 0 }
   let view = { l: 0, r: 1280 }
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number }[] = []
   let swing: Swing | null = null
+  // the pecks defending right now (one per local player) and the little clouds of what they cancelled
+  const parryZones = new Map<string, ParryZone>()
+  const puffs: Puff[] = []
+  // note shots (tiros-nota) in flight, what happened to them this frame (the song reads it), and the rule that
+  // says which note a rebate plays (the song's fan; by default the note sequenced)
+  const noteShots: NoteShot[] = []
+  const noteEvents: NoteShotEvent[] = []
+  let noteEnv: NoteEnvFn | null = null
+  let placeEnv: PlaceEnvFn | null = null
+  // a peck defending at (x, y) cancels what is there, in a little cloud (parriedBy: the player who did it)
+  let parriedBy = ''
+  function parryAt(x: number, y: number, r: number, color: string) {
+    for (const [id, z] of parryZones) {
+      const dx = x - z.x, dy = y - z.y, dist = Math.hypot(dx, dy)
+      if (dist > z.reach + r) continue
+      let diff = Math.atan2(dy, dx) - z.angle
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+      if (Math.abs(diff) > z.arc / 2 && dist > 14 + r) continue
+      puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color })
+      sound('puff', null)
+      parriedBy = id
+      return true
+    }
+    return false
+  }
+  // the combo: which blow of the sequence came last and how long ago the last swing ended (s)
+  let swingCombo = 0, swingGap = Infinity
   // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
   const music = createConductor()
   let out: MusicOut = SILENT
@@ -136,7 +183,12 @@ export function createCombat() {
   let beamHeld: Held | null = null, beamMidi = 0
   const critters: Critter[] = []
   let quantizeAll = true
-  const conv = { birds: 0, people: 0, harmonized: 0 }
+  const conv = { birds: 0, people: 0, harmonized: 0, undeadBirds: 0 }
+  // undead waiting to join the world (an alien that just died: it joins on the next world step, so the shot that
+  // killed it does not hit it too); whether a song is playing (they leave once it ends); the place's birds
+  const pendingUndead: Target[] = []
+  let playing = false, undeadBorn = 0
+  let zoneBirds: BirdId[] | null = null
 
   const held = (): Owned | null => inv[cur] ?? null
   const groupOf = (o: Owned) => itemGroup(o.item, !!items[o.item]?.instrument)
@@ -159,6 +211,7 @@ export function createCombat() {
     if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
     if (blocked(t, x, y)) return
     if (t.dummy) { hurtDummy(t, damage, pushX, x, y); return }
+    if (t.kind === 'undead') { hurtUndead(t, damage, x, y); return }
     damage *= 1 - (t.shield ?? 0)
     t.hp -= damage; t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * 0.35; t.vx += pushX
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
@@ -168,6 +221,9 @@ export function createCombat() {
     if (t.kind === 'alien') {
       const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
       t.deadT = ALIEN_DEATH; burst(t.x, t.y - t.h / 2, 24, color, 260, 5); kills.aliens++; sound('alienDie', null)
+      // its physical death on the grid, and the undead it leaves
+      playNotes(deathNotes(deathSoundsFor(t.data).physical, music.chord(true), music.secondsPerBeat()), 'chip')
+      spawnUndead(t, pushX)
     } else if (t.kind === 'zombie') {
       t.state = 'dead'; t.animT = 0; t.deadT = ZOMBIE_TIMES.dead + ZOMBIE_TIMES.fade; kills.zombies++; sound('zombieDie', null)
     }
@@ -251,6 +307,7 @@ export function createCombat() {
   function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number) {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
+    if (t.kind === 'undead' && (t.data as UndeadState).bird) return
     if (blocked(t, x, y)) return
     if (t.dummy) {
       t.flash = 0.12; t.vx += pushX * 0.3
@@ -272,8 +329,9 @@ export function createCombat() {
       if (t.kind === 'alien') out.note('chip', ans + 12, at, 0.12, 0.5)
       else out.note('hum', ans - 12, at, 0.35, 0.6)
     }
-    if (t.harmony >= t.maxHp) convert(t)
+    if (t.harmony >= t.maxHp) fullHarmony(t, note)
   }
+  const fullHarmony = (t: Target, note: Pick<NoteInfo, 'color'>) => { if (t.kind === 'undead') resurrect(t, note.color); else convert(t) }
 
   // full harmony: aliens become birds and fly away, zombies become happy people and run off
   function convert(t: Target) {
@@ -283,9 +341,13 @@ export function createCombat() {
     const away = Math.sign(t.x - (lastBody?.x ?? t.x)) || 1
     if (t.kind === 'alien') {
       const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
-      critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160) + (t.blast?.vx ?? 0), vy: -rand(140, 220) + (t.blast?.vy ?? 0), t: 0, color, face: away, groundY: 0 })
+      // a bird of the place: its own look, flight and whistle
+      const type = BIRDS[pickBird(birdsFor(music.zone.id, zoneBirds))]
+      critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160) + (t.blast?.vx ?? 0), vy: -rand(140, 220) + (t.blast?.vy ?? 0), t: 0, color, face: away, groundY: 0,
+        bird: type.id, homeX: t.x, homeY: top - 60, whistleIn: whistleTime(type) })
       conv.birds++
-      chord.forEach((m, i) => out.note('bird', m + 12, i * 0.06, 0.1, 0.6))
+      // its musical death on the grid
+      playNotes(deathNotes(deathSoundsFor(t.data).musical, chord, music.secondsPerBeat()), 'bird')
       burst(t.x, top, 16, color, 200, 4)
     } else {
       critters.push({ kind: 'person', x: t.x, y: t.y, vx: away * rand(230, 290) + (t.blast?.vx ?? 0), vy: t.blast?.vy ?? 0, t: 0, color: '#ff6b9a', face: away, groundY: t.y })
@@ -297,23 +359,89 @@ export function createCombat() {
   }
   let lastBody: Body | null = null
 
+  // ---------- the undead ----------
+  const harmonyNow = () => { const z = music.zone; return { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() } }
+  const whistleTime = (type: BirdType) => (type.whistle.max > 0 ? rand(type.whistle.min, type.whistle.max) : Infinity)
+  function spawnUndead(t: Target, pushX: number) {
+    const look = t.data as { kind?: string; species?: string } | undefined
+    // the dragon breaks apart: no undead
+    if (look?.kind === 'temple' && (look.species === 'dragon' || look.species === 'dragonHead')) return
+    // too many: the oldest leaves to make room
+    const all = [...targets, ...pendingUndead].filter(g => g.kind === 'undead' && g.deadT <= 0 && (g.data as UndeadState).phase !== 'leave')
+    if (all.length >= UNDEAD_MAX) {
+      const oldest = all.reduce((a, b) => ((a.data as UndeadState).born <= (b.data as UndeadState).born ? a : b))
+      const u = oldest.data as UndeadState
+      u.phase = 'leave'; u.t = 0
+    }
+    pendingUndead.push({
+      id: nextId++, kind: 'undead', home: 0, x: t.x, y: t.y, w: t.w, h: t.h, hp: t.maxHp, maxHp: t.maxHp, flash: 0, wobble: 0, vx: 0, deadT: 0,
+      face: t.face, state: 'undead', animT: 0, harmony: 0,
+      data: newUndead(t.data, Math.sign(pushX) * Math.min(260, Math.abs(pushX) * 0.5) + (t.blast?.vx ?? 0), -260, { ...UNDEAD_DEFAULTS, ...((t.data as { undead?: Partial<UndeadParams> } | undefined)?.undead ?? {}) }, undeadBorn++, Math.random),
+    })
+  }
+  // weapons wear it down; at zero it is gone for good
+  function hurtUndead(t: Target, damage: number, x: number, y: number) {
+    t.hp -= damage; t.flash = 0.12
+    addText(x, y - 10, String(Math.round(damage)), '#c9ced6')
+    burst(x, y, 5, '#9aa0a8', 150, 2)
+    if (t.hp > 0) return
+    t.deadT = 0.3; kills.undead++
+    burst(t.x, t.y - t.h / 2, 20, '#8d9096', 240, 4)
+    sound('alienDie', null)
+  }
+  // notes fill an undead's bar: full, it comes back as an undead bird with eyes in the note's colour, singing its
+  // phrase in minor (or diminished)
+  function resurrect(t: Target, color: string) {
+    const u = t.data as UndeadState
+    const type = BIRDS[u.params.bird ?? pickBird(birdsFor(music.zone.id, zoneBirds))]
+    u.bird = type.id; u.phase = 'bird'; u.t = 0; u.eye = color; u.angle = 0; u.vx = 0; u.vy = 0
+    t.harmony = 0; t.hp = t.maxHp; t.state = 'bird'; t.flash = 0.2
+    t.w = 11 * type.pixel; t.h = 8 * type.pixel
+    u.homeX = t.x; u.homeY = t.y - 70; u.whistleIn = whistleTime(type)
+    conv.undeadBirds++
+    const h = harmonyNow()
+    playNotes(birdPhrase(type, h.chord[0] + 12, h, u.params.mode), type.voice)
+    burst(t.x, t.y - t.h / 2, 16, color, 200, 4)
+    addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6')
+  }
+  // a bird whistles: its phrase, and its last note flies to the nearest player, arriving on a beat (she can rebate it)
+  function whistle(x: number, y: number, type: BirdType, undead: UndeadMode | null) {
+    const her = lastBody
+    if (!her || x < view.l - 40 || x > view.r + 40) return
+    const tx = her.x, ty = her.y - 90 * her.scale
+    const dist = Math.hypot(tx - x, ty - y)
+    if (dist > 1100) return
+    const spb = music.secondsPerBeat()
+    const flight = Math.max(0.6, dist / Math.max(60, type.shot.speed))
+    const beats = Math.ceil(music.beat + flight / spb)
+    const T = (beats - music.beat) * spb
+    const h = harmonyNow()
+    const phrase = birdPhrase(type, h.chord[0] + 12, h, undead, 0.4)
+    playNotes(phrase, type.voice)
+    const midi = phrase[phrase.length - 1]?.midi ?? h.chord[0] + 12
+    noteShots.push({
+      id: nextId++, x, y, vx: (tx - x) / T, vy: (ty - y) / T, midi, color: DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length],
+      size: type.shot.size, glow: 0.6, arriveAt: music.time + T, state: 'incoming', t: 0, source: 'bird', ...(type.rule ? { rule: type.rule } : {}),
+    })
+  }
+
   // ---------- loadouts: one per local player ----------
   type Consumption = { item: ItemId; left: number; total: number } | null
   type Loadout = {
     peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
-    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null
+    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effect: Effect | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
-    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing,
+    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, swingCombo, swingGap,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect,
   })
   const blank = (): Loadout => ({
-    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null,
+    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
     beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effect: null,
   })
   function useLoadout(id: string) {
@@ -321,7 +449,7 @@ export function createCombat() {
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
     active = id
   }
 
@@ -538,6 +666,31 @@ export function createCombat() {
         }
       }
     }
+    // the instruments' notes: a "Rebate notas" surface bounces them back, playing (a few times at most); crossing
+    // the map's fixed lanes tunes them to the lane
+    if (b.note) {
+      for (let k = 1; k <= steps && (b.bounces ?? 0) < SURFACE_BOUNCES; k++) {
+        const lx = px + (b.x - px) * (k - 1) / steps, ly = py + (b.y - py) * (k - 1) / steps
+        const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
+        const wall = surfaceHit(boxes, lx, ly, x, y)
+        if (!wall) continue
+        b.x = lx; b.y = ly
+        if (wall.flipX) b.vx = -b.vx; else b.vy = -b.vy
+        b.bounces = (b.bounces ?? 0) + 1
+        if (!dry) {
+          const notes = surfaceSound(wall.box.rebate!, lx, ly, b.note.midi, b.note.voice, items[b.item].rebateChain, undefined)
+          const main = notes.find(o => !o.drum)?.midi
+          if (main !== undefined) b.note = { ...b.note, midi: main, color: DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length] }
+          b.hits.clear()
+          burst(lx, ly, 5, b.note.color, 140, 2)
+        }
+        return false
+      }
+      if (!dry) {
+        const tuned = laneRetune(b.x, b.y)
+        if (tuned !== null && tuned !== b.note.midi) b.note = { ...b.note, midi: tuned, color: DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
+      }
+    }
     // walls and the floor: explode, bounce (with a fuse) or stop
     for (let k = 1; k <= steps; k++) {
       const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
@@ -603,37 +756,203 @@ export function createCombat() {
     return points
   }
 
-  function melee(origin: { x: number; y: number }, wing: boolean, scale: number) {
+  // a blow pressed while the last one is still going interrupts it and the new one starts right away (with no
+  // interval, every note of a song can be hit), unless the item says not to: then it waits for the move to end
+  function canSwing(wing: boolean) {
+    const d = wing ? items.wing : def()
+    return d.meleeInterrupt || !swing || swing.t >= swing.time
+  }
+  function melee(wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
     sound('swing', null)
-    // an instrument hit with Y still sounds: a quick strum of the chord
-    if (!wing && d.instrument) music.chord().forEach((m, i) => out.note(d.voice, m + 12 * d.octave, i * 0.02, 0.15, 0.5))
+    // an instrument hit with Y still sounds: a quick strum of the chord, and its air takes the chord's colour
+    let color = d.trailColor
+    if (!wing && d.instrument) {
+      const chord = music.chord()
+      chord.forEach((m, i) => out.note(d.voice, m + 12 * d.octave, i * 0.02, 0.15, 0.5))
+      if (chord.length) color = DEGREE_COLORS[music.degreeOf(chord[0]) % DEGREE_COLORS.length]
+    }
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
-    // the blow comes down in front of her: clockwise facing right, counterclockwise facing left
-    swing = { angle: aimAngle, arc: d.meleeArc * DEG, range: d.meleeRange, reach, t: 0, time: Math.max(0.02, d.meleeTime), wing, dir: Math.cos(aimAngle) >= 0 ? 1 : -1 }
-    let hits = 0
+    // blows in a row alternate: down, up, horizontal, a full spin. Down comes clockwise facing right
+    const order = d.combo.length ? d.combo : SWING_COMBO
+    swingCombo = nextCombo(swingCombo, swingGap, d.comboWindow, order.length)
+    const kind = order[swingCombo % order.length]
+    const arc = kind === 'spin' ? Math.PI * 2 : (kind === 'up' ? d.meleeArcUp : kind === 'flat' ? d.meleeArcFlat : d.meleeArc) * DEG
+    const face = Math.cos(aimAngle) >= 0 ? 1 : -1
+    const time = Math.max(0.02, d.meleeTime), trailTime = Math.max(0.05, d.trailTime)
+    swing = {
+      angle: aimAngle, arc, range: d.meleeRange, reach, t: 0, time, wing,
+      dir: kind === 'up' ? -face : face, kind, combo: swingCombo, hitAt: swingHitAt(time), hit: false, hits: 0,
+      life: swingLife(time, trailTime), impacts: [], seed: Math.random(),
+      trail: { width: d.trailWidth, color, time: trailTime, wisps: Math.round(d.trailWisps), opacity: d.trailOpacity },
+      item: wing ? null : held() ?? null, damage: d.meleeDamage, push: d.meleePush, durability: d.durability > 0, name: d.name,
+    }
+    swingGap = 0
+  }
+
+  // the blow lands at the end of the preparação: everything in its arc is hit once
+  function strike(sw: Swing, origin: { x: number; y: number }) {
+    sw.hit = true
     targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = t.x, cy = t.y - t.h / 2
       const dx = cx - origin.x, dy = cy - origin.y, dist = Math.hypot(dx, dy) - t.w / 2
-      if (dist > reach) return
-      let diff = Math.atan2(dy, dx) - aimAngle
+      if (dist > sw.reach) return
+      let diff = Math.atan2(dy, dx) - sw.angle
       diff = Math.atan2(Math.sin(diff), Math.cos(diff))
-      if (Math.abs(diff) > (d.meleeArc * DEG) / 2 && dist > 10) return
-      hitTarget(t, d.meleeDamage, Math.sign(dx || 1) * d.meleePush, cx - Math.sign(dx) * t.w / 2, cy)
-      hits++
+      if (Math.abs(diff) > sw.arc / 2 && dist > 10) return
+      const hx = cx - Math.sign(dx) * t.w / 2
+      hitTarget(t, sw.damage, Math.sign(dx || 1) * sw.push, hx, cy)
+      sw.impacts.push({ x: hx - origin.x, y: cy - origin.y })
+      sw.hits++
     })
     // items wear out on hits; the wing never breaks
-    const h = held()
-    if (!wing && h && hits > 0 && d.durability > 0) {
-      h.durability -= hits
+    const h = sw.item as Owned | null
+    if (h && sw.hits > 0 && sw.durability && inv.includes(h)) {
+      h.durability -= sw.hits
       if (h.durability <= 0) {
-        removeHeld()
-        burst(origin.x + Math.cos(aimAngle) * 30, origin.y + Math.sin(aimAngle) * 30, 18, '#c9c9c9', 200, 4)
-        addText(origin.x, origin.y - 50, `${d.name} quebrou!`, '#ff8c69')
+        const i = inv.indexOf(h)
+        if (i === cur) removeHeld(); else { inv.splice(i, 1); if (i < cur) cur-- }
+        burst(origin.x + Math.cos(sw.angle) * 30, origin.y + Math.sin(sw.angle) * 30, 18, '#c9c9c9', 200, 4)
+        addText(origin.x, origin.y - 50, `${sw.name} quebrou!`, '#ff8c69')
       }
+    }
+  }
+
+  // a blow rebates the incoming notes in its sector during the golpe and the continuação: judged against when the
+  // note should arrive, it plays (the song's rule picks the note) and flies off where she aims
+  function rebateNotes(sw: Swing, origin: { x: number; y: number }) {
+    if (sw.t < sw.hitAt || sw.t > sw.hitAt + sw.time * (SWING_PHASES.strike + SWING_PHASES.follow)) return
+    for (const n of noteShots) {
+      if (n.state !== 'incoming' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, n.x, n.y, n.size)) continue
+      const off = music.time - n.arriveAt, grade = judgeNote(off)
+      // what it plays: the sequenced note through the ambience (the stage's fan, the map's lanes and zone) and the
+      // item's chain of transformations, in the order the note's rule says
+      const d = sw.wing ? items.wing : def()
+      const env = noteEnv?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? null
+      const voice: VoiceId = d.instrument ? d.voice : 'bells'
+      const seq: NoteOut = { midi: n.midi, at: 0, dur: grade === 'fora' ? 0.2 : 0.4, vel: grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25, voice }
+      // a percussion alien's note: the rebate is a beat
+      const notes = n.drum ? [{ midi: n.midi, at: 0, dur: 0.2, vel: Math.max(0.5, seq.vel), drum: n.drum }] : noteSound(n.x, n.y, seq, d.rebateChain, env?.rule ?? n.rule, env)
+      playNotes(notes, voice, d.rebateTok)
+      const main = notes.find(o => !o.drum)?.midi ?? n.midi
+      // off where she aims, pulled toward the nearest character by the item's snap
+      const dir = snapAngle(n.x, n.y, aimAngle, d.rebateSnap * DEG, d.rebateSnapForce, origin)
+      const speed = Math.max(REBATE_SPEED, Math.hypot(n.vx, n.vy) * 1.6) * Math.max(0.1, d.rebateSpeed)
+      n.vx = Math.cos(dir) * speed; n.vy = Math.sin(dir) * speed
+      n.state = 'rebated'; n.t = 0; n.grade = grade; n.midi = main; n.chain = d.rebateChain; n.voice = voice; n.bounces = 0
+      n.color = DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length]
+      burst(n.x, n.y, grade === 'perfect' ? 12 : 6, n.color, grade === 'perfect' ? 260 : 160, 3)
+      noteEvents.push({ kind: 'rebate', shot: n, grade, off, player: active, midi: main, notes })
+    }
+  }
+
+  // what a note hit at (x, y) plays: through the ambience there (the stage's, else the map's zone and fixed lanes)
+  // and the chain, in the order of the rule. A silent lane plays nothing.
+  function noteSound(x: number, y: number, seq: NoteOut, chain: Transform[], rule: RebateRule | undefined, env: ReturnType<NoteEnvFn> | null): NoteOut[] {
+    const place = env ? null : placeEnv?.(x, y) ?? null
+    const z = place?.zone?.zone ?? music.zone
+    const chord = z.id === music.zone.id ? music.chord(true) : chordOn(z, z.progression[music.bar % z.progression.length], true)
+    const harmony = { root: z.root, steps: SCALES[z.scale].steps, chord, spb: music.secondsPerBeat() }
+    const lane = place?.lane
+    if (lane === null) return []
+    // inside fixed lanes the lane's note is the base and the taco ornaments it (unless the note says otherwise)
+    const r = rule ?? (lane !== undefined ? 'ambiente-taco' : DEFAULT_RULE)
+    return rebateSound(seq, r, chain, { base: env?.base ?? lane ?? null, fit: env?.fit ?? harmony, chain: place?.zone?.chain }, {
+      ...harmony, combo: env?.combo ?? 0, angle: aimAngle, rand: Math.random, byAngle: (a, oct) => music.noteFor(a, 'scale', oct),
+    })
+  }
+  function playNotes(notes: NoteOut[], voice: VoiceId, tok = false) {
+    const grid = music.toGrid()
+    notes.forEach(o => { if (o.drum) out.drum(o.drum, grid + o.at, o.vel); else out.note(o.voice ?? voice, o.midi, grid + o.at, o.dur, o.vel) })
+    if (tok) out.drum('wood', grid, 0.9)
+  }
+  // a note meeting a "Rebate notas" surface between two points: the face it came through (null: it was already
+  // inside, or met none)
+  function surfaceHit(boxes: Box[], px: number, py: number, x: number, y: number) {
+    for (const b of boxes) {
+      if (!b.rebate || !boxContains(b, x, y) || boxContains(b, px, py)) continue
+      const side = px < b.l || px > b.r, top = py < b.t || py > b.b
+      // through a corner: the axis it crossed later decides
+      const flipX = side && (!top || Math.abs(px - (px < b.l ? b.l : b.r)) <= Math.abs(py - (py < b.t ? b.t : b.b)))
+      return { box: b, flipX }
+    }
+    return null
+  }
+  // what a surface plays when a note bounces off it: its chain, the last item's (delegate) or the note as it is
+  function surfaceSound(s: SurfaceRebate, x: number, y: number, midi: number, voice: VoiceId, lastChain: Transform[] | undefined, rule: RebateRule | undefined) {
+    const seq: NoteOut = { midi, at: 0, dur: 0.3, vel: 0.5, voice }
+    const notes = s.mode === 'none' ? noteSound(x, y, seq, [], 'travada', null) : noteSound(x, y, seq, s.mode === 'chain' ? s.chain : lastChain ?? [], rule, null)
+    playNotes(notes, voice)
+    return notes
+  }
+  // a note crossing the map's fixed lanes takes the lane's note (and colour), silently
+  function laneRetune(x: number, y: number): number | null {
+    const lane = placeEnv?.(x, y)?.lane
+    return typeof lane === 'number' ? lane : null
+  }
+
+  // a rebate's direction pulled toward the nearest character (enemy, dummy or another player) within `snap` of it
+  function snapAngle(x: number, y: number, angle: number, snap: number, force: number, origin: { x: number; y: number }) {
+    if (snap <= 0 || force <= 0) return angle
+    let best = 0, bestAbs = Infinity
+    const consider = (cx: number, cy: number) => {
+      let diff = Math.atan2(cy - y, cx - x) - angle
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+      if (Math.abs(diff) <= snap && Math.abs(diff) < bestAbs) { bestAbs = Math.abs(diff); best = diff }
+    }
+    targets.forEach(t => { if (t.kind !== 'button' && t.deadT <= 0 && t.state !== 'converted') consider(t.x, t.y - t.h / 2) })
+    blastActors.forEach(a => { if (origin.x < a.box.l || origin.x > a.box.r || origin.y < a.box.t || origin.y > a.box.b) consider((a.box.l + a.box.r) / 2, (a.box.t + a.box.b) / 2) })
+    return bestAbs === Infinity ? angle : angle + best * Math.min(1, force)
+  }
+
+  // the notes in flight, once per world step: incoming ones the peck cancels, ones that reach a player or come too
+  // late are missed; rebated ones fill the harmony of the first alien or zombie they meet
+  function stepNoteShots(dt: number, ctx: StepCtx) {
+    for (let i = noteShots.length - 1; i >= 0; i--) {
+      const n = noteShots[i]
+      const px = n.x, py = n.y
+      n.t += dt; n.x += n.vx * dt; n.y += n.vy * dt
+      if (n.state === 'incoming') {
+        if (parryAt(n.x, n.y, n.size, n.color)) { noteEvents.push({ kind: 'parry', shot: n, player: parriedBy }); noteShots.splice(i, 1); continue }
+        // it can still be rebated a little after it should have arrived (it flies on into her): touching a player
+        // only counts once it is past the good window
+        const late = music.time - n.arriveAt
+        const hitHer = late > NOTE_GOOD && blastActors.some(a => n.x + n.size > a.box.l && n.x - n.size < a.box.r && n.y + n.size > a.box.t && n.y - n.size < a.box.b)
+        if (hitHer || late > NOTE_LATE) {
+          n.state = 'missed'; n.t = 0
+          noteEvents.push({ kind: 'miss', shot: n })
+          if (hitHer) { burst(n.x, n.y, 6, '#9aa0a8', 120, 2); noteShots.splice(i, 1) }
+        }
+        continue
+      }
+      if (n.state === 'missed') { if (n.t > 0.6) noteShots.splice(i, 1); continue }
+      // a "Rebate notas" surface: it bounces back and plays again (a few times at most)
+      const wall = (n.bounces ?? 0) < SURFACE_BOUNCES ? surfaceHit(ctx.boxes, px, py, n.x, n.y) : null
+      if (wall) {
+        n.x = px; n.y = py
+        if (wall.flipX) n.vx = -n.vx; else n.vy = -n.vy
+        n.bounces = (n.bounces ?? 0) + 1; n.t = 0
+        const notes = surfaceSound(wall.box.rebate!, n.x, n.y, n.midi, n.voice ?? 'bells', n.chain, n.rule)
+        const main = notes.find(o => !o.drum)?.midi
+        if (main !== undefined) { n.midi = main; n.color = DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length] }
+        burst(n.x, n.y, 6, n.color, 160, 3)
+        noteEvents.push({ kind: 'bounce', shot: n, midi: n.midi, notes })
+        continue
+      }
+      const tuned = laneRetune(n.x, n.y)
+      if (tuned !== null && tuned !== n.midi) { n.midi = tuned; n.color = DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
+      const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie' || (t.kind === 'undead' && !(t.data as UndeadState).bird)) && t.deadT <= 0 && t.state !== 'converted' &&
+        n.x + n.size > t.x - t.w / 2 && n.x - n.size < t.x + t.w / 2 && n.y + n.size > t.y - t.h && n.y - n.size < t.y)
+      if (hit) {
+        const note: NoteInfo = { midi: n.midi, color: n.color, sym: '♪', wave: 0, phase: 0, voice: 'bells' }
+        // (a full harmony turns it into a bird)
+        harmonize(hit, hit.maxHp * REBATE_HARMONY, Math.sign(n.vx) * 120, n.x, n.y, note, 0.3)
+        noteShots.splice(i, 1); continue
+      }
+      if (n.t > REBATE_LIFE) noteShots.splice(i, 1)
     }
   }
 
@@ -644,7 +963,7 @@ export function createCombat() {
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
       if (y >= ctx.groundY || boxAt(ctx.boxes, x, y, d.instrument)) break
-      hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
+      hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && !(t.kind === 'undead' && (t.data as UndeadState).bird) && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
     const midi = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
@@ -664,7 +983,7 @@ export function createCombat() {
       if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
       if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun)
       if (hit.kind === 'button' && hit.flash <= 0) hitTarget(hit, 1, 0, x, y)
-      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) convert(hit)
+      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) fullHarmony(hit, note)
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
   }
@@ -682,7 +1001,7 @@ export function createCombat() {
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
     use(id: string) { useLoadout(id) },
     get player() { return active },
-    drop(id: string) { if (id !== active) loadouts.delete(id) },
+    drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id) } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
     get current() { return cur },
@@ -690,6 +1009,23 @@ export function createCombat() {
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
     get kick() { return kick },
     get swing() { return swing },
+    get puffs() { return puffs as readonly Puff[] },
+    get parryZones() { return [...parryZones.values()] },
+    // a damaging note or projectile at (x, y), radius r: a peck defending there cancels it in a little cloud
+    parry(x: number, y: number, r = 0, color = '#f4f1ea') { return parryAt(x, y, r, color) },
+    // note shots: fire one (a note spawner), what happened to them this frame, which note a rebate plays
+    fireNoteShot(n: Omit<NoteShot, 'id' | 'state' | 't'>) { const shot: NoteShot = { ...n, id: nextId++, state: 'incoming', t: 0 }; noteShots.push(shot); return shot },
+    get noteShots() { return noteShots as readonly NoteShot[] },
+    get noteEvents() { return noteEvents },
+    // the ambience a note is rebated in (the stage's fan, the zone): its base note, its scale, the note's rule, the combo
+    setNoteEnv(fn: NoteEnvFn | null) { noteEnv = fn },
+    // what a point of the map plays (its Zonas sonoras and Faixas fixas); the stage's ambience wins over it
+    setPlaceEnv(fn: PlaceEnvFn | null) { placeEnv = fn },
+    // a song is playing (the undead wait for it to end before leaving); the birds of the place (null: the zone's)
+    setPlaying(on: boolean) { playing = on },
+    setZoneBirds(list: BirdId[] | null) { zoneBirds = list?.length ? list : null },
+    get undead() { return targets.filter(t => t.kind === 'undead' && t.deadT <= 0) },
+    clearNoteShots(source?: string) { for (let i = noteShots.length - 1; i >= 0; i--) if (!source || noteShots[i].source === source) noteShots.splice(i, 1) },
     get peck(): PeckPose | null {
       if (held()) return null
       if (peck) return peckPose(peck)
@@ -804,7 +1140,13 @@ export function createCombat() {
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
       kick = Math.max(0, kick - dt * 60)
       bloom = Math.max(0, bloom - d.spreadRecover * dt)
-      if (swing) { swing.t += dt; if (swing.t > swing.time) swing = null }
+      if (swing) {
+        swing.t += dt
+        if (!swing.hit && swing.t >= swing.hitAt) strike(swing, origin)
+        rebateNotes(swing, origin)
+        if (swing.t > swing.life) swing = null
+      }
+      if (!swing || swing.t > swing.time) swingGap += dt
 
       // switching items
       if (input.slot) { if (input.slot <= slotCount(inv.length)) equip(input.slot - 1) }
@@ -855,6 +1197,11 @@ export function createCombat() {
         }
         if (peck.t >= peck.time) peck = null
       }
+      const pk = peck as Peck | null, pf = pk ? pk.t / pk.time : -1
+      if (pk && pf >= PARRY_WINDOW[0] && pf <= PARRY_WINDOW[1]) {
+        const at = opts.peckOrigin ?? origin
+        parryZones.set(active, { x: at.x, y: at.y, angle: pk.angle, reach: pk.reach, arc: Math.min(160, Math.max(0, items.peck.meleeArc)) * DEG })
+      } else parryZones.delete(active)
       // Fire with an item shoots; Golpe continues to use the wing/item.
       const h = held()
       const canFire = body.state !== 'slide' || d.slideFire
@@ -872,7 +1219,8 @@ export function createCombat() {
       } else if (h && d.consumable) {
         if (input.firePressed && cooldown <= 0) consume(h, d, origin)
       } else if (d.mag === 0) {
-        if (input.firePressed && meleeCool <= 0) melee(origin, true, body.scale)
+        // an item only for hitting (the taco): Atirar swings it too
+        if (input.firePressed && meleeCool <= 0 && canSwing(false)) melee(false, body.scale)
       } else if (canFire) {
         const spreadDeg = this.spread(body)
         const ctx = { boxes, groundY }
@@ -916,7 +1264,7 @@ export function createCombat() {
         }
       }
       prevFire = input.fire
-      if (input.melee && meleeCool <= 0) melee(origin, !h, body.scale)
+      if (input.melee && meleeCool <= 0 && canSwing(!h)) melee(!h, body.scale)
 
       // throw: hold to charge, let go to throw what she holds; another item in the wing while charging
       // (switched, grabbed) calls the throw off completely, until the button is let go
@@ -947,6 +1295,7 @@ export function createCombat() {
       // projectiles
       const ctx = { boxes, groundY }
       if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
+      if (world) stepNoteShots(dt, ctx)
       if (world) for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
       if (world) for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
 
@@ -1038,6 +1387,19 @@ export function createCombat() {
         const t = targets[i]
         if ((t.kind === 'alien' || t.kind === 'zombie') && !stepEnemy(t, dt, e)) targets.splice(i, 1)
       }
+      // the undead: fall, lie, get up and wander, fly as birds (and whistle), leave once the music ends
+      targets.push(...pendingUndead.splice(0))
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i]
+        if (t.kind !== 'undead') continue
+        const u = t.data as UndeadState
+        t.animT += dt
+        if (!stepUndead(t, u, dt, { boxes, groundY, viewL: view.l, viewR: view.r, playing, rand: Math.random })) { targets.splice(i, 1); continue }
+        if (u.bird && u.phase === 'bird' && t.deadT <= 0) {
+          u.whistleIn -= dt
+          if (u.whistleIn <= 0) { const type = BIRDS[u.bird]; u.whistleIn = whistleTime(type); whistle(t.x, t.y - t.h / 2, type, u.params.mode) }
+        }
+      }
       targets.forEach(t => {
         if (t.kind !== 'dummy' && t.kind !== 'button') return
         t.flash = Math.max(0, t.flash - dt)
@@ -1060,11 +1422,29 @@ export function createCombat() {
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]
         c.t += dt
-        if (c.kind === 'bird') { c.vy = Math.max(-260, c.vy - 40 * dt); c.x += c.vx * dt + Math.sin(c.t * 9) * 0.6; c.y += c.vy * dt + Math.sin(c.t * 14) * 1.2 }
+        const type = c.kind === 'bird' && c.bird ? BIRDS[c.bird] : null
+        // circling or perched for a while, then away
+        const staying = !!type && type.flight !== 'leave' && c.t < type.stay
+        if (staying && type) {
+          const hx = c.homeX ?? c.x, hy = type.flight === 'perch' ? (c.groundY || (c.groundY = floorUnder({ boxes, groundY }, hx, c.y))) - type.pixel * 4 : (c.homeY ?? c.y)
+          const a = c.t * 1.6
+          const nx = type.flight === 'circle' ? hx + Math.cos(a) * 80 : hx, ny = type.flight === 'circle' ? hy + Math.sin(a) * 30 : hy
+          c.face = nx >= c.x ? 1 : -1
+          c.x += (nx - c.x) * Math.min(1, dt * 2.5); c.y += (ny - c.y) * Math.min(1, dt * 2.5)
+        } else if (c.kind === 'bird') {
+          if (type && type.flight !== 'leave' && c.t - type.stay < dt * 1.5) { c.vx = c.face * rand(110, 160); c.vy = -rand(140, 200) }
+          c.vy = Math.max(-260, c.vy - 40 * dt); c.x += c.vx * dt + Math.sin(c.t * 9) * 0.6; c.y += c.vy * dt + Math.sin(c.t * 14) * 1.2
+        }
+        if (type && c.whistleIn !== undefined) {
+          c.whistleIn -= dt
+          if (c.whistleIn <= 0) { c.whistleIn = whistleTime(type); whistle(c.x, c.y, type, null) }
+        }
         else { c.x += c.vx * dt; c.vy += 1600 * dt; c.y += c.vy * dt; if (c.y >= c.groundY) { c.y = c.groundY; c.vy = Math.random() < 0.02 ? -380 : 0 } }
         if (c.t > 1.2 && c.kind === 'person' && Math.random() < dt * 1.5) texts.push({ x: c.x, y: c.y - 190, text: Math.random() < 0.5 ? '♥' : '♪', life: 0.9, color: '#ff6b9a', size: 18 })
-        if (c.y < -120 || c.t > 9 || c.x < view.l - 500 || c.x > view.r + 500) critters.splice(i, 1)
+        const stay = c.bird ? BIRDS[c.bird].stay : 0
+        if (c.t > stay && (c.y < -120 || c.t > 9 + stay || c.x < view.l - 500 || c.x > view.r + 500)) critters.splice(i, 1)
       }
+      for (let i = puffs.length - 1; i >= 0; i--) { puffs[i].t += dt; if (puffs[i].t >= puffs[i].life) puffs.splice(i, 1) }
       for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.life <= 0) sparks.splice(i, 1) }
       for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1) }
     },

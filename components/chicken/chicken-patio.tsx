@@ -8,7 +8,7 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Crosshair, FolderOpen, Gamepad2, Maximize, Minimize, Pencil, Save, SlidersHorizontal, Swords, Users, X } from "lucide-react"
+import { Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Pencil, Save, SlidersHorizontal, Swords, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -20,7 +20,7 @@ import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
-import { CHICKEN_GROUND_H, ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
+import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, type ChickenPortalWorld } from "./chicken-portal"
 import { PatioPortals } from "@/components/pigchicken/patio-portals"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
@@ -31,8 +31,14 @@ import { GamePreferences } from "@/components/game-preferences"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { BAR_GROUND_H, INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
+import { AlienCatalogPanel } from "@/components/pigchicken/alien-catalog-panel"
+import { JukeboxPanel } from "@/components/pigchicken/jukebox-panel"
+import { SongEditorPanel } from "@/components/pigchicken/song-editor-panel"
+import { MidiPanel } from "@/components/pigchicken/midi-panel"
+import { onOpenJukebox, onOpenMidiGenerator, onOpenSongEditor } from "@/lib/pigchicken/song-library"
+import { songsOnlineAvailable, startSongSync } from "@/lib/pigchicken/song-online"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
@@ -87,7 +93,8 @@ export function ChickenPatio() {
   const showTouch = useChickenTouch(), portrait = usePortrait()
   const lifted = showTouch && portrait
   const controlsBottom = lifted ? 16 : undefined
-  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : CHICKEN_GROUND_H
+  // on desktop and tablet the world rises so her ground sits above the inventory bar at the bottom
+  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : BAR_GROUND_H
   // tela cheia: segue o estado real do navegador (Esc também sai)
   const [fullscreen, setFullscreen] = useState(false)
   useEffect(() => {
@@ -112,6 +119,17 @@ export function ChickenPatio() {
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
+  const [aliensOpen, setAliensOpen] = useState(false)
+  // the jukebox in the temple opens the songs' panel when she strikes it
+  const [jukeboxOpen, setJukeboxOpen] = useState(false)
+  const [editingSong, setEditingSong] = useState<string | null>(null)
+  useEffect(() => onOpenJukebox(() => setJukeboxOpen(true)), [])
+  const [midiOpen, setMidiOpen] = useState(false)
+  useEffect(() => onOpenSongEditor(id => { setEditingSong(id); setJukeboxOpen(false); setMidiOpen(false) }), [])
+  useEffect(() => onOpenMidiGenerator(() => { setMidiOpen(true); setJukeboxOpen(false) }), [])
+  // the jukebox's songs go to the account of whoever is signed in (guests keep them in this browser)
+  const songUser = online.user && !online.user.is_anonymous && songsOnlineAvailable() ? online.user.id : null
+  useEffect(() => startSongSync(songUser), [songUser])
   useEffect(() => { setPq(loadParquinho()) }, [])
   const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
@@ -352,10 +370,13 @@ export function ChickenPatio() {
             </div>
           )}
         </div>
-        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Catálogo de aliens" aria-pressed={aliensOpen} title="Catálogo de aliens" onClick={() => { setAliensOpen(v => !v); setItemsOpen(false); setPqOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", aliensOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Ghost className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false); setAliensOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
         <button type="button" aria-label="Controles do boneco" title="Controles do boneco" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
@@ -418,6 +439,10 @@ export function ChickenPatio() {
       )}
       {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
+      {aliensOpen && <AlienCatalogPanel onClose={() => setAliensOpen(false)} />}
+      {jukeboxOpen && <JukeboxPanel onClose={() => setJukeboxOpen(false)} />}
+      {midiOpen && <MidiPanel onClose={() => setMidiOpen(false)} />}
+      {editingSong && <SongEditorPanel key={editingSong} songId={editingSong} onClose={() => setEditingSong(null)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">

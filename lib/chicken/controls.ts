@@ -22,14 +22,14 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', null, null], keys2: ['Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
   { key: 'right', label: 'Direita', keys: ['Key:KeyD', null, null], keys2: ['Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
   { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', null, null], keys2: ['Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
-  { key: 'down', label: 'Chocar / cair / travar mira', keys: ['Key:ControlLeft', null, null], keys2: ['Key:ArrowDown', 'Key:ControlRight'], pad: ['Pad:b6', null, null] },
-  { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', 'Key:KeyC', null], keys2: ['Key:PageDown', null], pad: ['Pad:a1+', 'Pad:b13', null] },
+  { key: 'down', label: 'Chocar / cair / travar mira', keys: ['Key:ControlLeft', 'Key:KeyX', null], keys2: ['Key:ArrowDown', 'Key:ControlRight'], pad: ['Pad:b6', null, null] },
+  { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', null, null], keys2: ['Key:PageDown', null], pad: ['Pad:a1+', 'Pad:b13', null] },
   { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], keys2: ['Key:PageUp', null], pad: ['Pad:b0', 'Pad:b11', null] },
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b5', 'Pad:b2', null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
-  { key: 'fire', label: 'Atirar', keys: ['Key:KeyX', 'Key:KeyV', null], keys2: ['Key:Insert', null], pad: ['Pad:b7', null, null], group: 'items' },
-  { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyZ', 'Key:KeyB', null], keys2: ['Key:Home', null], pad: ['Pad:b1', null, null], group: 'items' },
-  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:End', null], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'fire', label: 'Atirar', keys: ['Key:KeyV', null, null], keys2: ['Key:Insert', null], pad: ['Pad:b7', null, null], group: 'items' },
+  { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', null], pad: ['Pad:b1', null, null], group: 'items' },
+  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', 'Key:KeyZ', null], keys2: ['Key:End', null], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:Tab', null, null], keys2: ['Key:Delete', null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'deselectItem', label: 'Deselecionar item', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Backslash', null], pad: [null, null, null], group: 'items' },
@@ -199,6 +199,17 @@ export function loadChickenControls(): ChickenControls {
         base.keys.nextItem = ['Key:Tab', null, null]; base.keys.itemWheel = ['Key:KeyQ', null, null]
       }
     }
+    // V fires, C strikes, X broods and Z throws (06/11): actions still on the previous defaults take the new ones;
+    // a key goes to its new action only if nothing else holds it
+    if (!saved?.keyboardVCXZ) {
+      const is = (action: ChickenAction, toks: string[]) => { const on = base.keys[action].filter(Boolean); return on.length === toks.length && toks.every(t => on.includes(t)) }
+      const held = (tok: string, except: ChickenAction) => CHICKEN_ACTIONS.some(a => a.key !== except && (base.keys[a.key].includes(tok) || base.keys2[a.key].includes(tok)))
+      if (is('fire', ['Key:KeyX', 'Key:KeyV'])) base.keys.fire = ['Key:KeyV', null, null]
+      if (is('crouch', ['Key:KeyS', 'Key:KeyC'])) base.keys.crouch = ['Key:KeyS', null, null]
+      if (is('melee', ['Key:KeyZ', 'Key:KeyB']) && !held('Key:KeyC', 'melee')) base.keys.melee = ['Key:KeyC', null, null]
+      if (is('down', ['Key:ControlLeft']) && !held('Key:KeyX', 'down')) base.keys.down = ['Key:ControlLeft', 'Key:KeyX', null]
+      if (is('throw', ['Key:KeyG']) && !held('Key:KeyZ', 'throw')) base.keys.throw = ['Key:KeyG', 'Key:KeyZ', null]
+    }
     if (!Array.isArray(saved?.keys?.deselectItem) && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:KeyF') || base.keys2[a.key].includes('Key:KeyF'))) {
       base.keys.deselectItem[0] = 'Key:KeyF'
     }
@@ -210,7 +221,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, grabKeys2: true, noCmdBrood: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, grabKeys2: true, noCmdBrood: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

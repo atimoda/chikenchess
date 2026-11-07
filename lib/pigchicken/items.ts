@@ -1,8 +1,10 @@
 // PigChicKen items: weapons and instruments share one sheet of numbers. An instrument is its weapon family's
 // sheet with a music block: the projectile is a note, and notes convert (fill the harmony bar) instead of
 // destroying. The Parquinho's item popup edits these sheets; they are saved in this browser for now.
+import { COMBO_MAX, COMBO_WINDOW, SWING_COMBO, isSwingKind, type SwingKind } from './swing'
 import type { PitchSet } from './music'
 import type { VoiceId } from './synth'
+import { CHAIN_MAX, cleanTransform, newTransform, type Transform, type TransformKind } from './transforms'
 
 export type FireMode = 'semi' | 'auto' | 'burst' | 'charge' | 'release'
 // when the projectile's path is drawn: never, while the fire button is held, held or with the aim locked, always
@@ -10,7 +12,7 @@ export type PathShow = 'off' | 'hold' | 'holdAim' | 'always'
 export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
-export type ItemId = 'wing' | 'peck' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
+export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp'
   | 'maryjane' | 'cok'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
@@ -86,10 +88,31 @@ export type ItemDef = {
   meleeRange: number // px
   meleeArc: number // degrees
   meleeCooldown: number // s
+  meleeInterrupt: boolean // a blow pressed while the last one is still going cuts it off and starts at once
   meleeTime: number // s the swing takes to sweep its arc
   durability: number // melee hits on a target before it breaks (0 = never)
   meleePush: number // knockback px/s
+  // the combo: the order of the blows in a row, how long after a blow the next still carries it on (s), and the
+  // hit arc of the blows up and horizontal (degrees; meleeArc is the blow down's, the spin always 360)
+  combo: SwingKind[]
+  comboWindow: number
+  meleeArcUp: number
+  meleeArcFlat: number
+  // the blow's air trail: thickness at the tip (px), colour, seconds it takes to dissolve, little curls, opacity
+  trailWidth: number
+  trailColor: string
+  trailTime: number
+  trailWisps: number
+  trailOpacity: number
   peckPull: number // rig units the neck retracts while preparing a peck
+  // the rebate (guitar hero mode): the chain of transformations a note it rebates goes through, how far the note
+  // is pulled toward the nearest character (snap: degrees, 0 = off; force 0..1), how fast it flies off (×), and
+  // the wooden "tok" of a real hit
+  rebateChain: Transform[]
+  rebateSnap: number
+  rebateSnapForce: number
+  rebateSpeed: number
+  rebateTok: boolean
   // Throw: per-item launch strength, charge time and impact damage
   throwDamage: number
   throwMin: number // px/s with no charge (a tap)
@@ -125,11 +148,19 @@ export type ItemDef = {
   effectLook: EffectLook
 }
 
+// the air a blow leaves behind: cream, like the reference
+export const TRAIL_CREAM = '#fff4dc'
+
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
+}
+
+// a rebate chain from [kind, mode, n?] steps (always happening)
+function chain(...steps: [TransformKind, string?, number?][]): Transform[] {
+  return steps.map(([kind, mode, n]) => ({ ...newTransform(kind), ...(mode !== undefined ? { mode } : {}), ...(n !== undefined ? { n } : {}) }))
 }
 
 const PISTOL: ItemDef = {
@@ -139,7 +170,10 @@ const PISTOL: ItemDef = {
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
-  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0.45, meleeTime: 0.2, durability: 40, meleePush: 260,
+  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, meleeTime: 0.2, durability: 40, meleePush: 260,
+  combo: SWING_COMBO.slice(), comboWindow: COMBO_WINDOW, meleeArcUp: 110, meleeArcFlat: 110,
+  trailWidth: 24, trailColor: TRAIL_CREAM, trailTime: 0.2, trailWisps: 4, trailOpacity: 0.7,
+  rebateChain: chain(['dynamics', 'staccato']), rebateSnap: 15, rebateSnapForce: 0.4, rebateSpeed: 1, rebateTok: false,
   throwDamage: 25, throwMin: 275, throwSpeed: 1100, throwCharge: 1,
   ...NO_MUSIC,
 }
@@ -151,6 +185,7 @@ const SMG: ItemDef = {
   spreadBase: 3, spreadShot: 0.8, spreadMax: 12, spreadRecover: 18, spreadMove: 2, spreadAir: 3,
   recoilKick: 3, recoilPush: 30, weight: 0.98,
   muzzleX: 62, muzzleY: -6.5, length: 70, meleeDamage: 16, durability: 35, throwDamage: 22,
+  rebateChain: chain(['ratchet', undefined, 4]),
 }
 
 const RIFLE: ItemDef = {
@@ -160,6 +195,7 @@ const RIFLE: ItemDef = {
   spreadBase: 1, spreadShot: 1.2, spreadMax: 10, spreadRecover: 14, spreadMove: 3, spreadAir: 5,
   recoilKick: 5, recoilPush: 50, weight: 0.92, turnRate: 720,
   muzzleX: 106, muzzleY: -5.5, length: 110, meleeDamage: 22, durability: 45, throwDamage: 28,
+  rebateChain: chain(['transpose', 'degree', 4]),
 }
 
 const PUMP: ItemDef = {
@@ -169,6 +205,7 @@ const PUMP: ItemDef = {
   spreadBase: 14, spreadShot: 0, spreadMax: 18, spreadRecover: 30, spreadMove: 2, spreadAir: 3,
   recoilKick: 12, recoilPush: 420, weight: 0.9, turnRate: 540,
   muzzleX: 104, muzzleY: -8, length: 105, meleeDamage: 25, durability: 45, throwDamage: 30,
+  rebateChain: chain(['voices', 'cluster']), rebateSnap: 60, rebateSnapForce: 0.6,
 }
 
 const SNIPER: ItemDef = {
@@ -178,6 +215,7 @@ const SNIPER: ItemDef = {
   spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
   recoilKick: 14, recoilPush: 250, weight: 0.85, turnRate: 360,
   muzzleX: 142, muzzleY: -4, length: 140, meleeDamage: 20, durability: 30, throwDamage: 30,
+  rebateChain: chain(['octave', 'fixed', 2], ['dynamics', 'staccato']), rebateSnap: 0,
 }
 
 const LAUNCHER: ItemDef = {
@@ -187,6 +225,7 @@ const LAUNCHER: ItemDef = {
   spreadBase: 1, spreadShot: 0, spreadMax: 2, spreadMove: 1, spreadAir: 2,
   recoilKick: 16, recoilPush: 500, weight: 0.8, turnRate: 300,
   muzzleX: 96, muzzleY: -17, length: 120, meleeDamage: 26, durability: 50, throwDamage: 35,
+  rebateChain: chain(['echo', 'dotted', 3]),
 }
 
 const GRENADE: ItemDef = {
@@ -196,6 +235,7 @@ const GRENADE: ItemDef = {
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
   recoilKick: 0, recoilPush: 0,
   muzzleX: 8, muzzleY: -4, length: 0, meleeDamage: 10, meleeRange: 80, durability: 20, throwDamage: 15,
+  rebateChain: chain(['octave', 'random', 1]),
 }
 
 const BOW: ItemDef = {
@@ -205,24 +245,37 @@ const BOW: ItemDef = {
   spreadBase: 0.5, spreadShot: 0, spreadMax: 3, spreadMove: 1, spreadAir: 2,
   recoilKick: 0, recoilPush: 0,
   muzzleX: 28, muzzleY: 0, length: 40, meleeDamage: 12, durability: 25, throwDamage: 15,
+  rebateChain: chain(['counter', 'thirds', 1]), rebateSnap: 0,
 }
 
 // Empty hands: Golpe keeps the wing slap; Fire prepares a separate beak strike.
 const WING: ItemDef = {
   ...PISTOL, id: 'wing', name: 'Asa (sem item)', family: 'Sem item',
   mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
-  meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeCooldown: 0.35, durability: 0, meleePush: 180, throwDamage: 0,
+  meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeArcUp: 120, meleeArcFlat: 120, meleeCooldown: 0, durability: 0, meleePush: 180, throwDamage: 0,
+  trailWidth: 18, trailWisps: 3,
+  rebateChain: chain(['dynamics', 'soft']), rebateSnap: 25, rebateSnapForce: 0.5,
+}
+
+// Taco: only for hitting (no shots). A baseball bat: a wide arc, a quick blow, a long reach; a rebate goes off
+// faster with a wooden "tok", and its chain keeps the note and only accents it (the neutral taco)
+const BAT: ItemDef = {
+  ...WING, id: 'bat', name: 'Taco', family: 'Taco', reticle: 'dot',
+  muzzleX: 0, muzzleY: 0, length: 74, meleeDamage: 22, meleeRange: 70, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200,
+  meleeTime: 0.16, meleePush: 420, durability: 0, throwDamage: 22, trailWidth: 30, trailWisps: 5,
+  rebateChain: chain(['dynamics', 'accent']), rebateSnap: 25, rebateSnapForce: 0.5, rebateSpeed: 1.6, rebateTok: true,
 }
 
 const PECK: ItemDef = {
   ...WING, id: 'peck', name: 'Bicada', family: 'Sem item',
   meleeDamage: 12, meleeRange: 85, meleeArc: 160, meleeCooldown: 0.1, meleeTime: 0.16, meleePush: 220,
   chargeTime: 0.12, peckPull: 38,
+  rebateChain: [],
 }
 
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
 // melee is the same for all of them (Y): instruments break much sooner than weapons
-const MUSIC_MELEE = { meleeDamage: 10, durability: 12, throwDamage: 10, recoilPush: 0 }
+const MUSIC_MELEE = { meleeDamage: 10, durability: 12, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5 }
 
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
@@ -230,6 +283,7 @@ const FLUTE: ItemDef = {
   mag: 16, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
   recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
   instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7,
+  rebateChain: chain(['octave', 'fixed', 1]),
 }
 // Palhetas → SMG: holding plays a fast arpeggio of the chord
 const SAX: ItemDef = {
@@ -237,6 +291,7 @@ const SAX: ItemDef = {
   rate: 8, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
   recoilKick: 2, muzzleX: 32, muzzleY: 18, length: 50,
   instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9,
+  rebateChain: chain(['transpose', 'degree', 2]),
 }
 // Metais → rifle: a phrase of 3 notes per press, going through one enemy
 const TRUMPET: ItemDef = {
@@ -244,6 +299,7 @@ const TRUMPET: ItemDef = {
   fireMode: 'burst', burst: 3, rate: 9, mag: 24, speed: 1300, damage: 10, size: 10, pierce: 1,
   recoilKick: 3, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
   instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4,
+  rebateChain: chain(['voices', 'power']),
 }
 // Cordas → pump: a strummed chord in a fan, each pellet one note of the chord
 const GUITAR: ItemDef = {
@@ -251,6 +307,7 @@ const GUITAR: ItemDef = {
   rate: 1.6, mag: 6, reloadTime: 0.35, pellets: 5, speed: 900, damage: 9, size: 10, range: 480,
   spreadBase: 24, spreadMax: 30, recoilKick: 5, muzzleX: 87, muzzleY: 0, length: 87,
   instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022,
+  rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 0.15]),
 }
 // Cordas friccionadas → sniper: a held note in a beam; it keeps the enemy still while it plays
 const VIOLIN: ItemDef = {
@@ -258,6 +315,7 @@ const VIOLIN: ItemDef = {
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, turnRate: 240, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4,
+  rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
 }
 // Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
 const KEYS: ItemDef = {
@@ -265,18 +323,21 @@ const KEYS: ItemDef = {
   rate: 1.2, mag: 3, reloadTime: 1.4, speed: 650, size: 14, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0,
   recoilKick: 6, muzzleX: 82, muzzleY: -9, length: 82,
   instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6,
+  rebateChain: chain(['voices', 'seventh']),
 }
 // Percussion fires a musical note with a fuse, then lets out notes in a circle.
 const TAMBOURINE: ItemDef = {
   ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
   mag: 3, fuse: 1.6, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 14, muzzleX: 14, muzzleY: 0, length: 20,
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10,
+  rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
 // Harpas → bow: the charge is a glissando, the note rises with the charge and flies far and precise
 const HARP: ItemDef = {
   ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa', family: 'Harpas', reticle: 'bow',
   damage: 40, size: 12, speed: 1500, drop: 700, muzzleX: 21, muzzleY: -10, length: 30,
   instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true,
+  rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
 }
 
 // ---------- consumables (special abilities): Fire uses a dose and puts an effect on her for a while ----------
@@ -284,6 +345,7 @@ const CONSUMABLE = {
   ...WING, reticle: 'dot' as Reticle, fireMode: 'semi' as FireMode, rate: 2, mag: 1, reloadTime: 0.2, autoReload: false,
   meleeDamage: 4, meleeRange: 70, durability: 0, throwDamage: 4, throwMin: 275, throwSpeed: 900, throwCharge: 0.8,
   muzzleX: 10, muzzleY: -6, length: 0, consumable: true,
+  rebateChain: [] as Transform[],
 }
 // Maryjane: red gummy bears. The buddha state: a third faster, and every start is slow at first and fast at the end
 const MARYJANE: ItemDef = {
@@ -298,7 +360,7 @@ const COK: ItemDef = {
 }
 
 export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = {
-  wing: WING, peck: PECK, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
+  wing: WING, peck: PECK, bat: BAT, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP,
   maryjane: MARYJANE, cok: COK,
 }
@@ -306,9 +368,11 @@ export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper',
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']
 export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
+// items only for hitting
+export const MELEE_IDS: ItemId[] = ['bat']
 // the items a rack can hold
-export const RACK_ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS]
-export const ITEM_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing', 'peck']
+export const RACK_ITEM_IDS: ItemId[] = [...MELEE_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS]
+export const ITEM_IDS: ItemId[] = [...MELEE_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing', 'peck']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
@@ -356,11 +420,21 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'length', label: 'Comprimento no golpe', min: 0, max: 200, step: 1, unit: 'u', group: 'Desenho', hint: 'Quanto a arma estende o golpe além da ponta da asa' },
   { key: 'meleeDamage', label: 'Dano do golpe', min: 0, max: 100, step: 1, group: 'Golpe' },
   { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
-  { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe' },
-  { key: 'meleeCooldown', label: 'Intervalo', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Golpe' },
+  { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe', hint: 'Do golpe para baixo; o giro acerta em volta toda' },
+  { key: 'meleeCooldown', label: 'Intervalo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Golpe', hint: '0 = golpes seguidos sem espera' },
   { key: 'meleeTime', label: 'Duração do giro', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Menos = giro mais rápido' },
   { key: 'meleePush', label: 'Empurrão', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Golpe' },
+  { key: 'comboWindow', label: 'Janela do combo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Combo', hint: 'Até quanto tempo depois do fim de um golpe o próximo continua a sequência; depois disso ela recomeça' },
+  { key: 'meleeArcUp', label: 'Arco para cima', min: 20, max: 360, step: 10, unit: '°', group: 'Combo', hint: 'Área de acerto do golpe para cima' },
+  { key: 'meleeArcFlat', label: 'Arco horizontal', min: 20, max: 360, step: 10, unit: '°', group: 'Combo', hint: 'Área de acerto do golpe horizontal (o desenho cobre pelo menos 200°)' },
+  { key: 'trailWidth', label: 'Rastro: espessura', min: 2, max: 60, step: 1, unit: 'px', group: 'Golpe', hint: 'Na ponta do golpe; afina até a cauda' },
+  { key: 'trailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Quanto o ar leva pra se desfazer' },
+  { key: 'trailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe', hint: 'Fiapos de ar que se soltam do rastro' },
+  { key: 'trailOpacity', label: 'Rastro: opacidade', min: 0, max: 1, step: 0.05, unit: '×', group: 'Golpe', hint: '0 = sem rastro' },
   { key: 'durability', label: 'Quebra depois de', min: 0, max: 200, step: 1, unit: 'golpes', group: 'Golpe', hint: '0 = nunca quebra' },
+  { key: 'rebateSnap', label: 'Snap: ângulo', min: 0, max: 90, step: 5, unit: '°', group: 'Rebate', hint: 'Puxa a nota rebatida para o personagem mais perto da mira dentro deste ângulo; 0 = sai na direção exata da mira' },
+  { key: 'rebateSnapForce', label: 'Snap: força', min: 0, max: 1, step: 0.05, unit: '×', group: 'Rebate', hint: 'De leve (0) até grudar no alvo (1)' },
+  { key: 'rebateSpeed', label: 'Velocidade da nota rebatida', min: 0.5, max: 3, step: 0.05, unit: '×', group: 'Rebate' },
   { key: 'throwDamage', label: 'Dano do arremesso', min: 0, max: 100, step: 1, group: 'Arremesso' },
   { key: 'throwMin', label: 'Força mínima', min: 0, max: 2500, step: 25, unit: 'px/s', group: 'Arremesso', hint: 'Só tocar no botão' },
   { key: 'throwSpeed', label: 'Força máxima', min: 200, max: 2500, step: 50, unit: 'px/s', group: 'Arremesso' },
@@ -404,24 +478,29 @@ export function loadItems(): Record<ItemId, ItemDef> {
           if (s[key] === old[key]) out.peck[key] = DEFAULT_ITEMS.peck[key]
         }
       }
+      // saved before blows had no interval (v5): every item's golpe goes back to 0 (the Bicada keeps its own)
+      if (id !== 'peck' && !(saved._v >= 5)) out[id].meleeCooldown = 0
       // saved before the sniper fired on release (v2): it takes the new mode
       if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && !(saved._v >= 2))) out[id].fireMode = s.fireMode
       if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
       // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
       if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(saved._v >= 3))) out[id].landShow = s.landShow
-      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'meleeInterrupt', 'rebateTok'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
       if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
       if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
       if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
       if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
       if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
+      if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
+      if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
+      if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
     })
   } catch { /* storage unavailable */ }
   return out
 }
 
 export function saveItems(items: Record<ItemId, ItemDef>) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 4 })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 5 })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
