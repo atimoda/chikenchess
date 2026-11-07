@@ -27,13 +27,15 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
   room.onMessage('chat', m => seen.chat.push(m))
   room.onMessage('denied', m => seen.denied.push(m))
   room.onMessage('kicked', m => { seen.kicked = m })
+  room.onMessage('layout', m => seen.layout.push(m))
+  room.onMessage('saved', m => seen.saved.push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -96,4 +98,33 @@ test('owner, chat, kick, visibility and up to 4 chickens per browser', async () 
   await d.leave()
   lobbies = await (await fetch(`${url}/lobbies`)).json()
   assert.ok(Array.isArray(lobbies))
+})
+
+test('Edit mode live: the owner and the editors it allows send the layout; newcomers get the latest', async () => {
+  const patioId = '0f000000-0000-4000-8000-000000000003'
+  const a = await browser({ patioId, name: 'Dona' })
+  const b = await browser({ patioId, name: 'Bia' })
+  const big = { elements: Array.from({ length: 300 }, (_, i) => ({ id: `e${i}`, kind: 'box', x: i * 10, y: 0, w: 40, h: 20 })) }
+  assert.ok(JSON.stringify(big).length > 4096) // more than the transport's default limit
+  a.room.send('layout', { layout: big })
+  const got = await until(() => b.seen.layout[0])
+  assert.equal(got.layout.elements.length, 300)
+  assert.equal(got.by, a.seen.hello.pid)
+
+  // not allowed yet
+  b.room.send('layout', { layout: { elements: [] } })
+  await until(() => b.seen.denied.length)
+  a.room.send('editor', { pid: b.seen.hello.pid, on: true })
+  await until(() => a.seen.room?.editors.includes(b.seen.hello.pid))
+  b.room.send('layout', { layout: { elements: [{ id: 'x' }] } })
+  await until(() => a.seen.layout.length === 1)
+
+  // the owner saved: the others learn the revision
+  a.room.send('saved', { revision: 7 })
+  assert.equal((await until(() => b.seen.saved[0])).revision, 7)
+
+  const c = await browser({ patioId, name: 'Caio' })
+  const late = await until(() => c.seen.layout[0])
+  assert.deepEqual(late.layout, { elements: [{ id: 'x' }] })
+  for (const x of [a, b, c]) await x.room.leave()
 })

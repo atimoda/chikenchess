@@ -5,6 +5,7 @@ import { decodeState, encodeSnapshot, MAX_BROWSERS, WORLD } from './protocol.mjs
 import { bucket, canKick, clampChickens, cleanChat, cleanLooks, cleanName, freeColor, freePid, isProtected, ownerOf, uniqueName } from './rules.mjs'
 
 const TICK_MS = 50 // 20 snapshots per second
+const LAYOUT_MAX = 400_000 // the database's own limit for a Pátio's layout
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
 // One online Pátio lobby: up to 13 browsers, each with 1 to 4 chickens. Each browser simulates its own chickens and
@@ -19,6 +20,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "kick"     { pid }            owner only
 //   "visibility" { public: bool } owner only
 //   "editor"   { pid, on: bool }  owner only
+//   "layout"   { layout }  the Pátio's layout after an edit (owner or editor); kept for whoever joins later
+//   "saved"    { revision }  the owner saved the layout to the database at this revision
 // Messages to the browser:
 //   "hello"    { pid, room }  right after joining
 //   "room"     the room info below, whenever it changes
@@ -26,6 +29,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "chat"     { pid, text, at }
 //   "kicked"   { reason }  right before being removed
 //   "denied"   { reason }  an owner action that was refused
+//   "layout"   { seq, by, layout }  the live layout (right after "hello" too, when someone edited it)
+//   "saved"    { revision }  the database revision the owner saved
 export class PatioRoom extends Room {
   maxClients = MAX_BROWSERS
   players = new Map() // sessionId -> player
@@ -36,6 +41,9 @@ export class PatioRoom extends Room {
   patioId = 'default'
   tick = 0
   joinSeq = 0
+  // the layout as edited live in this room (null: nobody edited it since the room opened)
+  layout = null
+  layoutSeq = 0
 
   async onCreate(options) {
     this.patioId = cleanPatioId(options?.patioId)
@@ -49,6 +57,8 @@ export class PatioRoom extends Room {
     this.onMessage('kick', (client, msg) => this.onKick(client, msg))
     this.onMessage('visibility', (client, msg) => this.onVisibility(client, msg))
     this.onMessage('editor', (client, msg) => this.onEditor(client, msg))
+    this.onMessage('layout', (client, msg) => this.onLayout(client, msg))
+    this.onMessage('saved', (client, msg) => this.onSaved(client, msg))
     this.setSimulationInterval(() => this.broadcastSnapshot(), TICK_MS)
   }
 
@@ -73,11 +83,12 @@ export class PatioRoom extends Room {
       looks: cleanLooks(options?.looks),
       inputLabel: cleanName(options?.inputLabel),
       state: new Map(), // slot -> latest chicken state
-      sendOk: bucket(30, 40), chatOk: bucket(2, 4), profileOk: bucket(4, 8),
+      sendOk: bucket(30, 40), chatOk: bucket(2, 4), profileOk: bucket(4, 8), layoutOk: bucket(4, 8),
     }
     this.players.set(client.sessionId, p)
     this.settleOwner()
     client.send('hello', { pid: p.pid, room: this.info() })
+    if (this.layout) client.send('layout', { seq: this.layoutSeq, by: 0, layout: this.layout })
     this.broadcastInfo(client)
   }
 
@@ -178,6 +189,26 @@ export class PatioRoom extends Room {
     if (pid === this.ownerPid || !this.byPid(pid)) return
     if (msg?.on) this.editors.add(pid); else this.editors.delete(pid)
     this.broadcastInfo()
+  }
+
+  canEdit(p) { return !!p && (p.pid === this.ownerPid || this.editors.has(p.pid)) }
+
+  onLayout(client, msg) {
+    const p = this.players.get(client.sessionId)
+    if (!this.canEdit(p)) { client.send('denied', { reason: 'O dono do lobby não liberou a edição para você.' }); return }
+    if (!p.layoutOk()) return
+    const layout = msg?.layout
+    if (!layout || typeof layout !== 'object' || !Array.isArray(layout.elements) || JSON.stringify(layout).length > LAYOUT_MAX) return
+    this.layout = layout
+    this.layoutSeq++
+    this.broadcast('layout', { seq: this.layoutSeq, by: p.pid, layout }, { except: client })
+  }
+
+  onSaved(client, msg) {
+    const p = this.players.get(client.sessionId)
+    const revision = Number(msg?.revision)
+    if (!p || p.pid !== this.ownerPid || !Number.isInteger(revision) || revision < 1) return
+    this.broadcast('saved', { revision }, { except: client })
   }
 
   // everyone's chickens to everyone: with 13 browsers × 4 chickens that is ~1.1 kB per tick; the same bytes go to
