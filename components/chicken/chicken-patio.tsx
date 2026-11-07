@@ -36,7 +36,8 @@ import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { AlienCatalogPanel } from "@/components/pigchicken/alien-catalog-panel"
 import { JukeboxPanel } from "@/components/pigchicken/jukebox-panel"
 import { SongEditorPanel } from "@/components/pigchicken/song-editor-panel"
-import { onOpenJukebox, onOpenSongEditor } from "@/lib/pigchicken/song-library"
+import { MidiPanel } from "@/components/pigchicken/midi-panel"
+import { onOpenJukebox, onOpenMidiGenerator, onOpenSongEditor } from "@/lib/pigchicken/song-library"
 import { songsOnlineAvailable, startSongSync } from "@/lib/pigchicken/song-online"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -123,7 +124,9 @@ export function ChickenPatio() {
   const [jukeboxOpen, setJukeboxOpen] = useState(false)
   const [editingSong, setEditingSong] = useState<string | null>(null)
   useEffect(() => onOpenJukebox(() => setJukeboxOpen(true)), [])
-  useEffect(() => onOpenSongEditor(id => { setEditingSong(id); setJukeboxOpen(false) }), [])
+  const [midiOpen, setMidiOpen] = useState(false)
+  useEffect(() => onOpenSongEditor(id => { setEditingSong(id); setJukeboxOpen(false); setMidiOpen(false) }), [])
+  useEffect(() => onOpenMidiGenerator(() => { setMidiOpen(true); setJukeboxOpen(false) }), [])
   // the jukebox's songs go to the account of whoever is signed in (guests keep them in this browser)
   const songUser = online.user && !online.user.is_anonymous && songsOnlineAvailable() ? online.user.id : null
   useEffect(() => startSongSync(songUser), [songUser])
@@ -438,6 +441,7 @@ export function ChickenPatio() {
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {aliensOpen && <AlienCatalogPanel onClose={() => setAliensOpen(false)} />}
       {jukeboxOpen && <JukeboxPanel onClose={() => setJukeboxOpen(false)} />}
+      {midiOpen && <MidiPanel onClose={() => setMidiOpen(false)} />}
       {editingSong && <SongEditorPanel key={editingSong} songId={editingSong} onClose={() => setEditingSong(null)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">

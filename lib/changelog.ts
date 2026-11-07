@@ -5,7 +5,7 @@ export const CHANGELOG = [
   {
     version: '2.2.0',
     date: '07/11/2026',
-    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas e as músicas na conta',
+    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta e o gerador MIDI',
     groups: [
       { title: 'Pátio', items: [
         'Cada alien tem duas mortes, as duas no tempo da música: derrubado por golpe, tiro ou arremesso, toca um tambor que depende da espécie (bloco de madeira na água-viva, taiko na concha, palmas na lanterna); convertido por notas, toca um acorde ou arpejo.',
@@ -19,6 +19,7 @@ export const CHANGELOG = [
         'Novo editor de músicas (Editar e Nova música, na jukebox): a música vira uma linha do tempo em compassos, com uma linha por faixa do leque e cada alien como um bloco do aparecimento ao encostar, com as notas em pontos. Arraste no tempo ou entre as faixas, dê duplo clique para criar um alien, Ctrl+clique para pôr nota e botão direito para tirar. Tem copiar, colar no cursor, desfazer e refazer, zoom, grade, tom, escala, bpm e uma prévia do semicírculo em volta da galinha. Tocar daqui toca o rascunho no templo a partir do compasso do cursor.',
         'As músicas ganham pausas e falas. Uma pausa abre compassos sem aliens, com só o fundo tocando ou em silêncio total. Uma fala tem quem fala (o narrador, o Gongo, a galinha ou um alien do catálogo), o texto, o tempo na tela, o lugar (o banner do meio, um balão sobre quem fala ou uma faixa embaixo do placar) e um blip de voz a cada letra.',
         'Quem entra com a conta guarda as músicas nela: cada música salva, editada ou apagada vai para a conta, e as feitas em outro aparelho aparecem na jukebox. Se a mesma música mudou nos dois lugares, a da conta fica e a deste aparelho vira uma cópia. A jukebox diz onde as músicas estão, e o admin vê as músicas de todos, podendo ouvir ou copiar cada uma.',
+        'Novo Gerar de MIDI na jukebox: escolha um arquivo .mid, as faixas que entram e o alien de cada uma (a bateria vira bumbo, caixa, palmas e chocalho), a dificuldade, o tom e os compassos. O gerador alinha as notas na grade, deixa só as que a dificuldade aguenta, encaixa tudo nas faixas do leque e junta as notas seguidas em aliens de 5 a 15 tiros. Dá para ouvir no templo antes, e a música abre no editor para ajustar.',
       ] },
     ],
   },
