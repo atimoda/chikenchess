@@ -2,7 +2,7 @@ import { Room } from 'colyseus'
 import { authenticate } from './auth.mjs'
 import { cleanPatioId, loadPatioMeta } from './patio-meta.mjs'
 import { decodeState, encodeSnapshot, MAX_BROWSERS, WORLD } from './protocol.mjs'
-import { bucket, canKick, clampChickens, cleanChat, cleanLooks, cleanName, freeColor, freePid, isProtected, ownerOf } from './rules.mjs'
+import { bucket, canKick, clampChickens, cleanChat, cleanLooks, cleanName, freeColor, freePid, isProtected, ownerOf, uniqueName } from './rules.mjs'
 
 const TICK_MS = 50 // 20 snapshots per second
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
@@ -65,7 +65,7 @@ export class PatioRoom extends Room {
     const list = [...this.players.values()]
     const p = {
       pid: freePid(list), sessionId: client.sessionId, client,
-      userId: a.userId, guest: a.guest, name: a.name,
+      userId: a.userId, guest: a.guest, name: uniqueName(a.name, list),
       // the server's clock decides who arrived first; the counter breaks ties within the same millisecond
       joinedAt: Date.now() + (this.joinSeq++) / 1000,
       color: freeColor(list),
@@ -132,7 +132,7 @@ export class PatioRoom extends Room {
   onProfile(client, msg) {
     const p = this.players.get(client.sessionId)
     if (!p || !p.profileOk() || !msg || typeof msg !== 'object') return
-    if (typeof msg.name === 'string' && cleanName(msg.name)) p.name = cleanName(msg.name)
+    if (typeof msg.name === 'string' && cleanName(msg.name)) p.name = uniqueName(cleanName(msg.name), [...this.players.values()], p)
     if (msg.chickens !== undefined) {
       p.chickens = clampChickens(msg.chickens)
       for (const slot of [...p.state.keys()]) if (slot >= p.chickens) p.state.delete(slot)

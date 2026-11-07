@@ -25,7 +25,17 @@ export type ChickenState = { x: number; y: number; angle: number; shoulder: { x:
 // reaching full speed in accelRamp seconds; aura draws a state on her (a consumable's effect in the Pátio)
 export type ChickenAura = 'none' | 'buddha' | 'fizz'
 export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; aura?: ChickenAura }
+// A chicken driven from outside (an online player's, from the network): where she is on this screen and what she
+// is doing. She follows it smoothly, animates by its state and ignores input, physics and the pointer.
+export type ChickenRemote = { x: number; y: number; vx: number; vy: number; face: number; state: string }
+// the states a remote chicken animates; anything else (portal, cling, the shocking jump's wind-up) looks like the nearest one
+const REMOTE_STATE: Record<string, string> = { cling: 'jump', shockingPrepare: 'brood', portal: 'idle', portalArrival: 'idle' }
+const REMOTE_SNAP = 400
+
 export type ChickenEngine = {
+  setRemote: (source: (() => ChickenRemote | null) | null) => void
+  // the item in her hand (its key), for the online Pátio
+  getHeldItem: () => string | null
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
   getMotionState: () => Omit<ChickenState, 'shoulder'>
@@ -1318,11 +1328,32 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   let last = performance.now(), raf = 0, tagT = 0
+  // ---------- remote (an online player's chicken) ----------
+  let remote: (() => ChickenRemote | null) | null = null
+  function remoteStep(dt: number) {
+    const t = remote?.()
+    if (!t) { render(); return }
+    const dx = t.x - S.x, dy = t.y - S.y
+    // a portal or a late join jumps; otherwise she glides toward the latest position
+    if (Math.hypot(dx, dy) > REMOTE_SNAP * R.scale) { S.x = t.x; S.y = t.y; plantFeet() }
+    else { const k = 1 - Math.exp(-dt * 18); S.x += dx * k; S.y += dy * k }
+    S.vx = t.vx / Math.max(0.0001, movementFactor()); S.vy = t.vy
+    if (t.face !== S.face) { S.face = t.face < 0 ? -1 : 1 }
+    const st = REMOTE_STATE[t.state] ?? t.state
+    S.grounded = !['jump', 'fly', 'fastFall', 'held'].includes(st)
+    S.held = st === 'held'
+    S.state = st
+    const speed = Math.abs(t.vx)
+    updateFeet(dt, st, speed)
+    animate(dt, st, st === 'lookUp', speed)
+  }
+
   function frame(now: number) {
     frameNow = now
     const dt = Math.min(1 / 30, (now - last) / 1000); last = now; frameDt = dt
     tagT -= dt; if (tagT <= 0) { tagBoxes(); tagT = 0.5 }
-    if (portalEntry) renderPortal(now)
+    if (remote) remoteStep(dt)
+    else if (portalEntry) renderPortal(now)
     else if (!isChickenControlsListening()) step(dt); else render()
     raf = requestGameFrame(frame)
   }
@@ -1361,6 +1392,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   return {
+    getHeldItem: () => heldItem?.itemKey ?? null,
+    setRemote(source) {
+      remote = source
+      // nobody on this screen drags or controls an online player's chicken
+      el.root.style.pointerEvents = source ? 'none' : 'visiblePainted'
+      if (source) { devices = []; S.cl = null; goal = null }
+    },
     isShiftHeld: () => shifts.size > 0 && (!devices || devices.includes('kb1') || devices.includes('kb2')),
     setPortalEntry(entry) {
       if (!entry) {

@@ -20,6 +20,9 @@ import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
+import { OnlineChickens, netColor, useNet } from "./online-chickens"
+import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, sendNetProfile, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
+import { getOnlineClient } from "@/lib/online/client"
 import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, type ChickenPortalWorld } from "./chicken-portal"
 import { PatioPortals } from "@/components/pigchicken/patio-portals"
@@ -50,8 +53,8 @@ import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
 import { PatioOpenPanel, PatioPersonPanel, PatioSavePanel, type PatioPersonCard } from "@/components/pigchicken/patio-lobby-panels"
 import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 import {
-  PLAYER_COLORS, addLocalPlayer, adoptDevices, moveLocalsTo, assignDevice, createLobby, firstLocal, joinOpenLobby, loadEntryMode, loadLobby, localPlayers, removePlayer,
-  renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyResult, type LobbyState,
+  LOBBY_MAX, PLAYER_COLORS, addLocalPlayer, adoptDevices, assignDevice, createLobby, firstLocal, loadEntryMode, loadLobby, localPlayers, removePlayer,
+  renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyPlayer, type LobbyResult, type LobbyState,
 } from "@/lib/chicken/lobby"
 import type { ChickenLook } from "@/lib/chicken/look-art"
 import { LobbySwitcher, LocalChickens, PlayersPanel, lookForNewPlayer, useInputDevices } from "./players-panel"
@@ -112,7 +115,9 @@ export function ChickenPatio() {
   const [engine, setEngine] = useState<ChickenEngine | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   // chat bubbles follow these chickens; with several local players, Player 1 speaks for this screen
-  const chatPlayers = useMemo(() => ({ [LOCAL_CHAT_PLAYER]: engine }), [engine])
+  // online: the other browsers' first chickens speak too
+  const [speakers, setSpeakers] = useState<Record<string, ChickenEngine>>({})
+  const chatPlayers = useMemo(() => ({ ...speakers, [LOCAL_CHAT_PLAYER]: engine }), [engine, speakers])
   const worldRef = useRef<HTMLDivElement>(null)
   const fgRef = useRef<HTMLDivElement>(null)
   const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: WORLD_GROUND_Y, d: PORTAL_D }), [])
@@ -167,7 +172,6 @@ export function ChickenPatio() {
     // the Pátio's id in the address (an invite link or the editor's saved Pátio) is this lobby's id
     const fromUrl = new URLSearchParams(window.location.search).get("lobby")
     setLobby(fromUrl ? { ...base, id: fromUrl } : base)
-    if (entry === "online") void joinOpenLobby().then(r => setToast(r.reason))
   }, [])
   useEffect(() => { if (lobby) saveLobby(lobby) }, [lobby])
   // devices found later (a gamepad's first press) go to the first player, or to one standing still
@@ -186,10 +190,7 @@ export function ChickenPatio() {
     return lobby && first && localPlayers(lobby).length > 1 ? first.inputs : null
   }, [lobby])
   useEffect(() => { engine?.setDevices(myDevices) }, [engine, myDevices])
-  const setMode = (mode: LobbyMode) => {
-    changeLobby(s => ({ ...s, mode }))
-    if (mode === "online") void joinOpenLobby().then(r => setToast(r.reason))
-  }
+  const setMode = (mode: LobbyMode) => changeLobby(s => ({ ...s, mode }))
   const addPlayer = () => changeLobby(s => addLocalPlayer(s, Date.now(), lookForNewPlayer([draft.look, ...localPlayers(s).flatMap(p => (p.look ? [p.look] : []))])))
   const vestPlayer = lobby && vestFor ? lobby.players.find(p => p.id === vestFor) ?? null : null
   const openVestiario = (playerId: string | null) => { setVestFor(playerId && playerId !== me?.id ? playerId : null); setVestOpen(true) }
@@ -216,7 +217,75 @@ export function ChickenPatio() {
     setPatioInfo({ lobbyId: patio?.id ?? null, isDefault: isDefaultLobby, creatorId: creator, me: meId ?? (patio ? deviceId() : null), isAdmin, editors })
   }, [patio?.id, creator, meId, isAdmin, editors, isDefaultLobby])
   // the Playgrounds lists count who is here: the local players for now (the online presence feeds it when it is on)
-  const playersHere = lobby?.players.length ?? 0
+  // ---------- online (the game server, server/) ----------
+  const net = useNet()
+  const mode = lobby?.mode ?? "local"
+  const localCount = lobby ? localPlayers(lobby).length : 1
+  const myLooks = useMemo(() => [draft.look, ...others.map(p => p.look ?? null)] as (Record<string, string> | null)[], [draft.look, others])
+  const myName = meName ?? "Player 1"
+  const netJoin = useRef({ name: myName, chickens: localCount, looks: myLooks, patio })
+  netJoin.current = { name: myName, chickens: localCount, looks: myLooks, patio }
+  // online on: join the oldest public lobby of this Pátio with a seat (or the room of an invite); off: leave
+  const patioKey = patio ? patio.id ?? "default" : null
+  useEffect(() => {
+    if (mode !== "online" || !patioKey) { void leavePatioOnline(); return }
+    let alive = true
+    void (async () => {
+      const session = (await getOnlineClient()?.auth.getSession())?.data.session ?? null
+      const token = session && !session.user.is_anonymous ? session.access_token : null
+      const j = netJoin.current
+      const roomId = new URLSearchParams(window.location.search).get("room")
+      const r = await joinPatioOnline({
+        patioId: j.patio?.id ?? null, roomId: roomId || null, token, name: j.name, chickens: j.chickens, looks: j.looks,
+        claimed: { name: j.patio?.name ?? null, creatorId: j.patio?.creatorId ?? null, godparentId: j.patio?.godparentId ?? null },
+      })
+      if (!alive) return
+      if (!r.ok) { setToast(r.reason); changeLobby(s => ({ ...s, mode: "local" })) }
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, patioKey])
+  useEffect(() => () => { void leavePatioOnline() }, [])
+  // name, chickens and looks reach the others as they change
+  useEffect(() => { if (net.status === "online") sendNetProfile({ name: myName, chickens: localCount, looks: myLooks }) }, [net.status, myName, localCount, myLooks])
+  // a notice from the server (removed by the owner, an action refused); removed: back to local
+  useEffect(() => {
+    if (!net.notice) return
+    setToast(net.notice)
+    clearNetNotice()
+    if (getNetState().status === "off") changeLobby(s => ({ ...s, mode: "local" }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [net.notice])
+  // the Players panel online: this browser's players plus one row per other browser, owner and editors as the server says
+  const myPid = net.myPid
+  const shownLobby = useMemo<LobbyState | null>(() => {
+    if (!lobby || mode !== "online" || net.status !== "online" || !net.info) return lobby
+    const info = net.info
+    const mine = info.players.find(p => p.pid === myPid)
+    const myColor = mine ? netColor(mine.color) : PLAYER_COLORS[0]
+    const locals = localPlayers(lobby).map(p => ({ ...p, color: myColor }))
+    const remote: LobbyPlayer[] = info.players.filter(p => p.pid !== myPid).map(p => ({
+      id: `net:${p.pid}`, kind: "online", name: p.chickens > 1 ? `${p.name} (${p.chickens})` : p.name, joinedAt: p.joinedAt, inputs: [],
+      inputLabel: p.inputLabel || undefined, look: (p.looks[0] as ChickenLook | null) ?? undefined, userId: p.userId ?? undefined, color: netColor(p.color),
+    }))
+    const idOf = (pid: number | null) => (pid === null ? null : pid === myPid ? locals[0]?.id ?? null : `net:${pid}`)
+    const editors = info.editors.map(idOf).filter((x): x is string => !!x)
+    const ownerId = idOf(info.ownerPid)
+    return { ...lobby, players: [...locals, ...remote], ownerId, editors: ownerId ? [...new Set([ownerId, ...editors])] : editors, creatorId: patio?.creatorId ?? null, godparentId: patio?.godparentId ?? null, visibility: info.public ? "public" : "private", status: "online" }
+  }, [lobby, mode, net, myPid, patio?.creatorId, patio?.godparentId])
+  const netPid = (id: string) => (id.startsWith("net:") ? Number(id.slice(4)) : null)
+  const removeFromLobby = (id: string) => {
+    const pid = netPid(id)
+    if (pid !== null) kickNetPlayer(pid)
+    else changeLobby(s => removePlayer(s, me?.id ?? "", id))
+  }
+  const editorInLobby = (id: string, on: boolean) => {
+    const pid = netPid(id)
+    if (pid !== null) setNetEditor(pid, on)
+    else if (net.status === "online" && id !== me?.id) { /* this browser's other players edit with Player 1 */ }
+    else changeLobby(s => setEditor(s, me?.id ?? "", id, on))
+  }
+  const playersHere = net.status === "online" && net.info ? net.info.players.length : lobby?.players.length ?? 0
   useEffect(() => { setPatioLiveCounts({ [patio?.id ?? "default"]: playersHere }) }, [patio?.id, playersHere])
   // losing the permission (another Pátio, the owner changed it) closes the editor
   useEffect(() => { if (!access.canEdit) setEditorOn(false) }, [access.canEdit])
@@ -341,10 +410,18 @@ export function ChickenPatio() {
           {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
         </h1>
         {/* the lobby switcher and the players, right after the Pátio's name */}
-        <LobbySwitcher mode={lobby?.mode ?? "local"} lobbyId={lobby?.id ?? null} onStatus={setToast} onSwitch={target => { changeLobby(s => moveLocalsTo(s, target)); openPatioLobby(target.id) }} />
+        <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} onStatus={setToast} onSwitch={target => {
+          // the other lobby's Pátio opens, and its room is the one joined
+          const url = new URL(window.location.href)
+          url.searchParams.set("room", target.roomId)
+          window.history.replaceState(null, "", url)
+          void leavePatioOnline()
+          if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
+          else openPatioLobby(target.patioId === "default" ? null : target.patioId)
+        }} />
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Users className="h-4 w-4" />
-          {lobby && lobby.players.length > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{lobby.players.length}</span>}
+          {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
         </button>
         {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
         <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -417,11 +494,12 @@ export function ChickenPatio() {
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editorOn} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={pq.screens} editing={editorOn} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
+      {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} />}
       <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={pq.screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
       {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={pq.screens} onChange={changeLayout} onClose={() => setEditorOn(false)} />}
-      <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} />
+      <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
         <PatioSavePanel
           patio={patio} remote={pl.remote} save={pl.save} canEdit={access.canEdit} canRename={canRename} renameHint={renameHint} isAccount={isAccount}
@@ -476,16 +554,19 @@ export function ChickenPatio() {
 
       {playersOpen && lobby && (
         <PlayersPanel
-          lobby={lobby}
+          lobby={shownLobby ?? lobby}
+          seats={net.status === "online" && net.info ? { used: net.info.players.length, max: LOBBY_MAX } : null}
+          connecting={mode === "online" && net.status !== "online"}
+          onPublic={on => setNetPublic(on)}
           devices={devices}
           meName={meName}
           meLook={draft.look}
           onClose={() => setPlayersOpen(false)}
           onMode={setMode}
           onAdd={addPlayer}
-          onRemove={id => changeLobby(s => removePlayer(s, me?.id ?? "", id))}
+          onRemove={removeFromLobby}
           onAssign={(d, id) => changeLobby(s => assignDevice(s, d, id))}
-          onEditor={(id, on) => changeLobby(s => setEditor(s, me?.id ?? "", id, on))}
+          onEditor={editorInLobby}
           onRename={(id, name) => changeLobby(s => renameLocalPlayer(s, id, name))}
           onAvatar={id => openVestiario(id)}
         />

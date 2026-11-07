@@ -30,13 +30,14 @@ test('adding a local player moves a spare device to them: a gamepad first, then 
   assert.equal(r4.player.name, 'Player 4')
 })
 
-test('at most 13 players per lobby', () => {
+test('at most 4 local players on one computer', () => {
   let s = start()
-  for (let i = 0; i < 12; i++) s = ok(L.addLocalPlayer(s, 2000 + i))
-  assert.equal(s.players.length, L.LOBBY_MAX)
+  for (let i = 0; i < 3; i++) s = ok(L.addLocalPlayer(s, 2000 + i))
+  assert.equal(s.players.length, L.LOCAL_MAX)
   const r = L.addLocalPlayer(s, 9000)
   assert.equal(r.ok, false)
-  assert.equal(r.state.players.length, 13)
+  assert.match(r.reason, /Até 4 players locais/)
+  assert.equal(r.state.players.length, 4)
 })
 
 test('only the owner removes players, never themselves, and the removed devices go back to player 1', () => {

@@ -8,9 +8,10 @@ import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { LOOK_ART, type ChickenLook } from "@/lib/chicken/look-art"
 import { connectedPads, inputDeviceLabel, sortDevices, type InputDeviceId } from "@/lib/chicken/input-devices"
 import {
-  LOBBY_MAX, ONLINE_UNAVAILABLE, canEditPatio, isProtectedPlayer, firstLocal, inviteLink, isOwner, listPublicLobbies, neighbourLobby,
-  type LobbyMode, type LobbyPlayer, type LobbyState, type PublicLobby,
+  LOCAL_MAX, canEditPatio, isProtectedPlayer, firstLocal, inviteLink, isOwner, localPlayers, neighbourLobby,
+  type LobbyMode, type LobbyPlayer, type LobbyState,
 } from "@/lib/chicken/lobby"
+import { ONLINE_OFF, listNetLobbies, type NetLobby } from "@/lib/chicken/online-room"
 import { onlineConfigured, onlineRpc } from "@/lib/online/client"
 import type { OnlineFriend } from "@/lib/online/types"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -98,15 +99,16 @@ export function LocalChickens({ players, lead, groundHeight, engines }: {
 }
 
 // ---------- header: the lobby switcher ----------
-// back / forward through the public lobbies (Pátios) open with someone playing, in the order they opened; going
-// to another one leaves this Pátio, and every local player goes along (onSwitch)
-export function LobbySwitcher({ mode, lobbyId, onStatus, onSwitch }: { mode: LobbyMode; lobbyId: string | null; onStatus: (text: string) => void; onSwitch: (lobby: PublicLobby) => void }) {
+// back / forward through the public lobbies on the game server, in the order they opened; going to another one
+// leaves this lobby, and every local player of this computer goes along (onSwitch)
+export function LobbySwitcher({ mode, roomId, onStatus, onSwitch }: { mode: LobbyMode; roomId: string | null; onStatus: (text: string) => void; onSwitch: (lobby: NetLobby) => void }) {
   const go = async (dir: -1 | 1) => {
     if (mode !== "online") { onStatus("O passador de lobby só funciona no modo online (painel de players)."); return }
-    const list = await listPublicLobbies()
-    const next = neighbourLobby(list, lobbyId, dir)
-    if (!next) { onStatus(list.length ? "Nenhum outro Pátio público aberto com alguém jogando." : ONLINE_UNAVAILABLE); return }
-    onStatus(`Indo para o Pátio ${next.name ?? next.id}…`)
+    const list = await listNetLobbies()
+    const pick = neighbourLobby(list.map(l => ({ id: l.roomId, createdAt: Date.parse(l.createdAt) || 0, players: l.players })), roomId, dir)
+    const next = pick && pick.id !== roomId ? list.find(l => l.roomId === pick.id) ?? null : null
+    if (!next) { onStatus(list.length ? "Nenhum outro lobby público aberto." : ONLINE_OFF); return }
+    onStatus(`Indo para o lobby ${next.name ?? (next.patioId === "default" ? "do Pátio padrão" : "")} (${next.players}/${next.max})…`)
     onSwitch(next)
   }
   const btn = "inline-flex h-9 w-7 items-center justify-center text-[#b9c7b9] transition-colors hover:text-white disabled:opacity-40"
@@ -120,8 +122,14 @@ export function LobbySwitcher({ mode, lobbyId, onStatus, onSwitch }: { mode: Lob
 }
 
 // ---------- the panel ----------
-export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, onAdd, onRemove, onAssign, onEditor, onRename, onAvatar }: {
+export function PlayersPanel({ lobby, seats, connecting, onPublic, devices, meName, meLook, onClose, onMode, onAdd, onRemove, onAssign, onEditor, onRename, onAvatar }: {
   lobby: LobbyState
+  // online: browsers in the lobby out of 13 (the counter); null in Local mode, where it counts this computer's players
+  seats: { used: number; max: number } | null
+  // online chosen but not connected yet
+  connecting: boolean
+  // the owner opens (listed for everyone) or closes (invite only) the online lobby
+  onPublic: (on: boolean) => void
   // the devices found on this computer (the columns); devices held but gone (a gamepad unplugged) stay as columns
   devices: InputDeviceId[]
   // the first local player's nickname (logged account)
@@ -142,7 +150,7 @@ export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, 
   const held = lobby.players.flatMap(p => (p.kind === "local" ? p.inputs : []))
   const columns = sortDevices([...devices, ...held])
   const present = new Set(devices)
-  const full = lobby.players.length >= LOBBY_MAX
+  const full = localPlayers(lobby).length >= LOCAL_MAX
   const [note, setNote] = useState<string | null>(null)
   const [invite, setInvite] = useState(false)
   const nameOf = (p: LobbyPlayer) => (p.id === me?.id && meName ? meName : p.name)
@@ -168,10 +176,16 @@ export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, 
       <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-3 border-b border-white/10 px-4 py-2.5">
         <h2 className="text-sm text-white">Players</h2>
         <ModeSwitch mode={lobby.mode} onChange={onMode} />
-        <span className="ml-auto text-[#93a79a]">{lobby.players.length}/{LOBBY_MAX}</span>
+        {seats && (
+          <label className={cn("flex items-center gap-1.5 text-[#b9c7b9]", !iOwn && "opacity-50")} title={iOwn ? "Público: aparece para todos. Privado: só por convite." : "Só o dono do lobby abre ou fecha"}>
+            <input type="checkbox" checked={lobby.visibility !== "private"} disabled={!iOwn} onChange={e => onPublic(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+            Público
+          </label>
+        )}
+        <span className="ml-auto text-[#93a79a]" title={seats ? "Navegadores no lobby" : "Players locais neste computador"}>{seats ? `${seats.used}/${seats.max}` : `${localPlayers(lobby).length}/${LOCAL_MAX}`}</span>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
-      {lobby.mode === "online" && <p className="shrink-0 border-b border-amber-300/20 bg-amber-300/5 px-4 py-2 text-amber-200">{ONLINE_UNAVAILABLE}</p>}
+      {connecting && <p className="shrink-0 border-b border-amber-300/20 bg-amber-300/5 px-4 py-2 text-amber-200">Conectando ao modo online…</p>}
 
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full border-separate border-spacing-0 text-left">
@@ -271,7 +285,7 @@ export function PlayersPanel({ lobby, devices, meName, meLook, onClose, onMode, 
       </div>
       {(note || full) && (
         <p className="shrink-0 border-t border-white/10 px-4 py-2 text-[10px] leading-relaxed text-[#93a79a]">
-          {note ?? `Lobby cheio (${LOBBY_MAX} players).`}
+          {note ?? `Até ${LOCAL_MAX} players locais neste computador.`}
         </p>
       )}
     </FloatingPanel>
@@ -293,11 +307,11 @@ function InviteFriends({ lobbyId, onNote }: { lobbyId: string; onNote: (text: st
   const [friends, setFriends] = useState<OnlineFriend[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    if (!onlineConfigured) { setError(ONLINE_UNAVAILABLE); return }
+    if (!onlineConfigured) { setError(ONLINE_OFF); return }
     let alive = true
     onlineRpc<OnlineFriend[]>("online_friends", { p_action: "list" })
       .then(list => { if (alive) setFriends(list.filter(f => f.status === "accepted")) })
-      .catch(() => { if (alive) setError(ONLINE_UNAVAILABLE) })
+      .catch(() => { if (alive) setError(ONLINE_OFF) })
     return () => { alive = false }
   }, [])
   const send = (f: OnlineFriend) => {

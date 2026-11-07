@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { MessageCircle, Send } from "lucide-react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { isChickenControlsListening } from "@/lib/chicken/controls"
-import { CHAT_MAX, LOCAL_CHAT_PLAYER, getChickenChats, sendChickenChat, subscribeChickenChat, type ChickenChatMessage } from "@/lib/chicken/chat"
+import { CHAT_MAX, LOCAL_CHAT_PLAYER, getChickenChatHistory, getChickenChats, sendChickenChat, subscribeChickenChat, type ChickenChatMessage } from "@/lib/chicken/chat"
 import { cn } from "@/lib/utils"
 
 // the top of her head (with the comb) above her feet, and forward of them, in rig units
@@ -60,8 +60,9 @@ export function ChickenChatButton({ open, onToggle }: { open: boolean; onToggle:
   )
 }
 
-// players: who has a chicken on this screen, by chat player id (the local one is LOCAL_CHAT_PLAYER)
-export function ChickenChat({ players, open, onOpenChange, bottom }: { players: Record<string, ChickenEngine | null>; open: boolean; onOpenChange: (open: boolean) => void; bottom: number }) {
+// players: who has a chicken on this screen, by chat player id (the local one is LOCAL_CHAT_PLAYER);
+// myName: the nick shown in front of this screen's messages in the history
+export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { players: Record<string, ChickenEngine | null>; open: boolean; onOpenChange: (open: boolean) => void; bottom: number; myName?: string }) {
   const [text, setText] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const chats = useChickenChats()
@@ -89,7 +90,7 @@ export function ChickenChat({ players, open, onOpenChange, bottom }: { players: 
     inputRef.current?.blur()
   }
   const submit = () => {
-    if (sendChickenChat(text, LOCAL_CHAT_PLAYER)) setText("")
+    if (sendChickenChat(text, LOCAL_CHAT_PLAYER, myName)) setText("")
     close()
   }
 
@@ -97,6 +98,7 @@ export function ChickenChat({ players, open, onOpenChange, bottom }: { players: 
     <>
       <style>{`@keyframes chicken-chat-in { from { opacity: 0; transform: translateY(6px) scale(.9); } } @keyframes chicken-chat-out { to { opacity: 0; } }`}</style>
       {chats.map(m => <ChatBubble key={m.id} msg={m} engine={players[m.player] ?? null} />)}
+      <ChatHistory bottom={bottom + (open ? 60 : 0)} />
       {open && (
         <form
           data-chicken-ignore
@@ -132,6 +134,32 @@ export function ChickenChat({ players, open, onOpenChange, bottom }: { players: 
         </form>
       )}
     </>
+  )
+}
+
+// The chat history: a small see-through panel with every message of this visit, "nick: text", newest at the
+// bottom; it scrolls, and follows new messages unless the player scrolled up to read older ones.
+function ChatHistory({ bottom }: { bottom: number }) {
+  const lines = useSyncExternalStore(subscribeChickenChat, getChickenChatHistory, getChickenChatHistory)
+  const ref = useRef<HTMLDivElement>(null)
+  const atEnd = useRef(true)
+  useEffect(() => {
+    const el = ref.current
+    if (el && atEnd.current) el.scrollTop = el.scrollHeight
+  }, [lines])
+  if (!lines.length) return null
+  return (
+    <div
+      ref={ref}
+      data-chicken-ignore
+      aria-label="Histórico do chat"
+      role="log"
+      onScroll={e => { const el = e.currentTarget; atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 8 }}
+      className="pointer-events-auto fixed left-3 z-[203] max-h-40 w-[min(340px,calc(100vw-1.5rem))] overflow-y-auto rounded-lg bg-black/45 px-2.5 py-1.5 font-mono text-xs leading-relaxed text-white [overflow-wrap:anywhere] [scrollbar-width:thin]"
+      style={{ bottom }}
+    >
+      {lines.map(l => <p key={l.id}><span className="font-bold text-primary">{l.name}:</span> {l.text}</p>)}
+    </div>
   )
 }
 

@@ -22,6 +22,13 @@ export function ownerOf(players, creatorId) {
   return (creator ?? oldest)?.pid ?? null
 }
 
+// two browsers with the same name (two guests called "Player 1") are told apart by a number
+export function uniqueName(name, players, self = null) {
+  const taken = new Set(players.filter(p => p !== self).map(p => p.name))
+  if (!taken.has(name)) return name
+  for (let n = 2; ; n++) { const next = `${name.slice(0, NAME_MAX - 3)} ${n}`; if (!taken.has(next)) return next }
+}
+
 // a browser's color: kept while it stays, a newcomer takes the first free one (0..12)
 export function freeColor(players) {
   const taken = new Set(players.map(p => p.color))
