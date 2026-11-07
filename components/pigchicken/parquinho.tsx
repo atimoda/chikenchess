@@ -18,6 +18,7 @@ import { createCombat, TIP_TIME, type Box, type Combat, type Effect, type Pickup
 import { ellipsePoint, swingPose, trailSpan } from "@/lib/pigchicken/swing"
 import { quickSwitchStep, itemGroup, wheelSliceAt, wheelSliceCenter, wheelSpan, wrapSlot } from "@/lib/pigchicken/inventory"
 import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { loadCatalog, subscribeCatalog } from "@/lib/pigchicken/alien-catalog"
 import { itemImage } from "@/lib/pigchicken/art"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
@@ -280,6 +281,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     templeDraw.temple = temple
     // the note stage (the guitar hero mode): the disc by the reset stone plays its song
     const stage = createNoteStage()
+    // the aliens' catalogue (saved in this browser): the song's aliens take their variations from it
+    stage.setCatalog(loadCatalog())
+    const unsubCatalog = subscribeCatalog(c => stage.setCatalog(c))
     templeDraw.stage = stage
     combat.setNoteEnv(shot => stage.noteEnv(shot))
     const templeSounds: TempleSound[] = []
@@ -821,6 +825,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       cancelGameFrame(raf)
       unsub()
       unsubItems()
+      unsubCatalog()
       window.removeEventListener("blur", cancelPeckInput)
       window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)

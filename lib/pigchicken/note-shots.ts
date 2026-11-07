@@ -4,7 +4,8 @@
 // with the temple's windows. Combat keeps them (they work in every mode); the song decides what they play.
 
 import type { NoteOut, RebateRule, Transform } from './transforms'
-import type { VoiceId } from './synth'
+import type { Drum, VoiceId } from './synth'
+import type { ScaleId } from './music'
 
 export type NoteGrade = 'perfect' | 'good' | 'fora'
 // the temple's rhythm windows (s): the same PERFEITO / BOM
@@ -28,6 +29,9 @@ export type NoteShot = {
   t: number // s in its current state
   source: string // who fired it (the stage, an alien kind…)
   rule?: RebateRule // whose transformations count when it is rebated (default: the taco's, then the ambience's)
+  // from its alien's variation: how long its trail is (0..1), the scale its rebate fits (instead of the song's) and a
+  // drum a rebate plays instead of a note
+  trail?: number; scale?: ScaleId; drum?: Drum
   grade?: NoteGrade
   // once rebated: the chain and voice of the item that hit it (a surface that delegates to the taco plays them) and
   // how many times it bounced off "Rebate notas" surfaces

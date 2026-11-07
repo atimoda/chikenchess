@@ -70,7 +70,9 @@ export function drawStageFan(ctx: Ctx, stage: NoteStage, shots: readonly NoteSho
 export function drawNoteShots(ctx: Ctx, shots: readonly NoteShot[], camX: number, view: ViewRect) {
   ctx.save()
   shots.forEach(n => {
-    const trail = n.state === "rebated" ? 0.09 : 0.05
+    // its trail: seconds of its path behind it (the alien's variation sets how long; 0.3 = the usual)
+    const own = 0.02 + (n.trail ?? 0.3) * 0.1
+    const trail = n.state === "rebated" ? Math.max(0.09, own + 0.04) : own
     const tx = n.x - n.vx * trail, ty = n.y - n.vy * trail
     const r = n.size * (n.state === "rebated" ? 1.15 : 1)
     if (!intersectsView({ x: Math.min(n.x, tx) - r * 4, y: Math.min(n.y, ty) - r * 4, w: Math.abs(n.x - tx) + r * 8, h: Math.abs(n.y - ty) + r * 8 }, view)) return

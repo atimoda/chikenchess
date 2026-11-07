@@ -5,13 +5,15 @@ export const CHANGELOG = [
   {
     version: '2.2.0',
     date: '07/11/2026',
-    title: 'Morte e morto-vivo: aliens deixam corpos que levantam, e voltam como pássaros',
+    title: 'Morte e morto-vivo, pássaros por tipo e o Catálogo de aliens',
     groups: [
       { title: 'Pátio', items: [
         'Cada alien tem duas mortes, as duas no tempo da música: derrubado por golpe, tiro ou arremesso, toca um tambor que depende da espécie (bloco de madeira na água-viva, taiko na concha, palmas na lanterna); convertido por notas, toca um acorde ou arpejo.',
         'Um alien derrubado deixa um morto-vivo: cinza, de olhos vermelhos, ele cai duro girando, quica cada vez menos e fica deitado onde caiu. Depois de um tempo levanta e anda pelo chão como um robô aspirador, virando nas bordas das plataformas e nas paredes. É inofensivo, e a galinha pode subir nele.',
         'Notas enchem a barra do morto-vivo de novo e o trazem de volta como pássaro morto-vivo, com os olhos na cor da nota e o canto em menor. Armas destroem o morto-vivo de vez. Quando a música acaba, cada um vai embora depois do seu próprio tempo; no máximo 40 ficam ao mesmo tempo.',
         'Os aliens convertidos viram pássaros de verdade, de cinco tipos (pardal, bem-te-vi, sabiá, canário e coruja), cada um com sua cor, seu canto na escala e seu jeito de voar. Cada lugar tem seus pássaros, e a Zona sonora pode escolher os dela. De vez em quando eles assobiam uma nota que a galinha pode rebater.',
+        'Novo Catálogo de aliens (ícone de fantasma no cabeçalho): cada alien das músicas é uma variação, uma espécie com seus parâmetros de corpo, movimento, tiro, rebate, sons e morto-vivo. Os cartões mostram o desenho animado; clicar abre os parâmetros, com botões para ouvir o disparo e as duas mortes, duplicar e voltar ao padrão. Fica salvo neste navegador.',
+        'Primeira leva de variações: Sino, Baixo e Neon (água-viva), Flauta, Brasa e Papel (lanterna), Taiko e Bronze (casco), Terças e Eco (gêmeos), Chocalho e Faísca (mini), Palmas, Caixa e Bumbo (tambor, em que rebater vira batida) e Fogo e Jade (dragão, com escala própria).',
       ] },
     ],
   },
