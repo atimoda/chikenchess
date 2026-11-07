@@ -837,6 +837,39 @@ test('patio: the layout is left out when the caller already holds that revision'
   await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
   assert.equal((await db.query('select public.patio_lobby_get($1,2) as result',[id])).rows[0].result.layout,undefined)
 })
+test('patio: people come back only when the list changed; the unsaved cleanup runs once a day',async()=>{
+  const [owner,other]=[ids[3],ids[4]]
+  const id='b2000000-0000-4000-8000-000000000002'
+  const layout={elements:[{id:'b',kind:'box',x:3,y:4}]}
+  await rpc(owner,'patio_lobby_save',[id,layout,0])
+  const full=await rpc(other,'patio_lobby_get',[id])
+  assert.equal(typeof full.people_hash,'string')
+  assert.ok(full.people.length>=1)
+  const lean=await rpc(other,'patio_lobby_get',[id,1,full.people_hash])
+  assert.equal(lean.people,undefined)
+  assert.equal(lean.layout,undefined)
+  assert.equal(lean.people_hash,full.people_hash)
+  // someone else edits: the people list changes, so it comes back with a new hash
+  await admin('update online_private.patio_lobbies set editors=array[$1::uuid] where id=$2',[other,id])
+  await rpc(other,'patio_lobby_save',[id,layout,1])
+  const after=await rpc(owner,'patio_lobby_get',[id,2,full.people_hash])
+  assert.notEqual(after.people_hash,full.people_hash)
+  assert.ok(after.people.some(p=>p.user_id===other))
+  assert.equal((await rpc(other,'patio_default',[null,null,'x'])).people===undefined,false)
+
+  const old=(n)=>admin("insert into online_private.patio_lobbies (id,layout,creator_id,last_edited_at) values ($1,'{\"elements\":[]}'::jsonb,$2,now()-interval '40 days')",[`c${n}000000-0000-4000-8000-00000000000${n}`,owner])
+  const exists=async(n)=>(await admin('select count(*)::int as n from online_private.patio_lobbies where id=$1',[`c${n}000000-0000-4000-8000-00000000000${n}`])).rows[0].n===1
+  await admin("delete from online_private.patio_maintenance")
+  await old(1)
+  await rpc(owner,'patio_lobby_list',[false])
+  assert.equal(await exists(1),false)
+  await old(2)
+  await rpc(owner,'patio_lobby_list',[false])
+  assert.equal(await exists(2),true)
+  await admin("update online_private.patio_maintenance set last_run=now()-interval '25 hours'")
+  await rpc(owner,'patio_lobby_list',[false])
+  assert.equal(await exists(2),false)
+})
 test('pigchicken songs: a personal library per account; the admin sees and opens everyone\'s',async()=>{
   const [me,other]=[ids[3],ids[4]]
   const song=(name,n=1)=>({name,aliens:Array.from({length:n},()=>({species:'jelly',notes:[{beat:0,midi:62}]}))})

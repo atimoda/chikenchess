@@ -63,27 +63,48 @@ function lobby(r: Row | null): PatioLobby | null {
 }
 
 // Egress: with the revision this browser already holds, the server leaves the layout out (layout: null here) and
-// sends only the rest (names, people, favourites, plays). A server without migration 202611040001 does not know
-// the extra argument: the call is repeated without it, once, and the full row is read from then on.
+// sends only the rest (names, people, favourites, plays). The people list also stays out while it is the one this
+// page already has (people_hash, migration 202611070002); it is filled back in from the copy kept below. A server
+// without those migrations does not know the extra arguments: the call is repeated without them, once, and from
+// then on it is not sent again.
 let knownRevisionUnsupported = false
-async function withKnownRevision(name: string, args: Record<string, unknown>, known: Record<string, unknown> | null) {
-  if (!known || knownRevisionUnsupported) return onlineRpc<Row | null>(name, args)
-  try { return await onlineRpc<Row | null>(name, { ...args, ...known }) } catch (e) {
-    if (!isPatioServerMissing(e)) throw e
-    knownRevisionUnsupported = true
-    return onlineRpc<Row | null>(name, args)
+let knownPeopleUnsupported = false
+const peopleSeen = new Map<string, { hash: string; people: unknown }>()
+async function withKnown(name: string, args: Record<string, unknown>, known: Record<string, unknown> | null, cacheKey: string) {
+  const seen = peopleSeen.get(cacheKey)
+  const tries: (Record<string, unknown> | null)[] = []
+  if (known && !knownRevisionUnsupported) {
+    if (seen && !knownPeopleUnsupported) tries.push({ ...known, p_known_people: seen.hash })
+    tries.push(known)
+  } else if (seen && !knownPeopleUnsupported) tries.push({ p_known_people: seen.hash })
+  tries.push(null)
+  for (let i = 0; ; i++) {
+    const extra = tries[i]
+    try {
+      const row = await onlineRpc<Row | null>(name, extra ? { ...args, ...extra } : args)
+      if (row && typeof row === 'object') {
+        const hash = str(row.people_hash)
+        if (!('people' in row) && seen && hash === seen.hash) row.people = seen.people
+        if (hash && Array.isArray(row.people)) peopleSeen.set(cacheKey, { hash, people: row.people })
+      }
+      return row
+    } catch (e) {
+      if (!extra || i === tries.length - 1 || !isPatioServerMissing(e)) throw e
+      if ('p_known_people' in extra) knownPeopleUnsupported = true
+      else knownRevisionUnsupported = true
+    }
   }
 }
 const knownRevision = (revision?: number | null) => (typeof revision === 'number' && revision > 0 ? revision : null)
 /** knownRevision: the revision whose layout this browser has (then `layout` is null when it is still current). */
 export const fetchPatioLobby = async (id: string, known?: number | null) => {
   const rev = knownRevision(known)
-  return lobby(await withKnownRevision('patio_lobby_get', { p_id: id }, rev ? { p_known_revision: rev } : null))
+  return lobby(await withKnown('patio_lobby_get', { p_id: id }, rev ? { p_known_revision: rev } : null, id))
 }
 /** known: the default lobby this browser keeps (then `layout` is null when it is still that lobby at that revision). */
 export const fetchDefaultPatio = async (known?: { id: string | null; revision: number } | null) => {
   const rev = knownRevision(known?.revision)
-  return lobby(await withKnownRevision('patio_default', {}, known?.id && rev ? { p_known_id: known.id, p_known_revision: rev } : null))
+  return lobby(await withKnown('patio_default', {}, known?.id && rev ? { p_known_id: known.id, p_known_revision: rev } : null, 'default'))
 }
 export async function savePatioLobby(id: string, layout: PatioLayout, revision: number) {
   const r = await onlineRpc<Row>('patio_lobby_save', { p_id: id, p_layout: layout, p_revision: revision })
