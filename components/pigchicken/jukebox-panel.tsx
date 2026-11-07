@@ -3,13 +3,17 @@
 // The jukebox's panel (it opens when she strikes the jukebox in the temple): a grid of covers, the old campaign's
 // disc first, then the songs; the one picked is the one the gong starts. Under the grid, the picked one's numbers
 // (bpm, key, length, record) and its buttons: Tocar (now), Editar (the timeline), Salvar como, Nova música, and for
-// the ones made here their cover's style and Excluir. Gerar de MIDI comes next.
+// the ones made here their cover's style and Excluir. Gerar de MIDI comes next. A line says where the songs are kept
+// (this browser, or the account), and the admin can list everyone's songs, hear one or copy it.
 import { useEffect, useRef, useState } from "react"
-import { Disc3, Pencil, Play, Plus, Save, Trash2, X } from "lucide-react"
+import { Cloud, CloudOff, Copy, Disc3, Pencil, Play, Plus, Save, Trash2, Users, X } from "lucide-react"
+import { useOnline } from "@/components/online/online-provider"
+import { isAdminUser } from "@/lib/admin/access"
+import { listAllSongs, songApi, songErrorMessage, subscribeSyncState, syncState, type SongInfo } from "@/lib/pigchicken/song-online"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
 import {
-  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, openSongEditor, pickSong, playSongNow, saveSongAs,
+  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, openSongEditor, pickSong, playDraft, playSongNow, saveSongAs,
   songSeconds, subscribeLibrary, updateSong, type Library, type LibrarySong,
 } from "@/lib/pigchicken/song-library"
 import { loadCatalog } from "@/lib/pigchicken/alien-catalog"
@@ -38,6 +42,23 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
   const [lib, setLib] = useState<Library>(() => loadLibrary())
   const [naming, setNaming] = useState<string | null>(null)
   useEffect(() => subscribeLibrary(setLib), [])
+  const online = useOnline()
+  const isAdmin = isAdminUser(online.user)
+  const [sync, setSync] = useState(syncState)
+  useEffect(() => subscribeSyncState(setSync), [])
+  // the admin's list of everyone's songs
+  const [all, setAll] = useState<SongInfo[] | null>(null)
+  const [allNote, setAllNote] = useState("")
+  const [busy, setBusy] = useState<string | null>(null)
+  const openAll = async () => {
+    if (all) { setAll(null); return }
+    setAllNote("Carregando…")
+    try { setAll(await listAllSongs()); setAllNote("") } catch (e) { setAllNote(songErrorMessage(e)) }
+  }
+  const fetchSong = async (s: SongInfo) => {
+    setBusy(`${s.ownerId}/${s.id}`)
+    try { const got = await songApi.get(s.id, s.ownerId); if (!got?.song) setAllNote("Essa música não está mais lá."); return got?.song ?? null } catch (e) { setAllNote(songErrorMessage(e)); return null } finally { setBusy(null) }
+  }
   const picked = lib.songs.find(s => s.id === lib.picked) ?? null
   const isCampaign = lib.picked === CAMPAIGN_ID
   const record = lib.records[lib.picked]
@@ -76,6 +97,16 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
         <button type="button" aria-label="Fechar jukebox" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* where the songs are kept */}
+        <div className="mx-3 mt-3 flex items-center gap-1.5 text-[11px] text-[#93a79a]">
+          {sync.status === "local" ? <CloudOff className="h-3.5 w-3.5 shrink-0" /> : <Cloud className="h-3.5 w-3.5 shrink-0" style={{ color: sync.status === "error" ? "#ff6b5b" : NEON }} />}
+          <span className="min-w-0">
+            {sync.status === "local" ? "Neste navegador. Entre com sua conta para guardar as músicas nela."
+              : sync.status === "syncing" ? "Sincronizando com a sua conta…"
+              : sync.status === "synced" ? `Na sua conta.${sync.message ? ` ${sync.message}` : ""}`
+              : sync.message}
+          </span>
+        </div>
         {/* the screen: a grid of covers */}
         <div role="listbox" aria-label="Músicas" className="m-3 grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2 rounded-xl border border-white/10 bg-black/60 p-2">
           {[null, ...lib.songs].map(s => {
@@ -125,6 +156,29 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
               <span className="w-16 text-[#93a79a]">Cores</span>
               {COVER_PALETTES.map(o => <button key={o.value} type="button" aria-pressed={picked.cover.palette === o.value} onClick={() => setCover(s => { s.cover.palette = o.value })} className={cn("h-7 rounded-full border px-3", picked.cover.palette === o.value ? "border-primary text-white" : "border-white/15")}>{o.label}</button>)}
             </div>
+          </div>
+        )}
+        {isAdmin && (
+          <div className="grid gap-2 border-t border-white/10 px-4 py-3">
+            <button type="button" onClick={openAll} aria-expanded={!!all} className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Users className="h-4 w-4" />Músicas de todos (admin)</button>
+            {allNote && <p className="text-[11px] text-[#93a79a]">{allNote}</p>}
+            {all && (all.length ? (
+              <ul className="grid gap-1">
+                {all.map(s => {
+                  const key = `${s.ownerId}/${s.id}`
+                  return (
+                    <li key={key} className="flex items-center gap-2 rounded-md border border-white/10 px-2 py-1.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-white">{s.name}</div>
+                        <div className="truncate text-[10px] text-[#93a79a]">{s.ownerName ?? "Jogador"}{s.updatedAt ? ` · ${new Date(s.updatedAt).toLocaleDateString("pt-BR")}` : ""}</div>
+                      </div>
+                      <button type="button" disabled={busy === key} aria-label={`Ouvir ${s.name}`} title="Tocar no templo" onClick={async () => { const song = await fetchSong(s); if (song) { playDraft(song, 0); onClose() } }} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-40"><Play className="h-3.5 w-3.5" /></button>
+                      <button type="button" disabled={busy === key} aria-label={`Copiar ${s.name} para a minha biblioteca`} title="Copiar para a minha biblioteca" onClick={async () => { const song = await fetchSong(s); if (song) { saveSongAs(loadLibrary(), song, `${s.name} (${s.ownerName ?? "cópia"})`.slice(0, 60)); setAllNote(`“${s.name}” foi copiada para a sua biblioteca.`) } }} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-40"><Copy className="h-3.5 w-3.5" /></button>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : <p className="text-[11px] text-[#93a79a]">Ninguém guardou músicas ainda.</p>)}
           </div>
         )}
       </div>
