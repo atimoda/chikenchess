@@ -1,4 +1,6 @@
 import { RECORDED_BANKS } from './recorded-banks'
+import orchestraSamples from '../../data/music/orchestra-samples.json'
+import concertSamples from '../../data/music/concert-samples.json'
 /** Asset metadata has no knowledge of chess roles or instrument behaviours. */
 export interface SampleAsset {
   id: string
@@ -31,8 +33,10 @@ const classicalHitVariant = (asset: string, name: string, revision: string) => (
 })
 const classicalBank: SampleBank = {
   id: 'chicken-classical-v1', name: 'Chicken Classical · instrumentos acústicos',
-  credit: 'Gravações CC0: VCSL e VSCO 2 CE · preparação em scripts/prepare-classical-recordings.py', license: 'CC0-1.0',
+  credit: 'Gravações CC0: VCSL e VSCO 2 CE · preparação em scripts/prepare-classical-recordings.py, scripts/prepare-orchestra-recordings.py e scripts/prepare-concert-recordings.py', license: 'CC0-1.0',
   assets: [
+    ...orchestraSamples,
+    ...concertSamples,
     { id: 'violin-sustain', name: 'Violino arqueado', variants: [
       classicalVariant('violin-sustain', 'Piano', 'piano', ['g3', 'c4', 'e4', 'g4', 'c5']),
       classicalVariant('violin-sustain', 'Forte', 'forte', ['g3', 'c4', 'e4', 'g4', 'c5']),

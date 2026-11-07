@@ -36,7 +36,6 @@
 .lab .board { position: relative; width: var(--game-board-width); max-width: calc(100vw - 16px); aspect-ratio: 1; user-select: none; pointer-events: auto; }
 /* Rows above and below the board, in the place of a match's captured pieces and eggs. */
 .boardRow { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: var(--game-board-width); max-width: calc(100vw - 16px); min-height: 32px; pointer-events: auto; }
-.infinity { font-size: 24px; line-height: 12px; font-weight: 600; }
 .palette { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; gap: 2px; justify-content: flex-start; }
 .paletteEnd { justify-content: flex-end; }
 .lab .palettePiece { flex: 0 1 24px; width: 24px; min-width: 14px; aspect-ratio: 1; height: auto; padding: 2px; border: 0; border-radius: 4px; background: transparent; opacity: .9; cursor: grab; touch-action: none; }

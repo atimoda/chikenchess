@@ -318,7 +318,7 @@ export function ChickenPatio() {
   const patioName = patio?.name ?? (patio?.id ? "Pátio sem nome" : "Pátio da Galinha")
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]">
+    <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]">
       <header className="pointer-events-auto absolute inset-x-0 top-0 z-[120] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)]" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
         {/* the same Globe button as the chess matches' header */}
         <Button

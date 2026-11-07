@@ -1,3 +1,6 @@
+import type { MusicPulse } from './runtime-types'
+import { getSimultaneousPulses } from './pulse-preference'
+
 export type VoiceStatus = 'inactive' | 'paused' | 'solo-muted' | 'loading' | 'error' | 'masked' | 'rest' | 'note'
 export interface NoteEvent { start: number; end: number; note: number | null; gain: number }
 export interface TrackFrame {
@@ -43,26 +46,47 @@ export type MusicMonitor = ReturnType<typeof createMusicMonitor>
 // Musical flashes are intentionally kept outside React page state. A pulse may
 // arrive several times per second; only the tiny board overlay should subscribe.
 export function createMusicPulseMonitor() {
-  let pulse: import('./runtime-types').MusicPulse | null = null
+  const empty: readonly MusicPulse[] = []
+  let snapshot = empty
+  const active = new Map<MusicPulse['square'], { pulse: MusicPulse; expires: number }>()
   let timer: ReturnType<typeof setTimeout> | undefined
   const listeners = new Set<() => void>()
   const notify = () => listeners.forEach(listener => listener())
   const clear = () => {
-    if (timer) clearTimeout(timer)
+    if (timer !== undefined) clearTimeout(timer)
     timer = undefined
-    if (pulse === null) return
-    pulse = null
+    active.clear()
+    if (snapshot === empty) return
+    snapshot = empty
+    notify()
+  }
+  const update = () => {
+    if (timer !== undefined) clearTimeout(timer)
+    timer = undefined
+    const now = performance.now()
+    let earliest = Infinity
+    for (const [square, entry] of active) {
+      if (entry.expires <= now) active.delete(square)
+      else earliest = Math.min(earliest, entry.expires)
+    }
+    if (Number.isFinite(earliest)) timer = setTimeout(update, Math.ceil(earliest - now))
+    snapshot = active.size ? Array.from(active.values(), entry => entry.pulse) : empty
     notify()
   }
   return {
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
-    getSnapshot: () => pulse,
-    getServerSnapshot: () => null,
-    publish: (next: import('./runtime-types').MusicPulse) => {
-      if (timer) clearTimeout(timer)
-      pulse = next
-      notify()
-      timer = setTimeout(clear, Math.max(80, Math.min(350, next.duration * 1000)))
+    getSnapshot: () => snapshot,
+    getServerSnapshot: () => empty,
+    publish: (events: readonly MusicPulse[]) => {
+      if (!events.length) return clear()
+      if (!getSimultaneousPulses()) active.clear()
+      const now = performance.now()
+      for (const pulse of events) {
+        const expires = now + Math.max(80, Math.min(350, pulse.duration * 1000))
+        const previous = active.get(pulse.square)
+        active.set(pulse.square, { pulse, expires: Math.max(expires, previous?.expires ?? 0) })
+      }
+      update()
     },
     clear,
   }

@@ -1,145 +1,56 @@
-"""Tokyo 1991 · precise minimal techno in the yellow-magic lineage (original material).
-
-130 BPM, a dry TR-808 locked to the grid: kick, gated snare, sixteenth hats and
-maracas, cowbell syncopations and high toms. A square arpeggiator runs in
-sixteenths, FM bells play the chords, a digital pluck sounds like a koto and the
-queen sings a pentatonic lead. Glitch ticks and blips add the precision. E major,
-the bright Emaj7–C#m7–Amaj7–B loop; the melodies keep to the pentatonic notes.
-Degrees: 0 E · 1 F# · 2 G# · 3 A · 4 B · 5 C# · 6 D# · 7 E'.
+"""Tokyo · Minimal: soft timbral cells and displaced accents, original material.
+The 1991 scene date is not a claim that later Japanese microsound existed then.
+130 BPM remains the clock, but sparse kick and interlocking 5-step/7-step cells
+make the phrasing less square. E major, mostly a pedal, with brief C#m/A detours.
 """
-from kit import (act, arrangement, bar, bars, drums, machine, part, reactions, recorded, rule, synth, write)
+from kit import (act, arrangement, bar, bars, drums, expanded_form, machine, part, reactions, recorded, rule, synth, write)
 
-LOOP = ('Emaj7', 'C#m7', 'Amaj7', 'B')
-VAMP = ('Emaj7', 'Emaj7', 'Amaj7', 'Amaj7')
-ROOT = {'Emaj7': 0, 'C#m7': -2, 'Amaj7': -4, 'B': -3}
-VOICING = {'Emaj7': '2,4,6,7', 'C#m7': '2,4,5,7', 'Amaj7': '2,3,5,7', 'B': '1,4,6'}
-PAD = {'Emaj7': '0,2,4,6', 'C#m7': '-2,0,2,4', 'Amaj7': '-4,-2,0,2', 'B': '-3,-1,1'}
+R = ' '.join(['.']*64)
 
 
-def bassline(chord, variant=0):
-    r = ROOT[chord]
-    shapes = [[r, '.', r + 7, '.'] * 4, [r, r + 7, '.', r, r + 7, '.', r, r + 7, r, '.', r + 7, r, '.', r + 7, r, r + 7]]
-    return bar(' '.join(str(n) for n in shapes[variant]))
+def points(events):
+    cells = ['.']*64
+    for step, note in events.items():
+        cells[step] = str(note)
+    return ' '.join(cells)
 
 
-def arp(chord, variant=0):
-    c = [int(n) for n in VOICING[chord].split(',')]
-    up = [c[0], c[1], c[2], c[-1]]
-    shapes = [(up + [up[-1] + 7] + up[2:0:-1] + [up[0] + 7]) * 2, (up + [n + 7 for n in up]) * 2]
-    return bar(' '.join(str(n) for n in shapes[variant][:16]))
+def cell(interval, phase=0, notes=('0',)):
+    return points({step:notes[i%len(notes)] for i,step in enumerate(range(phase,64,interval))})
 
 
-def bells(chord, variant=0):
-    c = VOICING[chord]
-    shapes = [f'{c}_ . . . . . . . . . . . . . . .', f'{c} . . . . . {c} . . . {c} . . . . .']
-    return bar(shapes[variant])
+def make(role,name,behavior,source,patterns,**kw):
+    return part(role,name,behavior,source,[p or R for p in patterns],[4]*6,
+                arrangement=arrangement(tuple(p is not None for p in patterns)),**kw)
 
 
-def pad(chord):
-    return bar(f'{PAD[chord]}_ . . . . . . . . . . . . . . .')
-
-
-def prog(fn, chords, *args):
-    return bars(*(fn(c, *args) for c in chords))
-
-
-KICK = drums('X... X... X... X...')
-SNARE = drums('.... X... .... X...')
-SILENT = drums('.... .... .... ....')
-REST4 = bars(*[SILENT] * 4)
+AIR = points({0:'0,4_ ',12:'0?0',32:'0,4_',44:'0?0'})
+SUB = points({0:'0',11:'0',26:'0',35:'4',48:'0',59:'0'})
+KICK = drums('X... .... ..x. .... .... x... .... x... X... .... ...x .... .... x... ..x. ....')
+TICK = cell(7,3,("0'", '0?70'))
+PINGS = cell(5,1,('0', "4'", '2', "4'"))
 parts = [
-    # a1 · rook: glitch ticks — chance and ratchets on the grid.
-    part('texture', 'Tiques glitch', 'pulse', machine('synth-tick'), [
-        drums('o..o ..o. o... .o..'), drums('x.ro ..x. o.r. .o.x'), drums('o... o... o... o...'),
-        drums('x.ro .rx. o.r. Ro.x'), drums('o..o ..o. o... .o..'), drums('xRro .rx. oRr. Ro.r'),
-    ], [1] * 6, gain=0.9, clip=.5, lpf=16000, hpf=3000, design={'role': 'fx'}, effects={'reverb': .05, 'delay': .15, 'pan': -.45}),
-    # a2 · pawn: 808 maracas.
-    part('rhythm', 'Maracas 808', 'pulse', machine('808-maracas'), [
-        SILENT, drums('xgxg xgxg xgxg xgxg'), SILENT, drums('xgXg xgXg xgXg xgXg'), drums('x.x. x.x. x.x. x.x.'), drums('xgXg xgXg xgXg xgXg'),
-    ], [1] * 6, gain=0.5, clip=.6, lpf=14000, hpf=4000, effects={'reverb': .03, 'pan': .35}),
-    # b1 · knight: the square arpeggiator.
-    part('response', 'Arpejador', 'phrase', synth('square'), [
-        prog(arp, LOOP, 0), prog(arp, LOOP, 0), prog(arp, VAMP, 0), prog(arp, LOOP, 1), prog(arp, VAMP, 0), prog(arp, LOOP, 1),
-    ], [4] * 6, octave=4, gain=0.13, attack=.002, decay=.08, sustain=.15, release=.04, gate=.35, clip=.9, lpf=2400, hpf=300,
-        design={'resonance': 6, 'filterEnv': 1.6, 'filterDecay': .05}, mapping={'fileDegrees': 0},
-        arrangement=arrangement((True, True, False, True, True, True)), effects={'delay': .2, 'reverb': .12, 'pan': .3}),
-    # b2 · pawn: gated 808 snare.
-    part('rhythm', 'Caixa 808', 'pulse', machine('808-snare'), [
-        SILENT, SNARE, SILENT, SNARE, SNARE, drums('.... X... .... X... .... X... ..X. X.XX'),
-    ], [1, 1, 1, 1, 1, 2], gain=0.5, clip=.6, lpf=10000, hpf=250, effects={'reverb': .15, 'pan': 0},
-        arrangement=arrangement((False, True, True, True, True, True), fills=(None, 5, None, 5, None, None))),
-    # c1 · bishop: FM bell chords.
-    part('harmony', 'Sinos FM', 'phrase', recorded('synths', 'fm-bell'), [
-        prog(bells, LOOP, 0), prog(bells, LOOP, 1), prog(bells, VAMP, 0), prog(bells, LOOP, 1), prog(bells, VAMP, 0), prog(bells, LOOP, 1),
-    ], [4] * 6, octave=3, gain=0.05, attack=.002, decay=.8, sustain=.3, release=.6, gate=.7, clip=.9, lpf=9000, hpf=200,
-        mapping={'fileDegrees': 0}, arrangement=arrangement((True, False, True, True, True, True)), effects={'reverb': .3, 'delay': .15, 'pan': -.2}),
-    # c2 · pawn: 808 closed hats.
-    part('rhythm', 'Chimbal 808', 'pulse', machine('808-hat'), [
-        drums('x.x. x.x. x.x. x.x.'), drums('x.x. x.x. x.x. x.x.'), drums('..x. ..x. ..x. ..x.'),
-        drums('x.X. x.X. x.X. x.X.'), drums('x.x. x.x. x.x. x.x.'), drums('xgXg xgXg xgXg xgXr'),
-    ], [1] * 6, gain=0.9, clip=.5, lpf=15000, hpf=4500, effects={'reverb': .02, 'pan': .15}),
-    # d1 · queen: pentatonic lead (E F# G# B C#).
-    part('melody', 'Lead pentatônico', 'phrase', synth('sawtooth'), [
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 4 . 5 . 7 . 8 .')),
-        bars(bar('9 . . 8 . . 7 . . . 5 . 4 . . .'), bar('5_ . . . . . . . 4 . 2 . 1 . . .'), bar('2 . . 4 . . 5 . . . 4 . 2 . . .'), bar('4_ . . . . . . . . . . . . . . .')),
-        bars(bar('7_ . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .'), bar('8_ . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('11 . 9 . 8 . 7 . 8 . 9 . 11 . . .'), bar('12_ . . . . . 11 . 9 . . . 8 . . .'), bar('9 . 8 . 7 . 5 . 7 . 8 . 9 . . .'), bar('8_ . . . . . . . 7 . 5 . 4 . 2 .')),
-        bars(bar('7_ . . . . . . . . . . . . . . .'), bar('. . . . . . . . 5 . 4 . . . . .'), bar('4_ . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('11 . 9 . 8 . 7 . 8 . 9 . 11 . . .'), bar('12_ . . . . . 11 . 9 . . . 8 . . .'), bar('9 . 8 . 7 . 5 . 7 . 8 . 9 . . .'), bar('14_ . . . . . . . 12 . 11 . 9 . 8 .')),
-    ], [4] * 6, octave=4, gain=0.35, attack=.01, decay=.3, sustain=.6, release=.25, gate=.8, clip=.9, lpf=3200, hpf=250,
-        design={'unison': 2, 'detune': .08, 'vibrato': 5.5, 'vibratoDepth': .1}, mapping={'fileDegrees': 0, 'panWidth': .1},
-        arrangement=arrangement((False, True, True, True, True, True), restart=True), effects={'reverb': .25, 'delay': .25, 'pan': 0}),
-    # d2 · pawn: octave sequencer bass.
-    part('bass', 'Baixo sequenciado', 'phrase', synth('square'), [
-        REST4, prog(bassline, LOOP, 0), REST4, prog(bassline, LOOP, 1), prog(bassline, VAMP, 0), prog(bassline, LOOP, 1),
-    ], [4] * 6, octave=2, gain=.3, attack=.002, decay=.12, sustain=.4, release=.04, gate=.5, clip=.95, lpf=600, hpf=30,
-        design={'resonance': 4, 'filterEnv': 1.8, 'filterDecay': .08, 'role': 'bass'}, mapping={'fileDegrees': 0, 'panWidth': 0},
-        effects={'reverb': 0, 'pan': 0}),
-    # e1 · king: synth choir, arrives with castling.
-    part('texture', 'Coro sintético', 'sustain', recorded('synths', 'choir'), [
-        prog(pad, LOOP), prog(pad, LOOP), prog(pad, VAMP), prog(pad, LOOP), prog(pad, VAMP), prog(pad, LOOP),
-    ], [4] * 6, octave=3, gain=0.04, attack=.6, decay=1, sustain=.85, release=1, gate=.97, clip=1, lpf=4000, hpf=200,
-        design={'role': 'pad'}, arrangement=arrangement((True, False, True, True, False, True), restart=False), effects={'reverb': .4, 'pan': .2}),
-    # e2 · pawn: 808 kick.
-    part('rhythm', 'Bumbo 808', 'pulse', machine('808-kick'), [
-        drums('X... .... X... ....'), KICK, SILENT, KICK, KICK, KICK,
-    ], [1] * 6, gain=.55, clip=.5, lpf=8000, hpf=25, mapping={'panWidth': 0}, effects={'reverb': 0, 'pan': 0}),
-    # f1 · bishop: koto-like digital pluck, pentatonic counter-line.
-    part('melody', 'Pluck koto', 'phrase', recorded('synths', 'digital-pluck'), [
-        bars(bar('7 . 5 . 4 . . . 2 . 4 . 5 . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 9 . 8 . 7 . 5 .')),
-        bars(bar('7 . 5 . 4 . . . 2 . 4 . 5 . . .'), bar('4 . 2 . 1 . . . 0 . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . 12 . 11 .'), bar('. . . . . . . . . . . . 9 . 8 .')),
-        bars(bar('7 . 5 . 4 . . . 2 . 4 . 5 . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . 9*2 . 11 . 12 . 11 .'), bar('. . . . . . . . . . . . 9 . 8 .')),
-    ], [2] * 6, octave=4, gain=0.22, attack=.002, decay=.3, sustain=.1, release=.2, gate=.4, clip=.9, lpf=8000, hpf=400,
-        mapping={'fileDegrees': 0}, arrangement=arrangement((True, False, True, True, True, True)), effects={'reverb': .3, 'delay': .3, 'pan': -.35}),
-    # f2 · pawn: 808 open hat.
-    part('rhythm', 'Chimbal aberto 808', 'pulse', machine('808-open-hat'), [
-        SILENT, drums('..x. ..x. ..x. ..x.'), SILENT, drums('..X. ..X. ..X. ..X.'), drums('.... ..x. .... ..x.'), drums('..X. ..X. ..X. ..X.'),
-    ], [1] * 6, gain=0.5, clip=.6, lpf=14000, hpf=3500, effects={'reverb': .05, 'pan': -.2}),
-    # g1 · knight: synth blips answering the arpeggio.
-    part('response', 'Blips', 'pulse', machine('synth-blip'), [
-        SILENT, drums('...x .... ..x. ....'), drums('.... ...x .... ....'), drums('...x ..x. ..x. .x..'), drums('...x .... .... ....'), drums('...x ..xr ..x. .xr.'),
-    ], [1] * 6, gain=.2, clip=.6, lpf=12000, hpf=600, design={'role': 'fx'}, effects={'reverb': .15, 'delay': .25, 'pan': .45}),
-    # g2 · pawn: 808 cowbell.
-    part('rhythm', 'Cowbell 808', 'pulse', machine('808-cowbell'), [
-        SILENT, drums('x..x ..x. .... ....'), SILENT, drums('x..x ..x. x... ..x.'), drums('x... .... .... ....'), drums('x..x ..x. x..x ..x.'),
-    ], [1] * 6, gain=.12, clip=.6, lpf=8000, hpf=400, effects={'reverb': .06, 'pan': -.35}),
-    # h1 · rook: 808 cymbal.
-    part('texture', 'Prato 808', 'pulse', machine('808-cymbal'), [
-        drums('.' * 64), drums('X' + '.' * 63), drums('.' * 64), drums('X' + '.' * 31 + 'X' + '.' * 31), drums('X' + '.' * 63), drums('X' + '.' * 31 + 'X' + '.' * 31),
-    ], [4] * 6, gain=.4, clip=1, lpf=12000, hpf=600, design={'role': 'fx'}, effects={'reverb': .2, 'pan': .25}),
-    # h2 · pawn: high toms in descending fills.
-    part('rhythm', 'Tons agudos', 'pulse', machine('808-tom-high'), [
-        SILENT, SILENT, drums('.... .... x.x. xxxx'), SILENT, drums('.... .... .... ..xx'), drums('.... .... xxxx RRRR'),
-    ], [1] * 6, gain=.25, clip=.7, lpf=8000, hpf=100, effects={'reverb': .15, 'pan': .3},
-        arrangement=arrangement(fills=(5, 5, None, 5, 5, None))),
+ make('texture','Tiques de papel','pulse',machine('synth-tick'),[TICK,TICK,None,cell(7,1),None,cell(7,5)],gain=.12,clip=.3,lpf=4200,hpf=1800,effects={'pan':-.35,'reverb':.04}),
+ make('rhythm','Grãos de maraca','pulse',machine('808-maracas'),[None,None,None,cell(5,2,("0'",)),cell(11,6,("0'",)),cell(5,4,("0'",))],gain=.12,clip=.3,lpf=5000,hpf=1800,effects={'pan':.3}),
+ make('response','Pontos em cinco','phrase',synth('triangle'),[None,PINGS,None,PINGS,cell(7,2,('0','4')),cell(5,3,('0','2','4'))],octave=3,gain=.13,attack=.008,decay=.12,sustain=.1,release=.07,gate=.35,lpf=1800,hpf=200,mapping={'fileDegrees':0},effects={'delay':.12,'pan':.25}),
+ make('rhythm','Caixa de bolso','pulse',machine('808-rim'),[None,points({12:'0',31:"0'",44:'0',61:"0'"}),None,points({8:'0',28:'0',40:'0',60:'0'}),None,points({8:'0',27:'0',40:'0',59:'0'})],gain=.18,clip=.4,lpf=2800,hpf=300,effects={'reverb':.07}),
+ make('harmony','Vidro fosco','phrase',recorded('synths','fm-bell'),[points({0:'0',37:'4'}),None,points({5:'0',41:'2'}),None,points({0:'0',27:'4',50:'2'}),None],octave=3,gain=.035,attack=.02,decay=.3,release=.18,lpf=2200,hpf=250,mapping={'fileDegrees':0},effects={'reverb':.24}),
+ make('rhythm','Chimbal de tecido','pulse',machine('808-hat'),[None,cell(8,2,("0'",)),None,cell(8,2,('0',"0'")),cell(16,6,("0'",)),cell(8,2,('0',"0'"))],gain=.16,clip=.3,lpf=5500,hpf=2000,effects={'pan':.15}),
+ make('melody','Gotas senoidais','phrase',synth('sine'),[None,None,points({4:'4_',8:'0?0',39:'2_',43:'0?0'}),points({0:'4',13:'2',29:'0',47:'4',58:'2'}),None,points({3:'4',18:'2',31:'0',46:'2',60:'4'})],octave=4,gain=.12,attack=.015,decay=.15,sustain=.2,release=.1,gate=.5,lpf=2000,hpf=250,mapping={'fileDegrees':0},effects={'delay':.16,'reverb':.18}),
+ make('bass','Sub pontilhado','phrase',synth('sine'),[points({0:'0',32:'0'}),SUB,points({0:'0_',8:'0?0',32:'0_',40:'0?0'}),SUB,points({3:'0',35:'0'}),points({0:'0',10:'0',27:'0',35:'4',48:'0',61:'0'})],octave=2,gain=.42,attack=.005,decay=.22,sustain=.2,release=.08,gate=.6,lpf=450,hpf=30,design={'role':'bass'},mapping={'fileDegrees':0,'panWidth':0}),
+ make('texture','Ar entre notas','sustain',synth('triangle'),[AIR,None,AIR,None,AIR,None],octave=3,gain=.035,attack=.4,release=.4,lpf=1300,hpf=220,effects={'reverb':.3}),
+ make('rhythm','Bumbo macio','pulse',machine('808-kick'),[points({0:'0',32:'0'}),KICK,None,KICK,points({0:'0',32:'0'}),KICK],gain=.46,clip=.45,lpf=3500,hpf=25,mapping={'panWidth':0}),
+ make('response','Madeira afinada','phrase',recorded('guitars','muted'),[None,None,points({11:'0',29:'4',53:'2'}),None,points({3:'0',26:'2',55:'4'}),points({7:'2',38:'4',57:'0'})],octave=3,gain=.16,gate=.35,lpf=2200,hpf=300,mapping={'fileDegrees':0},effects={'pan':-.25,'reverb':.12}),
+ make('rhythm','Sopro de chimbal','pulse',machine('808-open-hat'),[None,None,None,points({30:"0'",62:"0'"}),None,points({14:"0'",46:"0'"})],gain=.09,clip=.3,lpf=4500,hpf=2000),
+ make('response','Blips velados','pulse',machine('synth-blip'),[None,points({23:'0',54:"0'"}),None,None,points({17:"0'",51:'0'}),points({22:'0',53:"0'"})],gain=.08,clip=.3,lpf=1800,hpf=300,effects={'pan':.35,'delay':.12}),
+ make('rhythm','Clave em sete','pulse',machine('808-clave'),[None,None,None,cell(7,4,("0'",)),None,cell(7,6,("0'",))],gain=.1,clip=.4,lpf=2600,hpf=500,effects={'pan':-.3}),
+ make('texture','Respiração curta','sustain',synth('pink'),[points({48:'0_',52:'0?0'}),None,points({48:'0_',56:'0?0'}),None,None,None],gain=.012,attack=.2,release=.15,lpf=1200,hpf=400,effects={'reverb':.15}),
+ make('rhythm','Tom deslocado','pulse',machine('808-tom-low'),[None,None,None,points({21:'0',54:"0'"}),points({47:'0'}),points({19:'0',51:"0'",61:'0'})],gain=.12,clip=.5,lpf=1800,hpf=90,effects={'pan':.2}),
 ]
 
 profile = {
-    'name': 'Shibaura · techno minimal 1991', 'bpm': 130, 'root': 'E', 'scale': 'Maior', 'harmony': 'static',
-    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Drop', 'Interlude', 'Drop'],
+    'name': 'Shibaura · Minimal 1991', 'bpm': 130, 'root': 'E', 'scale': 'Maior', 'harmony': 'static',
+    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Hook', 'Interlude', 'Hook'],
     'parts': parts,
     'reactions': reactions([
         rule('tyo-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
@@ -148,14 +59,26 @@ profile = {
         rule('tyo-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('tyo-check', 'check', 'actor', 1, True, [act('activate'), act('gain', 3)]),
         # Precision: every capture is a glitch — the ticks and blips stutter for the capturer.
-        rule('tyo-capture', 'capture', 'actor', 1, False, [act('delay', .45), act('gain', 4)], 'fx'),
+        rule('tyo-capture', 'capture', 'actor', 1, False, [act('delay', .2), act('gain', 1)], 'fx'),
         rule('tyo-queen', 'queenCapture', 'both', 4, True, [act('variation', 2), act('invert')]),
         rule('tyo-quiet', 'quiet', 'both', 2, True, [act('variation', 4)]),
         rule('tyo-tension', 'tension', 'both', 1, True, [act('lpf', 1200, rampBars=8)], 'lead'),
         rule('tyo-swing', 'evalSwing', 'actor', 2, True, [act('variation', 5), act('transpose', 2)]),
         rule('tyo-promo', 'promotion', 'actor', 4, True, [act('mode', 3)]),
     ]),
-    'reference': 'Techno japonês do início dos anos 90 na linhagem do Yellow Magic Orchestra (Ken Ishii, Susumu Yokota): referência de estilo; material original',
+    'reference': 'Minimal eletrônico: espaço negativo, células deslocadas e introdução gradual de timbres; estudo original ambientado em Tokyo, não reconstrução histórica de 1991',
     'url': 'https://en.wikipedia.org/wiki/Japanese_electronic_music',
 }
+expanded_form(profile,order=[0,1,6,3,2,7,4,5],labels=profile['sectionLabels']+['Turnaround','Bridge'],
+ lengths=profile['sections']+[16,32], roots=[[0]*4]*6+[[0]*4,[-2]*4], additions={
+ 'a1':(cell(5,2,("0'",)),None), 'a2':(cell(7,4,("0'",)),None),
+ 'b1':(cell(3,0,('0','4','2')),None), 'b2':(points({11:'0',24:'0',39:'0',58:'0'}),None),
+ 'c1':(None,points({0:'0',23:'2',49:'5'})), 'c2':(cell(8,6,("0'",)),None),
+ 'd1':(None,points({8:'5_',16:'0?0',40:'4_',48:'0?0'})),
+ 'd2':(points({0:'0',9:'0',23:'4',32:'0',42:'0',57:'4'}),points({0:'-2_',12:'0?0',32:'-2_',44:'0?0'})),
+ 'e1':(None,points({0:'-2,2_',24:'0?0',32:'-2,4_',56:'0?0'})),
+ 'e2':(drums('X... ..x. .... x... X... .... x..x .... X... ..x. .... x... X... .... .... ....'),None),
+ 'f1':(None,points({19:'0',45:'2',60:'4'})), 'f2':(None,None), 'g1':(None,None),
+ 'g2':(cell(7,3,("0'",)),None), 'h1':(None,None), 'h2':(points({26:'0',55:'0'}),points({31:'0'})),
+})
 write('tokyo', profile)

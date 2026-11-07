@@ -6,7 +6,7 @@ house piano stabs, an organ riff and an 'oh' vocal on the queen. F natural minor
 the Fm7–Dbmaj7–Eb–Cm7 loop.
 Degrees: 0 F · 1 G · 2 Ab · 3 Bb · 4 C · 5 Db · 6 Eb · 7 F'.
 """
-from kit import (act, arrangement, bar, bars, drums, electronic, machine, part, reactions, recorded, rule, synth, write)
+from kit import (expanded_form, act, arrangement, bar, bars, drums, electronic, machine, part, reactions, recorded, rule, synth, write)
 
 LOOP = ('Fm7', 'Db', 'Eb', 'Cm7')
 VAMP = ('Fm7', 'Fm7', 'Eb', 'Eb')
@@ -166,4 +166,52 @@ profile = {
     'reference': 'House de Chicago de 1984 (Jesse Saunders, Farley "Jackmaster" Funk, The Warehouse): referência de estilo; material original',
     'url': 'https://en.wikipedia.org/wiki/Chicago_house',
 }
+
+# Let one hook lead each scene; add four-bar drum answers instead of constant rolls.
+SILENT = drums('.'*16)
+REST4 = bars(*[SILENT]*4)
+parts[0].update(gain=.22, lpf=5000, patterns=[REST4,drums('.'*60+'x...'),REST4,drums('.'*28+'x...'+'.'*32),REST4,drums('.'*56+'x...x...')], bars=[4]*6)
+parts[0]['arrangement']=arrangement((False,True,False,True,False,True))
+parts[2].update(octave=3,gain=.18,lpf=1300,patterns=[REST4,
+ bars(bar('7 . . 7 . . 6 . . . 4 . 2 . . .'),SILENT,bar('7 . . 7 . . 9 . . . 7 . 6 . 4 .'),SILENT),REST4,REST4,
+ bars(bar('4 . . . . . 2 . . . . . 0 . . .'),SILENT,SILENT,SILENT),REST4],bars=[4]*6)
+parts[2]['design'].update(resonance=5,filterEnv=1.8)
+parts[2]['arrangement']=arrangement((False,True,False,False,True,False))
+parts[5].update(gain=.28,lpf=7800,patterns=[drums('x... x... x... x...'*4),drums('xg.. xg.. xg.. xg.g'*3+'xg.. xg.. xg.g x...'),REST4,drums('xg.. xg.. xg.. xg.g'*4),drums('x... .... x... ....'*4),drums('xg.. xg.g xg.. xg..'*4)],bars=[4]*6)
+parts[6].update(gain=.24,lpf=4200)
+parts[6]['arrangement']=arrangement((False,True,False,False,False,True))
+parts[10].update(octave=3,gain=.18,lpf=2200,patterns=[REST4,REST4,
+ bars(bar('4_ . . . 6 . 7 . 0?0 . . . . . . .'),SILENT,bar('6_ . . . 4 . 2 . 0?0 . . . . . . .'),SILENT),
+ bars(SILENT,bar('. . . . . . . . 5 . 4 . 2_ . 0?0 .'),SILENT,bar('. . . . . . . . 4 . 2 . 0_ . 0?0 .')),REST4,REST4],bars=[4]*6)
+parts[10]['arrangement']=arrangement((False,False,True,True,False,False))
+parts[11].update(gain=.22,lpf=8500)
+parts[12]['arrangement']=arrangement((False,True,False,False,True,True))
+parts[14].update(gain=.16,lpf=8500)
+parts[15].update(patterns=[REST4,REST4,drums('.'*56+'....x.x.'),REST4,REST4,drums('.'*56+'x...x.xx')],bars=[4]*6,gain=.24)
+parts[15]['arrangement']=arrangement(fills=(None,5,None,5,None,None))
+BUILD = ('Db','Eb','Fm7','Eb')
+DEEP = ('Cm7','Db','Eb','Fm7')
+
+def house_push(chord):
+ r=ROOT[chord]
+ return bar(f'{r} . . {r} . . {r+4} . . . {r+7} . {r} . {r+2} .')
+
+def deep_bass(chord):
+ r=ROOT[chord]
+ return bar(f'{r}_ . . . . . 0?0 . . . {r+4} . {r}_ . 0?0 .')
+
+expanded_form(profile,order=[0,1,6,3,2,7,4,5],labels=profile['sectionLabels']+['Pre-Chorus','Bridge'],
+ lengths=profile['sections']+[32,32],roots=[[ROOT[c] for c in p] for p in [LOOP,LOOP,LOOP,LOOP,VAMP,LOOP,BUILD,DEEP]],additions={
+ 'a1':(None,None), 'a2':(drums('..x. ...x ..x. ....'*4),None), 'b1':(None,None),
+ 'b2':(drums('.... X... .... X...'*3+'.... X... ..x. X.X.'),drums('.... .... x... ....'*4)),
+ 'c1':(prog(stabs,BUILD,1),None), 'c2':(drums('xg.. xg.. xg.. xg.g'*4),drums('x... .... x... ....'*4)),
+ 'd1':(bars(SILENT,bar('6_ . . . 4 . 3 . 0?0 . . . . . . .'),SILENT,bar('6_ . . . 7 . 9 . 0?0 . . . . . . .')),None),
+ 'd2':(prog(house_push,BUILD),prog(deep_bass,DEEP)), 'e1':(None,prog(pad,DEEP)),
+ 'e2':(drums('X... X... X... X...'*3+'X... X... X... ....'),drums('X... .... .... ..x.'*4)),
+ 'f1':(None,bars(bar('1_ . . . 3 . 4 . 0?0 . . . . . . .'),SILENT,bar('6_ . . . 4 . 3 . 0?0 . . . . . . .'),SILENT)),
+ 'f2':(drums('..x. ..x. ..x. ..x.'*3+'..x. ..x. ..x. ....'),None),
+ 'g1':(None,prog(stabs,DEEP,2)), 'g2':(drums('...x ..x. .x.. ..x.'*4),drums('.... ..x. .... ....'*4)),
+ 'h1':(None,None), 'h2':(drums('.'*56+'x.x.xx..'),None),
+})
+
 write('chicago', profile)

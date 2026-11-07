@@ -14,12 +14,15 @@ const { beatsPerBar } = loadTs('lib/music/meter.ts')
 const root = path.resolve(__dirname, '..')
 const output = path.resolve(process.argv.slice(2).find(argument => !argument.startsWith('--')) || path.join(root, '.artifacts/music-review-arrangement-v6'))
 const port = Number(process.env.MUSIC_REVIEW_PORT || 3011)
+const selectedIds = process.argv.find(argument => argument.startsWith('--cities='))?.slice(9).split(',')
+if (selectedIds?.some(id => !cities.some(city => city.id === id))) throw new Error('Unknown --cities ID')
+const selectedCities = selectedIds ? cities.filter(city => selectedIds.includes(city.id)) : cities
 
 async function audit() {
   fs.mkdirSync(output, { recursive: true })
   const api = await strudel()
   const kits = []
-  for (const city of cities) {
+  for (const city of selectedCities) {
     const kit = defaultCityKit(city.id)
     const snapshot = creativeSnapshot(kit, true)
     const voices = voiceSpecs(snapshot, null)
@@ -48,7 +51,7 @@ async function audit() {
     fs.writeFileSync(path.join(output, `${city.id}.json`), JSON.stringify(data, null, 2) + '\n')
     kits.push({ id: data.id, city: data.city, genre: data.genre, seconds: data.seconds, cycles: data.cycles,
       meter: data.meter, bpm: data.bpm, active: data.active, arrangement: data.arrangement, uniqueBanks: [...new Set(tracks.map(track => track.source?.bank).filter(Boolean))], tracks })
-    console.log(`Audited ${kits.length}/${cities.length}: ${city.id}`)
+    console.log(`Audited ${kits.length}/${selectedCities.length}: ${city.id}`)
   }
   fs.writeFileSync(path.join(output, 'catalog.json'), JSON.stringify({ generated: new Date().toISOString(), limitations: 'Structural and rendered-audio evidence; not a claim of perceptual listening or device performance.', kits }, null, 2) + '\n')
   return kits

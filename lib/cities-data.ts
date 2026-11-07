@@ -56,8 +56,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     name: "Düsseldorf",
     country: "Germany",
     year: 1970,
-    genre: "Krautrock / Electro Pop",
-    description: "Robotic rhythms, synthesized vocoders, the blueprint of electronic music.",
+    genre: "Krautrock",
+    description: "Hypnotic drums, interlocking guitars and organ drones on an open-ended journey.",
     bpm: 122,
     scale: ["C#4", "D#4", "E4", "F#4", "G#4", "A4", "B4"],
     aiDepth: 15,
@@ -202,8 +202,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     name: "Manchester",
     country: "UK",
     year: 1988,
-    genre: "Acid House / Rave",
-    description: "The Haçienda, smiley faces, TB-303 squelches, sirens.",
+    genre: "Acid House",
+    description: "The Haçienda, hypnotic TB-303 phrases, drum machines and acid filter sweeps.",
     bpm: 128,
     scale: ["C4", "Eb4", "F4", "Gb4", "Bb4"], // Blues/Acid scale
     geoCoordinates: { lat: 53.4808, lng: -2.2426 },
@@ -271,8 +271,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     name: "Tokyo",
     country: "Japan",
     year: 1991,
-    genre: "Minimal / Experimental",
-    description: "Precision, glitch aesthetics, yellow magic electronics.",
+    genre: "Minimal",
+    description: "Soft electronic cells, displaced accents and small sounds unfolding through silence.",
     bpm: 130,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
     geoCoordinates: { lat: 35.6762, lng: 139.6503 },
@@ -300,7 +300,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     name: "London",
     country: "UK",
     year: 1992,
-    genre: "Jungle / DnB",
+    genre: "Jungle",
     description: "Amen breaks chopped at high speed, deep reggae basslines.",
     bpm: 165,
     scale: ["C4", "Eb4", "F4", "G4", "Bb4"],
@@ -329,8 +329,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     name: "São Paulo",
     country: "Brazil",
     year: 1993,
-    genre: "Underground / Hard Techno",
-    description: "Hell's Club, A Lôca. Intense, industrial, tropical concrete jungle.",
+    genre: "Hard Techno",
+    description: "Heavy machine rhythms and Brazilian percussion meet in the concrete underground.",
     bpm: 145,
     scale: ["C4", "Db4", "F4", "G4", "Ab4"],
     geoCoordinates: { lat: -23.5505, lng: -46.6333 },
@@ -416,7 +416,7 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     name: "Goa",
     country: "India",
     year: 1994,
-    genre: "Goa trance / Psytrance",
+    genre: "Psytrance",
     description: "Beach parties in Anjuna fused acid squelch, rolling basslines and Eastern scales into all-night psychedelic trance.",
     bpm: 145,
     scale: ["E4", "F4", "G#4", "A4", "B4", "C5", "D5"], // Phrygian dominant
@@ -507,9 +507,9 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     name: "Vienna",
     country: "Austria",
     year: 1780,
-    genre: "Classical / Symphony",
-    description: "The Imperial Capital. Strings, Woodwinds, Brass. The Grand Orchestra.",
-    bpm: 100, // Moderato
+    genre: "Viennese Sinfonietta",
+    description: "A Viennese sinfonietta with divided strings, conversational winds and festive brass cadences.",
+    bpm: 112, // Allegro moderato
     scale: ["C4", "D4", "E4", "F4", "G4", "A4", "B4"], // C Major (Classical)
     geoCoordinates: { lat: 48.2082, lng: 16.3738 },
     color: "#d4af37", // Gold
@@ -597,6 +597,9 @@ const campaignMembership: Record<string, CampaignId[]> = {
 // Resolve every rhythm kit by ID so related eras can have distinct imagery.
 // Each kit resolves to its own large photo from the period or musical setting.
 const rhythmCityPhotos: Record<string, string> = {
+  'venice-1725': '/cities/rhythm/venice-1725.svg',
+  'copenhagen-1869': '/cities/rhythm/copenhagen-1869.svg',
+  'paris-1913': '/cities/rhythm/paris-1913.svg',
   'rio-1910': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_de_Janeiro_ca1910s_photo_from_USA_Library_of_Congress_19301u.jpg?width=1600',
   'rio-1930': 'https://commons.wikimedia.org/wiki/Special:FilePath/Revolu%C3%A7%C3%A3o_de_1930%3B_populares_e_revolucion%C3%A1rios_na_avenida_Rio_Branco_%28002080RJ3602%29.jpg?width=1600',
   'rio-1960': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_ipanema.jpg?width=1600',

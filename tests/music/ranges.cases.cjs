@@ -312,18 +312,47 @@ test('sample maps encode sharp filenames while preserving real local file paths'
   assert.deepEqual(Object.keys(Object.values(bass.map)[0]), ['c1', 'e1', 'g1', 'c2'])
 })
 
-test('all 65 city presets have six composed scenes and E/F harmony sequences are distinct', () => {
+test('all 68 city presets retain their authored bank order and contrasting harmonic paths', () => {
   const { cities } = loadTs('lib/cities-data.ts'), { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   for (const city of cities) {
     const kit = defaultCityKit(city.id)
+    if (['venice-1725','copenhagen-1869','paris-1913'].includes(city.id)) {
+      assert.equal(kit.arrangement.sections.length, 12)
+      assert.equal(kit.harmony, 'kit')
+      assert.ok(kit.arrangement.sections.every(section => section.harmony?.length === 8))
+      assert.ok(Object.values(kit.instruments).every(instrument => instrument.pianoRolls.length === 8))
+      continue // Full chromatic phrases and compiled pitch paths covered by the concert tests.
+    }
+    if (['leipzig-1723','vienna','vienna-1825'].includes(city.id)) {
+      const order = [0,1,6,2,3,4,2,5,6,7]
+      assert.equal(kit.arrangement.sections.length, 10)
+      for (const instrument of Object.values(kit.instruments)) {
+        assert.equal(instrument.pianoRolls.length, 8)
+        assert.deepEqual(kit.arrangement.sections.map((section,index)=>instrument.arrangement.sections[section.id].variation ?? order[index]),order)
+      }
+      continue
+    }
+    if (city.id === 'goa') {
+      assert.equal(kit.arrangement.sections.length, 9)
+      assert.ok(Object.values(kit.instruments).every(instrument => instrument.pianoRolls.length === 8))
+      assert.deepEqual(kit.arrangement.sections.map(section => section.id), ['section-a', 'section-b', 'section-g', 'section-d', 'section-c', 'section-h', 'section-e', 'section-i', 'section-f'])
+      continue // Three new scenes combine per-instrument banks, covered in kits.cases.cjs.
+    }
+    const expanded = ['nyc', 'ibiza', 'manchester', 'london', 'dusseldorf', 'chicago', 'tokyo', 'saopaulo', 'bristol'].includes(city.id)
+    const order = expanded ? (['manchester', 'saopaulo'].includes(city.id) ? [0, 1, 6, 3, 2, 4, 7, 5] : [0, 1, 6, 3, 2, 7, 4, 5]) : [0, 1, 2, 3, 4, 5]
     for (const instrument of Object.values(kit.instruments)) {
       const banks = instrument.pianoRolls.length
-      assert.equal(banks, 6, `${city.id}/${instrument.name}: six banks`)
+      assert.equal(banks, order.length, `${city.id}/${instrument.name}: authored banks`)
       // A section with no variation is an authored rest; every other one plays its own scene.
-      assert.deepEqual(kit.arrangement.sections.map((section, index) => instrument.arrangement.sections[section.id].variation ?? index), [0, 1, 2, 3, 4, 5])
+      assert.deepEqual(kit.arrangement.sections.map((section, index) => instrument.arrangement.sections[section.id].variation ?? order[index]), order)
     }
     if (city.id !== 'manchester-1999') {
-      assert.equal(kit.arrangement.sections.length, 6)
+      assert.equal(kit.arrangement.sections.length, order.length)
+      if (expanded) {
+        assert.ok(kit.arrangement.sections.every(section => section.harmony?.length === 4))
+        assert.ok(new Set(kit.arrangement.sections.map(section => section.harmony.join(','))).size > 1, `${city.id}: contrasting harmonic paths`)
+        continue
+      }
       // Electronic World kits voice their chords absolutely (static harmony), so they carry no section sequences.
       if (kit.harmony === 'static' && kit.arrangement.sections.every(section => !section.harmony)) continue
       assert.equal(kit.arrangement.sections[4].harmony.length, 4)

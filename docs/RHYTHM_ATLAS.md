@@ -18,7 +18,7 @@
 | Memphis · 1967 | Soul ballad | 12/8 · BPM = semínima pontuada | 68 | World ballads |
 | Kingston · 1973 | Roots reggae | 4/4 · BPM = semínima | 76 | World rhythms |
 | Leipzig · 1723 | Baroque pastoral | 9/8 · BPM = semínima pontuada | 76 | Classical music |
-| Vienna · 1825 | Orchestral alla breve | 2/2 · BPM = mínima | 108 | Classical music |
+| Vienna · 1825 | Orchestral alla breve | 2/2 · BPM = mínima | 88 | Classical music |
 | Oakland · 1959 | Jazz in five | 5/4 · BPM = semínima · 3+2 | 152 | Harmonic songbook |
 | Canterbury · 1972 | Progressive pastoral | 9/8 · BPM = semínima pontuada | 92 | Harmonic songbook |
 | Cambridge · 1973 | Progressive rock in seven | 7/4 · BPM = semínima · 4+3 | 118 | Harmonic songbook |
@@ -64,3 +64,13 @@ Rio de Janeiro 1995 recria a era clássica do Funk Carioca dos bailes de galpão
 - [Library of Congress — Take Five](https://blogs.loc.gov/nls-music-notes/2020/05/song-stories-time-out-for-take-five/): referência de jazz em 5/4; o estudo de Oakland tem motivo próprio.
 
 Os sons usam os bancos locais sintetizados já disponíveis; Salvador usa seu banco original `chicken-samba-reggae-v1`. Cavaquinho, viola, surdo e instrumentos de dança são aproximações de timbre e função, não gravações documentais. Os cartões são ilustrações vetoriais abstratas, geradas por scripts/generate-rhythm-city-art.cjs. Os testes conferem métrica, persistência, limites e equivalência do compilador; não aprovam por si só qualidade musical, autenticidade estilística ou desempenho em aparelho físico.
+
+## Concertos e balé Classical — 07/11/2026
+
+| Fase | Estilo | Compasso / unidade | BPM | Forma |
+| --- | --- | --- | ---: | --- |
+| Venice · 1725 | Baroque concerto | 4/4 · semínima | 116 | 12 seções / 128 compassos |
+| Copenhagen · 1869 | Nordic piano concerto | 4/4 · semínima | 88 | 12 seções / 128 compassos |
+| Paris · 1913 | Modernist ballet | 7/8 · colcheia | 210 | 12 seções / 72 compassos |
+
+São três IDs novos, somados às três fases Classical anteriores. Paris compartilha coordenadas com as outras épocas; Veneza e Copenhague acrescentam localizações. O 7/8 mantém colcheias iguais; deslocar acentos não troca a fórmula. Melodias, orquestração por peça, cromatismos, referências históricas, escopo e retornos estão em `docs/mechanics/scope-and-data.md` e `MUSIC_STYLE_REFERENCES.md`. As fontes acústicas são gravações modernas CC0.

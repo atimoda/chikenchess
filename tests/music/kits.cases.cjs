@@ -30,7 +30,7 @@ test('sample registry points to small valid local WAV files with explicit tuning
     }
     assert.ok(registration.map)
     }
-    const budgets = { 'chicken-classical-v1': 1_500_000, 'chicken-band-v1': 500_000,
+    const budgets = { 'chicken-classical-v1': 5_000_000, 'chicken-band-v1': 500_000,
       'chicken-guitars-v1': 550_000, 'chicken-percussion-v1': 250_000,
       // 46 drum-machine hits and 18 voices/stabs/effects for the Electronic World kits.
       'chicken-machines-v1': 400_000, 'chicken-electronic-v1': 350_000,
@@ -48,15 +48,16 @@ test('Classical campaigns use recorded multisamples, articulations and dedicated
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   const { sampleRegistration } = loadTs('lib/music/sample-banks.ts')
   const { CITY_STYLE_REVISIONS } = loadTs('lib/music/styled-kits.ts')
-  for (const city of ['leipzig-1723', 'vienna-1825']) {
+  for (const city of ['leipzig-1723', 'vienna', 'vienna-1825']) {
     const kit = defaultCityKit(city)
     assert.equal(kit.catalogRevision, CITY_STYLE_REVISIONS[city])
-    assert.match(kit.catalogRevision, /midi/)
+    assert.match(kit.catalogRevision, /orchestra/)
     const instruments = Object.values(kit.instruments)
     assert.ok(instruments.length >= 16)
     assert.ok(instruments.every(instrument => instrument.source?.bank === 'chicken-classical-v1'))
     assert.ok(new Set(instruments.map(instrument => instrument.source.asset)).size >= 7)
-    assert.deepEqual(kit.arrangement.sections.map(section => instruments[0].arrangement.sections[section.id].variation), [0, 1, 2, 3, 4, 5])
+    assert.equal(kit.arrangement.sections.length, 10)
+    assert.ok(instruments.every(instrument => instrument.pianoRolls.length === 8))
   }
   const piano = sampleRegistration({ kind: 'sample', bank: 'chicken-classical-v1', asset: 'violin-sustain', variant: 0, pitched: true })
   const forte = sampleRegistration({ kind: 'sample', bank: 'chicken-classical-v1', asset: 'violin-sustain', variant: 1, pitched: true })
@@ -152,14 +153,14 @@ test('Düsseldorf and New Orleans leave their featured voices room in later sect
   const voicesFor = cityId => voiceSpecs(creative.creativeSnapshot(defaultCityKit(cityId), true), null)
   const events = (voices, id, from, to) => compileVoice(api, voices.find(voice => voice.piece.id === id)).queryArc(from, to).filter(event => event.hasOnset()).length
 
-  // Düsseldorf 1978: Intro 0–8, Verse 8–24, Break 24–32, Chorus 32–48 (bars).
+  // Düsseldorf: Intro 0–8, Verse 8–24, flute Solo 24–32, Hook 32–48 (bars).
   const dusseldorf = voicesFor('dusseldorf')
-  assert.equal(events(dusseldorf, 'w:d1', 0, 8), 0, 'the robot voice waits through the intro')
-  assert.ok(events(dusseldorf, 'w:d1', 8, 24) > 0, 'the robot voice sings the verse')
-  assert.equal(events(dusseldorf, 'w:d1', 24, 32), 0, 'the robot voice leaves the break to the machines')
-  assert.ok(events(dusseldorf, 'w:d1', 32, 48) > 0, 'the robot voice returns for the chorus')
-  assert.equal(events(dusseldorf, 'w:c1', 8, 24), 0, 'the Polymoog brass is kept for the chorus')
-  assert.ok(events(dusseldorf, 'w:c1', 32, 48) > 0, 'the Polymoog brass answers the chorus')
+  assert.equal(events(dusseldorf, 'w:d1', 0, 8), 0, 'the guitar waits through the intro')
+  assert.ok(events(dusseldorf, 'w:d1', 8, 24) > 0, 'the guitar sings the verse')
+  assert.equal(events(dusseldorf, 'w:d1', 24, 32), 0, 'the guitar leaves the Solo to the flute')
+  assert.ok(events(dusseldorf, 'w:d1', 32, 48) > 0, 'the guitar returns for the Hook')
+  assert.equal(events(dusseldorf, 'w:c1', 8, 24), 0, 'the organ is kept for the Hook')
+  assert.ok(events(dusseldorf, 'w:c1', 32, 48) > 0, 'the organ answers the Hook')
 
   const newOrleans = voicesFor('new-orleans-1953')
   for (const id of ['w:e1', 'w:f1']) {
@@ -180,7 +181,7 @@ test('Goa 1994 ships an official psytrance kit with its own palette, articulatio
   assert.equal(kit.bpm, 145)
   assert.equal(kit.root, 'E')
   assert.equal(kit.scale, 'Phrygian dominant')
-  assert.equal(kit.catalogRevision, 'goa-2026-10-25-design-v2')
+  assert.equal(kit.catalogRevision, 'goa-2026-11-06-design-v3')
   const white = kit.pieces.filter(piece => piece.color === 'w').map(piece => kit.instruments[piece.id])
   assert.ok(white.filter(instrument => instrument.source?.bank === 'chicken-psytrance-v1').length >= 15, 'psytrance bank carries the band')
   const byName = name => white.find(instrument => instrument.name === name)
@@ -284,7 +285,7 @@ test('every city has a reproducible, distinct kit with roles independent of ches
       const pulseCount=instruments.filter(i=>i.behavior==='pulse').length
       assert.ok(pulseCount<16)
       assert.ok(instruments.some(i=>i.behavior==='phrase'))
-      assert.ok(instruments.some(i=>i.behavior==='sustain'))
+      assert.ok(instruments.some(instrument => instrument.behavior === 'sustain' || instrument.pianoRolls.some(roll => roll.notes.some(note => note.duration >= .5))), 'sustained texture or authored long orchestral notes')
       assert.ok(instruments.every(i=>kit.arrangement.sections.every(section=>i.arrangement.sections[section.id])))
     }
     const variant = createRandomCityKit(city, 'test-variation')
@@ -307,8 +308,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 65)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 47)
+  assert.equal(cities.length, 68)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 49)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -338,7 +339,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,3,14,10,4,12])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,14,10,4,12])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
@@ -577,7 +578,8 @@ test('Electronic World profiles validate, author their reactions and use the mac
   const banks = new Set()
   for (const id of electronic) {
     const profile = styleProfileSchema.parse(STYLE_PROFILES[id])
-    assert.equal(CITY_STYLE_REVISIONS[id], `${id}-2026-10-25-electronic-v2`)
+    const revision = ['nyc', 'ibiza', 'manchester', 'london'].includes(id) ? '2026-11-06-electronic-v4' : ['dusseldorf', 'chicago', 'tokyo', 'saopaulo', 'bristol'].includes(id) ? '2026-11-06-electronic-v3' : '2026-10-25-electronic-v2'
+    assert.equal(CITY_STYLE_REVISIONS[id], `${id}-${revision}`)
     assert.equal(profile.parts.length, 16)
     assert.ok(profile.reactions.rules.length >= 10, `${id}: kit reactions`)
     assert.ok(profile.reactions.rules.every(rule => profile.reactions.overrides.includes(rule.trigger)), `${id}: rules own their triggers`)
@@ -587,9 +589,52 @@ test('Electronic World profiles validate, author their reactions and use the mac
     for (const instrument of Object.values(kit.instruments)) if (instrument.source?.kind === 'sample') banks.add(instrument.source.bank)
   }
   assert.ok(banks.has('chicken-machines-v1') && banks.has('chicken-electronic-v1'))
-  // The Düsseldorf queen carries the robot voice; Paris pumps its loop from the kick.
-  assert.equal(defaultCityKit('dusseldorf').instruments['w:d1'].source.asset, 'robot-voice')
+  // The Krautrock queen carries a recorded guitar; Paris pumps its loop from the kick.
+  assert.equal(defaultCityKit('dusseldorf').instruments['w:d1'].source.asset, 'clean')
   assert.ok(Object.values(defaultCityKit('paris').instruments).filter(instrument => instrument.duckSource === 'e2').length >= 4)
+})
+
+test('four revised electronic forms expose harmony without double-transposing bass and contrast their new sections', async () => {
+  const api = await strudel()
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const cases = {
+    nyc: { labels: ['Pre-Chorus', 'Bridge'], roots: [[-5, -4, -3, -4], [-3, -5, -1, -4]], pitches: [[36, 38, 40, 38], [40, 36, 43, 38]] },
+    ibiza: { labels: ['Hook', 'Bridge'], roots: [[-4, -3, -2, -3], [-2, -2, -4, -3]], pitches: [[31, 33, 35, 33], [35, 35, 31, 33]] },
+    manchester: { labels: ['Bridge', 'Turnaround'], roots: [[-2, -2, -1, -1], [-2, -1, 0, 0]], pitches: [[39, 39, 41, 41], [27, 29, 31, 31]] },
+    london: { labels: ['Hook', 'Bridge'], roots: [[0, -2, -1, 0], [-2, -2, -1, -1]], pitches: [[26, 22, 24, 26], [22, 22, 24, 24]] },
+  }
+  for (const [id, expected] of Object.entries(cases)) {
+    const kit = defaultCityKit(id)
+    assert.equal(kit.harmony, 'kit', id)
+    assert.equal(kit.arrangement.sections.length, 8, id)
+    assert.ok(kit.arrangement.sections.every(section => section.harmony?.length === 4), id)
+    assert.ok(Object.values(kit.instruments).every(instrument => instrument.pianoRolls.length === 8), id)
+    const voices = voiceSpecs(creative.creativeSnapshot(kit, true), null)
+    const bass = compileVoice(api, voices.find(voice => voice.piece.id === 'w:d2'))
+    let start = 0
+    const newSections = []
+    for (const section of kit.arrangement.sections) {
+      const bank = kit.instruments['w:d2'].arrangement.sections[section.id].variation
+      if (bank >= 6) {
+        const index = bank - 6
+        assert.equal(section.label, expected.labels[index], id)
+        assert.deepEqual(section.harmony, expected.roots[index], id)
+        const pitches = Array.from({ length: 4 }, (_, bar) => {
+          const onset = bass.queryArc(start + bar, start + bar + 1).find(event => event.hasOnset())
+          return Number(onset?.value.note)
+        })
+        assert.deepEqual(pitches, expected.pitches[index], `${id}: sounding bass roots in bank ${bank}`)
+        const attacks = voices.reduce((sum, voice) => sum + compileVoice(api, voice).queryArc(start, start + 4).filter(event => event.hasOnset()).length, 0)
+        newSections[index] = attacks
+      }
+      start += section.beats / 4
+    }
+    assert.ok(Math.max(...newSections) > Math.min(...newSections) * 1.4, `${id}: audible density contrast`)
+    if (id === 'manchester') {
+      const bridge = kit.arrangement.sections.find(section => section.label === 'Bridge')
+      assert.equal(kit.instruments['w:d1'].arrangement.sections[bridge.id].variation, null, 'bridge rests the 303')
+    }
+  }
 })
 
 test('Brazilian profiles validate, author their reactions and use the Brazilian bank', () => {
@@ -644,4 +689,172 @@ test('Creative lists every default kit once, grouped by campaign and labelled "y
   }
   const chicago = DEFAULT_KIT_GROUPS.find(group => group.id === 'electronic-history').kits.find(kit => kit.id === 'chicago')
   assert.equal(chicago.label, '1984 Chicago - Classic House')
+})
+
+test('second electronic revision adds authored contrasts and exposes the requested style names', async () => {
+  const api = await strudel()
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const { cities } = loadTs('lib/cities-data.ts')
+  const expected = {
+    dusseldorf: ['Krautrock', ['Solo', 'Bridge']], chicago: ['Classic House', ['Pre-Chorus', 'Bridge']],
+    tokyo: ['Minimal', ['Turnaround', 'Bridge']], saopaulo: ['Hard Techno', ['Bridge', 'Turnaround']],
+    bristol: ['Trip-hop', ['Pre-Chorus', 'Bridge']], goa: ['Psytrance', ['Hook', 'Bridge', 'Turnaround']],
+  }
+  for (const [id, [genre, labels]] of Object.entries(expected)) {
+    const kit = defaultCityKit(id)
+    assert.equal(cities.find(city => city.id === id).genre.toLowerCase(), genre.toLowerCase(), id)
+    assert.equal(kit.arrangement.sections.length, id === 'goa' ? 9 : 8, id)
+    assert.equal(kit.harmony, 'kit', id)
+    assert.ok(kit.arrangement.sections.every(section => section.harmony?.length > 0), id)
+    const voices = voiceSpecs(creative.creativeSnapshot(kit, true), null).map(voice => compileVoice(api, voice))
+    let begin = 0
+    const attacks = new Map()
+    for (const section of kit.arrangement.sections) {
+      if (labels.includes(section.label)) {
+        const events = voices.flatMap(pattern => pattern.queryArc(begin, begin + 4).filter(event => event.hasOnset()))
+        assert.ok(events.length > 0, `${id}/${section.label}: sounding scene`)
+        attacks.set(section.label, events.length)
+      }
+      begin += section.beats / 4
+    }
+    assert.equal(attacks.size, labels.length, id)
+    assert.ok(Math.max(...attacks.values()) > Math.min(...attacks.values()) * 1.3, `${id}: rhythmic contrast`)
+  }
+})
+
+test('Minimal layers soft displaced cells and the requested cymbals leave gaps', async () => {
+  const api = await strudel()
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const tokyo = defaultCityKit('tokyo')
+  const patterns = voiceSpecs(creative.creativeSnapshot(tokyo, true), null).map(voice => compileVoice(api, voice))
+  const count = start => patterns.reduce((sum, pattern) => sum + pattern.queryArc(start, start + 4).filter(event => event.hasOnset()).length, 0)
+  assert.ok(count(0) < count(8), 'the intro adds layers on entering the verse')
+  assert.ok(count(8) < count(28), 'the hook fills out the verse, without continuous sixteenths')
+  assert.ok(tokyo.instruments['w:a1'].gain <= .15 && tokyo.instruments['w:a1'].lpf <= 4500)
+  const ping = tokyo.instruments['w:b1'].pianoRolls[1]
+  const starts = ping.notes.map(note => note.start)
+  assert.equal(starts[1] - starts[0], 5 / 16, 'five-step cell crosses conventional beat accents')
+  const kick = tokyo.instruments['w:e2'].pianoRolls[1]
+  assert.ok(new Set(kick.notes.map(note => Math.floor(note.start))).size === 4)
+  assert.ok(kick.notes.some(note => note.start * 4 % 1 !== 0), 'kick includes displaced attacks')
+  const sp = defaultCityKit('saopaulo').instruments['w:a2']
+  assert.ok(sp.gain <= .12 && sp.lpf <= 7000 && sp.clip <= .4, 'ride is softer and shorter')
+  assert.equal(sp.pianoRolls[1].bars, 4)
+  assert.ok(sp.pianoRolls[1].notes.length < 16, 'ride leaves space across four bars')
+  assert.notDeepEqual(sp.pianoRolls[3].notes, sp.pianoRolls[5].notes, 'ride peak varies')
+  const bristol = defaultCityKit('bristol')
+  const hat = bristol.instruments['w:a2'], theremin = bristol.instruments['w:d1']
+  assert.ok(hat.gain <= .16 && hat.lpf <= 5000 && hat.clip <= .35)
+  assert.equal(hat.pianoRolls[1].bars, 4)
+  assert.ok(hat.pianoRolls[1].notes.length < 24, 'dusty hat leaves breathing room')
+  assert.equal(theremin.sound, 'sine'); assert.equal(theremin.vibrato, 6); assert.equal(theremin.vibratoDepth, .25)
+  assert.equal(theremin.gain, .2); assert.equal(theremin.lpf, 5000)
+})
+
+test('Psytrance preserves the six approved MIDI banks and composes three contrasting new scenes', async () => {
+  const { createHash } = require('node:crypto')
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const kit = defaultCityKit('goa')
+  const original = Object.keys(kit.instruments).sort().map(id => [id, kit.instruments[id].pianoRolls.slice(0, 6)])
+  assert.equal(createHash('sha256').update(JSON.stringify(original)).digest('hex'), '68dc3bfc903b42cf2069acea3fdd9995633e75b90d0d8f4b0722fbeb64f00236', 'all original notes, articulations and roll lengths retained')
+  assert.deepEqual(kit.arrangement.sections.find(section => section.id === 'section-h').harmony, [1, 1, 0, 0])
+  const kick = kit.instruments['w:e2'], bass = kit.instruments['w:d2'], lead = kit.instruments['w:d1']
+  assert.equal(kick.arrangement.sections['section-h'].variation, null, 'Bridge rests the kick')
+  assert.equal(lead.arrangement.sections['section-i'].variation, null, 'Turnaround reserves space for the acid pickup')
+  assert.equal(bass.arrangement.sections['section-g'].variation, 7)
+  assert.equal(kick.arrangement.sections['section-i'].variation, 6)
+  assert.ok(kick.pianoRolls[6].notes.every(note => note.start < 3.75), 'Turnaround leaves the last beat empty')
+  assert.notDeepEqual(kick.pianoRolls[6].notes, kick.pianoRolls[7].notes, 'Hook and Turnaround have separate kick phrases')
+})
+
+
+test('Classical reconstruction uses string pawns, acoustic wind desks and complete expressive periods', async () => {
+  const api = await strudel()
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const { cities } = loadTs('lib/cities-data.ts')
+  assert.equal(cities.find(city => city.id === 'vienna').genre, 'Viennese Sinfonietta')
+  for (const id of ['leipzig-1723','vienna','vienna-1825']) {
+    const kit = defaultCityKit(id)
+    const pawns = kit.pieces.filter(piece => piece.color === 'w' && piece.type === 'p')
+    assert.equal(pawns.length, 8)
+    assert.ok(pawns.every(piece => /violin|viola|cello|bass$/.test(kit.instruments[piece.id].source.asset)), id)
+    const back = kit.pieces.filter(piece => piece.color === 'w' && piece.type !== 'p').map(piece => kit.instruments[piece.id])
+    assert.ok(back.every(instrument => !/violin|viola|cello/.test(instrument.source.asset)), id)
+    assert.ok(back.some(instrument => instrument.source.asset === 'orchestra-oboe'), id)
+    assert.equal(kit.harmony, 'kit')
+    assert.ok(kit.arrangement.sections.every(section => section.harmony.length === 8))
+    const violin = kit.instruments['w:a2']
+    assert.equal(violin.pianoRolls[1].bars, 16)
+    assert.ok(violin.pianoRolls[1].notes.some(note => note.start >= 15), 'period reaches its cadence')
+    assert.ok(new Set(violin.pianoRolls[1].notes.map(note => note.velocity)).size > 12, 'phrase dynamics')
+    const first = violin.pianoRolls[1].notes.filter(note => note.start < 8).map(note => note.degree)
+    const answer = violin.pianoRolls[1].notes.filter(note => note.start >= 8).map(note => note.degree)
+    assert.notDeepEqual(first, answer, 'second eight bars develop the sentence')
+    assert.ok(Object.values(violin.arrangement.sections).some(section => section.transpose > 0), 'secondary tonal region')
+    const voices = voiceSpecs(creative.creativeSnapshot(kit,true),null)
+    const pulseCount = section => {
+      const start = kit.arrangement.sections.slice(0,section).reduce((sum,item)=>sum+item.beats,0) / (id === 'leipzig-1723' ? 3 : id === 'vienna' ? 4 : 2)
+      return voices.reduce((sum,voice)=>sum+compileVoice(api,voice).queryArc(start,start+4).filter(event=>event.hasOnset()).length,0)
+    }
+    assert.ok(pulseCount(4)>pulseCount(0), 'tutti contrasts the introduction')
+    assert.ok(back.some(instrument => Object.values(instrument.arrangement.sections).some(section => section.variation === null)), 'wind breathing and rests')
+    assert.equal(kit.bpm, id === 'leipzig-1723' ? 76 : id === 'vienna' ? 112 : 88)
+  }
+})
+
+test('three new Classical chapters preserve independent roles, chromatic form and acoustic bass/percussion', () => {
+  const {defaultCityKit}=loadTs('lib/music/city-kits.ts')
+  const {sampleRegistration}=loadTs('lib/music/sample-banks.ts')
+  const {TRIGGERS}=loadTs('lib/music/reactions.ts')
+  for(const id of ['venice-1725','copenhagen-1869','paris-1913']) {
+    const kit=defaultCityKit(id),parts=kit.pieces.filter(p=>p.color==='w').map(p=>kit.instruments[p.id])
+    assert.equal(kit.arrangement.sections.length,12)
+    assert.equal(kit.scale,'Chromatic')
+    assert.equal(kit.harmony,'kit')
+    assert.ok(kit.arrangement.sections.every(s=>s.harmony?.length===8))
+    assert.ok(new Set(kit.arrangement.sections.map(s=>s.harmony.join(','))).size>=7)
+    assert.ok(parts.every(p=>p.source.bank==='chicken-classical-v1'&&p.pianoRolls.length===8))
+    assert.ok(parts.filter(p=>p.source.asset.includes('bass')).length>=2, 'arco and pizzicato foundations')
+    assert.ok(parts.some(p=>p.source.asset==='orchestra-bass'&&p.gain>=.8))
+    assert.ok(new Set(parts.map(p=>p.source.asset)).size>=9, 'independent orchestral colors')
+    const density=kit.arrangement.sections.map(s=>parts.filter(p=>p.arrangement.sections[s.id].variation!==null).length)
+    assert.ok(Math.max(...density)-Math.min(...density)>=5, 'solo and tutti contrast')
+    assert.deepEqual(kit.reactions.overrides,Object.keys(TRIGGERS))
+    assert.ok(kit.reactions.rules.every(r=>r.actions.every(a=>a.type==='gain')), 'game dynamics preserve authored chromatic phrases')
+    assert.ok(JSON.stringify(kit).length<2_000_000,'portable import size')
+    assert.deepEqual(creative.parseCreativeSession(JSON.stringify(kit)),JSON.parse(JSON.stringify(kit)))
+  }
+  const piano=defaultCityKit('copenhagen-1869')
+  assert.equal(piano.instruments['w:d1'].source.asset,'concert-piano')
+  assert.equal(piano.instruments['w:e1'].source.asset,'concert-piano')
+  assert.notDeepEqual(piano.instruments['w:d1'].pianoRolls,piano.instruments['w:e1'].pianoRolls)
+  assert.ok(piano.instruments['w:d1'].pianoRolls[5].notes.some(n=>Math.abs(n.start*16-Math.round(n.start*16))>.1),'written cadenza timing')
+  const registration=sampleRegistration(piano.instruments['w:d1'].source)
+  assert.equal(registration.files.length,9)
+  assert.deepEqual(Object.keys(Object.values(registration.map)[0]),['c1','f#1','c2','f#2','c3','f#3','c4','f#4','c5'],'piano sounding octave')
+  const ballet=defaultCityKit('paris-1913')
+  assert.equal(ballet.meter,'7/8')
+  for(const asset of ['concert-bass-drum','concert-snare','concert-cymbal','concert-tam-tam','timpani-low']) {
+    const part=Object.values(ballet.instruments).find(p=>p.source.asset===asset)
+    assert.equal(part.source.pitched,false)
+    assert.ok(Object.values(part.arrangement.sections).some(s=>s.variation===null),'percussion leaves lyrical spaces')
+  }
+})
+
+test('concert compilation resolves real secondary keys and passes the melodic sentence between desks', async () => {
+  const api=await strudel(),{defaultCityKit}=loadTs('lib/music/city-kits.ts')
+  const kit=defaultCityKit('copenhagen-1869'),voices=voiceSpecs(creative.creativeSnapshot(kit,true),null)
+  const piano=compileVoice(api,voices.find(v=>v.piece.id==='w:d1'))
+  const strings=compileVoice(api,voices.find(v=>v.piece.id==='w:a2'))
+  const onsets=(p,start,end)=>p.queryArc(start,end).filter(h=>h.hasOnset())
+  const notes=(p,start,end)=>onsets(p,start,end).map(h=>h.value.note)
+  assert.ok(onsets(piano,8,10).length>0)
+  assert.equal(onsets(strings,8,10).length,0,'piano asks')
+  assert.equal(onsets(piano,10,12).length,0)
+  assert.ok(onsets(strings,10,12).length>0,'strings answer')
+  assert.deepEqual(notes(piano,48,49),[77,73],'D-flat sanctuary: F5 and D-flat5, not scale-quantized notes')
+  const coda=kit.arrangement.sections.slice(0,11).reduce((n,s)=>n+s.beats,0)/4
+  assert.ok(notes(piano,coda+4,coda+5).some(n=>n%12===1),'A-major coda contains C-sharp')
+  const bass=voices.find(v=>v.piece.id==='w:a1'),low=notes(compileVoice(api,bass),8,16)
+  assert.ok(Math.min(...low)<=36&&Math.max(...low)<49,'audible double-bass register')
 })

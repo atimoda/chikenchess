@@ -14,6 +14,7 @@ import { TeamMixer, createTeamMixes } from './team-mixer'
 import { sampleRegistration, type SampleSource } from './sample-banks'
 import { createMusicMonitor, type TrackFrame, type NoteEvent, type MusicMonitor } from './monitor'
 import { voiceSpecs } from './voice-spec'
+import { getSimultaneousPulses, subscribeSimultaneousPulses } from './pulse-preference'
 import { compileVoice } from './pattern-compiler'
 import { loadLibrary, ensureSample, loadedSamples } from './strudel-loader'
 import type { Strudel, StrudelPattern, MusicSnapshot, MusicPulse, Preview, VoiceSpec } from './runtime-types'
@@ -64,7 +65,9 @@ export class MusicRuntime {
   private displayCache = new Map<string, { pattern: StrudelPattern; cycle: number; events: NoteEvent[]; haps: any[] }>()
   private manualHit?: { voice: VoiceSpec; value: any; start: number; end: number }
   private releaseTimer?: ReturnType<typeof setTimeout>
-  constructor(private pulse: (event: MusicPulse) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
+  private unsubscribePulsePreference = subscribeSimultaneousPulses(() => this.clearVisuals())
+
+  constructor(private pulse: (events: readonly MusicPulse[]) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
 
   // Preload JS only. AudioContext is created/resumed from an interaction.
   preload() { void loadLibrary().then(api => { if (!this.disposed) this.preloadedApi = api }).catch(this.error) }
@@ -468,11 +471,11 @@ export class MusicRuntime {
   private scheduleVisual(voice: VoiceSpec, time: number, duration: number) {
     const generation = this.generation
     const event = { id: voice.piece.id, square: voice.square, preview: voice.preview, duration }
-    // Manual playing stays immediate. Loop events that fall in the same short
-    // window share one render; the chosen piece rotates so dense drums cannot
-    // permanently hide the visual feedback of bass, harmony or lead voices.
+    // Group simultaneous attacks at their scheduled time. The single-flash
+    // mode retains the coarser visual cadence and rotates its chosen voice.
     if (!voice.preview) {
-      const bucketId = Math.floor(time / this.visualInterval)
+      const simultaneous = getSimultaneousPulses()
+      const bucketId = simultaneous ? time : Math.floor(time / this.visualInterval)
       const pending = this.visualBuckets.get(bucketId)
       if (pending) {
         pending.events.set(voice.key, event)
@@ -483,9 +486,9 @@ export class MusicRuntime {
         this.visualTimers.delete(timer)
         this.visualBuckets.delete(bucketId)
         if (this.disposed || generation !== this.generation) return
-        const candidates = [...events.entries()].filter(([key]) => this.voices.has(key)).map(([, value]) => value)
+        const candidates = [...events.entries()].filter(([key, pulse]) => this.voices.get(key)?.square === pulse.square).map(([, value]) => value)
         if (!candidates.length) return
-        this.pulse(candidates[this.visualCursor++ % candidates.length])
+        this.pulse(simultaneous ? candidates : [candidates[this.visualCursor++ % candidates.length]])
       }, Math.max(0, (time - this.api!.getAudioContext().currentTime) * 1000))
       this.visualBuckets.set(bucketId, { events, timer })
       this.visualTimers.add(timer)
@@ -495,7 +498,7 @@ export class MusicRuntime {
       this.visualTimers.delete(timer)
       const current = voice.manual ? this.manualHit?.voice : this.voices.get(voice.key)
       if (this.disposed || generation !== this.generation || !current || current.manual !== voice.manual || current.square !== voice.square) return
-      this.pulse(event)
+      this.pulse([event])
     }, Math.max(0, (time - this.api!.getAudioContext().currentTime) * 1000))
     this.visualTimers.add(timer)
   }
@@ -610,9 +613,11 @@ export class MusicRuntime {
     this.visualTimers.forEach(clearTimeout)
     this.visualTimers.clear()
     this.visualBuckets.clear()
+    this.pulse([])
   }
   dispose() {
     this.disposed = true
+    this.unsubscribePulsePreference()
     if (this.releaseTimer) clearTimeout(this.releaseTimer)
     this.releaseTimer = undefined
     this.unlockAudition = null

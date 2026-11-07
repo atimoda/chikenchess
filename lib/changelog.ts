@@ -5,7 +5,7 @@ export const CHANGELOG = [
   {
     version: '2.2.0',
     date: '07/11/2026',
-    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta e o gerador MIDI',
+    title: 'Morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta, o gerador MIDI, seis viagens Classical e pulsos simultâneos',
     groups: [
       { title: 'Pátio', items: [
         'Cada alien tem duas mortes, as duas no tempo da música: derrubado por golpe, tiro ou arremesso, toca um tambor que depende da espécie (bloco de madeira na água-viva, taiko na concha, palmas na lanterna); convertido por notas, toca um acorde ou arpejo.',
@@ -21,12 +21,20 @@ export const CHANGELOG = [
         'Quem entra com a conta guarda as músicas nela: cada música salva, editada ou apagada vai para a conta, e as feitas em outro aparelho aparecem na jukebox. Se a mesma música mudou nos dois lugares, a da conta fica e a deste aparelho vira uma cópia. A jukebox diz onde as músicas estão, e o admin vê as músicas de todos, podendo ouvir ou copiar cada uma.',
         'Novo Gerar de MIDI na jukebox: escolha um arquivo .mid, as faixas que entram e o alien de cada uma (a bateria vira bumbo, caixa, palmas e chocalho), a dificuldade, o tom e os compassos. O gerador alinha as notas na grade, deixa só as que a dificuldade aguenta, encaixa tudo nas faixas do leque e junta as notas seguidas em aliens de 5 a 15 tiros. Dá para ouvir no templo antes, e a música abre no editor para ajustar.',
       ] },
+      { title: 'Música', items: [
+        'A campanha Classical ganha três músicas originais: Venice 1725 · Baroque concerto, Copenhagen 1869 · Nordic piano concerto e Paris 1913 · Modernist ballet. Cada uma tem doze seções, novos contrastes, regiões harmônicas e diálogos próprios entre as peças.',
+        'Mais contrabaixos arco e pizzicato, piano de cauda em duas mãos, trombone e percussão orquestral gravada — incluindo bumbo sinfônico e tam-tam — ampliam a paleta. Os novos kits alternam ritornelos, solos, cadência de piano, passagens líricas e ritmos assimétricos.',
+        'Os três kits Classical foram reconstruídos com cordas nos oito peões e madeiras, metais, cravo ou tímpanos na fileira de trás. Novas gravações acústicas, frases de dezesseis compassos, dinâmica e dez seções dão mais espaço para solos, diálogos, desenvolvimento e retomadas.',
+        'Vienna 1780 agora se chama Viennese Sinfonietta. Leipzig 1723 tem uma direção pastoral barroca e Vienna 1825 ganha uma abertura romântica em alla breve, com regiões harmônicas contrastantes.',
+        'Todas as peças que tocam juntas podem mostrar o pulso de nota ao mesmo tempo. Preferências ganhou Pulsos simultâneos no tabuleiro, ligado por padrão e salvo no navegador. Desligar volta ao destaque de uma peça por vez no Criativo, na campanha e no online.',
+      ] },
+      { title: 'Criativo', items: ['O contador de ovos foi removido do tabuleiro do Criativo.', 'Avisos como Kit carregado somem automaticamente após alguns segundos. O botão de fechar fica reservado aos alertas que precisam de confirmação de leitura, como falhas ao preservar ou salvar o rascunho.'] },
     ],
   },
   {
     version: '2.1.0',
     date: '06/11/2026',
-    title: 'Golpe com rastro de ar, Bicada que anula bombas, fase de notas, o Taco e as zonas sonoras',
+    title: 'Golpe com rastro de ar, Bicada que anula bombas, fase de notas, o Taco, as zonas sonoras e a revisão dos kits Electronic World',
     groups: [
       { title: 'Pátio', items: [
         'O Golpe ganhou preparação, golpe rápido, continuação e recuperação, com um rastro de ar creme que se desfaz soltando fiapos. O acerto acontece no instante do golpe, com um clarão e um tranco curto na tela.',
@@ -40,6 +48,21 @@ export const CHANGELOG = [
         'Templo do Gongo: um disco perto da pedra Recomeçar toca a música Teste das Notas, a primeira fase do modo guitar hero. Os aliens chegam de vários lados em volta da galinha e atiram notas de luz no tempo da música; rebata cada uma com qualquer golpe quando ela chegar no anel em volta dela (PERFEITO, BOM ou FORA) e mande de volta nos aliens para virarem passarinhos. A Bicada só anula a nota. Notas perdidas baixam a barra de afinação.',
         'Novo item Taco, só de golpe: a nota rebatida sai mais rápida com um tok de madeira. Cada item agora transforma as notas que rebate do seu jeito (a Flauta sobe uma oitava, o Trompete faz power chord, o Violão dedilha a tríade, a Submetralhadora faz um rufo…), e em Itens → Rebate dá para montar a cadeia de transformações, o snap e a velocidade de cada um. Nas fases, o leque fixa a nota e o item enfeita.',
         'Modo editor: novo grupo Música. A Zona sonora é um retângulo invisível com tom, escala, andamento e uma cadeia de transformações: ao entrar, a música muda, e as notas rebatidas ali seguem a escala dela. As Faixas fixas desenham um leque ou colunas de notas no mapa que afinam toda nota rebatida ou que passa por elas. Qualquer plataforma pode Rebater notas, fazendo a nota quicar e tocar de novo com a cadeia do taco, a dela ou sem mudar. O botão Zonas sonoras mostra tudo isso no editor.',
+      ] },
+      { title: 'Música', items: [
+        'New York 1977 ganhou flauta e cordas menos agudas, mais espaço entre as respostas e foco no groove de baixo e guitarra.',
+        'Ibiza 1986 foi recomposto: base Balearic Beat com piano, violão, synth suave e percussão, alternando trechos de pista e respiro.',
+        'Manchester 1988 agora se chama Acid House: linha ácida com acentos e slides em primeiro plano, menos efeitos de rave e viradas mais curtas.',
+        'London 1992 agora se chama Jungle: breaks com mais variação, subgrave com espaço e respostas dub no lugar do hoover dominante.',
+        'Os quatro kits passam a ter oito seções: novos Pre-Chorus, Hooks, Bridges e Turnaround alternam momentos mais intensos e mais espaçados, com progressões visíveis em Harmony.',
+        'Düsseldorf agora é Krautrock: bateria orgânica, guitarras, órgão e flauta substituem o synth-pop; Solo e Bridge abrem novos contrastes. Chicago alterna seus hooks e ganha Pre-Chorus e Bridge.',
+        'Tokyo agora é Minimal: sons suaves entram aos poucos, células deslocadas se cruzam e novos Turnaround e Bridge exploram o silêncio.',
+        'São Paulo agora é Hard Techno, com ride 909 mais suave e variado, menos agudos contínuos e novos Bridge e Turnaround. Bristol preserva o teremim modulado, suaviza o chimbal e ganha Pre-Chorus e Bridge.',
+        'Goa agora é Psytrance: mantém as frases anteriores, refina discretamente os agudos e acrescenta Hook, Bridge e Turnaround com novos contrastes rítmicos.',
+      ] },
+      { title: 'Criativo e Pátio', items: [
+        'Arrastar ou segurar sobre rótulos, painéis e menus não seleciona mais texto por acidente. A seleção continua disponível dentro dos campos editáveis.',
+        'No Criativo, arrastar o painel de vozes aberto deixa de interromper a interface com um erro. As linhas acompanham o painel até a posição final.',
       ] },
     ],
   },

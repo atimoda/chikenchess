@@ -1,10 +1,11 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId, useState, useSyncExternalStore } from "react"
 import * as Popover from "@radix-ui/react-popover"
 import { Settings2 } from "lucide-react"
 import { Button } from "./ui/button"
 import { FpsCounter, FpsPreferences } from "./fps-preferences"
+import { getServerSimultaneousPulses, getSimultaneousPulses, setSimultaneousPulses, subscribeSimultaneousPulses } from "@/lib/music/pulse-preference"
 import type { PowerDisplay } from "@/hooks/use-power-display"
 import type { ChancePosition } from "@/hooks/use-chance-position"
 import type { SpectrogramMode } from "@/hooks/use-spectrogram-mode"
@@ -36,6 +37,7 @@ export function GamePreferences({
   className?: string
 }) {
   const [open, setOpen] = useState(false)
+  const simultaneousPulses = useSyncExternalStore(subscribeSimultaneousPulses, getSimultaneousPulses, getServerSimultaneousPulses)
   const titleId = useId()
   const switchLabelId = useId()
   const chanceLabelId = useId()
@@ -109,6 +111,11 @@ export function GamePreferences({
           </button>
         </div>
         </>}
+        <label className="flex cursor-pointer items-center justify-between gap-5 border-t border-border/40 px-2 py-2 text-sm">
+          Pulsos simultâneos no tabuleiro
+          <input type="checkbox" className="size-4 accent-primary" checked={simultaneousPulses}
+            onChange={e => setSimultaneousPulses(e.target.checked)} />
+        </label>
         <FpsPreferences />
       </Popover.Content>
     </Popover.Portal>
