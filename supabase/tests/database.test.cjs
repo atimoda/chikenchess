@@ -870,6 +870,16 @@ test('patio: people come back only when the list changed; the unsaved cleanup ru
   await rpc(owner,'patio_lobby_list',[false])
   assert.equal(await exists(2),false)
 })
+test('patio: the game server reads a Pátio\'s name, creator and godparent, nothing heavier',async()=>{
+  const owner=ids[3]
+  const id='b3000000-0000-4000-8000-000000000003'
+  await rpc(owner,'patio_lobby_save',[id,{elements:[{id:'x',kind:'box',x:0,y:0}]},0])
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
+  const meta=(await db.query('select public.patio_lobby_meta($1) as result',[id])).rows[0].result
+  assert.deepEqual(Object.keys(meta).sort(),['creator_id','godparent_id','id','is_default','name'])
+  assert.equal(meta.creator_id,owner)
+  assert.equal((await db.query('select public.patio_lobby_meta($1) as result',['b3000000-0000-4000-8000-0000000000ff'])).rows[0].result,null)
+})
 test('pigchicken songs: a personal library per account; the admin sees and opens everyone\'s',async()=>{
   const [me,other]=[ids[3],ids[4]]
   const song=(name,n=1)=>({name,aliens:Array.from({length:n},()=>({species:'jelly',notes:[{beat:0,midi:62}]}))})
