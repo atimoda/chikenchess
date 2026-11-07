@@ -43,6 +43,8 @@ import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type 
 import { createNoteStage, type NoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
 import { drawDisc, drawNoteShots, drawNoteStageHud, drawStageFan } from "@/components/pigchicken/note-stage-draw"
 import { drawGong, drawResetStone, drawTempleAlien, drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
+import { BIRDS, UNDEAD_EYE, birdColors, type BirdType } from "@/lib/pigchicken/birds"
+import { undeadSize, type UndeadState } from "@/lib/pigchicken/undead"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import type { RidgePoint } from "@/lib/pigchicken/village"
@@ -72,6 +74,8 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
   }, [worldRef, occlusion])
   return (
     <div ref={worldRef} data-chicken-world className="pointer-events-none absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
+      {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
+      <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
       <ParallaxBackdrop worldW={width} />
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
@@ -634,6 +638,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       templeSounds.splice(0).forEach(e => playTempleSound(e, mixGain("effects")))
       const tp = temple.state.phase
       if (tp !== templeShown) { templeShown = tp; if (worldRef.current) worldRef.current.dataset.temple = tp }
+      // the undead wait for the song (or the gong's campaign) to end before leaving; she rides the ones standing
+      combat.setPlaying(stage.active || tp === "intro" || tp === "playing")
+      const riders = worldRef.current?.querySelector<HTMLElement>("[data-undead-riders]")
+      if (riders) syncRiders(riders, combat.undead)
       // a cleared stage: fireworks over the temple
       if ((tp === "cleared" || tp === "victory") && temple.state.t < (tp === "victory" ? 5 : 2.6) && Math.random() < dt * (tp === "victory" ? 9 : 6)) {
         const colors = ["#ffd166", "#ff4d6d", "#7bdff2", "#7bd88f", "#c77dff"]
@@ -647,6 +655,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const templeMusic = stage.music ?? temple.music
       // a Zona sonora she is in wins over the scene's (not over a song playing in the temple)
       const inZone = templeMusic && inTemple ? null : zoneAt(worldMusic.zones, body.x, body.y - 90 * body.scale, true)
+      combat.setZoneBirds(inZone?.zone.birds ?? null)
       const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
@@ -1067,16 +1076,16 @@ function drawZoneBanner(ctx: Ctx, zone: Zone, life: number) {
   ctx.restore()
 }
 
-// the bird an alien becomes: original pixel art, two flaps. '#' body, 'o' eye, '>' beak
+// the bird an alien becomes: original pixel art, two flaps. '#' body, 'w' wing, 'b' belly, 'o' eye, '>' beak
 const BIRD_FRAMES = [
   [
-    "..#......#.",
-    "..##....##.",
-    "...##..##..",
+    "..w......w.",
+    "..ww....ww.",
+    "...ww..ww..",
     "....####...",
     "..#####o#>>",
-    ".########..",
-    "...####....",
+    ".#bbbbbb#..",
+    "...bbbb....",
     "....#.#....",
   ],
   [
@@ -1084,21 +1093,99 @@ const BIRD_FRAMES = [
     "...........",
     "....####...",
     "..#####o#>>",
-    "##########.",
-    "#.######...",
+    "wwwwbbbbb#.",
+    "w.#bbbb#...",
     "...####....",
     "....#.#....",
   ],
 ]
-function drawBird(ctx: Ctx, c: Combat["critters"][number], x: number) {
-  const f = BIRD_FRAMES[Math.floor(c.t / 0.12) % 2], p = 4
-  ctx.save(); ctx.translate(x, c.y); ctx.scale(c.face < 0 ? -1 : 1, 1)
+// a bird of a type (or the old one in its alien's colour), undead ones grey with eyes in their note's colour
+function drawBirdArt(ctx: Ctx, x: number, y: number, face: number, t: number, type: BirdType | null, color: string, undead = false, eye = UNDEAD_EYE, flash = 0) {
+  const f = BIRD_FRAMES[Math.floor(t * (type?.flap ?? 8.3)) % 2], p = type?.pixel ?? 4
+  const c = type ? birdColors(type, undead) : { body: color, wing: color, belly: color, beak: "#ffb347" }
+  ctx.save(); ctx.translate(x, y); ctx.scale(face < 0 ? -1 : 1, 1)
   f.forEach((row, r) => { for (let i = 0; i < row.length; i++) {
     const ch = row[i]; if (ch === ".") continue
-    ctx.fillStyle = ch === "o" ? "#101018" : ch === ">" ? "#ffb347" : c.color
+    ctx.fillStyle = flash > 0 ? "#ffffff" : ch === "o" ? (undead ? eye : "#101018") : ch === ">" ? c.beak : ch === "w" ? c.wing : ch === "b" ? c.belly : c.body
     ctx.fillRect((i - 5.5) * p, (r - 4) * p, p, p)
   } })
+  if (undead) { ctx.globalAlpha = 0.5; ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(1.5 * p, -0.5 * p, p * 1.4, 0, Math.PI * 2); ctx.fill() }
   ctx.restore()
+}
+function drawBird(ctx: Ctx, c: Combat["critters"][number], x: number) {
+  drawBirdArt(ctx, x, c.y, c.face, c.t, c.bird ? BIRDS[c.bird] : null, c.color)
+}
+
+// an undead: the alien it was, grey, stiff and turned as it fell, with red eyes; once resurrected, a grey bird
+function drawUndead(ctx: Ctx, g: Combat["targets"][number], x: number, beatPhase: number, beat: number) {
+  const u = g.data as UndeadState
+  if (u.bird) {
+    ctx.save(); if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.3)
+    drawBirdArt(ctx, x, g.y - g.h / 2, g.face, g.animT, BIRDS[u.bird], "#8d9096", true, u.eye, g.flash)
+    ctx.restore()
+    return
+  }
+  const c = Math.abs(Math.cos(u.angle)), sn = Math.abs(Math.sin(u.angle))
+  const hb = g.h * c + g.w * sn
+  // the alien drawn grey on a small canvas of its own (a filter on the whole scene costs too much per pixel drawn)
+  const art = greyArt(Math.ceil(Math.max(g.w, g.h) * 2.4), a => {
+    const proxy = { ...g, kind: "alien" as const, y: g.h / 2, deadT: 0, flash: 0, data: u.look }
+    if ((u.look as { kind?: string } | undefined)?.kind === "temple") drawTempleAlien(a, proxy, 0, beatPhase, 0, beat, null)
+    else drawAlien(a, proxy, 0)
+  }, g.flash > 0 ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)")
+  ctx.save()
+  if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.3)
+  ctx.translate(x, g.y - hb / 2); ctx.rotate(u.angle)
+  ctx.drawImage(art, -art.width / 2, -art.height / 2)
+  // red eyes, glowing
+  ctx.fillStyle = u.eye; ctx.shadowColor = u.eye; ctx.shadowBlur = 8
+  const ex = Math.max(4, g.w * 0.15), ey = -g.h * 0.08, r = Math.max(2.5, g.w * 0.055)
+  ctx.beginPath(); ctx.arc(-ex, ey, r, 0, Math.PI * 2); ctx.arc(ex, ey, r, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+}
+
+// draws `paint` (centred on 0,0) on a scratch canvas, greys it (saturation blend, then its own shape as a mask) and
+// tints it; the result is reused until the next call
+let greyA: HTMLCanvasElement | null = null, greyB: HTMLCanvasElement | null = null
+function greyArt(size: number, paint: (ctx: Ctx) => void, tint: string) {
+  const make = (c: HTMLCanvasElement | null) => {
+    const el = c ?? document.createElement("canvas")
+    if (el.width !== size || el.height !== size) { el.width = size; el.height = size }
+    const x = el.getContext("2d")!
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, size, size)
+    return [el, x] as const
+  }
+  const [a, ax] = make(greyA), [b, bx] = make(greyB)
+  greyA = a; greyB = b
+  ax.translate(size / 2, size / 2); paint(ax); ax.setTransform(1, 0, 0, 1, 0, 0)
+  bx.drawImage(a, 0, 0)
+  bx.globalCompositeOperation = "saturation"; bx.fillStyle = "#808080"; bx.fillRect(0, 0, size, size)
+  bx.globalCompositeOperation = "source-atop"; bx.fillStyle = tint; bx.fillRect(0, 0, size, size)
+  bx.globalCompositeOperation = "destination-in"; bx.drawImage(a, 0, 0)
+  return b
+}
+
+// the undead she can ride: a thin floor on top of each one that is not falling (the chicken's engine reads them
+// as moving boxes and carries her along)
+const riderEls = new Map<number, HTMLDivElement>()
+function syncRiders(host: HTMLElement, undead: Combat["targets"]) {
+  const seen = new Set<number>()
+  for (const g of undead) {
+    const u = g.data as UndeadState
+    if (u.phase === "fall" || g.deadT > 0) continue
+    const size = u.bird ? { w: g.w, h: g.h * 0.7 } : undeadSize(g, u)
+    const box = `${(g.x - size.w / 2).toFixed(1)},${(g.y - size.h).toFixed(1)},${size.w.toFixed(1)},8`
+    let el = riderEls.get(g.id)
+    if (!el || el.parentElement !== host) {
+      el = document.createElement("div")
+      el.dataset.chickenId = `undead-${g.id}`
+      el.className = "absolute"
+      host.appendChild(el); riderEls.set(g.id, el)
+    }
+    if (el.dataset.chickenWorldBox !== box) el.dataset.chickenWorldBox = box
+    seen.add(g.id)
+  }
+  riderEls.forEach((el, id) => { if (!seen.has(id)) { el.remove(); riderEls.delete(id) } })
 }
 
 // the person a zombie becomes (the zombie art with its colour back), running away happy
@@ -1369,6 +1456,7 @@ function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
     if (!visible(g.x, g.y + 60, Math.max(320, g.w + 160), g.h + 240)) return
     const x = X(g.x)
     if (g.state === "converted") return
+    if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }
     if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }

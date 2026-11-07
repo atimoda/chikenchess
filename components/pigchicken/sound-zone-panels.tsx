@@ -10,6 +10,7 @@ import {
   type LanesParams, type SoundZoneParams, type SurfaceRebate,
 } from "@/lib/pigchicken/sound-zones"
 import { ChainEditor } from "./chain-editor"
+import { BIRDS, BIRD_IDS } from "@/lib/pigchicken/birds"
 import { LanesArt } from "./sound-zone-art"
 
 const field = "h-9 w-full min-w-0 rounded-md border border-white/15 bg-[#0b110e] px-2"
@@ -82,6 +83,17 @@ export function SoundZoneFields({ zone, onChange }: { zone: SoundZoneParams; onC
         <span className="grid"><span>Troca a música ao entrar</span><span className="text-[10px] text-[#93a79a]">Desligado: só muda as notas rebatidas dentro dela</span></span>
         <input type="checkbox" checked={zone.music} onChange={e => set({ music: e.target.checked })} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
       </label>
+      <div className="grid gap-1" title="Os aliens convertidos aqui viram estes pássaros (nenhum marcado: os da cena)">
+        <span>Pássaros da zona</span>
+        <div className="flex flex-wrap gap-1.5">
+          {BIRD_IDS.map(id => {
+            const on = zone.birds.includes(id)
+            return <button key={id} type="button" aria-pressed={on} onClick={() => set({ birds: on ? zone.birds.filter(b => b !== id) : [...zone.birds, id] })}
+              className={"h-8 rounded-md border px-2 " + (on ? "border-primary bg-primary/15 text-white" : "border-white/15 text-[#93a79a] hover:border-white/40")}>{BIRDS[id].name}</button>
+          })}
+        </div>
+        <span className="text-[10px] text-[#93a79a]">Nenhum marcado: os pássaros da cena.</span>
+      </div>
       <ChainEditor chain={zone.chain} changed={false} title="Cadeia do ambiente"
         hint="Toda nota rebatida dentro da zona passa por estes passos (a parte “ambiente” da regra de rebate)"
         onChange={fn => { const chain = structuredClone(zone.chain); fn(chain); set({ chain }) }} />

@@ -5,6 +5,7 @@
 import { SCALES, ZONES, NOTE_NAMES, type Feel, type ScaleId, type Zone } from './music'
 import { fanLaneAt, fanLanes, fanNotes, type Fan, type FanContent } from './fan'
 import { CHAIN_MAX, TRANSFORMS, cleanTransform, degreeOf, type Transform } from './transforms'
+import { isBirdId, type BirdId } from './birds'
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
@@ -28,6 +29,8 @@ export type SoundZoneParams = {
   priority: number
   // walking in changes the music (key, scale, tempo); off: it only changes the notes rebated inside it
   music: boolean
+  // the birds the aliens become inside it (empty: the scene's)
+  birds: BirdId[]
 }
 export const ZONE_PRIORITY = { min: 1, max: 9 }
 export const ZONE_BPM = { min: 40, max: 200 }
@@ -36,7 +39,7 @@ export const ZONE_BPM = { min: 40, max: 200 }
 export function defaultSoundZone(from: Zone = ZONES[1]): SoundZoneParams {
   return {
     name: from.name, root: from.root, scale: from.scale, chordScale: from.chordScale, bpm: from.bpm, feel: from.feel,
-    progression: from.progression.slice(), color: from.color, chain: [], priority: 1, music: true,
+    progression: from.progression.slice(), color: from.color, chain: [], priority: 1, music: true, birds: [],
   }
 }
 
@@ -57,6 +60,7 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
     chain: cleanChain(z.chain),
     priority: Math.round(clamp(num(z.priority, d.priority), ZONE_PRIORITY.min, ZONE_PRIORITY.max)),
     music: z.music !== false,
+    birds: Array.isArray(z.birds) ? [...new Set(z.birds.filter(isBirdId))] : [],
   }
 }
 
