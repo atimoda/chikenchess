@@ -24,7 +24,6 @@ import { useCreativeAnalysis } from '@/hooks/use-creative-analysis'
 import { connectRects, squareRect, type WidgetConnection } from '@/hooks/use-game-widget-layout'
 import { arrowsForAnalysis } from '@/lib/analysis-arrows'
 import { PowerCardHand, type PowerCardAction, type PowerCardKind } from './power-card-hand'
-import { EggCounter } from './match/egg-counter'
 import { GameWidgetConnections } from './game-presentation'
 import { CreativeWidget, type CreativeWidgetSize } from './creative/creative-widget'
 import { useCreativeMusic } from '@/hooks/use-creative-music'
@@ -66,9 +65,9 @@ function messageOf(error: unknown) {
 }
 
 
-// Creative messages share the match's toast and stay until dismissed; one id keeps a single popup.
-function setNotice(message: string) {
-  toast(message, { id: 'creative-notice', duration: Infinity, closeButton: true })
+// Routine feedback expires. Data-preservation warnings require acknowledgement.
+function setNotice(message: string, requiresAcknowledgement = false) {
+  toast(message, { id: 'creative-notice', duration: requiresAcknowledgement ? Infinity : 3000, closeButton: requiresAcknowledgement })
 }
 
 // What "unsaved changes" compares: which pieces are switched on is a listening choice, not a kit edit.
@@ -230,7 +229,7 @@ export function CreativeStudio() {
           }
         }
       } catch (error) {
-        if (!cancelled) setNotice(`Could not restore the draft: ${messageOf(error)}`)
+        if (!cancelled) setNotice(`Could not restore the draft: ${messageOf(error)}`, true)
       }
       try {
         const activeCustom = new Map<string, CreativeSession>()
@@ -275,7 +274,7 @@ export function CreativeStudio() {
     if (!ready) return
     const timer = setTimeout(() => {
       try { localStorage.setItem(CREATIVE_STORAGE, JSON.stringify(session)) }
-      catch { setNotice('Local storage unavailable. Export the kit to keep your changes.') }
+      catch { setNotice('Local storage unavailable. Export the kit to keep your changes.', true) }
     }, 300)
     return () => clearTimeout(timer)
   }, [session, ready])
@@ -432,11 +431,11 @@ export function CreativeStudio() {
       }
       localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(updated.kits))
       if (linked.cityId) localStorage.setItem(cityKitStorageKey(linked.cityId), JSON.stringify(linked))
-    } catch { if (!account || remoteError) { setNotice('Could not save locally. Use Export.'); return } }
+    } catch { if (!account || remoteError) { setNotice('Could not save locally. Use Export.', true); return } }
     setKits(updated.kits); setSession(clean); setSelectedKit(`${USER_KIT_PREFIX}${clean.name}`)
     savedFingerprint.current = kitFingerprint(clean)
     const city = EDITABLE_CITY_KITS.find(item => item.id === linked.cityId)
-    if (remoteError) { setNotice(`Kit “${clean.name}” saved only in this browser: ${remoteError}`); return }
+    if (remoteError) { setNotice(`Kit “${clean.name}” saved only in this browser: ${remoteError}`, true); return }
     const where = account ? 'saved to your account' : 'saved in this browser'
     setNotice(city
       ? `Kit “${clean.name}” ${where} and linked to the ${city.name} stage.${replacedLink ? ' The city’s previous link was removed.' : ''}`
@@ -567,20 +566,33 @@ export function CreativeStudio() {
   // Lines from each open widget to the board, or to the selected piece for the instrument widgets.
   const selectedSquareForLines = boardSelected ? selected.square : null
   useLayoutEffect(() => {
-    const root = rootRef.current, board = boardRef.current
-    if (portraitPhone || !root || !board) { setConnections(current => current.length ? [] : current); return }
-    const rootRect = root.getBoundingClientRect(), boardRect = board.getBoundingClientRect()
-    const pieceRect = selectedSquareForLines ? squareRect(selectedSquareForLines as Square, boardRect, 'white') : null
-    const next: WidgetConnection[] = []
-    for (const widget of CREATIVE_WIDGETS) {
-      const element = widgetRefs[widget.id].current
-      if (!widgetOn[widget.id] || !element) continue
-      next.push(connectRects(element.getBoundingClientRect(), widget.link === 'piece' && pieceRect ? pieceRect : boardRect, rootRect))
-    }
-    setConnections(next)
-    // Hovering a row of 32 voices links its on/off dot to the piece, as in the match.
-    const hoverRect = songHover?.anchor.isConnected && widgetOn.band ? squareRect(songHover.square, boardRect, 'white') : null
-    setHoverConnections(hoverRect && songHover ? [connectRects(songHover.anchor.getBoundingClientRect(), hoverRect, rootRect)] : [])
+    // A drag can commit several layouts before paint. Measure only the latest
+    // one, without scheduling another synchronous React update from the commit.
+    const frame = window.requestAnimationFrame(() => {
+      const root = rootRef.current, board = boardRef.current
+      if (portraitPhone || !root || !board) {
+        setConnections(current => current.length ? [] : current)
+        setHoverConnections(current => current.length ? [] : current)
+        return
+      }
+      const rootRect = root.getBoundingClientRect(), boardRect = board.getBoundingClientRect()
+      const pieceRect = selectedSquareForLines ? squareRect(selectedSquareForLines as Square, boardRect, 'white') : null
+      const next: WidgetConnection[] = []
+      for (const widget of CREATIVE_WIDGETS) {
+        const element = widgetRefs[widget.id].current
+        if (!widgetOn[widget.id] || !element) continue
+        next.push(connectRects(element.getBoundingClientRect(), widget.link === 'piece' && pieceRect ? pieceRect : boardRect, rootRect))
+      }
+      setConnections(next)
+      // Hovering a row of 32 voices links its on/off dot to the piece, as in the match.
+      const hoverRect = songHover?.anchor.isConnected && widgetOn.band ? squareRect(songHover.square, boardRect, 'white') : null
+      if (hoverRect && songHover) {
+        setHoverConnections([connectRects(songHover.anchor.getBoundingClientRect(), hoverRect, rootRect)])
+      } else {
+        setHoverConnections(current => current.length ? [] : current)
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [portraitPhone, widgetOn, widgetLayout, widgetRefs, boardPan.offset, boardResize.width, cardsResize.width, selectedSquareForLines, layoutTick, songHover])
 
   const kitWidget = <fieldset disabled={!ready || busy} className={styles.kitHeader} aria-label="Current kit and library">
@@ -804,7 +816,7 @@ export function CreativeStudio() {
     info={widgetInfo[widget.id]}
   >{widgetContent[widget.id]}</CreativeWidget>)
 
-  return <main className={styles.lab} data-stacked={portraitPhone || undefined} ref={rootRef} style={{ '--game-board-width': boardResize.width === null ? CREATIVE_BOARD_WIDTH : `${boardResize.width}px`, '--power-cards-width': cardsResize.width === null ? CREATIVE_BOARD_WIDTH : `${cardsResize.width}px` } as React.CSSProperties}>
+  return <main className={styles.lab} data-disable-text-selection data-stacked={portraitPhone || undefined} ref={rootRef} style={{ '--game-board-width': boardResize.width === null ? CREATIVE_BOARD_WIDTH : `${boardResize.width}px`, '--power-cards-width': cardsResize.width === null ? CREATIVE_BOARD_WIDTH : `${cardsResize.width}px` } as React.CSSProperties}>
     <header className={`${styles.studio} ${styles.labHeader}`}>
       <Link href="/" aria-label="Back to the world" className={styles.back}><ArrowLeft size={18} /></Link>
       <h1 className={styles.labTitle}>Chickenchess Lab<VersionChangelog /></h1>
@@ -874,7 +886,6 @@ export function CreativeStudio() {
         </div>
         <div className={styles.boardRow}>
           {palette('w', 'start')}
-          <EggCounter tone="player" value={0} display={<span className={styles.infinity}>∞</span>} widthFor={[0]} role="img" aria-label="Endless golden eggs in Creative" title="Creative has endless golden eggs" />
         </div>
       </div>
       <PowerCardHand hideCost visible={ready} undoAnimationKey={undoAnimationKey} rowRef={powerCardsRef} resize={{ enabled: cardsResize.enabled, onStart: cardsResize.startResize, onResizeBy: cardsResize.resizeBy, onCancel: cardsResize.cancelResize }} move={cardsPan.enabled ? { translate: cardsPan.translate, moving: cardsPan.panning, onPointerDown: cardsPan.startPan } : undefined} actions={cardActions} />

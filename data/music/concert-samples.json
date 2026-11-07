@@ -1,0 +1,117 @@
+[
+  {
+    "id": "concert-piano",
+    "name": "Piano de cauda Steinway B · ressonância longa",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/concert-piano-2-c1.ogg",
+        "keymap": {
+          "c1": "/samples/chicken-classical-v1/concert-piano-2-c1.ogg",
+          "f#1": "/samples/chicken-classical-v1/concert-piano-2-f#1.ogg",
+          "c2": "/samples/chicken-classical-v1/concert-piano-2-c2.ogg",
+          "f#2": "/samples/chicken-classical-v1/concert-piano-2-f#2.ogg",
+          "c3": "/samples/chicken-classical-v1/concert-piano-2-c3.ogg",
+          "f#3": "/samples/chicken-classical-v1/concert-piano-2-f#3.ogg",
+          "c4": "/samples/chicken-classical-v1/concert-piano-2-c4.ogg",
+          "f#4": "/samples/chicken-classical-v1/concert-piano-2-f#4.ogg",
+          "c5": "/samples/chicken-classical-v1/concert-piano-2-c5.ogg"
+        }
+      },
+      {
+        "name": "Marcato",
+        "file": "/samples/chicken-classical-v1/concert-piano-4-c1.ogg",
+        "keymap": {
+          "c1": "/samples/chicken-classical-v1/concert-piano-4-c1.ogg",
+          "f#1": "/samples/chicken-classical-v1/concert-piano-4-f#1.ogg",
+          "c2": "/samples/chicken-classical-v1/concert-piano-4-c2.ogg",
+          "f#2": "/samples/chicken-classical-v1/concert-piano-4-f#2.ogg",
+          "c3": "/samples/chicken-classical-v1/concert-piano-4-c3.ogg",
+          "f#3": "/samples/chicken-classical-v1/concert-piano-4-f#3.ogg",
+          "c4": "/samples/chicken-classical-v1/concert-piano-4-c4.ogg",
+          "f#4": "/samples/chicken-classical-v1/concert-piano-4-f#4.ogg",
+          "c5": "/samples/chicken-classical-v1/concert-piano-4-c5.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "concert-bass-pizz",
+    "name": "Contrabaixo · pizzicato",
+    "variants": [
+      {
+        "name": "Pizzicato",
+        "file": "/samples/chicken-classical-v1/concert-bass-pizz-1-e0.ogg",
+        "keymap": {
+          "e1": "/samples/chicken-classical-v1/concert-bass-pizz-1-e0.ogg",
+          "c2": "/samples/chicken-classical-v1/concert-bass-pizz-1-c1.ogg",
+          "a2": "/samples/chicken-classical-v1/concert-bass-pizz-1-a1.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "concert-trombone",
+    "name": "Trombone tenor · sustentado",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/concert-trombone-1-a#0.ogg",
+        "keymap": {
+          "a#1": "/samples/chicken-classical-v1/concert-trombone-1-a#0.ogg",
+          "f2": "/samples/chicken-classical-v1/concert-trombone-1-f1.ogg",
+          "d3": "/samples/chicken-classical-v1/concert-trombone-1-d2.ogg",
+          "c4": "/samples/chicken-classical-v1/concert-trombone-1-c3.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "concert-bass-drum",
+    "name": "Bumbo sinfônico",
+    "variants": [
+      {
+        "name": "Médio",
+        "file": "/samples/chicken-classical-v1/concert-bass-drum-3-hit.ogg"
+      },
+      {
+        "name": "Forte",
+        "file": "/samples/chicken-classical-v1/concert-bass-drum-5-hit.ogg"
+      }
+    ]
+  },
+  {
+    "id": "concert-snare",
+    "name": "Caixa orquestral",
+    "variants": [
+      {
+        "name": "Suave",
+        "file": "/samples/chicken-classical-v1/concert-snare-p-hit.ogg"
+      },
+      {
+        "name": "Mezzo forte",
+        "file": "/samples/chicken-classical-v1/concert-snare-mf-hit.ogg"
+      }
+    ]
+  },
+  {
+    "id": "concert-cymbal",
+    "name": "Pratos de choque",
+    "variants": [
+      {
+        "name": "Mezzo forte",
+        "file": "/samples/chicken-classical-v1/concert-cymbal-mf-hit.ogg"
+      }
+    ]
+  },
+  {
+    "id": "concert-tam-tam",
+    "name": "Tam-tam · ressonância grave",
+    "variants": [
+      {
+        "name": "Piano",
+        "file": "/samples/chicken-classical-v1/concert-tam-tam-p-hit.ogg"
+      }
+    ]
+  }
+]

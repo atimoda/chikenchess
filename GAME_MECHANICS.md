@@ -1,6 +1,6 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 05/11/2026 — v2.0.0 (Vila dos Telhados, criadores de casas e árvores, trampolins, bicada, arremessos, controles touch e desempenho do Pátio).
+Atualizado em 07/11/2026 — v2.1.0 (seis fases na campanha Classical, pulsos simultâneos e ajustes no Criativo).
 
 ## Leitura por assunto
 

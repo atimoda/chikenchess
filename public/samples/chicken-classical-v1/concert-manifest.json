@@ -1,0 +1,567 @@
+{
+  "license": "CC0-1.0",
+  "revisions": {
+    "VCSL": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+    "VSCO-2-CE": "440300901dfe9275fd84e0b7763af1f8443ae62e"
+  },
+  "recordings": [
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C1_vl2_rr1.wav",
+      "sourceSha256": "8c59a38845e99ff0bc3a3ed2674191003f281d7a72f2dbcfa773dc169c87dcae",
+      "root": "c1",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-c1.ogg",
+          "sha256": "270c2a7174de09b53e2fc94e149335b72f066a27d849c1fdd1e2dbde4cceeadc"
+        },
+        "m4a": {
+          "path": "concert-piano-2-c1.m4a",
+          "sha256": "3807069794e857eea70274bd276193d878819fe835027dc9a246aacd680cc0c4"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%231_vl2_rr1.wav",
+      "sourceSha256": "3e8c01fe4bf2d9f7f4e6c6f9ae76c8aa7fbd88938b434a5ad0b4ede2ab8835c9",
+      "root": "f#1",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-f#1.ogg",
+          "sha256": "ddbba10beae33f6c798013b4e4ff00f9a0ef31cdd379c205f03456da6dc7b109"
+        },
+        "m4a": {
+          "path": "concert-piano-2-f#1.m4a",
+          "sha256": "11ef9177bc308a36b2d2ae3c19c5e8fbcca09badc519114448e6242396336680"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C2_vl2_rr1.wav",
+      "sourceSha256": "8efd86d8a58e6334dea0c34c53872e67baa27e3982b5708b844c937bfb5fd5be",
+      "root": "c2",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-c2.ogg",
+          "sha256": "5cfda64fd6c4e4ba2c160bda5f87e78f0fd7a0c6c0385ebea106298b574da1d5"
+        },
+        "m4a": {
+          "path": "concert-piano-2-c2.m4a",
+          "sha256": "31eb5ff81870cf62e0494e5c088a0588269b462ba1478c5147a57804cecef606"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%232_vl2_rr1.wav",
+      "sourceSha256": "3b4c07adb641f09d9fa2630c61c65e17ac7e6fa383661892464957138d03f7b8",
+      "root": "f#2",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-f#2.ogg",
+          "sha256": "8b1ecc18f2f5887058c32f4f65cd3d3a2328fda98f578447984ac31e6c011046"
+        },
+        "m4a": {
+          "path": "concert-piano-2-f#2.m4a",
+          "sha256": "59292f15ca133e492f9797dc402aa88a57f2f9313c1c6192cdd913d500c6b1c1"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C3_vl2_rr1.wav",
+      "sourceSha256": "53c2cf94051119d240c8ccd4b9a91f07aa07333d845515c1ea1276daa775549e",
+      "root": "c3",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-c3.ogg",
+          "sha256": "c9fbda7d0eb857fc854cdd575f8fd2f7d4d033141c95aec708821808d294b1ea"
+        },
+        "m4a": {
+          "path": "concert-piano-2-c3.m4a",
+          "sha256": "9f68901b783e444e426d6968a6c62be4e70bc63c4f4a227af42433c2ebaeec6f"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%233_vl2_rr1.wav",
+      "sourceSha256": "4a2b66d066aba3a0688421cdf3d168fa13fe91c62a42d7159f8084c8f1c99fd1",
+      "root": "f#3",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-f#3.ogg",
+          "sha256": "af709fa580e028bfa599b4babfe69750f414a764dde20f7ee4135bf75b2cd5a4"
+        },
+        "m4a": {
+          "path": "concert-piano-2-f#3.m4a",
+          "sha256": "ced009c205cc51b56154e6eac8847bfe4bfdd4dbf99073a732968cbfbf5f31f2"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C4_vl2_rr1.wav",
+      "sourceSha256": "9c2020587943a86dec7a8b7178cdac1c254c4f3dfc016bb27acdef1af292827f",
+      "root": "c4",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-c4.ogg",
+          "sha256": "7e515e3199fe56a802a94452719b876918acb79b5ff6e4882dac98635215b6ef"
+        },
+        "m4a": {
+          "path": "concert-piano-2-c4.m4a",
+          "sha256": "0c24f8c1e88439fc62f83101f5df75197a14b82d1d2555ccfa7d5d7fe707b631"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%234_vl2_rr1.wav",
+      "sourceSha256": "c296451071e80e936f4b582cd5e1133fe617f7f9a5ca396ad0144d72a3f6f2f5",
+      "root": "f#4",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-f#4.ogg",
+          "sha256": "53181f7922e6c84494887839a27145ab71bcd8a42d5efe995c4dc120c5a01264"
+        },
+        "m4a": {
+          "path": "concert-piano-2-f#4.m4a",
+          "sha256": "0cec4159839721217332c8ee7c1254c4a62874ede07a77ce8c4914e7c97e9806"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "2",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C5_vl2_rr1.wav",
+      "sourceSha256": "167d625aeb78f0d64491d6cb8b0436302f63bd0dd4c2e21180460ef568e4faea",
+      "root": "c5",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-2-c5.ogg",
+          "sha256": "e5f623fd5e02fa5589dcaceb1d11ac39ef96a43634bf3bd463b59dee2d363cd6"
+        },
+        "m4a": {
+          "path": "concert-piano-2-c5.m4a",
+          "sha256": "973dd74068f2ace4d82b86f0c847c99af7188348f008e412382885207c2c69c3"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C1_vl4_rr1.wav",
+      "sourceSha256": "fb38daa60916413d8e75daf3fbaaad8337aec60a0bc8a0ae1d188381669b164a",
+      "root": "c1",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-c1.ogg",
+          "sha256": "d6bf2542b3e929b679d752f2f60f0dcf9f6c9df554e7f43fc87ec7ecf76b20f9"
+        },
+        "m4a": {
+          "path": "concert-piano-4-c1.m4a",
+          "sha256": "bbf7ffa6d22533016c8d3835f64fad76882e1c5e20cd028b84e4ca67843b2b21"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%231_vl4_rr1.wav",
+      "sourceSha256": "18c80638e98b791c95f5531be1591a3a20f635a70f15c37640b7a5b6fb88b5e8",
+      "root": "f#1",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-f#1.ogg",
+          "sha256": "8a17c3e2c3415379e54914cff5aa8e5e4eca2149bc9d2bdc24a45ab3ac492061"
+        },
+        "m4a": {
+          "path": "concert-piano-4-f#1.m4a",
+          "sha256": "3e4ba7a1c22d9c5fce3af8ff201fadf6289984303f5843ab27256f070203b564"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C2_vl4_rr1.wav",
+      "sourceSha256": "7966746eea4af4c232c43235bbf4557824530e4f68d1b76589f9d7f9e689f177",
+      "root": "c2",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-c2.ogg",
+          "sha256": "2282ad57ed8e3d7bea03f448756b97ed35f9b0fb727ef6e94b459551b5a8260d"
+        },
+        "m4a": {
+          "path": "concert-piano-4-c2.m4a",
+          "sha256": "4e261cb88560410a8a296028e750efa5cba053f8e71c14ed6a49858765a7581b"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%232_vl4_rr1.wav",
+      "sourceSha256": "63bbd3ea830115e752048e4c275aaefc888c3912d81c12e73f4f313df5875354",
+      "root": "f#2",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-f#2.ogg",
+          "sha256": "4ee8d341dc420e79eb3de9c39a73bf844b245b3be5b778c783e95b14971c1655"
+        },
+        "m4a": {
+          "path": "concert-piano-4-f#2.m4a",
+          "sha256": "b03cefe447a059ae45e2cccdb9292c13e49e3a1cb071e74d0134857d94954081"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C3_vl4_rr1.wav",
+      "sourceSha256": "96d3944a64f1c1277a621b657d3c1e6d15930ffe83491459a2a37d409217151b",
+      "root": "c3",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-c3.ogg",
+          "sha256": "f7be790e0b2caff5a4d3a17765798d9bac7b0e1af7d8ce2a86b651ac80ec2406"
+        },
+        "m4a": {
+          "path": "concert-piano-4-c3.m4a",
+          "sha256": "47e25fe43580bb0832cf79e72bf2174d2abd5e7800a706e728a9fd8a8a75b2a5"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%233_vl4_rr1.wav",
+      "sourceSha256": "c594ea09b9e4f4b1df38236d7e6cbee133982c90c91ed2445587ca7fd6697af1",
+      "root": "f#3",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-f#3.ogg",
+          "sha256": "7d0a5d0178d3dfafccdf4fd34270c1538c9ae580af9ddef4aa7be3b64844daa9"
+        },
+        "m4a": {
+          "path": "concert-piano-4-f#3.m4a",
+          "sha256": "f701fa09a38433be69c1d9950b2c0d404c9689dbcb915b7ef6be8518e03ffa8a"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C4_vl4_rr1.wav",
+      "sourceSha256": "04e84b9132bd44c4b4ec36536ed67211d5be138e9280e54123c32381650ebc3f",
+      "root": "c4",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-c4.ogg",
+          "sha256": "2b66330bf3533edc9ada123727fc31d49d2c8009340b80fd949aae4629c559a7"
+        },
+        "m4a": {
+          "path": "concert-piano-4-c4.m4a",
+          "sha256": "824e3c27741548d2a0fb7f2d8616fee4855f8dbbfa7f4500c96884f8583fac22"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_F%234_vl4_rr1.wav",
+      "sourceSha256": "9093aebd8603864604627d0869a661754b952a27f1db5d57bcbd7da63839ba90",
+      "root": "f#4",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-f#4.ogg",
+          "sha256": "94ae8293ba35897a83d1117277effa8d9fa5013742478322b423dc9344d7a033"
+        },
+        "m4a": {
+          "path": "concert-piano-4-f#4.m4a",
+          "sha256": "ef00f2258949d8ab1a03db8a52b45286b955c8085becb3d4906930d7600e7228"
+        }
+      }
+    },
+    {
+      "asset": "concert-piano",
+      "variant": "4",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Steinway%20B/NoSus/JHPiano_NoSus_Close_C5_vl4_rr1.wav",
+      "sourceSha256": "885e5a31eaca370dd6f94613da0ebc10a0bce761ba1f09a49e0662493cc09b56",
+      "root": "c5",
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-piano-4-c5.ogg",
+          "sha256": "a224ba6b7e1a2ce3076990a9d1e22211ee00ea1222749af41a516c6b368e3f05"
+        },
+        "m4a": {
+          "path": "concert-piano-4-c5.m4a",
+          "sha256": "422a1e44a2d594850cc1fec54172d64a15c2ed56d774bb61d5429595a5070e1e"
+        }
+      }
+    },
+    {
+      "asset": "concert-bass-pizz",
+      "variant": "1",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Contrabass/Pizz/BKCtbss_Pizz_E0_v1_rr1.wav",
+      "sourceSha256": "7901d4aa056d2a6057a264ce98fc9e66a7ce48575d077a30f14083aa798cd188",
+      "root": "e1",
+      "seconds": 2.402833333333333,
+      "files": {
+        "ogg": {
+          "path": "concert-bass-pizz-1-e0.ogg",
+          "sha256": "025ac2c04ab88d0fde7df7e095ef3818a8a97ec32ed58c2ac8a9c056198ac1f6"
+        },
+        "m4a": {
+          "path": "concert-bass-pizz-1-e0.m4a",
+          "sha256": "0c5a18b677886ff6cb8a03b480a53ed9d14d054060efae503d0e2a53d05a1946"
+        }
+      }
+    },
+    {
+      "asset": "concert-bass-pizz",
+      "variant": "1",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Contrabass/Pizz/BKCtbss_Pizz_C1_v1_rr1.wav",
+      "sourceSha256": "5591160a867b21ba193d601390c9e1f35ec8d5deb0de686a410d25a98a103b06",
+      "root": "c2",
+      "seconds": 1.5340833333333332,
+      "files": {
+        "ogg": {
+          "path": "concert-bass-pizz-1-c1.ogg",
+          "sha256": "24df63190561afc1ef5ddac1d844bbd889ea8d6df06954c0ed1ce0a8f286f07a"
+        },
+        "m4a": {
+          "path": "concert-bass-pizz-1-c1.m4a",
+          "sha256": "65d4c5d31bbd5e14b0963e50def5e33b93eaaefd79696febc818e91ca431e9c6"
+        }
+      }
+    },
+    {
+      "asset": "concert-bass-pizz",
+      "variant": "1",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Contrabass/Pizz/BKCtbss_Pizz_A1_v1_rr1.wav",
+      "sourceSha256": "c88e632ac4f716d4e85112d6ea5bbe2d27d67019296787c25d27178a9e5f18ac",
+      "root": "a2",
+      "seconds": 3.5,
+      "files": {
+        "ogg": {
+          "path": "concert-bass-pizz-1-a1.ogg",
+          "sha256": "da9dd82ba682dbd2fccd860148372bb50c86df12c1a30efa15b472804060c45d"
+        },
+        "m4a": {
+          "path": "concert-bass-pizz-1-a1.m4a",
+          "sha256": "72a7718fcdd97b04f608872293832befdceebca1d07cdd1a3908975864b2a678"
+        }
+      }
+    },
+    {
+      "asset": "concert-trombone",
+      "variant": "1",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/Tenor%20Trombone/sus/tenortbn_sus_A%230_v1_1.wav",
+      "sourceSha256": "44a23123a24d683e9423d5982157ffdc8b1bfb80bd9b4e4523bdff6d47adf461",
+      "root": "a#1",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "concert-trombone-1-a#0.ogg",
+          "sha256": "8e6902bfb011752cf7a54162a6adb4a10a4b07ebe6714831a7b6b352c955d957"
+        },
+        "m4a": {
+          "path": "concert-trombone-1-a#0.m4a",
+          "sha256": "aeeb7b9222c4b3ebdef0e24e5edcc662bc6efe6c3319db74b6ff4cc79198e3bf"
+        }
+      }
+    },
+    {
+      "asset": "concert-trombone",
+      "variant": "1",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/Tenor%20Trombone/sus/tenortbn_sus_F1_v1_1.wav",
+      "sourceSha256": "a33428ce832fe0108e5399026bc8a7687b43c1503a4d19bb38fe24cdff071b25",
+      "root": "f2",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "concert-trombone-1-f1.ogg",
+          "sha256": "6cffe37ca5fc5d009e4555f51c39aa0ab0feedd80027fd172c3c56ab722fd6b7"
+        },
+        "m4a": {
+          "path": "concert-trombone-1-f1.m4a",
+          "sha256": "fe42c36baafaae5d75a3542db5afad2529d8db8d33e8e135e359fbe576a12d0c"
+        }
+      }
+    },
+    {
+      "asset": "concert-trombone",
+      "variant": "1",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/Tenor%20Trombone/sus/tenortbn_sus_D2_v1_1.wav",
+      "sourceSha256": "44809d90ad88bcc42af6caa27749954886b7de5ea93c97dc490b2d52c627d853",
+      "root": "d3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "concert-trombone-1-d2.ogg",
+          "sha256": "af58b72b025b3f72c4084d1080e16ea159027d9784a80fd2072e18afa9d7c8b8"
+        },
+        "m4a": {
+          "path": "concert-trombone-1-d2.m4a",
+          "sha256": "82747fd4e76213ff3cce962ca7452dd1359a39b67f5d88ad4915d8e3c514a2ed"
+        }
+      }
+    },
+    {
+      "asset": "concert-trombone",
+      "variant": "1",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/Tenor%20Trombone/sus/tenortbn_sus_C3_v1_1.wav",
+      "sourceSha256": "a77fcd4bcdd66ae6a8c94045de492553b725a8b9b3489c9e817afb2ba08d1dc9",
+      "root": "c4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "concert-trombone-1-c3.ogg",
+          "sha256": "cd31cde72491e840a0926a541c5290100ba7fc31bb441f27704d277d33bd0840"
+        },
+        "m4a": {
+          "path": "concert-trombone-1-c3.m4a",
+          "sha256": "bbd8c883fddb3b8baf29966015d9c253f6e7b0de01ec0e00f76fb4f01022d8d3"
+        }
+      }
+    },
+    {
+      "asset": "concert-bass-drum",
+      "variant": "3",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v3_rr1_Sum.wav",
+      "sourceSha256": "a2d8829e8b2b59e8afb12fa396b01758827059339c2a84ad066d17b36c82d1ff",
+      "root": null,
+      "seconds": 2.0809583333333332,
+      "files": {
+        "ogg": {
+          "path": "concert-bass-drum-3-hit.ogg",
+          "sha256": "98c9c5cf0e45dd49bf4a63dccce659367fd9bccaf83768b792c307ac6f1f5b87"
+        },
+        "m4a": {
+          "path": "concert-bass-drum-3-hit.m4a",
+          "sha256": "e39eabb79916cd85738547c748456703455f1bf57a28c8165cae44fff84de75a"
+        }
+      }
+    },
+    {
+      "asset": "concert-bass-drum",
+      "variant": "5",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v5_rr1_Sum.wav",
+      "sourceSha256": "642aaf3375eaff1307973f7de3ccbf74d18e71fb3cf9412e021b08fc3bf1981c",
+      "root": null,
+      "seconds": 3.3335833333333333,
+      "files": {
+        "ogg": {
+          "path": "concert-bass-drum-5-hit.ogg",
+          "sha256": "dd9358faceff981b4de70e5f4c502e195fdcf13eceb4902cb90ff1d1aabfe05a"
+        },
+        "m4a": {
+          "path": "concert-bass-drum-5-hit.m4a",
+          "sha256": "7e2c2d85787f1527d40997ca2c63a5d5f38e812e0dfb0d0f175543a0303088b9"
+        }
+      }
+    },
+    {
+      "asset": "concert-snare",
+      "variant": "p",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Legacy%20Snares/OldSnare/snare_p1.wav",
+      "sourceSha256": "6e993cbf07bb8c8f38829b836cf95360c10128efc7e3f031fb2ea81d72fea9da",
+      "root": null,
+      "seconds": 0.118875,
+      "files": {
+        "ogg": {
+          "path": "concert-snare-p-hit.ogg",
+          "sha256": "e0f03686683be2583a1a3b7faa639b6582c9ca244c843f02e81e37310c348d33"
+        },
+        "m4a": {
+          "path": "concert-snare-p-hit.m4a",
+          "sha256": "076a5d5c8e5dad5491c37d3bc2528b7bc813aad4c6fa745642b8d0372d65066a"
+        }
+      }
+    },
+    {
+      "asset": "concert-snare",
+      "variant": "mf",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Legacy%20Snares/OldSnare/snare_mf1.wav",
+      "sourceSha256": "ca6a8efed42a35f624d0c91291165a1514f3018db6b1115c572c3deb6e733218",
+      "root": null,
+      "seconds": 0.165375,
+      "files": {
+        "ogg": {
+          "path": "concert-snare-mf-hit.ogg",
+          "sha256": "b92b3e1383c4f18ae585711d9e7fd3ddea2e23edf73a3b22b82361de1f7bb2de"
+        },
+        "m4a": {
+          "path": "concert-snare-mf-hit.m4a",
+          "sha256": "6358bb5f15c49590120bd545abe0d0a84285647a5a657a696bc4c340f14d0e22"
+        }
+      }
+    },
+    {
+      "asset": "concert-cymbal",
+      "variant": "mf",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Clash%20Cymbals%201/cymbal_crash1_mf1.wav",
+      "sourceSha256": "3b4a6ed42627eedca39f6480e9825dedeaab538197fc734f85be13ba655aa6aa",
+      "root": null,
+      "seconds": 5.0,
+      "files": {
+        "ogg": {
+          "path": "concert-cymbal-mf-hit.ogg",
+          "sha256": "d2bd62d1639e26fa6bb36d619207a021618f628bd4613d7021750def5f56b0b9"
+        },
+        "m4a": {
+          "path": "concert-cymbal-mf-hit.m4a",
+          "sha256": "cecaf6e3c9d5726703218619f5457776eca6a6f2d8ae060b74184fb8ea208e5b"
+        }
+      }
+    },
+    {
+      "asset": "concert-tam-tam",
+      "variant": "p",
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Gong%201/gong_p.wav",
+      "sourceSha256": "3d103e1a7af12eeb17e0c5488f11933ca92b9fbdefa39b8020b64238da2db0d0",
+      "root": null,
+      "seconds": 6.0,
+      "files": {
+        "ogg": {
+          "path": "concert-tam-tam-p-hit.ogg",
+          "sha256": "1c23a4dbdc26750bec5270891c624ab04fc4108d134b450805d207f8583c4462"
+        },
+        "m4a": {
+          "path": "concert-tam-tam-p-hit.m4a",
+          "sha256": "17b2153dc68cf3b9f2e4216ead6ae43d0d6d4fa6f8f059f74ffc35067e459fa2"
+        }
+      }
+    }
+  ]
+}

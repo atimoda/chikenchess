@@ -1,7 +1,7 @@
 """Authoring helpers for the Electronic World style profiles (data/music/profiles/<city>.json).
 
 Each city script composes 16 parts (white slots a1, a2, b1, b2 … h1, h2; black
-mirrors them) with six variations that follow one shared plan:
+mirrors them) with a six-bank foundation (some cities add banks G/H):
   0 Intro · 1 Verse/groove · 2 Break · 3 Chorus/Drop · 4 Interlude · 5 Peak
 Patterns are scale degrees on a 16th grid unless a part says otherwise;
 '.' rests and the marks of lib/music/profile-tokens.ts add articulation:
@@ -11,6 +11,7 @@ node scripts/electronic/check.cjs <city>).
 """
 import json
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2']
@@ -103,6 +104,51 @@ def reactions(rules, thresholds=None):
     if thresholds:
         out['thresholds'] = thresholds
     return out
+
+
+def expanded_form(profile, *, order, labels, lengths, roots, additions):
+    """Add two authored banks and expose absolute voicings as section-relative MIDI.
+
+    roots are indexed by bank, not by timeline position. Articulation, including
+    semitone slides and silent legato stops, is preserved. Existing reaction bank
+    numbers stay stable; a forced bank follows the currently sounding harmony.
+    additions maps every slot to two four-bar phrases (None means silence).
+    """
+    assert sorted(order) == list(range(8))
+    assert len(labels) == len(lengths) == len(roots) == 8
+    assert set(additions) == set(SLOTS)
+    for slot, entry in zip(SLOTS, profile['parts']):
+        new = additions[slot]
+        assert len(new) == 2
+        entry['patterns'].extend(' '.join(p) if isinstance(p, list) else p or ' '.join(['.'] * 64) for p in new)
+        entry['bars'].extend([4, 4])
+        melodic = entry['behavior'] != 'pulse' and not (entry['source']['kind'] == 'sample' and not entry['source']['pitched'])
+        for bank, (pattern, count) in enumerate(zip(entry['patterns'], entry['bars'])):
+            tokens = pattern.split()
+            assert len(tokens) % count == 0, (slot, bank)
+            if not melodic:
+                continue
+            steps = len(tokens) // count
+            relative = []
+            for index, token in enumerate(tokens):
+                match = re.fullmatch(r'(-?\d+(?:,-?\d+)*)(.*)', token)
+                root = roots[bank][(index // steps) % len(roots[bank])]
+                relative.append(','.join(str(int(n) - root) for n in match[1].split(',')) + match[2] if match else token)
+            entry['patterns'][bank] = ' '.join(relative)
+        plan = entry['arrangement']
+        active = plan['active'] + [p is not None for p in new]
+        variations = plan['variations'] + [6, 7]
+        transposes = plan['transpose'] + [0, 0]
+        plan['active'] = [active[i] for i in order]
+        plan['variations'] = [variations[i] for i in order]
+        plan['transpose'] = [transposes[i] for i in order]
+        if 'fills' in plan:
+            fills = plan['fills'] + [None, None]
+            plan['fills'] = [fills[i] for i in order]
+    profile['sections'] = [lengths[i] for i in order]
+    profile['sectionLabels'] = [labels[i] for i in order]
+    profile['harmonicSequences'] = [list(roots[i]) for i in order]
+    profile['harmony'] = 'kit'
 
 
 def write(city, profile):

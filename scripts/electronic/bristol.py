@@ -8,7 +8,7 @@ slides, answered by a reverb-soaked spy guitar. G natural minor,
 Gm7–Ebmaj7–Cm7–Dm7.
 Degrees: 0 G · 1 A · 2 Bb · 3 C · 4 D · 5 Eb · 6 F · 7 G'.
 """
-from kit import (act, arrangement, bar, bars, drums, electronic, machine, part, reactions, recorded, rule, synth, write)
+from kit import (expanded_form, act, arrangement, bar, bars, drums, electronic, machine, part, reactions, recorded, rule, synth, write)
 
 LOOP = ('Gm7', 'Ebmaj7', 'Cm7', 'Dm7')
 VAMP = ('Gm7', 'Gm7', 'Ebmaj7', 'Ebmaj7')
@@ -161,4 +161,56 @@ profile = {
     'reference': 'Trip-hop de Bristol em 1994 (Portishead — Dummy, Massive Attack, Tricky): referência de estilo; material original',
     'url': 'https://en.wikipedia.org/wiki/Trip_hop',
 }
+
+# Keep the theremin's melody, slides, vibrato and effects. Soften everything around it.
+parts[0].update(gain=.28,lpf=3300,patterns=[drums('x'+'.'*63)]*6,bars=[4]*6)
+parts[0]['arrangement']=arrangement((True,True,True,False,True,False))
+parts[1].update(gain=.16,clip=.35,lpf=4800,hpf=1600,patterns=[REST4,
+ drums('x... ..g. x... ..g. x... .... ..x. .... x... ..g. x... .... x... .... ..g. ....'),REST4,
+ drums('x... ..g. x... ..x. x... .... x... ..g. x... ..g. x... .... x... .... ..x. ....'),
+ drums('x... .... .... ....'*4),drums('x... ..g. x... ..x. x... .... ..x. ....'*2)],bars=[4]*6)
+parts[2].update(gain=.12,lpf=4200,patterns=[REST4,drums('.'*60+'x...'),REST4,REST4,REST4,drums('.'*60+'x...')],bars=[4]*6)
+parts[3].update(gain=.35,lpf=6000)
+parts[4].update(gain=.1)
+parts[4]['arrangement']=arrangement((True,True,True,True,True,True))
+parts[5].update(gain=.22,lpf=4800)
+parts[5]['arrangement']=arrangement((False,True,False,True,False,True))
+parts[8].update(gain=.16,lpf=3000)
+parts[8]['arrangement']=arrangement((True,False,True,False,False,True),restart=False)
+parts[10].update(gain=.3,lpf=3200,patterns=[
+ bars(bar('0 . . 2 . . 3 . 4_ . . . 0?0 . . .'),SILENT,SILENT,SILENT),REST4,
+ bars(bar('0 . . 2 . . 3 . 4_ . . . 0?0 . . .'),SILENT,bar('5 . . 4 . . 2 . 1_ . . . 0?0 . . .'),SILENT),REST4,
+ bars(SILENT,bar('. . . . . . . . 2 . 0 . 0?0 . . .'),SILENT,bar('. . . . . . . . 4 . 2 . 0?0 . . .')),REST4],bars=[4]*6)
+parts[10]['arrangement']=arrangement((True,False,True,False,True,False))
+parts[11].update(gain=.1,lpf=6000,patterns=[REST4,REST4,REST4,drums('.'*30+'x.'+'.'*30+'x.'),REST4,drums('.'*14+'x.'+'.'*30+'x.'+'.'*16)],bars=[4]*6)
+parts[13].update(gain=.16,lpf=6500)
+parts[13]['arrangement']=arrangement((False,False,False,True,False,True))
+parts[14].update(gain=.16,lpf=2600)
+parts[14]['arrangement']=arrangement((False,False,True,False,True,False))
+parts[15].update(gain=.13,lpf=2800,patterns=[REST4,REST4,drums('.'*56+'x...x...'),REST4,REST4,drums('.'*56+'x...x.x.')],bars=[4]*6)
+parts[15]['arrangement']=arrangement(fills=(None,None,None,5,None,None))
+OPEN = ('Ebmaj7','Cm7','Gm7','Dm7')
+INTIMATE = ('Cm7','Cm7','Ebmaj7','Dm7')
+
+def soft_keys(chord):
+ c=VOICING[chord]
+ return bar(f"{c}_ . . . . . . . 0?0 . . . {c}' . . .")
+
+def half_sub(chord):
+ r=ROOT[chord]
+ return bar(f'{r}_ . . . . . . . 0?0 . . . {r+7}_ . 0?0 .')
+
+expanded_form(profile,order=[0,1,6,3,2,7,4,5],labels=profile['sectionLabels']+['Pre-Chorus','Bridge'],
+ lengths=profile['sections']+[32,32],roots=[[ROOT[c] for c in p] for p in [LOOP,LOOP,VAMP,LOOP,VAMP,LOOP,OPEN,INTIMATE]],additions={
+ 'a1':(None,drums('x'+'.'*63)), 'a2':(drums('x... ..g. x... ....'*4),None), 'b1':(None,None),
+ 'b2':(drums('.... X... .... X...'*3+'.... X... ..g. X...'),drums('.... .... x... ....'*4)),
+ 'c1':(prog(soft_keys,OPEN),prog(rhodes,INTIMATE,0)), 'c2':(drums('.... ...g .... ....'*4),None),
+ 'd1':(None,bars(bar('3_ . . . . . . . 2 . 0 . 0?0 . . .'),SILENT,bar('5_ . . . . . . . 4 . 2 . 0?0 . . .'),SILENT)),
+ 'd2':(prog(half_sub,OPEN),prog(half_sub,INTIMATE)), 'e1':(prog(pad,OPEN),None),
+ 'e2':(drums('X... .... ..x. .... X... ..x. .... ...x'*2),drums('X... .... .... ....'*4)),
+ 'f1':(bars(bar('5_ . . . 4 . 2 . 0?0 . . . . . . .'),SILENT,bar('4_ . . . 2 . 0 . 0?0 . . . . . . .'),SILENT),None),
+ 'f2':(None,None), 'g1':(None,prog(pad,INTIMATE)), 'g2':(None,None),
+ 'h1':(None,None), 'h2':(drums('.'*56+'x...x...'),None),
+})
+
 write('bristol', profile)

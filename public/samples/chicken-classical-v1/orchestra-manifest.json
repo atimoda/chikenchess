@@ -1,0 +1,720 @@
+{
+  "license": "CC0-1.0",
+  "revision": "440300901dfe9275fd84e0b7763af1f8443ae62e",
+  "recordings": [
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G3_p.wav",
+      "sourceSha256": "c52d8ef3e2882984c09da1b7c7ef40b82e997bc78cfdd380fe167bbcb94b03de",
+      "root": "g3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-p-g3.ogg",
+          "sha256": "e3cd6a6f2aefe5af8c38d868badbed1382a5f1eab860c08e0c4f7fc595769cd3"
+        },
+        "m4a": {
+          "path": "orchestra-violin-p-g3.m4a",
+          "sha256": "d0d785e7910e345f4728bd53c57393dfc9bcd992b3bc73dd367c8a19f9b1465d"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C4_p.wav",
+      "sourceSha256": "592ebf4404ccafc7164c13cc543911ba9a2fe5f5e70dbb200807e2ae37b25035",
+      "root": "c4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-p-c4.ogg",
+          "sha256": "83fc94a13b5b0179d29c7fa7ed24c15c2cf20afcf29e78f25da5858d12264e97"
+        },
+        "m4a": {
+          "path": "orchestra-violin-p-c4.m4a",
+          "sha256": "2c80d73157439fb0960224216573c83564b14ba9d74d15e4691b5ad601b0d183"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G4_p.wav",
+      "sourceSha256": "ad1ba8442a6b40919093c9c831a8171c7030f7e651fbe075ab87764665deef88",
+      "root": "g4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-p-g4.ogg",
+          "sha256": "1aed7139a71a2c4b0d7b9b63359dec3dda1cdc7b03e978f46dfd72a3dace3e8f"
+        },
+        "m4a": {
+          "path": "orchestra-violin-p-g4.m4a",
+          "sha256": "21dda0d558c1832f4258ae80bcb35ef9e41f2d45dd59bf2d0a51eed898c18d27"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C5_p.wav",
+      "sourceSha256": "77a2133b5f97e1ec0edb759c0c552fc3efa7caf4ce1e0a4aa22625cf4c9da130",
+      "root": "c5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-p-c5.ogg",
+          "sha256": "da919733b64213f86eeb3ec6a5016ed56a5708fd6e30754e2ff9de8c07549a06"
+        },
+        "m4a": {
+          "path": "orchestra-violin-p-c5.m4a",
+          "sha256": "43abc9e26494b117346b5575ed330dcca1621d793a7c1c65c04a3d19c1883f81"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G3_f.wav",
+      "sourceSha256": "80bae3776b0ccd3d4774f47429e829c7764f5fe6061ff844a8affc6ac68b7899",
+      "root": "g3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-f-g3.ogg",
+          "sha256": "cd36d1bf8f2a7032697d83f7c5c88680cbcb3b653fc1ec5a9f66636d29130871"
+        },
+        "m4a": {
+          "path": "orchestra-violin-f-g3.m4a",
+          "sha256": "33bb1039fc267fad076c80a127f05c91e1682443695a0a8a6f934977063c6a06"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C4_f.wav",
+      "sourceSha256": "4169605b51a72454f11bc2c34efc66c1d9993fd2b7d5f097a025ef9d3a2dbdfa",
+      "root": "c4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-f-c4.ogg",
+          "sha256": "b8ba61b193a9fe18830d3b1fac1e7aa5e8fa26ab355b6caa1d43273f7a685b0a"
+        },
+        "m4a": {
+          "path": "orchestra-violin-f-c4.m4a",
+          "sha256": "c4a56a26766337708642ebce3c62d7a59cd4fc0ca1e4b3794edc5b10dbb32b3f"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G4_f.wav",
+      "sourceSha256": "14e3ea3d5172722d4d2686bae5da3d603800a7a474fa295d98275a9410913822",
+      "root": "g4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-f-g4.ogg",
+          "sha256": "aee95693d583e5c729b20e201a8072c9f1cc6e42e411f04f51ea4ad9133a6de8"
+        },
+        "m4a": {
+          "path": "orchestra-violin-f-g4.m4a",
+          "sha256": "55752a207a4032e2db784f8553ecf4796d9bc3ef5a25a599da0d806e7b6aa44e"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-violin",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C5_f.wav",
+      "sourceSha256": "af72f852ef2892233699851dacf5f8d97d446822d8eb4ce9e0ec27d5a721b118",
+      "root": "c5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-violin-f-c5.ogg",
+          "sha256": "f8ffbb5c75bc43301017cfcd43001f084ba7476792656cbb86fac493367e5feb"
+        },
+        "m4a": {
+          "path": "orchestra-violin-f-c5.m4a",
+          "sha256": "51b94f7720f2fe0ee708c8a1a38e66863307c63f543b3b4ed8c532a23d6f7130"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-viola",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Viola%20Section/susvib/ViolaEns_susvib_C2_v1_1.wav",
+      "sourceSha256": "8b4e0e0985d245ac9ddc39cdd06cec5bd74fa80056c074736d6eb38fdccfe636",
+      "root": "c3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-viola-1-c2.ogg",
+          "sha256": "c4065e0341f4acd2f0a65153550b60a5071ce79c6e7000e7e74deec8f3bab1f5"
+        },
+        "m4a": {
+          "path": "orchestra-viola-1-c2.m4a",
+          "sha256": "e5e98f70ed4b7d817b062e3cb136f1a0d77ad2f25f3edfdfe26d73e937a480b1"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-viola",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Viola%20Section/susvib/ViolaEns_susvib_G2_v1_1.wav",
+      "sourceSha256": "557c2e033951015c30765bf18266bce0dd0412e3ca646dd1a225c32422c60662",
+      "root": "g3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-viola-1-g2.ogg",
+          "sha256": "57701b559d939efccbb8fad24325a4033bcfe9bbc231ffcaeb4f8e202eb2b22d"
+        },
+        "m4a": {
+          "path": "orchestra-viola-1-g2.m4a",
+          "sha256": "be85634b8748ae5686f32eafdb7ee71682ccb509c3e5f539ce42e7f3fb62c124"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-viola",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Viola%20Section/susvib/ViolaEns_susvib_D3_v1_1.wav",
+      "sourceSha256": "61ab4cfc0ea90c683433a7c50b3bb4fa86a81c9d4854589562707d54ed028349",
+      "root": "d4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-viola-1-d3.ogg",
+          "sha256": "4d7ec42682a10265818dee132a92b7115db39a8ddc8838853ba6f13696805663"
+        },
+        "m4a": {
+          "path": "orchestra-viola-1-d3.m4a",
+          "sha256": "6e73797def7d811f93c93c456783b02477bd217a42b1cbdd5725412718f42ccd"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-viola",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Viola%20Section/susvib/ViolaEns_susvib_A3_v1_1.wav",
+      "sourceSha256": "7cea6482a8f67536e3108f01b688d54d198e5820ffcd0ac5a49652d38f6ec065",
+      "root": "a4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-viola-1-a3.ogg",
+          "sha256": "daa56eaea13f81b40a47dd08e1bf9e94a5beb85a00baeb10f38f9c491988b1f8"
+        },
+        "m4a": {
+          "path": "orchestra-viola-1-a3.m4a",
+          "sha256": "cee2fdd0ebdeddbc7bb44634ff1f95a9cd9c31c0a6b4625d8c352ba99f9dc55a"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-cello",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/susvib/susvib_C1_v1_1.wav",
+      "sourceSha256": "abdcea431f384e135c469b0f3e4ac2a437f282f521dc5bcbe22abc221536e8de",
+      "root": "c2",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-cello-1-c1.ogg",
+          "sha256": "aca4a61be64ff1aece85789a8a6982b578acd426a1e5165db0bb9774ef799aeb"
+        },
+        "m4a": {
+          "path": "orchestra-cello-1-c1.m4a",
+          "sha256": "55c783b1217507b58298414278d8bcfe51987a70781c001f53bc97c30eb549f1"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-cello",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/susvib/susvib_G1_v1_1.wav",
+      "sourceSha256": "9e5d24e8e28d6c7f650f9bb2b33d43c13e341a8bd33124c64e23881378b181ba",
+      "root": "g2",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-cello-1-g1.ogg",
+          "sha256": "6c0d185de1547aad859c578289f3ebb0f3c8868e4cda083580ad176c035d64d4"
+        },
+        "m4a": {
+          "path": "orchestra-cello-1-g1.m4a",
+          "sha256": "db6b3b180f40ffe1bb669c4273590efaad6a4e8738e10956908072d1736da679"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-cello",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/susvib/susvib_D2_v1_1.wav",
+      "sourceSha256": "e8640dec9febc6e39fcf06b19d2c95a85d5ff8c38f13c9879e69f551eaf38ab8",
+      "root": "d3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-cello-1-d2.ogg",
+          "sha256": "b423cebd5e52159fcee6b6f434d2e2ec863dbaffa3f115dad96c3a0eacda1b16"
+        },
+        "m4a": {
+          "path": "orchestra-cello-1-d2.m4a",
+          "sha256": "d98ac05a0465b4d1718f9492ef409cebc4b9e5cd762bd1b5b978decdd0c3e507"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-cello",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/susvib/susvib_A2_v1_1.wav",
+      "sourceSha256": "c97a003184fdcb153d6b6c0bae8d82a90592a1b04b06bd7caaeda8b9776d5284",
+      "root": "a3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-cello-1-a2.ogg",
+          "sha256": "2ee1e5c22304129bd3056631b50bf6fe8c2cbef100eecefa5afbf3f6914f1321"
+        },
+        "m4a": {
+          "path": "orchestra-cello-1-a2.m4a",
+          "sha256": "998b15aed816f71f2e113c5fdb7e8f7880d912861c0ab18e9caa61aa81cc04bc"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-cello-pizz",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/pizzT/pizzT_C1_v1_RR1.wav",
+      "sourceSha256": "9032689650e38cb7a967616d15f3434bd52865637200e785bf89c3a1a88b29ce",
+      "root": "c2",
+      "seconds": 3.1320833333333336,
+      "files": {
+        "ogg": {
+          "path": "orchestra-cello-pizz-1-c1.ogg",
+          "sha256": "38f618ea135280d53da37ae597681b39c59662a81699d3e87a8fffed7eb37cd8"
+        },
+        "m4a": {
+          "path": "orchestra-cello-pizz-1-c1.m4a",
+          "sha256": "9589e5d2a86fe6127caac760fe7f504351ab8f9228e9346c61021fbb0377ab14"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-cello-pizz",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/pizzT/pizzT_G1_v1_RR1.wav",
+      "sourceSha256": "4bfeddd80e7dd07d71f627d16b7458231c6b14118b8b8b3fe039ba8b73d88236",
+      "root": "g2",
+      "seconds": 3.2184166666666667,
+      "files": {
+        "ogg": {
+          "path": "orchestra-cello-pizz-1-g1.ogg",
+          "sha256": "ccc011f30ef4dfb7fc259ed4b3efd926b62037d5673c611d29072dfd052df84a"
+        },
+        "m4a": {
+          "path": "orchestra-cello-pizz-1-g1.m4a",
+          "sha256": "b1f969514ec001167543e8e5dbc5677c9c9c6386997b98ecbdbca046ee24c662"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-cello-pizz",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/pizzT/pizzT_D2_v1_RR1.wav",
+      "sourceSha256": "434925e6b7d154cfa7c17e89ccc8e4a126e01a970cabee22fe09a9fb0e462bb6",
+      "root": "d3",
+      "seconds": 2.72925,
+      "files": {
+        "ogg": {
+          "path": "orchestra-cello-pizz-1-d2.ogg",
+          "sha256": "e56f2d12adb9ea526ec0263959f09c3929fec5165ce68afcca8de623ac39cb28"
+        },
+        "m4a": {
+          "path": "orchestra-cello-pizz-1-d2.m4a",
+          "sha256": "f309b6ae076a4a74ecffbaff17207e352e704ecf39b96784ecb823b1f0f251b6"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-bass",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Contrabass/SusNV/BKCtbss_SusNV_E0_v1_rr1.wav",
+      "sourceSha256": "b510c6c2eb4fb0acba5eaaaa703ebe19025cad3749f645c41f883e4217b338fa",
+      "root": "e1",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-bass-1-e0.ogg",
+          "sha256": "bf44a868bbabd1de06fd2c7cf6e1d28f06d38080596418dbbc6dbbd62e475b8f"
+        },
+        "m4a": {
+          "path": "orchestra-bass-1-e0.m4a",
+          "sha256": "cebb41e77656768fb01a3308c47ef0a51391a6461df4bcb9c5bcb65a586e7cfd"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-bass",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Contrabass/SusNV/BKCtbss_SusNV_C1_v1_rr1.wav",
+      "sourceSha256": "c930941735e707b109878f4734110412ebe26b983c2b3e300510175aedf5e61c",
+      "root": "c2",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-bass-1-c1.ogg",
+          "sha256": "244f9e2db9a56b8e1cdff1fe15c4d65ebcc586e29ba8d632f8a5fca4dca86aa3"
+        },
+        "m4a": {
+          "path": "orchestra-bass-1-c1.m4a",
+          "sha256": "99848f56dc5d12abc6f1602cc78b447c339ca22b6761ef52462501e05dc64700"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-bass",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Contrabass/SusNV/BKCtbss_SusNV_A1_v1_rr1.wav",
+      "sourceSha256": "06057880075d08c3f5a9df78bb7ec07f4cd41bd26e09a69f7a2e92cc66f308d9",
+      "root": "a2",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-bass-1-a1.ogg",
+          "sha256": "84da665e653f52ac7bf76d0c8b221585eb251e1e1bd0d42f276857b81113498b"
+        },
+        "m4a": {
+          "path": "orchestra-bass-1-a1.m4a",
+          "sha256": "ce72bc6952f7a7d27a152bce0358cf47eb438483e770ac702db11cc6e6210666"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-oboe",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Oboe/Sus/Oboe_Sus_D3_v1_Main.wav",
+      "sourceSha256": "a9ebaf19502bde43fe8409debddf8d326c0843980598f978e521ce3526750350",
+      "root": "d4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-oboe-1-d3.ogg",
+          "sha256": "27809c1cece391f341b587c45333bcc8b0083eda45525157fc25f7cbaf0f70ed"
+        },
+        "m4a": {
+          "path": "orchestra-oboe-1-d3.m4a",
+          "sha256": "5cf21b39b3f3cf57460125d7c29e8ed37537078fd26fc7dee6fcd633dd6bc516"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-oboe",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Oboe/Sus/Oboe_Sus_A%233_v1_Main.wav",
+      "sourceSha256": "07a36bd18290315aee1a98221c4d40935f1d926c85ba6f29017e59f7b450444a",
+      "root": "a#4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-oboe-1-a#3.ogg",
+          "sha256": "335cf4b2bc5513eeddc59a4319d1086c31ab950a3917880bdd92bd2509a1542a"
+        },
+        "m4a": {
+          "path": "orchestra-oboe-1-a#3.m4a",
+          "sha256": "505fe22c52ae41c9945584e88b4ee1f96516e1f6f7b0d476068d3ef99b1ed390"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-oboe",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Oboe/Sus/Oboe_Sus_F4_v1_Main.wav",
+      "sourceSha256": "e4d1bf4166f77f42ad1f113f23c758db109e860c4764d5dd19705c70917a7c43",
+      "root": "f5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-oboe-1-f4.ogg",
+          "sha256": "bafff7530fa6de7a854db37e508d0010d98bc0be7cdb5278ccb007c38422f7bf"
+        },
+        "m4a": {
+          "path": "orchestra-oboe-1-f4.m4a",
+          "sha256": "ee0bf4af0bfc604cc3e7d66bf99b850cee59038b830e32c83d1b65eb1f66b236"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-clarinet",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Clarinet/susLong/DCClar_susLong_D2_v1_rr1_sum.wav",
+      "sourceSha256": "359344f125ee42ea30b1143ef7ad3ea0d8a19f871d400a07bf784bd691b1a72a",
+      "root": "d3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-clarinet-1-d2.ogg",
+          "sha256": "a8b1a3a12f39bea3396913b14adc82b0dee29369ceb426dd08cc7bd63e7ab6b0"
+        },
+        "m4a": {
+          "path": "orchestra-clarinet-1-d2.m4a",
+          "sha256": "9ec1d4460b71fc6a964ab263aec41ade53fa64843084c9b02f1100acea80a824"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-clarinet",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Clarinet/susLong/DCClar_susLong_A%232_v1_rr1_sum.wav",
+      "sourceSha256": "f4e51e4addda4e87e84b0a57b1de21cb447adff0a2c1aa5c71b5d3ef5618a93e",
+      "root": "a#3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-clarinet-1-a#2.ogg",
+          "sha256": "4057af3f32818b14b432b1c0c847a6bf475d680aa38e8ef762da234c411758b1"
+        },
+        "m4a": {
+          "path": "orchestra-clarinet-1-a#2.m4a",
+          "sha256": "c39bd9e94494edc62ad27d0f532f450b91871cb4d76e544ea34c9e0595cd0dc9"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-clarinet",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Clarinet/susLong/DCClar_susLong_F3_v1_rr1_sum.wav",
+      "sourceSha256": "0677787afa8d1fdc99e267a1518a49dacf3f1899dc27239c1fbe93568fda2222",
+      "root": "f4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-clarinet-1-f3.ogg",
+          "sha256": "8e1151a47207d48bb23f15eb9f5411b72197e0f0aafb783ad56d84ec135d6928"
+        },
+        "m4a": {
+          "path": "orchestra-clarinet-1-f3.m4a",
+          "sha256": "bd1e558a4d04a60d17389caa40c78808b8600e1efa03e949d8535a252bba8555"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-clarinet",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Clarinet/susLong/DCClar_susLong_D4_v1_rr1_sum.wav",
+      "sourceSha256": "61ff877d4b500c2e1b6b51f693cd1ea8df05c7473c2ea458a207b1450495e430",
+      "root": "d5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-clarinet-1-d4.ogg",
+          "sha256": "3c587fc23943a88ae36b6a8c97cfb2967ed856bb189ed2b1dff6bb57111c2e91"
+        },
+        "m4a": {
+          "path": "orchestra-clarinet-1-d4.m4a",
+          "sha256": "53a448a58d8be3775c6360c9c0c331f0e0cc08e8b2733f6ead71ef40dce9c800"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-bassoon",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Bassoon/sus/PSBassoon_C2_v1_1.wav",
+      "sourceSha256": "709401175aa7010b579e3bd1b5b9709797e489cbfdb9b5c4a8ab504098a61239",
+      "root": "c3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-bassoon-1-c2.ogg",
+          "sha256": "2beaacc7e6c42d27a7f3775e853d5e1d1d237b1ac61d5ee23f0387abe3548384"
+        },
+        "m4a": {
+          "path": "orchestra-bassoon-1-c2.m4a",
+          "sha256": "e4f710397c951747d1d4d4f7b87253166f3e99bafca7f3cc4187b7d54844998a"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-bassoon",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Bassoon/sus/PSBassoon_G2_v1_1.wav",
+      "sourceSha256": "ab779b251e22d0e39dfacd9b760d032ab9c3381eda89c86236c28ae14cfbfcf4",
+      "root": "g3",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-bassoon-1-g2.ogg",
+          "sha256": "75b88002640bdb6a4681dc7e66dce62dbc99141d2253008577ec6bf1c496236e"
+        },
+        "m4a": {
+          "path": "orchestra-bassoon-1-g2.m4a",
+          "sha256": "87da65dfda269d81a5afb6eeddba8bfdcd958f1123e93603a7912da97a0fec27"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-bassoon",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Bassoon/sus/PSBassoon_C3_v1_1.wav",
+      "sourceSha256": "facb567a76b81e7859253f0bf2dc750e05d4c4170f70824ce48887547ca9aaf3",
+      "root": "c4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-bassoon-1-c3.ogg",
+          "sha256": "8b8925189773f6db7c6c560750f9a29b103191b48e24a6b0791fbc6cbdbb89a6"
+        },
+        "m4a": {
+          "path": "orchestra-bassoon-1-c3.m4a",
+          "sha256": "74114fc57c1882562b841bbaf7ad27fc3922d8f5edd85223961dbffe0a2de073"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-trumpet",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/Trumpet/sus/Sum_SHTrumpet_sus_C3_v1_rr1.wav",
+      "sourceSha256": "fc49adedf0922c42583145eedd7ba4707cf97a92fb446b73bf160003190efebe",
+      "root": "c4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-trumpet-1-c3.ogg",
+          "sha256": "9caed010f894ca40aaaad21c2c766ce18f9c23de308d11cdcfcbbad6ead86a66"
+        },
+        "m4a": {
+          "path": "orchestra-trumpet-1-c3.m4a",
+          "sha256": "64e03a076fa8f8705c31a5cbc30b21878cb61dc41c6664d8981061958beefbb1"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-trumpet",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/Trumpet/sus/Sum_SHTrumpet_sus_A%233_v1_rr1.wav",
+      "sourceSha256": "0a432ceeddcecea962e2e0ebb5c3e80be3d3f251d38c5d4ddc0df4089e97351b",
+      "root": "a#4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-trumpet-1-a#3.ogg",
+          "sha256": "e84da2da3b75b1600721b84c09c6bd88d80ace4d04c3e196799063cee9ffeb15"
+        },
+        "m4a": {
+          "path": "orchestra-trumpet-1-a#3.m4a",
+          "sha256": "7c796c274bcd40ee58de86c67de7976addc86707da3a1c80021089b559653206"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-trumpet",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/Trumpet/sus/Sum_SHTrumpet_sus_D4_v1_rr1.wav",
+      "sourceSha256": "fa4a3f77ead22cb58afdaa1732b9b6c8ec6033708ae339df6446a56c1b7cc8e9",
+      "root": "d5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-trumpet-1-d4.ogg",
+          "sha256": "1cadecb95c53750f0b99dc6d07dc6b4ce995567254dcfdc9dc9bba0ecb237c3f"
+        },
+        "m4a": {
+          "path": "orchestra-trumpet-1-d4.m4a",
+          "sha256": "e5cee05b4945f1fad7f7e2cacf0fbef2fb4f438164818a40ef7fa0ec06c22c7b"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-horn",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/F%20Horn/sus/MOHorn_sus_G1_v1_1.wav",
+      "sourceSha256": "f26c86c4ed934343c37291c33324c4797db1de62f5030dee1670d2d6e64dcb65",
+      "root": "g2",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-horn-1-g1.ogg",
+          "sha256": "828c49ad2ca214165bbf5b12bb515b5da0c4b86a4574ce427ad2e95b3e8dd983"
+        },
+        "m4a": {
+          "path": "orchestra-horn-1-g1.m4a",
+          "sha256": "12c83aad0901bb141d614187b94be8696f4df14bab60c866e0501e91c2156565"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-horn",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/F%20Horn/sus/MOHorn_sus_C3_v1_1.wav",
+      "sourceSha256": "d96bc1821e46352e620fc0e3eaa9bbc415824e0f84f19aac6373c54c6aaa34da",
+      "root": "c4",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-horn-1-c3.ogg",
+          "sha256": "5f314155cdfcc7bf0dd229e8c4381e481c5a1920bd6912a66c3faefdac368215"
+        },
+        "m4a": {
+          "path": "orchestra-horn-1-c3.m4a",
+          "sha256": "cc9320957ee2bdbf01d7a25d5c5a5ada3e5e3bb6285b54d1478ba75ecc8d19ac"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-horn",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/F%20Horn/sus/MOHorn_sus_F4_v1_1.wav",
+      "sourceSha256": "580b2e57aa42f5fd6e4ecb65dcb79f01dfe510e98ddc2bea0a77fca1cba8d424",
+      "root": "f5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-horn-1-f4.ogg",
+          "sha256": "35c81f82ef2822e19593b6eb6c89e02335666302520b855dfee2e08f522bea1a"
+        },
+        "m4a": {
+          "path": "orchestra-horn-1-f4.m4a",
+          "sha256": "e007c15c8e9656cb4bd514d044ccc7b3634e89cdc6150f47b15022dfb98a1a50"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-flute",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Flute/susNV/LDFlute_susNV_C4_v1_1.wav",
+      "sourceSha256": "105a6dbced98de7ae04a317bdd3ba1a5c6b90dc94034439b68cce6635e2781df",
+      "root": "c5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-flute-1-c4.ogg",
+          "sha256": "ff69bad4edb03d12bb7a55c0c4e095ad84d72817a5d6448f050d5db75a132319"
+        },
+        "m4a": {
+          "path": "orchestra-flute-1-c4.m4a",
+          "sha256": "0024f67f73c7aec401f5c29c74af6f13afe51792fb2e9d389e1c46f85b7c70d9"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-flute",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Flute/susNV/LDFlute_susNV_E4_v1_1.wav",
+      "sourceSha256": "b609d37fb577e2a0f64f20800fba4bed067151375349bf713c0d4e803f862580",
+      "root": "e5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-flute-1-e4.ogg",
+          "sha256": "42fbf2c0ec7dd07f2819d5fe4c40aa6a6a90e99bde212969f1067d4ccac64ec8"
+        },
+        "m4a": {
+          "path": "orchestra-flute-1-e4.m4a",
+          "sha256": "38c84567f095b7a2c9124ade0ec28f91fe87687be2f7422c4504bfe954663f86"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-flute",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Flute/susNV/LDFlute_susNV_A4_v1_1.wav",
+      "sourceSha256": "c8fd15bb561dbdac6d35ffd9c5e49413131d96f8948d5bdf03d4a03fa344c5c0",
+      "root": "a5",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-flute-1-a4.ogg",
+          "sha256": "0a95e41f733241571168f6243cc96f81f2d68edcd0e256914376e7aec1da3c32"
+        },
+        "m4a": {
+          "path": "orchestra-flute-1-a4.m4a",
+          "sha256": "df692e0bd4de58c04366661f703655d3b81204c6b89fb861af5243248392b190"
+        }
+      }
+    },
+    {
+      "asset": "orchestra-flute",
+      "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Flute/susNV/LDFlute_susNV_C5_v1_1.wav",
+      "sourceSha256": "46a335b804c9b2f081efa8e6c695f155d05b3700c69bf73950cc9cb40ed53d41",
+      "root": "c6",
+      "seconds": 4.5,
+      "files": {
+        "ogg": {
+          "path": "orchestra-flute-1-c5.ogg",
+          "sha256": "b77f1f380c057d1a2ebe94de1adc48a434add9add1356dc9a1b8ae133f26daea"
+        },
+        "m4a": {
+          "path": "orchestra-flute-1-c5.m4a",
+          "sha256": "4a6bbb9ff7eef84a9a76f8d549492ffb20bb22db39eb728f1a078e6c80af663a"
+        }
+      }
+    }
+  ]
+}

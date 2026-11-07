@@ -291,6 +291,8 @@ export function ChessgroundBoard({
 
   const frozenSquaresKey = matchPowers.filter(power => power.kind === 'freeze').map(power => power.square).sort().join(',')
   const positionFen = game.fen()
+  // Free-mode handlers can change on any Creative render, including widget drags.
+  const freeModeKind = freeMode?.mode
   useEffect(() => {
     clearFrozenFeedback()
     clearRejectedPiece()
@@ -298,7 +300,7 @@ export function ChessgroundBoard({
       clearFrozenFeedback()
       clearRejectedPiece()
     }
-  }, [positionFen, frozenSquaresKey, orientation, freeMode, clearFrozenFeedback, clearRejectedPiece])
+  }, [positionFen, frozenSquaresKey, orientation, freeModeKind, clearFrozenFeedback, clearRejectedPiece])
 
   useEffect(() => {
     const release = (event: PointerEvent) => {
@@ -344,7 +346,7 @@ export function ChessgroundBoard({
       document.removeEventListener('visibilitychange', visibility)
       window.removeEventListener('keydown', escape)
     }
-  }, [onPieceRelease, onPieceCancel, clearFrozenFeedback])
+  }, [onPieceRelease, onPieceCancel, clearFrozenFeedback, clearRejectedPiece])
 
   const board = game.board()
   const [frostRotations, setFrostRotations] = useState<Record<string, number>>({})
@@ -486,7 +488,7 @@ export function ChessgroundBoard({
   const effectPly = confirmedPowerState?.ply ?? game.history().length
   const previousPowers = useRef({ powers: effectPowers, ply: effectPly })
   useEffect(() => {
-    const removed = freeMode ? [] : releasedPowers(previousPowers.current.powers, effectPowers, previousPowers.current.ply, effectPly)
+    const removed = freeModeKind ? [] : releasedPowers(previousPowers.current.powers, effectPowers, previousPowers.current.ply, effectPly)
     previousPowers.current = { powers: effectPowers, ply: effectPly }
     const move = game.history({ verbose: true }).at(-1)
     const effects = removed.map(power => {
@@ -502,7 +504,7 @@ export function ChessgroundBoard({
     const cancels = [...new Set(effects.map(power => power.kind))].map(kind => getSfxEngine().playPowerRelease(kind))
     const timer = window.setTimeout(() => setFadingPowers([]), POWER_RELEASE_MS)
     return () => { window.clearTimeout(timer); cancels.forEach(cancel => cancel()) }
-  }, [game, effectPowers, effectPly, freeMode])
+  }, [game, effectPowers, effectPly, freeModeKind])
 
   // Find king position for check highlight
   const findKingSquare = useCallback((): Square | null => {

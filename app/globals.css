@@ -3,6 +3,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Cover overlays mounted directly in the body as well as the active mode. */
+body:has([data-disable-text-selection]) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body:has([data-disable-text-selection]) :is(input, textarea):read-write {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 select[data-city-dropdown] option {
   color: #a3a3a3;
 }

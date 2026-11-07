@@ -7,7 +7,7 @@ caixa rolls into each section. A distorted saw riff on the queen and an acid lin
 on the knight. E Phrygian, a drone on E with the dark F as the only move.
 Degrees: 0 E · 1 F · 2 G · 3 A · 4 B · 5 C · 6 D · 7 E'.
 """
-from kit import (act, arrangement, bar, bars, drums, electronic, machine, part, reactions, recorded, rule, synth, write)
+from kit import (expanded_form, act, arrangement, bar, bars, drums, electronic, machine, part, reactions, recorded, rule, synth, write)
 
 LOOP = ('Em', 'Em', 'Em', 'F')
 DRONE = ('Em', 'Em', 'Em', 'Em')
@@ -145,4 +145,49 @@ profile = {
     'reference': 'Techno underground de São Paulo no início dos anos 90 (cena pré-Hell’s Club: Krawitz, Mau Mau) com percussão brasileira: referência de estilo; material original',
     'url': 'https://pt.wikipedia.org/wiki/Hell%27s_Club',
 }
+
+# Rides are accents in four-bar phrases; the 909 kick, not continuous treble, carries weight.
+parts[1].update(gain=.11,lpf=6500,hpf=1800,clip=.4,patterns=[REST4,
+ drums('..x. .... .... ..g. .... .... ..x. .... ..x. .... .... .... .... ..g. .... ..x.'),REST4,
+ drums('..x. .... ..g. .... .... ..x. .... ..g. ..x. .... .... ..x. .... ..g. ..x. ....'),REST4,
+ drums('..x. ..g. .... ..x. .... ..x. ..g. .... ..x. .... ..x. ..g. .... ..x. .... ....')],bars=[4]*6)
+parts[1]['arrangement']=arrangement((False,True,False,True,False,True))
+parts[2]['design'].update(resonance=12,filterEnv=2.5)
+parts[2]['patterns'][2]=bars(bar('0! . . . 7~-7 . . . 0?0 . . . . . . .'),SILENT,bar('1! . . . 0 . . . 0?0 . . . . . . .'),SILENT)
+parts[2]['arrangement']=arrangement((False,False,True,True,True,True))
+parts[5].update(gain=.38,lpf=8500,hpf=2500,patterns=[drums('..x. .... ..x. ....'*4),drums('xg.. xg.. xg.. xg.g'*4),REST4,drums('xg.. xg.g xg.. xg..'*4),drums('x... x... x... x...'*4),drums('xg.. xg.g xg.. xg.g'*3+'xg.. xg.. xg.r ....')],bars=[4]*6)
+parts[6]['arrangement']=arrangement((False,True,False,False,False,True))
+parts[8].update(gain=.12)
+parts[10].update(gain=.16,lpf=4500)
+parts[10]['arrangement']=arrangement((False,False,False,True,True,False))
+parts[11].update(gain=.12,lpf=7000)
+parts[11]['arrangement']=arrangement((False,True,False,False,True,True))
+parts[12].update(patterns=[REST4,drums('.'*56+'..x.x...'),REST4,drums('.'*48+'...x..x...x.x...'),REST4,drums('.'*48+'...x..x..x..xx..')],bars=[4]*6)
+parts[15].update(patterns=[REST4,REST4,drums('.'*56+'x...x.xx'),REST4,REST4,drums('.'*48+'....x...x.x.x.r.')],bars=[4]*6,gain=.18,lpf=6500)
+parts[15]['arrangement']=arrangement(fills=(None,5,None,5,None,None))
+SUSPEND=('F','F','Em','Em')
+RETURN=('Em','F','Em','Em')
+
+def half_bass(chord):
+ r=ROOT[chord]
+ return bar(f'{r}_ . . . . . 0?0 . . . {r+7} . . . . .')
+
+def turn_acid(chord):
+ r=ROOT[chord]
+ return bar(f'{r}! . . {r+7}~-7 . . {r} . {r+2}! . {r} . {r+4} . {r} .')
+
+expanded_form(profile,order=[0,1,6,3,2,4,7,5],labels=profile['sectionLabels']+['Bridge','Turnaround'],
+ lengths=profile['sections']+[32,16],roots=[[ROOT[c] for c in p] for p in [LOOP,LOOP,DRONE,LOOP,DRONE,LOOP,SUSPEND,RETURN]],additions={
+ 'a1':(drums('x'+'.'*63),None), 'a2':(None,drums('..x. .... .... ....'*3+'.... .... .... ....')),
+ 'b1':(None,prog(turn_acid,RETURN)), 'b2':(drums('.... .... X... ....'*4),drums('.... X... .... X...'*2+'.... X... X... X...'+'X.X. X.X. XXXX ....')),
+ 'c1':(prog(stab,SUSPEND,0),None), 'c2':(None,drums('xg.. xg.. xg.. xg..'*3+'xgxg xgxg xgxg ....')),
+ 'd1':(None,None), 'd2':(prog(half_bass,SUSPEND),prog(rumble,RETURN,0)),
+ 'e1':(bars(*(bar(f'{ROOT[c]},{ROOT[c]+4}_ . . . . . . . 0?0 . . . . . . .') for c in SUSPEND)),None),
+ 'e2':(drums('X... .... .... ..x.'*4),drums('X... X... X... X...'*3+'X... X... X... ....')),
+ 'f1':(drums('.... ..x. .... ....'*4),None), 'f2':(None,None),
+ 'g1':(drums('.'*48+'....x...x.x.....'),drums('.'*48+'....x...x.xx....')),
+ 'g2':(drums('.... ..x. .... x...'*4),drums('..x. .... ..x. ..x.'*3+'..x. ..x. ..xx ....')),
+ 'h1':(drums('.... .... x... ....'*4),None), 'h2':(None,drums('.'*48+'....x.x.xxxx....')),
+})
+
 write('saopaulo', profile)

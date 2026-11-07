@@ -3,6 +3,43 @@ export { RELEASE_LABEL } from './release'
 // User-facing release history shared by the map, game and Creative studio.
 export const CHANGELOG = [
   {
+    version: '2.1.0',
+    date: '07/11/2026',
+    title: 'Seis viagens Classical, pulsos simultâneos e ajustes no Criativo',
+    groups: [
+      { title: 'Música', items: [
+        'A campanha Classical ganha três músicas originais: Venice 1725 · Baroque concerto, Copenhagen 1869 · Nordic piano concerto e Paris 1913 · Modernist ballet. Cada uma tem doze seções, novos contrastes, regiões harmônicas e diálogos próprios entre as peças.',
+        'Mais contrabaixos arco e pizzicato, piano de cauda em duas mãos, trombone e percussão orquestral gravada — incluindo bumbo sinfônico e tam-tam — ampliam a paleta. Os novos kits alternam ritornelos, solos, cadência de piano, passagens líricas e ritmos assimétricos.',
+        'Os três kits Classical foram reconstruídos com cordas nos oito peões e madeiras, metais, cravo ou tímpanos na fileira de trás. Novas gravações acústicas, frases de dezesseis compassos, dinâmica e dez seções dão mais espaço para solos, diálogos, desenvolvimento e retomadas.',
+        'Vienna 1780 agora se chama Viennese Sinfonietta. Leipzig 1723 tem uma direção pastoral barroca e Vienna 1825 ganha uma abertura romântica em alla breve, com regiões harmônicas contrastantes.',
+        'Todas as peças que tocam juntas podem mostrar o pulso de nota ao mesmo tempo. Preferências ganhou Pulsos simultâneos no tabuleiro, ligado por padrão e salvo no navegador. Desligar volta ao destaque de uma peça por vez no Criativo, na campanha e no online.',
+      ] },
+      { title: 'Criativo', items: ['O contador de ovos foi removido do tabuleiro do Criativo.', 'Avisos como Kit carregado somem automaticamente após alguns segundos. O botão de fechar fica reservado aos alertas que precisam de confirmação de leitura, como falhas ao preservar ou salvar o rascunho.'] },
+    ],
+  },
+  {
+    version: '2.0.1',
+    date: '06/11/2026',
+    title: 'Revisão dos kits Electronic World e ajustes na interface',
+    groups: [
+      { title: 'Música', items: [
+        'New York 1977 ganhou flauta e cordas menos agudas, mais espaço entre as respostas e foco no groove de baixo e guitarra.',
+        'Ibiza 1986 foi recomposto: base Balearic Beat com piano, violão, synth suave e percussão, alternando trechos de pista e respiro.',
+        'Manchester 1988 agora se chama Acid House: linha ácida com acentos e slides em primeiro plano, menos efeitos de rave e viradas mais curtas.',
+        'London 1992 agora se chama Jungle: breaks com mais variação, subgrave com espaço e respostas dub no lugar do hoover dominante.',
+        'Os quatro kits passam a ter oito seções: novos Pre-Chorus, Hooks, Bridges e Turnaround alternam momentos mais intensos e mais espaçados, com progressões visíveis em Harmony.',
+        'Düsseldorf agora é Krautrock: bateria orgânica, guitarras, órgão e flauta substituem o synth-pop; Solo e Bridge abrem novos contrastes. Chicago alterna seus hooks e ganha Pre-Chorus e Bridge.',
+        'Tokyo agora é Minimal: sons suaves entram aos poucos, células deslocadas se cruzam e novos Turnaround e Bridge exploram o silêncio.',
+        'São Paulo agora é Hard Techno, com ride 909 mais suave e variado, menos agudos contínuos e novos Bridge e Turnaround. Bristol preserva o teremim modulado, suaviza o chimbal e ganha Pre-Chorus e Bridge.',
+        'Goa agora é Psytrance: mantém as frases anteriores, refina discretamente os agudos e acrescenta Hook, Bridge e Turnaround com novos contrastes rítmicos.',
+      ] },
+      { title: 'Criativo e Pátio', items: [
+        'Arrastar ou segurar sobre rótulos, painéis e menus não seleciona mais texto por acidente. A seleção continua disponível dentro dos campos editáveis.',
+        'No Criativo, arrastar o painel de vozes aberto deixa de interromper a interface com um erro. As linhas acompanham o painel até a posição final.',
+      ] },
+    ],
+  },
+  {
     version: '2.0.0',
     date: '05/11/2026',
     title: 'Vila dos Telhados, criadores de casas e árvores, trampolins e novos controles do Pátio',

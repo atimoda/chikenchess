@@ -1,165 +1,80 @@
-"""Düsseldorf 1978 · Kling Klang synth-pop in the spirit of Kraftwerk's "The Model".
-
-Sound and form follow the record's world: 125 BPM, analogue sequencer bass in
-octave eighths, sine-and-noise synth drums, string-machine chords, a bright
-mono lead hook and a robotic voice on the queen. Every melody and the chord
-plan here are original; nothing is transcribed from the recording.
-C natural minor. Degrees: 0 C · 1 D · 2 Eb · 3 F · 4 G · 5 Ab · 6 Bb · 7 C'.
+"""Düsseldorf 1970 · original early-70s Krautrock study, not late-70s synth-pop.
+Organic motorik drums, bass pedal, interlocking guitar, low flute and organ.
+The date is the scene setting; the composition draws on the early-70s continuum.
 """
-from kit import (act, arrangement, bar, bars, drums, electronic, machine, part, reactions, rule, synth, write)
+from kit import (act, arrangement, bar, bars, drums, expanded_form, part, reactions, recorded, rule, synth, write)
 
-# Verse plan: Cm | Ab | Bb | Cm ; chorus plan: Ab | Bb | Cm | Cm.
-VERSE_ROOTS, CHORUS_ROOTS = (0, -2, -1, 0), (-2, -1, 0, 0)
-CHORD = {0: '0,2,4', -2: '-2,0,2', -1: '-1,1,3', 3: '-4,-2,0'}
-
-
-def octaves(root, variant=0):
-    """Minimoog sequence: root and octave in eighths; variant 1 adds the 16th push into the bar."""
-    r, o = str(root), str(root + 7)
-    cells = [r, '.', o, '.', r, '.', o, '.', r, '.', o, '.', r, '.', o, '.']
-    if variant == 1:
-        cells[15] = o + "'"
-    if variant == 2:
-        cells = [r, '.', '.', '.', '.', '.', '.', '.', r, '.', '.', '.', '.', '.', o, '.']
-    return bar(' '.join(cells))
+S = drums('.' * 16)
+R = bars(*[S] * 4)
+PEDAL = (0, 0, 0, 0)
+OPEN = (0, 0, -1, 0)
+FLOAT = (-2, -2, -1, -1)
+PLANS = [PEDAL, PEDAL, FLOAT, OPEN, PEDAL, OPEN]
 
 
-def chords(roots, rhythm='whole'):
-    out = []
-    for root in roots:
-        c = CHORD[root]
-        out.append(bar(f'{c}_ . . . . . . . . . . . . . . .') if rhythm == 'whole' else bar(f'. . {c} . . . {c} . . . {c} . . . {c} .'))
-    return bars(*out)
+def progression(roots, shape):
+    return bars(*(bar(shape(r)) for r in roots))
 
 
-def arp(roots):
-    """Sequencer arpeggio in 16ths: root, third, fifth, octave, fifth, third…"""
-    out = []
-    for root in roots:
-        shape = [0, 2, 4, 7, 4, 2, 4, 7, 0, 2, 4, 7, 9, 7, 4, 2]
-        out.append(bar(' '.join(str(root + s) for s in shape)))
-    return bars(*out)
+def drone(roots):
+    return progression(roots, lambda r: f'{r},{r+4}_ . . . . . . . . . . . 0?0 . . .')
 
 
-KICK = drums('X... .... X... ..x. X... .... X... ....')
-SNARE = drums('.... X... .... X... .... X... .... X...')
+def bass(roots, sparse=False):
+    return progression(roots, lambda r: f'{r} . . . {r} . . . {r+4} . . . {r+7} . {r+4} .' if sparse else f'{r} . {r} . {r} . {r+4} . {r} . {r} . {r+7} . {r+4} .')
+
+
+def guitar(roots):
+    return progression(roots, lambda r: f'{r+7} . . {r+4} . . {r+7} . . . {r+9} . {r+7} . . .')
+
+
+LEAD = bars(bar('4_ . . . 7 . 6 . 4_ . . . 0?0 . . .'), S,
+            bar('3_ . . . 4 . 6 . 7_ . . . 0?0 . . .'), bar('. . . . . . . . 4 . 2 . 0_ . 0?0 .'))
+FLUTE = bars(S, bar('4_ . . . 2 . 0 . 0?0 . . . . . . .'), S, bar('3_ . . . 2 . 0 . 0?0 . . . . . . .'))
+K = drums('X... x... X... x...' * 3 + 'X... x... X... ..x.')
+SN = drums('.... X... .... X...' * 3 + '.... X... ..g. X...')
+HAT = drums('x.x. x.x. x.x. x.x.' * 3 + 'x.x. x.x. x.x. x..g')
 parts = [
-    # a1 · rook: string machine, the Orchestron/Solina wash under the whole song.
-    part('harmony', 'String machine', 'sustain', synth('supersaw'), [
-        chords(VERSE_ROOTS), chords(VERSE_ROOTS), chords(VERSE_ROOTS), chords(CHORUS_ROOTS), chords(VERSE_ROOTS), chords(CHORUS_ROOTS),
-    ], [4] * 6, octave=3, gain=.045, attack=.35, decay=.8, sustain=.8, release=.9, gate=.97, clip=1, lpf=2600, hpf=160,
-        design={'unison': 3, 'detune': .12, 'spread': .6, 'lfoTarget': 'lpf', 'lfoRate': 4, 'lfoUnit': 'bars', 'lfoDepth': .25, 'role': 'pad'},
-        arrangement=arrangement((True, True, True, True, True, True), restart=False), effects={'reverb': .35, 'pan': -.2}),
-    # a2 · pawn: low sequencer blip on the off-eighths, the machine ticking under the groove.
-    part('rhythm', 'Blip de sequenciador', 'pulse', machine('synth-blip-low'), [
-        drums('..x. ..x. ..x. ..x.'), drums('..x. ..x. ..x. ..x.'), drums('.... .... ..x. ....'),
-        drums('..x. ..x. ..x. ..xx'), drums('..x. .... ..x. ....'), drums('..x. ..x. ..x. ..xx'),
-    ], [1] * 6, gain=.09, clip=.6, lpf=4000, hpf=200, effects={'reverb': .05, 'pan': -.35, 'delay': .1}),
-    # b1 · knight: arpeggiated sequencer, square wave with a resonant filter.
-    part('response', 'Sequência Kling Klang', 'phrase', synth('square'), [
-        arp(VERSE_ROOTS), arp(VERSE_ROOTS), bars(bar('0 . . . 4 . . . 7 . . . 4 . . .'), bar('-2 . . . 2 . . . 5 . . . 2 . . .'), bar('-1 . . . 3 . . . 6 . . . 3 . . .'), bar('0 . . . . . . . . . . . . . . .')),
-        arp(CHORUS_ROOTS), arp(VERSE_ROOTS), arp(CHORUS_ROOTS),
-    ], [4] * 6, octave=4, gain=0.11, attack=.002, decay=.09, sustain=.15, release=.05, gate=.5, clip=.9, lpf=1800, hpf=300,
-        design={'resonance': 9, 'filterEnv': 2.2, 'filterDecay': .08, 'delayTime': '3/16', 'delayFeedback': .35},
-        arrangement=arrangement((False, True, True, True, False, True), restart=True), effects={'delay': .25, 'reverb': .15, 'pan': .3}),
-    # b2 · pawn: electronic hand-clap tick doubling the snare in the chorus.
-    part('rhythm', 'Palma eletrônica', 'pulse', machine('808-clap'), [
-        drums('.... .... .... ....'), drums('.... .... .... ....'), drums('.... .... .... ....'),
-        SNARE, drums('.... .... .... ..x.'), SNARE,
-    ], [1, 1, 1, 2, 1, 2], gain=.08, clip=.8, lpf=7000, hpf=600, effects={'reverb': .12, 'pan': .1},
-        arrangement=arrangement((False, False, False, True, True, True))),
-    # c1 · bishop: Polymoog-style brass stabs answering the chorus on the offbeats.
-    part('harmony', 'Metais Polymoog', 'phrase', synth('sawtooth'), [
-        chords(VERSE_ROOTS, 'stab'), chords(VERSE_ROOTS, 'stab'), chords(VERSE_ROOTS, 'stab'), chords(CHORUS_ROOTS, 'stab'), chords(VERSE_ROOTS, 'stab'), chords(CHORUS_ROOTS, 'stab'),
-    ], [4] * 6, octave=4, gain=0.1, attack=.004, decay=.16, sustain=.2, release=.08, gate=.45, clip=.9, lpf=1600, hpf=250,
-        design={'filterEnv': 2.5, 'filterDecay': .12, 'resonance': 3},
-        arrangement=arrangement((False, False, False, True, False, True), restart=True), effects={'reverb': .2, 'pan': -.25}),
-    # c2 · pawn: noise snare with the sine 'pang' on two and four.
-    part('rhythm', 'Caixa de ruído', 'pulse', machine('synth-snare'), [
-        drums('.... .... .... ....'), SNARE, drums('.... .... .... X...'), SNARE, SNARE, drums('.... X... .... X... .... X... ..x. X.x.'),
-    ], [1, 2, 1, 2, 2, 2], gain=0.24, clip=.8, lpf=9000, hpf=180, effects={'reverb': .18, 'pan': .05},
-        arrangement=arrangement((False, True, True, True, True, True), fills=(None, 5, None, 5, None, None))),
-    # d1 · queen: the robotic voice, a talk-sung line that stays near one note, like a vocoder.
-    part('melody', 'Voz robótica', 'phrase', electronic('robot-voice', True), [
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . 4 . 4 .')),
-        bars(bar('4 . . . 4 . . . 4 . 3 . 2 . . .'), bar('2 . . . 2 . . . 2 . 1 . 0 . . .'), bar('1 . . . 1 . . . 3 . 2 . 1 . . .'), bar('0_ . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('7_ . . . . . . . . . . . . . . .')),
-        bars(bar('5 . . . 5 . 4 . 2 . . . 0 . . .'), bar('6 . . . 6 . 5 . 3 . . . 1 . . .'), bar('7 . . . 7 . 6 . 4 . . . 2 . . .'), bar('4_ . . . . . . . 2 . . . 0 . . .')),
-        bars(bar('4 . . . . . . . 4 . . . . . . .'), bar('2 . . . . . . . 0 . . . . . . .')),
-        bars(bar('5 . . . 5 . 4 . 2 . . . 0 . . .'), bar('6 . . . 6 . 5 . 3 . . . 1 . . .'), bar('7 . . . 7 . 6 . 4 . . . 2 . . .'), bar('4_ . . . . . . . 2 . . . 0 . . .')),
-    ], [2, 4, 2, 4, 2, 4], octave=3, gain=0.3, attack=.02, decay=.4, sustain=.75, release=.12, gate=.8, clip=.95, lpf=4200, hpf=150,
-        mapping={'fileDegrees': 0, 'panWidth': .1}, arrangement=arrangement((False, True, False, True, True, True), restart=True),
-        effects={'reverb': .22, 'delay': .12, 'pan': 0}),
-    # d2 · pawn: Minimoog bass sequence in octave eighths.
-    part('bass', 'Baixo Minimoog', 'phrase', synth('sawtooth'), [
-        bars(*(octaves(r, 2) for r in VERSE_ROOTS)), bars(*(octaves(r) for r in VERSE_ROOTS)), bars(*(octaves(r, 2) for r in VERSE_ROOTS)),
-        bars(*(octaves(r, 1) for r in CHORUS_ROOTS)), bars(*(octaves(r) for r in VERSE_ROOTS)), bars(*(octaves(r, 1) for r in CHORUS_ROOTS)),
-    ], [4] * 6, octave=2, gain=0.5, attack=.003, decay=.18, sustain=.45, release=.06, gate=.7, clip=.95, lpf=650, hpf=30,
-        design={'resonance': 7, 'filterEnv': 2.6, 'filterDecay': .16, 'role': 'bass'}, mapping={'fileDegrees': 0, 'panWidth': .05},
-        effects={'reverb': 0, 'pan': 0}),
-    # e1 · king: Orchestron choir; arrives with castling and carries the chorus.
-    part('texture', 'Coro Orchestron', 'sustain', electronic('vox-pad', True), [
-        chords(VERSE_ROOTS), chords(VERSE_ROOTS), chords(VERSE_ROOTS), chords(CHORUS_ROOTS), chords(VERSE_ROOTS), chords(CHORUS_ROOTS),
-    ], [4] * 6, octave=3, gain=.06, attack=.5, decay=1, sustain=.9, release=1.1, gate=.98, clip=1, lpf=3600, hpf=220,
-        arrangement=arrangement((True, False, True, True, False, True), restart=False), effects={'reverb': .45, 'pan': .2}),
-    # e2 · pawn: sine synth kick on one and three, with the push into three.
-    part('rhythm', 'Bumbo sintético', 'pulse', machine('synth-kick'), [
-        drums('X... .... X... ....'), KICK, drums('X... .... .... ....'), KICK, KICK, drums('X... .... X... ..x. X... ..x. X... x.x.'),
-    ], [1, 2, 1, 2, 2, 2], gain=0.65, clip=1, lpf=9000, hpf=25, mapping={'panWidth': 0}, effects={'reverb': 0, 'pan': 0}),
-    # f1 · bishop: the mono lead hook, square wave with vibrato and a little glide.
-    part('melody', 'Lead monofônico', 'phrase', synth('square'), [
-        bars(bar('4 . 4 . 7 . 4 . 6 . 4 . 2 . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('4 . 4 . 7 . 4 . 6 . 4 . 2 . . .'), bar('2 . 2 . 5 . 2 . 4 . 2 . 0 . . .'), bar('1 . 1 . 3 . 1 . 6 . 5 . 3 . 1 .'), bar('2_ . . . . . . . 0 . . . . . . .')),
-        bars(bar('7_ . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .')),
-        # Chorus: the voice sings, so the lead only answers at the end of each bar.
-        bars(bar('. . . . . . . . . . . . 9 . 11 .'), bar('. . . . . . . . . . . . 8 . 10 .'), bar('. . . . . . . . . . . . 7 . 9 .'), bar('. . . . . . . . 11~2 . 9 . 7 . 4 .')),
-        bars(bar('4 . 4 . 7 . 4 . 6 . 4 . 2 . . .'), bar('2 . 2 . 5 . 2 . 4 . 2 . 0 . . .')),
-        bars(bar('. . . . . . . . . . . . 9 . 11 .'), bar('. . . . . . . . . . . . 8 . 10 .'), bar('. . . . . . . . . . . . 7 . 9 .'), bar('. . . . . . . . 11~2 . 9 . 7 . 4 .')),
-    ], [2, 4, 2, 4, 2, 4], octave=4, gain=0.25, attack=.006, decay=.25, sustain=.7, release=.1, gate=.7, clip=.95, lpf=3400, hpf=280,
-        design={'vibrato': 5.5, 'vibratoDepth': .12, 'resonance': 2}, mapping={'fileDegrees': 0, 'panWidth': .15},
-        arrangement=arrangement((True, False, True, True, True, True), restart=True), effects={'delay': .2, 'reverb': .2, 'pan': .15}),
-    # f2 · pawn: high blip accents, the electronic 'ping' between phrases.
-    part('rhythm', 'Blip agudo', 'pulse', machine('synth-blip'), [
-        drums('.... .... .... ..x.'), drums('.... .... .... ..x. .... .... .... x.x.'), drums('.... .... .... ....'),
-        drums('.... ..x. .... ..x.'), drums('.... .... ..x. ....'), drums('.... ..x. .... ..x. .... ..x. .... x.xx'),
-    ], [1, 2, 1, 1, 1, 2], gain=.06, clip=.5, lpf=9000, hpf=500, effects={'delay': .3, 'reverb': .15, 'pan': .4}),
-    # g1 · knight: glockenspiel-like triangle doubling the hook an octave up, sparse.
-    part('response', 'Glockenspiel sintético', 'phrase', synth('triangle'), [
-        bars(bar('7 . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . 4 . 6 .'), bar('. . . . . . . . . . . . 2 . 4 .'), bar('. . . . . . . . . . . . 3 . 6 .'), bar('7 . . . . . . . . . . . . . . .')),
-        bars(bar('7 . . . 4 . . . 2 . . . 0 . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('9 . . . 7 . . . 9 . . . 11 . . .'), bar('8 . . . 6 . . . 8 . . . 10 . . .'), bar('7 . . . 4 . . . 7 . . . 9 . . .'), bar('11 . . . . . . . 7 . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 4 . 2 . 0 . . .')),
-        bars(bar('9 . . . 7 . . . 9 . . . 11 . . .'), bar('8 . . . 6 . . . 8 . . . 10 . . .'), bar('7 . . . 4 . . . 7 . . . 9 . . .'), bar('11 . . . . . . . 7 . . . . . . .')),
-    ], [2, 4, 2, 4, 2, 4], octave=5, gain=0.16, attack=.002, decay=.35, sustain=.05, release=.4, gate=.3, clip=.9, lpf=7000, hpf=600,
-        mapping={'fileDegrees': 0}, arrangement=arrangement(restart=True), effects={'reverb': .35, 'delay': .18, 'pan': -.4}),
-    # g2 · pawn: closed synth tick in eighths, ghosted on the offbeats.
-    part('rhythm', 'Tique metálico', 'pulse', machine('synth-tick'), [
-        drums('.... .... x... ....'), drums('x.g. x.g. x.g. x.g.'), drums('x... x... x... x...'),
-        drums('x.gx x.g. x.gx x.g.'), drums('x.g. x.g. x.g. x.g.'), drums('x.gx x.gx x.gx x.gx'),
-    ], [1] * 6, gain=0.25, clip=.6, lpf=12000, hpf=3000, effects={'reverb': .04, 'pan': .3}),
-    # h1 · rook: filtered white-noise 'wind' sweeping slowly; it marks breaks and transitions.
-    part('texture', 'Vento de ruído', 'sustain', synth('white'), [
-        bars(bar('0_ . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 0_ . . . . . . .')),
-        bars(bar('0_ . . . . . . . . . . . . . . .'), bar('0_ . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . 0_ . . .')),
-        bars(bar('0_ . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 0_ . . . . . . .')),
-    ], [2] * 6, octave=3, gain=0.05, attack=.8, decay=1, sustain=.8, release=1.2, gate=.95, clip=1, lpf=1200, hpf=400,
-        design={'lfoTarget': 'lpf', 'lfoRate': 2, 'lfoUnit': 'bars', 'lfoDepth': .8, 'lfoShape': 'sine', 'resonance': 8, 'role': 'fx'},
-        arrangement=arrangement(restart=False), effects={'reverb': .4, 'pan': -.1}),
-    # h2 · pawn: syndrum toms, falling pitch; they fill the end of each section.
-    part('rhythm', 'Tom sintético', 'pulse', machine('808-tom-high'), [
-        drums('.... .... .... ....'), drums('.... .... .... ....'), drums('.... .... .... x.x.'),
-        drums('.... .... .... ....'), drums('.... .... .... ..x.'), drums('.... .... x.x. xxxx'),
-    ], [1] * 6, gain=.12, clip=.8, lpf=6000, hpf=60, pitchEnvelope=-5, pitchAttack=.12, effects={'reverb': .25, 'pan': -.2},
-        arrangement=arrangement(fills=(5, 5, None, 5, 5, None))),
+    part('texture', 'Órgão de horizonte', 'sustain', synth('triangle'), [drone(p) for p in PLANS], [4]*6,
+         octave=3, gain=.055, attack=.35, release=.6, lpf=1800, hpf=180, arrangement=arrangement((True,False,True,False,True,False)), effects={'reverb':.25,'pan':-.2}),
+    part('rhythm', 'Percussão de madeira', 'pulse', recorded('percussion','conga',pitched=False),
+         [R, drums('.... ..x. .... x...' * 4), R, drums('...x ..x. .... x.x.' * 4), drums('.... .... .... x...' * 4), drums('...x ..x. .x.. x.x.' * 4)], [4]*6,
+         gain=.16, lpf=4500, hpf=130, effects={'reverb':.1,'pan':-.35}),
+    part('response', 'Guitarra circular', 'phrase', recorded('guitars','muted'), [guitar(p) for p in PLANS], [4]*6,
+         octave=3, gain=.24, gate=.5, lpf=3300, hpf=200, mapping={'fileDegrees':0}, arrangement=arrangement((False,True,False,True,True,False)), effects={'delay':.12,'pan':.3}),
+    part('rhythm', 'Pandeirola de estrada', 'pulse', recorded('percussion','tambourine',pitched=False),
+         [R,R,R,drums('.... x... .... x...' * 4),R,drums('.... x... .... x...' * 4)], [4]*6, gain=.16,lpf=6500,hpf=1500,effects={'pan':.2}),
+    part('harmony', 'Órgão em pulsos', 'phrase', recorded('keys','organ'),
+         [progression(p,lambda r:f'{r},{r+2},{r+4}_ . . . 0?0 . . . . . {r},{r+4} . . . . .') for p in PLANS], [4]*6,
+         octave=3,gain=.07,lpf=2000,hpf=150,arrangement=arrangement((False,False,True,True,False,True)),effects={'reverb':.2,'pan':-.2}),
+    part('rhythm','Caixa motorik','pulse',recorded('percussion','snare',pitched=False),
+         [R,SN,drums('.... .... X... ....'*4),SN,drums('.... x... .... x...'*4),SN], [4]*6,gain=.52,lpf=7500,hpf=140,effects={'reverb':.09}),
+    part('melody','Guitarra do Reno','phrase',recorded('guitars','clean'),[R,LEAD,R,LEAD,R,bars(bar('7_ . . . 6 . 4 . 7_ . 9 . 0?0 . . .'),S,bar('6_ . . . 4 . 3 . 4_ . . . 0?0 . . .'),bar('. . . . 2 . 3 . 4 . 2 . 0_ . 0?0 .'))],[4]*6,
+         octave=3,gain=.32,attack=.008,release=.22,lpf=3800,hpf=160,mapping={'fileDegrees':0},arrangement=arrangement((False,True,False,True,False,True)),effects={'reverb':.25,'delay':.16}),
+    part('bass','Baixo motorik','phrase',recorded('guitars','bass'),[bass(p,i in (0,2,4)) for i,p in enumerate(PLANS)],[4]*6,
+         octave=2,gain=.55,gate=.65,lpf=1800,hpf=30,design={'role':'bass'},mapping={'fileDegrees':0,'panWidth':0}),
+    part('texture','Bordão de cordas','sustain',recorded('classical','cello-sustain'),[drone(p) for p in PLANS],[4]*6,
+         octave=3,gain=.1,attack=.4,release=.6,lpf=2300,hpf=100,arrangement=arrangement((False,False,True,False,True,False)),effects={'reverb':.3,'pan':.15}),
+    part('rhythm','Bumbo motorik','pulse',recorded('percussion','kick',pitched=False),
+         [drums('X... .... X... ....'*4),K,drums('X... .... .... ....'*4),K,K,K],[4]*6,gain=.68,lpf=6500,hpf=25,mapping={'panWidth':0}),
+    part('response','Flauta de estúdio','phrase',recorded('classical','flute-sustain'),[FLUTE,R,FLUTE,R,FLUTE,R],[4]*6,
+         octave=4,gain=.15,attack=.04,release=.15,lpf=3400,hpf=250,mapping={'fileDegrees':0},effects={'reverb':.24,'pan':-.3}),
+    part('rhythm','Chimbal aberto suave','pulse',recorded('percussion','open-hat',pitched=False),
+         [R,R,R,drums('.... .... .... ..x.'*4),R,drums('.... ..x. .... ..x.'*4)],[4]*6,gain=.12,lpf=7000,hpf=2200),
+    part('harmony','Guitarra de eco','phrase',recorded('guitars','clean'),
+         [progression(p,lambda r:f'. . . . . . . . {r+4}_ . . . 0?0 . . .') for p in PLANS],[4]*6,
+         octave=3,gain=.13,lpf=2600,hpf=250,arrangement=arrangement((False,False,True,False,True,True)),effects={'delay':.3,'reverb':.25,'pan':.35}),
+    part('rhythm','Chimbal motorik','pulse',recorded('percussion','hat',pitched=False),[drums('x... x... x... x...'*4),HAT,R,HAT,drums('x.x. .... x.x. ....'*4),HAT],[4]*6,
+         gain=.23,lpf=7000,hpf=2200,effects={'pan':.18}),
+    part('texture','Ar de fita','sustain',synth('pink'),[bars(*[S]*3,bar('0_ . . . . . . . 0?0 . . . . . . .'))]*6,[4]*6,
+         gain=.018,attack=.5,release=.3,lpf=1100,hpf=400,arrangement=arrangement((True,False,True,False,False,False)),effects={'reverb':.2}),
+    part('rhythm','Tons de estúdio','pulse',recorded('percussion','conga',pitched=False),
+         [R,drums('.'*56+'x...x...'),R,drums('.'*48+'....x...x.x.xx..'),R,drums('.'*48+'....x...xx.x.x..')],[4]*6,gain=.22,lpf=3500,hpf=90,effects={'pan':-.15}),
 ]
 
 profile = {
-    'name': 'Kling Klang · synth-pop 1978', 'bpm': 125, 'root': 'C', 'scale': 'Menor natural', 'harmony': 'static',
-    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Chorus', 'Interlude', 'Chorus'],
+    'name': 'Rhein · Krautrock 1970', 'bpm': 125, 'root': 'C', 'scale': 'Menor natural', 'harmony': 'static',
+    'swing': 0, 'sections': [32, 64, 32, 64, 32, 64], 'sectionLabels': ['Intro', 'Verse', 'Break', 'Hook', 'Interlude', 'Hook'],
     'parts': parts,
     'reactions': reactions([
         # The song form follows the game: a thin intro, the verse in the middlegame, the chorus as the stakes rise.
@@ -176,7 +91,18 @@ profile = {
         rule('dus-tension', 'tension', 'both', 1, True, [act('lpf', 1800, rampBars=8), act('resonance', 12)], 'lead'),
         rule('dus-promotion', 'promotion', 'both', 2, True, [act('scaleShift', 0, shift='lift'), act('variation', 5)]),
     ]),
-    'reference': 'Kraftwerk — Die Mensch-Maschine (1978), "The Model": som e forma de referência; melodias e harmonias originais',
-    'url': 'https://en.wikipedia.org/wiki/The_Model_(Kraftwerk_song)',
+    'reference': 'Krautrock alemão do início dos anos 70: pulso motorik, improvisação e timbres orgânicos; material original, sem reconstrução de 1970',
+    'url': 'https://www.rockhall.com/wp-content/uploads/2024/03/Kraftwerk_26746_RNRHF_2021_Highres-11.pdf',
 }
+expanded_form(profile, order=[0,1,6,3,2,7,4,5], labels=profile['sectionLabels']+['Solo','Bridge'],
+    lengths=profile['sections']+[32,32], roots=PLANS+[PEDAL,FLOAT], additions={
+    'a1':(None,drone(FLOAT)), 'a2':(drums('...x ..x. .... x...' * 4),drums('.... .... x... ....'*4)),
+    'b1':(guitar(PEDAL),None), 'b2':(None,None), 'c1':(None,drone(FLOAT)),
+    'c2':(SN,drums('.... .... x... ....'*4)), 'd1':(None,None), 'd2':(bass(PEDAL),bass(FLOAT,True)),
+    'e1':(None,drone(FLOAT)), 'e2':(K,drums('X... .... .... ....'*4)),
+    'f1':(bars(bar('0_ . . . 2 . 4 . 3 . 2 . 0?0 . . .'),bar('4_ . . . 6 . 7 . 6 . 4 . 0?0 . . .'),bar('3_ . . . 4 . 6 . 4 . 2 . 0?0 . . .'),bar('2 . 3 . 4_ . . . 2 . 0 . 0?0 . . .')),None),
+    'f2':(None,None), 'g1':(None,progression(FLOAT,lambda r:f'{r+7}_ . . . . . . . 0?0 . . . . . . .')),
+    'g2':(drums('x.x. x.x. x.x. x.x.'*4),None), 'h1':(None,None),
+    'h2':(drums('.'*48+'x...x...x.x.xx..'),drums('x... .... ..x. ....'*4)),
+})
 write('dusseldorf', profile)

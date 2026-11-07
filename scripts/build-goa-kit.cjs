@@ -101,6 +101,8 @@ kit.reactions = {
   ],
 }
 
+require('./electronic/goa-contrasts.cjs').addGoaContrasts(kit)
+
 async function main() {
   const official = validateOfficialKit('goa', kit, CITY_STYLE_REVISIONS.goa)
   const { saveOfficialKit } = await import(path.join(root, 'scripts/admin/official-kits.mjs'))

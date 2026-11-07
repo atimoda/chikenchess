@@ -1,1186 +1,1752 @@
 {
-  "name": "Salão · diálogo clássico",
-  "bpm": 108,
+  "name": "Jardins do Belvedere · sinfonietta",
+  "bpm": 112,
+  "meter": "4/4",
   "root": "C",
   "scale": "Maior",
-  "harmony": "cadence",
+  "harmony": "kit",
   "swing": 0,
   "sections": [
-    16,
-    20,
-    12,
-    20,
-    16,
+    32,
+    64,
+    64,
+    32,
+    64,
+    32,
+    64,
+    32,
+    64,
     32
   ],
   "sectionLabels": [
     "Intro",
     "Verse",
-    "Bridge",
-    "Chorus",
+    "Solo",
     "Interlude",
+    "Chorus",
+    "Bridge",
+    "Interlude",
+    "Chorus",
+    "Solo",
     "Outro"
   ],
-  "parts": [
-    {
-      "role": "bass",
-      "name": "Contrabaixos",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "cello-sustain",
-        "variant": 0,
-        "pitched": true
-      },
-      "patterns": [
-        "0 . 4 . 0 . 4 .",
-        "0 . 4 . 2 . 4 .",
-        "0 . 2 . 4 . 2 .",
-        "0 2 4 2 0 . 4 .",
-        "0 . . . 4 . . . . . 4 . 2 . 4 .",
-        "0 . 4 . 0 . 4 . 0 2 4 2 0 4 4 0"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 2,
-      "gain": 0.11,
-      "attack": 0.12,
-      "release": 0.45,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 1800,
-      "hpf": 25,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "reverbRange": {
-        "first": 0.01,
-        "second": 0.025
-      },
-      "effects": {
-        "reverb": 0.02
-      }
-    },
-    {
-      "role": "melody",
-      "name": "Primeiros violinos",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "violin-sustain",
-        "variant": 1,
-        "pitched": true
-      },
-      "patterns": [
-        "0 2 4 7 6 5 4 3",
-        "4 5 6 7 6 4 2 1",
-        "2 3 4 2 0 . 1 2",
-        "4 6 7 6 5 3 2 0",
-        "2 . 4 . 0 . . 2 . . 6 7 6 4 2 1",
-        "0 2 4 7 6 5 4 3 4 6 7 6 5 3 2 0"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 5,
-      "gain": 0.09,
-      "attack": 0.07,
-      "release": 0.3,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 5200,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": -0.26,
-        "reverb": 0.28
-      },
-      "reverbRange": {
-        "first": 0.26,
-        "second": 0.30500000000000005
-      }
-    },
-    {
-      "role": "harmony",
-      "name": "Violas",
-      "behavior": "sustain",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "violin-sustain",
-        "variant": 0,
-        "pitched": true
-      },
-      "patterns": [
-        "0 . 2 . 4 . 2 .",
-        "2 . 4 . 6 . 4 .",
-        "4 . 2 . 0 . 2 .",
-        "0 . 4 . 6 . 3 .",
-        "0 . . . . 0 . . 0 . . . . 0 . .",
-        "0 . . . 0 . . . 0 . . . 0 . . ."
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 3,
-      "gain": 0.075,
-      "attack": 0.18,
-      "release": 0.5,
-      "decay": 0.2,
-      "sustain": 0.72,
-      "clip": 0.9,
-      "lpf": 4200,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": -0.12,
-        "reverb": 0.3
-      },
-      "reverbRange": {
-        "first": 0.27999999999999997,
-        "second": 0.325
-      }
-    },
-    {
-      "role": "response",
-      "name": "Oboé imaginário",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "band",
-        "asset": "tenor-sax",
-        "variant": 1,
-        "pitched": true
-      },
-      "patterns": [
-        ". 2 . 4 . 3 . 2",
-        ". 4 . 6 . 5 . 4",
-        ". . 2 . . 3 . 4",
-        ". 6 . 5 . 4 . 2",
-        ". . 2 . . . . 4 . . . 6 . 5 . 4",
-        ". 2 . 4 . 3 . 2 . 6 . 5 . 4 2 2"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 4,
-      "gain": 0.075,
-      "attack": 0.008,
-      "release": 0.12,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 7000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          false,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "reverb": 0.26
-      },
-      "reverbRange": {
-        "first": 0.24000000000000002,
-        "second": 0.28500000000000003
-      }
-    },
-    {
-      "role": "harmony",
-      "name": "Violoncelos",
-      "behavior": "sustain",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "cello-sustain",
-        "variant": 0,
-        "pitched": true
-      },
-      "patterns": [
-        "0 . . . 4 . . .",
-        "2 . . . 4 . . .",
-        "4 . . . 2 . . .",
-        "0 . 4 . 2 . 0 .",
-        "0 . . . . 0 . . 0 . . . . 0 . .",
-        "0 . . . 0 . . . 0 . . . 0 . . ."
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 3,
-      "gain": 0.09,
-      "attack": 0.15,
-      "release": 0.5,
-      "decay": 0.2,
-      "sustain": 0.72,
-      "clip": 0.9,
-      "lpf": 2400,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.08,
-        "reverb": 0.29
-      },
-      "reverbRange": {
-        "first": 0.26999999999999996,
-        "second": 0.315
-      }
-    },
-    {
-      "role": "melody",
-      "name": "Flauta",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "flute-sustain",
-        "variant": 1,
-        "pitched": true
-      },
-      "patterns": [
-        "0 . 4 . 7 . 6 .",
-        "4 . 6 . 8 . 7 .",
-        "2 . 4 . 6 . 4 .",
-        "4 6 7 . 6 4 2 .",
-        "2 . . . 6 . . . . . 6 . 8 . 7 .",
-        "0 . 4 . 7 . 6 . 4 6 7 . 6 4 2 0"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 5,
-      "gain": 0.07,
-      "attack": 0.008,
-      "release": 0.12,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 7000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          false,
-          true,
-          true,
-          true,
-          true
-        ],
-        "transpose": [
-          0,
-          0,
-          2,
-          0,
-          0,
-          0
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ]
-      },
-      "effects": {
-        "pan": 0.22,
-        "reverb": 0.32
-      },
-      "reverbRange": {
-        "first": 0.3,
-        "second": 0.34500000000000003
-      }
-    },
-    {
-      "role": "melody",
-      "name": "Clarinetes",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "band",
-        "asset": "tenor-sax",
-        "variant": 0,
-        "pitched": true
-      },
-      "patterns": [
-        ". 0 2 . 4 . 3 .",
-        ". 2 4 . 6 . 5 .",
-        ". 4 . 2 . 0 . 2",
-        ". 4 6 . 7 . 6 .",
-        ". 4 . . . 0 . . . . 4 . 6 . 5 .",
-        ". 0 2 . 4 . 3 . . 4 6 . 7 4 6 0"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 4,
-      "gain": 0.07,
-      "attack": 0.008,
-      "release": 0.12,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 7000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": -0.18,
-        "reverb": 0.27
-      },
-      "reverbRange": {
-        "first": 0.25,
-        "second": 0.29500000000000004
-      }
-    },
-    {
-      "role": "response",
-      "name": "Fagote",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "band",
-        "asset": "tenor-sax",
-        "variant": 1,
-        "pitched": true
-      },
-      "patterns": [
-        "0 . . 2 . . 4 .",
-        "2 . . 4 . . 2 .",
-        "4 . . 2 . . 0 .",
-        "0 . 4 . 2 . 0 .",
-        "4 . . . . . 0 . . . . 4 . . 2 .",
-        "0 . . 2 . . 4 . 0 . 4 . 2 4 0 0"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 3,
-      "gain": 0.07,
-      "attack": 0.008,
-      "release": 0.12,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 7000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          false,
-          true,
-          true,
-          false,
-          true
-        ],
-        "transpose": [
-          0,
-          0,
-          2,
-          0,
-          0,
-          0
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ]
-      },
-      "effects": {
-        "pan": 0.2,
-        "reverb": 0.24
-      },
-      "reverbRange": {
-        "first": 0.22,
-        "second": 0.265
-      }
-    },
-    {
-      "role": "harmony",
-      "name": "Segundos violinos",
-      "behavior": "sustain",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "violin-sustain",
-        "variant": 0,
-        "pitched": true
-      },
-      "patterns": [
-        "4 . 2 . 0 . 2 .",
-        "6 . 4 . 2 . 4 .",
-        "2 . 0 . 4 . 2 .",
-        "4 . 6 . 5 . 3 .",
-        "0 . . . . 0 . . 0 . . . . 0 . .",
-        "0 . . . 0 . . . 0 . . . 0 . . ."
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 4,
-      "gain": 0.075,
-      "attack": 0.12,
-      "release": 0.42,
-      "decay": 0.2,
-      "sustain": 0.72,
-      "clip": 0.9,
-      "lpf": 4200,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          true,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "pan": 0.27,
-        "reverb": 0.28
-      },
-      "reverbRange": {
-        "first": 0.26,
-        "second": 0.30500000000000005
-      }
-    },
-    {
-      "role": "rhythm",
-      "name": "Tímpanos",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "timpani-low",
-        "variant": 1,
-        "pitched": false
-      },
-      "patterns": [
-        "0 . . . . . . . 4 . . . . . . .",
-        "0 . . . 4 . . . 0 . . . 4 . . .",
-        "0 . . . . . . . . . . . 4 . . .",
-        "0 . . . 4 . . . 0 . 4 . . . . .",
-        "0 . . . . . . . . . . . . . . .",
-        "0 . . . . . . . 4 . . . . 0 0 0"
-      ],
-      "bars": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        1
-      ],
-      "octave": 2,
-      "gain": 0.12,
-      "attack": 0.002,
-      "release": 0.28,
-      "lpf": 12000,
-      "hpf": 20,
-      "arrangement": {
-        "active": [
-          true,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "reverb": 0.24
-      },
-      "reverbRange": {
-        "first": 0.22,
-        "second": 0.265
-      }
-    },
-    {
-      "role": "melody",
-      "name": "Trompas",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "trompete",
-        "pitched": true
-      },
-      "patterns": [
-        "0 . 2 . 4 . . .",
-        "4 . 6 . 7 . . .",
-        "2 . . . 4 . . .",
-        "0 . 4 . 6 . 4 .",
-        "2 . . . . . . . . . 6 . 7 . . .",
-        "0 . 2 . 4 . . . 0 . 4 . 6 4 4 0"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 3,
-      "gain": 0.075,
-      "attack": 0.08,
-      "release": 0.35,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 7000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "reverb": 0.27
-      },
-      "reverbRange": {
-        "first": 0.25,
-        "second": 0.29500000000000004
-      }
-    },
-    {
-      "role": "response",
-      "name": "Pizzicato",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "violin-pizzicato",
-        "variant": 1,
-        "pitched": true
-      },
-      "patterns": [
-        "0 . 2 . 4 . 2 .",
-        "2 . 4 . 6 . 4 .",
-        "4 . . 2 . . 0 .",
-        "0 2 4 . 2 0 . 4",
-        "4 . . . . . 0 . . . 4 . 6 . 4 .",
-        "0 . 2 . 4 . 2 . 0 2 4 . 2 0 2 4"
-      ],
-      "bars": [
-        1,
-        1,
-        1,
-        1,
-        4,
-        4
-      ],
-      "octave": 4,
-      "gain": 0.065,
-      "attack": 0.004,
-      "release": 0.08,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 7000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          false,
-          true,
-          true,
-          false,
-          true
-        ],
-        "transpose": [
-          0,
-          0,
-          2,
-          0,
-          0,
-          0
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ]
-      },
-      "effects": {
-        "pan": -0.3
-      },
-      "reverbRange": {
-        "first": 0.08,
-        "second": 0.125
-      }
-    },
-    {
-      "role": "texture",
-      "name": "Órgão de salão",
-      "behavior": "sustain",
-      "source": {
-        "kind": "synth",
-        "sound": "triangle"
-      },
-      "patterns": [
-        "0 . . . . . . .",
-        "4 . . . . . . .",
-        "2 . . . . . . .",
-        "0 . . . 6 . . .",
-        "0 . . . . 0 . . 0 . . . . 0 . .",
-        "0 . . . 0 . . . 0 . . . 0 . . ."
-      ],
-      "bars": [
-        4,
-        4,
-        4,
-        4,
-        4,
-        4
-      ],
-      "octave": 3,
-      "gain": 0.03,
-      "attack": 0.6,
-      "release": 0.9,
-      "decay": 0.2,
-      "sustain": 0.72,
-      "clip": 0.9,
-      "lpf": 1800,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          false,
-          true,
-          true,
-          false,
-          true
-        ],
-        "transpose": [
-          0,
-          0,
-          2,
-          0,
-          0,
-          0
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ]
-      },
-      "effects": {
-        "reverb": 0.36
-      },
-      "reverbRange": {
-        "first": 0.33999999999999997,
-        "second": 0.385
-      }
-    },
-    {
-      "role": "melody",
-      "name": "Flautim",
-      "behavior": "phrase",
-      "source": {
-        "kind": "sample",
-        "bank": "classical",
-        "asset": "flute-sustain",
-        "variant": 1,
-        "pitched": true
-      },
-      "patterns": [
-        ". . 7 . . 6 . 4",
-        ". 8 . 7 . 6 . 4",
-        ". . . . 9 . . .",
-        ". 7 9 . 8 7 6 .",
-        ". . . . 9 . . . . . . 7 . 6 . 4",
-        ". . 7 . . 6 . 4 . 7 9 . 8 7 6 0"
-      ],
-      "bars": [
-        2,
-        2,
-        2,
-        2,
-        4,
-        4
-      ],
-      "octave": 6,
-      "gain": 0.04,
-      "attack": 0.008,
-      "release": 0.12,
-      "decay": 0.2,
-      "sustain": 0.55,
-      "clip": 0.9,
-      "lpf": 7000,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          false,
-          true,
-          true,
-          true,
-          true
-        ],
-        "transpose": [
-          0,
-          0,
-          2,
-          0,
-          0,
-          0
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ]
-      },
-      "effects": {
-        "reverb": 0.3
-      },
-      "reverbRange": {
-        "first": 0.27999999999999997,
-        "second": 0.325
-      }
-    },
-    {
-      "role": "harmony",
-      "name": "Metais graves",
-      "behavior": "sustain",
-      "source": {
-        "kind": "sample",
-        "bank": "sambaReggae",
-        "asset": "trompete",
-        "pitched": true
-      },
-      "patterns": [
-        "0 . . . 4 . . .",
-        "2 . . . 6 . . .",
-        "4 . . . 2 . . .",
-        "0 . 4 . 6 . 3 .",
-        "0 . . . . 0 . . 0 . . . . 0 . .",
-        "0 . . . 0 . . . 0 . . . 0 . . ."
-      ],
-      "bars": [
-        4,
-        4,
-        4,
-        4,
-        4,
-        4
-      ],
-      "octave": 2,
-      "gain": 0.055,
-      "attack": 0.2,
-      "release": 0.55,
-      "decay": 0.2,
-      "sustain": 0.72,
-      "clip": 0.9,
-      "lpf": 1600,
-      "hpf": 100,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "reverb": 0.25
-      },
-      "reverbRange": {
-        "first": 0.23,
-        "second": 0.275
-      }
-    },
-    {
-      "role": "rhythm",
-      "name": "Pratos de cadência",
-      "behavior": "pulse",
-      "source": {
-        "kind": "sample",
-        "bank": "percussion",
-        "asset": "crash",
-        "variant": 1,
-        "pitched": false
-      },
-      "patterns": [
-        "0 . . . . . . . . . . . . . . .",
-        "0 . . . . . . . . . . . . . . .",
-        "0 . . . . . . . . . . . . . . .",
-        "0 . . . . . . . . . . . . . . .",
-        "0 . . . . . . . . . . . . . . .",
-        "0 . . . . . . . . . . . . 0 0 0"
-      ],
-      "bars": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        1
-      ],
-      "octave": 2,
-      "gain": 0.06,
-      "attack": 0.002,
-      "release": 0.55,
-      "lpf": 12000,
-      "hpf": 20,
-      "arrangement": {
-        "active": [
-          false,
-          true,
-          false,
-          true,
-          true,
-          true
-        ],
-        "restart": true,
-        "variations": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "transpose": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      "effects": {
-        "reverb": 0.35
-      },
-      "reverbRange": {
-        "first": 0.32999999999999996,
-        "second": 0.375
-      }
-    }
-  ],
-  "reference": "Mozart — Sinfonia K.338 (1780, composta em Salzburg): referência austríaca, não alegação de estreia em Viena",
-  "url": "https://kv.mozarteum.at/en/work/symphony-in-c-4426",
   "harmonicSequences": [
     [
-      0
-    ],
-    [
-      3
-    ],
-    [
-      4
-    ],
-    [
-      0
-    ],
-    [
-      5,
+      0,
+      0,
+      3,
       3,
       1,
-      4
+      4,
+      4,
+      0
+    ],
+    [
+      0,
+      0,
+      4,
+      4,
+      5,
+      1,
+      4,
+      0
+    ],
+    [
+      0,
+      0,
+      4,
+      4,
+      5,
+      1,
+      4,
+      0
+    ],
+    [
+      0,
+      0,
+      3,
+      1,
+      4,
+      4,
+      4,
+      0
     ],
     [
       0,
       3,
+      0,
+      4,
+      5,
+      1,
       4,
       0
+    ],
+    [
+      5,
+      5,
+      1,
+      1,
+      3,
+      0,
+      4,
+      4
+    ],
+    [
+      0,
+      0,
+      3,
+      1,
+      4,
+      4,
+      4,
+      0
+    ],
+    [
+      0,
+      3,
+      0,
+      4,
+      5,
+      1,
+      4,
+      0
+    ],
+    [
+      0,
+      0,
+      4,
+      4,
+      5,
+      1,
+      4,
+      0
+    ],
+    [
+      0,
+      3,
+      1,
+      4,
+      0,
+      4,
+      0,
+      0
     ]
-  ]
+  ],
+  "reactions": {
+    "overrides": [
+      "opening",
+      "middle",
+      "endgame",
+      "check",
+      "mate",
+      "stalemate",
+      "repetition",
+      "insufficient",
+      "draw",
+      "advantage",
+      "tension",
+      "captureDrought",
+      "oppositeCastling",
+      "firstCastle",
+      "secondCastle",
+      "firstCapture",
+      "capture",
+      "queenCapture",
+      "noQueens",
+      "noKnights",
+      "noRooks",
+      "noBishops",
+      "promotion",
+      "underpromotion",
+      "enPassant",
+      "minimumOne",
+      "minimumBoth",
+      "quiet",
+      "checkEscape",
+      "evalSwing",
+      "hangingPiece",
+      "advancedPawn",
+      "freeze",
+      "shield",
+      "mulligan",
+      "seeBest",
+      "seeWorst",
+      "playBest",
+      "playWorst"
+    ],
+    "rules": [
+      {
+        "id": "vienna-opening",
+        "trigger": "opening",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": -3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "vienna-firstCastle",
+        "trigger": "firstCastle",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 4,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 3,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "vienna-check",
+        "trigger": "check",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "gain",
+            "value": 1,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "vienna-queenCapture",
+        "trigger": "queenCapture",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 2,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "vienna-quiet",
+        "trigger": "quiet",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 2,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 6,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      },
+      {
+        "id": "vienna-endgame",
+        "trigger": "endgame",
+        "enabled": true,
+        "quantize": true,
+        "target": "both",
+        "duration": 1,
+        "actions": [
+          {
+            "type": "variation",
+            "value": 5,
+            "scale": "Maior",
+            "harmony": "static"
+          }
+        ]
+      }
+    ]
+  },
+  "parts": [
+    {
+      "name": "Flauta concertante",
+      "role": "melody",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-flute",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 3_ . . . . . . . 1_ . . . . . . . . . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . 3_ . . . . . . . -1_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 0_ . . . 1_ . . . 2_ . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 6_ . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 0_ . . . . . . . 2_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 4_ . . . 3_ . . . . . . . 1_ . . . . . . . 3_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 2_ . . . 1_ . . . . . . . 0_ . . . . . . . 1_ . . . . . . . . . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . . . . . 6_ . . . 5_ . . . . . . . 3_ . . . . . . . 5_ . . . . . . . 3_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 1_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . 0_ . . . . . . . -1_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 4_ . . . . . . . 6_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "-3_ . . . . . . . -5_ . . . -7_ . . . -5_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -1_ . . . . . . . 1_ . . . . . . . 2_ . . . 0_ . . . -1_ . . . . . . . 0_ . . . 2_ . . . 5_ . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . . . . . . . . . 0?0 . . . . . . . -3_ . . . . . . . -5_ . . . -7_ . . . -5_ . . . . . . . -3_ . . . . . . . 1_ . . . 2_ . . . 3_ . . . . . . . 5_ . . . . . . . 0?0 . . . . . . . -5_ . . . . . . . -4_ . . . -3_ . . . -1_ . . . . . . . -3_ . . . . . . . -4_ . . . . . . . -2_ . . . -1_ . . . 0_ . . . . . . . 2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -1_ . . . 0_ . . . 1_ . . . . . . . 2_ . . . . . . . -1_ . . . . . . . 2_ . . . 0_ . . . -1_ . . . 0_ . . . 2_ . . . 3_ . . . 5_ . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . -2_ . . . -1_ . . . 3_ . . . . . . . 5_ . . . . . . . 7_ . . . . . . . 0?0 . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . -4_ . . . -3_ . . . -1_ . . . . . . . . . . . 0_ . . . 2_ . . . . . . . 0?0 . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 4_ . . . . . . . 6_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . . . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . 2_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 3_ . . . 4_ . . . 5_ . . . . . . . 7_ . . . . . . . 6_ . . . 5_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.6,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": -0.12,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          true,
+          true,
+          false,
+          false,
+          true,
+          false,
+          true,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Primeiros violinos",
+      "role": "melody",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-violin",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 3_ . . . . . . . 1_ . . . . . . . . . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . 3_ . . . . . . . -1_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 0_ . . . 1_ . . . 2_ . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 6_ . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 0_ . . . . . . . 2_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 4_ . . . 3_ . . . . . . . 1_ . . . . . . . 3_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 2_ . . . 1_ . . . . . . . 0_ . . . . . . . 1_ . . . . . . . . . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . . . . . 6_ . . . 5_ . . . . . . . 3_ . . . . . . . 5_ . . . . . . . 3_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 1_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . 0_ . . . . . . . -1_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 4_ . . . . . . . 6_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "-3_ . . . . . . . -5_ . . . -7_ . . . -5_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -1_ . . . . . . . 1_ . . . . . . . 2_ . . . 0_ . . . -1_ . . . . . . . 0_ . . . 2_ . . . 5_ . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . . . . . . . . . 0?0 . . . . . . . -3_ . . . . . . . -5_ . . . -7_ . . . -5_ . . . . . . . -3_ . . . . . . . 1_ . . . 2_ . . . 3_ . . . . . . . 5_ . . . . . . . 0?0 . . . . . . . -5_ . . . . . . . -4_ . . . -3_ . . . -1_ . . . . . . . -3_ . . . . . . . -4_ . . . . . . . -2_ . . . -1_ . . . 0_ . . . . . . . 2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -1_ . . . 0_ . . . 1_ . . . . . . . 2_ . . . . . . . -1_ . . . . . . . 2_ . . . 0_ . . . -1_ . . . 0_ . . . 2_ . . . 3_ . . . 5_ . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . -2_ . . . -1_ . . . 3_ . . . . . . . 5_ . . . . . . . 7_ . . . . . . . 0?0 . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . -4_ . . . -3_ . . . -1_ . . . . . . . . . . . 0_ . . . 2_ . . . . . . . 0?0 . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 4_ . . . . . . . 6_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . . . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . 2_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 3_ . . . 4_ . . . 5_ . . . . . . . 7_ . . . . . . . 6_ . . . 5_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.68,
+      "attack": 0.045,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": -0.42,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          false,
+          true,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Oboé I",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-oboe",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.56,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          true,
+          false,
+          true,
+          true,
+          true,
+          false
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Segundos violinos",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-violin",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "2_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . . . . . . . . . -2_ . . . . . . . 0?0 . . . . . . . 1_ . . . . . . . . . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . -1_ . . . . . . . . . . . . . . . -4_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 1_ . . . . . . . -1_ . . . . . . . . . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -2_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . 0_ . . . . . . . 5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 5_ . . . . . . . . . . . 6_ . . . 5_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . 0_ . . . -2_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 4_ . . . 3_ . . . . . . . 1_ . . . . . . . 1_ . . . . . . . -1_ . . . . . . . -2_ . . . . . . . -4_ . . . . . . . 2_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . 1_ . . . . . . . -3_ . . . . . . . -4_ . . . -5_ . . . -6_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . 0_ . . . . . . . 5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "-2_ . . . . . . . 0_ . . . 2_ . . . 5_ . . . . . . . 4_ . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . -2_ . . . . . . . 0?0 . . . . . . . -2_ . . . -1_ . . . 0_ . . . . . . . 2_ . . . . . . . 1_ . . . 0_ . . . -2_ . . . . . . . . . . . -3_ . . . -5_ . . . . . . . 0?0 . . . . . . . -2_ . . . . . . . 0_ . . . 2_ . . . 0_ . . . . . . . -2_ . . . . . . . 0_ . . . 1_ . . . 2_ . . . . . . . 0_ . . . . . . . -2_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . . . . . 0_ . . . -2_ . . . -5_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . 7_ . . . 9_ . . . 7_ . . . . . . . 5_ . . . . . . . 4_ . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . 1_ . . . 0_ . . . -2_ . . . . . . . 0_ . . . . . . . 1_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -5_ . . . -4_ . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . 0_ . . . -2_ . . . -3_ . . . -5_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "2_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . . . . . . . . . -2_ . . . . . . . 0?0 . . . . . . . 1_ . . . . . . . . . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . 1_ . . . . . . . . . . . . . . . -2_ . . . . . . . 0?0 . . . . . . . 1_ . . . . . . . . . . . 0_ . . . -1_ . . . . . . . -2_ . . . . . . . -1_ . . . . . . . . . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -2_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . 0_ . . . . . . . 5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 5_ . . . . . . . . . . . 6_ . . . 5_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . 0_ . . . -2_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 4_ . . . 3_ . . . . . . . 1_ . . . . . . . 3_ . . . . . . . 1_ . . . . . . . 0_ . . . . . . . -2_ . . . . . . . -1_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -2_ . . . . . . . -3_ . . . . . . . -4_ . . . -5_ . . . -6_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . 0_ . . . . . . . 5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "-2_ . . . . . . . 0_ . . . 2_ . . . 5_ . . . . . . . 4_ . . . 3_ . . . -1_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . 0?0 . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 6_ . . . . . . . 5_ . . . 4_ . . . -2_ . . . . . . . . . . . -3_ . . . -5_ . . . . . . . 0?0 . . . . . . . -2_ . . . . . . . 0_ . . . 2_ . . . 0_ . . . . . . . -2_ . . . . . . . 0_ . . . 1_ . . . 2_ . . . . . . . 0_ . . . . . . . -2_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . . . . . 0_ . . . -2_ . . . -5_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . 7_ . . . 9_ . . . 7_ . . . . . . . 5_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 6_ . . . . . . . 5_ . . . 4_ . . . 2_ . . . . . . . 4_ . . . . . . . 1_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -5_ . . . -4_ . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . 0_ . . . -2_ . . . -3_ . . . -5_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "-7_ . . . . . . . -5_ . . . -3_ . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . -7_ . . . . . . . 0?0 . . . . . . . 1_ . . . 2_ . . . 3_ . . . . . . . 5_ . . . . . . . 4_ . . . 3_ . . . 1_ . . . . . . . . . . . 0_ . . . -2_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 1_ . . . 2_ . . . 3_ . . . . . . . 1_ . . . . . . . -1_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . . . . . 0_ . . . -2_ . . . -5_ . . . . . . . -4_ . . . -5_ . . . -6_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . 4_ . . . 3_ . . . 1_ . . . . . . . 3_ . . . . . . . 4_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -2_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -2_ . . . . . . . 1_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . 0_ . . . -2_ . . . -3_ . . . -5_ . . . . . . . -4_ . . . -5_ . . . -6_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "-2_ . . . . . . . 0_ . . . 2_ . . . 5_ . . . . . . . 4_ . . . 3_ . . . -1_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . 0?0 . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 6_ . . . . . . . 5_ . . . 4_ . . . -2_ . . . . . . . . . . . -3_ . . . -5_ . . . . . . . 0?0 . . . . . . . -2_ . . . . . . . 0_ . . . 2_ . . . 0_ . . . . . . . -2_ . . . . . . . 0_ . . . 1_ . . . 2_ . . . . . . . 0_ . . . . . . . -2_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . . . . . 0_ . . . -2_ . . . -5_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . 7_ . . . 9_ . . . 7_ . . . . . . . 5_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 6_ . . . . . . . 5_ . . . 4_ . . . 2_ . . . . . . . 4_ . . . . . . . 1_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -5_ . . . -4_ . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -2_ . . . 0_ . . . 1_ . . . 0_ . . . -2_ . . . -3_ . . . -5_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "2_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . . . . . . . . . -2_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . . . . . 1_ . . . 0_ . . . . . . . -2_ . . . . . . . -2_ . . . . . . . . . . . . . . . -5_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . . . . . -1_ . . . -2_ . . . . . . . -3_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . -2_ . . . . . . . -2_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . 0_ . . . . . . . 5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 5_ . . . . . . . . . . . 6_ . . . 5_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . 0_ . . . -2_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . -2_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -2_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 0_ . . . . . . . -5_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . 0_ . . . . . . . 5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "-2_ . . . . . . . 0_ . . . 2_ . . . 5_ . . . . . . . 4_ . . . 3_ . . . -1_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . 0?0 . . . . . . . 1_ . . . 2_ . . . 3_ . . . . . . . 5_ . . . . . . . 4_ . . . 3_ . . . -2_ . . . . . . . . . . . -3_ . . . -5_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . 5_ . . . 7_ . . . 5_ . . . . . . . 3_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . 2_ . . . 4_ . . . 5_ . . . . . . . 4_ . . . 2_ . . . -1_ . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . 7_ . . . 9_ . . . 7_ . . . . . . . 5_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . 4_ . . . 3_ . . . 1_ . . . . . . . 3_ . . . . . . . 1_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . 0_ . . . 1_ . . . 2_ . . . . . . . -3_ . . . -4_ . . . -5_ . . . . . . . -6_ . . . . . . . -3_ . . . . . . . 2_ . . . 4_ . . . 5_ . . . 4_ . . . 2_ . . . 1_ . . . -1_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . . . . . . . . . 0?0 . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.48,
+      "attack": 0.045,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": -0.24,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Fagote I",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-bassoon",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "-7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 3,
+      "gain": 0.52,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.1,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Violinos em détaché",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "violin-spiccato",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . .",
+        "4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . .",
+        "0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . .",
+        "0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . .",
+        "4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . . 0_ . . . 4_ . . . 2_ . . . 4_ . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.34,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": -0.32,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          false,
+          true,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Oboé concertante",
+      "role": "melody",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-oboe",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 3_ . . . . . . . 1_ . . . . . . . . . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . 3_ . . . . . . . -1_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 0_ . . . 1_ . . . 2_ . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 6_ . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . 3_ . . . 2_ . . . 0_ . . . . . . . 2_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 4_ . . . 3_ . . . . . . . 1_ . . . . . . . 3_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 3_ . . . . . . . . . . . 2_ . . . 1_ . . . . . . . 0_ . . . . . . . 1_ . . . . . . . . . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . 5_ . . . . . . . . . . . 6_ . . . 5_ . . . . . . . 3_ . . . . . . . 5_ . . . . . . . 3_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 1_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . 0_ . . . . . . . -1_ . . . . . . . -2_ . . . -3_ . . . -4_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 4_ . . . . . . . 6_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "-3_ . . . . . . . -5_ . . . -7_ . . . -5_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -1_ . . . . . . . 1_ . . . . . . . 2_ . . . 0_ . . . -1_ . . . . . . . 0_ . . . 2_ . . . 5_ . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . . . . . . . . . 0?0 . . . . . . . -3_ . . . . . . . -5_ . . . -7_ . . . -5_ . . . . . . . -3_ . . . . . . . 1_ . . . 2_ . . . 3_ . . . . . . . 5_ . . . . . . . 0?0 . . . . . . . -5_ . . . . . . . -4_ . . . -3_ . . . -1_ . . . . . . . -3_ . . . . . . . -4_ . . . . . . . -2_ . . . -1_ . . . 0_ . . . . . . . 2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -1_ . . . 0_ . . . 1_ . . . . . . . 2_ . . . . . . . -1_ . . . . . . . 2_ . . . 0_ . . . -1_ . . . 0_ . . . 2_ . . . 3_ . . . 5_ . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . -2_ . . . -1_ . . . 3_ . . . . . . . 5_ . . . . . . . 7_ . . . . . . . 0?0 . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -5_ . . . . . . . -4_ . . . -3_ . . . -1_ . . . . . . . . . . . 0_ . . . 2_ . . . . . . . 0?0 . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . 5_ . . . 6_ . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . 2_ . . . 4_ . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . 3_ . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . . . . . 2_ . . . 0_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . 9_ . . . 11_ . . . 9_ . . . . . . . 7_ . . . . . . . 3_ . . . 2_ . . . 1_ . . . . . . . -1_ . . . . . . . 0?0 . . . . . . . 8_ . . . . . . . 7_ . . . 6_ . . . 4_ . . . . . . . 6_ . . . . . . . 3_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . -1_ . . . -2_ . . . . . . . -3_ . . . -2_ . . . -1_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 0_ . . . 2_ . . . 3_ . . . 2_ . . . 0_ . . . -1_ . . . -3_ . . . . . . . 2_ . . . 1_ . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . .",
+        "4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . . . . . 3_ . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 2_ . . . . . . . . . . . 1_ . . . 0_ . . . . . . . -1_ . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . 8_ . . . 7_ . . . . . . . 4_ . . . . . . . 4_ . . . . . . . . . . . 2_ . . . 0_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . 5_ . . . 4_ . . . . . . . 2_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . -1_ . . . . . . . 2_ . . . . . . . 1_ . . . 0_ . . . -1_ . . . . . . . 2_ . . . . . . . -3_ . . . . . . . -1_ . . . -2_ . . . -3_ . . . . . . . 2_ . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . 2_ . . . 4_ . . . 7_ . . . . . . . 6_ . . . 5_ . . . 1_ . . . . . . . -1_ . . . . . . . -3_ . . . . . . . 0?0 . . . . . . . 3_ . . . 4_ . . . 5_ . . . . . . . 7_ . . . . . . . 6_ . . . 5_ . . . 0_ . . . . . . . . . . . -1_ . . . -3_ . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.72,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          true,
+          true,
+          false,
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Violas cantabile",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-viola",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . .",
+        "4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        "4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . .",
+        "4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 2_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 4_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 3,
+      "gain": 0.56,
+      "attack": 0.045,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.02,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Trompas em diálogo",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-horn",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "-5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 3,
+      "gain": 0.56,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": -0.15,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          false,
+          false,
+          true,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Violas de resposta",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-viola",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -3_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        "-5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -5_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . -5_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 3,
+      "gain": 0.4,
+      "attack": 0.045,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.12,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          false,
+          true,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Trompete de concerto",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-trumpet",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 4,
+      "gain": 0.34,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 6500,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.2,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Violoncelos cantabile",
+      "role": "bass",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-cello",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "-7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . -7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . 0_ . . . . . . . 2_ . . . . . . . 4_ . . . . . . . 2_ . . . . . . . -7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . . -7_ . . . . . . . -5_ . . . . . . . -3_ . . . . . . . -5_ . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 3,
+      "gain": 0.76,
+      "attack": 0.045,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.25,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Fagote II",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-bassoon",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . .",
+        ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 2_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 3,
+      "gain": 0.44,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.16,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          false,
+          true,
+          true,
+          true,
+          false,
+          true,
+          true,
+          true,
+          false
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Violoncelos pizzicato",
+      "role": "harmony",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-cello-pizz",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . .",
+        "-7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . -7_ . . . 0?0 . . . . . . . . . . . -3_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . 4_ . . . 0?0 . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 3,
+      "gain": 0.42,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.32,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          true,
+          false,
+          true,
+          true,
+          false,
+          true,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Tímpanos de cadência",
+      "role": "rhythm",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "timpani-low",
+        "variant": 0,
+        "pitched": false
+      },
+      "patterns": [
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+        "0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . . 0_ . . . 0?0 . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 2,
+      "gain": 0.92,
+      "attack": 0.012,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.3,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 55,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.25,
+        "reverb": 0.22,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    },
+    {
+      "name": "Contrabaixos",
+      "role": "bass",
+      "behavior": "phrase",
+      "source": {
+        "kind": "sample",
+        "bank": "classical",
+        "asset": "orchestra-bass",
+        "variant": 0,
+        "pitched": true
+      },
+      "patterns": [
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "-7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . .",
+        "0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . -7_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . .",
+        "0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . . . . . . . . . 0?0 . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . -7_ . . . . . . . . . . . . . . . -3_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . . 0_ . . . . . . . . . . . . . . . 4_ . . . . . . . . . . . . . . ."
+      ],
+      "bars": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "octave": 2,
+      "gain": 0.96,
+      "attack": 0.045,
+      "decay": 0.4,
+      "sustain": 0.85,
+      "release": 0.13,
+      "clip": 1,
+      "gate": 0.9,
+      "lpf": 12000,
+      "hpf": 30,
+      "mapping": {
+        "fileDegrees": 0,
+        "rankDegrees": 0,
+        "panWidth": 0,
+        "previewFilter": false
+      },
+      "effects": {
+        "pan": 0.4,
+        "reverb": 0.12,
+        "delay": 0
+      },
+      "arrangement": {
+        "active": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "variations": [
+          0,
+          1,
+          6,
+          2,
+          3,
+          4,
+          2,
+          5,
+          6,
+          7
+        ],
+        "transpose": [
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        "restart": true
+      }
+    }
+  ],
+  "reference": "Estudo orquestral original para vienna; frases próprias, referência de linguagem e instrumentação histórica",
+  "url": "https://kv.mozarteum.at/en/work/symphony-in-c-4426"
 }

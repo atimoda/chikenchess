@@ -236,11 +236,11 @@ test('visual pulse monitor updates and clears without owning page state', () => 
   let notifications = 0
   const unsubscribe = monitor.subscribe(() => { notifications++ })
   const pulse = { id: 'w:b1', square: 'c3', preview: false, duration: 1 }
-  monitor.publish(pulse)
-  assert.equal(monitor.getSnapshot(), pulse)
+  monitor.publish([pulse])
+  assert.deepEqual(monitor.getSnapshot(), [pulse])
   assert.equal(notifications, 1)
   monitor.clear()
-  assert.equal(monitor.getSnapshot(), null)
+  assert.deepEqual(monitor.getSnapshot(), [])
   assert.equal(notifications, 2)
   unsubscribe()
 })
@@ -426,3 +426,60 @@ async function manualRuntime() {
   runtime.unlock = async () => {}
   return { runtime, attacks, pattern: () => pattern, patternUpdates: () => patternUpdates, manualDisconnects: () => disconnects, advance: seconds => { time = seconds; runtime.publishFrame() } }
 }
+
+test('simultaneous pulses expire independently and preference changes cancel pending attacks', async () => {
+  const { getSimultaneousPulses, setSimultaneousPulses } = loadTs('lib/music/pulse-preference.ts')
+  const previous = getSimultaneousPulses()
+  const monitor = createMusicPulseMonitor()
+  const runtime = new MusicRuntime(monitor.publish, error => { throw error })
+  const voices = [
+    { key: 'one', piece: { id: 'w:a1' }, square: 'a1', preview: false },
+    { key: 'two', piece: { id: 'w:b1' }, square: 'b1', preview: false },
+  ]
+  runtime.api = { getAudioContext: () => ({ currentTime: 0 }), getSuperdoughAudioController: () => ({ nodes: {} }) }
+  runtime.voices = new Map(voices.map(voice => [voice.key, voice]))
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+  try {
+    setSimultaneousPulses(true)
+    voices.forEach((voice, index) => runtime.scheduleVisual(voice, .01, index ? .3 : .01))
+    await wait(35)
+    assert.deepEqual(monitor.getSnapshot().map(pulse => pulse.square), ['a1', 'b1'])
+    await wait(90)
+    assert.deepEqual(monitor.getSnapshot().map(pulse => pulse.square), ['b1'])
+    setSimultaneousPulses(false)
+    assert.deepEqual(monitor.getSnapshot(), [])
+    voices.forEach(voice => runtime.scheduleVisual(voice, .01, .3))
+    await wait(30)
+    assert.equal(monitor.getSnapshot().length, 1)
+    voices.forEach(voice => runtime.scheduleVisual(voice, .1, .3))
+    setSimultaneousPulses(true)
+    await wait(125)
+    assert.deepEqual(monitor.getSnapshot(), [])
+  } finally {
+    runtime.dispose()
+    monitor.clear()
+    setSimultaneousPulses(previous)
+  }
+})
+
+test('simultaneous pulses retain attack times and merge chord notes into one square', async () => {
+  const { setSimultaneousPulses } = loadTs('lib/music/pulse-preference.ts')
+  setSimultaneousPulses(true)
+  const monitor = createMusicPulseMonitor()
+  const runtime = new MusicRuntime(monitor.publish, error => { throw error })
+  const first = { key: 'one', piece: { id: 'w:a1' }, square: 'a1', preview: false }
+  const second = { key: 'two', piece: { id: 'w:b1' }, square: 'b1', preview: false }
+  runtime.api = { getAudioContext: () => ({ currentTime: 0 }), getSuperdoughAudioController: () => ({ nodes: {} }) }
+  runtime.voices = new Map([[first.key, first], [second.key, second]])
+  try {
+    runtime.scheduleVisual(first, .005, .3)
+    runtime.scheduleVisual(first, .005, .3)
+    runtime.scheduleVisual(second, .055, .3)
+    await new Promise(resolve => setTimeout(resolve, 20))
+    assert.deepEqual(monitor.getSnapshot().map(pulse => pulse.square), ['a1'])
+    await new Promise(resolve => setTimeout(resolve, 60))
+    assert.deepEqual(monitor.getSnapshot().map(pulse => pulse.square), ['a1', 'b1'])
+    runtime.clearVisuals()
+    assert.deepEqual(monitor.getSnapshot(), [])
+  } finally { runtime.dispose(); monitor.clear() }
+})

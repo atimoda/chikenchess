@@ -1,0 +1,182 @@
+[
+  {
+    "id": "orchestra-violin",
+    "name": "Violinos · arco longo",
+    "variants": [
+      {
+        "name": "Piano",
+        "file": "/samples/chicken-classical-v1/orchestra-violin-p-g3.ogg",
+        "keymap": {
+          "g3": "/samples/chicken-classical-v1/orchestra-violin-p-g3.ogg",
+          "c4": "/samples/chicken-classical-v1/orchestra-violin-p-c4.ogg",
+          "g4": "/samples/chicken-classical-v1/orchestra-violin-p-g4.ogg",
+          "c5": "/samples/chicken-classical-v1/orchestra-violin-p-c5.ogg"
+        }
+      },
+      {
+        "name": "Forte",
+        "file": "/samples/chicken-classical-v1/orchestra-violin-f-g3.ogg",
+        "keymap": {
+          "g3": "/samples/chicken-classical-v1/orchestra-violin-f-g3.ogg",
+          "c4": "/samples/chicken-classical-v1/orchestra-violin-f-c4.ogg",
+          "g4": "/samples/chicken-classical-v1/orchestra-violin-f-g4.ogg",
+          "c5": "/samples/chicken-classical-v1/orchestra-violin-f-c5.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-viola",
+    "name": "Violas · arco longo",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/orchestra-viola-1-c2.ogg",
+        "keymap": {
+          "c3": "/samples/chicken-classical-v1/orchestra-viola-1-c2.ogg",
+          "g3": "/samples/chicken-classical-v1/orchestra-viola-1-g2.ogg",
+          "d4": "/samples/chicken-classical-v1/orchestra-viola-1-d3.ogg",
+          "a4": "/samples/chicken-classical-v1/orchestra-viola-1-a3.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-cello",
+    "name": "Violoncelos · arco longo",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/orchestra-cello-1-c1.ogg",
+        "keymap": {
+          "c2": "/samples/chicken-classical-v1/orchestra-cello-1-c1.ogg",
+          "g2": "/samples/chicken-classical-v1/orchestra-cello-1-g1.ogg",
+          "d3": "/samples/chicken-classical-v1/orchestra-cello-1-d2.ogg",
+          "a3": "/samples/chicken-classical-v1/orchestra-cello-1-a2.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-cello-pizz",
+    "name": "Violoncelos · pizzicato grave",
+    "variants": [
+      {
+        "name": "Pizzicato",
+        "file": "/samples/chicken-classical-v1/orchestra-cello-pizz-1-c1.ogg",
+        "keymap": {
+          "c2": "/samples/chicken-classical-v1/orchestra-cello-pizz-1-c1.ogg",
+          "g2": "/samples/chicken-classical-v1/orchestra-cello-pizz-1-g1.ogg",
+          "d3": "/samples/chicken-classical-v1/orchestra-cello-pizz-1-d2.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-bass",
+    "name": "Contrabaixo acústico",
+    "variants": [
+      {
+        "name": "Arco",
+        "file": "/samples/chicken-classical-v1/orchestra-bass-1-e0.ogg",
+        "keymap": {
+          "e1": "/samples/chicken-classical-v1/orchestra-bass-1-e0.ogg",
+          "c2": "/samples/chicken-classical-v1/orchestra-bass-1-c1.ogg",
+          "a2": "/samples/chicken-classical-v1/orchestra-bass-1-a1.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-oboe",
+    "name": "Oboé acústico",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/orchestra-oboe-1-d3.ogg",
+        "keymap": {
+          "d4": "/samples/chicken-classical-v1/orchestra-oboe-1-d3.ogg",
+          "a#4": "/samples/chicken-classical-v1/orchestra-oboe-1-a#3.ogg",
+          "f5": "/samples/chicken-classical-v1/orchestra-oboe-1-f4.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-clarinet",
+    "name": "Clarinete acústico",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/orchestra-clarinet-1-d2.ogg",
+        "keymap": {
+          "d3": "/samples/chicken-classical-v1/orchestra-clarinet-1-d2.ogg",
+          "a#3": "/samples/chicken-classical-v1/orchestra-clarinet-1-a#2.ogg",
+          "f4": "/samples/chicken-classical-v1/orchestra-clarinet-1-f3.ogg",
+          "d5": "/samples/chicken-classical-v1/orchestra-clarinet-1-d4.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-bassoon",
+    "name": "Fagote acústico",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/orchestra-bassoon-1-c2.ogg",
+        "keymap": {
+          "c3": "/samples/chicken-classical-v1/orchestra-bassoon-1-c2.ogg",
+          "g3": "/samples/chicken-classical-v1/orchestra-bassoon-1-g2.ogg",
+          "c4": "/samples/chicken-classical-v1/orchestra-bassoon-1-c3.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-trumpet",
+    "name": "Trompete acústico",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/orchestra-trumpet-1-c3.ogg",
+        "keymap": {
+          "c4": "/samples/chicken-classical-v1/orchestra-trumpet-1-c3.ogg",
+          "a#4": "/samples/chicken-classical-v1/orchestra-trumpet-1-a#3.ogg",
+          "d5": "/samples/chicken-classical-v1/orchestra-trumpet-1-d4.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-horn",
+    "name": "Trompa acústica",
+    "variants": [
+      {
+        "name": "Dolce",
+        "file": "/samples/chicken-classical-v1/orchestra-horn-1-g1.ogg",
+        "keymap": {
+          "g2": "/samples/chicken-classical-v1/orchestra-horn-1-g1.ogg",
+          "c4": "/samples/chicken-classical-v1/orchestra-horn-1-c3.ogg",
+          "f5": "/samples/chicken-classical-v1/orchestra-horn-1-f4.ogg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "orchestra-flute",
+    "name": "Flauta · sem vibrato",
+    "variants": [
+      {
+        "name": "Senza vibrato",
+        "file": "/samples/chicken-classical-v1/orchestra-flute-1-c4.ogg",
+        "keymap": {
+          "c5": "/samples/chicken-classical-v1/orchestra-flute-1-c4.ogg",
+          "e5": "/samples/chicken-classical-v1/orchestra-flute-1-e4.ogg",
+          "a5": "/samples/chicken-classical-v1/orchestra-flute-1-a4.ogg",
+          "c6": "/samples/chicken-classical-v1/orchestra-flute-1-c5.ogg"
+        }
+      }
+    ]
+  }
+]

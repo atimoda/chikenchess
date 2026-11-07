@@ -1,12 +1,12 @@
 """New York 1977 · disco in the Chic/Loft tradition (original material, no transcription).
 
 120 BPM four-on-the-floor on a recorded kit, open hat on every offbeat, syncopated
-octave bass, chicken-scratch guitar in 16ths, piano offbeats, a soaring string
-section on the queen and brass stabs in the chorus. A Dorian: the i7–IV7 vamp
+octave bass, chicken-scratch guitar in 16ths, piano offbeats with space for answers,
+a warm string section on the queen and brass stabs in the chorus. A Dorian: the i7–IV7 vamp
 (Am7–D7) that disco borrowed from soul.
 Degrees: 0 A · 1 B · 2 C · 3 D · 4 E · 5 F# · 6 G · 7 A'.
 """
-from kit import (act, arrangement, bar, bars, drums, part, reactions, recorded, rule, write)
+from kit import (expanded_form, act, arrangement, bar, bars, drums, part, reactions, recorded, rule, write)
 
 VERSE = ('Am7', 'D7', 'Am7', 'D7')
 CHORUS = ('G', 'Am7', 'G', 'D7')
@@ -27,12 +27,12 @@ def bass(chord, push=False):
 def scratch(chord):
     """Chicken-scratch: muted 16ths, the chord rings on the 'e' and 'a' accents."""
     c = VOICING[chord]
-    return bar(f". {c}! . {c}' . {c}! {c}' . . {c}! . {c}' . {c}! {c}' .")
+    return bar(f". {c}! . . . {c}' {c} . . {c}! . . . {c}' {c} .")
 
 
 def piano(chord):
     c = VOICING[chord]
-    return bar(f'{c} . . {c} . . {c} . . . {c} . {c} . . .')
+    return bar(f'{c} . . . . . {c} . . . . . . {c} . .')
 
 
 def stabs(chord):
@@ -51,16 +51,16 @@ def prog(fn, chords, **kw):
 KICK = drums('X... x... X... x...')
 SNARE = drums('.... X... .... X...')
 parts = [
-    # a1 · rook: flute obbligato, the airy intro line and fills.
+    # a1 · rook: a low, short flute answer; no sustained high ostinato.
     part('melody', 'Flauta do terraço', 'phrase', recorded('classical', 'flute-sustain'), [
-        bars(bar('11_ . . . . . . . 9 . . . 7 . . .'), bar('8_ . . . . . . . . . . . . . . .'), bar('11_ . . . . . . . 12 . 11 . 9 . 7 .'), bar('9_ . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . 11 . 12 .'), bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 14 . 12 . 11 . 9 .')),
-        bars(bar('8_ . . . . . . . . . . . 9 . 11 .'), bar('10_ . . . . . . . . . . . . . . .'), bar('9_ . . . . . . . . . . . 7 . 9 .'), bar('10_ . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 14 . 12 . 11 . 9 .'), bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 12 . 11 . 10 . 9 .')),
-        bars(bar('11_ . . . . . . . 9 . . . 7 . . .'), bar('8_ . . . . . . . . . . . . . . .'), bar('11_ . . . . . . . 12 . 11 . 9 . 7 .'), bar('9_ . . . . . . . . . . . . . . .')),
-        bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 14 . 12 . 11 . 9 .'), bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 12 . 11 . 10 . 9 .')),
-    ], [4] * 6, octave=4, gain=0.3, attack=.04, decay=.4, sustain=.8, release=.25, gate=.85, clip=.95, lpf=8000, hpf=300,
-        mapping={'fileDegrees': 0}, arrangement=arrangement((True, False, True, True, True, True), restart=True), effects={'reverb': .3, 'pan': -.35}),
+        bars(bar('4_ . . . 2 . 0 . 0?0 . . . . . . .'), *[drums('.' * 16)] * 3),
+        bars(*[drums('.' * 16)] * 3, bar('. . . . . . . . 4 . 2 . 0_ . 0?0 .')),
+        bars(*[drums('.' * 16)] * 4),
+        bars(*[drums('.' * 16)] * 3, bar('. . . . . . . . 5 . 4 . 2_ . 0?0 .')),
+        bars(bar('4_ . . . 2 . 0 . 0?0 . . . . . . .'), drums('.' * 16), bar('3_ . . . 2 . 0 . 0?0 . . . . . . .'), drums('.' * 16)),
+        bars(*[drums('.' * 16)] * 3, bar('. . . . . . . . 5 . 4 . 2_ . 0?0 .')),
+    ], [4] * 6, octave=4, gain=.13, attack=.05, decay=.3, sustain=.65, release=.15, gate=.8, clip=.9, lpf=3800, hpf=300,
+        mapping={'fileDegrees': 0}, arrangement=arrangement((True, False, False, False, True, True)), effects={'reverb': .22, 'pan': -.3}),
     # a2 · pawn: congas, the Latin heartbeat of the Loft.
     part('rhythm', 'Congas do Loft', 'pulse', recorded('percussion', 'conga', pitched=False), [
         drums('.... .... ..x. x...'), drums('..x. x.x. ..x. x..x'), drums('..x. .... ..x. ....'),
@@ -69,8 +69,8 @@ parts = [
     # b1 · knight: string stabs in spiccato, the staccato answer.
     part('response', 'Cordas em staccato', 'phrase', recorded('classical', 'violin-spiccato'), [
         prog(stabs, VERSE), prog(stabs, VERSE), prog(stabs, BRIDGE), prog(stabs, CHORUS), prog(stabs, BRIDGE), prog(stabs, CHORUS),
-    ], [4] * 6, octave=4, gain=.22, attack=.004, decay=.2, sustain=.3, release=.15, gate=.4, clip=.9, lpf=9000, hpf=250,
-        mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, True, True, True)), effects={'reverb': .25, 'pan': .3}),
+    ], [4] * 6, octave=3, gain=.16, attack=.004, decay=.2, sustain=.3, release=.15, gate=.4, clip=.9, lpf=4800, hpf=250,
+        mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, False, False, False, True)), effects={'reverb': .25, 'pan': .3}),
     # b2 · pawn: snare on two and four, with ghost notes and fills.
     part('rhythm', 'Caixa da disco', 'pulse', recorded('percussion', 'snare', pitched=False), [
         drums('.... .... .... ....'), SNARE, drums('.... X... .... X..g'),
@@ -81,12 +81,12 @@ parts = [
     part('harmony', 'Piano de salão', 'phrase', recorded('band', 'piano'), [
         prog(pad, VERSE), prog(piano, VERSE), prog(piano, BRIDGE), prog(piano, CHORUS), prog(piano, BRIDGE), prog(piano, CHORUS),
     ], [4] * 6, octave=3, gain=0.14, attack=.004, decay=.5, sustain=.4, release=.3, gate=.5, clip=.95, lpf=7000, hpf=120,
-        mapping={'fileDegrees': 0}, arrangement=arrangement(restart=True), effects={'reverb': .2, 'pan': -.15}),
-    # c2 · pawn: closed hats in sixteenths, accents on the beat.
+        mapping={'fileDegrees': 0}, arrangement=arrangement((True, True, False, True, True, True)), effects={'reverb': .2, 'pan': -.15}),
+    # c2 · pawn: closed-hat pairs leave space for the offbeat open hat.
     part('rhythm', 'Chimbal de dezesseis', 'pulse', recorded('percussion', 'hat', pitched=False), [
-        drums('x.x. x.x. x.x. x.x.'), drums('Xggg Xggg Xggg Xggg'), drums('x.x. x.x. x.x. x.x.'),
-        drums('Xggg Xggg Xggg Xggg'), drums('Xggg Xggg Xggg Xggg'), drums('Xggg Xggg Xggg Xggg'),
-    ], [1] * 6, gain=0.4, clip=.8, lpf=14000, hpf=3000, effects={'reverb': .03, 'pan': .2}),
+        drums('x.x. x.x. x.x. x.x.'), drums('xg.. xg.. xg.. xg.g'), drums('x.x. x.x. x.x. x.x.'),
+        drums('xg.. xg.. xg.. xg.g'), drums('xg.. xg.. xg.. xg.g'), drums('xg.. xg.. xg.. xg.g'),
+    ], [1] * 6, gain=.3, clip=.8, lpf=9500, hpf=3000, effects={'reverb': .03, 'pan': .2}),
     # d1 · queen: the string section, the song's soaring hook.
     part('melody', 'Cordas Philadelphia', 'phrase', recorded('classical', 'violin-sustain', 1), [
         bars(bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . . . . . . . . .'), bar('. . . . . . . . 4 . 6 . 7 . 9 .')),
@@ -95,20 +95,20 @@ parts = [
         bars(bar('8_ . . . . . . . 9 . 8 . 6 . 4 .'), bar('7_ . . . . . . . . . . . 4 . 6 .'), bar('8_ . . . 9 . . . 11 . . . 12 . . .'), bar('10_ . . . . . . . 9 . . . 7 . . .')),
         bars(bar('8_ . . . . . . . . . . . . . . .'), bar('7_ . . . . . . . . . . . . . . .'), bar('6_ . . . . . . . . . . . . . . .'), bar('5_ . . . . . . . 4 . 5 . 7 . 9 .')),
         bars(bar('11_ . . . . . . . 12 . 11 . 9 . 7 .'), bar('9_ . . . . . . . . . . . 7 . 9 .'), bar('11_ . . . 12 . . . 14 . . . 15 . . .'), bar('14_ . . . . . . . 12 . . . 10 . . .')),
-    ], [4] * 6, octave=4, gain=.26, attack=.06, decay=.6, sustain=.85, release=.4, gate=.92, clip=.95, lpf=9000, hpf=200,
-        mapping={'fileDegrees': 0, 'panWidth': .2}, arrangement=arrangement((True, True, True, True, True, True), restart=True),
+    ], [4] * 6, octave=3, gain=.21, attack=.06, decay=.6, sustain=.85, release=.4, gate=.92, clip=.95, lpf=4300, hpf=200,
+        mapping={'fileDegrees': 0, 'panWidth': .2}, arrangement=arrangement((False, True, False, True, False, True), restart=True),
         effects={'reverb': .32, 'pan': .1}),
     # d2 · pawn: the syncopated octave bass.
     part('bass', 'Baixo sincopado', 'phrase', recorded('guitars', 'bass'), [
         bars(*(bass(c) for c in VERSE)), bars(*(bass(c, True) for c in VERSE)), bars(*(bass(c) for c in BRIDGE)),
         bars(*(bass(c, True) for c in CHORUS)), bars(*(bass(c) for c in BRIDGE)), bars(*(bass(c, True) for c in CHORUS)),
-    ], [4] * 6, octave=2, gain=.55, attack=.003, decay=.25, sustain=.6, release=.08, gate=.6, clip=.95, lpf=3000, hpf=35,
+    ], [4] * 6, octave=2, gain=.6, attack=.003, decay=.25, sustain=.6, release=.08, gate=.6, clip=.95, lpf=3000, hpf=35,
         design={'role': 'bass'}, mapping={'fileDegrees': 0, 'panWidth': .05}, effects={'reverb': 0, 'pan': 0}),
     # e1 · king: low strings sustain under the chorus; castling opens the string section.
     part('texture', 'Violoncelos sustentados', 'sustain', recorded('classical', 'cello-sustain'), [
         prog(pad, VERSE), prog(pad, VERSE), prog(pad, BRIDGE), prog(pad, CHORUS), prog(pad, BRIDGE), prog(pad, CHORUS),
-    ], [4] * 6, octave=3, gain=0.3, attack=.25, decay=.8, sustain=.9, release=.6, gate=.97, clip=1, lpf=5000, hpf=60,
-        design={'role': 'pad'}, arrangement=arrangement((False, True, True, True, True, True), restart=False), effects={'reverb': .3, 'pan': -.1}),
+    ], [4] * 6, octave=3, gain=.18, attack=.25, decay=.8, sustain=.9, release=.6, gate=.97, clip=1, lpf=5000, hpf=60,
+        design={'role': 'pad'}, arrangement=arrangement((False, False, False, True, True, True), restart=False), effects={'reverb': .3, 'pan': -.1}),
     # e2 · pawn: four-on-the-floor kick.
     part('rhythm', 'Bumbo four-on-the-floor', 'pulse', recorded('percussion', 'kick', pitched=False), [
         drums('X... X... X... X...'), KICK, drums('X... .... X... ....'), KICK, KICK, KICK,
@@ -116,23 +116,23 @@ parts = [
     # f1 · bishop: trumpet stabs, the horn section in the chorus.
     part('response', 'Metais de pista', 'phrase', recorded('sambaReggae', 'trompete'), [
         prog(stabs, VERSE), prog(stabs, VERSE), prog(stabs, BRIDGE), prog(stabs, CHORUS), prog(stabs, BRIDGE), prog(stabs, CHORUS),
-    ], [4] * 6, octave=4, gain=.18, attack=.005, decay=.2, sustain=.3, release=.1, gate=.45, clip=.9, lpf=8000, hpf=200,
+    ], [4] * 6, octave=3, gain=.14, attack=.005, decay=.2, sustain=.3, release=.1, gate=.45, clip=.9, lpf=4500, hpf=200,
         mapping={'fileDegrees': 0}, arrangement=arrangement((False, False, False, True, False, True)), effects={'reverb': .2, 'pan': -.3}),
     # f2 · pawn: the open hat on every offbeat, disco's signature 'tsss'.
     part('rhythm', 'Chimbal aberto', 'pulse', recorded('percussion', 'open-hat', pitched=False), [
         drums('..x. ..x. ..x. ..x.'), drums('..x. ..x. ..x. ..x.'), drums('.... .... .... ..x.'),
         drums('..X. ..X. ..X. ..X.'), drums('..x. ..x. ..x. ..x.'), drums('..X. ..X. ..X. ..X.'),
-    ], [1] * 6, gain=0.26, clip=.6, lpf=14000, hpf=2500, effects={'reverb': .06, 'pan': -.2}),
+    ], [1] * 6, gain=.22, clip=.6, lpf=9500, hpf=2500, effects={'reverb': .06, 'pan': -.2}),
     # g1 · knight: chicken-scratch rhythm guitar.
     part('harmony', 'Guitarra chicken-scratch', 'phrase', recorded('guitars', 'muted'), [
         prog(scratch, VERSE), prog(scratch, VERSE), prog(scratch, BRIDGE), prog(scratch, CHORUS), prog(scratch, BRIDGE), prog(scratch, CHORUS),
     ], [4] * 6, octave=3, gain=0.3, attack=.002, decay=.12, sustain=.2, release=.05, gate=.35, clip=.9, lpf=6000, hpf=300,
-        mapping={'fileDegrees': 0}, arrangement=arrangement((False, True, True, True, True, True)), effects={'reverb': .08, 'pan': .35}),
-    # g2 · pawn: tambourine in eighths, doubled in the chorus.
+        mapping={'fileDegrees': 0}, arrangement=arrangement((True, True, True, True, False, True)), effects={'reverb': .08, 'pan': .35}),
+    # g2 · pawn: tambourine thins to offbeats when the chorus opens.
     part('rhythm', 'Pandeirola', 'pulse', recorded('percussion', 'tambourine', pitched=False), [
         drums('.... X... .... X...'), drums('x.x. x.x. x.x. x.x.'), drums('.... .... .... ....'),
-        drums('xgxg xgxg xgxg xgxg'), drums('x.x. x.x. x.x. x.x.'), drums('xgxg xgxg xgxg xgxg'),
-    ], [1] * 6, gain=0.3, clip=.8, lpf=13000, hpf=1500, effects={'reverb': .08, 'pan': .4}),
+        drums('..x. ..x. ..x. ..x.'), drums('x.x. x.x. x.x. x.x.'), drums('..x. ..x. ..x. ..x.'),
+    ], [1] * 6, gain=.18, clip=.8, lpf=8500, hpf=1500, effects={'reverb': .08, 'pan': .4}),
     # h1 · rook: crash on the downbeat of each new section.
     part('texture', 'Prato de virada', 'pulse', recorded('percussion', 'crash', pitched=False), [
         drums('X... .... .... .... .... .... .... .... .... .... .... .... .... .... .... ....'),
@@ -141,8 +141,8 @@ parts = [
         drums('X... .... .... .... .... .... .... .... X... .... .... .... .... .... .... ....'),
         drums('X... .... .... .... .... .... .... .... .... .... .... .... .... .... .... ....'),
         drums('X... .... .... .... .... .... .... .... X... .... .... .... .... .... .... ....'),
-    ], [4] * 6, gain=.2, clip=1, lpf=12000, hpf=400, design={'role': 'fx'}, effects={'reverb': .2, 'pan': .25},
-        arrangement=arrangement(restart=True)),
+    ], [4] * 6, gain=.12, clip=1, lpf=12000, hpf=400, design={'role': 'fx'}, effects={'reverb': .2, 'pan': .25},
+        arrangement=arrangement((True, False, False, True, False, True))),
     # h2 · pawn: handclaps with the snare in the chorus.
     part('rhythm', 'Palmas da pista', 'pulse', recorded('drums', 'room-clap', pitched=False), [
         drums('.... .... .... ....'), drums('.... .... .... ....'), drums('.... X... .... X...'),
@@ -157,7 +157,7 @@ profile = {
     'reactions': reactions([
         rule('nyc-opening', 'opening', 'both', 1, True, [act('gain', -3)]),
         rule('nyc-middle', 'middle', 'both', 1, True, [act('gain', 2)]),
-        rule('nyc-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 6)]),
+        rule('nyc-endgame', 'endgame', 'both', 1, True, [act('variation', 5), act('gain', 3)]),
         # Castling brings the strings in: the chorus of the night.
         rule('nyc-castle', 'firstCastle', 'both', 4, True, [act('variation', 3)]),
         rule('nyc-check', 'check', 'actor', 1, True, [act('variation', 3), act('activate')]),
@@ -174,4 +174,45 @@ profile = {
     'reference': 'Disco nova-iorquino de 1977 (Chic, The Loft, Salsoul): referência de estilo; melodias e harmonias originais',
     'url': 'https://en.wikipedia.org/wiki/Disco',
 }
+
+# G builds toward the first chorus; H drops into a spacious soul half-time.
+PRE = ('C', 'D7', 'Em7', 'D7')
+SOUL = ('Em7', 'C', 'G', 'D7')
+
+def climb(chord):
+    r = ROOT[chord]
+    return bar(f'{r} . . . {r + 2} . . . {r + 4} . {r + 5} . {r + 7}! . . .')
+
+def soul_bass(chord):
+    r = ROOT[chord]
+    return bar(f'{r}_ . . . . . 0?0 . . . {r + 4} . {r + 7}_ . 0?0 .')
+
+def soul_keys(chord):
+    return bar(f'{VOICING[chord]}_ . . . . . . . 0?0 . . . . . . .')
+
+expanded_form(profile, order=[0, 1, 6, 3, 2, 7, 4, 5],
+    labels=profile['sectionLabels'] + ['Pre-Chorus', 'Bridge'],
+    lengths=profile['sections'] + [32, 32],
+    roots=[[ROOT[c] for c in chords] for chords in [VERSE, VERSE, BRIDGE, CHORUS, BRIDGE, CHORUS, PRE, SOUL]],
+    additions={
+        'a1': (None, bars(bar('1_ . . . 3 . 4 . 0?0 . . . . . . .'), drums('.' * 16),
+                         bar('6_ . . . 4 . 3 . 0?0 . . . . . . .'), drums('.' * 16))),
+        'a2': (drums('..x. x.x. ..x. x..x' * 3 + '..xx x.xx ..x. xxxx'), drums('.... ..x. .... x...' * 3 + '.... ..x. .... x.x.')),
+        'b1': (prog(stabs, PRE), None),
+        'b2': (drums('.... X... .... X...' * 3 + '.... X... ..g. XgX.'), drums('.... .... X... ....' * 3 + '.... .... X... ..g.')),
+        'c1': (prog(piano, PRE), prog(soul_keys, SOUL)),
+        'c2': (drums('xg.. xg.. xg.. xg.g' * 4), drums('x... .... x... ....' * 4)),
+        'd1': (bars(bar('2_ . . . 4 . 6 . 0?0 . . . . . . .'), bar('3_ . . . 5 . 7 . 0?0 . . . . . . .'),
+                    bar('4_ . . . 6 . 8 . 0?0 . . . . . . .'), bar('5_ . . . 7 . 9 . 7 . 5 . 3 . 0?0 .')), None),
+        'd2': (prog(climb, PRE), prog(soul_bass, SOUL)),
+        'e1': (None, prog(pad, SOUL)),
+        'e2': (drums('X... X... X... X...' * 3 + 'X... X... X... ....'), drums('X... .... .... ..x.' * 4)),
+        'f1': (None, None),
+        'f2': (drums('..x. ..x. ..x. ..x.' * 3 + '..x. ..x. ..x. ....'), None),
+        'g1': (prog(scratch, PRE), bars(*(bar(f'. . . . . . {VOICING[c]} . . . . . . . {VOICING[c]} .') for c in SOUL))),
+        'g2': (drums('..x. ..x. ..x. ..x.' * 4), None),
+        'h1': (None, None),
+        'h2': (drums('.... X... .... X...' * 3 + '.... X... .... ....'), None),
+    })
+
 write('nyc', profile)
