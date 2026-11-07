@@ -421,7 +421,7 @@ export function ChickenPatio() {
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={pq.screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
       {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={pq.screens} onChange={changeLayout} onClose={() => setEditorOn(false)} />}
-      <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} />
+      <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
         <PatioSavePanel
           patio={patio} remote={pl.remote} save={pl.save} canEdit={access.canEdit} canRename={canRename} renameHint={renameHint} isAccount={isAccount}
