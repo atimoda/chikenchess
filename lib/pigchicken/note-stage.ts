@@ -12,9 +12,11 @@ import { DEGREE_COLORS, SCALES } from './music'
 import type { RebateRule } from './transforms'
 import { fanAngleOf, fanNoteAt, fanNotes, songFan, type Fan } from './fan'
 import { aimShot, type NoteGrade, type NoteShot, type NoteShotEvent } from './note-shots'
-import { SPECIES, multOf, type Species } from './temple'
+import { multOf, type Species } from './temple'
 import type { StageMusic } from './temple-music'
 import type { VoiceId } from './synth'
+import { stepScale } from './transforms'
+import { BUILTIN_VARIANTS, variantData, variantFor, variantSize, type AlienVariant, type Catalog } from './alien-catalog'
 
 const DEG = Math.PI / 180
 
@@ -33,12 +35,14 @@ export const FIRE_DEFAULT: FireSound = { voice: 'bells', vel: 0.07 }
 
 // a note of a song: when it must reach her (beats from the song's start) and its pitch
 export type SongNote = { beat: number; midi: number }
+// an alien of a song: a variation of the catalogue (by its id, else its species' base); what the song gives here wins
+// over the variation's
 export type SongAlien = {
-  species: Species; color?: string
+  species: Species; variant?: string; color?: string
   at?: number // the beat it appears (default: LEAD beats before its first note)
   angle?: number // degrees on screen around her (180 left, 270 up, 360 right); default: the lane of its notes
   dist?: number // px from her
-  move: MoveMode
+  move?: MoveMode
   zig?: { amp: number; period: number } // zigue-zague: px to each side, beats per wave
   turn?: number // espiral: degrees it goes round her (the sign is the way)
   pass?: number // passante: px of its closest pass
@@ -104,6 +108,17 @@ export function alienAngle(s: Song, a: SongAlien) {
   return fanAngleOf(s.fan, sorted[Math.floor(sorted.length / 2)])
 }
 
+// the notes an alien fires: the song's, each with a second note at its interval and again after its echo
+export function alienNotes(a: Pick<SongAlien, 'notes'>, v: Pick<AlienVariant, 'shot'>, scale: { root: number; steps: number[] }): SongNote[] {
+  const out: SongNote[] = []
+  for (const n of a.notes) {
+    const pair = v.shot.harmony > 0 ? [n, { beat: n.beat, midi: stepScale(scale, n.midi, v.shot.harmony) }] : [n]
+    out.push(...pair)
+    if (v.shot.echo > 0) out.push(...pair.map(p => ({ beat: p.beat + v.shot.echo, midi: p.midi })))
+  }
+  return out.sort((x, y) => x.beat - y.beat)
+}
+
 // where an alien is (relative to the centre it follows), u: 0 at its spawn … 1 when it touches her
 export type Path = { mode: MoveMode; theta: number; r0: number; ts: number; tEnd: number; tMid: number; zig: { amp: number; period: number }; turn: number; pass: number; side: number }
 export function pathAt(p: Path, now: number, spb: number): { dx: number; dy: number; fixed: boolean } {
@@ -133,7 +148,7 @@ export function pathAt(p: Path, now: number, spb: number): { dx: number; dy: num
 // ---------- state ----------
 export type StagePhase = 'idle' | 'playing' | 'done' | 'failed'
 export type StageJudge = { grade: NoteGrade | 'miss' | 'parry' | 'contact'; t: number }
-export type StageAlien = { id: number; def: number; path: Path; c0: { x: number; y: number }; next: number; x: number; y: number }
+export type StageAlien = { id: number; def: number; v: AlienVariant; notes: SongNote[]; path: Path; c0: { x: number; y: number }; next: number; x: number; y: number }
 export type StageBanner = { title: string; sub: string; color: string; t: number; life: number }
 export type NoteStageState = {
   phase: StagePhase; song: number; t: number
@@ -197,6 +212,7 @@ let nextId = 3_000_000
 
 export function createNoteStage() {
   const s = newStageState()
+  let catalog: Catalog = BUILTIN_VARIANTS
   const song = () => SONGS[s.song] ?? SONGS[0]
   const order = () => song().aliens.map((a, i) => i).sort((a, b) => spawnBeat(song().aliens[a]) - spawnBeat(song().aliens[b]))
   const banner = (title: string, sub: string, color: string, life = 4) => { s.banner = { title, sub, color, t: 0, life } }
@@ -228,25 +244,28 @@ export function createNoteStage() {
   }
 
   function spawn(io: NoteStageIO, def: number, spb: number) {
-    const sg = song(), a = sg.aliens[def], d = SPECIES[a.species]
+    const sg = song(), a = sg.aliens[def], v = structuredClone(variantFor(catalog, a.variant, a.species))
+    const z = sg.music.zone
+    const notes = alienNotes(a, v, { root: z.root, steps: SCALES[z.scale].steps })
+    const { w, h } = variantSize(v), color = a.color ?? v.color
     const theta = alienAngle(sg, a)
     const at = (b: number) => s.t0 + b * spb
-    const beats = a.notes.map(n => n.beat)
+    const beats = notes.map(n => n.beat)
     const path: Path = {
-      mode: a.move, theta, r0: a.dist ?? SPAWN_DIST, ts: at(spawnBeat(a)), tEnd: at(lastBeat(a) + AFTER_BEATS),
-      tMid: at((Math.min(...beats) + Math.max(...beats)) / 2), zig: a.zig ?? { amp: 60, period: 2 }, turn: (a.turn ?? 90) * DEG,
-      pass: a.pass ?? 220, side: Math.cos(theta) >= 0 ? -1 : 1,
+      mode: a.move ?? v.move, theta, r0: a.dist ?? SPAWN_DIST, ts: at(spawnBeat(a)), tEnd: at(Math.max(...beats) + v.after),
+      tMid: at((Math.min(...beats) + Math.max(...beats)) / 2), zig: a.zig ?? v.zig, turn: (a.turn ?? v.turn) * DEG,
+      pass: a.pass ?? v.pass, side: Math.cos(theta) >= 0 ? -1 : 1,
     }
     const c0 = { ...s.anchor }
     const p = pathAt(path, io.music.time, spb)
     const x = c0.x + p.dx, y = c0.y + p.dy
     const id = nextId++
     io.targets.push({
-      id, kind: 'alien', home: 0, x, y: y + d.h / 2, w: d.w, h: d.h, hp: d.hp, maxHp: d.hp, flash: 0, wobble: 0, vx: 0, deadT: 0,
-      face: 1, state: 'fly', animT: (id % 97) / 97, data: { kind: 'temple', species: a.species, color: a.color ?? d.color, note: true },
+      id, kind: 'alien', home: 0, x, y: y + h / 2, w, h, hp: v.hp, maxHp: v.hp, flash: 0, wobble: 0, vx: 0, deadT: 0,
+      face: 1, state: 'fly', animT: (id % 97) / 97, data: { ...variantData(v), color, note: true },
     })
-    s.aliens.push({ id, def, path, c0, next: 0, x, y })
-    io.fx.burst(x, y, 10, a.color ?? d.color, 140, 3)
+    s.aliens.push({ id, def, v, notes, path, c0, next: 0, x, y })
+    io.fx.burst(x, y, 10, color, 140, 3)
   }
 
   function judge(grade: StageJudge['grade']) { s.judge = { grade, t: 0 } }
@@ -317,35 +336,39 @@ export function createNoteStage() {
     const byId = new Map<number, Target>()
     io.targets.forEach(t => { if (t.kind === 'alien') byId.set(t.id, t) })
     for (let i = s.aliens.length - 1; i >= 0; i--) {
-      const a = s.aliens[i], t = byId.get(a.id), def = sg.aliens[a.def], d = SPECIES[def.species]
+      const a = s.aliens[i], t = byId.get(a.id), def = sg.aliens[a.def], v = a.v
       if (!t || t.deadT > 0 || t.state === 'converted') {
         s.aliens.splice(i, 1)
         if (t?.state === 'converted') { s.counts.birds++; s.score += BIRD_POINTS * multOf(s.combo); io.fx.text(a.x, a.y - 40, `+${BIRD_POINTS * multOf(s.combo)}`, '#7bdff2', 16); io.sound({ kind: 'bird' }) }
-        else { s.counts.kills++; s.score += KILL_POINTS; io.fx.text(a.x, a.y - 30, `+${KILL_POINTS}`, '#ffffff', 14) }
+        else { s.counts.kills++; s.score += v.points; io.fx.text(a.x, a.y - 30, `+${v.points}`, '#ffffff', 14) }
         continue
       }
       const p = pathAt(a.path, now, spb)
       const c = p.fixed ? a.c0 : s.anchor
       a.x = c.x + p.dx
-      a.y = Math.min(io.groundY - d.h / 2 - 8, c.y + p.dy)
-      t.x = a.x + (t.blast?.x ?? 0); t.y = a.y + d.h / 2 + (t.blast?.y ?? 0)
+      a.y = Math.min(io.groundY - t.h / 2 - 8, c.y + p.dy)
+      t.x = a.x + (t.blast?.x ?? 0); t.y = a.y + t.h / 2 + (t.blast?.y ?? 0)
       t.face = s.center.x >= a.x ? 1 : -1
       // its notes: each one leaves so that it reaches the ring, in its lane, when the song wants it
-      while (a.next < def.notes.length) {
-        const n = def.notes[a.next], arrive = s.t0 + n.beat * spb
+      while (a.next < a.notes.length) {
+        const n = a.notes[a.next], arrive = s.t0 + n.beat * spb
         const ang = fanAngleOf(sg.fan, n.midi)
         const tx = s.center.x + Math.cos(ang) * ARRIVE_R, ty = s.center.y + Math.sin(ang) * ARRIVE_R
-        const shot = { ...SHOT_DEFAULT, ...def.shot }
+        const shot = { ...v.shot, ...def.shot }
         const flight = Math.max(MIN_FLIGHT, Math.hypot(tx - a.x, ty - a.y) / shot.speed)
         if (now < arrive - flight) break
         a.next++
         if (arrive - now < 0.05) continue // too late to fire this one (the alien came in late)
-        const v = aimShot(a.x, a.y, tx, ty, arrive - now)
+        const vel = aimShot(a.x, a.y, tx, ty, arrive - now)
         const color = shot.color === 'degree' ? DEGREE_COLORS[music.degreeOf(n.midi) % DEGREE_COLORS.length] : shot.color
-        io.fire({ x: a.x, y: a.y, vx: v.vx, vy: v.vy, midi: n.midi, color, size: shot.size, glow: shot.glow, arriveAt: arrive, source: SOURCE, ...(def.rule ? { rule: def.rule } : {}) })
+        const rule = def.rule ?? v.rule
+        io.fire({
+          x: a.x, y: a.y, vx: vel.vx, vy: vel.vy, midi: n.midi, color, size: shot.size, glow: shot.glow, trail: v.shot.trail, arriveAt: arrive, source: SOURCE,
+          ...(rule ? { rule } : {}), ...(v.scale ? { scale: v.scale } : {}), ...(v.drum ? { drum: v.drum } : {}),
+        })
         s.fired++
         t.flash = 0.08; t.tint = color
-        const fs = { ...FIRE_DEFAULT, ...def.fire }
+        const fs = { ...v.fire, ...def.fire }
         if (fs.voice !== 'none' && fs.vel > 0) io.sound({ kind: 'fire', midi: n.midi, voice: fs.voice, vel: fs.vel })
       }
       // the end of its path: the ones that come in touch her; the passing and the still ones go away
@@ -357,7 +380,7 @@ export function createNoteStage() {
       if (now >= a.path.tEnd) {
         s.afina -= AFINA_CONTACT; s.combo = 0
         judge('contact'); io.sound({ kind: 'contact' })
-        io.fx.burst(a.x, a.y, 16, t.tint ?? d.color, 220, 4)
+        io.fx.burst(a.x, a.y, 16, t.tint ?? v.color, 220, 4)
         io.push(Math.sign(s.center.x - a.x) || 1)
         io.targets.splice(io.targets.indexOf(t), 1); s.aliens.splice(i, 1)
       }
@@ -401,8 +424,10 @@ export function createNoteStage() {
     noteEnv(shot: NoteShot) {
       if (!active() || shot.source !== SOURCE) return null
       const z = song().music.zone
-      return { base: this.noteFor(shot), fit: { root: z.root, steps: SCALES[z.scale].steps }, rule: shot.rule ?? song().rule ?? STAGE_RULE, combo: s.combo }
+      return { base: this.noteFor(shot), fit: { root: z.root, steps: SCALES[shot.scale ?? z.scale].steps }, rule: shot.rule ?? song().rule ?? STAGE_RULE, combo: s.combo }
     },
+    // the catalogue the song's aliens come from (each one takes its variation when it appears)
+    setCatalog(c: Catalog) { catalog = c },
     reset(io: Pick<NoteStageIO, 'targets' | 'fx' | 'clearShots'>) { removeAliens(io, false); io.clearShots(SOURCE); Object.assign(s, newStageState()) },
   }
 }

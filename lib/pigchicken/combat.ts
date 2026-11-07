@@ -5,7 +5,7 @@ import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
-import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadState } from './undead'
+import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
@@ -376,7 +376,7 @@ export function createCombat() {
     pendingUndead.push({
       id: nextId++, kind: 'undead', home: 0, x: t.x, y: t.y, w: t.w, h: t.h, hp: t.maxHp, maxHp: t.maxHp, flash: 0, wobble: 0, vx: 0, deadT: 0,
       face: t.face, state: 'undead', animT: 0, harmony: 0,
-      data: newUndead(t.data, Math.sign(pushX) * Math.min(260, Math.abs(pushX) * 0.5) + (t.blast?.vx ?? 0), -260, { ...UNDEAD_DEFAULTS }, undeadBorn++, Math.random),
+      data: newUndead(t.data, Math.sign(pushX) * Math.min(260, Math.abs(pushX) * 0.5) + (t.blast?.vx ?? 0), -260, { ...UNDEAD_DEFAULTS, ...((t.data as { undead?: Partial<UndeadParams> } | undefined)?.undead ?? {}) }, undeadBorn++, Math.random),
     })
   }
   // weapons wear it down; at zero it is gone for good
@@ -834,7 +834,8 @@ export function createCombat() {
       const env = noteEnv?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? null
       const voice: VoiceId = d.instrument ? d.voice : 'bells'
       const seq: NoteOut = { midi: n.midi, at: 0, dur: grade === 'fora' ? 0.2 : 0.4, vel: grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25, voice }
-      const notes = noteSound(n.x, n.y, seq, d.rebateChain, env?.rule ?? n.rule, env)
+      // a percussion alien's note: the rebate is a beat
+      const notes = n.drum ? [{ midi: n.midi, at: 0, dur: 0.2, vel: Math.max(0.5, seq.vel), drum: n.drum }] : noteSound(n.x, n.y, seq, d.rebateChain, env?.rule ?? n.rule, env)
       playNotes(notes, voice, d.rebateTok)
       const main = notes.find(o => !o.drum)?.midi ?? n.midi
       // off where she aims, pulled toward the nearest character by the item's snap

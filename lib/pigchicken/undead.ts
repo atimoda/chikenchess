@@ -31,7 +31,9 @@ export const DEATH_SOUNDS: Record<string, DeathSounds> = {
   dragonHead: { physical: drum('crash', 1), musical: BIRD_CHORD },
 }
 export function deathSoundsFor(data: unknown): DeathSounds {
-  const d = data as { kind?: string; species?: string } | undefined
+  const d = data as { kind?: string; species?: string; death?: DeathSounds } | undefined
+  // an alien of the catalogue carries its own
+  if (d?.death?.physical && d.death.musical) return d.death
   return (d?.kind === 'temple' && d.species && DEATH_SOUNDS[d.species]) || DEATH_SOUNDS.horde
 }
 

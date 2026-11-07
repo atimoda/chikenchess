@@ -5,7 +5,7 @@ import { ALIEN_FRAMES } from "@/lib/pigchicken/enemies"
 import { lookDir, lookRows, type Point } from "@/lib/pigchicken/eyes"
 import type { Combat } from "@/lib/pigchicken/combat"
 import type { Conductor } from "@/lib/pigchicken/music"
-import { STAGES, drumOpen, multOf, type Species, type Temple } from "@/lib/pigchicken/temple"
+import { SPECIES, STAGES, drumOpen, multOf, type Species, type Temple } from "@/lib/pigchicken/temple"
 
 type Ctx = CanvasRenderingContext2D
 type Target = Combat["targets"][number]
@@ -144,6 +144,24 @@ const ART: Partial<Record<Species, { frames: string[][]; pal: Record<string, str
   },
 }
 
+// a colour mixed toward white (k > 0) or black (k < 0)
+function shade(hex: string, k: number) {
+  const n = parseInt(hex.slice(1), 16), to = k > 0 ? 255 : 0, a = Math.abs(k)
+  const ch = (v: number) => Math.round(v + (to - v) * a)
+  return `rgb(${ch((n >> 16) & 255)},${ch((n >> 8) & 255)},${ch(n & 255)})`
+}
+// a variation of another colour: its body's pixels take it (a darker and a lighter shade where the art has them)
+function bodyTint(sp: Species, color: string): ((ch: string) => string | null) | undefined {
+  if (!/^#[0-9a-f]{6}$/i.test(color) || color.toLowerCase() === SPECIES[sp].color.toLowerCase()) return undefined
+  const map: Record<string, string> =
+    sp === "lantern" ? { r: color, R: shade(color, -0.45) }
+      : sp === "shell" ? { s: color, S: shade(color, -0.4), b: shade(color, 0.35) }
+        : sp === "twin" ? { "#": color }
+          : sp === "drum" ? { r: color }
+            : {}
+  return ch => map[ch] ?? null
+}
+
 function pixels(ctx: Ctx, rows: string[], pal: Record<string, string>, left: number, top: number, flash: string | null, tint?: (ch: string) => string | null) {
   rows.forEach((row, r) => {
     for (let c = 0; c < row.length; c++) {
@@ -158,6 +176,14 @@ function pixels(ctx: Ctx, rows: string[], pal: Record<string, string>, left: num
 // a temple alien at screen x (its target's y is its bottom). charge: about to drop a bomb (glows red)
 // lookAt: the character it looks at (world coordinates; its eyes follow them)
 export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: number, charge: number, beat: number, lookAt: Point | null = null) {
+  // a variation of the catalogue can be bigger or smaller: its art scaled from its feet
+  const size = (g.data as { size?: number }).size ?? 1
+  if (size !== 1 && size > 0) {
+    ctx.save(); ctx.translate(x, g.y); ctx.scale(size, size); ctx.translate(-x, -g.y)
+    drawTempleAlien(ctx, { ...g, w: g.w / size, h: g.h / size, data: { ...(g.data as object), size: 1 } }, x, beatPhase, charge, beat, lookAt)
+    ctx.restore()
+    return
+  }
   const d = g.data as { species: Species; color: string }
   const sp = d.species
   const top = g.y - g.h
@@ -190,11 +216,11 @@ export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: numbe
   } else if (sp === "drum") {
     const open = drumOpen(beatPhase)
     if (open && !flash) { ctx.shadowColor = "#ffd166"; ctx.shadowBlur = 16 }
-    pixels(ctx, lookRows(ART.drum!.frames[open ? 1 : 0], look), ART.drum!.pal, x - g.w / 2, top, flash)
+    pixels(ctx, lookRows(ART.drum!.frames[open ? 1 : 0], look), ART.drum!.pal, x - g.w / 2, top, flash, bodyTint(sp, d.color))
     ctx.shadowBlur = 0
   } else {
     const art = ART[sp]!
-    const tint = sp === "mini" ? (ch: string) => (ch === "#" ? d.color : null) : undefined
+    const tint = sp === "mini" ? (ch: string) => (ch === "#" ? d.color : null) : bodyTint(sp, d.color)
     pixels(ctx, lookRows(art.frames[frame], look), art.pal, x - g.w / 2, top, flash, tint)
     // the shell cracks as it loses hit points
     if (sp === "shell" && !flash) {
@@ -221,11 +247,14 @@ function drawDragon(ctx: Ctx, g: Target, x: number, flash: string | null, look: 
   ctx.scale(g.face < 0 ? -1 : 1, 1)
   if (!head) {
     const r = g.w / 2
+    // a variation of another colour tints its body
+    const own = (g.data as { color?: string }).color
+    const tinted = own && /^#[0-9a-f]{6}$/i.test(own) && own.toLowerCase() !== SPECIES.dragon.color ? own : null
     // crest
-    ctx.fillStyle = flash ?? "#d62828"
+    ctx.fillStyle = flash ?? (tinted ? shade(tinted, -0.35) : "#d62828")
     ctx.beginPath(); ctx.moveTo(-r * 0.8, -r * 0.6); ctx.lineTo(-r * 0.3, -r * 1.45); ctx.lineTo(0, -r * 0.8); ctx.lineTo(r * 0.35, -r * 1.35); ctx.lineTo(r * 0.8, -r * 0.6); ctx.fill()
     const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 2, 0, 0, r)
-    grad.addColorStop(0, flash ?? "#ffe08a"); grad.addColorStop(1, flash ?? "#e85d04")
+    grad.addColorStop(0, flash ?? (tinted ? shade(tinted, 0.55) : "#ffe08a")); grad.addColorStop(1, flash ?? (tinted ?? "#e85d04"))
     ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill()
     // scales
     if (!flash) {
