@@ -17,9 +17,9 @@
 | Regras, transições e BPM | [Estados e Eventos](docs/mechanics/states-and-events.md) e [editor de regras](docs/mechanics/states-and-events-editor.md) |
 | Piano roll, seções e slides | [Editor](docs/mechanics/editor.md) e [Arranjo global](docs/mechanics/arrangement.md) |
 | Globo, cidades e popups | [Mapa](docs/mechanics/map.md) |
-| Galinha: movimento, paredes, pulo, portais do globo | [Movimento da galinha](docs/mechanics/chicken/movement.md) |
+| Galinha: movimento, paredes, teto e limites escaláveis, pulo, portais do globo | [Movimento da galinha](docs/mechanics/chicken/movement.md) |
 | Galinha: controles, teclado, gamepad, toque e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
-| Pátio: mundo, parallax, portais, Vila, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
+| Pátio: mundo, limites e botão Sol, parallax, portais, Vila, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
 | Pátio: modo editor, layout, pares de portais, salvar/abrir | [Editor do Pátio](docs/mechanics/patio/editor.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
@@ -46,7 +46,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Admin e catálogos locais](docs/mechanics/admin.md) | 4 KB |
 | [Arranjo global e atribuições por peça](docs/mechanics/arrangement.md) | 18 KB |
 | [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 16 KB |
-| [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 16 KB |
+| [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 22 KB |
 | [Criativo e persistência](docs/mechanics/creative.md) | 14 KB |
 | [Editor de variações](docs/mechanics/editor.md) | 15 KB |
 | [Kits: revisões e reconstruções por campanha](docs/mechanics/kit-revisions.md) | 29 KB |
@@ -65,7 +65,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 12 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 17 KB |
 | [Pátio: Templo do Gongo, fase de notas, mortes e catálogo de aliens](docs/mechanics/patio/temple.md) | 17 KB |
-| [Pátio: mundo, cenário, portais, Vila, árvores e trampolim](docs/mechanics/patio/world.md) | 23 KB |
+| [Pátio: mundo, cenário, portais, Vila, árvores e trampolim](docs/mechanics/patio/world.md) | 25 KB |
 | [Gestos e custo de processamento](docs/mechanics/performance.md) | 21 KB |
 | [Poderes da partida](docs/mechanics/powers.md) | 25 KB |
 | [Progresso e ovos dourados](docs/mechanics/progression.md) | 27 KB |

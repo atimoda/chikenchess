@@ -26,7 +26,8 @@ import { mixGain } from "@/lib/pigchicken/mixer"
 import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
-import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
+import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
+import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
 import { placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
@@ -60,7 +61,8 @@ const SOURCE_LABEL: Record<AimSource, string> = {
 // the code's own Pátio, when the page gives no layout
 const DEFAULT_ELEMENTS = defaultLayout().elements
 const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, terrain }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; terrain?: RidgePoint[] }) {
+// worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, terrain, worldTop = WORLD_TOP, groundHeight = 30 }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; terrain?: RidgePoint[]; worldTop?: number; groundHeight?: number }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
   const templeLeft = templeScene(screens) * SCENE_W
@@ -121,6 +123,22 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       </div>
       <LayoutLayerView elements={shown} layer="scene" editing={editing} />
       <LayoutColliders elements={shown} />
+      <WorldLimits width={width} top={worldTop} bottom={WORLD_GROUND_Y + Math.max(LIMIT_BORDER, groundHeight)} />
+    </div>
+  )
+}
+
+// The Pátio's limits: a black frame LIMIT_BORDER thick inside the world's sides and its ceiling, closed at the
+// bottom of the ground the page shows. The chicken's walls and ceiling are its inner edge (ParquinhoPlay).
+function WorldLimits({ width, top, bottom }: { width: number; top: number; bottom: number }) {
+  const b = LIMIT_BORDER, h = bottom - top
+  const band = { position: "absolute", background: LIMIT_BORDER_COLOR } as const
+  return (
+    <div aria-hidden="true" data-patio-limits>
+      <div style={{ ...band, left: 0, top, width: b, height: h }} />
+      <div style={{ ...band, left: width - b, top, width: b, height: h }} />
+      <div style={{ ...band, left: 0, top, width, height: b }} />
+      <div style={{ ...band, left: 0, top: bottom - b, width, height: b }} />
     </div>
   )
 }
@@ -143,7 +161,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[] }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -153,6 +171,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const hudRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  // the Pátio's ceiling (its height limit), world y
+  const topRef = useRef(worldTop)
+  topRef.current = worldTop
   const devicesRef = useRef(devices)
   devicesRef.current = devices
   // each local player's lobby color (p1: the first one, the others by their id): their reticle's color
@@ -397,9 +418,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       wasPortalArrival = portalArrival
       const next = st.held ? camX : cameraStep(camX, { mode: snapToPortal ? 'follow' : S.camera, worldX, viewW, worldW, dt: snapToPortal ? 1 : dt, deadband: snapToPortal ? 0 : S.deadband, lag: snapToPortal ? 1 : S.lag, lead: snapToPortal ? 0 : lead })
       const groundScreen = st.height - groundHRef.current
-      const yr = cameraYRange(groundScreen)
+      const worldTop = topRef.current
+      const yr = cameraYRange(groundScreen, worldTop, viewTop)
       if (oy === null) oy = yr.lo
-      const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt: snapToPortal ? 1 : dt, lag: snapToPortal ? 1 : S.lag })
+      const nextOy = st.held ? Math.max(yr.lo, Math.min(yr.hi, oy)) : cameraYStep(oy, { worldY: st.y - oy, groundScreen, viewTop, dt: snapToPortal ? 1 : dt, lag: snapToPortal ? 1 : S.lag, top: worldTop })
       const others = extras?.current ? [...extras.current.values()] : []
       if (next !== camX || nextOy !== oy) {
         engine.shift(camX - next, nextOy - oy)
@@ -410,7 +432,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (Math.abs(st.groundY - (G + oy)) > 0.01) engine.setGroundHeight(st.height - G - oy)
       st = engine.getMotionState()
       const camY = oy
-      const walls = cameraBounds(camX, { mode: S.camera, viewW, worldW })
+      // the limits: walls and ceiling at the inner edge of the black frame (WorldLimits)
+      const edges = cameraBounds(camX, { mode: S.camera, viewW, worldW })
+      const walls = { lo: edges.lo + LIMIT_BORDER, hi: edges.hi - LIMIT_BORDER, top: worldTop + LIMIT_BORDER + camY }
       engine.setBounds(walls)
       others.forEach(o => {
         const os = o.getMotionState()

@@ -4,8 +4,10 @@
 // It draws in its own full-screen SVG layer above the page. Colliders come from the page itself:
 // every element with `data-chicken-platform` (or a direct child of `data-chicken-platforms`) is a
 // floating box: its horizontal edges are one-way floors, its sides are walls she grabs when her feet
-// touch them in the air with no movement control held. The screen sides are solid (rigid) walls she climbs by pushing into them, and the
-// ground sits `groundHeight` px above the bottom of the viewport.
+// touch them in the air with no movement control held, and its underside is a ceiling she grabs rising into it
+// with Up held (she hangs upside down). The limits (screen sides and top, or the Pátio's world) are solid walls
+// and a solid ceiling she climbs by pushing into them, going round the corners; the ground sits `groundHeight` px
+// above the bottom of the viewport.
 import { requestGameFrame, cancelGameFrame } from '../game-frame'
 import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenLook } from './look-art'
@@ -20,6 +22,7 @@ import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, ch
 import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampoline'
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
+import { LIMIT_BORDER } from './limits'
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -53,8 +56,8 @@ export type ChickenEngine = {
   arriveAtPortal: (arrival: { x: number; y: number; durationMs: number }) => void
   // camera moved: move her (and everything she keeps in screen coordinates) by dx, dy pixels
   shift: (dx: number, dy?: number) => void
-  // left and right walls in screen pixels; null = the screen edges
-  setBounds: (bounds: { lo: number; hi: number } | null) => void
+  // left and right walls and the ceiling (top) in screen pixels; null = the screen edges inside the limits' border
+  setBounds: (bounds: { lo: number; hi: number; top?: number } | null) => void
   // the ground's height from the bottom of the screen (the Pátio raises it on a phone held upright)
   setGroundHeight: (h: number) => void
   setGame: (game: ChickenGame) => void
@@ -85,7 +88,8 @@ export type ChickenEngine = {
   destroy: () => void
 }
 
-type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams }
+// ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
+type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams; ceil?: boolean }
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
@@ -93,6 +97,8 @@ const CONSUMABLE_WING_AIM_LIMIT = 25
 // leg chain (bird anatomy): hip, hidden inside the body -> knee at the belly -> ankle (bends back) -> foot joint -> toes
 const LEG = { F: { hx: -14 }, B: { hx: -26 } } as const
 const LF = 30, LT = 32, LS = 40, HIP_Y = -88, FOOT_Y = -3, NECK_LEN = 56
+// from her feet to the top of her head (comb), in rig units: what bumps into a ceiling
+const HEAD_TOP = 200
 const PIV: Record<string, [number, number]> = {
   legF: [-14, -88], tibF: [-14, -58], shinF: [-14, -26], toeF: [-14, 14],
   legB: [-26, -88], tibB: [-26, -58], shinB: [-26, -26], toeB: [-26, 14],
@@ -250,7 +256,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
     R.scale = P.scale * vf
     if (S.grounded && !S.plat && !S.cl) S.y = groundY
-    S.x = clamp(S.x, 40 * R.scale, W - 40 * R.scale)
+    // clinging, S.x is her distance along the surface (the limits' walls can be taller than the screen)
+    if (!S.cl) S.x = clamp(S.x, 40 * R.scale, W - 40 * R.scale)
   }
 
   // ---------- controls ----------
@@ -344,7 +351,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return ((a % 360) + 540) % 360 - 180
   }
   const handAimAngle = (angle: number) => heldItem?.consumable && !swingNow && !(heldItem.pull && heldItem.pull > 0) ? clamp(angle, -CONSUMABLE_WING_AIM_LIMIT, CONSUMABLE_WING_AIM_LIMIT) : angle
-  let bounds: { lo: number; hi: number } | null = null
+  let bounds: { lo: number; hi: number; top?: number } | null = null
   const game: Required<ChickenGame> = { gameMode: false, throwHeld: false, throwCharging: false, aimFace: null, lookAngle: null, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, aura: 'none' }
   let auraShown: ChickenAura = 'none'
   function showAura() {
@@ -354,7 +361,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.halo.style.display = 'none'
     el.fizz.style.display = auraShown === 'fizz' ? '' : 'none'
   }
-  const wallLo = () => bounds ? bounds.lo : 0, wallHi = () => bounds ? bounds.hi : W
+  const wallLo = () => bounds ? bounds.lo : LIMIT_BORDER, wallHi = () => bounds ? bounds.hi : W - LIMIT_BORDER
+  const wallTop = () => bounds?.top ?? LIMIT_BORDER
 
   // ---------- simulation state ----------
   const S: any = { x: W * 0.5, y: groundY, vx: 0, vy: 0, face: 1, grounded: true, jumpIndex: -1, state: 'idle', flapPhase: 0, burst: 0, squash: 0, boostT: 0, sliding: false, runIntent: false, plat: null, platAx: 0, cl: null, held: false }
@@ -429,7 +437,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     buildSegs(); heldDir = dir
     S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt);
     if (S.held) { heldStep(dt); return }
-    if (S.cl) { clingStep(dt, dir, (U ? 1 : 0) - (D || C ? 1 : 0), jumpPressed, RUN); return }
+    if (S.cl) { clingStep(dt, dir, (U ? 1 : 0) - (D || C ? 1 : 0), jumpPressed, RUN, downPressed || crouchPressed); return }
     // floating walls grab only while no movement control is held
     S.noGrab = Lh || Rh || U || Dk || C || J || RUN
     // standing on a floating edge: ride along when it moves, fall when walking off its end
@@ -588,6 +596,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (best) land((best as { sg: Seg; y: number }).y, (best as { sg: Seg; y: number }).sg)
       }
       if (S.y >= groundY && S.vy >= 0) land(groundY, null)
+      // rising into a ceiling: Up grabs it (she hangs upside down); the limits' ceiling stops her otherwise
+      else if (S.vy < 0 && ceilingStep(prevY, U)) return
     }
     S.x += S.vx * motionDt
     const margin = 40 * R.scale
@@ -668,14 +678,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function buildSegs() {
     const out: Seg[] = []
     let source: Element | undefined, mask: PlatformOcclusion | undefined
-    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams) => {
+    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams, ceil = false) => {
       const len = Math.hypot(bx - ax, by - ay); if (len < 4) return
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
-      const wall = climbable || (!floor && Math.min(a, 180 - a) > 45)
+      const wall = climbable || ceil || (!floor && Math.min(a, 180 - a) > 45)
       const topEdge = id.endsWith(':top')
       const visible = mask && source && mask.clip(source, id, mask.depth, ax - mask.x, ay - mask.y, bx - mask.x, by - mask.y)
       if (!visible) {
-        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce })
+        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce, ...(ceil ? { ceil } : {}) })
         return
       }
       const dx = bx - ax, dy = by - ay
@@ -685,6 +695,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         out.push({
           id: i === 0 ? id : `${id}~${i}`, ax: ax + dx * from, ay: ay + dy * from,
           bx: ax + dx * to, by: ay + dy * to, anchorX: ax, clipOffset: from * len, topEdge, len: partLen, ang: a, wall, solid, bounce,
+          ...(ceil ? { ceil } : {}),
         })
       })
     }
@@ -730,12 +741,19 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         return
       }
       if (r.top < groundY - 4) add(id + ':top', r.left, r.top, r.right, r.top)
-      if (r.bottom < groundY - 4) add(id + ':bottom', r.left, r.bottom, r.right, r.bottom)
+      if (r.bottom < groundY - 4) {
+        add(id + ':bottom', r.left, r.bottom, r.right, r.bottom)
+        // its underside: she hangs from it upside down (grabbed rising into it with Up, or round a side's corner)
+        add(id + ':under', r.left, r.bottom, r.right, r.bottom, false, false, false, undefined, true)
+      }
       const yb = Math.min(r.bottom, groundY)
       if (yb - r.top > 8) { add(id + ':left', r.left, r.top, r.left, yb); add(id + ':right', r.right, r.top, r.right, yb) }
     })
     mask = undefined
-    add('screen:left', wallLo(), 0, wallLo(), groundY, true); add('screen:right', wallHi(), 0, wallHi(), groundY, true)
+    // the limits: two solid walls and a solid ceiling, all climbable, meeting at the top corners
+    const top = Math.min(wallTop(), groundY - 8)
+    add('screen:left', wallLo(), top, wallLo(), groundY, true); add('screen:right', wallHi(), top, wallHi(), groundY, true)
+    add('screen:top', wallLo(), top, wallHi(), top, true, false, false, undefined, true)
     SEGS = out
   }
   // elements without an id get one, so standing on a box survives re-ordering of the DOM
@@ -790,7 +808,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function tryCling(dir: number, up = false) {
     const bodyY = S.y - 40 * R.scale, footY = S.y - 4 * R.scale
     for (const sg of SEGS) {
-      if (!sg.wall || (S.clCool > 0 && sg.id === S.clLast)) continue
+      if (!sg.wall || sg.ceil || (S.clCool > 0 && sg.id === S.clLast)) continue
       const climbFromGround = up && S.grounded
       if (!sg.solid && !climbFromGround && (S.grounded || S.noGrab)) continue
       const py = sg.solid || climbFromGround ? bodyY : footY, reach = (sg.solid || climbFromGround ? 46 : 24) * R.scale
@@ -814,7 +832,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const phi = Math.atan2(-n[1], -n[0]) - Math.PI / 2, t = [Math.cos(phi), Math.sin(phi)]
     const sigma = Math.sign(t[0] * ux + t[1] * uy) || 1
     const along = (px - sg.ax) * ux + (py - sg.ay) * uy + (sg.clipOffset ?? 0)
-    S.cl = { id: sg.id, n, phi, t, sigma, px, py, tilt: 0, lastDir: heldDir, tapDir: 0, tapT: 0 }
+    S.cl = { id: sg.id, n, phi, t, sigma, px, py, tilt: 0, lastDir: heldDir, tapDir: 0, tapT: 0, carry: null }
     S.x = along * sigma; S.vx = 0; S.face = -t[1] >= 0 ? 1 : -1
     plantFeet(); headAnchor.x = null
   }
@@ -825,16 +843,77 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     clingFrame(sg, n, px, py); sfx('grab')
     S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5
   }
-  function clingStep(dt: number, dir: number, vup: number, jumpPressed: boolean, RUN: boolean) {
+  // rising into a ceiling (her head crosses it): Up grabs it and she hangs upside down; without Up a solid
+  // ceiling (the limits') stops her and a box's underside lets her through. True when she grabbed it.
+  function ceilingStep(prevY: number, up: boolean) {
+    const reach = HEAD_TOP * R.scale, was = prevY - reach, now = S.y - reach
+    let hit: Seg | null = null, hitY = -Infinity
+    for (const sg of SEGS) {
+      if (!sg.ceil || S.x < Math.min(sg.ax, sg.bx) || S.x > Math.max(sg.ax, sg.bx)) continue
+      const cy = sg.ay + (sg.by - sg.ay) * (S.x - sg.ax) / ((sg.bx - sg.ax) || 1e-6)
+      // the first one her head meets on the way up
+      if (was >= cy - 0.5 && now < cy && cy > hitY) { hit = sg; hitY = cy }
+    }
+    if (!hit) return false
+    if (up && !(S.clCool > 0 && hit.id === S.clLast)) {
+      const face = S.face
+      attach(hit, S.x, hitY)
+      // upside down her rig's forward is the screen's backward: keep looking the same way
+      S.face = -face
+      return true
+    }
+    if (hit.solid) { S.y = hitY + reach; S.vy = 0 }
+    return false
+  }
+  // letting go of a surface: off a wall she drops beside it, off a ceiling she turns upright just below it
+  function letGo(vx: number, vy: number) {
+    const c = S.cl, hanging = c.n[1] > 0.7
+    fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + (hanging ? HEAD_TOP : 30) * R.scale), vx, vy)
+  }
+  // Going round a corner: at the end of the surface she clings to, another climbable surface (wall or ceiling)
+  // that starts there takes her on, outside corners (a box's bottom corners) and inside ones (the limits' top
+  // corners) alike. Holding the same controls keeps her going the same way round (carry), so she never
+  // bounces back at the corner.
+  function wrapCorner(sg: Seg, end: number[], other: number[], inKey: string) {
+    const c = S.cl
+    const out = [(end[0] - other[0]) / sg.len, (end[1] - other[1]) / sg.len]
+    for (const nx of SEGS) {
+      if (nx === sg || nx.id === sg.id || !nx.wall || nx.bounce) continue
+      const atA = Math.hypot(nx.ax - end[0], nx.ay - end[1]) < 3, atB = !atA && Math.hypot(nx.bx - end[0], nx.by - end[1]) < 3
+      if (!atA && !atB) continue
+      const far = atA ? [nx.bx, nx.by] : [nx.ax, nx.ay]
+      const u2 = [(far[0] - end[0]) / nx.len, (far[1] - end[1]) / nx.len]
+      const turn = u2[0] * c.n[0] + u2[1] * c.n[1]
+      // inside corner: the new surface rises on her side; outside corner: it goes on behind the old one
+      const toward = turn > 0.1 ? [-out[0], -out[1]] : turn < -0.1 ? out : c.n
+      let n2 = [-u2[1], u2[0]]
+      if (n2[0] * toward[0] + n2[1] * toward[1] < 0) n2 = [u2[1], -u2[0]]
+      const speed = Math.abs(S.vx)
+      clingFrame(nx, n2, end[0], end[1])
+      const next = S.cl, sign = atA ? 1 : -1
+      next.carry = { key: inKey, sign }
+      S.vx = sign * next.sigma * speed
+      S.squash = 0.3
+      return true
+    }
+    return false
+  }
+  function clingStep(dt: number, dir: number, vup: number, jumpPressed: boolean, RUN: boolean, dropPressed = false) {
     const c = S.cl, sg = segById(c.id)
-    if (!sg) { fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), 0, 0); return }
+    if (!sg) { letGo(0, 0); return }
     const offset = sg.clipOffset ?? 0
     const before = S.x * c.sigma - offset
     if (sg.clipOffset !== undefined && (before < -0.01 || before > sg.len + 0.01)) {
-      fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), 0, 0)
+      letGo(0, 0)
       return
     }
     const ux = (sg.bx - sg.ax) / sg.len, uy = (sg.by - sg.ay) / sg.len
+    // hanging upside down from a ceiling: Jump or a new press of Down / Crouch lets go and she falls upright
+    if (c.n[1] > 0.7 && (jumpPressed || dropPressed)) {
+      letGo(0, jumpPressed ? 120 : 40)
+      if (Math.abs(S.vx) > 1) S.face = Math.sign(S.vx)
+      S.state = 'jump'; animate(dt, 'jump', false, 0); return
+    }
     if (jumpPressed) {
       // wall jump: away from the surface
       fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), c.n[0] * (R.jumpPush + 220) * R.wallJump, -jumpVelocity(0) * R.wallJump)
@@ -846,7 +925,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // left/right still climb at half speed (toward the wall goes up, away goes down)
     let side = dir * c.t[0]
     if (Math.abs(c.t[0]) < 0.5 && dir !== 0) side = (dir * c.n[0] < 0 ? 1 : -1) * 0.5 * (Math.sign(-c.t[1]) || 1)
-    const want = clamp(side + vup * -c.t[1], -1, 1)
+    let want = clamp(side + vup * -c.t[1], -1, 1)
+    // just round a corner: the same controls keep her going the same way until they change
+    const inKey = `${dir},${vup}`
+    if (c.carry && (c.carry.key !== inKey || (!dir && !vup))) c.carry = null
+    if (c.carry) want = c.carry.sign * c.sigma
     S.vx = approach(S.vx, want * R.climbSpeed * (RUN ? 1.5 : 1), R.acceleration * dt)
     if (Math.abs(want) > 0.15) S.face = Math.sign(want)
     // double tap away from the wall lets go; double tap toward a near-vertical floating wall swaps sides
@@ -854,7 +937,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const now = performance.now() / 1000
       if (c.tapDir === dir && now - c.tapT < 0.3) {
         c.tapDir = 0
-        if (dir * c.n[0] > 0.5) { fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), c.n[0] * 90, 0); return }
+        if (dir * c.n[0] > 0.5) { letGo(c.n[0] * 90, 0); return }
         if (!sg.solid && sg.ang >= 70 && sg.ang <= 110) { clingFrame(sg, [-c.n[0], -c.n[1]], c.px, c.py); S.squash = 0.5; animate(dt, 'cling', false, 0); return }
       } else { c.tapDir = dir; c.tapT = now }
     }
@@ -863,8 +946,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.x += S.vx * dt
     let s = S.x * c.sigma - offset
     c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
-    // climbing down onto a floor that meets the wall
-    if (c.py > prevPy) {
+    // climbing down onto a floor that meets the wall (never from a ceiling: the box's own bottom edge is there)
+    if (c.n[1] <= 0.7 && c.py > prevPy + 1e-6) {
       for (const f of SEGS) {
         if (f.wall) continue
         const ix = c.px + c.n[0] * 30 * R.scale, fy = floorY(f, ix)
@@ -873,17 +956,28 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     if (s < 0 || s > sg.len) {
       const end = s < 0 ? [sg.ax, sg.ay] : [sg.bx, sg.by], other = s < 0 ? [sg.bx, sg.by] : [sg.ax, sg.ay]
-      if (end[1] < other[1] - 1) {
+      const upper = end[1] < other[1] - 1
+      if (upper) {
         // top end: climb over onto the floor behind it (a box's top edge), if there is one
         const ix = end[0] - c.n[0] * 26 * R.scale
         const f = SEGS.find(f => !f.wall && floorY(f, ix) !== null && Math.abs((floorY(f, ix) as number) - end[1]) < 4)
         if (f) { standAt(ix, floorY(f, ix) as number, f, -Math.sign(c.n[0]) || 1); return }
+      }
+      if (end[1] < groundY - 3 && wrapCorner(sg, end, other, inKey)) { clingPose(dt); return }
+      if (upper) {
         s = clamp(s, 0, sg.len); S.x = (s + offset) * c.sigma; S.vx = 0; c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
       } else if (end[1] >= groundY - 3) {
         standAt(end[0] + c.n[0] * 30 * R.scale, groundY, null, Math.sign(c.n[0]) || 1); return
-      } else { fallFrom(end[0] + c.n[0] * 30 * R.scale, end[1], 0, 0); return }
+      } else if (c.n[1] > 0.7) { c.px = end[0]; c.py = end[1]; letGo(0, 0); return }
+      else { fallFrom(end[0] + c.n[0] * 30 * R.scale, end[1], 0, 0); return }
     }
-    c.tilt = -Math.sign(S.face * Math.sin(c.phi)) * R.clingTilt
+    clingPose(dt)
+  }
+  function clingPose(dt: number) {
+    const c = S.cl
+    // the body leans down the slope; flat (a ceiling) it does not lean
+    const sin = Math.sin(c.phi)
+    c.tilt = Math.abs(sin) < 0.05 ? 0 : -Math.sign(S.face * sin) * R.clingTilt
     const speed = Math.abs(S.vx)
     S.state = 'cling'
     updateFeet(dt, 'cling', speed)

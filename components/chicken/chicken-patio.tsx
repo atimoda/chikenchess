@@ -8,7 +8,7 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Pencil, Save, SlidersHorizontal, Swords, Users, X } from "lucide-react"
+import { Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Pencil, Save, SlidersHorizontal, Sun, Swords, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -47,6 +47,8 @@ import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { PatioEditor } from "@/components/pigchicken/patio-editor"
+import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
+import { patioScreens, patioWorldTop } from "@/lib/pigchicken/patio-settings"
 import { deviceId, forgetPatio, lobbyFromUrl, onPatioOpenRequest, openPatioLobby } from "@/lib/pigchicken/patio-store"
 import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
@@ -124,6 +126,8 @@ export function ChickenPatio() {
   const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: WORLD_GROUND_Y, d: PORTAL_D }), [])
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
+  // the Sun button: the current Pátio's settings (its limits)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
   const [aliensOpen, setAliensOpen] = useState(false)
   // the jukebox in the temple opens the songs' panel when she strikes it
@@ -418,6 +422,11 @@ export function ChickenPatio() {
   }
 
   const patioName = patio?.name ?? (patio?.id ? "Pátio sem nome" : "Pátio da Galinha")
+  // the Pátio's limits (the Sun panel): its width in scenes (a Pátio saved before it had one keeps this browser's
+  // old "Largura do mundo") and its ceiling; the Câmera de Mira settings with that width
+  const screens = patioScreens(patio?.layout.settings, pq.screens)
+  const worldTop = patioWorldTop(patio?.layout.settings)
+  const pqWorld = useMemo(() => ({ ...pq, screens }), [pq, screens])
 
   return (
     <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]">
@@ -480,6 +489,9 @@ export function ChickenPatio() {
             </div>
           )}
         </div>
+        <button type="button" aria-label="Configurações do Pátio" aria-pressed={settingsOpen} title="Configurações do Pátio" onClick={() => setSettingsOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", settingsOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Sun className="h-4 w-4" />
+        </button>
         <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
@@ -521,17 +533,17 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={pq.screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} terrain={patio?.layout.terrain} editing={editorOn} />
+      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} terrain={patio?.layout.terrain} editing={editorOn} worldTop={worldTop} groundHeight={groundHeight} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editorOn} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
-      <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={pq.screens} editing={editorOn} />
+      <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editorOn} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} />}
-      <ParquinhoPlay engine={engine} settings={pq} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} />
       {/* the trees in front of her (half see-through) */}
-      <ParquinhoForeground screens={pq.screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
-      {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={pq.screens} onChange={changeLayout} onClose={() => setEditorOn(false)} />}
+      <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
+      {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} />}
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
         <PatioSavePanel
@@ -548,6 +560,7 @@ export function ChickenPatio() {
           onClose={() => setOpenOpen(false)}
         />
       )}
+      {settingsOpen && patio && <PatioSettingsPanel layout={patio.layout} screens={screens} canEdit={access.canEdit} onChange={changeLayout} onClose={() => setSettingsOpen(false)} />}
       {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {aliensOpen && <AlienCatalogPanel onClose={() => setAliensOpen(false)} />}
@@ -566,7 +579,6 @@ export function ChickenPatio() {
               {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </label>
-          <PqRange label="Largura do mundo" unit="telas" min={1} max={8} step={1} value={pq.screens} onChange={v => setPqValue("screens", v)} />
           <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
           <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
           <PqRange label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
