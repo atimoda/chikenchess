@@ -97,6 +97,8 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Combinações', key: 'crouchRunJumpBoost', label: 'Frente + baixo + corrida + pulo: impulso lateral', unit: 'px/s', min: 0, max: 1500, step: 5},
   { group: 'Combinações', key: 'crouchRunBroodJumpBoost', label: 'Frente + baixo + corrida + chocar + pulo: impulso lateral', unit: 'px/s', min: 0, max: 3000, step: 10},
   { group: 'Voo', key: 'flyFallDivisor', label: 'Queda voando (divisor)', unit: '÷', min: 1, max: 10, step: 0.1},
+  { group: 'Voo', key: 'flyUpFallAtten', label: 'Atenuador de queda (segurando para Cima)', unit: '%', min: -200, max: 200, step: 1, hint: 'Voando (Pulo segurado) com Cima: tira esta parte da gravidade. 100% anula a queda; acima disso ela sobe; negativo puxa para baixo.' },
+  { group: 'Voo', key: 'flyDownFallAtten', label: 'Atenuador de queda (segurando para baixo)', unit: '%', min: -200, max: 200, step: 1, hint: 'Voando (Pulo segurado) com Baixo (agachar): tira esta parte da gravidade. 100% anula a queda; acima disso ela sobe; negativo puxa para baixo.' },
   { group: 'Voo', key: 'flapRate', label: 'Batidas de asa voando', unit: '/s', min: 2, max: 20, step: 0.5},
   { group: 'Voo', key: 'jumpFlaps', label: 'Batidas de asa por pulo', unit: '', min: 0, max: 6, step: 1},
   { group: 'Voo', key: 'heldFlapRate', label: 'Batidas de asa sendo arrastada', unit: '/s', min: 0, max: 20, step: 0.5, hint: '0 = asas paradas' },
