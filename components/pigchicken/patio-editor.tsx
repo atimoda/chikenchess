@@ -704,7 +704,7 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
       </FloatingPanel>
       {/* what is being dragged, at its real size in the world */}
       {drag && d && (
-        <div aria-hidden="true" className="pointer-events-none fixed z-[215] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: drag.y - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
+        <div aria-hidden="true" className="pointer-events-none fixed z-[250] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: drag.y - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
           {d.entity ? <div className="absolute inset-0 flex items-center justify-center bg-[#ffd166]/15"><Thumb entry={drag.entry} /></div> : <ElementArt el={{ kind: drag.entry.kind, params: previewParams(drag.entry), w: d.w, h: d.h }} editing />}
         </div>
       )}
