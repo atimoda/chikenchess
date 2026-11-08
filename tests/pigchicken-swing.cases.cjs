@@ -193,3 +193,51 @@ test('an item can turn the interruption off: a blow pressed mid-move then waits 
   step(c, { melee: true })
   assert.notEqual(c.swing, first, 'once it is over, the next one goes')
 })
+
+// Golpe with Atirar held: the blow interrupts firing and a held Atirar fires again once it ends
+const armedWith = (id) => { const c = createCombat(); c.give(id); step(c, { slot: 1 }); return c }
+const ammo = (c) => c.inventory[0].ammo
+const hold = (c, s, extra = {}) => { for (let t = 0; t < s; t += 0.016) step(c, { fire: true, ...extra }) }
+
+test('a Golpe pressed while an automatic weapon fires stops the shots until it ends, then they go on', () => {
+  const c = armedWith('smg')
+  step(c, { fire: true, firePressed: true }); hold(c, 0.1)
+  assert.ok(ammo(c) < DEFAULT_ITEMS.smg.mag, 'firing')
+  step(c, { fire: true, melee: true })
+  assert.ok(c.swing, 'the blow starts with Atirar held')
+  const during = ammo(c)
+  hold(c, DEFAULT_ITEMS.smg.meleeTime - 0.04)
+  assert.equal(ammo(c), during, 'no shot while the blow moves')
+  hold(c, 0.2)
+  assert.ok(ammo(c) < during, 'still held when it ends: firing again')
+})
+
+test('after the Golpe a held semi-automatic shoots again once; letting go during the blow does not', () => {
+  const c = armedWith('pistol')
+  step(c, { fire: true, firePressed: true })
+  const first = ammo(c)
+  step(c, { fire: true, melee: true }); hold(c, DEFAULT_ITEMS.pistol.meleeTime + 0.05)
+  assert.equal(ammo(c), first - 1, 'one new shot when the blow ends')
+  hold(c, 0.3)
+  assert.equal(ammo(c), first - 1, 'held, it does not keep shooting (semi)')
+  const g = armedWith('pistol')
+  step(g, { fire: true, firePressed: true })
+  const left = ammo(g)
+  step(g, { fire: true, melee: true }); hold(g, 0.05)
+  run(g, DEFAULT_ITEMS.pistol.meleeTime + 0.1)
+  assert.equal(ammo(g), left, 'released during the blow: nothing fires')
+})
+
+test('a Golpe cancels a charge without shooting it, and a held button charges again afterwards', () => {
+  const c = armedWith('grenade')
+  step(c, { fire: true, firePressed: true }); hold(c, 0.3)
+  assert.ok(c.fireCharge > 0)
+  const before = ammo(c)
+  step(c, { fire: true, melee: true }); step(c, { fire: true })
+  assert.equal(c.fireCharge, 0, 'charge called off')
+  assert.equal(ammo(c), before, 'and nothing thrown')
+  hold(c, DEFAULT_ITEMS.grenade.meleeTime + 0.1)
+  assert.ok(c.fireCharge > 0, 'charging again')
+  step(c)
+  assert.equal(ammo(c), before - 1, 'let go: it throws')
+})
