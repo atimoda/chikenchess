@@ -292,6 +292,47 @@ test('Throw settings live together in Arremesso and old profiles gain 90% ground
   assert.equal(normalizeChickenConfig(migrated).params.throwGroundStop,0)
 })
 
+test('secondary keyboard defaults use right-hand punctuation and migrate once, preserving custom binds', () => {
+  const d = controls.defaultChickenControls()
+  assert.deepEqual(d.keys2.down, ['Key:Slash', 'Key:ControlRight'])
+  assert.deepEqual(d.keys2.grab, ['Key:KeyP', null])
+  assert.deepEqual(d.keys2.prevItem, ['Key:Quote', null])
+  assert.deepEqual(d.keys2.fire, ['Key:Insert', 'Key:BracketRight'])
+  assert.deepEqual(d.keys2.melee, ['Key:Home', 'Key:BracketLeft'])
+  assert.deepEqual(d.keys2.jump, ['Key:PageUp', 'Key:Semicolon'])
+  assert.deepEqual(d.keys2.throw, ['Key:End', 'Key:Backslash'])
+  assert.deepEqual(d.keys2.crouch, ['Key:PageDown', 'Key:ArrowDown'])
+  // no key repeats across both keyboards
+  const all = controls.CHICKEN_ACTIONS.flatMap(a => [...d.keys[a.key], ...d.keys2[a.key]]).filter(Boolean)
+  assert.equal(new Set(all).size, all.length)
+  assert.equal(controls.chickenBindName('Key:BracketRight'), ']')
+  assert.equal(controls.chickenBindName('Key:Quote'), "'")
+  const previous = globalThis.window
+  try {
+    const old = () => {
+      const saved = { ...controls.defaultChickenControls(), itemsV1: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, noCmdBrood: true }
+      Object.assign(saved.keys2, { down: ['Key:ArrowDown', 'Key:ControlRight'], grab: ['Key:Slash', null], prevItem: ['Key:Backslash', null], fire: ['Key:Insert', null], melee: ['Key:Home', null], jump: ['Key:PageUp', null], throw: ['Key:End', null], crouch: ['Key:PageDown', null] })
+      return saved
+    }
+    let saved = old()
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    assert.deepEqual(controls.loadChickenControls().keys2, d.keys2)
+    // custom binds stay; a key taken elsewhere is not added
+    saved = old()
+    saved.keys2.grab = ['Key:Slash', 'Key:KeyK']
+    saved.keys.reload = ['Key:KeyR', 'Key:BracketRight', null]
+    const c = controls.loadChickenControls()
+    assert.deepEqual(c.keys2.grab, ['Key:Slash', 'Key:KeyK'])
+    assert.deepEqual(c.keys2.down, ['Key:ArrowDown', 'Key:ControlRight'])
+    assert.deepEqual(c.keys2.fire, ['Key:Insert', null])
+    assert.deepEqual(c.keys2.melee, ['Key:Home', 'Key:BracketLeft'])
+    assert.deepEqual(c.keys2.crouch, ['Key:PageDown', null], 'the down arrow stays on brood, so crouch does not get it')
+    // once saved with the marker, a removed key does not come back
+    saved = { ...old(), keys2Punctuation: true }
+    assert.deepEqual(controls.loadChickenControls().keys2.jump, ['Key:PageUp', null])
+  } finally { globalThis.window = previous }
+})
+
 test('Deselect item defaults to F and migrates only when free, preserving custom and unbound controls', () => {
   assert.deepEqual(controls.defaultChickenControls().keys.deselectItem, ['Key:KeyF', null, null])
   const previous = globalThis.window
