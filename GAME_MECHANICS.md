@@ -20,7 +20,7 @@
 | Galinha: movimento, paredes, teto e limites escaláveis, pulo, portais do globo | [Movimento da galinha](docs/mechanics/chicken/movement.md) |
 | Galinha: controles, teclado, gamepad, toque e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
 | Pátio: mundo, limites e botão Sol, parallax, portais, Vila, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
-| Pátio: modo editor, layout, pares de portais, salvar/abrir | [Editor do Pátio](docs/mechanics/patio/editor.md) |
+| Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, salvar/abrir | [Editor do Pátio](docs/mechanics/patio/editor.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: golpe, bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
@@ -46,7 +46,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Admin e catálogos locais](docs/mechanics/admin.md) | 4 KB |
 | [Arranjo global e atribuições por peça](docs/mechanics/arrangement.md) | 18 KB |
 | [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 16 KB |
-| [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 22 KB |
+| [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 23 KB |
 | [Criativo e persistência](docs/mechanics/creative.md) | 14 KB |
 | [Editor de variações](docs/mechanics/editor.md) | 15 KB |
 | [Kits: revisões e reconstruções por campanha](docs/mechanics/kit-revisions.md) | 29 KB |
@@ -60,7 +60,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Online 1v1: salas, lobby, convites e popup](docs/mechanics/online/lobby.md) | 14 KB |
 | [Online 1v1: partida, confirmação, análise, áudio e rede](docs/mechanics/online/match.md) | 14 KB |
 | [Pátio: combate, mira, golpe, bicada e arremesso](docs/mechanics/patio/combat.md) | 24 KB |
-| [Pátio: modo editor, layout e salvar/abrir](docs/mechanics/patio/editor.md) | 14 KB |
+| [Pátio: modo editor, layout e salvar/abrir](docs/mechanics/patio/editor.md) | 17 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 16 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 12 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 17 KB |

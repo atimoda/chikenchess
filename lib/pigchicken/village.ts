@@ -36,6 +36,8 @@ export const VILLAGE_RIDGE: RidgePoint[] = [
   [1378, 727], [1568, 678], [1725, 678], [1892, 645], [1912, 645],
 ]
 
+// The old fixed "Chão da Vila" (`layout.terrain`, before layout v5): now the first ground element of the layout
+// (lib/pigchicken/surfaces.ts `villageGround`). Kept to migrate the Pátios saved with an edited ridge.
 export type RidgePoint = [x: number, y: number]
 export const RIDGE_MIN_Y = -800
 export const RIDGE_MAX_Y = WORLD_GROUND_Y - 6
@@ -52,19 +54,4 @@ export function normalizeVillageRidge(raw: unknown): RidgePoint[] | undefined {
     points.push([x, y])
   }
   return points
-}
-
-export function moveRidgePoint(points: RidgePoint[], index: number, x: number, y: number): RidgePoint[] {
-  const min = index === 0 ? 0 : points[index - 1][0] + RIDGE_GAP
-  const max = index === points.length - 1 ? SCENE_W : points[index + 1][0] - RIDGE_GAP
-  const next: RidgePoint = [Math.max(min, Math.min(max, Math.round(x))), Math.max(RIDGE_MIN_Y, Math.min(RIDGE_MAX_Y, Math.round(y)))]
-  if (next[0] === points[index][0] && next[1] === points[index][1]) return points
-  return points.map((p, i) => i === index ? next : p)
-}
-
-export function splitRidgeSegment(points: RidgePoint[], index: number): RidgePoint[] {
-  const a = points[index], b = points[index + 1]
-  if (!a || !b || points.length >= RIDGE_MAX_POINTS || b[0] - a[0] < RIDGE_GAP * 2) return points
-  const middle: RidgePoint = [Math.round((a[0] + b[0]) / 2), Math.round((a[1] + b[1]) / 2)]
-  return [...points.slice(0, index + 1), middle, ...points.slice(index + 1)]
 }

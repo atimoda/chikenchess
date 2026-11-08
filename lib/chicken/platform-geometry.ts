@@ -75,6 +75,10 @@ function platformPaths(el: Element, src: string | undefined, cache: WeakMap<Elem
 }
 export const chickenPlatformLines = (el: Element) => platformPaths(el, (el as HTMLElement).dataset.chickenLine, lineCache)
 export const chickenPlatformWalls = (el: Element) => platformPaths(el, (el as HTMLElement).dataset.chickenWalls, wallCache)
+// a closed outline (`data-chicken-shape`, one polygon) and whether it is an "Objeto duro" (`data-chicken-hard`)
+const shapeCache = new WeakMap<Element, PlatformLine>()
+export const chickenPlatformShape = (el: Element) => platformPaths(el, (el as HTMLElement).dataset.chickenShape, shapeCache)?.[0] ?? null
+export const chickenPlatformHard = (el: Element) => (el as HTMLElement).dataset.chickenHard !== undefined
 
 const bounceCache = new WeakMap<Element, { src: string; params: TrampolineParams }>()
 export function chickenPlatformBounce(el: Element) {

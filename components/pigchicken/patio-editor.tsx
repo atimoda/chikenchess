@@ -9,11 +9,11 @@
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Mountain, Music, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Music, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
-  ELEMENT_DEFS, HORDE_BUTTONS, isMusicElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
+  ELEMENT_DEFS, HARD_KINDS, HORDE_BUTTONS, isMusicElement, isSurfaceElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
   newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
@@ -22,7 +22,7 @@ import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, MELEE_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
-import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
+import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES, zoneLabel } from "@/lib/pigchicken/music"
 import { TEMPLE_IDLE } from "@/lib/pigchicken/temple-music"
 import { defaultSoundZone, soundZoneLabel } from "@/lib/pigchicken/sound-zones"
@@ -34,7 +34,8 @@ import { houseDraftSize, randomHouse, type HouseParams, type HouseStyle } from "
 import { TREE_STYLES, randomTree, treeDraftSize, treePreset, type TreeParams } from "@/lib/pigchicken/trees"
 import { CustomTreeArt } from "./tree-art"
 import { TreePanel } from "./tree-panel"
-import { TerrainEditor } from "./terrain-editor"
+import { SurfacePoints } from "./surface-points"
+import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
 
 const UI = "header, aside, button, input, select, textarea, a, label, [data-chicken-ignore], [role='dialog']"
@@ -93,7 +94,6 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
   const shown = useMemo(() => elementsInWorld(layout, screens), [layout, screens])
   const sel = shown.find(e => e.id === selected) ?? null
   const [draft, setDraft] = useState<Draft | null>(null)
-  const [terrainOpen, setTerrainOpen] = useState(false)
   // the "Zonas sonoras" layer: each zone painted with its label, the scenes' zones under them, the surfaces that
   // rebate notes outlined and the fixed lanes' notes
   const [soundLayer, setSoundLayer] = useState(false)
@@ -146,13 +146,11 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
   })
   const openDraft = (next: Draft) => {
     select(null)
-    setTerrainOpen(false)
     setDraft(next)
   }
   const edit = (el: LayoutElement) => {
     if (el.locked || !ELEMENT_DEFS[el.kind].editable) return
     setDraft(null)
-    setTerrainOpen(false)
     setSelected(el.id)
     setPanel('edit')
   }
@@ -171,7 +169,6 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
       if (e.code === 'Escape') {
         if (placement.cancel()) { e.preventDefault(); return }
         if (draft) { e.preventDefault(); setDraft(null); return }
-        if (terrainOpen) { e.preventDefault(); setTerrainOpen(false); return }
       }
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
@@ -187,7 +184,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [back, forward, duplicate, select, placement.cancel, draft, screens, terrainOpen])
+  }, [back, forward, duplicate, select, placement.cancel, draft, screens])
 
   // with something selected, the first click on empty space only clears the selection (it does not shoot)
   useEffect(() => {
@@ -273,8 +270,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
           {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => (
             <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
           ))}
-          {terrainOpen && <TerrainEditor left={villageScene(screens) * SCENE_W} terrain={layout.terrain} onClose={() => setTerrainOpen(false)}
-            onChange={(terrain, step) => history.commit({ ...layoutRef.current, terrain }, step)} />}
+          {sel && !sel.locked && isSurfaceElement(sel.kind) && <SurfacePoints el={sel} onChange={update} />}
           {sel && (
             <Toolbar
               el={sel}
@@ -307,7 +303,6 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
           return { ...createElement("tree", 0, 0, { tree: next.tree }), w: next.w, h: next.h }
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
-        terrainOpen={terrainOpen} onTerrain={() => { select(null); setTerrainOpen(!terrainOpen) }}
         soundLayer={soundLayer} onSoundLayer={() => setSoundLayer(!soundLayer)}
         floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />
       {draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
@@ -459,6 +454,8 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
           : el.kind === 'tree' ? <p className="text-[#93a79a]">Configure os apoios no Editor de árvores.</p>
           : el.kind === 'trampoline' ? <p className="text-[#93a79a]">O tampo impulsiona a galinha ao pousar.</p>
           : <Toggle label="Pisar (sólido)" hint="A galinha fica em cima e bate dos lados" checked={el.solid} onChange={v => onChange({ ...el, solid: v })} />}
+        {HARD_KINDS.includes(el.kind) && el.solid && <Toggle label="Objeto duro" hint="Os bonecos não atravessam: não sobem por baixo, não passam pelos lados e não descem através dele."
+          checked={!!el.hard} onChange={v => onChange({ ...el, hard: v })} />}
         <Toggle label="Ocultar colisores atrás" hint="Em objetos opacos, recorta pisos e paredes cobertos pela fachada ou pela caixa do objeto."
           checked={occludesColliders(el)} onChange={v => onChange({ ...el, occludesColliders: v })} />
         <Toggle label="Bloqueia tiros" hint="Balas, granadas e o feixe param nele" checked={el.shots} onChange={v => onChange({ ...el, shots: v })} />
@@ -545,6 +542,7 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
           <span className="text-[10px] text-[#93a79a]">Espera após pegar o item. Consumíveis: 0,1 s por padrão; armas e instrumentos: 2 s. Zero repõe imediatamente.</span>
         </label>
       </>}
+      {isSurfaceElement(el.kind) && el.params.surface && <SurfaceFields el={el} surface={el.params.surface} onChange={surface => set({ surface })} />}
       {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
       {el.kind === "button" && (
@@ -560,11 +558,32 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
   )
 }
 
+// a Chão's biome or a Parede's style, and how its outline is edited
+function SurfaceFields({ el, surface, onChange }: { el: LayoutElement; surface: SurfaceParams; onChange: (surface: SurfaceParams) => void }) {
+  const ground = el.kind === "ground"
+  return <>
+    <div className="grid h-28 shrink-0 place-items-center rounded-md border border-white/10 bg-[#0b110e] p-2" aria-label="Prévia">
+      <div className="relative" style={{ height: 96, aspectRatio: `${el.w} / ${el.h}`, maxWidth: "100%" }}><ElementArt el={el} /></div>
+    </div>
+    <label className="grid gap-1">
+      <span>{ground ? "Bioma" : "Tipo de parede"}</span>
+      <select aria-label={ground ? "Bioma do chão" : "Tipo de parede"} value={surface.style} onChange={e => onChange({ ...surface, style: e.target.value as SurfaceParams["style"] })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        {surfaceStyles(ground ? "ground" : "wall").map(style => <option key={style} value={style}>{SURFACE_STYLE_LABELS[style]}</option>)}
+      </select>
+    </label>
+    <p className="text-[#93a79a]">Contorno com {surface.points.length} pontos, em volta do objeto inteiro. Com ele selecionado, clique numa linha da borda para criar um ponto, arraste os pontos e dê dois cliques num ponto para removê-lo (mínimo 3). O contorno é o desenho e a colisão; “Objeto duro” fica em Camada e colisões.</p>
+  </>
+}
+
 // ---------- the palette: drag an element onto the Pátio ----------
 type Entry = { key: string; kind: ElementKind; label: string; params?: ElementParams }
 const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }] },
   { group: "Plataformas", items: (["platform", "terrace", "pillar", "trampoline"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
+  { group: "Chãos e paredes", items: [
+    ...GROUND_BIOMES.map(style => ({ key: `ground-${style}`, kind: "ground" as ElementKind, label: `Chão · ${SURFACE_STYLE_LABELS[style]}`, params: { surface: defaultSurface("ground", style) } })),
+    ...WALL_STYLES.map(style => ({ key: `wall-${style}`, kind: "wall" as ElementKind, label: `Parede · ${SURFACE_STYLE_LABELS[style]}`, params: { surface: defaultSurface("wall", style) } })),
+  ] },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Música", items: (["zone", "lanes"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
@@ -584,8 +603,12 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "zone") return <span className="flex h-7 w-10 items-center justify-center rounded-md border-2 border-dashed border-[#7b8cff] bg-[#7b8cff]/20 text-[13px] text-[#7b8cff]">♫</span>
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
   const k = Math.min(48 / d.w, 34 / d.h)
-  return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><ElementArt el={{ kind: entry.kind, params: isMusicElement(entry.kind) ? defaultParams(entry.kind) : { seed: 4242 }, w: d.w, h: d.h }} editing /></span>
+  return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><ElementArt el={{ kind: entry.kind, params: previewParams(entry), w: d.w, h: d.h }} editing /></span>
 }
+
+// what a palette entry looks like before it is placed
+const previewParams = (entry: Entry): ElementParams =>
+  isMusicElement(entry.kind) ? defaultParams(entry.kind) : isSurfaceElement(entry.kind) ? { ...defaultParams(entry.kind), ...entry.params } : { seed: 4242 }
 
 const PALETTE_CARD = "flex min-h-16 cursor-grab touch-none flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-[#0b110e] px-1 py-1.5 text-center text-[10px] leading-tight hover:border-[#ffd166] active:cursor-grabbing disabled:opacity-50"
 
@@ -598,10 +621,10 @@ function PaletteSection({ title, children }: { title: string; children: React.Re
   </PatioDisclosure>
 }
 
-function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, terrainOpen, onTerrain, soundLayer, onSoundLayer, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
+function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
   onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
   bindTree: (tree: TreeParams) => PatioPlacementHandlers
-  canAddScenery: boolean; hidden: boolean; draggingScenery: boolean; terrainOpen: boolean; onTerrain: () => void
+  canAddScenery: boolean; hidden: boolean; draggingScenery: boolean
   soundLayer: boolean; onSoundLayer: () => void
   floorBelow: (x: number, y: number) => number; onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
 }) {
@@ -641,9 +664,7 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
           <button type="button" className={TOOL} onClick={onClose} title="Sair do modo editor (=)" aria-label="Sair do modo editor"><X className="h-4 w-4" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-3 pt-2">
-          <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", terrainOpen && "border-primary text-primary")}
-            aria-pressed={terrainOpen} onClick={onTerrain}><Mountain size={16} /> Editar chão da Vila</button>
-          <button type="button" className={cn(TOOL, "ml-4 mt-1.5 h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas sonoras, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
+          <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas sonoras, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
             aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas sonoras</button>
           <PaletteSection title="Casas">
             {housePreviews.map(house => {
@@ -684,7 +705,7 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
       {/* what is being dragged, at its real size in the world */}
       {drag && d && (
         <div aria-hidden="true" className="pointer-events-none fixed z-[215] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: drag.y - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
-          {d.entity ? <div className="absolute inset-0 flex items-center justify-center bg-[#ffd166]/15"><Thumb entry={drag.entry} /></div> : <ElementArt el={{ kind: drag.entry.kind, params: isMusicElement(drag.entry.kind) ? defaultParams(drag.entry.kind) : { seed: 4242 }, w: d.w, h: d.h }} editing />}
+          {d.entity ? <div className="absolute inset-0 flex items-center justify-center bg-[#ffd166]/15"><Thumb entry={drag.entry} /></div> : <ElementArt el={{ kind: drag.entry.kind, params: previewParams(drag.entry), w: d.w, h: d.h }} editing />}
         </div>
       )}
     </>

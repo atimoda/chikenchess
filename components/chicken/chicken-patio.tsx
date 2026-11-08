@@ -533,7 +533,7 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} terrain={patio?.layout.terrain} editing={editorOn} worldTop={worldTop} groundHeight={groundHeight} />
+      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editorOn} worldTop={worldTop} groundHeight={groundHeight} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editorOn} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
