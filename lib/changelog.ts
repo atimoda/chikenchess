@@ -33,6 +33,7 @@ const RECENT = [
       'O Taco tem 8 golpes seguidos: cada golpe gasta um, vazio ele só faz o clique seco e recarrega sozinho.',
       'Nova recarga automática gradual por item (Itens → Munição): a cada intervalo sem usar o item, balas voltam sozinhas, na quantidade escolhida (padrão 1). Instrumentos e o Taco recuperam uma a cada 0,5 s; as armas de tiro começam com ela desligada.',
       'Armas e instrumentos não quebram mais com os golpes; com Quebra depois de em 0 o painel mostra “0 (nunca quebra)”. Itens ajustados antes mantêm os números que você mudou.',
+      'Os painéis flutuantes do Pátio (Configurações, Volume, Itens, Players, editor e os outros) agora se arrastam por qualquer parte que não seja botão, campo ou slider, não só pelo título. No celular, numa lista que rola, o dedo rola a lista e o título continua arrastando. Clicar ou arrastar um painel o traz para a frente dos outros, e o painel que abre aparece na frente.',
     ] }],
   },
   {

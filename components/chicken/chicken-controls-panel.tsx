@@ -154,7 +154,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
     <FloatingPanel
       id="chicken-controls" role="dialog" aria-label="Controles do boneco"
       initial={(vw, vh) => { const w = Math.min(980, vw - 32); return { x: (vw - w) / 2, y: 16, w, h: Math.min(820, vh - 32) } }}
-      minW={300} className="z-[230] rounded-lg border border-primary/30 bg-[#101713] text-[#dfe8df] shadow-lg"
+      minW={300} className="rounded-lg border border-primary/30 bg-[#101713] text-[#dfe8df] shadow-lg"
     >
       <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2 border-b border-white/10 px-6 py-3">
         <h2 className="flex-1 font-mono text-sm uppercase tracking-widest">Controles do boneco</h2>
