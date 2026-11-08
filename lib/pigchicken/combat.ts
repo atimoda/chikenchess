@@ -111,6 +111,8 @@ export function createCombat() {
   const inv: Owned[] = []
   let cur = 0
   let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
+  // the item whose firing a Golpe interrupted while Atirar was held: it shoots again when the blow ends
+  let fireResume: Owned | null = null
   let peck: Peck | null = null, peckPrep = 0, peckCool = 0
   let aimAngle = 0
   // the throw goes where the aim points, all the way round (not slowed by a heavy item's turn rate)
@@ -430,18 +432,18 @@ export function createCombat() {
   type Loadout = {
     peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
-    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
+    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effect: Effect | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
-    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, swingCombo, swingGap,
+    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect,
   })
   const blank = (): Loadout => ({
-    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
+    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
     beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effect: null,
   })
   function useLoadout(id: string) {
@@ -449,7 +451,7 @@ export function createCombat() {
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
     active = id
   }
 
@@ -1156,6 +1158,20 @@ export function createCombat() {
         equip(from + input.pick)
       }
       const dNow = def()
+      // Golpe is taken before firing, even with Atirar held: on an item that shoots, the blow interrupts firing
+      // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
+      // starts again as if the button had just been pressed.
+      const hNow = held()
+      if (input.melee && meleeCool <= 0 && canSwing(!hNow)) melee(!hNow, body.scale)
+      if (hNow && !dNow.consumable && dNow.mag !== 0 && swing && swing.t < swing.time) {
+        fireResume = input.fire ? hNow : null
+        input = { ...input, fire: false, firePressed: false }
+        prevFire = false; chargeT = 0; glissSteps = 0; burstLeft = 0
+      } else if (fireResume) {
+        // only the same item: switching or emptying the wing during the blow asks for a new press, as usual
+        if (input.fire && hNow === fireResume) input = { ...input, firePressed: true }
+        fireResume = null
+      }
       if (beam && (!input.fire || !dNow.beam)) stopBeam()
 
       // reload
@@ -1264,7 +1280,6 @@ export function createCombat() {
         }
       }
       prevFire = input.fire
-      if (input.melee && meleeCool <= 0 && canSwing(!h)) melee(!h, body.scale)
 
       // throw: hold to charge, let go to throw what she holds; another item in the wing while charging
       // (switched, grabbed) calls the throw off completely, until the button is let go

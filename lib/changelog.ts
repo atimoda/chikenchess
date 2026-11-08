@@ -26,6 +26,7 @@ const RECENT = [
       'Com um chão ou parede selecionado, os pontos do contorno aparecem em volta do objeto inteiro, inclusive a parte de trás: clique numa linha da borda para criar um ponto, arraste para mover e dê dois cliques num ponto para removê-lo. O desenho e a colisão seguem o contorno.',
       'Nova opção Objeto duro em Camada e colisões (ligada nos chãos e paredes, e disponível em plataformas, terraços e pilares): os bonecos não atravessam o objeto por baixo, pelos lados nem descendo por ele, sobem rampas e degraus baixos dele andando e escalam suas paredes.',
       'O Chão da Vila virou um desses chãos, com a mesma encosta (inclusive a que você tinha editado), e o painel separado do Chão da Vila saiu.',
+      'O Golpe sai mesmo com Atirar segurado nas armas e instrumentos que atiram: ele interrompe os tiros (e a carga ou o feixe) enquanto dura e, se Atirar ainda estiver segurado quando o golpe termina, ela volta a atirar. Com o mouse, o botão direito agora funciona com o esquerdo segurado.',
     ] }],
   },
   {
