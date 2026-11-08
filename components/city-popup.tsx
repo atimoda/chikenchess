@@ -488,37 +488,30 @@ export const CityPopup = ({
       >
         <style jsx>{`
           .popup-scrollbar-hidden::-webkit-scrollbar { display: none; }
+          .era-track { transition: transform 360ms ease-in-out; }
+          @media (prefers-reduced-motion: reduce) { .era-track { transition: none; } }
         `}</style>
         {/* Decorative Header Line */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" style={{ backgroundColor: city.color }} />
 
-        {/* City Image */}
-        <div
-          data-drag-handle="true"
-          className="relative h-32 w-full overflow-hidden animate-content-1 group cursor-grab active:cursor-grabbing"
-        >
-          <img
-            src={city.image}
-            alt={`City of ${city.name}`}
-            className="w-full h-full object-cover pointer-events-none"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-          {isConquered && <span className="absolute top-2 right-2 text-[10px] font-mono font-bold bg-black/70 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full pointer-events-none shadow-[0_0_10px_rgba(234,179,8,0.2)]">👑 CONQUERED</span>}
+        <div className="overflow-hidden" data-era-viewport>
+          <div className="era-track flex items-start" style={{ transform: `translateX(-${getCityEras(city).findIndex(era => era.id === city.id) * 100}%)` }}>
+            {getCityEras(city).map(era => <article key={era.id} aria-hidden={era.id !== city.id} inert={era.id !== city.id} className="w-full min-w-0 shrink-0" data-era-id={era.id}>
+              <div data-drag-handle="true" className="relative h-32 w-full overflow-hidden cursor-grab active:cursor-grabbing">
+                <img src={era.image} alt={`City of ${era.name}`} className="w-full h-full object-cover pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                {era.id === city.id && isConquered && <span className="absolute top-2 right-2 text-[10px] font-mono font-bold bg-black/70 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full pointer-events-none">👑 CONQUERED</span>}
+              </div>
+              <div className="px-5 pt-5 pb-1">
+                <h3 className="mb-3 font-mono font-bold text-xl tracking-wide" style={{ color: era.color }}>{era.name}, {era.year}</h3>
+                <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{era.genre}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{era.description}</p>
+              </div>
+            </article>)}
+          </div>
         </div>
-
-        <div className="p-5">
-        <div className="flex items-center mb-3 animate-content-2">
-          <h3 className="font-mono font-bold text-xl tracking-wide" style={{ color: city.color }}>
-            {city.name}, {city.year}
-          </h3>
-        </div>
-
-        <div className="mb-4 animate-content-3">
-          <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{city.genre}</p>
-          <p className="text-sm text-muted-foreground leading-relaxed">{city.description}</p>
-        </div>
-
-        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-end gap-2 mb-3">
+        <div className="px-5 pb-5">
+        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-start gap-2 mb-3">
           {getCityEras(city).map((era, index) => <button key={era.id} type="button" disabled={isEntering}
             // Closed hat on hover: even positions (2nd, 4th…) full, odd ones softer.
             onMouseEnter={() => { if (!isEntering) playMapSound(index % 2 === 1 ? 'alesissr16_ch' : 'alesissr16_ch_soft', true) }} aria-label={`${era.name}, ${era.year}: ${era.genre.split('·')[0].trim()}`} aria-pressed={era.id === city.id}
@@ -528,12 +521,12 @@ export const CityPopup = ({
         </nav>}
 
         <div className="space-y-3 animate-content-4">
-          <div className="flex flex-col items-end gap-2 text-2xl font-mono">
+          <div className="flex w-full flex-row items-stretch gap-2 font-mono">
               <button
                 data-chicken-platform
                 ref={enterButtonRef}
                 className={cn(
-                   "order-1 inline-flex items-center gap-2 px-3 py-1.5 rounded border transition-all cursor-pointer relative z-[100] overflow-hidden group",
+                   "inline-flex w-3/5 items-center justify-center gap-1 px-2 py-1.5 rounded border transition-all cursor-pointer relative z-[100] overflow-hidden group text-sm",
                    isEntering && "pointer-events-none duration-[2000ms] ease-in"
                 )}
                 style={{
@@ -576,7 +569,7 @@ export const CityPopup = ({
                   onEnter();
                 }}
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-7 shrink-0">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-5 shrink-0">
                   <path d="M12 15v-12M12 3l7 3-7 3M2 21l4.2-4.4 2.4 2.4L12 15l3.4 4 2.4-2.4L22 21" />
                   <path d="m6.2 16.6 3.3 3.8 2.5-2.1 2.5 2.1 2.9-3.4" />
                 </svg>
@@ -606,7 +599,7 @@ export const CityPopup = ({
               {(onCreateRoom || onlineDisabled) && (
                 <div
                   data-no-drag
-                  className="order-2 flex w-full"
+                  className="w-2/5 min-w-0"
                   // Same synth when online is down, a bit lower in pitch.
                   onPointerEnter={(e) => { if (!isEntering) handleSmartPadSound(e, onCreateRoom ? 0.45 : 0.38) }}
                   onPointerMove={(e) => { if (!isEntering) handleSmartPadSound(e, onCreateRoom ? 0.45 : 0.38) }}
@@ -617,7 +610,7 @@ export const CityPopup = ({
                     type="button"
                     disabled={isEntering || isCreatingRoom || !onCreateRoom}
                     className={cn(
-                      "group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded border border-primary/70 bg-transparent px-3 py-1.5 uppercase font-mono text-2xl text-primary transition-all",
+                      "group relative flex h-full w-full min-w-0 items-center justify-center gap-1 overflow-hidden rounded border border-primary/70 bg-transparent px-1.5 py-1.5 uppercase font-mono text-xs text-primary transition-all",
                       !onCreateRoom && "text-sm normal-case",
                       "hover:border-primary hover:shadow-[0_0_14px_rgba(16,185,129,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
                       "cursor-crosshair disabled:cursor-not-allowed disabled:opacity-50"
@@ -634,13 +627,13 @@ export const CityPopup = ({
                         <circle cx="12" cy="12" r="2.2" fill="currentColor" className="animate-pulse" />
                       </svg>
                     ) : (
-                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-8 shrink-0">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 size-5 shrink-0">
                         <path d="M4 21V4a1 1 0 0 1 1-1h9" />
                         <path d="M14 3l6 3v14l-6-3V3Z" />
                         <path d="M4 21h16" />
                       </svg>
                     )}
-                    <span className="relative z-10">{!onCreateRoom ? 'Online mode temporarily disabled' : isCreatingRoom ? 'Waiting response' : 'Create lobby'}</span>
+                    <span className="relative z-10">{!onCreateRoom ? 'Online mode temporarily disabled' : isCreatingRoom ? 'Waiting response' : 'Lobby'}</span>
                   </button>
                 </div>
               )}

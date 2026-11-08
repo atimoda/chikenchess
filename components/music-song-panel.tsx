@@ -132,7 +132,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
           const instrument = snapshot?.instruments?.[piece.id]
           const expanded = selected && expandedId === piece.id && !!selectedView
           const compact = showMidi && active && !!snapshot && !!instrument
-          return <div key={piece.id} className={cn('min-w-0 rounded border-b border-[#2e3b31] transition-colors', selected && 'bg-white/10')} data-selected={selected || undefined} data-expanded={expanded || undefined}>
+          return <div key={piece.id} className={cn('min-w-0 rounded transition-colors', selected && 'bg-white/10')} data-selected={selected || undefined} data-expanded={expanded || undefined}>
           <div data-piece-row={piece.id} className={cn('flex min-w-0 items-stretch rounded', !selected && 'hover:bg-white/5')}
             onPointerEnter={event => { hover(piece); if (event.pointerType === 'mouse' && onAudition) { onAudition(piece.square); setBlink(b => ({ id: piece.id, sequence: (b?.sequence ?? 0) + 1 })) } }} onFocus={() => hover(piece)} onBlur={() => hover(null)}>
             <button type="button" ref={element => { if (element) dots.current.set(piece.id, element); else dots.current.delete(piece.id) }}
@@ -141,7 +141,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
               title={toggleAllowed ? (active ? 'Turn off' : 'Turn on') : 'This piece cannot be changed now'}
               onClick={() => onToggle(piece.square)}><span aria-hidden="true">{active ? '●' : '○'}</span>
               {blink?.id === piece.id && <span key={blink.sequence} aria-hidden="true" className={styles.auditionBlink} onAnimationEnd={() => setBlink(b => b?.sequence === blink.sequence ? null : b)} />}</button>
-            <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 bg-transparent py-1.5 pr-1 text-left font-mono text-[10px] text-[#e0e9df]"
+            <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 bg-transparent py-[3px] pr-1 text-left font-mono text-[10px] text-[#e0e9df]"
               aria-expanded={expanded} title={`${expanded ? 'Collapse' : 'Expand'} ${name} (${piece.square}) · double-click opens Piece Params`}
               // The second click of a double click is left to onDoubleClick.
               onClick={event => { if (event.detail >= 2) return; if (expanded) { setExpandedId(null); onSelect(null) } else { expand(piece); if (!active && toggleAllowed) onToggle(piece.square) } }}
@@ -154,8 +154,8 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
               aria-label={`${solo ? 'Disable' : 'Enable'} solo ${name}`} title="Solo" aria-pressed={solo} onClick={() => onSolo(piece.id)}>S</button>}
           </div>
           <Reveal open={expanded || compact} mode={expanded ? 'full' : 'compact'}>
-            {expanded ? <div className="pb-2 pl-6 pr-1 pt-1"><NoteParamsHostContext.Provider value={ignoreNoteParams}><MusicPlaybackViewport visualUpdatesEnabled pieceParamsLayout>{selectedView}</MusicPlaybackViewport></NoteParamsHostContext.Provider></div>
-              : snapshot && instrument && <button type="button" className="block w-full cursor-pointer bg-transparent pb-1.5 pl-6 pr-1 pt-0 text-left" aria-label={`Expand the MIDI of ${name}`} title="Expand the sequencer" onClick={() => expand(piece)}>
+            {expanded ? <div className="pb-1 pl-6 pr-1 pt-0.5"><NoteParamsHostContext.Provider value={ignoreNoteParams}><MusicPlaybackViewport visualUpdatesEnabled pieceParamsLayout>{selectedView}</MusicPlaybackViewport></NoteParamsHostContext.Provider></div>
+              : snapshot && instrument && <button type="button" className="block w-full cursor-pointer bg-transparent pb-[3px] pl-6 pr-1 pt-0 text-left" aria-label={`Expand the MIDI of ${name}`} title="Expand the sequencer" onClick={() => expand(piece)}>
                 <MusicMiniRoll snapshot={snapshot} id={piece.id} monitor={monitor} instrument={instrument}/></button>}
           </Reveal>
           </div>

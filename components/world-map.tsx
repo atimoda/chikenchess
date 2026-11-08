@@ -6,7 +6,7 @@ import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { cities, type CityData } from "@/lib/cities-data"
+import { cities, getCityEras, type CityData } from "@/lib/cities-data"
 import { getPlayerProfile, type PlayerProfile } from "@/lib/game-progression"
 import { cn } from "@/lib/utils"
 import { GlobeComponent } from "./globe-component"
@@ -101,6 +101,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     isFalling?: boolean
     exitMotion?: PopupExitMotion
     timestamp: number
+    selectedCityId?: string
+    centerRequest?: number
     centerOffsetY: number
     enterX: number
     enterRot: number
@@ -931,14 +933,29 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
     setNextZIndex(n => n + 1)
   }
 
-  const handleCityClick = (city: CityData, position?: { x: number; y: number }) => {
+  const selectPopupEra = (key: string, city: CityData, center = false) => {
+    setOpenPopups(prev => {
+      if (!prev[key] || prev[key].isClosing) return prev
+      const next = { ...prev }
+      for (const era of getCityEras(city)) if (era.id !== key) delete next[era.id]
+      next[key] = { ...prev[key], selectedCityId: city.id, zIndex: nextZIndex, ...(center ? { centerRequest: Date.now() } : {}) }
+      return next
+    })
+    setNextZIndex(n => n + 1)
+  }
+
+  const handleCityClick = (city: CityData, position?: { x: number; y: number }, fromList = false) => {
     playMapSound("bossdr220_lt", true)
     
-    if (openPopups[city.id] && !openPopups[city.id].isClosing) {
-      closePopup(city.id)
+    const sameLocation = getCityEras(city).find(era => openPopups[era.id] && !openPopups[era.id].isClosing)
+    if (sameLocation && (fromList || (openPopups[sameLocation.id].selectedCityId ?? sameLocation.id) !== city.id)) {
+      selectPopupEra(sameLocation.id, city, fromList)
       return
     }
-
+    if (sameLocation) {
+      closePopup(sameLocation.id)
+      return
+    }
     playMapSound("gm_reverse_cymbal", true)
 
     // Keep the side choice relative to the pin. The projected popup measures
@@ -1178,6 +1195,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             unlockedCities={unlockedCities}
             openPopups={openPopups}
             onCityClick={handleCityClick}
+            onPopupEraSelect={selectPopupEra}
             onPopupClose={closePopup}
             bringToFront={bringToFront}
             updatePopupPosition={updatePopupPosition}
@@ -1210,7 +1228,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
 
       <div ref={popupLayerRef} className="absolute inset-0 z-[45] pointer-events-none" />
 
-      {logoPhase === 'header' && <CampaignCityList leaving={!!enteringCityId} cities={cities} conqueredCities={playerProfile?.conqueredCityIds || []} openCityIds={Object.keys(openPopups).filter(id => !openPopups[id].isClosing)} focusedCityId={focusedCityId} pinHoveredCityId={pinHoveredCityId} onFocus={setFocusedCityId} onOpen={city => { if (!openPopups[city.id] || openPopups[city.id].isClosing) zoomRef.current?.centerCity(city); handleCityClick(city) }} />}
+      {logoPhase === 'header' && <CampaignCityList leaving={!!enteringCityId} cities={cities} conqueredCities={playerProfile?.conqueredCityIds || []} openCityIds={Object.keys(openPopups).filter(id => !openPopups[id].isClosing).map(id => openPopups[id].selectedCityId ?? id)} focusedCityId={focusedCityId} pinHoveredCityId={pinHoveredCityId} onFocus={setFocusedCityId} onOpen={city => { if (!openPopups[city.id] || openPopups[city.id].isClosing) zoomRef.current?.centerCity(city); handleCityClick(city, undefined, true) }} />}
 
       <header
         className="absolute top-0 left-0 w-full z-60 flex flex-col md:flex-row items-center md:justify-between px-8 py-6 pointer-events-none gap-2"
@@ -1263,7 +1281,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             opacity: logoPhase === 'header' ? 1 : 0,
           }}
         >
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-3">
             {/* Removed Image Logo from Header as requested */}
             <h1
                 className={cn(
@@ -1278,6 +1296,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
                 chicken<span className="text-primary">chess</span>
             </h1>
           </div>
+          <VersionChangelog label="Release notes" className="pointer-events-auto" onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />
         </div>
 
         <div className={cn(styles.headerControls, "absolute top-14 right-3 md:top-6 md:right-6 flex max-w-[calc(100vw-1.5rem)] items-center gap-1.5 md:gap-3 pointer-events-auto text-xs font-mono")}>
@@ -1397,7 +1416,6 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           {onOnlineMatch && <OnlineHub showMapRooms launcherContainer={onlineLauncherContainer} playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
           {!onOnlineMatch && <aside className={styles.creativeFallback}><Link href="/creative" className={styles.creativeFallbackButton}><Music2 aria-hidden="true" className="size-3.5" />Creative Mode</Link></aside>}
           {isAdminUser(online.user) && <Link href="/admin" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Admin</Link>}
-          <VersionChangelog mapButton onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />
         </div>
       </div>
 

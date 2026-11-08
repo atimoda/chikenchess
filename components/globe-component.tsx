@@ -55,6 +55,7 @@ interface GlobeProps {
   unlockedCities?: string[]
   openPopups: Record<string, any>
   onCityClick: (city: CityData, position?: { x: number; y: number }) => void
+  onPopupEraSelect: (key: string, city: CityData, center?: boolean) => void
   onPopupClose: (cityId: string, type?: 'open' | 'closed' | 'held' | 'era', motion?: PopupExitMotion) => void
   bringToFront: (id: string) => void
   updatePopupPosition: (id: string, x: number, y: number) => void
@@ -275,6 +276,7 @@ const ConqueredFlag = ({ city, idleRotationRef }: { city: CityData; idleRotation
 
 const PopupContainer = ({
     city,
+    displayCity = city,
     popup, // Initial/Global state
     popupLayerRef,
     isConquered,
@@ -338,6 +340,9 @@ const PopupContainer = ({
     const [hangingFromClose, setHangingFromClose] = useState(false)
     const hangingFromCloseRef = useRef(false)
     const setHanging = (value: boolean) => { hangingFromCloseRef.current = value; setHangingFromClose(value) }
+    useEffect(() => {
+      if (popup.centerRequest) { hasDragged.current = false; setHanging(false) }
+    }, [popup.centerRequest])
     // A card held by its close button stays under the hand: no standby drift.
     const heldByCloseRef = useRef(false)
     const cardSize = useRef({ width: 317, height: 450 })
@@ -414,8 +419,12 @@ const PopupContainer = ({
           const viewportTop = viewport?.offsetTop ?? 0
           const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth)
           const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight)
+          const recentering = !hasDragged.current && popup.centerRequest && Date.now() - popup.centerRequest < 1600
           const opening = !hasDragged.current && Date.now() - popup.timestamp < 1600
-          const requested = opening ? {
+          const requested = recentering ? {
+            x: current.x + (viewportLeft + (viewportRight - viewportLeft - rect.width) / 2 - rect.left),
+            y: current.y + (viewportTop + (viewportBottom - viewportTop - rect.height) / 2 - rect.top),
+          } : opening ? {
             x: current.x,
             y: current.y + (viewportTop + (viewportBottom - viewportTop - rect.height) / 2 + popup.centerOffsetY - rect.top),
           } : current
@@ -565,17 +574,17 @@ const PopupContainer = ({
                           x: localPosRef.current.x + slowOffset.current.x,
                           y: localPosRef.current.y + slowOffset.current.y + 10,
                         })}
-                        city={city}
+                        city={displayCity}
                         onCreateRoom={onCreateRoom}
                         onlineDisabled={onlineDisabled}
                         driftAway={driftAway}
-                        isCreatingRoom={creatingRoomCityId === city.id}
+                        isCreatingRoom={creatingRoomCityId === displayCity.id}
                         popup={{ ...popup, x: localPos.x, y: localPos.y }} // Use local state
                         isConquered={isConquered}
                         isUnlocked={isUnlocked}
                         isPressed={pressedPopupState?.id === city.id}
-                        bringToFront={bringToFront}
-                        closePopup={onPopupClose}
+                        bringToFront={() => bringToFront(city.id)}
+                        closePopup={(_id, type, motion) => onPopupClose(city.id, type, motion)}
                         updatePopupPosition={(id, x, y, preserveAnchor = false) => {
                             let next = { x, y }
                             const wrapper = wrapperRef.current
@@ -609,12 +618,12 @@ const PopupContainer = ({
                         playMapSound={playMapSound}
                         startWhistleLoop={startWhistleLoop}
                         stopWhistleLoop={stopWhistleLoop}
-                        setPressedPopupState={setPressedPopupState}
+                        setPressedPopupState={state => setPressedPopupState(state ? { id: city.id } : null)}
                         handleSmartPadSound={handleSmartPadSound}
                         handleSmartPadLeave={handleSmartPadLeave}
                         stopPadSound={stopPadSound}
                         isEntering={isEntering}
-                        onEnter={() => setEnteringCityId(city.id)}
+                        onEnter={() => setEnteringCityId(displayCity.id)}
                         scale={1}
                         transformOrigin={isDraggingLocal ? `${dragAnchor.current.x}px ${dragAnchor.current.y}px` : undefined}
                         onDragStart={(e) => {
@@ -725,6 +734,7 @@ const GlobeContent = ({
   focusedCityId,
   setFocusedCityId,
   onPinHover,
+  onPopupEraSelect,
   popupLayerRef,
   realistic = false,
   constrained = false,
@@ -1232,7 +1242,6 @@ const GlobeContent = ({
           {cities.map((city) => {
             const position = getSphericalCoordinates(city.pinCoordinates.lat, city.pinCoordinates.lng, GLOBE_RADIUS)
             const isOpen = !!openPopups[city.id]
-            const isConquered = (conqueredCities || []).includes(city.id)
             const isUnlocked = true // All cities playable in v3.0!
             const popup = openPopups[city.id]
             const eras = getCityEras(city)
@@ -1351,14 +1360,15 @@ const GlobeContent = ({
 
                 {isOpen && (
                       <PopupContainer
-                          onEraSelect={(era: CityData, position: { x: number; y: number }) => { if (era.id !== city.id) { onPopupClose(city.id, 'era'); centerCity(era); onCityClick(era, position) } }}
+                          onEraSelect={(era: CityData) => onPopupEraSelect(city.id, era)}
+                          displayCity={cities.find(candidate => candidate.id === popup.selectedCityId) ?? city}
                           city={city}
                           onCreateRoom={onCreateRoom}
                           creatingRoomCityId={creatingRoomCityId}
                           onlineDisabled={onlineDisabled}
                           popup={popup}
                           popupLayerRef={popupLayerRef}
-                          isConquered={isConquered}
+                          isConquered={conqueredCities.includes(popup.selectedCityId ?? city.id)}
                           isUnlocked={isUnlocked}
                           pressedPopupState={pressedPopupState}
                           bringToFront={bringToFront}
@@ -1371,7 +1381,7 @@ const GlobeContent = ({
                           handleSmartPadSound={handleSmartPadSound}
                           handleSmartPadLeave={handleSmartPadLeave}
                           stopPadSound={stopPadSound}
-                          isEntering={enteringCityId === city.id}
+                          isEntering={enteringCityId === (popup.selectedCityId ?? city.id)}
                           driftAway={!!enteringCityId}
                           setEnteringCityId={(id: string | null) => { if (!enteringCityId) setEnteringCityId(id) }}
                           setIsDraggingPopup={setIsDraggingPopup}

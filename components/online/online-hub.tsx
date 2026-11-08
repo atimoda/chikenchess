@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Music2, Play, Plus, RefreshCw, Shuffle, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
+import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, Dice5, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Music2, Play, Plus, RefreshCw, Shuffle, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -303,14 +303,16 @@ export function AddFriendButton({ targetCode, className, iconOnly = false }: { t
   </div>
 }
 
-function KitPreview({ member, unlockedCities, onChooseKit, disabled, play, stop, cancelHover, confirmHover }: {
+function KitPreview({ member, identity, unlockedCities, onChooseKit, disabled, play, stop, cancelHover, confirmHover }: {
   member: RoomMember
+  identity: ReactNode
   unlockedCities?: CityData[]
   onChooseKit?: (cityId: string) => void
   disabled?: boolean
 } & ReturnType<typeof useLobbyKitAudition>) {
   const city = getCityById(member.city_id)
   const [expanded, setExpanded] = useState(true)
+  const [randomExpanded, setRandomExpanded] = useState(false)
   const [kit, setKit] = useState<CreativeSession | null>(null)
   const lastHover = useRef<{ id: string; time: number } | null>(null)
   const previewOwner = `${member.user_id}:${member.city_id}`
@@ -324,21 +326,35 @@ function KitPreview({ member, unlockedCities, onChooseKit, disabled, play, stop,
     }).catch(() => {})
     return () => { mounted = false }
   }, [member.city_id, member.color])
-  if (member.city_id === DEFAULT_CITY_ID) return <div className="grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
-    <div aria-hidden="true" className="flex h-14 w-20 items-center justify-center rounded border border-primary/30 bg-primary/10 text-primary sm:row-span-2"><Shuffle className="size-6" /></div>
-    <p className="text-sm text-primary">Random</p>
-    {unlockedCities && <div className="col-span-2 min-w-0 text-xs text-white/55 sm:col-span-1 sm:col-start-2">{unlockedCities.length ? <p className="leading-relaxed">{unlockedCities.map((unlockedCity, index) => <span key={unlockedCity.id}><button type="button" disabled={disabled} className="cursor-pointer text-left underline decoration-white/25 underline-offset-2 hover:text-primary focus-visible:text-primary disabled:cursor-default disabled:no-underline disabled:opacity-60" onClick={() => onChooseKit?.(unlockedCity.id)}>{unlockedCity.year} {unlockedCity.name} · {unlockedCity.genre}{index < unlockedCities.length - 1 ? ',' : ''}</button>{' '}</span>)}</p> : <p>No campaign kits available.</p>}</div>}
+  if (member.city_id === DEFAULT_CITY_ID) return <div className={styles.kitPreviewContainer}>
+    <div className={styles.kitPreviewTop}>
+      {identity}
+      <div className="ml-auto flex min-w-0 items-center gap-3">
+        <div className="flex min-h-14 min-w-0 flex-col justify-center text-right">
+          <p className="text-sm text-primary">Random</p>
+          {unlockedCities && <button type="button" aria-expanded={randomExpanded} onClick={() => setRandomExpanded(value => !value)} className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-white/55 hover:text-white"><ChevronRight aria-hidden="true" className={cn('size-3 transition-transform motion-reduce:transition-none', randomExpanded && 'rotate-90')} />Select a kit</button>}
+        </div>
+        <div aria-hidden="true" className="flex h-14 w-20 shrink-0 items-center justify-center rounded border border-primary/30 bg-primary/10 text-primary"><Shuffle className="size-6" /></div>
+      </div>
+    </div>
+    {randomExpanded && unlockedCities && <div className="mt-3 min-w-0 text-xs text-white/55">{unlockedCities.length ? <p className="leading-relaxed">{unlockedCities.map((unlockedCity, index) => <span key={unlockedCity.id}><button type="button" disabled={disabled} className="cursor-pointer text-left underline decoration-white/25 underline-offset-2 hover:text-primary focus-visible:text-primary disabled:cursor-default disabled:no-underline disabled:opacity-60" onClick={() => onChooseKit?.(unlockedCity.id)}>{unlockedCity.year} {unlockedCity.name}{index < unlockedCities.length - 1 ? ',' : ''}</button>{' '}</span>)}</p> : <p>No campaign kits available.</p>}</div>}
   </div>
-  if (!city) return <p className="text-xs text-white/50">Kit {member.city_id}</p>
+  if (!city) return <div className={styles.kitPreviewTop}>{identity}<p className="text-xs text-white/50">Kit {member.city_id}</p></div>
   return <div className={styles.kitPreviewContainer}>
    <div className={styles.kitPreviewGrid} data-expanded={expanded}>
-    <button type="button" aria-expanded={expanded} onClick={() => { if (expanded) stop(previewOwner); setExpanded(value => !value) }} className={cn(styles.kitPreviewHeading, 'group cursor-pointer text-left')}>
-      <img src={city.image} alt="" className="h-14 w-20 rounded object-cover" loading="lazy" />
-      <span className="flex h-14 min-w-0 flex-col justify-center">
-        <span className="text-sm" style={{ color: city.color }}>{city.year} {city.name}</span>
-        <span className="mt-1 inline-flex items-center gap-1 text-xs text-white/55 group-hover:text-white"><ChevronRight aria-hidden="true" className={cn('size-3 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-90')} />{city.genre}</span>
-      </span>
-    </button>
+    <div className={styles.kitPreviewTop}>
+      {identity}
+      <div className="ml-auto flex min-w-0 items-center gap-2">
+        <button type="button" aria-expanded={expanded} onClick={() => { if (expanded) stop(previewOwner); setExpanded(value => !value) }} className={cn(styles.kitPreviewHeading, 'group cursor-pointer text-right')}>
+          <span className="flex min-h-14 min-w-0 flex-col justify-center">
+            <span className="text-sm" style={{ color: city.color }}>{city.year} {city.name}</span>
+            <span className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-white/55 group-hover:text-white"><ChevronRight aria-hidden="true" className={cn('size-3 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-90')} />{city.genre}</span>
+          </span>
+          <img src={city.image} alt="" className="h-14 w-20 rounded object-cover" loading="lazy" />
+        </button>
+        {onChooseKit && <button type="button" aria-label="Select Random kit" title="Random" disabled={disabled} onClick={() => onChooseKit(DEFAULT_CITY_ID)} className="flex h-14 w-8 shrink-0 items-center justify-center rounded border border-white/20 text-white/65 hover:border-primary hover:text-primary disabled:opacity-50"><Dice5 aria-hidden="true" className="size-4" /></button>}
+      </div>
+    </div>
     <div className={styles.kitInstrumentReveal} data-expanded={expanded} aria-hidden={!expanded} inert={!expanded}>
       <div className={styles.kitInstrumentList}>
         {kit?.pieces.filter(piece => piece.color === member.color).map(piece => <button
@@ -382,7 +398,7 @@ function RoomVisibility({ value, code, disabled, onChoose }: { value: boolean; c
         ? 'border-primary bg-transparent font-medium text-primary'
         : 'border-white/20 bg-transparent text-white/65 enabled:hover:border-primary/70 enabled:hover:text-primary',
     )} onClick={() => { if (value !== choice.isPublic) onChoose(choice.isPublic) }}>
-      {choice.label}{selected && <> <span className="text-white">Lobby</span> <span className="font-mono tracking-wider text-white">{shortRoomCode(code)}</span></>}
+      {choice.label}{selected && <> <span className="text-primary">Lobby</span> <span className="font-mono tracking-wider text-white">{shortRoomCode(code)}</span></>}
     </button>
   })}</div>
 }
@@ -980,13 +996,27 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     const request = createRequest
     consumedCreateRequests.current.add(request.id)
     setShowDirectory(false)
-    void roomAction('create', undefined, request.cityId, true).then((ok) => {
+    const reuseOpenLobby = async () => {
+      try {
+        const currentUser = await ensureGuest()
+        let current = roomRef.current
+        if (!current) {
+          current = await onlineRpc<OnlineRoom | null>('online_room', { p_action: 'get', p_code: null })
+        }
+        const member = current?.members.find(candidate => candidate.user_id === currentUser.id)
+        if (current?.status === 'open' && member) return roomAction('kit', current.code, request.cityId)
+      } catch {
+        // Fall through to the normal create action so it can report the auth/network error.
+      }
+      return roomAction('create', undefined, request.cityId, true)
+    }
+    void reuseOpenLobby().then((ok) => {
       if (ok) {
         setOpen(false)
         setLobbyOpen(true)
       }
     }).finally(() => onCreateRequestHandled?.(request.id))
-  }, [createRequest, busy, roomAction, onCreateRequestHandled])
+  }, [createRequest, busy, ensureGuest, roomAction, onCreateRequestHandled])
 
   /** Lobbies open straight away with the Random kit; the lobby itself changes kit or visibility. */
   const createLobby = async (isPublic: boolean) => {
@@ -1085,7 +1115,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
         </Button>
       </div>, launcherContainer
     )}
-    {showMapRooms && <aside aria-label="Games, public rooms and Creative" className={styles.mapRooms}>
+    {showMapRooms && <aside aria-label="Games, public lobbies and Creative" className={styles.mapRooms}>
       {onlineAvailable && <>
       {runningGames.games.length > 0 && <section aria-labelledby="running-games-heading" className={styles.mapRoomList}>
         <h2 id="running-games-heading" className={styles.mapRoomHeading}>Games in progress</h2>
@@ -1110,7 +1140,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       <section aria-labelledby="public-rooms-heading" className={styles.mapRoomList}>
         <h2 id="public-rooms-heading" className={styles.mapRoomHeading}>
           <button type="button" className={styles.mapRoomHeadingButton} onClick={() => launch('rooms')}>
-            Public rooms
+              Public lobbies
           </button>
         </h2>
         {mapLobbies.entries.length > 0 && <div className={styles.mapRoomList}>{mapLobbies.entries.slice(0, 5).map(entry => <button key={entry.code} type="button" aria-label={entry.code === mapLobbies.ownCode ? 'Abrir seu lobby' : `Entrar na sala de ${entry.creator_name}`} className={cn(styles.mapButton, styles.mapRoom, styles.mapPublicRoom, entry.code === mapLobbies.ownCode && styles.mapOwnRoom)} disabled={entry.code !== mapLobbies.ownCode && (Boolean(busy) || entry.players >= 2)} onClick={() => { if (entry.code === mapLobbies.ownCode) { setOpen(false); setLobbyOpen(true) } else { setTab('rooms'); setOpen(true); setShowDirectory(false); void roomAction('join', entry.code) } }}>
@@ -1163,15 +1193,15 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
           : <div className="space-y-4">
             <div className="space-y-2">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Button className="h-11 w-full" disabled={Boolean(busy)} onClick={() => void createLobby(true)}><Plus />Create Public Room</Button>
-                <Button className="h-11 w-full" disabled={Boolean(busy)} onClick={() => void createLobby(false)}><Plus />Create Private Room</Button>
+                <Button className="h-11 w-full" disabled={Boolean(busy)} onClick={() => void createLobby(true)}><Plus />Create Public Lobby</Button>
+                <Button className="h-11 w-full" disabled={Boolean(busy)} onClick={() => void createLobby(false)}><Plus />Create Private Lobby</Button>
               </div>
-              {room && <Button variant="ghost" className="h-11 w-full border border-white/20 bg-transparent text-white/65 hover:border-primary hover:!bg-transparent hover:text-primary dark:hover:!bg-transparent" onClick={() => { setOpen(false); setLobbyOpen(true) }}>Return to lobby</Button>}
+              {room && <Button variant="ghost" className="h-11 w-full border border-white/20 bg-transparent text-white/65 hover:border-primary hover:!bg-transparent hover:text-primary dark:hover:!bg-transparent" onClick={() => { setOpen(false); setLobbyOpen(true) }}>My lobby</Button>}
             </div>
-            <div className="flex items-center justify-between text-xs text-white/45"><span>{connected ? 'Live public rooms' : loading ? 'Loading rooms…' : 'Reconnecting…'}</span><button type="button" aria-label="Refresh rooms" aria-busy={refreshingRooms} disabled={refreshingRooms} onClick={refreshRoomsManually}><RefreshCw className={cn('size-3.5', refreshingRooms && 'animate-spin')} /></button></div>
-            <div className="space-y-2 ">{loading && !rooms.length ? <p role="status" className="py-6 text-center text-sm text-white/45">Loading rooms…</p> : rooms.length ? rooms.map((entry) => <div key={entry.code} className="flex items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{entry.creator_name}</p><p className="text-xs text-white/45">1v1 casual · {entry.players}/2 · <span className="font-mono">{shortRoomCode(entry.code)}</span></p></div><Button size="sm" disabled={Boolean(busy) || entry.players >= 2} onClick={() => void roomAction('join', entry.code)}>Join<LogIn aria-hidden="true" className="size-4" /></Button></div>) : <p className="rounded-md border border-dashed border-white/15 py-6 text-center text-sm text-white/45">No public rooms are open. Create the first one.</p>}</div>
+            <div className="flex items-center justify-between text-xs text-white/45"><span>{connected ? 'Live public lobbies' : loading ? 'Loading lobbies…' : 'Reconnecting…'}</span><button type="button" aria-label="Refresh lobbies" aria-busy={refreshingRooms} disabled={refreshingRooms} onClick={refreshRoomsManually}><RefreshCw className={cn('size-3.5', refreshingRooms && 'animate-spin')} /></button></div>
+            <div className="space-y-2 ">{loading && !rooms.length ? <p role="status" className="py-6 text-center text-sm text-white/45">Loading lobbies…</p> : rooms.length ? rooms.map((entry) => <div key={entry.code} className="flex items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{entry.creator_name}</p><p className="text-xs text-white/45">1v1 casual · {entry.players}/2 · <span className="font-mono">{shortRoomCode(entry.code)}</span></p></div><Button size="sm" disabled={Boolean(busy) || entry.players >= 2} onClick={() => void roomAction('join', entry.code)}>Join<LogIn aria-hidden="true" className="size-4" /></Button></div>) : <p className="rounded-md border border-dashed border-white/15 py-6 text-center text-sm text-white/45">No public lobbies are open. Create the first one.</p>}</div>
             {directoryError && <p role="alert" className="text-sm text-rose-200">{directoryError}</p>}
-            {actionError}<form className="space-y-2 pt-4" onSubmit={(event) => { event.preventDefault(); void roomAction('join', code) }}><label htmlFor="online-room-code" className="text-xs text-white/55">Have a room ID?</label><div className="flex flex-wrap gap-2"><input id="online-room-code" className={`${inputClass} flex-1 font-mono uppercase`} value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Room ID" maxLength={32} required /><Button type="submit" variant="outline" className="border-white/20 bg-transparent" disabled={Boolean(busy) || !code.trim()}>Join by ID</Button></div></form>
+            {actionError}<form className="space-y-2 pt-4" onSubmit={(event) => { event.preventDefault(); void roomAction('join', code) }}><label htmlFor="online-room-code" className="sr-only">Lobby ID</label><div className="flex flex-wrap gap-2"><input id="online-room-code" className={`${inputClass} flex-1 font-mono uppercase`} value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Lobby ID" maxLength={32} required /><Button type="submit" variant="outline" className="border-white/20 bg-transparent" disabled={Boolean(busy) || !code.trim()}>Join by ID</Button></div></form>
           </div>}
         {!configured && actionError}
         {busy === 'invite' && <p role="status" className="text-sm text-white/55">Opening invitation…</p>}
@@ -1189,9 +1219,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
         <div className="space-y-4">
           <div className="space-y-3">
             {room.members.map((member) => <div key={member.user_id} className={cn('space-y-3 rounded-md border p-3', member.ready ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
-              <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-xl leading-none">🐔</span><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (you)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'White' : 'Black'} · {member.profile.code}</p></div></div><span className={cn('inline-flex items-center gap-1 text-xs', member.ready ? 'text-primary' : 'text-white/40')}>{member.ready && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{member.ready ? 'Ready' : 'Choosing a kit'}</span></div>
-              {member.user_id === user?.id && room.status === 'open' && <select aria-label="Your team kit" className={`${inputClass} w-full`} value={member.city_id} disabled={Boolean(busy)} onChange={(event) => void roomAction('kit', room.code, event.target.value)}><option className="bg-[#101713]" value={DEFAULT_CITY_ID}>Random</option>{availableCities.map((city) => <option className="bg-[#101713]" key={city.id} value={city.id}>{city.year} {city.name} · {city.genre}</option>)}</select>}
-              <KitPreview key={`${member.user_id}:${member.city_id}`} member={member} unlockedCities={member.user_id === user?.id ? unlockedCities : undefined} disabled={Boolean(busy) || room.status !== 'open'} onChooseKit={member.user_id === user?.id ? (cityId) => void roomAction('kit', room.code, cityId) : undefined} play={playKitInstrument} stop={stopKitInstrument} cancelHover={cancelKitHover} confirmHover={confirmKitHover} />
+              <KitPreview key={`${member.user_id}:${member.city_id}`} member={member} identity={<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-xl leading-none">🐔</span><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (you)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'White' : 'Black'} · {member.profile.code}</p></div></div>{member.ready && <span className="inline-flex items-center gap-1 text-xs text-primary"><Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />Ready</span>}</div>} unlockedCities={member.user_id === user?.id ? unlockedCities : undefined} disabled={Boolean(busy) || room.status !== 'open'} onChooseKit={member.user_id === user?.id && room.status === 'open' ? (cityId) => void roomAction('kit', room.code, cityId) : undefined} play={playKitInstrument} stop={stopKitInstrument} cancelHover={cancelKitHover} confirmHover={confirmKitHover} />
             </div>)}
             {activeBot && <div className={cn('space-y-3 rounded-md border p-3', botReady ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
               <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2"><Bot aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">Campaign bot</p><p className="text-[11px] text-white/45">Uses your kit in the campaign</p></div></div><div className="flex items-center gap-2"><button type="button" className="cursor-pointer text-xs text-white/55 underline decoration-white/25 underline-offset-2 hover:text-white disabled:cursor-default disabled:opacity-50" disabled={Boolean(busy)} onClick={removeBot}>Remove</button><span role="status" aria-live="polite" className={cn('inline-flex items-center gap-1 text-xs', botReady ? 'text-primary' : 'text-white/40')}>{botReady && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{botReady ? 'Ready' : 'Choosing a kit'}</span></div></div>

@@ -67,7 +67,7 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
                 <span>golden eggs</span>
               </span>
               <p className="flex items-center gap-1"><ProfileEggIcon />{(playerProfile?.points || 0).toLocaleString()} historical points</p>
-              <p>Rank: <span aria-hidden="true">🎖️</span> {playerProfile?.rank || 'Novice Beatmaker'}</p>
+              <p className="flex items-center gap-1"><span aria-hidden="true">🎖️</span>{playerProfile?.rank || 'Novice Beatmaker'}</p>
               <div className="space-y-2">
                 <p><span aria-hidden="true">🏆</span> Campaign (Cities Conquered): <strong className="font-normal text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}</p>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
