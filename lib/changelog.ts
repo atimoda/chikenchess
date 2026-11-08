@@ -28,6 +28,11 @@ const RECENT = [
       'Nova opção Objeto duro em Camada e colisões (ligada nos chãos e paredes, e disponível em plataformas, terraços e pilares): os bonecos não atravessam o objeto por baixo, pelos lados nem descendo por ele, sobem rampas e degraus baixos dele andando e escalam suas paredes.',
       'O Chão da Vila virou um desses chãos, com a mesma encosta (inclusive a que você tinha editado), e o painel separado do Chão da Vila saiu.',
       'O Golpe sai mesmo com Atirar segurado nas armas e instrumentos que atiram: ele interrompe os tiros (e a carga ou o feixe) enquanto dura e, se Atirar ainda estiver segurado quando o golpe termina, ela volta a atirar. Com o mouse, o botão direito agora funciona com o esquerdo segurado.',
+      'Com mais de um player local, cada player além do primeiro volta a ter o inventário pequeno ao lado esquerdo do próprio avatar, no canto superior direito. O inventário grande do primeiro player continua embaixo, agora alinhado à direita da tela.',
+      'O número de balas deu lugar a uma barra na parte de baixo de cada item, em toda a largura e dividida em uma parte por bala: as carregadas ficam acesas e as que estão voltando (recarga ou recarga gradual) aparecem enchendo em tom claro. Habilidades especiais continuam mostrando o número de doses.',
+      'O Taco tem 8 golpes seguidos: cada golpe gasta um, vazio ele só faz o clique seco e recarrega sozinho.',
+      'Nova recarga automática gradual por item (Itens → Munição): a cada intervalo sem usar o item, balas voltam sozinhas, na quantidade escolhida (padrão 1). Instrumentos e o Taco recuperam uma a cada 0,5 s; as armas de tiro começam com ela desligada.',
+      'Armas e instrumentos não quebram mais com os golpes; com Quebra depois de em 0 o painel mostra “0 (nunca quebra)”. Itens ajustados antes mantêm os números que você mudou.',
     ] }],
   },
   {

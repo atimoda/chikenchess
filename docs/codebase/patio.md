@@ -41,3 +41,5 @@ Entrada visual em Throw: `lib/chicken/throw-transition.ts` interpola posição/�
 A pose do shocking jump aéreo é calculada por `lib/chicken/shocking-pose.ts`; `engine.ts` usa a carga local e `online-chickens.tsx` envia estados de animação ao Pátio online.
 
 Os ímãs de 8 ângulos independentes usam `lib/chicken/analog-magnet.ts`: o engine e `input-devices.ts` aplicam a força de movimento, e `lib/pigchicken/aim.ts` e `parquinho.tsx` aplicam a força de mira; toque em `chicken-layer.tsx`.
+
+Inventários e munição: posição das barras (grande do 1º player embaixo à direita, pequenas ao lado dos avatares) e barra de balas em `invGeom`/`drawInventory`/`drawAmmoBar` de `components/pigchicken/draw/hud.ts`; recarga gradual (`refillTime`/`refillAmount`) e golpes do Taco (`meleeOnly`) em `lib/pigchicken/combat.ts`, campos e migração `_v: 6` em `lib/pigchicken/items.ts`, grupo Munição em `items-panel.tsx`. Testes: `tests/pigchicken-ammo.cases.cjs`.

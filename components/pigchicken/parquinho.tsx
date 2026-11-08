@@ -837,11 +837,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
       combat.use("p1")
       if (zoneBanner > 0 && !inTemple) drawZoneBanner(ctx, combat.music.zone, zoneBanner)
-      // one inventory per local player, stacked in the top right corner (the avatars sit to their right)
+      // one inventory per local player: a small row to the left of each player's avatar (top right); on desktop and
+      // tablet the first player's is the big bar at the bottom right instead
       const barBottom = !liftedRef.current
-      const invOff = getTouchLayout().offsets[barBottom ? "inventoryBar" : "inventory"]
-      drawInventory(ctx, combat, 0, barBottom, null, now, invOff)
-      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, barBottom, tints?.[id] ?? null, now, barBottom ? undefined : invOff) })
+      const offsets = getTouchLayout().offsets
+      drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"])
+      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory) })
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []
@@ -864,7 +865,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         wheelCanvas.width = 1; wheelCanvas.height = 1
         wheelCanvas.style.display = "none"; wheelDrawn = false
       }
-      const hudTop = barBottom ? INV_STACK.top : INV_TOP + INV_SIZE + 12
+      // the Templo's HUD at the top, below the small inventories' rows when other local players show theirs there
+      const hudTop = barBottom && !extraList.length ? INV_STACK.top : INV_TOP + INV_SIZE + 12
       drawTempleHud(ctx, temple, combat.music, inTemple && !stage.active, hudTop)
       drawNoteStageHud(ctx, stage, hudTop)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
@@ -927,8 +929,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       {engine && (
         <Movable
           id={lifted ? "inventory" : "inventoryBar"}
-          className={lifted ? "pointer-events-none fixed z-[190]" : "pointer-events-none fixed inset-x-0 mx-auto z-[190]"}
-          style={lifted ? { right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE } : { bottom: BAR.bottom + BAR.tab, width: BAR_W(invSlots), height: BAR.size }}
+          className="pointer-events-none fixed z-[190]"
+          style={lifted ? { right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE } : { right: BAR.side, bottom: BAR.bottom + BAR.tab, width: BAR_W(invSlots), height: BAR.size }}
         >
           {!editing && (
             <div data-chicken-ignore className="flex h-full" style={{ gap: lifted ? 3 : BAR.gap }}>

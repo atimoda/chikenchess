@@ -45,7 +45,8 @@ export const boxContains = (box: Box, x: number, y: number) =>
   x >= box.l && x <= box.r && y >= box.t && y <= box.b && !box.occludedAt?.(x, y)
 const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
   x >= box.l && x <= box.r && prevY <= box.t && y >= box.t && !box.occludedAt?.(x, box.t)
-export type Owned = { item: ItemId; ammo: number; durability: number }
+// refill: seconds the gradual auto reload has counted toward the next shots coming back (reset whenever it is used)
+export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
@@ -582,7 +583,7 @@ export function createCombat() {
     if (d.instrument) burst(mx, my, 2 + n, DEGREE_COLORS[music.degreeOf(notes[0]) % DEGREE_COLORS.length], 110, 3)
     else { burst(mx, my, 3 + n, '#fff3b0', 140, 2); sound('shot', h.item) }
     if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
-    h.ammo--; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
+    h.ammo--; if (h.refill) h.refill = 0; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
     onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
     if (h.ammo <= 0 && d.autoReload) startReload()
   }
@@ -764,9 +765,18 @@ export function createCombat() {
     const d = wing ? items.wing : def()
     return d.meleeInterrupt || !swing || swing.t >= swing.time
   }
+  // an item only for hitting with blows to count (the taco): a blow needs one loaded and not reloading
+  const blowsLeft = (h: Owned | null, d: ItemDef) => !h || !d.meleeOnly || d.mag <= 0 || (reloadT <= 0 && h.ammo > 0)
+  // an empty taco: the dry click, and it reloads on its own when set to
+  function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
   function melee(wing: boolean, scale: number) {
     const d = wing ? items.wing : def()
     meleeCool = d.meleeCooldown
+    const own = wing ? null : held()
+    if (own && d.meleeOnly && d.mag > 0) {
+      own.ammo = Math.max(0, own.ammo - 1); if (own.refill) own.refill = 0
+      if (own.ammo <= 0 && d.autoReload) startReload()
+    }
     sound('swing', null)
     // an instrument hit with Y still sounds: a quick strum of the chord, and its air takes the chord's colour
     let color = d.trailColor
@@ -973,7 +983,7 @@ export function createCombat() {
     if (!beamHeld) { beamHeld = out.hold(d.voice, midi); beamMidi = midi }
     else if (midi !== beamMidi) { beamHeld.setPitch(midi); beamMidi = midi }
     beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null }
-    h.ammo = Math.max(0, h.ammo - dt * d.rate)
+    h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
     if (hit) {
       const note: NoteInfo = { midi, color, sym: '♩', wave: 0, phase: 0, voice: d.voice }
@@ -1162,8 +1172,8 @@ export function createCombat() {
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
       // starts again as if the button had just been pressed.
       const hNow = held()
-      if (input.melee && meleeCool <= 0 && canSwing(!hNow)) melee(!hNow, body.scale)
-      if (hNow && !dNow.consumable && dNow.mag !== 0 && swing && swing.t < swing.time) {
+      if (input.melee && meleeCool <= 0 && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
+      if (hNow && !dNow.consumable && !dNow.meleeOnly && dNow.mag !== 0 && swing && swing.t < swing.time) {
         fireResume = input.fire ? hNow : null
         input = { ...input, fire: false, firePressed: false }
         prevFire = false; chargeT = 0; glissSteps = 0; burstLeft = 0
@@ -1185,6 +1195,17 @@ export function createCombat() {
       }
       if (input.reload) startReload()
       if (pumpT > 0) { pumpT -= dt; if (pumpT <= 0) sound('pump') }
+      // gradual auto reload: while the held item is not being used (and not reloading), every refillTime s a few
+      // shots (or blows) come back on their own, up to a full magazine
+      const hr = held()
+      if (hr) {
+        const dr = items[hr.item]
+        if (!dr.consumable && dr.mag > 0 && dr.refillTime > 0 && reloadT <= 0 && hr.ammo < dr.mag) {
+          hr.refill = (hr.refill ?? 0) + dt
+          while (hr.refill >= dr.refillTime && hr.ammo < dr.mag) { hr.ammo = Math.min(dr.mag, hr.ammo + Math.max(1, dr.refillAmount)); hr.refill -= dr.refillTime }
+          if (hr.ammo >= dr.mag) hr.refill = 0
+        } else if (hr.refill) hr.refill = 0
+      }
 
       // A peck is armed only by a fresh Fire press with empty hands. UI/selection/Golpe
       // cancel it, so a later release can never strike with a newly selected item.
@@ -1234,9 +1255,9 @@ export function createCombat() {
         }
       } else if (h && d.consumable) {
         if (input.firePressed && cooldown <= 0) consume(h, d, origin)
-      } else if (d.mag === 0) {
+      } else if (d.meleeOnly || d.mag === 0) {
         // an item only for hitting (the taco): Atirar swings it too
-        if (input.firePressed && meleeCool <= 0 && canSwing(false)) melee(false, body.scale)
+        if (input.firePressed && meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, d)) dryBlow(h, d); else melee(false, body.scale) }
       } else if (canFire) {
         const spreadDeg = this.spread(body)
         const ctx = { boxes, groundY }

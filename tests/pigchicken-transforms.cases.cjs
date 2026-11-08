@@ -137,7 +137,7 @@ test("every item's rebate has the plan's defaults", () => {
   assert.equal(DEFAULT_ITEMS.sniper.rebateSnap, 0); assert.equal(DEFAULT_ITEMS.bow.rebateSnap, 0)
   assert.ok(DEFAULT_ITEMS.pump.rebateSnap > DEFAULT_ITEMS.wing.rebateSnap)
   assert.ok(ITEM_IDS.includes('bat'))
-  assert.equal(DEFAULT_ITEMS.bat.mag, 0); assert.equal(DEFAULT_ITEMS.bat.rebateTok, true)
+  assert.equal(DEFAULT_ITEMS.bat.mag, 8); assert.equal(DEFAULT_ITEMS.bat.meleeOnly, true); assert.equal(DEFAULT_ITEMS.bat.rebateTok, true)
 })
 
 // ---------- in the combat ----------
