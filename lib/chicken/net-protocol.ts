@@ -10,7 +10,7 @@ export const NET_MAX_CHICKENS = 4
 const IN_ENTRY = 20, OUT_ENTRY = 21
 
 // a chicken's animation state as one byte (the engine's state names); unknown states travel as idle
-export const NET_STATES = ['idle', 'walk', 'run', 'jump', 'fly', 'fastFall', 'brood', 'crouch', 'slide', 'lookUp', 'cling', 'held', 'shockingPrepare', 'portal', 'portalArrival'] as const
+export const NET_STATES = ['idle', 'walk', 'run', 'jump', 'fly', 'fastFall', 'brood', 'crouch', 'slide', 'lookUp', 'cling', 'held', 'shockingPrepare', 'portal', 'portalArrival', 'shockingAirPrepare', 'shockingAirRelease'] as const
 export const stateByte = (state: string) => Math.max(0, (NET_STATES as readonly string[]).indexOf(state))
 export const stateName = (byte: number) => NET_STATES[byte] ?? 'idle'
 

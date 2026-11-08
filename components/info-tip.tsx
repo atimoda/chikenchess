@@ -26,7 +26,7 @@ export function InfoTip({label,children}:{label:string;children:ReactNode}){
    onPointerEnter={e=>{if(e.pointerType==='mouse')show()}} onPointerLeave={leave}
    onFocus={e=>{if(e.currentTarget.matches(':focus-visible'))show()}}
    onBlur={e=>{if(!panel.current?.contains(e.relatedTarget as Node))close()}}
-   onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.preventDefault();e.stopPropagation();if(open)close();else{pinned.current=true;show()}}}>?</button>
+   onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.preventDefault();e.stopPropagation();if(pinned.current)close();else{pinned.current=true;show()}}}>?</button>
   {open&&createPortal(<div ref={panel} id={id} role="tooltip" className={styles.tip} style={position} onPointerEnter={clear} onPointerLeave={leave} onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();close()}}><strong>{label}</strong><div>{children}</div></div>,document.body)}
  </span>
 }

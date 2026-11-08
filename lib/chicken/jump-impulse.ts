@@ -11,3 +11,16 @@ export function directionalJumpImpulse(direction: { x: number; y: number }, hori
   const force = Math.min(1, length) / inverseForce
   return { x: x * force, y: y * force }
 }
+
+/** A quick release starts at 2×; the configured maximum is reached linearly. */
+export function shockingAirMultiplier(elapsed: number, duration: number, maximum: number) {
+  const progress = Math.max(0, Math.min(1, elapsed / Math.max(0.1, duration)))
+  return 2 + (maximum - 2) * progress
+}
+
+/** Called only during an airborne hold; the threshold affects velocity once. */
+export function advanceShockingAirCharge(elapsed: number, applied: boolean, dt: number, duration: number, verticalMultiplier: number) {
+  const next = elapsed + Math.max(0, dt)
+  const crossed = !applied && next >= Math.max(0.1, duration)
+  return { elapsed: next, applied: applied || crossed, velocityMultiplier: crossed ? verticalMultiplier : 1 }
+}

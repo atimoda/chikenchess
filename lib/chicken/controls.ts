@@ -24,12 +24,12 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', null, null], keys2: ['Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
   { key: 'down', label: 'Chocar / cair / travar mira', keys: ['Key:ControlLeft', 'Key:KeyX', null], keys2: ['Key:ArrowDown', 'Key:ControlRight'], pad: ['Pad:b6', null, null] },
   { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', null, null], keys2: ['Key:PageDown', null], pad: ['Pad:a1+', 'Pad:b13', null] },
-  { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', null, null], keys2: ['Key:PageUp', null], pad: ['Pad:b0', 'Pad:b11', null] },
+  { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', 'Key:KeyZ', null], keys2: ['Key:PageUp', null], pad: ['Pad:b0', 'Pad:b11', null] },
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b5', 'Pad:b2', null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyV', null, null], keys2: ['Key:Insert', null], pad: ['Pad:b7', null, null], group: 'items' },
   { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', null], pad: ['Pad:b1', null, null], group: 'items' },
-  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', 'Key:KeyZ', null], keys2: ['Key:End', null], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:End', null], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'nextItem', label: 'Próximo item', keys: ['Key:Tab', null, null], keys2: ['Key:Delete', null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'deselectItem', label: 'Deselecionar item', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Backslash', null], pad: [null, null, null], group: 'items' },
@@ -40,9 +40,9 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: ['Key:Backspace', null], pad: ['Pad:b9', null, null], group: 'items' },
 ]
 
-// Analog sticks: dead zones (0..0.9 of the travel) and the optional magnet that pulls the left stick's aim to 8 angles
-export type ChickenAnalog = { deadzoneL: number; deadzoneR: number; magnet: boolean; magnetDeg: number }
-export const DEFAULT_ANALOG: ChickenAnalog = { deadzoneL: 0.25, deadzoneR: 0.25, magnet: false, magnetDeg: 12 }
+// Independent eight-direction magnets for movement and aim; zero disables each.
+export type ChickenAnalog = { deadzoneL: number; deadzoneR: number; magnet: boolean; magnetDeg: number; magnetRestoreDeg: number; aimMagnetDeg: number }
+export const DEFAULT_ANALOG: ChickenAnalog = { deadzoneL: 0.25, deadzoneR: 0.25, magnet: false, magnetDeg: 0, magnetRestoreDeg: 12, aimMagnetDeg: 0 }
 
 export type ChickenControls = {
   keys: Record<ChickenAction, Slots>
@@ -81,6 +81,7 @@ export function loadChickenControls(): ChickenControls {
       base.keys[a.key] = slots(saved?.keys?.[a.key], a.keys, 'Key:')
       base.pad[a.key] = slots(saved?.pad?.[a.key], a.pad, 'Pad:')
     })
+    if (!saved?.keyboardJumpZ && !Array.isArray(saved?.keys?.jump)) base.keys.jump = ['Key:Space', null, null]
     // Add the new default only after legacy Throw migrations have freed F.
     if (!Array.isArray(saved?.keys?.deselectItem)) base.keys.deselectItem = [null, null, null]
     if (saved?.touch === 'on' || saved?.touch === 'off' || saved?.touch === 'auto') base.touch = saved.touch
@@ -88,9 +89,11 @@ export function loadChickenControls(): ChickenControls {
     if (typeof saved?.sound === 'boolean') base.sound = saved.sound
     const num = (v: unknown, lo: number, hi: number, d: number) => typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d
     const an = saved?.analog ?? {}
+    const savedMagnet = num(an.magnetDeg, 0, 22.5, an.magnet === true ? 12 : 0)
+    const movementMagnet = an.magnet === false ? 0 : savedMagnet
     base.analog = {
       deadzoneL: num(an.deadzoneL, 0, 0.9, DEFAULT_ANALOG.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, DEFAULT_ANALOG.deadzoneR),
-      magnet: typeof an.magnet === 'boolean' ? an.magnet : DEFAULT_ANALOG.magnet, magnetDeg: num(an.magnetDeg, 1, 22.5, DEFAULT_ANALOG.magnetDeg),
+      magnet: movementMagnet > 0, magnetDeg: movementMagnet, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, savedMagnet > 0 ? savedMagnet : 12), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, 0),
     }
     // controls saved before X became run (01/11): X leaves brood and takes RB's place in run
     if (!saved?.padXRun) {
@@ -210,6 +213,18 @@ export function loadChickenControls(): ChickenControls {
       if (is('down', ['Key:ControlLeft']) && !held('Key:KeyX', 'down')) base.keys.down = ['Key:ControlLeft', 'Key:KeyX', null]
       if (is('throw', ['Key:KeyG']) && !held('Key:KeyZ', 'throw')) base.keys.throw = ['Key:KeyG', 'Key:KeyZ', null]
     }
+    // Z moves from the old default Throw to the secondary Jump slot. Do not
+    // remove a custom use of Z or replace a customized Jump configuration.
+    if (!saved?.keyboardJumpZ) {
+      const jump = base.keys.jump.filter(Boolean)
+      const oldThrow = base.keys.throw.filter(Boolean)
+      const defaultThrow = oldThrow.length === 2 && oldThrow.includes('Key:KeyG') && oldThrow.includes('Key:KeyZ')
+      const occupiedElsewhere = CHICKEN_ACTIONS.some(a => a.key !== 'jump' && (a.key !== 'throw' || !defaultThrow) && base.keys[a.key].includes('Key:KeyZ')) || CHICKEN_ACTIONS.some(a => base.keys2[a.key].includes('Key:KeyZ'))
+      if (jump.length === 1 && jump[0] === 'Key:Space' && !occupiedElsewhere) {
+        if (defaultThrow) base.keys.throw = base.keys.throw.map(t => t === 'Key:KeyZ' ? null : t)
+        base.keys.jump[1] = 'Key:KeyZ'
+      }
+    }
     if (!Array.isArray(saved?.keys?.deselectItem) && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:KeyF') || base.keys2[a.key].includes('Key:KeyF'))) {
       base.keys.deselectItem[0] = 'Key:KeyF'
     }
@@ -221,7 +236,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, grabKeys2: true, noCmdBrood: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, noCmdBrood: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

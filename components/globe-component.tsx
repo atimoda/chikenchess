@@ -1235,8 +1235,8 @@ const GlobeContent = ({
             const isConquered = (conqueredCities || []).includes(city.id)
             const isUnlocked = true // All cities playable in v3.0!
             const popup = openPopups[city.id]
-            const isHovered = hoveredPinId === city.id || focusedCityId === city.id
             const eras = getCityEras(city)
+            const isHovered = eras.some(era => era.id === hoveredPinId || era.id === focusedCityId)
             const isLocationPin = eras[0]?.id === city.id
             const locationConquered = eras.some(era => conqueredCities.includes(era.id))
             const locationOpen = eras.some(era => !!openPopups[era.id])

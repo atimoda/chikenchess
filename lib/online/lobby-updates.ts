@@ -1,5 +1,13 @@
 import type { OnlineFriend, OnlineRoom, PublicRoom, RunningGame } from './types'
 
+/** Keep the occupied lobby accessible even if private, full or absent from the directory. */
+export function mapLobbyRooms(rooms: readonly PublicRoom[], room: OnlineRoom | null, userId: string | null) {
+  const member = room?.status !== 'closed' && room?.members.some(item => item.user_id === userId)
+  if (!room || !member) return { ownCode: null, entries: [...rooms] }
+  const own: PublicRoom = { room_id: room.id, code: room.code, creator_name: room.members.find(item => item.user_id === room.host_id)?.profile.display_name ?? room.members[0]?.profile.display_name ?? 'Lobby', players: room.members.length }
+  return { ownCode: room.code, entries: [own, ...rooms.filter(item => item.code !== room.code)] }
+}
+
 /** Only a lobby observed before its start can open a new game automatically. */
 export function startedRoomMatch(previous: OnlineRoom | null, next: OnlineRoom | null, userId: string | null): string | null {
   if (!previous || !next || !userId || previous.id !== next.id || previous.status !== 'open' || previous.match_id || next.status !== 'playing' || !next.match_id) return null

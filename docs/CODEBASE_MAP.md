@@ -38,3 +38,5 @@ Subagentes são úteis para trabalho independente, com arquivos de escrita separ
 Primeira rodada implementada e medida em `docs/CPU_OPTIMIZATION.md`; benchmarks em `scripts/benchmark-{drag,rolls}.cjs`. Próximas investigações com medições: montagem/atualização dos painéis, consultas do monitor, recompilação por edição, agendamento/áudio e globo. A reorganização desta etapa não é uma otimização de CPU nem aprovação de desempenho mobile. Não alterar comportamento musical junto de uma simples movimentação de código.
 
 Ainda há arquivos grandes fora desta extração (`chess-game.tsx`, `world-map.tsx`, `globe-component.tsx` e engine nativa). Separá-los deve acompanhar uma responsabilidade concreta a alterar; quantidade de arquivos, por si só, não mede eficiência.
+
+Os desenhos das peças usados no tabuleiro e na prévia de instrumentos do lobby ficam em `lib/chess-piece-svg.ts`; `chessground-board.tsx` mantém a reexportação para consumidores existentes.

@@ -121,3 +121,14 @@ test('online availability hides online entry points when Supabase refuses the pr
     globalThis.fetch = previousFetch
   }
 })
+
+test('map keeps the occupied lobby first even when private or full and does not duplicate it', () => {
+ const {mapLobbyRooms}=loadTs('lib/online/lobby-updates.ts')
+ const publicRooms=[{code:'B',creator_name:'Bia',players:1},{code:'A',creator_name:'Ana',players:1}]
+ const room={id:'id-a',code:'A',status:'open',is_public:false,host_id:'host',members:[{user_id:'host',profile:{display_name:'Ana'}},{user_id:'me',profile:{display_name:'Eu'}}]}
+ const own=mapLobbyRooms(publicRooms,room,'me')
+ assert.equal(own.ownCode,'A');assert.deepEqual(own.entries.map(r=>r.code),['A','B']);assert.equal(own.entries[0].players,2)
+ assert.deepEqual(mapLobbyRooms(publicRooms,room,'other').entries,publicRooms)
+ assert.equal(mapLobbyRooms([],room,'me').entries[0].code,'A')
+ assert.equal(mapLobbyRooms(publicRooms,{...room,status:'closed'},'me').ownCode,null)
+})

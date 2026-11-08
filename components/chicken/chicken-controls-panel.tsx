@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Gamepad2, Keyboard, X, type LucideIcon } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
+import { InfoTip } from "@/components/info-tip"
 import {
   CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, KEYBOARD_INPUT_TYPES, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames,
   readGamepadTokens, saveChickenControls, setChickenControlsListening, subscribeChickenControls,
@@ -160,12 +161,9 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
         <button type="button" aria-label="Fechar controles" onClick={() => onOpenChange(false)} className="rounded p-1 text-white/70 hover:text-white"><X className="h-4 w-4" /></button>
       </div>
       <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto p-6">
-        <p className="text-xs text-[#9fb09f]">Os mesmos controles valem para qualquer boneco, em todas as telas, e ficam salvos só neste navegador. Clique num campo e aperte uma tecla ou botão. Esc cancela; botão direito no campo apaga.</p>
         <section className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Movimentos</h3>
+          <h3 className="flex w-fit items-center gap-1 font-mono text-xs uppercase tracking-wider text-primary">Movimentos<InfoTip label="Controles de movimento"><div className="space-y-2"><p>Primary keyboard é a mão esquerda (WASD); Secondary keyboard é a mão direita (setas e o bloco Ins/Home/PgUp/Del/End/PgDn), pensado para um segundo jogador no mesmo teclado. Teclados de notebook (Mac principalmente) não têm esse bloco nem Ctrl direito: troque por teclas perto das setas, como / . ; e Enter. O navegador não deixa bloquear alguns atalhos com Ctrl: Ctrl junto com W fecha a aba.</p><p>Gamepad: nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito. O analógico direito mira.</p></div></InfoTip></h3>
           {grid}
-          <p className="text-[11px] text-[#8a9a8a]">Primary keyboard é a mão esquerda (WASD); Secondary keyboard é a mão direita (setas e o bloco Ins/Home/PgUp/Del/End/PgDn), pensado para um segundo jogador no mesmo teclado. Teclados de notebook (Mac principalmente) não têm esse bloco nem Ctrl direito: troque por teclas perto das setas, como / . ; e Enter. O navegador não deixa bloquear alguns atalhos com Ctrl: Ctrl junto com W fecha a aba.</p>
-          <p className="text-[11px] text-[#8a9a8a]">Gamepad: nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito. O analógico direito mira.</p>
         </section>
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Analógicos</h3>
@@ -174,13 +172,13 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
               display={`${Math.round(controls.analog[k] * 100)}%`} onChange={v => update(c => { c.analog[k] = v / 100 })} />
           ))}
           <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={controls.analog.magnet} onChange={e => { const v = e.target.checked; update(c => { c.analog.magnet = v }) }} className="accent-[var(--primary)]" />
-            Ímã dos 8 ângulos na mira do analógico esquerdo
+            <input type="checkbox" checked={controls.analog.magnetDeg > 0} onChange={e => { const v = e.target.checked; update(c => { c.analog.magnetDeg = v ? c.analog.magnetRestoreDeg : 0; c.analog.magnet = v }) }} className="accent-[var(--primary)]" />
+            Ímã dos 8 ângulos na movimentação
           </label>
-          {controls.analog.magnet && (
-            <PatioRange label="Força do ímã" min={1} max={22.5} step={0.5} value={controls.analog.magnetDeg}
-              display={`${controls.analog.magnetDeg}°`} onChange={v => update(c => { c.analog.magnetDeg = v })} />
-          )}
+          <PatioRange label="Força do ímã dos 8 ângulos na movimentação" min={0} max={22.5} step={0.5} value={controls.analog.magnetDeg}
+            display={`${controls.analog.magnetDeg}°`} onChange={v => update(c => { c.analog.magnetDeg = v; c.analog.magnet = v > 0; if (v > 0) c.analog.magnetRestoreDeg = v })} />
+          <PatioRange label="Força do ímã dos 8 ângulos na mira" min={0} max={22.5} step={0.5} value={controls.analog.aimMagnetDeg}
+            display={`${controls.analog.aimMagnetDeg}°`} onChange={v => update(c => { c.analog.aimMagnetDeg = v })} />
           <p className="text-[11px] text-[#8a9a8a]">No mouse: clique esquerdo atira, clique direito dá o golpe, a rodinha troca o item. As teclas 1 a 9 escolhem o item. Com a roda do inventário aberta, o mouse ou o analógico direito escolhe o item.</p>
         </section>
         <section className="grid gap-2">

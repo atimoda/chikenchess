@@ -10,7 +10,7 @@ import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
 import type { ChickenEngine, ChickenGame } from "@/lib/chicken/engine"
 import { readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
-import { createMouseOwner, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
+import { createMouseOwner, magnetAngle, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
@@ -504,7 +504,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       aim = resolveAim({
         rightStick: wh.open ? null : rightStick ?? (held && !held.touch ? held.stick : null), mouse: autoAt ?? (owner.owns && !wh.open ? mouse : null),
         touch: wh.open ? null : touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
-        face: st.face, grounded: st.grounded, aimLock, magnet: an.magnet, magnetDeg: an.magnetDeg,
+        face: st.face, grounded: st.grounded, aimLock, aimMagnetDeg: an.aimMagnetDeg,
       })
       const d = combat.def()
       // the aim starts at the muzzle: with the cursor, turn the item until the line through its muzzle
@@ -598,7 +598,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const devs = eng.getDevices()
         const rs = stickFor(devs, 1, an.deadzoneR)
         const ahead = xs.face >= 0 ? 0 : Math.PI
-        const angle = rs ? Math.atan2(rs.y, rs.x) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
+        const angle = rs ? magnetAngle(Math.atan2(rs.y, rs.x), an.aimMagnetDeg) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
         const xo = eng.getState().shoulder
         const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
         const xpick = quickSwitchStep(xa, xp, eng.isShiftHeld())

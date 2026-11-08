@@ -5,6 +5,18 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.3.0',
+    date: '08/11/2026',
+    title: 'Salto no ar, controles e atalhos do mapa',
+    groups: [{ title: 'Perfil', items: ['O saldo com o texto golden eggs sempre visível, os pontos com um ovo cinza, o rank e a campanha aparecem de forma compacta abaixo do código do perfil, antes do acesso à conta.', 'O link de download de backups de visitante foi removido do perfil.'] }, { title: 'Mapa', items: ['O pin compartilhado volta a destacar ao passar o mouse por qualquer época de uma cidade.'] }, { title: 'Lobby', items: ['Passe o mouse ou toque nos instrumentos da escalação para ouvir uma nota de cada peça.', 'Random mostra os kits de campanha disponíveis como atalhos para seleção; os participantes aparecem com avatar ao lado do nome.', 'Public e Private ficam no topo da sala, com o código no botão selecionado e os ícones de sair, atualizar e fechar lado a lado.', 'Sua sala aparece primeiro em verde no mapa e substitui o botão Create lobby enquanto estiver ocupada. O atalho do estúdio agora se chama Creative Mode.', 'Os atalhos de Lobby e Friends passam para o topo do mapa; Creative fica na coluna da direita, abaixo de Create lobby.', 'A escalação do kit começa aberta ao lado da imagem e do título, em duas colunas com ícones das peças; ela se expande e se retrai suavemente, respeitando movimento reduzido, e se adapta à largura da tela.'] }, { title: 'Galinha', items: [
+      'Os ímãs de oito ângulos agora têm forças independentes para movimentação e mira. Zero desliga cada um, e a mira começa sem ímã.',
+      'No salto carregado no ar, os joelhos dobram mais enquanto você segura e as pernas se abrem ao soltar. O ângulo máximo pode ser ajustado em Combinações.',
+      'Z passa a ser uma segunda tecla de Pulo; G continua Arremessar. Atalhos personalizados são preservados.',
+      'As orientações sobre teclados e gamepad ficam no botão de ajuda ao lado de Movimentos; o parágrafo introdutório do painel foi removido.',
+      'Segurar Chocar + Pulo no ar carrega o salto: o multiplicador cresce de 2× até 4× em dois segundos. Ao atingir o tempo, a velocidade vertical muda uma vez; os três ajustes ficam em Combinações.',
+    ] }],
+  },
+  {
     version: '2.2.0',
     date: '07/11/2026',
     title: 'Pátio online, morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta, o gerador MIDI, seis viagens Classical e pulsos simultâneos',

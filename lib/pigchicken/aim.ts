@@ -1,6 +1,7 @@
 // PigChicKen aim: which input owns the aim this frame and where it points. Pure functions, screen coordinates (y down).
 // Priority: right stick > mouse (after it moves) > on-screen right stick > left stick > facing. The movement keys
 // (arrows, WASD) do not aim.
+import { magnetVector } from '../chicken/analog-magnet'
 
 export type Stick = { x: number; y: number; mag: number }
 export type AimSource = 'rightStick' | 'mouse' | 'touch' | 'leftStick' | 'keys' | 'facing'
@@ -14,8 +15,7 @@ export type AimInput = {
   face: number
   grounded: boolean
   aimLock: boolean
-  magnet: boolean
-  magnetDeg: number
+  aimMagnetDeg: number
 }
 export type Aim = {
   angle: number // radians, 0 = right, positive = down
@@ -42,20 +42,19 @@ const fromVec = (dx: number, dy: number, source: AimSource, strength: number, se
 }
 
 export function resolveAim(i: AimInput): Aim {
-  if (i.rightStick) return fromVec(i.rightStick.x, i.rightStick.y, 'rightStick', i.rightStick.mag, true)
+  if (i.rightStick) { const stick = magnetVector(i.rightStick, i.aimMagnetDeg); return fromVec(stick.x, stick.y, 'rightStick', stick.mag, true) }
   if (i.mouse) {
     const dx = i.mouse.x - i.origin.x, dy = i.mouse.y - i.origin.y
     if (Math.hypot(dx, dy) > 4) return fromVec(dx, dy, 'mouse', 1, true, { ...i.mouse })
   }
-  if (i.touch) return fromVec(i.touch.x, i.touch.y, 'touch', i.touch.mag, true)
+  if (i.touch) { const stick = magnetVector(i.touch, i.aimMagnetDeg); return fromVec(stick.x, stick.y, 'touch', stick.mag, true) }
   // on the ground, down is crouch: it only aims while the aim is locked
   const downOk = !i.grounded || i.aimLock
   if (i.leftStick) {
     let { x, y } = i.leftStick
     if (y > 0 && !downOk) y = 0
     if (Math.abs(x) > 0.05 || Math.abs(y) > 0.05) {
-      let a = Math.atan2(y, x)
-      if (i.magnet) a = magnetAngle(a, i.magnetDeg)
+      const a = magnetAngle(Math.atan2(y, x), i.aimMagnetDeg)
       return { ...fromVec(Math.cos(a), Math.sin(a), 'leftStick', i.leftStick.mag, false) }
     }
   }

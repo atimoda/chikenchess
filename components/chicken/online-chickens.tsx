@@ -45,7 +45,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
     const timer = window.setInterval(() => {
       const list = ownRef.current().slice(0, 4).map((eng, slot) => {
         const s = eng.getMotionState()
-        return { slot, x: s.x + liveCamera.x, y: s.y - liveCamera.y, vx: s.vx, vy: s.vy, face: s.face, state: stateByte(s.state), item: itemByte(eng.getHeldItem()) }
+        return { slot, x: s.x + liveCamera.x, y: s.y - liveCamera.y, vx: s.vx, vy: s.vy, face: s.face, state: stateByte(s.networkAnimation ?? s.state), item: itemByte(eng.getHeldItem()) }
       })
       sendOwnChickens(list)
     }, SEND_MS)
@@ -96,7 +96,6 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
     const speakers: Record<string, ChickenEngine> = {}
     map.forEach(r => { if (r.slot === 0) speakers[`net:${r.pid}`] = r.engine })
     speakersRef.current(speakers)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, groundHeight])
 
   // the name tags follow their chickens

@@ -3,3 +3,32 @@
     display: none;
   }
 }
+
+.creativeFallback {
+  position: fixed;
+  top: 6rem;
+  right: 1rem;
+  width: min(14rem, 40vw);
+  pointer-events: auto;
+}
+.creativeFallbackButton {
+  display: flex;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border: 1px solid var(--primary);
+  border-radius: .375rem;
+  background: rgb(0 0 0 / 80%);
+  color: var(--primary);
+  font: 600 .75rem var(--font-geist-mono), monospace;
+}
+.creativeFallbackButton:hover, .creativeFallbackButton:focus-visible {
+  color: white;
+  box-shadow: 0 0 10px var(--primary);
+}
+
+@media (max-width: 380px) {
+  .headerControls { gap: 4px; }
+  .headerControls > button:not(:last-child) { width: 32px; height: 32px; }
+}

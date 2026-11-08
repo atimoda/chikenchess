@@ -5,7 +5,7 @@ const { resolveAim } = loadTs('lib/pigchicken/aim.ts')
 const controls = loadTs('lib/chicken/controls.ts')
 const layout = loadTs('lib/chicken/touch-layout.ts')
 
-const base = { rightStick: null, mouse: null, touch: null, leftStick: null, keys: { x: 0, y: 0 }, origin: { x: 0, y: 0 }, face: 1, grounded: false, aimLock: false, magnet: false, magnetDeg: 12 }
+const base = { rightStick: null, mouse: null, touch: null, leftStick: null, keys: { x: 0, y: 0 }, origin: { x: 0, y: 0 }, face: 1, grounded: false, aimLock: false, aimMagnetDeg: 0 }
 
 test('the on-screen left stick aims at any angle, not only the 8 directions', () => {
   globalThis.window = { dispatchEvent() {} }
@@ -20,7 +20,7 @@ test('the on-screen left stick aims at any angle, not only the 8 directions', ()
   controls.setTouchMoveStick({ x: 1, y: 0, len: 0.2 }); assert.equal(controls.readTouchMoveStick(0.25), null)
   controls.setTouchMoveStick(null); assert.equal(controls.readTouchMoveStick(0.25), null)
   // the magnet still snaps when it is on
-  const snapped = resolveAim({ ...base, leftStick: { x: Math.cos(.1), y: -Math.sin(.1), mag: 1 }, magnet: true })
+  const snapped = resolveAim({ ...base, leftStick: { x: Math.cos(.1), y: -Math.sin(.1), mag: 1 }, aimMagnetDeg: 12 })
   assert.ok(Math.abs(snapped.angle) < 1e-12)
 })
 
@@ -232,7 +232,7 @@ test('X stays secondary Run, and the RB-only default migrates without replacing 
 
 test('keyboard defaults and legacy bindings migrate to G Throw, Tab next and Q wheel', () => {
   const d = controls.defaultChickenControls()
-  assert.deepEqual(d.keys.throw.filter(Boolean), ['Key:KeyG', 'Key:KeyZ'])
+  assert.deepEqual(d.keys.throw.filter(Boolean), ['Key:KeyG'])
   assert.equal(d.keys.nextItem[0], 'Key:Tab')
   assert.equal(d.keys.itemWheel[0], 'Key:KeyQ')
   const previous = globalThis.window
@@ -243,7 +243,7 @@ test('keyboard defaults and legacy bindings migrate to G Throw, Tab next and Q w
     saved.keys.itemWheel = ['Key:Tab', null, null]
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     const migrated = controls.loadChickenControls()
-    assert.deepEqual(migrated.keys.throw.filter(Boolean), ['Key:KeyG', 'Key:KeyZ'])
+    assert.deepEqual(migrated.keys.throw.filter(Boolean), ['Key:KeyG'])
     assert.equal(migrated.keys.nextItem[0], 'Key:Tab')
     assert.equal(migrated.keys.itemWheel[0], 'Key:KeyQ')
     saved.keys.throw = ['Key:KeyT', null, null]
@@ -320,9 +320,9 @@ test('Deselect item defaults to F and migrates only when free, preserving custom
   } finally { globalThis.window = previous }
 })
 
-test('primary keyboard: V fires, C strikes, X broods and Z throws; the previous defaults migrate, custom binds stay', () => {
+test('primary keyboard: V fires, C strikes, X broods and G throws; previous defaults migrate, custom binds stay', () => {
   const d = controls.defaultChickenControls().keys
-  assert.deepEqual([d.fire, d.melee, d.down, d.throw, d.crouch], [['Key:KeyV', null, null], ['Key:KeyC', null, null], ['Key:ControlLeft', 'Key:KeyX', null], ['Key:KeyG', 'Key:KeyZ', null], ['Key:KeyS', null, null]])
+  assert.deepEqual([d.fire, d.melee, d.down, d.throw, d.crouch], [['Key:KeyV', null, null], ['Key:KeyC', null, null], ['Key:ControlLeft', 'Key:KeyX', null], ['Key:KeyG', null, null], ['Key:KeyS', null, null]])
   const previous = globalThis.window
   try {
     const flags = { padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, grabKeys2: true, noCmdBrood: true }
@@ -330,7 +330,7 @@ test('primary keyboard: V fires, C strikes, X broods and Z throws; the previous 
     Object.assign(saved.keys, { fire: ['Key:KeyX', 'Key:KeyV', null], melee: ['Key:KeyZ', 'Key:KeyB', null], crouch: ['Key:KeyS', 'Key:KeyC', null], down: ['Key:ControlLeft', null, null], throw: ['Key:KeyG', null, null] })
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     let k = controls.loadChickenControls().keys
-    assert.deepEqual([k.fire, k.melee, k.crouch, k.down, k.throw], [['Key:KeyV', null, null], ['Key:KeyC', null, null], ['Key:KeyS', null, null], ['Key:ControlLeft', 'Key:KeyX', null], ['Key:KeyG', 'Key:KeyZ', null]])
+    assert.deepEqual([k.fire, k.melee, k.crouch, k.down, k.throw], [['Key:KeyV', null, null], ['Key:KeyC', null, null], ['Key:KeyS', null, null], ['Key:ControlLeft', 'Key:KeyX', null], ['Key:KeyG', null, null]])
     // custom: fire on X only and crouch keeping C stay; melee cannot take C and keeps its keys
     saved.keys.fire = ['Key:KeyX', null, null]
     saved.keys.crouch = ['Key:KeyC', null, null]
@@ -359,4 +359,103 @@ test('the bottom inventory bar keeps its own position, apart from the phone stac
     assert.deepEqual(persisted.inventory, { x: -40, y: 10 })
     layout.resetTouchLayout(); layout.finishTouchLayoutEdit()
   } finally { globalThis.window = previous }
+})
+
+test('air shocking jump charges from 2× to the chosen limit and applies the timeout once', () => {
+  const {shockingAirMultiplier,advanceShockingAirCharge}=loadTs('lib/chicken/jump-impulse.ts')
+  assert.equal(shockingAirMultiplier(0,2,4),2)
+  assert.equal(shockingAirMultiplier(1,2,4),3)
+  assert.equal(shockingAirMultiplier(2,2,4),4)
+  assert.equal(shockingAirMultiplier(20,2,4),4)
+  assert.equal(shockingAirMultiplier(1,2,1),1.5)
+  let c=advanceShockingAirCharge(1.5,false,.4,2,2)
+  assert.equal(c.applied,false);assert.equal(c.velocityMultiplier,1)
+  c=advanceShockingAirCharge(c.elapsed,c.applied,.1,2,2)
+  assert.equal(c.applied,true);assert.equal(c.velocityMultiplier,2)
+  c=advanceShockingAirCharge(c.elapsed,c.applied,1,2,2)
+  assert.equal(c.velocityMultiplier,1,'do not multiply again on later frames')
+  assert.equal(advanceShockingAirCharge(1.9,false,.2,2,-2).velocityMultiplier,-2,'negative values reverse the vertical velocity')
+  assert.equal(advanceShockingAirCharge(1.9,false,.2,2,0).velocityMultiplier,0)
+  const {normalizeChickenConfig}=loadTs('lib/chicken/config.ts')
+  const old=normalizeChickenConfig({params:{shockingAirStop:65}}).params
+  assert.equal(old.shockingAirStop,65);assert.equal(old.shockingAirMaxMultiplier,4)
+  assert.equal(old.shockingAirChargeTime,2);assert.equal(old.shockingAirAfterTimeMultiplier,2)
+})
+
+
+test('Z moves from the old Throw default to secondary Jump without replacing custom bindings', () => {
+  const d = controls.defaultChickenControls()
+  assert.deepEqual(d.keys.jump, ['Key:Space','Key:KeyZ',null])
+  assert.deepEqual(d.keys.throw, ['Key:KeyG',null,null])
+  const previous=globalThis.window
+  try {
+    const saved={...d,keyboardVCXZ:true,keyboardThrowG:true,keyboardInventoryQ:true,grabKeys2:true,noCmdBrood:true}
+    saved.keys.jump=['Key:Space',null,null];saved.keys.throw=['Key:KeyG','Key:KeyZ',null]
+    globalThis.window={localStorage:{getItem:()=>JSON.stringify(saved),setItem:()=>{}},dispatchEvent:()=>{}}
+    let next=controls.loadChickenControls()
+    assert.deepEqual(next.keys.jump,['Key:Space','Key:KeyZ',null]);assert.deepEqual(next.keys.throw,['Key:KeyG',null,null])
+    saved.keys.jump=['Key:KeyJ',null,null];next=controls.loadChickenControls()
+    assert.deepEqual(next.keys.jump,saved.keys.jump);assert.deepEqual(next.keys.throw,saved.keys.throw)
+    saved.keys.jump=['Key:Space',null,null];saved.keys.throw=['Key:KeyT','Key:KeyZ',null];next=controls.loadChickenControls()
+    assert.deepEqual(next.keys.jump,saved.keys.jump);assert.deepEqual(next.keys.throw,saved.keys.throw)
+    saved.keys.throw=['Key:KeyG',null,null];saved.keys.melee=['Key:KeyZ',null,null];next=controls.loadChickenControls()
+    assert.deepEqual(next.keys.jump,saved.keys.jump);assert.deepEqual(next.keys.melee,saved.keys.melee)
+    saved.keys.melee=['Key:KeyC',null,null];saved.keyboardJumpZ=true;next=controls.loadChickenControls()
+    assert.deepEqual(next.keys.jump,saved.keys.jump,'explicitly saved removal remains removed')
+  } finally { if(previous===undefined)delete globalThis.window;else globalThis.window=previous }
+})
+
+test('air shocking pose folds from half to full and opens straight on release', () => {
+  const {shockingAirLegPose}=loadTs('lib/chicken/shocking-pose.ts')
+  const early=shockingAirLegPose(0,2,90,false),middle=shockingAirLegPose(1,2,90,false),late=shockingAirLegPose(2,2,90,false),release=shockingAirLegPose(2,2,90,true)
+  assert.equal(early.front.tib,45);assert.equal(middle.front.tib,67.5);assert.equal(late.front.tib,90)
+  assert.ok(early.front.leg > middle.front.leg && middle.front.leg > late.front.leg, 'legs open gradually with the charge')
+  assert.equal(late.back.tib,-90);assert.deepEqual(shockingAirLegPose(8,2,90,false),late)
+  assert.ok(release.front.leg < early.front.leg && release.back.leg > early.back.leg)
+  assert.equal(release.front.tib,0);assert.equal(release.front.shin,0);assert.equal(release.back.tib,0);assert.equal(release.back.shin,0)
+  assert.equal(shockingAirLegPose(0,2,60,false).front.tib,30)
+})
+
+
+test('movement and aim magnets are independent, including touch, right stick and mouse', () => {
+  const {magnetVector}=loadTs('lib/chicken/analog-magnet.ts')
+  const stick={x:Math.cos(.1),y:Math.sin(.1),mag:.7}
+  assert.strictEqual(magnetVector(stick,0),stick)
+  const snapped=magnetVector(stick,10)
+  assert.ok(Math.abs(snapped.y)<1e-10);assert.equal(snapped.mag,.7)
+  assert.ok(Math.abs(magnetVector(stick,1).y-stick.y)<1e-10)
+  assert.equal(magnetVector({x:-1,y:.01},10).y,0,'no phantom axis with a zero dead zone')
+  for(const key of ['leftStick','rightStick','touch']) {
+    const raw=resolveAim({...base,[key]:stick,aimMagnetDeg:0})
+    const magnetic=resolveAim({...base,[key]:stick,aimMagnetDeg:10})
+    assert.ok(Math.abs(raw.angle-.1)<1e-9,key);assert.ok(Math.abs(magnetic.angle)<1e-9,key)
+  }
+  const mouse=resolveAim({...base,mouse:{x:100,y:10},aimMagnetDeg:22.5})
+  assert.ok(mouse.angle>0,'mouse stays exact')
+})
+
+test('legacy magnet settings migrate without losing their remembered movement strength', () => {
+ const previous=globalThis.window
+ try {
+  let raw=JSON.stringify({analog:{magnet:true,magnetDeg:6}})
+  globalThis.window={localStorage:{getItem:()=>raw,setItem:(_,v)=>{raw=v}},dispatchEvent:()=>{}}
+  let a=controls.loadChickenControls().analog
+  assert.equal(a.magnetDeg,6);assert.equal(a.magnet,true);assert.equal(a.aimMagnetDeg,0)
+  raw=JSON.stringify({analog:{magnet:false,magnetDeg:7}});a=controls.loadChickenControls().analog
+  assert.equal(a.magnetDeg,0);assert.equal(a.magnet,false);assert.equal(a.magnetRestoreDeg,7)
+  raw=JSON.stringify({analog:{magnet:true,magnetDeg:0,aimMagnetDeg:4}});a=controls.loadChickenControls().analog
+  assert.equal(a.magnet,false);assert.equal(a.aimMagnetDeg,4)
+  raw=JSON.stringify({});a=controls.loadChickenControls().analog
+  assert.equal(a.magnetDeg,0);assert.equal(a.aimMagnetDeg,0)
+ } finally {if(previous===undefined)delete globalThis.window;else globalThis.window=previous}
+})
+
+test('movement magnet snaps only the movement stick before mapped gamepad actions', () => {
+ const D=loadTs('lib/chicken/input-devices.ts'),old=globalThis.navigator
+ try {
+  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{getGamepads:()=>[{connected:true,buttons:[],axes:[.9,.48,.9,.48]}]}})
+  const raw=D.padTokensFor(null,.5,0),snapped=D.padTokensFor(null,.5,20)
+  assert.equal(raw.has('Pad:a1+'),false);assert.equal(snapped.has('Pad:a1+'),true)
+  assert.equal(raw.has('Pad:a3+'),false);assert.equal(snapped.has('Pad:a3+'),false,'right stick untouched')
+ } finally {if(old===undefined)delete globalThis.navigator;else Object.defineProperty(globalThis,'navigator',{configurable:true,value:old})}
 })

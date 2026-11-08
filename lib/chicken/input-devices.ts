@@ -2,6 +2,7 @@
 // the secondary keyboard, each gamepad (by its index), the mouse and the touch screen. The binds themselves
 // stay in controls.ts; this file only says which of them belong to which device.
 import { CHICKEN_ACTIONS, type ChickenAction, type ChickenControls } from './controls'
+import { magnetVector } from './analog-magnet'
 
 export type InputDeviceId = 'kb1' | 'kb2' | 'mouse' | 'touch' | `pad${number}`
 
@@ -71,18 +72,19 @@ export function connectedPads(): InputDeviceId[] {
   return Array.from(pads).flatMap((g, i) => (g && g.connected ? [`pad${i}` as InputDeviceId] : []))
 }
 
-function tokensOf(gp: Gamepad | null, deadzone: number, on: Set<string>) {
+function tokensOf(gp: Gamepad | null, deadzone: number, on: Set<string>, movementMagnet: number) {
   if (!gp) return
   gp.buttons.forEach((b, i) => { if (b && (b.pressed || b.value > 0.3)) on.add(`Pad:b${i}`) })
-  gp.axes.forEach((v, i) => { if (v < -deadzone) on.add(`Pad:a${i}-`); else if (v > deadzone) on.add(`Pad:a${i}+`) })
+  const snapped = magnetVector({ x: gp.axes[0] ?? 0, y: gp.axes[1] ?? 0 }, movementMagnet)
+  gp.axes.forEach((raw, i) => { const v = i === 0 ? snapped.x : i === 1 ? snapped.y : raw; if (v < -deadzone) on.add(`Pad:a${i}-`); else if (v > deadzone) on.add(`Pad:a${i}+`) })
 }
 
 // Pressed buttons / pushed stick directions of the player's gamepads (null devices: the first connected one,
 // as before there were local players).
-export function padTokensFor(devices: readonly InputDeviceId[] | null, deadzone = 0.4) {
+export function padTokensFor(devices: readonly InputDeviceId[] | null, deadzone = 0.4, movementMagnet = 0) {
   const on = new Set<string>()
-  if (!devices) tokensOf(firstGamepad(), deadzone, on)
-  else devices.forEach(d => { if (isPadDevice(d)) tokensOf(gamepadAt(padIndex(d)), deadzone, on) })
+  if (!devices) tokensOf(firstGamepad(), deadzone, on, movementMagnet)
+  else devices.forEach(d => { if (isPadDevice(d)) tokensOf(gamepadAt(padIndex(d)), deadzone, on, movementMagnet) })
   return on
 }
 

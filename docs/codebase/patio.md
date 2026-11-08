@@ -35,3 +35,7 @@ Reposição por suporte: `lib/pigchicken/racks.ts` define padrões/limites; `Lay
 Movimento durante carga: `throwGroundStop`/`throwAirStop`/`throwPoseAngle` formam Arremesso em `lib/chicken/param-meta.ts`; `engine.ts` reduz o movimento por meio de `movementFactor`, sem zerar a direção. `ParquinhoPlay` encaminha `throwHeld`/`throwCharging` a todos os players; dano, forças e tempo de carga ficam por item em `lib/pigchicken/items.ts`.
 
 Entrada visual em Throw: `lib/chicken/throw-transition.ts` interpola posição/ângulo e ponta da asa, com alvo angular contínuo e velocidade; `engine.ts` captura o desenho em `setHeld`, aplica a pose e limpa no cancelamento/troca. `held-pose.ts` fornece `itemKey`/`throwing`; `throwPoseSpeed` fica em Ajustes → Arremesso. Testes puros em `tests/chicken-throw-transition.cases.cjs` e verificação do engine no navegador.
+
+A pose do shocking jump aéreo é calculada por `lib/chicken/shocking-pose.ts`; `engine.ts` usa a carga local e `online-chickens.tsx` envia estados de animação ao Pátio online.
+
+Os ímãs de 8 ângulos independentes usam `lib/chicken/analog-magnet.ts`: o engine e `input-devices.ts` aplicam a força de movimento, e `lib/pigchicken/aim.ts` e `parquinho.tsx` aplicam a força de mira; toque em `chicken-layer.tsx`.

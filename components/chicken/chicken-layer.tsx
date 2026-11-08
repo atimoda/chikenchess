@@ -7,6 +7,7 @@ import { ChevronsUp, Egg, Footprints, Gamepad2 } from "lucide-react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { refreshChickenConfig } from "@/lib/chicken/config"
 import { loadChickenControls, setTouchMoveStick, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
+import { magnetVector } from "@/lib/chicken/analog-magnet"
 import { clampDelta, finishTouchLayoutEdit, getServerTouchLayout, getTouchLayout, resetTouchLayout, setTouchOffset, subscribeTouchLayout, type TouchControlId } from "@/lib/chicken/touch-layout"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
@@ -187,6 +188,8 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
   const stickRef = useRef<HTMLDivElement>(null)
   const active = useRef<Partial<Record<ChickenAction, boolean>>>({})
   const pointerId = useRef<number | null>(null)
+  const movementMagnet = useRef(loadChickenControls().analog.magnetDeg)
+  useEffect(() => subscribeChickenControls(c => { movementMagnet.current = c.analog.magnetDeg }), [])
 
   const { editing } = useTouchLayout()
   useEffect(() => { if (editing) { set("run", false); set("down", false); set("jump", false) } }, [editing])
@@ -205,7 +208,8 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
     if (len > max) { dx *= max / len; dy *= max / len }
     setKnob({ x: dx, y: dy })
     const nx = dx / max, ny = dy / max
-    apply({ left: nx < -0.35, right: nx > 0.35, up: ny < -0.6, crouch: ny > 0.6 })
+    const motion = magnetVector({ x: nx, y: ny }, movementMagnet.current)
+    apply({ left: motion.x < -0.35, right: motion.x > 0.35, up: motion.y < -0.6, crouch: motion.y > 0.6 })
     // the aim follows the stick in any direction, not only the 8 the actions give
     const l = Math.hypot(nx, ny)
     setTouchMoveStick(l > 0 ? { x: nx / l, y: ny / l, len: Math.min(1, l) } : null)

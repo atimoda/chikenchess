@@ -1,12 +1,12 @@
 "use client"
 
-/* global URL, Blob, HTMLInputElement */
+/* global HTMLInputElement */
 import { useEffect, useRef, useState } from 'react'
 import { Check, Eye, EyeOff, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cities } from '@/lib/cities-data'
 import { resetCampaign, resetSeenMatchTips, type PlayerProfile } from '@/lib/game-progression'
-import { onlineErrorMessage, readProfileBackups } from '@/lib/online/client'
+import { onlineErrorMessage } from '@/lib/online/client'
 import { useOnline } from './online-provider'
 
 export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: PlayerProfile | null; onSignIn: () => void }) {
@@ -44,11 +44,6 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
     catch (cause) { setError(onlineErrorMessage(cause)) }
     finally { setBusy(false) }
   }
-  const downloadBackup = () => {
-    const url = URL.createObjectURL(new Blob([JSON.stringify({ backups: readProfileBackups() }, null, 2)], { type: 'application/json' }))
-    const link = document.createElement('a'); link.href = url; link.download = 'chickenchess-profile-backups.json'; link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
   return (
       <div className="space-y-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -65,6 +60,21 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
               {googleName && <button type="button" className="text-xs text-white/55 underline underline-offset-4" disabled={busy} onClick={() => void saveName(googleName)}>Use Google name</button>}
             </form>}
             {online.profile && <p className="break-words text-xs text-white/60">{online.profile.baptismal_name && online.profile.display_name !== online.profile.baptismal_name && <>Baptismal name: {online.profile.baptismal_name}<br /></>}Profile code: <span className="select-all break-all">{online.profile.code}</span></p>}
+            <div className="space-y-1.5 text-xs text-white/60">
+              <span className="inline-flex items-center gap-1 text-amber-300">
+                <ProfileEggIcon golden />
+                {(playerProfile?.goldenEggs || 0).toLocaleString()}
+                <span>golden eggs</span>
+              </span>
+              <p className="flex items-center gap-1"><ProfileEggIcon />{(playerProfile?.points || 0).toLocaleString()} historical points</p>
+              <p>Rank: <span aria-hidden="true">🎖️</span> {playerProfile?.rank || 'Novice Beatmaker'}</p>
+              <div className="space-y-2">
+                <p><span aria-hidden="true">🏆</span> Campaign (Cities Conquered): <strong className="font-normal text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}</p>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((playerProfile?.conqueredCityIds?.length || 0) / cities.length) * 100}%` }} />
+                </div>
+              </div>
+            </div>
             {!online.user || online.user.is_anonymous ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Sign in to save your profile</Button>
               : online.pendingTransfer ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Integrar perfil visitante</Button>
                 : online.user.email ? (
@@ -78,37 +88,7 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
                 ) : null}
             {(error || online.error) && <p role="alert" className="text-xs text-rose-200">{error || online.error}</p>}
             {message && <p role="status" className="text-xs text-primary">{message}</p>}
-            <div className="space-y-3 font-mono">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Golden eggs</span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-bold tracking-wide text-amber-300">
-                  <svg aria-hidden="true" viewBox="0 0 16 20" className="h-4 w-3.5">
-                    <path d="M8 1.5c-3.2 0-6 6.3-6 11.3a6 6 0 0 0 12 0c0-5-2.8-11.3-6-11.3Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.2" />
-                    <path d="M5 6.5c-.9 1.7-1.5 3.8-1.5 5.5" fill="none" stroke="#fef08a" strokeLinecap="round" strokeWidth="1.2" />
-                  </svg>
-                  {(playerProfile?.goldenEggs || 0).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Historical score</span>
-                <span className="tracking-wide text-muted-foreground">{(playerProfile?.points || 0).toLocaleString()} points</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Rank</span>
-                <span className="text-xs text-muted-foreground">🎖️ {playerProfile?.rank || "Novice Beatmaker"}</span>
-              </div>
-            </div>
-            <div className="space-y-2 pt-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5"><span aria-hidden="true">🏆</span>Campaign (Cities Conquered)</span>
-                <span><strong className="text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((playerProfile?.conqueredCityIds?.length || 0) / cities.length) * 100}%` }} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-3 pt-3">
-              {readProfileBackups().length > 0 ? <button className="min-w-0 text-left text-[10px] text-white/50 underline underline-offset-4 hover:text-white" type="button" onClick={downloadBackup}>Download guest profile backups</button> : <span />}
+            <div className="flex items-center justify-end gap-3 pt-3">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -146,6 +126,13 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
       </div>
 
   )
+}
+
+function ProfileEggIcon({ golden = false }: { golden?: boolean }) {
+  return <svg aria-hidden="true" viewBox="0 0 16 20" className="h-3.5 w-3 shrink-0">
+    <path d="M8 1.5c-3.2 0-6 6.3-6 11.3a6 6 0 0 0 12 0c0-5-2.8-11.3-6-11.3Z" fill={golden ? '#facc15' : 'currentColor'} stroke={golden ? '#ca8a04' : 'currentColor'} strokeWidth="1.2" />
+    <path d="M5 6.5c-.9 1.7-1.5 3.8-1.5 5.5" fill="none" stroke={golden ? '#fef08a' : '#101713'} strokeOpacity={golden ? 1 : 0.4} strokeLinecap="round" strokeWidth="1.2" />
+  </svg>
 }
 
 function maskEmail(email: string) {

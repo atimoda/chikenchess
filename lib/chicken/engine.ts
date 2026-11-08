@@ -12,14 +12,16 @@ import { LOOK_ART, type ChickenLook } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
-import { directionalJumpImpulse } from './jump-impulse'
+import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
+import { shockingAirLegPose } from './shocking-pose'
+import { magnetVector } from './analog-magnet'
 import { createThrowTransition } from './throw-transition'
 import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce, type PlatformOcclusion } from './platform-geometry'
 import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampoline'
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
 
-export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; held: boolean; width: number; height: number; groundY: number }
+export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
 // accelMult scales her acceleration; accelPower > 1 eases each start (1 linear, 3 "ease-super-in": slow, then fast),
 // reaching full speed in accelRamp seconds; aura draws a state on her (a consumable's effect in the Pátio)
@@ -291,7 +293,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('blur', onBlur)
   window.addEventListener('pointermove', onPointerMove)
   function pollPad() {
-    const on = padTokensFor(devices, controls.analog.deadzoneL)
+    const on = padTokensFor(devices, controls.analog.deadzoneL, controls.analog.magnetDeg)
     pad = {}
     CHICKEN_ACTIONS.forEach(a => { pad[a.key] = controls.pad[a.key].some(t => t && on.has(t)) })
   }
@@ -378,6 +380,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('resize', resize)
 
   let prevJump = false
+  let shockingAirElapsed = 0
+  let shockingAirLimitApplied = false
+  let shockingAirReleaseTime = 0
   function step(dt: number) {
     pollPad()
     const Lh = input('left'), Rh = input('right'), U = input('up'), Dk = input('down'), C = input('crouch'), J = input('jump'), RUN = input('run')
@@ -398,9 +403,23 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const D = (Dk && !S.broodOff) || S.broodLatch
     // Shocking jump: hold Jump with Brood to prepare, then release Jump to
     // launch. Releasing Brood first cancels; normal jumps still fire on press.
-    if (S.shocking && !Dk) S.shocking = false
-    if (jumpPressed && D && !S.cl && !S.held) { S.shocking = true; jumpPressed = false }
-    if (S.shocking && !J) { S.shocking = false; jumpPressed = Dk }
+    let airChargeMultiplier = 1
+    let airShockReleased = false
+    if (S.shocking && (!Dk || S.held || S.cl)) S.shocking = false
+    if (jumpPressed && D && !S.cl && !S.held) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
+    if (S.shocking && !J) {
+      if (Dk && !S.grounded) { airShockReleased = true; airChargeMultiplier = shockingAirMultiplier(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirMaxMultiplier) }
+      S.shocking = false; jumpPressed = Dk
+    }
+    if (S.shocking && !S.grounded && J && Dk) {
+      const charge = advanceShockingAirCharge(shockingAirElapsed, shockingAirLimitApplied, dt, R.shockingAirChargeTime, R.shockingAirAfterTimeMultiplier)
+      shockingAirElapsed = charge.elapsed
+      shockingAirLimitApplied = charge.applied
+      S.vy *= charge.velocityMultiplier
+    } else if (!S.shocking || S.grounded) {
+      shockingAirElapsed = 0
+      shockingAirLimitApplied = false
+    }
     const inputDir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
     let dir = inputDir
     // point-and-click: any control of her own cancels the walk to the clicked spot
@@ -537,11 +556,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         // Brood itself (LT/Control) is not a movement direction. ArrowDown is
         // movement even though the secondary keyboard also binds it to Brood.
         const downDirection = C || held.has('Key:ArrowDown')
-        const direction = stick ? { x: stick.x * stick.mag, y: stick.y * stick.mag } : { x: inputDir, y: (downDirection ? 1 : 0) - (U ? 1 : 0) }
+        const direction = stick ? magnetVector({ x: stick.x * stick.mag, y: stick.y * stick.mag }, controls.analog.magnetDeg) : { x: inputDir, y: (downDirection ? 1 : 0) - (U ? 1 : 0) }
         const impulse = directionalJumpImpulse(direction, boost, R.broodJumpVerticalBoost)
         S.airBoost = impulse.x
         S.vy += impulse.y
       } else S.airBoost = (dir !== 0 ? dir * R.jumpPush : 0) + hd * boost
+      if (!fromGround && D) { S.airBoost *= airChargeMultiplier; S.vy *= airChargeMultiplier }
+      if (!fromGround && airShockReleased) shockingAirReleaseTime = .3
       S.vx += S.airBoost
       S.burst = flaps / Math.max(1, R.jumpFlapRate)
       sfx(kind)
@@ -1099,7 +1120,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       t.legSink = R.broodDepth + R.shockingLegBend
       t.ik = 1; t.tuck = 0
       t.wing = 8; t.wingBack = 6
+      if (!S.grounded) t.ik = 0
     }
+
+    if (S.grounded || S.held || S.cl) shockingAirReleaseTime = 0
+    const legPose = !S.grounded && S.shocking
+      ? shockingAirLegPose(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirKneeBend, false)
+      : !S.grounded && shockingAirReleaseTime > 0
+        ? shockingAirLegPose(0, R.shockingAirChargeTime, R.shockingAirKneeBend, true) : null
+    if (legPose && !S.shocking) t.ik = 0
+    shockingAirReleaseTime = Math.max(0, shockingAirReleaseTime - dt)
 
     pose.bob = ease(pose.bob, t.bob, 30, dt)
     pose.sway = ease(pose.sway, t.sway, 20, dt)
@@ -1134,6 +1164,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       } else {
         [fa, ta, sa] = legAbs(key, ax, ay, extra)
         toeW = airCurl * R.toeCurl
+      }
+      if (legPose) {
+        const target = key === 'F' ? legPose.front : legPose.back
+        fa = 90 + target.leg; ta = fa + target.tib; sa = ta + target.shin; toeW = sa - 90
+        lk = 35
       }
       pose['leg' + key] = ease(pose['leg' + key], fa - 90, lk, dt)
       pose['tib' + key] = ease(pose['tib' + key], ta - fa, lk, dt)
@@ -1339,7 +1374,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     else { const k = 1 - Math.exp(-dt * 18); S.x += dx * k; S.y += dy * k }
     S.vx = t.vx / Math.max(0.0001, movementFactor()); S.vy = t.vy
     if (t.face !== S.face) { S.face = t.face < 0 ? -1 : 1 }
-    const st = REMOTE_STATE[t.state] ?? t.state
+    const airPrepare = t.state === 'shockingAirPrepare', airRelease = t.state === 'shockingAirRelease'
+    const st = airPrepare || airRelease ? 'jump' : REMOTE_STATE[t.state] ?? t.state
+    S.shocking = airPrepare
+    shockingAirElapsed = airPrepare ? shockingAirElapsed + dt : 0
+    shockingAirReleaseTime = airRelease ? .3 : 0
     S.grounded = !['jump', 'fly', 'fastFall', 'held'].includes(st)
     S.held = st === 'held'
     S.state = st
@@ -1388,13 +1427,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   function motionState(): Omit<ChickenState, 'shoulder'> {
-    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, held: !!S.held, width: W, height: H, groundY }
+    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, networkAnimation: !portalEntry && !S.held && !S.cl && !S.grounded && S.shocking ? 'shockingAirPrepare' : !portalEntry && !S.held && !S.cl && !S.grounded && shockingAirReleaseTime > 0 ? 'shockingAirRelease' : undefined, held: !!S.held, width: W, height: H, groundY }
   }
 
   return {
     getHeldItem: () => heldItem?.itemKey ?? null,
     setRemote(source) {
       remote = source
+      S.shocking = false; shockingAirElapsed = 0; shockingAirReleaseTime = 0; shockingAirLimitApplied = false
       // nobody on this screen drags or controls an online player's chicken
       el.root.style.pointerEvents = source ? 'none' : 'visiblePainted'
       if (source) { devices = []; S.cl = null; goal = null }
@@ -1416,6 +1456,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const centre = m ? new DOMPoint(0, -80).matrixTransform(m) : { x: S.x, y: S.y - 80 * R.scale }
       portalEntry = { ...entry, mode: 'enter', start: performance.now(), duration: Math.max(1, entry.durationMs), fromX: centre.x, fromY: centre.y, dx: 0, dy: 0, transform: el.root.getAttribute('transform') || '' }
       S.vx = 0; S.vy = 0; S.airBoost = 0; S.held = false
+      S.shocking = false; shockingAirElapsed = 0; shockingAirReleaseTime = 0; shockingAirLimitApplied = false
       throwTransition.reset()
       goal = null; tap = null; drag.id = null; drag.on = false
       pressed.clear(); virtTapped.clear(); gameTaps.clear()
@@ -1424,6 +1465,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     arriveAtPortal(arrival) {
       throwTransition.reset()
+      shockingAirElapsed = 0; shockingAirReleaseTime = 0; shockingAirLimitApplied = false
       portalEntry = null
       S.cl = null; S.plat = null; S.held = false; S.grounded = false
       S.x = arrival.x; S.y = arrival.y + 80 * R.scale
