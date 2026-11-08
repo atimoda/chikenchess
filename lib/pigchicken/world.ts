@@ -79,14 +79,17 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 // Vertical camera. `oy` is the screen y of world y = 0 (screen = world + oy). The ground never rises above the
 // place the page keeps for it (groundScreen, above the touch controls on a phone). On a screen shorter than the
 // ground floor (y 0..WORLD_GROUND_Y) the camera follows her to keep her a bit below the middle; on any screen, once
-// she climbs above CAMERA_RISE_Y it rises with her, keeping her where that height was, up to WORLD_TOP.
-export function cameraYRange(groundScreen: number) {
+// she climbs above CAMERA_RISE_Y it rises with her, keeping her where that height was, up to the world's ceiling
+// (`top`, the Pátio's height limit; WORLD_TOP by default). Given `viewTop` (the header's bottom), it stops once the
+// ceiling reaches it, so nothing above the limit shows.
+export function cameraYRange(groundScreen: number, top: number = WORLD_TOP, viewTop?: number) {
   const lo = groundScreen - WORLD_GROUND_Y
-  return { lo, hi: lo + (WORLD_GROUND_Y - WORLD_TOP) }
+  const hi = viewTop === undefined ? lo + (WORLD_GROUND_Y - top) : Math.max(lo, viewTop - top)
+  return { lo, hi }
 }
 
-export function cameraYStep(oy: number, o: { worldY: number; groundScreen: number; viewTop: number; dt: number; lag: number }) {
-  const { lo, hi } = cameraYRange(o.groundScreen)
+export function cameraYStep(oy: number, o: { worldY: number; groundScreen: number; viewTop: number; dt: number; lag: number; top?: number }) {
+  const { lo, hi } = cameraYRange(o.groundScreen, o.top ?? WORLD_TOP, o.viewTop)
   // short screens: keep her (her feet) a bit below the middle of what is visible between the header and the ground's place,
   // but never show above y = 0 for that alone
   const floorHi = Math.max(lo, 0)

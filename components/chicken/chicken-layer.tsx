@@ -8,6 +8,7 @@ import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { refreshChickenConfig } from "@/lib/chicken/config"
 import { loadChickenControls, setTouchMoveStick, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
 import { magnetVector } from "@/lib/chicken/analog-magnet"
+import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { clampDelta, finishTouchLayoutEdit, getServerTouchLayout, getTouchLayout, resetTouchLayout, setTouchOffset, subscribeTouchLayout, type TouchControlId } from "@/lib/chicken/touch-layout"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
@@ -21,6 +22,12 @@ export function ChickenGround({ className = "", height = CHICKEN_GROUND_H }: { c
       style={{ height, background: `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b ${CHICKEN_GROUND_H}px, #2a1e13 100%)`, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }}
     />
   )
+}
+
+// The globe's limits: a black frame LIMIT_BORDER px thick on the screen's edges. The chicken's side walls and
+// ceiling are its inner edge (lib/chicken/engine.ts); she climbs them and goes round the top corners.
+export function ChickenLimits({ className = "" }: { className?: string }) {
+  return <div aria-hidden="true" data-chicken-limits className={`pointer-events-none fixed inset-0 ${className}`} style={{ border: `${LIMIT_BORDER}px solid ${LIMIT_BORDER_COLOR}` }} />
 }
 
 // a touch screen (phone, tablet)

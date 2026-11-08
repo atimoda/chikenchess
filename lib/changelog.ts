@@ -7,13 +7,18 @@ const RECENT = [
   {
     version: '2.3.0',
     date: '08/11/2026',
-    title: 'Salto no ar, controles e atalhos do mapa',
+    title: 'Salto no ar, controles, atalhos do mapa e limites do Pátio',
     groups: [{ title: 'Perfil', items: ['O saldo com o texto golden eggs sempre visível, os pontos com um ovo cinza, o rank e a campanha aparecem de forma compacta abaixo do código do perfil, antes do acesso à conta.', 'O link de download de backups de visitante foi removido do perfil.'] }, { title: 'Mapa', items: ['O pin compartilhado volta a destacar ao passar o mouse por qualquer época de uma cidade.'] }, { title: 'Lobby', items: ['Passe o mouse ou toque nos instrumentos da escalação para ouvir uma nota de cada peça.', 'Random mostra os kits de campanha disponíveis como atalhos para seleção; os participantes aparecem com avatar ao lado do nome.', 'Public e Private ficam no topo da sala, com o código no botão selecionado e os ícones de sair, atualizar e fechar lado a lado.', 'Sua sala aparece primeiro em verde no mapa e substitui o botão Create lobby enquanto estiver ocupada. O atalho do estúdio agora se chama Creative Mode.', 'Os atalhos de Lobby e Friends passam para o topo do mapa; Creative fica na coluna da direita, abaixo de Create lobby.', 'A escalação do kit começa aberta ao lado da imagem e do título, em duas colunas com ícones das peças; ela se expande e se retrai suavemente, respeitando movimento reduzido, e se adapta à largura da tela.'] }, { title: 'Galinha', items: [
       'Os ímãs de oito ângulos agora têm forças independentes para movimentação e mira. Zero desliga cada um, e a mira começa sem ímã.',
       'No salto carregado no ar, os joelhos dobram mais enquanto você segura e as pernas se abrem ao soltar. O ângulo máximo pode ser ajustado em Combinações.',
       'Z passa a ser uma segunda tecla de Pulo; G continua Arremessar. Atalhos personalizados são preservados.',
       'As orientações sobre teclados e gamepad ficam no botão de ajuda ao lado de Movimentos; o parágrafo introdutório do painel foi removido.',
       'Segurar Chocar + Pulo no ar carrega o salto: o multiplicador cresce de 2× até 4× em dois segundos. Ao atingir o tempo, a velocidade vertical muda uma vez; os três ajustes ficam em Combinações.',
+      'A galinha agora escala os quatro limites: subindo uma parede até o teto ela vira a quina e anda de cabeça para baixo por ele, e desce pela outra parede. No globo, os limites são as bordas da tela.',
+      'Pulando com Cima segurado por baixo de uma plataforma flutuante, ela se pendura de cabeça para baixo e anda por baixo dela; nas quinas passa para as laterais e sobe até o topo. Pulo ou um novo toque em Chocar/Agachar a soltam.',
+    ] }, { title: 'Pátio', items: [
+      'Novo botão com ícone de Sol no cabeçalho: abre as Configurações do Pátio atual, com largura limite (telas) e altura limite (do chão ao teto). Os valores são salvos junto com o Pátio e só quem pode editá-lo muda; a largura saiu do painel Câmera de Mira.',
+      'Uma borda preta de 10 px marca os limites de todo Pátio e da tela do globo. A câmera para no teto do Pátio.',
     ] }],
   },
   {

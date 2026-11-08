@@ -7,7 +7,8 @@
 // bottom middle is where they stand.
 import { CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, type ItemId } from './items'
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
-import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, WORLD_TOP, templeScene, villageScene, worldScenes } from './world'
+import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, templeScene, villageScene, worldScenes } from './world'
+import { PATIO_LOWEST_TOP, normalizePatioSettings, type PatioSettings } from './patio-settings'
 import type { Box } from './combat'
 import { rackRespawnDelay } from './racks'
 import { HOUSE_SIZE, housePreset, houseRoof, houseWallPolygon, newHouseSeed, normalizeHouse, type HouseParams } from './houses'
@@ -77,7 +78,8 @@ export type LayoutElement = {
   gravity?: boolean
   params: ElementParams
 }
-export type PatioLayout = { v: number; elements: LayoutElement[]; terrain?: RidgePoint[] }
+// settings: the Pátio's limits (width in scenes, height up to the ceiling), from the Sun button's panel
+export type PatioLayout = { v: number; elements: LayoutElement[]; terrain?: RidgePoint[]; settings?: PatioSettings }
 
 export type ElementDef = {
   label: string; group: string
@@ -317,7 +319,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     : r1(clamp(num(e.x, 0), -2000, SCENE_W * worldScenes(LAYOUT_MAX_SCREENS)))
   return {
     id, kind, ...(region ? { region } : {}),
-    x, y: r1(clamp(num(e.y, 0), WORLD_TOP - 1000, WORLD_GROUND_Y + 200)),
+    x, y: r1(clamp(num(e.y, 0), PATIO_LOWEST_TOP, WORLD_GROUND_Y + 200)),
     w, h, rot, layer, locked: !!e.locked,
     solid: kind === 'house' || kind === 'trampoline' ? true : kind === 'tree' || d.entity || music ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
     shots: d.entity || music ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
@@ -362,7 +364,8 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
   }
   if (!hasStoredShortcuts) elements.push(...shortcutPortals(elements))
   const terrain = normalizeVillageRidge((raw as { terrain?: unknown }).terrain)
-  return { v: LAYOUT_VERSION, elements, ...(terrain ? { terrain } : {}) }
+  const settings = normalizePatioSettings((raw as { settings?: unknown }).settings)
+  return { v: LAYOUT_VERSION, elements, ...(terrain ? { terrain } : {}), ...(settings ? { settings } : {}) }
 }
 
 // ---------- geometry: the turned box, its bounds and the floor of a sloped one ----------

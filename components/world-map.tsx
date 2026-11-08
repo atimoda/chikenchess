@@ -20,7 +20,7 @@ import { isAdminUser } from '@/lib/admin/access'
 import { useOnline } from './online/online-provider'
 import { AboutReleaseDialog } from './about-release-dialog'
 import styles from './world-map.module.css'
-import { ChickenGround, ChickenLayer, ChickenTouchToggle } from './chicken/chicken-layer'
+import { ChickenGround, ChickenLayer, ChickenLimits, ChickenTouchToggle } from './chicken/chicken-layer'
 import { ChickenPortal, chickenPortalAvoid } from './chicken/chicken-portal'
 import type { ChickenEngine } from '@/lib/chicken/engine'
 import { ChickenControlsPanel } from './chicken/chicken-controls-panel'
@@ -1379,6 +1379,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
 
       {/* Player chicken: ground strip over the city list, behind the footer buttons; the chicken drops in once the globe settles */}
       <ChickenGround className="z-[65]" />
+      <ChickenLimits className="z-[66]" />
       {showTitle && <ChickenLayer onEngine={setChickenEngine} touch={globeTouch} dropAvoid={chickenPortalAvoid} />}
       {/* Electric portal to the Pátio, in the right corner of the ground */}
       {showTitle && <ChickenPortal engine={chickenEngine} modeSwitch />}

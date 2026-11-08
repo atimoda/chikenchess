@@ -21,8 +21,10 @@ test('vertical camera: still on a tall screen on the ground floor, rises with he
   assert.equal(world.cameraYStep(tall.lo, { worldY: 600, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.lo)
   // above y = 500 the camera keeps her where y = 500 was
   assert.equal(world.cameraYStep(tall.lo, { worldY: 300, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.lo + 200)
-  // never past the world's new top
-  assert.equal(world.cameraYStep(tall.lo, { worldY: -5000, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.hi)
+  // never past the world's top: it stops once the ceiling reaches the header's bottom
+  const capped = world.cameraYRange(933, world.WORLD_TOP, 65)
+  assert.equal(capped.hi + world.WORLD_TOP, 65)
+  assert.equal(world.cameraYStep(tall.lo, { worldY: -5000, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), capped.hi)
   // phone held upright: ground kept 578 px from the top; jumping high raises the camera, but never past the world's top
   const short = world.cameraYRange(578)
   assert.ok(short.hi > short.lo)
@@ -30,6 +32,24 @@ test('vertical camera: still on a tall screen on the ground floor, rises with he
   assert.ok(up > short.lo && up <= short.hi)
   // standing on the ground: the ground stays at its place
   assert.equal(world.cameraYStep(short.lo, { worldY: world.WORLD_GROUND_Y, groundScreen: 578, viewTop: 65, dt: 1, lag: 6 }), short.lo)
+})
+
+test('vertical camera follows the Pátio height limit', () => {
+  // a 1500-unit Pátio: the ceiling is at y = -570; the camera stops with it under the header
+  const top = world.WORLD_GROUND_Y - 1500
+  const r = world.cameraYRange(933, top, 65)
+  assert.equal(r.hi + top, 65)
+  assert.equal(world.cameraYStep(r.lo, { worldY: -5000, groundScreen: 933, viewTop: 65, dt: 1, lag: 6, top }), r.hi)
+  // lower than the screen: the camera never rises
+  const low = world.cameraYRange(933, world.WORLD_GROUND_Y - 600, 65)
+  assert.equal(low.hi, low.lo)
+  const settings = loadTs('lib/pigchicken/patio-settings.ts')
+  assert.equal(settings.patioWorldTop(undefined), world.WORLD_TOP)
+  assert.equal(settings.patioWorldTop({ height: 1500 }), top)
+  assert.deepEqual(settings.normalizePatioSettings({ screens: 12, height: 50 }), { screens: 8, height: 400 })
+  assert.equal(settings.normalizePatioSettings({}), undefined)
+  assert.equal(settings.patioScreens(undefined, 6), 6)
+  assert.equal(settings.patioScreens({ screens: 2 }, 6), 2)
 })
 
 test('follow camera looks ahead to the side she faces, and slides over when she turns', () => {

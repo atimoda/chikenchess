@@ -443,3 +443,14 @@ test('tree supports are independently selectable and follow mirror, resize and r
   const rotated = L.treeWorldSurfaces({ ...el, rot: 90 }, trunk).walls[0][0]
   assert.deepEqual(rotated.map(Math.round), [225, Math.round(325 + (x - 50) * 5)])
 })
+
+test('the Pátio settings (Sun panel) travel with the layout and are clamped', () => {
+  const saved = L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [], settings: { screens: 2, height: 1500 } })
+  assert.deepEqual(saved.settings, { screens: 2, height: 1500 })
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(saved))).settings, saved.settings)
+  assert.deepEqual(L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [], settings: { screens: 99, height: 99999 } }).settings, { screens: 8, height: 8000 })
+  assert.equal(L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [] }).settings, undefined)
+  // things may sit up to the tallest ceiling allowed
+  const high = L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [{ id: 'p', kind: 'platform', x: 100, y: -6000, w: 200, h: 40, rot: 0, layer: 'scene' }] })
+  assert.equal(high.elements[0].y, -6000)
+})
