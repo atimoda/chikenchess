@@ -2,7 +2,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { URL } = require('node:url')
 const { loadTs } = require('./helpers/music.cjs')
-const { readAuthCallback, authCallbackMessage, completeAuthCallback, isAuthCallbackMessage, googleLoginFailure } = loadTs('lib/online/auth-callback.ts')
+const { readAuthCallback, authCallbackMessage, completeAuthCallback, isAuthCallbackMessage, googleLoginFailure, emailAlreadyRegistered } = loadTs('lib/online/auth-callback.ts')
 
 test('the reported production failure is recognized without authCallback and keeps its machine code', () => {
   const url = new URL('http://localhost:3000/?error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user&sb=')
@@ -91,4 +91,9 @@ test('successful initialization is awaited before checking the permanent callbac
   }, readAuthCallback('?authCallback=1', ''))
   assert.deepEqual(order, ['initialize', 'session'])
   assert.equal(message.ok, true)
+})
+
+test('email sign-in switches to the existing account only for already-registered codes', () => {
+  for (const code of ['email_exists', 'user_already_exists', 'identity_already_exists']) assert.equal(emailAlreadyRegistered(code), true)
+  for (const code of ['over_email_send_rate_limit', 'validation_failed', '', null, undefined]) assert.equal(emailAlreadyRegistered(code), false)
 })

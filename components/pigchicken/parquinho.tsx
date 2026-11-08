@@ -226,6 +226,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const noMouse = () => !!devicesRef.current && !devicesRef.current.includes("mouse")
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse" || noMouse()) return
+      // a button pressed or let go while another one is held arrives as a pointermove (chorded buttons), not as
+      // pointerdown/up: e.g. the right button (Golpe) while the left one (Atirar) is held
+      if (e.button === 0 || e.button === 2) {
+        if (e.buttons & (e.button === 0 ? 1 : 2)) onDown(e); else onUp(e)
+      }
       if (mouse) {
         const moved = Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y)
         owner.moved(moved, performance.now())
