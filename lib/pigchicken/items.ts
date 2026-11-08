@@ -49,6 +49,10 @@ export type ItemDef = {
   autoReload: boolean
   slideFire: boolean // can fire while sliding
   shellReload: boolean // reloads one shot at a time (reloadTime each); firing stops it
+  // gradual auto reload: every `refillTime` s without using it, `refillAmount` shots come back on their own (0 = off)
+  refillTime: number
+  refillAmount: number
+  meleeOnly: boolean // only for hitting (the taco): Atirar swings it too, and each blow uses one of its `mag`
   chargeTime: number // charge mode: s to full charge (force and precision grow with it)
   chargeMin: number // charge mode: share of the speed with no charge
   // projectile
@@ -165,12 +169,12 @@ function chain(...steps: [TransformKind, string?, number?][]): Transform[] {
 
 const PISTOL: ItemDef = {
   id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off', landShow: 'always',
-  fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, chargeTime: 0, chargeMin: 0.3,
+  fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
-  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, meleeTime: 0.2, durability: 40, meleePush: 260,
+  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, meleeTime: 0.2, durability: 0, meleePush: 260,
   combo: SWING_COMBO.slice(), comboWindow: COMBO_WINDOW, meleeArcUp: 110, meleeArcFlat: 110,
   trailWidth: 24, trailColor: TRAIL_CREAM, trailTime: 0.2, trailWisps: 4, trailOpacity: 0.7,
   rebateChain: chain(['dynamics', 'staccato']), rebateSnap: 15, rebateSnapForce: 0.4, rebateSpeed: 1, rebateTok: false,
@@ -184,7 +188,7 @@ const SMG: ItemDef = {
   speed: 1600, damage: 6, range: 900, size: 2,
   spreadBase: 3, spreadShot: 0.8, spreadMax: 12, spreadRecover: 18, spreadMove: 2, spreadAir: 3,
   recoilKick: 3, recoilPush: 30, weight: 0.98,
-  muzzleX: 62, muzzleY: -6.5, length: 70, meleeDamage: 16, durability: 35, throwDamage: 22,
+  muzzleX: 62, muzzleY: -6.5, length: 70, meleeDamage: 16, durability: 0, throwDamage: 22,
   rebateChain: chain(['ratchet', undefined, 4]),
 }
 
@@ -194,7 +198,7 @@ const RIFLE: ItemDef = {
   speed: 2200, damage: 14, pierce: 1, range: 1600,
   spreadBase: 1, spreadShot: 1.2, spreadMax: 10, spreadRecover: 14, spreadMove: 3, spreadAir: 5,
   recoilKick: 5, recoilPush: 50, weight: 0.92, turnRate: 720,
-  muzzleX: 106, muzzleY: -5.5, length: 110, meleeDamage: 22, durability: 45, throwDamage: 28,
+  muzzleX: 106, muzzleY: -5.5, length: 110, meleeDamage: 22, durability: 0, throwDamage: 28,
   rebateChain: chain(['transpose', 'degree', 4]),
 }
 
@@ -204,7 +208,7 @@ const PUMP: ItemDef = {
   speed: 1400, damage: 9, range: 520, pellets: 8,
   spreadBase: 14, spreadShot: 0, spreadMax: 18, spreadRecover: 30, spreadMove: 2, spreadAir: 3,
   recoilKick: 12, recoilPush: 420, weight: 0.9, turnRate: 540,
-  muzzleX: 104, muzzleY: -8, length: 105, meleeDamage: 25, durability: 45, throwDamage: 30,
+  muzzleX: 104, muzzleY: -8, length: 105, meleeDamage: 25, durability: 0, throwDamage: 30,
   rebateChain: chain(['voices', 'cluster']), rebateSnap: 60, rebateSnapForce: 0.6,
 }
 
@@ -214,7 +218,7 @@ const SNIPER: ItemDef = {
   speed: 9000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
   spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
   recoilKick: 14, recoilPush: 250, weight: 0.85, turnRate: 360,
-  muzzleX: 142, muzzleY: -4, length: 140, meleeDamage: 20, durability: 30, throwDamage: 30,
+  muzzleX: 142, muzzleY: -4, length: 140, meleeDamage: 20, durability: 0, throwDamage: 30,
   rebateChain: chain(['octave', 'fixed', 2], ['dynamics', 'staccato']), rebateSnap: 0,
 }
 
@@ -224,7 +228,7 @@ const LAUNCHER: ItemDef = {
   speed: 900, damage: 0, range: 1600, size: 6, explodeRadius: 130, explodeDamage: 80, explodePush: 1100,
   spreadBase: 1, spreadShot: 0, spreadMax: 2, spreadMove: 1, spreadAir: 2,
   recoilKick: 16, recoilPush: 500, weight: 0.8, turnRate: 300,
-  muzzleX: 96, muzzleY: -17, length: 120, meleeDamage: 26, durability: 50, throwDamage: 35,
+  muzzleX: 96, muzzleY: -17, length: 120, meleeDamage: 26, durability: 0, throwDamage: 35,
   rebateChain: chain(['echo', 'dotted', 3]),
 }
 
@@ -234,7 +238,7 @@ const GRENADE: ItemDef = {
   speed: 1100, drop: 1500, damage: 0, range: 4000, size: 8, explodeRadius: 140, explodeDamage: 90, explodePush: 1250, fuse: 2.5, bounce: 0.45,
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
   recoilKick: 0, recoilPush: 0,
-  muzzleX: 8, muzzleY: -4, length: 0, meleeDamage: 10, meleeRange: 80, durability: 20, throwDamage: 15,
+  muzzleX: 8, muzzleY: -4, length: 0, meleeDamage: 10, meleeRange: 80, durability: 0, throwDamage: 15,
   rebateChain: chain(['octave', 'random', 1]),
 }
 
@@ -244,7 +248,7 @@ const BOW: ItemDef = {
   speed: 1700, drop: 900, damage: 40, range: 2500,
   spreadBase: 0.5, spreadShot: 0, spreadMax: 3, spreadMove: 1, spreadAir: 2,
   recoilKick: 0, recoilPush: 0,
-  muzzleX: 28, muzzleY: 0, length: 40, meleeDamage: 12, durability: 25, throwDamage: 15,
+  muzzleX: 28, muzzleY: 0, length: 40, meleeDamage: 12, durability: 0, throwDamage: 15,
   rebateChain: chain(['counter', 'thirds', 1]), rebateSnap: 0,
 }
 
@@ -258,9 +262,10 @@ const WING: ItemDef = {
 }
 
 // Taco: only for hitting (no shots). A baseball bat: a wide arc, a quick blow, a long reach; a rebate goes off
-// faster with a wooden "tok", and its chain keeps the note and only accents it (the neutral taco)
+// faster with a wooden "tok", and its chain keeps the note and only accents it (the neutral taco). It has 8 blows
+// in a row (its "bullets"), which come back one every half second, or all at once when it is emptied
 const BAT: ItemDef = {
-  ...WING, id: 'bat', name: 'Taco', family: 'Taco', reticle: 'dot',
+  ...WING, id: 'bat', name: 'Taco', family: 'Taco', reticle: 'dot', meleeOnly: true, mag: 8, reloadTime: 1.2, autoReload: true, refillTime: 0.5, refillAmount: 1,
   muzzleX: 0, muzzleY: 0, length: 74, meleeDamage: 22, meleeRange: 70, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200,
   meleeTime: 0.16, meleePush: 420, durability: 0, throwDamage: 22, trailWidth: 30, trailWisps: 5,
   rebateChain: chain(['dynamics', 'accent']), rebateSnap: 25, rebateSnapForce: 0.5, rebateSpeed: 1.6, rebateTok: true,
@@ -274,8 +279,9 @@ const PECK: ItemDef = {
 }
 
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
-// melee is the same for all of them (Y): instruments break much sooner than weapons
-const MUSIC_MELEE = { meleeDamage: 10, durability: 12, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5 }
+// melee is the same for all of them (Y); like the weapons they never break. Their notes come back on their own,
+// one every half second without playing
+const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5 }
 
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
@@ -387,10 +393,12 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'peckPull', label: 'Recuo do pescoço', min: 0, max: 50, step: 1, unit: 'u', group: 'Bicada' },
   { key: 'rate', label: 'Cadência', min: 0.5, max: 20, step: 0.5, unit: 'tiros/s', group: 'Disparo' },
   { key: 'burst', label: 'Tiros por rajada', min: 2, max: 6, step: 1, group: 'Disparo' },
-  { key: 'mag', label: 'Pente', min: 0, max: 60, step: 1, unit: 'tiros', group: 'Disparo', hint: '0 = sem munição' },
-  { key: 'reloadTime', label: 'Recarga', min: 0.2, max: 4, step: 0.1, unit: 's', group: 'Disparo' },
   { key: 'chargeTime', label: 'Tempo de carga do tiro', min: 0.1, max: 3, step: 0.05, unit: 's', group: 'Disparo', hint: 'Modo carga: segure e solte' },
   { key: 'chargeMin', label: 'Força sem carga', min: 0, max: 1, step: 0.05, unit: '×', group: 'Disparo', hint: 'Modo carga' },
+  { key: 'mag', label: 'Pente', min: 0, max: 60, step: 1, unit: 'tiros', group: 'Munição', hint: '0 = sem munição' },
+  { key: 'reloadTime', label: 'Recarga', min: 0.2, max: 4, step: 0.1, unit: 's', group: 'Munição' },
+  { key: 'refillTime', label: 'Recarga automática gradual', min: 0, max: 5, step: 0.05, unit: 's', group: 'Munição', hint: 'A cada intervalo sem usar o item, balas voltam sozinhas; 0 = desligada' },
+  { key: 'refillAmount', label: 'Balas por recarga gradual', min: 1, max: 20, step: 1, unit: 'balas', group: 'Munição', hint: 'Quantas voltam a cada intervalo da recarga gradual' },
   { key: 'speed', label: 'Velocidade do projétil', min: 200, max: 4000, step: 50, unit: 'px/s', group: 'Projétil' },
   { key: 'drop', label: 'Queda do projétil', min: 0, max: 3000, step: 50, unit: 'px/s²', group: 'Projétil', hint: '0 = linha reta' },
   { key: 'damage', label: 'Dano', min: 0, max: 100, step: 1, group: 'Projétil' },
@@ -456,6 +464,12 @@ export const ITEM_PARAM_META: Meta[] = [
 ]
 export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]
 
+// the "breaks after" defaults before v6 (weapons and instruments broke); a save with these numbers was never tuned
+const V5_DURABILITY: Partial<Record<ItemId, number>> = {
+  pistol: 40, smg: 35, rifle: 45, pump: 45, sniper: 30, launcher: 50, grenade: 20, bow: 25,
+  flute: 12, sax: 12, trumpet: 12, guitar: 12, violin: 12, keys: 12, tambourine: 12, harp: 12,
+}
+
 const STORE = 'pigchicken-items-v1'
 const EVENT = 'pigchicken-items'
 
@@ -480,6 +494,15 @@ export function loadItems(): Record<ItemId, ItemDef> {
       }
       // saved before blows had no interval (v5): every item's golpe goes back to 0 (the Bicada keeps its own)
       if (id !== 'peck' && !(saved._v >= 5)) out[id].meleeCooldown = 0
+      // saved before weapons and instruments never broke and the taco had blows (v6): an untouched old default takes
+      // the new one (never breaks; 8 blows that come back on their own); custom numbers stay
+      if (!(saved._v >= 6)) {
+        if (s.durability === V5_DURABILITY[id]) out[id].durability = DEFAULT_ITEMS[id].durability
+        if (id === 'bat') {
+          if (!s.mag) out.bat.mag = DEFAULT_ITEMS.bat.mag
+          if (s.reloadTime === 1.1) out.bat.reloadTime = DEFAULT_ITEMS.bat.reloadTime
+        }
+      }
       // saved before the sniper fired on release (v2): it takes the new mode
       if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && !(saved._v >= 2))) out[id].fireMode = s.fireMode
       if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
@@ -500,7 +523,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
 }
 
 export function saveItems(items: Record<ItemId, ItemDef>) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 5 })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 6 })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

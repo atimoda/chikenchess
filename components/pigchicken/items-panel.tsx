@@ -19,12 +19,13 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "release", label: "Ao soltar o botão" },
 ]
 
-// what each item uses; the wing has no ammo, projectile or throw; a consumable has its effect (and its doses), a slap and a throw
-const CONSUMABLE_HIDES = ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Explosão", "Música", "Rebate"]
+// what each item uses; the wing has no ammo, projectile or throw; a consumable has its effect (and its doses), a slap and a
+// throw; the taco has no shots, but its blows are its ammo (Munição)
+const CONSUMABLE_HIDES = ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Explosão", "Música", "Rebate"]
 const HIDDEN: Partial<Record<ItemId, string[]>> = {
-  peck: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Combo", "Rebate"],
+  peck: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Combo", "Rebate"],
   bat: ["Disparo", "Projétil", "Espalhamento", "Explosão", "Efeito"],
-  wing: ["Disparo", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito"],
+  wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
 }
 // a consumable's doses are the magazine's number
@@ -33,7 +34,7 @@ const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   const [sel, setSel] = useState<ItemId>("pistol")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Projétil: true, Efeito: true, Golpe: true, Combo: true, Bicada: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, Combo: true, Bicada: true })
   useEffect(() => {
     setItems(loadItems())
     return subscribeItems(setItems)
@@ -85,10 +86,14 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                       </select>
                     </label>
                   )}
-                  <label className="flex items-center justify-between gap-3"><span>Recarga automática</span><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3"><span>Recarrega um tiro por vez</span><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Tiro instantâneo</span><input type="checkbox" checked={it.hitscan} onChange={e => { const v = e.target.checked; update(d => { d.hitscan = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Atira durante o slide</span><input type="checkbox" checked={it.slideFire} onChange={e => { const v = e.target.checked; update(d => { d.slideFire = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                </>
+              )}
+              {g === "Munição" && (
+                <>
+                  <label className="flex items-center justify-between gap-3" title="Ao descarregar, recarrega tudo sozinho (no tempo da Recarga)"><span>Recarrega sozinho ao descarregar</span><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  {!it.meleeOnly && <label className="flex items-center justify-between gap-3"><span>Recarrega um tiro por vez</span><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
                 </>
               )}
               {g === "Música" && (
@@ -169,9 +174,12 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail")))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
-                const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : m.label
+                const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
+                // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
+                const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? "golpes" : m.unit
+                const display = m.key === "durability" && v === 0 ? "0 (nunca quebra)" : m.key === "refillTime" && v === 0 ? "0 (desligada)" : `${v}${unit ? ` ${unit}` : ""}`
                 return <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
-                  display={`${v}${m.unit ? ` ${m.unit}` : ""}`} changed={changed} hint={m.hint}
+                  display={display} changed={changed} hint={m.hint}
                   onChange={n => update(d => { (d as Record<string, unknown>)[m.key] = n })}
                   onReset={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })} />
               })}

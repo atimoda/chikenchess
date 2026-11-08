@@ -7,7 +7,7 @@ import { itemImage } from "@/lib/pigchicken/art"
 import { drawItem, type Ctx } from "./shared"
 
 export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
-  const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0
+  const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0 && !d.meleeOnly
   const t = performance.now() / 1000
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
   const ang = Math.atan2(ry - origin.y, rx - origin.x)
@@ -140,18 +140,40 @@ export const BAR_GROUND_H = 100
 export const BAR_W = (n: number) => n * BAR.size + (n - 1) * BAR.gap
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 export const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
-// where a player's bar sits: at the bottom, the first player in the middle, the second on the right, the third on
-// the left, more above the middle; on a phone held upright, the old stack in the top right corner
+// where a player's bar sits. bottom: the first player's big bar, at the bottom on the right (desktop and tablet).
+// Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
+// but the first on desktop and tablet; everyone on a phone held upright)
 export function invGeom(row: number, n: number, bottom: boolean, offset?: { x: number; y: number }) {
   const W = window.innerWidth, H = window.innerHeight
   if (!bottom) {
     const w = INV_W(n)
     return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size: INV_SIZE, gap: 3, w, tabs: false }
   }
-  const w = BAR_W(n), baseY = H - BAR.bottom - BAR.tab - BAR.size
-  const x = row === 1 ? W - BAR.side - w : row === 2 ? BAR.side : (W - w) / 2
-  const y = baseY - (row >= 3 ? (row - 2) * (BAR.size + BAR.tab + 30) : 0)
+  const w = BAR_W(n), x = W - BAR.side - w, y = H - BAR.bottom - BAR.tab - BAR.size
   return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size: BAR.size, gap: BAR.gap, w, tabs: true }
+}
+// the ammo bar along the bottom of a slot: the whole width, one segment per shot (or blow), the loaded ones lit.
+// What is coming back (the reload of the held item, the gradual auto reload) fills in a paler colour, so it also
+// works as the cooldown's bar. Segments too thin to tell apart are drawn as one bar
+function drawAmmoBar(ctx: Ctx, x: number, y: number, size: number, r: number, h: number, mag: number, ammo: number, coming: number) {
+  const segs = Math.max(1, Math.round(mag)), have = Math.max(0, Math.min(segs, ammo)), soon = Math.max(0, Math.min(segs - have, coming))
+  const k = have / segs, color = k > 0.5 ? "#7bd88f" : k > 0.25 ? "#ffd166" : "#ff6b5b"
+  const gap = size / segs >= 4 ? 1 : 0, sw = (size - gap * (segs - 1)) / segs
+  ctx.save()
+  roundRect(ctx, x, y, size, size, r); ctx.clip()
+  const by = y + size - h
+  ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x, by - 1, size, h + 1)
+  const fill = (from: number, to: number) => {
+    if (to <= from) return
+    if (!gap) { ctx.fillRect(x + (from / segs) * size, by, ((to - from) / segs) * size, h); return }
+    for (let i = Math.floor(from); i < Math.ceil(to); i++) {
+      const a = Math.max(from, i) - i, b = Math.min(to, i + 1) - i
+      ctx.fillRect(x + i * (sw + gap) + a * sw, by, (b - a) * sw, h)
+    }
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.4)"; fill(have, have + soon)
+  ctx.fillStyle = color; fill(0, have)
+  ctx.restore()
 }
 // the item's name over the bar for a moment after switching (per player row)
 export const invPill = new Map<number, { key: string; at: number }>()
@@ -161,7 +183,8 @@ export function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, 
 }
 // the inventory bar, moved by the player's saved offset (edit mode of the touch controls). Only her items show, plus
 // one empty slot while there is room (instruments, weapons, then the other items). Each slot is a glass tile; the
-// current one glows teal. A badge counts the ammo or the doses, a thin line shows what is left of an item that wears.
+// current one glows teal. A bar along the bottom shows the ammo (a badge counts a consumable's doses), a thin line
+// what is left of an item that wears.
 export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }) {
   const slots = combat.inventory, n = slots.length
   const g = invGeom(row, n, bottom, offset), { size, gap } = g
@@ -182,18 +205,26 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     if (o) {
       ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size - (bottom ? 12 : 6), size - (bottom ? 14 : 8)); ctx.restore()
       const d = combat.item(o.item)
-      // the badge: ammo left (or doses), in the bottom right corner
-      if (d.mag > 0) {
+      // a consumable's badge: the doses left, in the bottom right corner
+      if (d.mag > 0 && d.consumable) {
         const t = String(Math.ceil(o.ammo))
         ctx.font = `bold ${bottom ? 12 : 9}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "right"
         ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.strokeText(t, x + size - 4, y + size - (bottom ? 9 : 6))
         ctx.fillStyle = o.ammo <= 0 ? "#ff8c69" : "#ffffff"; ctx.fillText(t, x + size - 4, y + size - (bottom ? 9 : 6))
       }
-      // what is left of an item that wears out with hits
+      // the shots (or the taco's blows) loaded and coming back
+      const ammoBar = d.mag > 0 && !d.consumable, barH = bottom ? 4 : 3
+      if (ammoBar) {
+        const segs = Math.max(1, Math.round(d.mag))
+        const coming = on && combat.reloading > 0 ? (d.shellReload ? combat.reloading : combat.reloading * (segs - o.ammo))
+          : d.refillTime > 0 ? ((o.refill ?? 0) / d.refillTime) * Math.max(1, d.refillAmount) : 0
+        drawAmmoBar(ctx, x, y, size, r, barH, d.mag, o.ammo, coming)
+      }
+      // what is left of an item that wears out with hits (over the ammo bar when it has one)
       if (d.durability > 0 && o.durability < d.durability) {
-        const k = Math.max(0, o.durability / d.durability), bw = size - 12
-        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x + 6, y + size - 4, bw, 2)
-        ctx.fillStyle = k > 0.5 ? "#7bd88f" : k > 0.25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x + 6, y + size - 4, bw * k, 2)
+        const k = Math.max(0, o.durability / d.durability), bw = size - 12, ly = y + size - 4 - (ammoBar ? barH + 2 : 0)
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x + 6, ly, bw, 2)
+        ctx.fillStyle = k > 0.5 ? "#7bd88f" : k > 0.25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x + 6, ly, bw * k, 2)
       }
     }
     // the key number under the slot (keys 1-9)
@@ -235,7 +266,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     ctx.font = "11px ui-monospace, monospace"
     const iw = info ? ctx.measureText(info).width + 14 : 0
     const icon = held ? 26 : 0, pw = Math.ceil(12 + icon + nw + iw + 12), ph = 26
-    const px = Math.round(bottom ? x0 + g.w / 2 - pw / 2 : x0 + g.w - pw), py = bottom ? y - ph - 10 : y + size + 6
+    const px = Math.round(bottom ? Math.min(x0 + g.w / 2 - pw / 2, window.innerWidth - pw - 8) : x0 + g.w - pw), py = bottom ? y - ph - 10 : y + size + 6
     ctx.globalAlpha = since > PILL_TIME - 300 ? (PILL_TIME - since) / 300 : 1
     roundRect(ctx, px, py, pw, ph, 7); ctx.fillStyle = "rgba(24,30,28,0.78)"; ctx.fill()
     ctx.lineWidth = 1; ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.stroke()
