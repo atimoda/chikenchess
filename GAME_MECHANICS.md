@@ -1,52 +1,78 @@
 # ChickenChess — mecânica em funcionamento
 
-Atualizado em 07/11/2026 — v2.1.0 (seis fases na campanha Classical, pulsos simultâneos e ajustes no Criativo).
+Índice. Leia só o arquivo do assunto (cada um tem até ~30 KB); ao mudar uma mecânica, atualize esse arquivo. Se um arquivo passar de ~30 KB, divida-o por subassunto e atualize esta tabela.
 
 ## Leitura por assunto
 
-| Assunto | Seção a consultar |
+| Assunto | Arquivo |
 | --- | --- |
-| Ativação, captura, cheque, pausa e gesto | [Ações e efeitos](docs/mechanics/actions-and-movement.md#ações-e-efeitos-implementados--todas-as-cidades) e [Movimento](docs/mechanics/actions-and-movement.md#movimento-e-interpretação) |
-| Piece/Board Params e DJ | [Widgets](docs/mechanics/widgets.md#widgets-da-partida), [Mixer](docs/mechanics/mixer.md#mixer-dj-na-partida) e [Chance de tocar](docs/mechanics/actions-and-movement.md#chance-de-tocar) |
-| Kits, migração, laboratório | [Criativo e persistência](docs/mechanics/creative.md#criativo-e-persistência) e [Escopo](docs/mechanics/scope-and-data.md#escopo-e-dados) |
-| Schema 7, migração do arranjo e LPF L/S/N | [MIDI-only e persistência](docs/mechanics/midi-persistence.md#midi-only-e-persistência--0210-v0110) |
-| Forma global, atribuições por peça e harmonia por compasso | [Arranjo global](docs/mechanics/arrangement.md#arranjo-global-e-atribuições-por-peça--0210) |
-| Regras, transições e BPM | [Estados e Eventos](docs/mechanics/states-and-events.md#estados-e-eventos--v032) |
-| Piano roll, seções e slides | [Editor](docs/mechanics/editor.md#editor-de-variações--v0414) e [Arranjo global](docs/mechanics/arrangement.md#arranjo-global-e-atribuições-por-peça--0210) |
-| Pátio, portais, Vila dos Telhados e criador de casas | [Pátio da Galinha](docs/mechanics/map.md#pátio-da-galinha-e-configuração-central-0111-v1120) e [Vila dos Telhados](docs/mechanics/map.md#vila-dos-telhados-e-criador-de-casas) |
-| Árvores e apoios no Pátio | [Editor de árvores](docs/mechanics/map.md#editor-de-árvores-do-pátio) |
-| Trampolim e força do impulso | [Trampolim do Pátio](docs/mechanics/map.md#trampolim-do-pátio) |
-| Globo e cidades | [Mapa](docs/mechanics/map.md#mapa-e-entrada-na-fase) |
-| Admin e catálogos locais | [Admin](docs/mechanics/admin.md#admin-e-catálogos-locais--0810-v110) |
-| Partidas simultâneas e retorno ao globo | [1v1 casual online](docs/mechanics/online.md#1v1-casual-online--0410-v100) |
-| Perfil, pontuação e ovos | [Progresso](docs/mechanics/progression.md#progresso-e-ovos-dourados) |
-| Páginas legais e links do login/globo | [Páginas públicas](docs/mechanics/public-pages.md#páginas-públicas-e-privacidade--0410) |
-| Analytics de partidas | [Páginas públicas](docs/mechanics/public-pages.md#páginas-públicas-e-privacidade--0410) |
-| Freeze, Shield e casas especiais | [Poderes da partida](docs/mechanics/powers.md#poderes-da-partida) |
-| Processamento | [Gestos e custo](docs/mechanics/performance.md#gestos-e-custo-de-processamento) |
+| Ativação, captura, cheque, pausa e gesto | [Ações e movimento](docs/mechanics/actions-and-movement.md) |
+| Piece/Board Params, Mixer DJ e knobs | [Piece Params](docs/mechanics/widgets/piece-params.md), [Mixer](docs/mechanics/mixer.md) e [Chance de tocar](docs/mechanics/actions-and-movement.md) |
+| Tabuleiro, layout, cabeçalho, Debug e widgets flutuantes | [Tabuleiro e layout](docs/mechanics/widgets/board-and-layout.md) |
+| Análise, Stockfish, Best/Worst e bots | [Análise e bots](docs/mechanics/widgets/analysis-and-bots.md) |
+| Barra de chance, abertura e apresentação da partida | [Cabeçalho e abertura](docs/mechanics/match-header-and-intro.md) |
+| Kits, migração, laboratório | [Criativo e persistência](docs/mechanics/creative.md), [Escopo](docs/mechanics/scope-and-data.md) e [Revisões de kits](docs/mechanics/kit-revisions.md) |
+| Schema 7, migração do arranjo e LPF L/S/N | [MIDI-only e persistência](docs/mechanics/midi-persistence.md) |
+| Forma global, atribuições por peça e harmonia por compasso | [Arranjo global](docs/mechanics/arrangement.md) |
+| Regras, transições e BPM | [Estados e Eventos](docs/mechanics/states-and-events.md) e [editor de regras](docs/mechanics/states-and-events-editor.md) |
+| Piano roll, seções e slides | [Editor](docs/mechanics/editor.md) e [Arranjo global](docs/mechanics/arrangement.md) |
+| Globo, cidades e popups | [Mapa](docs/mechanics/map.md) |
+| Galinha: movimento, paredes, pulo, portais do globo | [Movimento da galinha](docs/mechanics/chicken/movement.md) |
+| Galinha: controles, teclado, gamepad, toque e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
+| Pátio: mundo, parallax, portais, Vila, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
+| Pátio: modo editor, layout, pares de portais, salvar/abrir | [Editor do Pátio](docs/mechanics/patio/editor.md) |
+| Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
+| Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
+| Pátio: golpe, bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
+| Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
+| Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
+| Admin e catálogos locais | [Admin](docs/mechanics/admin.md) |
+| Online 1v1: salas, lobby e convites | [Lobby](docs/mechanics/online/lobby.md) |
+| Online 1v1: partidas simultâneas e retorno ao globo | [Globo e recuperação](docs/mechanics/online/globe-and-recovery.md) |
+| Online 1v1: contas, perfil e amigos | [Contas](docs/mechanics/online/accounts.md) |
+| Online 1v1: partida, confirmação, análise e rede | [Partida online](docs/mechanics/online/match.md) |
+| Perfil, pontuação e ovos | [Progresso](docs/mechanics/progression.md) |
+| Páginas legais, links do login/globo e analytics | [Páginas públicas](docs/mechanics/public-pages.md) |
+| Freeze, Shield e casas especiais | [Poderes](docs/mechanics/powers.md) |
+| Processamento | [Gestos e custo](docs/mechanics/performance.md) |
 
-Localização do código e checks: `docs/CODEBASE_MAP.md`. Consulte as seções relacionadas ao pedido, incluindo suas prioridades; a agenda completa não é pré-requisito de toda alteração.
+Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa não é pré-requisito de toda alteração.
 
 ## Arquivos
 
-Cada assunto vive em `docs/mechanics/`. Leia só o arquivo do assunto; ao mudar uma mecânica, atualize esse arquivo.
-
 | Arquivo | Tamanho |
 | --- | --- |
-| [1v1 casual online](docs/mechanics/online.md) | 42 KB |
-| [Admin e catálogos locais](docs/mechanics/admin.md) | 3 KB |
-| [Páginas públicas, privacidade e analytics](docs/mechanics/public-pages.md) | 5 KB |
-| [MIDI-only e persistência](docs/mechanics/midi-persistence.md) | 4 KB |
-| [Escopo, dados e kits](docs/mechanics/scope-and-data.md) | 21 KB |
-| [Progresso e ovos dourados](docs/mechanics/progression.md) | 16 KB |
-| [Poderes da partida](docs/mechanics/powers.md) | 22 KB |
 | [Ações, efeitos e movimento](docs/mechanics/actions-and-movement.md) | 11 KB |
-| [Widgets da partida](docs/mechanics/widgets.md) | 47 KB |
-| [Criativo e persistência](docs/mechanics/creative.md) | 3 KB |
-| [Estados e Eventos](docs/mechanics/states-and-events.md) | 18 KB |
-| [Mixer DJ na partida](docs/mechanics/mixer.md) | 7 KB |
-| [Gestos e custo de processamento](docs/mechanics/performance.md) | 6 KB |
-| [Mapa e entrada na fase](docs/mechanics/map.md) | 23 KB |
+| [Admin e catálogos locais](docs/mechanics/admin.md) | 4 KB |
+| [Arranjo global e atribuições por peça](docs/mechanics/arrangement.md) | 18 KB |
+| [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 16 KB |
+| [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 16 KB |
+| [Criativo e persistência](docs/mechanics/creative.md) | 14 KB |
+| [Editor de variações](docs/mechanics/editor.md) | 15 KB |
+| [Kits: revisões e reconstruções por campanha](docs/mechanics/kit-revisions.md) | 29 KB |
 | [Manutenção, ideias e histórico](docs/mechanics/maintenance.md) | 7 KB |
-| [Editor de variações](docs/mechanics/editor.md) | 12 KB |
-| [Arranjo global e atribuições por peça](docs/mechanics/arrangement.md) | 13 KB |
+| [Mapa, globo e popups das cidades](docs/mechanics/map.md) | 27 KB |
+| [Cabeçalho, barra de chance e abertura da partida](docs/mechanics/match-header-and-intro.md) | 5 KB |
+| [MIDI-only e persistência](docs/mechanics/midi-persistence.md) | 5 KB |
+| [Mixer DJ na partida](docs/mechanics/mixer.md) | 7 KB |
+| [Online 1v1: contas, perfil, amigos e nomes](docs/mechanics/online/accounts.md) | 9 KB |
+| [Online 1v1: partidas simultâneas, globo, salas recentes e indisponibilidade](docs/mechanics/online/globe-and-recovery.md) | 8 KB |
+| [Online 1v1: salas, lobby, convites e popup](docs/mechanics/online/lobby.md) | 14 KB |
+| [Online 1v1: partida, confirmação, análise, áudio e rede](docs/mechanics/online/match.md) | 14 KB |
+| [Pátio: combate, mira, golpe, bicada e arremesso](docs/mechanics/patio/combat.md) | 24 KB |
+| [Pátio: modo editor, layout e salvar/abrir](docs/mechanics/patio/editor.md) | 14 KB |
+| [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 16 KB |
+| [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 12 KB |
+| [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 17 KB |
+| [Pátio: Templo do Gongo, fase de notas, mortes e catálogo de aliens](docs/mechanics/patio/temple.md) | 17 KB |
+| [Pátio: mundo, cenário, portais, Vila, árvores e trampolim](docs/mechanics/patio/world.md) | 23 KB |
+| [Gestos e custo de processamento](docs/mechanics/performance.md) | 21 KB |
+| [Poderes da partida](docs/mechanics/powers.md) | 25 KB |
+| [Progresso e ovos dourados](docs/mechanics/progression.md) | 27 KB |
+| [Páginas públicas, privacidade e analytics](docs/mechanics/public-pages.md) | 5 KB |
+| [Escopo, dados e kits](docs/mechanics/scope-and-data.md) | 18 KB |
+| [Estados e Eventos: editor no Criativo](docs/mechanics/states-and-events-editor.md) | 20 KB |
+| [Estados e Eventos](docs/mechanics/states-and-events.md) | 9 KB |
+| [Widgets: análise, Stockfish, Best/Worst e bots](docs/mechanics/widgets/analysis-and-bots.md) | 18 KB |
+| [Widgets: tabuleiro, layout, cabeçalho e Debug](docs/mechanics/widgets/board-and-layout.md) | 20 KB |
+| [Widgets: Piece Params, Mixer, Spectrogram e knobs](docs/mechanics/widgets/piece-params.md) | 28 KB |

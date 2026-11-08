@@ -93,7 +93,7 @@ Design de som (25/10, revisão `goa-2026-10-25-design-v2`, campo `design` das pa
 
 ## Electronic World refeito · 25/10
 
-As direções de New York 1977, Ibiza 1986, Manchester 1988 e London 1992 na tabela acima refletem a revisão de 06/11/2026, inspirada nos contrastes de arranjo do kit de Dubstep. Escopo e comportamento implementados: [revisão dos quatro kits](docs/mechanics/scope-and-data.md#revisão-de-quatro-kits-electronic-world--06112026).
+As direções de New York 1977, Ibiza 1986, Manchester 1988 e London 1992 na tabela acima refletem a revisão de 06/11/2026, inspirada nos contrastes de arranjo do kit de Dubstep. Escopo e comportamento implementados: [revisão dos quatro kits](../mechanics/kit-revisions.md#revisão-de-quatro-kits-electronic-world--06112026).
 
 Os 15 perfis da campanha (menos Goa) são escritos em `scripts/electronic/<cidade>.py` com a biblioteca `scripts/electronic/kit.py` e validados por `node scripts/electronic/check.cjs <cidade>`. Cada perfil traz as reações próprias do kit (`reactions`), escolhidas pelo estilo: por exemplo, a tensão abre a 303 em Manchester, fecha o filtro do loop inteiro em Paris e desacelera a fita em Bristol. A harmonia é estática, com acordes escritos em graus absolutos. Os bancos `chicken-machines-v1` e `chicken-electronic-v1` são síntese própria (`scripts/generate-machine-samples.py`, `scripts/generate-electronic-samples.py`, sobre `scripts/synthkit.py`).
 

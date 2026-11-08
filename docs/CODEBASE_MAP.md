@@ -1,6 +1,6 @@
 # Mapa de trabalho do ChickenChess
 
-Leia esta página para localizar a mudança; depois abra apenas os módulos necessários. Mecânica atual: índice `GAME_MECHANICS.md` + o arquivo do assunto em `docs/mechanics/`. Agenda futura: `MUSIC_ENGINE_PLAN.md`. Referências musicais: `MUSIC_STYLE_REFERENCES.md` e `STRUDEL_REFERENCE_CATALOG.md`, somente quando o assunto exigir.
+Leia esta página para localizar a mudança; depois abra apenas os módulos necessários. Mecânica atual: índice `GAME_MECHANICS.md` + o arquivo do assunto em `docs/mechanics/`. Agenda futura: `docs/music/MUSIC_ENGINE_PLAN.md`. Referências musicais: `docs/music/MUSIC_STYLE_REFERENCES.md` e `docs/music/STRUDEL_REFERENCE_CATALOG.md`, somente quando o assunto exigir.
 
 ## Onde alterar
 

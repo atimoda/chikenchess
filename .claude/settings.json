@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./package-lock.json)",
+      "Read(./data/music/kits/**)",
+      "Read(./public/samples/**)",
+      "Read(./public/engine/**)",
+      "Read(./lib/changelog-archive.ts)",
+      "Read(./dev.log)"
+    ]
+  }
+}
