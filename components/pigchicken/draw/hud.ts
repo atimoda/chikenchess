@@ -1,6 +1,6 @@
 // Screen-space HUD: the reticle, the throw path, the inventory bars and the item wheel.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
-import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
+import { CONSUMABLE_LIMITS, type ItemId } from "@/lib/pigchicken/items"
 import { type Combat } from "@/lib/pigchicken/combat"
 import { itemGroup, wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
@@ -178,6 +178,7 @@ function drawAmmoBar(ctx: Ctx, x: number, y: number, size: number, r: number, h:
 // the item's name over the bar for a moment after switching (per player row)
 export const invPill = new Map<number, { key: string; at: number }>()
 export const PILL_TIME = 1500
+const effectTint = (look: string) => look === "buddha" ? "#ffd166" : look === "fizz" ? "#f3e1c7" : "#7bdff2"
 export function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath()
 }
@@ -194,12 +195,29 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   const r = bottom ? 9 : 5
   ctx.save()
   ctx.textBaseline = "middle"
+  // the effects running on her, by item (the longest one, and how many doses add up)
+  const running = new Map<ItemId, { left: number; total: number; look: string; count: number }>()
+  combat.effects.forEach(e => {
+    const was = running.get(e.item)
+    if (!was || e.left > was.left) running.set(e.item, { left: e.left, total: e.total, look: e.look, count: (was?.count ?? 0) + 1 })
+    else was.count++
+  })
   for (let i = 0; i < n; i++) {
     const x = x0 + i * (size + gap), o = slots[i], on = i === combat.current
     roundRect(ctx, x, y, size, size, r)
     if (on) { ctx.save(); ctx.shadowColor = "rgba(64,224,208,0.85)"; ctx.shadowBlur = bottom ? 14 : 8; ctx.fillStyle = "rgba(38,92,88,0.62)"; ctx.fill(); ctx.restore() }
     else { ctx.fillStyle = "rgba(48,58,52,0.5)"; ctx.fill() }
     ctx.lineWidth = on ? 2.5 : 1; ctx.strokeStyle = on ? "#5ee8d8" : "rgba(255,255,255,0.22)"; ctx.stroke()
+    // a consumable's effect running on her: the slot's background in the effect's colour, losing it from the top
+    // down as the time runs out (the longest dose of that item; the last 3 seconds blink)
+    const fx = o ? running.get(o.item) : undefined
+    if (fx) {
+      const k = Math.max(0, Math.min(1, fx.left / Math.max(0.01, fx.total))), fh = size * k
+      ctx.save(); roundRect(ctx, x, y, size, size, r); ctx.clip()
+      ctx.globalAlpha = fx.left < 3 && Math.floor(fx.left * 4) % 2 ? 0.25 : 0.55
+      ctx.fillStyle = effectTint(fx.look); ctx.fillRect(x, y + size - fh, size, fh)
+      ctx.restore()
+    }
     // a soft light along the top edge: glass
     ctx.save(); roundRect(ctx, x + 1, y + 1, size - 2, size * 0.45, r - 1); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill(); ctx.restore()
     if (o) {
@@ -211,6 +229,13 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
         ctx.font = `bold ${bottom ? 12 : 9}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "right"
         ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.strokeText(t, x + size - 4, y + size - (bottom ? 9 : 6))
         ctx.fillStyle = o.ammo <= 0 ? "#ff8c69" : "#ffffff"; ctx.fillText(t, x + size - 4, y + size - (bottom ? 9 : 6))
+      }
+      // several doses of it running at once: how many, in the top left corner
+      if (fx && fx.count > 1) {
+        const t = `×${fx.count}`
+        ctx.font = `bold ${bottom ? 11 : 8}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "left"
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.strokeText(t, x + 4, y + (bottom ? 9 : 6))
+        ctx.fillStyle = effectTint(fx.look); ctx.fillText(t, x + 4, y + (bottom ? 9 : 6))
       }
       // the shots (or the taco's blows) loaded and coming back
       const ammoBar = d.mag > 0 && !d.consumable, barH = bottom ? 4 : 3
@@ -238,19 +263,21 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   }
   // the other local players: a dot of their colour at the start of the bar
   if (color && row > 0) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x0 - 8, y + size / 2, 4, 0, Math.PI * 2); ctx.fill() }
-  // the effect running on her (a consumable): its item in a circle, the ring emptying as the time runs out
-  const e = combat.effect
-  if (e) {
-    const er = size / 2 - 2, cx = x0 - (color && row > 0 ? 18 : 8) - er, cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
-    const tint = e.look === "buddha" ? "#ffd166" : e.look === "fizz" ? "#f3e1c7" : "#7bdff2"
+  // an effect whose item is no longer in the bar (its last dose was used): its item in a circle, the ring emptying
+  // as the time runs out (one circle per item, from the bar outwards)
+  let ring = 0
+  running.forEach((e, item) => {
+    if (slots.some(o => o?.item === item)) return
+    const er = size / 2 - 2, cx = x0 - (color && row > 0 ? 18 : 8) - er - ring++ * (er * 2 + 6), cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
+    const tint = effectTint(e.look)
     ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.fill()
-    ctx.save(); ctx.translate(cx, cy); drawItem(ctx, e.item, er * 1.3, er * 1.3); ctx.restore()
+    ctx.save(); ctx.translate(cx, cy); drawItem(ctx, item, er * 1.3, er * 1.3); ctx.restore()
     ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.stroke()
     // the last 3 seconds blink
     ctx.strokeStyle = tint; ctx.globalAlpha = e.left < 3 && Math.floor(e.left * 4) % 2 ? 0.35 : 1
     ctx.beginPath(); ctx.arc(cx, cy, er, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke()
     ctx.globalAlpha = 1
-  }
+  })
   // the name of what she just picked up or switched to, over the bar for a moment
   const held = slots[combat.current] ?? null, key = `${combat.current}:${held?.item ?? ""}`
   const pill = invPill.get(row)

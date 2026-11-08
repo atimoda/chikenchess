@@ -104,9 +104,11 @@ test('audio focus: contexts running when the tab is hidden are suspended and res
   assert.deepEqual([a.log, b.log, late.log], [['s', 'r'], [], ['s', 'r']])
 })
 
-test('gamepad defaults use RB Run, Y Throw, B Melee, LT Brood and X Grab', () => {
+test('gamepad defaults use X Run, Y Throw, B Melee, LT Brood, X Grab and LB/RB previous/next item', () => {
   const d = controls.defaultChickenControls()
-  assert.equal(d.pad.run[0], 'Pad:b5')
+  assert.deepEqual(d.pad.run, ['Pad:b2', null, null])
+  assert.deepEqual(d.pad.prevItem, ['Pad:b4', null, null])
+  assert.deepEqual(d.pad.nextItem, ['Pad:b5', null, null])
   assert.equal(d.pad.throw[0], 'Pad:b3')
   assert.equal(d.pad.melee[0], 'Pad:b1')
   assert.deepEqual(d.pad.down.filter(Boolean), ['Pad:b6'])
@@ -138,7 +140,7 @@ test('interim L3 Melee defaults migrate to B and release B from Brood', () => {
   const previous = globalThis.window
   try {
     const saved = { ...controls.defaultChickenControls(), padXRun: true, padRunRBThrowY: true, itemsV1: true, broodLTB: true }
-    saved.pad.melee = ['Pad:b10', null, null]; saved.pad.down = ['Pad:b6', 'Pad:b1', null]
+    saved.pad.melee = ['Pad:b10', null, null]; saved.pad.down = ['Pad:b6', 'Pad:b1', null]; saved.pad.run = ['Pad:b5', 'Pad:b2', null]
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     const next = controls.loadChickenControls()
     assert.equal(next.pad.melee[0], 'Pad:b1')
@@ -218,10 +220,9 @@ test('brood directional impulse respects axis limits and has no vertical impulse
 })
 
 test('X stays secondary Run, and the RB-only default migrates without replacing custom run binds', () => {
-  assert.deepEqual(controls.defaultChickenControls().pad.run, ['Pad:b5', 'Pad:b2', null])
   const previous = globalThis.window
   try {
-    const saved = { ...controls.defaultChickenControls(), padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, itemsV1: true, broodLTB: true }
+    const saved = { ...controls.defaultChickenControls(), padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, itemsV1: true, broodLTB: true, shiftGrabLBRB: true }
     saved.pad.run = ['Pad:b5', null, null]
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     assert.deepEqual(controls.loadChickenControls().pad.run, ['Pad:b5', 'Pad:b2', null])
@@ -295,15 +296,15 @@ test('Throw settings live together in Arremesso and old profiles gain 90% ground
 test('secondary keyboard defaults use right-hand punctuation and migrate once, preserving custom binds', () => {
   const d = controls.defaultChickenControls()
   assert.deepEqual(d.keys2.down, ['Key:Slash', 'Key:ControlRight'])
-  assert.deepEqual(d.keys2.grab, ['Key:KeyP', null])
+  assert.deepEqual(d.keys2.grab, ['Key:KeyP', 'Key:ShiftRight'])
   assert.deepEqual(d.keys2.prevItem, ['Key:Quote', null])
   assert.deepEqual(d.keys2.fire, ['Key:Insert', 'Key:BracketRight'])
   assert.deepEqual(d.keys2.melee, ['Key:Home', 'Key:BracketLeft'])
   assert.deepEqual(d.keys2.jump, ['Key:PageUp', 'Key:Semicolon'])
   assert.deepEqual(d.keys2.throw, ['Key:End', 'Key:Backslash'])
   assert.deepEqual(d.keys2.crouch, ['Key:PageDown', 'Key:ArrowDown'])
-  // no key repeats across both keyboards
-  const all = controls.CHICKEN_ACTIONS.flatMap(a => [...d.keys[a.key], ...d.keys2[a.key]]).filter(Boolean)
+  // no key repeats across both keyboards (the Shifts run and grab, as X on the gamepad)
+  const all = controls.CHICKEN_ACTIONS.filter(a => a.key !== 'grab').flatMap(a => [...d.keys[a.key], ...d.keys2[a.key]]).filter(Boolean)
   assert.equal(new Set(all).size, all.length)
   assert.equal(controls.chickenBindName('Key:BracketRight'), ']')
   assert.equal(controls.chickenBindName('Key:Quote'), "'")
@@ -499,4 +500,37 @@ test('movement magnet snaps only the movement stick before mapped gamepad action
   assert.equal(raw.has('Pad:a1+'),false);assert.equal(snapped.has('Pad:a1+'),true)
   assert.equal(raw.has('Pad:a3+'),false);assert.equal(snapped.has('Pad:a3+'),false,'right stick untouched')
  } finally {if(old===undefined)delete globalThis.navigator;else Object.defineProperty(globalThis,'navigator',{configurable:true,value:old})}
+})
+
+test('the Shifts also grab and LB/RB go back/forward an item, migrating only the previous defaults', () => {
+  const d = controls.defaultChickenControls()
+  assert.deepEqual(d.keys.grab, ['Key:KeyE', 'Key:ShiftLeft', null])
+  assert.deepEqual(d.keys2.grab, ['Key:KeyP', 'Key:ShiftRight'])
+  assert.deepEqual(d.keys.run[0], 'Key:ShiftLeft')
+  assert.deepEqual(d.keys2.run[0], 'Key:ShiftRight')
+  const previous = globalThis.window
+  try {
+    const marks = { padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, keys2: true }
+    const old = () => {
+      const saved = { ...controls.defaultChickenControls(), ...marks }
+      saved.keys.grab = ['Key:KeyE', null, null]; saved.keys2.grab = ['Key:KeyP', null]
+      saved.pad.run = ['Pad:b5', 'Pad:b2', null]; saved.pad.nextItem = ['Pad:b4', null, null]; saved.pad.prevItem = [null, null, null]
+      return saved
+    }
+    let saved = old()
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    let c = controls.loadChickenControls()
+    assert.deepEqual(c.keys.grab, d.keys.grab)
+    assert.deepEqual(c.keys2.grab, d.keys2.grab)
+    assert.deepEqual([c.pad.run, c.pad.prevItem, c.pad.nextItem], [d.pad.run, d.pad.prevItem, d.pad.nextItem])
+    // custom binds stay
+    saved = old(); saved.keys.grab = ['Key:KeyE', 'Key:KeyK', null]; saved.pad.nextItem = ['Pad:b12', null, null]
+    c = controls.loadChickenControls()
+    assert.deepEqual(c.keys.grab, ['Key:KeyE', 'Key:KeyK', null])
+    assert.deepEqual([c.pad.run, c.pad.nextItem], [['Pad:b5', 'Pad:b2', null], ['Pad:b12', null, null]])
+    // once saved with the marker, nothing changes
+    saved = { ...old(), shiftGrabLBRB: true }
+    c = controls.loadChickenControls()
+    assert.deepEqual(c.keys.grab, ['Key:KeyE', null, null])
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
 })

@@ -104,6 +104,9 @@ const LF = 30, LT = 32, LS = 40, HIP_Y = -88, FOOT_Y = -3, NECK_LEN = 56
 const HEAD_TOP = 200
 // how long after pressing a direction against her look Jump still switches sides (seconds)
 const SWITCH_GRACE = 0.18
+// Brood pressed right after a ground jump (Jump still held) still counts as the shocking jump's preparation:
+// a trigger (LT) reaches its threshold a little after the button pressed together with it
+const SHOCKING_GROUND_GRACE = 0.12
 // a box collider's edges: `<element id>:<part>`, clipped pieces add `~n`
 const BOX_PART = /^(.*):(top|bottom|left|right|under|topBelow)(?:~\d+)?$/
 const PIV: Record<string, [number, number]> = {
@@ -420,16 +423,25 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // launch. Releasing Brood first cancels; normal jumps still fire on press.
     let airChargeMultiplier = 1
     let airShockReleased = false
+    let groundRelease = false
     if (S.shocking && (!Dk || S.held || S.cl)) S.shocking = false
+    S.groundJumpT = (S.groundJumpT ?? Infinity) + dt
+    // the plain jump that left the ground a moment ago turns into the preparation (on the ground's terms)
+    if (!S.shocking && J && D && !jumpPressed && !S.grounded && !S.cl && !S.held && S.groundJumpT < SHOCKING_GROUND_GRACE && S.vy < 0) {
+      S.shocking = true; S.shockFromGround = true; shockingAirReleaseTime = 0
+      S.vx -= S.airBoost || 0; S.airBoost = 0; S.vy = 0; S.groundJumpT = Infinity
+    }
+    if (!S.shocking) S.shockFromGround = false
     // standing on a floating floor, Crouch + Brood + Jump with no direction flips her under it (no shocking prep)
     const flipPlat = S.grounded && S.plat && !S.held && !S.cl ? segById(S.plat) : null
     const flipUnder = jumpPressed && Dk && C && Lh === Rh && !!flipPlat && !flipPlat.solid
     if (jumpPressed && D && !S.cl && !S.held && !flipUnder) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
     if (S.shocking && !J) {
-      if (Dk && !S.grounded) { airShockReleased = true; airChargeMultiplier = shockingAirMultiplier(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirMaxMultiplier) }
+      if (Dk && !S.grounded && !S.shockFromGround) { airShockReleased = true; airChargeMultiplier = shockingAirMultiplier(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirMaxMultiplier) }
       S.shocking = false; jumpPressed = Dk
+      if (S.shockFromGround) { groundRelease = Dk; S.shockFromGround = false }
     }
-    if (S.shocking && !S.grounded && J && Dk) {
+    if (S.shocking && !S.grounded && !S.shockFromGround && J && Dk) {
       const charge = advanceShockingAirCharge(shockingAirElapsed, shockingAirLimitApplied, dt, R.shockingAirChargeTime, R.shockingAirAfterTimeMultiplier)
       shockingAirElapsed = charge.elapsed
       shockingAirLimitApplied = charge.applied
@@ -554,20 +566,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
     S.standT = Math.max(0, (S.standT || 0) - dt)
 
-    // on a floating floor, brood + jump drops through it; so does down (crouch) + jump with no sideways direction
-    // held (with a direction it is the normal super jump up)
+    // on a floating floor, brood + jump drops through it while walking sideways or holding down (crouch); with Up
+    // held, or no direction at all, it is the shocking jump up. Down (crouch) + jump with no sideways direction also
+    // drops (with a direction it is the normal super jump up)
     const plat = S.grounded && S.plat ? segById(S.plat) : null
     // ...but all three together (Crouch + Brood + Jump, no direction) flip her under it, upside down
     if (flipUnder && jumpPressed && plat && !plat.solid && dir === 0 && hangUnder(plat, S.face)) {
       clingPose(dt, U, false); return
-    } else if (jumpPressed && plat && !plat.solid && (D || (C && dir === 0))) {
+    } else if (jumpPressed && plat && !plat.solid && !U && (D ? dir !== 0 || C : C && dir === 0)) {
       S.dropId = plat.id; S.dropT = 0.3; S.grounded = false; S.plat = null; S.sliding = false
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
     } else if (jumpPressed && plat && !plat.solid && !D && !C && against && hangUnder(plat, face0)) {
       clingPose(dt, U, false); return
     } else if (jumpPressed) {
-      const fromGround = S.grounded
-      S.jumpIndex = S.grounded ? 0 : S.jumpIndex + 1
+      const fromGround = S.grounded || groundRelease
+      S.jumpIndex = fromGround ? 0 : S.jumpIndex + 1
       // Every jump keeps its normal takeoff, including air jumps and super jumps.
       // Brood's directional impulse is added separately below; horizontal input
       // must never remove the normal upward jump.
@@ -597,6 +610,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (!fromGround && airShockReleased) shockingAirReleaseTime = .3
       S.vx += S.airBoost
       S.burst = flaps / Math.max(1, R.jumpFlapRate)
+      S.groundJumpT = fromGround && !D ? 0 : Infinity
       sfx(kind)
     }
 
@@ -605,15 +619,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (!S.grounded) {
       let g = R.gravity, term = R.terminalVelocity
       if (D) { g *= R.fastFall; term *= R.fastFall; mode = 'fastFall' }
-      else if (J && !jumpPressed) { mode = 'fly'; if (S.vy > 0) { g /= R.flyFallDivisor; term /= R.flyFallDivisor } }
-      S.vy = Math.min(term, S.vy + g * motionDt)
+      else if (J && !jumpPressed) {
+        mode = 'fly'; if (S.vy > 0) { g /= R.flyFallDivisor; term /= R.flyFallDivisor }
+        // holding Up or Down (crouch) while flying attenuates gravity: 100% cancels it, above that it lifts her,
+        // a negative value pulls her down harder
+        const atten = U ? R.flyUpFallAtten : C ? R.flyDownFallAtten : 0
+        g *= 1 - atten / 100
+      }
+      S.vy = clamp(S.vy + g * motionDt, -Math.max(term, S.vy < 0 ? -S.vy : 0), term)
       const prevY = S.y
       S.y += S.vy * motionDt
       // floating floors are one-way: land on the highest one crossed while falling (holding down goes through)
       if (S.vy > 0) {
         let best: { sg: Seg; y: number } | null = null
         SEGS.forEach(sg => {
-          if (sg.wall || (S.dropT > 0 && sg.id === S.dropId) || (!sg.solid && (D || C))) return
+          if (sg.wall || (S.dropT > 0 && sg.id === S.dropId) || (!sg.solid && (D || C) && !S.shockFromGround)) return
           const fy = floorY(sg, S.x)
           if (fy !== null && fy < groundY && prevY <= fy + 0.5 && S.y >= fy && (!best || fy < best.y)) best = { sg, y: fy }
         })

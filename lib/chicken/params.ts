@@ -93,6 +93,8 @@ export const CHICKEN_PARAMS = {
   crouchRunBroodJumpBoost: 0,
   // Voo
   flyFallDivisor: 3,
+  flyUpFallAtten: 20,
+  flyDownFallAtten: 40,
   flapRate: 9,
   jumpFlaps: 2,
   heldFlapRate: 9,
