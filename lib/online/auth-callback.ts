@@ -76,8 +76,15 @@ export function googleLoginFailure(errorCode: string | null | undefined, error: 
   if (errorCode === 'identity_already_exists') {
     return {
       existingAccount: true,
-      message: 'Este Google já está ligado a uma conta ChickenChess. Clique novamente em Continue with Google para entrar nessa conta. Depois você escolhe qual perfil conservar; seu progresso visitante continua guardado.',
+      message: 'Este Google já está ligado a uma conta ChickenChess. Clique novamente em Continue with Google para entrar nessa conta; seu progresso visitante será integrado a ela.',
     }
   }
   return { existingAccount: false, message: error || 'O login Google não foi concluído. Tente novamente ou use email.' }
+}
+
+const EXISTING_EMAIL_CODES = new Set(['email_exists', 'user_already_exists', 'identity_already_exists'])
+
+/** True when linking an email to the guest failed because that email already has an account. */
+export function emailAlreadyRegistered(errorCode: string | null | undefined): boolean {
+  return !!errorCode && EXISTING_EMAIL_CODES.has(errorCode)
 }
