@@ -76,8 +76,14 @@ export type DummyState = { params: DummyParams; stage: number; tipT: number; cra
 // how long the tip stays up after it is destroyed (and after each hit while wrecked)
 export const TIP_TIME = 8
 export const TIP_AGAIN = 5
-// a consumable's effect on her (one at a time: a new one replaces it); the numbers are taken when it is used
+// a consumable's effect on her; the numbers are taken when it is used. Doses add up (several at once, of the same
+// item or not): each one keeps its own timer and their multipliers multiply
 export type Effect = { item: ItemId; left: number; total: number; speed: number; accel: number; curve: AccelCurve; ramp: number; look: EffectLook }
+export function combineEffects(list: readonly Effect[]): Effect | null {
+  if (!list.length) return null
+  const last = list[list.length - 1]
+  return { ...last, left: Math.max(...list.map(e => e.left)), total: Math.max(...list.map(e => e.total)), speed: list.reduce((k, e) => k * e.speed, 1), accel: list.reduce((k, e) => k * e.accel, 1) }
+}
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 // a peck's defence: while the beak is out, damaging notes and projectiles in its cone vanish in a little cloud
@@ -122,7 +128,7 @@ export function createCombat() {
   // throw off until the button is let go, so the new item is never thrown by mistake
   let throwItem: Owned | null = null, throwVoid = false
   let consumption: { item: ItemId; left: number; total: number } | null = null
-  let effect: Effect | null = null
+  let effects: Effect[] = []
   let blastActors: { box: BlastBox; push: (vx: number, vy: number) => void }[] = []
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
@@ -435,24 +441,24 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effect: Effect | null
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effect: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [],
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effect } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects } = l)
     active = id
   }
 
@@ -507,10 +513,10 @@ export function createCombat() {
     if (held()) sound('equip')
   }
 
-  // a consumable: one dose puts its effect on her (replacing the one running); the last dose ends the item
+  // a consumable: one dose adds its effect to the ones running on her; the last dose ends the item
   function consume(h: Owned, d: ItemDef, at: { x: number; y: number }) {
     consumption = { item: h.item, left: 0.7, total: 0.7 }
-    effect = { item: h.item, left: d.effectTime, total: d.effectTime, speed: d.effectSpeed, accel: d.effectAccel, curve: d.effectCurve, ramp: d.effectRamp, look: d.effectLook }
+    effects.push({ item: h.item, left: d.effectTime, total: d.effectTime, speed: d.effectSpeed, accel: d.effectAccel, curve: d.effectCurve, ramp: d.effectRamp, look: d.effectLook })
     cooldown = Math.max(0.7, 1 / Math.max(0.1, d.rate))
     sound(d.consumeKind === 'liquid' ? 'drink' : 'eat', h.item)
     const color = d.effectLook === 'buddha' ? '#ffd166' : d.effectLook === 'fizz' ? '#f3e1c7' : '#7bdff2'
@@ -1053,8 +1059,11 @@ export function createCombat() {
     get throwAngle() { return throwAngle },
     // a throw called off (she switched items while charging): nothing happens until the button is let go
     get throwVoid() { return throwVoid },
-    // the consumable's effect on the current player (null: none)
-    get effect() { return effect },
+    // the consumables' effects on the current player, combined (null: none): speed and acceleration multiply, the
+    // curve, ramp and look are the latest dose's
+    get effect() { return combineEffects(effects) },
+    // each dose running on the current player (the inventory slots show their time)
+    get effects() { return effects as readonly Effect[] },
     get consumption() { return consumption },
     predictThrow,
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
@@ -1242,7 +1251,7 @@ export function createCombat() {
       // Fire with an item shoots; Golpe continues to use the wing/item.
       const h = held()
       const canFire = body.state !== 'slide' || d.slideFire
-      if (effect) { effect.left -= dt; if (effect.left <= 0) effect = null }
+      if (effects.length) { effects.forEach(e => { e.left -= dt }); effects = effects.filter(e => e.left > 0) }
       if (!h) {
         if (!input.cancelFire && !input.melee && body.state !== 'held' && !body.state.startsWith('portal')) {
           if (input.firePressed && peckCool <= 0 && meleeCool <= 0 && !peck) peckPrep = dt
@@ -1319,9 +1328,11 @@ export function createCombat() {
           sound('throw', null)
           const throwFrom = opts.throwOrigin ?? origin
           thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin: (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
+          const thrownAt = cur
           removeHeld(); reloadT = 0
-          // the next item in the wing: the first one (empty hands when she has none)
-          cur = 0
+          // the next item in the wing: the one before the thrown one (the new first when it was the first; empty
+          // hands when she has none)
+          cur = Math.max(0, thrownAt - 1)
         }
         throwT = 0; throwItem = null
       }

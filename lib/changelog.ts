@@ -21,7 +21,13 @@ const RECENT = [
       'Invert vertical side on horizontal floating platforms: em pé numa plataforma flutuante, Agachar + Chocar + Pulo juntos (sem andar para os lados) a deixam de cabeça para baixo debaixo dela, em vez de cair. Só Agachar + Pulo ou só Chocar + Pulo continuam descendo pela plataforma.',
       'Andando agachada até a ponta de uma plataforma, ela agarra a lateral em vez de cair; subindo pela lateral ela passa para cima da plataforma, e subindo por dentro de uma caixa fica pendurada debaixo do topo.',
       'De cabeça para baixo, Cima a encolhe e Baixo estica a cabeça para o chão (os controles de olhar e agachar se invertem).',
+      'Numa plataforma flutuante, pular chocando com Cima segurado (ou sem direção) agora sobe; ela só desce pela plataforma andando para o lado ou segurando para baixo.',
+      'No gamepad, o primeiro shocking jump no chão não sai mais fraco: apertar LT logo depois do A (com A ainda segurado) conta como a preparação do salto em vez de um pulo comum.',
+      'Shift esq. (teclado principal) e Shift dir. (teclado secundário) também usam / pegam item, como o X do gamepad, além de correr. No gamepad, LB volta um item e RB avança; Correr fica no X. Atalhos personalizados são preservados.',
+      'Dois novos ajustes em Voo: Atenuador de queda segurando para Cima (padrão 20%) e segurando para baixo (padrão 40%), de −200% a 200%. Quanto maior, menos ela cai voando; acima de 100% ela sobe e negativo cai mais rápido.',
     ] }, { title: 'Pátio', items: [
+      'Maryjane e Cok acumulam: várias doses (do mesmo item ou dos dois) somam o efeito, com os multiplicadores se multiplicando, e cada dose termina no seu tempo. O tempo restante aparece no fundo do quadradinho do item no inventário, que perde a cor de cima para baixo, com ×N quando há mais de uma dose ativa.',
+      'Depois de arremessar um item, a mão passa para o item anterior a ele no inventário, e não mais para o primeiro.',
       'Novo botão com ícone de Sol no cabeçalho: abre as Configurações do Pátio atual, com largura limite (telas) e altura limite (do chão ao teto). Os valores são salvos junto com o Pátio e só quem pode editá-lo muda; a largura saiu do painel Câmera de Mira.',
       'Uma borda preta de 10 px marca os limites de todo Pátio e da tela do globo. A câmera para no teto do Pátio.',
       'Nova seção Chãos e paredes no Modo editor: 5 chãos (Rocha da Vila, Campo, Deserto, Neve e Vulcânico) e 3 paredes (Tijolos, Pedra e Madeira), que se selecionam, movem, redimensionam, duplicam e apagam como os outros objetos. Dois cliques escolhem o bioma ou o tipo de parede.',
