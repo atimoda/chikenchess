@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ONLINE_CONFIGURATION_MESSAGE, onlineErrorMessage, onlineRpc, requireOnlineClient } from '@/lib/online/client'
 import type { OnlineRoom } from '@/lib/online/types'
-import { AUTH_CALLBACK_CHANNEL, googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
+import { AUTH_CALLBACK_CHANNEL, emailAlreadyRegistered, googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
 import { useOnline, type MigrationSummary } from './online-provider'
 import { LegalLinks } from '@/components/legal-links'
 
@@ -29,6 +29,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [otpType, setOtpType] = useState<'email' | 'email_change'>('email')
+  // Set only when Google reports the identity already belongs to an account, so the next click signs in to it.
   const [existingAccount, setExistingAccount] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -138,12 +139,14 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     return () => { window.removeEventListener('message', onMessage); channel.removeEventListener('message', onBroadcast); channel.close() }
   }, [finishLogin])
 
-  const captureSource = async () => {
+  const ensureNoActiveRoom = async () => {
+    const activeRoom = await onlineRpc<OnlineRoom | null>('online_room', { p_action: 'get', p_code: null })
+    if (activeRoom) throw new Error('Saia da sala ou termine a partida antes de entrar em uma conta existente. Seu perfil visitante continua conectado.')
+  }
+
+  const captureSource = async (switchingAccount: boolean) => {
     const current = await ensureGuest()
-    if (current.is_anonymous && existingAccount) {
-      const activeRoom = await onlineRpc<OnlineRoom | null>('online_room', { p_action: 'get', p_code: null })
-      if (activeRoom) throw new Error('Saia da sala ou termine a partida antes de entrar em uma conta existente. Seu perfil visitante continua conectado.')
-    }
+    if (current.is_anonymous && switchingAccount) await ensureNoActiveRoom()
     sourceId.current = current.is_anonymous ? current.id : null
     await prepareSignIn()
     return current
@@ -155,19 +158,23 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     setError(null)
     setNotice(null)
     try {
-      const current = await captureSource()
+      const current = await captureSource(false)
       const online = requireOnlineClient()
       const address = email.trim()
-      const type = current.is_anonymous && !existingAccount ? 'email_change' : 'email'
-      const result = type === 'email_change'
-        ? await online.auth.updateUser({ email: address })
-        : await online.auth.signInWithOtp({ email: address, options: { shouldCreateUser: false } })
-      if (result.error) {
-        if (type === 'email_change' && ['email_exists', 'user_already_exists', 'identity_already_exists'].includes(result.error.code || '')) {
-          setExistingAccount(true)
-          throw new Error('Este email já tem uma conta. Sua cópia de visitante foi guardada. Clique em Email me a code para entrar nessa conta.')
+      // A new email becomes an account on the guest identity itself (welcome email with the code);
+      // an email that already has an account just receives the sign-in code.
+      let type: 'email' | 'email_change' = current.is_anonymous ? 'email_change' : 'email'
+      if (type === 'email_change') {
+        const linked = await online.auth.updateUser({ email: address })
+        if (linked.error) {
+          if (!emailAlreadyRegistered(linked.error.code)) throw linked.error
+          type = 'email'
+          await ensureNoActiveRoom()
         }
-        throw result.error
+      }
+      if (type === 'email') {
+        const result = await online.auth.signInWithOtp({ email: address, options: { shouldCreateUser: false } })
+        if (result.error) throw result.error
       }
       setEmail(address)
       setOtpType(type)
@@ -214,7 +221,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     }
     popupRef.current = popup
     try {
-      const current = await captureSource()
+      const current = await captureSource(existingAccount)
       const redirect = new URL('/', window.location.origin)
       redirect.searchParams.set('authCallback', '1')
       const requestId = crypto.randomUUID()
@@ -329,8 +336,6 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                   <label className="block space-y-2"><span className="text-sm">Email</span><input className={inputClass} type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} required /></label>
                   <Button className="h-11 w-full" type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Mail />}Email me a code</Button>
                 </form>
-                <label className="flex items-center gap-2 text-xs text-white/65"><input type="checkbox" className="accent-[#71c486]" checked={existingAccount} onChange={(event) => setExistingAccount(event.target.checked)} disabled={busy} />Já tenho uma conta</label>
-                <p className="text-xs leading-relaxed text-white/45">O perfil visitante é vinculado à conta nova. Ao entrar em uma conta existente, você escolhe o progresso que deseja conservar.</p>
               </div>}
       {error && <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
       {savePending && <Button disabled={busy} onClick={() => void retrySave()}>Tentar salvar perfil</Button>}
