@@ -28,6 +28,7 @@ const RECENT = [
       'Nova opção Objeto duro em Camada e colisões (ligada nos chãos e paredes, e disponível em plataformas, terraços e pilares): os bonecos não atravessam o objeto por baixo, pelos lados nem descendo por ele, sobem rampas e degraus baixos dele andando e escalam suas paredes.',
       'O Chão da Vila virou um desses chãos, com a mesma encosta (inclusive a que você tinha editado), e o painel separado do Chão da Vila saiu.',
       'O Golpe sai mesmo com Atirar segurado nas armas e instrumentos que atiram: ele interrompe os tiros (e a carga ou o feixe) enquanto dura e, se Atirar ainda estiver segurado quando o golpe termina, ela volta a atirar. Com o mouse, o botão direito agora funciona com o esquerdo segurado.',
+      'Os painéis flutuantes do Pátio (Configurações, Volume, Itens, Players, editor e os outros) agora se arrastam por qualquer parte que não seja botão, campo ou slider, não só pelo título. No celular, numa lista que rola, o dedo rola a lista e o título continua arrastando. Clicar ou arrastar um painel o traz para a frente dos outros, e o painel que abre aparece na frente.',
     ] }],
   },
   {

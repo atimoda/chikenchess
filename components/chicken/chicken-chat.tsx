@@ -104,7 +104,7 @@ export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { p
           data-chicken-ignore
           aria-label="Chat"
           onSubmit={e => { e.preventDefault(); submit() }}
-          className="pointer-events-auto fixed left-1/2 z-[215] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 items-center gap-2 rounded-xl border border-primary/50 bg-[#101713]/90 p-1.5 pl-3 font-mono text-sm text-white shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur"
+          className="pointer-events-auto fixed left-1/2 z-[240] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 items-center gap-2 rounded-xl border border-primary/50 bg-[#101713]/90 p-1.5 pl-3 font-mono text-sm text-white shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur"
           style={{ bottom }}
         >
           <MessageCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" />
