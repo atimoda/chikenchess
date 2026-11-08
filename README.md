@@ -35,4 +35,4 @@ Continue building your app on:
 
 ## Desenvolvimento
 
-Mapa do código e testes por assunto: [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md). Regras atuais: [GAME_MECHANICS.md](GAME_MECHANICS.md) (índice de `docs/mechanics/`). Agenda futura: [MUSIC_ENGINE_PLAN.md](MUSIC_ENGINE_PLAN.md).
+Mapa do código e testes por assunto: [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md). Regras atuais: [GAME_MECHANICS.md](GAME_MECHANICS.md) (índice de `docs/mechanics/`). Agenda futura: [docs/music/MUSIC_ENGINE_PLAN.md](docs/music/MUSIC_ENGINE_PLAN.md).

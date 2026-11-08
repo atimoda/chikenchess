@@ -43,7 +43,7 @@ Retorno do Redmi Note 13 Pro: o jogo voltou a lagar depois dos controles de soun
 
 Os kits salvos, o editor e a exportação Strudel não mudam; só a saída do runtime no aparelho restrito. Kits sem esses campos soam como antes (testes em `sound-design.cases.cjs` e `dynamics.cases.cjs`). Não é aprovação de desempenho no aparelho físico.
 
-No globo, além do portal leve (ver `map.md`), a galinha procura a lista de plataformas (`[data-chicken-platform]`) no DOM cinco vezes por segundo; desde 05/11, as medidas por quadro são compartilhadas entre as galinhas locais (ver renderização do Pátio abaixo).
+No globo, além do portal leve (ver `chicken/movement.md`), a galinha procura a lista de plataformas (`[data-chicken-platform]`) no DOM cinco vezes por segundo; desde 05/11, as medidas por quadro são compartilhadas entre as galinhas locais (ver renderização do Pátio abaixo).
 
 ### Otimização de arraste e exportação — 16/09
 

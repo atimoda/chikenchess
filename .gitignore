@@ -38,3 +38,6 @@ next-env.d.ts
 /.artifacts/
 __pycache__/
 /server/node_modules
+
+# local dev server output
+/dev.log

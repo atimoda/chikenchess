@@ -1,6 +1,6 @@
 # Pátio online — decisões e sequência de PRs
 
-Plano combinado com o Titi em 07/11/2026. Comportamento implementado continua descrito em `docs/mechanics/map.md`; este arquivo guarda as decisões e o que falta.
+Plano combinado com o Titi em 07/11/2026. Comportamento implementado continua descrito em `docs/mechanics/patio/` (online: `patio/players-and-online.md`); este arquivo guarda as decisões e o que falta.
 
 ## Decisões
 

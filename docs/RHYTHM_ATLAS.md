@@ -73,4 +73,4 @@ Os sons usam os bancos locais sintetizados já disponíveis; Salvador usa seu ba
 | Copenhagen · 1869 | Nordic piano concerto | 4/4 · semínima | 88 | 12 seções / 128 compassos |
 | Paris · 1913 | Modernist ballet | 7/8 · colcheia | 210 | 12 seções / 72 compassos |
 
-São três IDs novos, somados às três fases Classical anteriores. Paris compartilha coordenadas com as outras épocas; Veneza e Copenhague acrescentam localizações. O 7/8 mantém colcheias iguais; deslocar acentos não troca a fórmula. Melodias, orquestração por peça, cromatismos, referências históricas, escopo e retornos estão em `docs/mechanics/scope-and-data.md` e `MUSIC_STYLE_REFERENCES.md`. As fontes acústicas são gravações modernas CC0.
+São três IDs novos, somados às três fases Classical anteriores. Paris compartilha coordenadas com as outras épocas; Veneza e Copenhague acrescentam localizações. O 7/8 mantém colcheias iguais; deslocar acentos não troca a fórmula. Melodias, orquestração por peça, cromatismos, referências históricas, escopo e retornos estão em `docs/mechanics/scope-and-data.md` e `docs/music/MUSIC_STYLE_REFERENCES.md`. As fontes acústicas são gravações modernas CC0.

@@ -103,7 +103,7 @@ Oito peças não são oito fontes DSP: Manchester já tem dez notas no mesmo ata
 4. Só se o perfil de efeitos não bastar, testar limite de fontes simultâneas e caudas mais curtas com prioridade musical. Reduzir 32 → 16/24 fontes altera notas/caudas e precisa de validação; evitar um corte indiscriminado de peças ativas ou aumentar polifonia para tentar corrigir ruído.
 5. Separar proteção contra soma de volumes (headroom/limiter, se houver clipping medido) de redução de CPU. Limiter não recupera notas atrasadas nem deadline perdido.
 
-Referências primárias: [perfil de Web Audio no Chrome](https://web.dev/articles/profiling-web-audio-apps-in-chrome) explica deadlines, glitches e GC; [métricas WebAudio](https://developer.chrome.com/docs/devtools/webaudio) descreve Render Capacity. Uma medição de Node ou emulação desktop não aprova desempenho no Redmi. Nenhuma simplificação desta seção foi aplicada ao playback; agenda em `MUSIC_ENGINE_PLAN.md`.
+Referências primárias: [perfil de Web Audio no Chrome](https://web.dev/articles/profiling-web-audio-apps-in-chrome) explica deadlines, glitches e GC; [métricas WebAudio](https://developer.chrome.com/docs/devtools/webaudio) descreve Render Capacity. Uma medição de Node ou emulação desktop não aprova desempenho no Redmi. Nenhuma simplificação desta seção foi aplicada ao playback; agenda em `docs/music/MUSIC_ENGINE_PLAN.md`.
 
 
 ## Retorno do Redmi Note 13 e quarta rodada — 22/10, v1.6.7

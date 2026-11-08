@@ -40,7 +40,7 @@ Fontes e regeneração dos bancos: `public/samples/README.md`. Mecânica, priori
 
 ## Quatro kits Electronic World — 06/11/2026
 
-A primeira revisão de New York 1977, Ibiza 1986, Manchester 1988 (Acid House) e London 1992 (Jungle) foi `2026-11-06-electronic-v3`; as medições abaixo registram essa etapa de seis seções, substituída pela expansão v4 descrita a seguir. A composição e o escopo estão em [Escopo, dados e kits](mechanics/scope-and-data.md#revisão-de-quatro-kits-electronic-world--06112026).
+A primeira revisão de New York 1977, Ibiza 1986, Manchester 1988 (Acid House) e London 1992 (Jungle) foi `2026-11-06-electronic-v3`; as medições abaixo registram essa etapa de seis seções, substituída pela expansão v4 descrita a seguir. A composição e o escopo estão em [Escopo, dados e kits](mechanics/kit-revisions.md#revisão-de-quatro-kits-electronic-world--06112026).
 
 Validação: 81 casos das suítes de kits, padrões, sound design, reações, composição online e release; `npm run typecheck`; `npm run admin:check` (78 catálogos válidos); geração reproduzível dos quatro scripts. O Criativo carregou os quatro presets; o seletor mostrou Acid House/Jungle e a versão v2.0.1.
 
@@ -78,7 +78,7 @@ Validação final da expansão: `npm run typecheck` aprovado; quatro perfis vál
 
 ## Seis kits Electronic World — segunda rodada de 06/11/2026
 
-Düsseldorf/Krautrock, Chicago/Classic House, Tokyo/Minimal, São Paulo/Hard Techno e Bristol/Trip-hop usam `2026-11-06-electronic-v3`; Goa/Psytrance usa o kit oficial `2026-11-06-design-v3`. São 13 seções novas: duas nos cinco perfis e três em Goa. Forma, harmonia, protagonismo e escopo: [segunda revisão](mechanics/scope-and-data.md#segunda-revisão-electronic-world--06112026).
+Düsseldorf/Krautrock, Chicago/Classic House, Tokyo/Minimal, São Paulo/Hard Techno e Bristol/Trip-hop usam `2026-11-06-electronic-v3`; Goa/Psytrance usa o kit oficial `2026-11-06-design-v3`. São 13 seções novas: duas nos cinco perfis e três em Goa. Forma, harmonia, protagonismo e escopo: [segunda revisão](mechanics/kit-revisions.md#segunda-revisão-electronic-world--06112026).
 
 As seis variações originais de Goa foram comparadas nas 32 vozes: todas as notas, durações e articulações permanecem idênticas. Um hash de regressão conserva essa garantia. Fora da forma e da revisão do catálogo, os dados globais e reações também permanecem iguais. Apenas chimbal fechado/aberto e zap receberam os pequenos cortes de ganho/filtro descritos na mecânica. Em Bristol, a comparação inversa dos graus relativos com os perfis anteriores confirmou as seis frases/articulações do teremim preservadas; parâmetros e efeitos foram mantidos. Os cinco geradores Python reproduzem os perfis byte a byte.
 
@@ -102,7 +102,7 @@ Validação final desta rodada: `npm run test:music` **317/317 aprovados**, incl
 
 ## Reconstrução Classical — 07/11/2026
 
-Os três presets agora são kits oficiais gerados por scripts/build-classical-kits.cjs, com melodias originais em scripts/classical/scores.cjs. Cada kit tem dez seções, oito bancos por voz e períodos de dezesseis compassos, com cordas nos oito peões e madeiras/metais/contínuo ou tímpanos atrás. Forma, tonalidades, presença, reações e escopo estão em [mecânica implementada](mechanics/scope-and-data.md#reconstrução-classical--07112026).
+Os três presets agora são kits oficiais gerados por scripts/build-classical-kits.cjs, com melodias originais em scripts/classical/scores.cjs. Cada kit tem dez seções, oito bancos por voz e períodos de dezesseis compassos, com cordas nos oito peões e madeiras/metais/contínuo ou tímpanos atrás. Forma, tonalidades, presença, reações e escopo estão em [mecânica implementada](mechanics/kit-revisions.md#reconstrução-classical--07112026).
 
 O banco recebeu 42 gravações acústicas CC0 em onze timbres/mapas, com duas dinâmicas de violino e fontes longas de cordas e sopros. Cada arquivo tem origem imutável e SHA256 no manifesto. A checagem de afinação em um representante de cada timbre/mapa confirmou as onze fundamentais em até oito cents da nota registrada. O arquivo pitch-check.json guarda os resultados. O registro de flauta foi corrigido em uma oitava após essa checagem. Os ativos anteriores conservam seus próprios mapas.
 

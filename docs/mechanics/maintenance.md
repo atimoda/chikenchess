@@ -10,7 +10,7 @@ ChickenChess cooperativo/invertido, poderes que gastam ovos, loja, multiplayer, 
 
 ## Manutenção e verificação
 
-Toda mudança de regra, gesto, controle ou persistência deve atualizar a linha correspondente neste documento, com gatilho, efeito, retorno/prioridade e escopo. `MUSIC_ENGINE_PLAN.md` mantém a agenda futura; este documento descreve o presente.
+Toda mudança de regra, gesto, controle ou persistência deve atualizar a linha correspondente neste documento, com gatilho, efeito, retorno/prioridade e escopo. `docs/music/MUSIC_ENGINE_PLAN.md` mantém a agenda futura; este documento descreve o presente.
 
 Fontes principais: `lib/music/model.ts`, `lib/music/runtime-session.ts` e módulos descritos em `docs/CODEBASE_MAP.md`, `hooks/use-music.ts`, `components/chess-game.tsx`, `components/creative-studio.tsx`, `components/ui/draggable.tsx`, `components/globe-component.tsx`. Regressões em `tests/music.test.cjs` cobrem cheque/saída/mate/capturas/undo, interrupção do loop no arraste, cancelamento, frase pelo botão e chegada ao pin.
 
