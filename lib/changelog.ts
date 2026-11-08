@@ -15,7 +15,10 @@ const RECENT = [
       'As orientações sobre teclados e gamepad ficam no botão de ajuda ao lado de Movimentos; o parágrafo introdutório do painel foi removido.',
       'Segurar Chocar + Pulo no ar carrega o salto: o multiplicador cresce de 2× até 4× em dois segundos. Ao atingir o tempo, a velocidade vertical muda uma vez; os três ajustes ficam em Combinações.',
       'A galinha agora escala os quatro limites: subindo uma parede até o teto ela vira a quina e anda de cabeça para baixo por ele, e desce pela outra parede. No globo, os limites são as bordas da tela.',
-      'Pulando com Cima segurado por baixo de uma plataforma flutuante, ela se pendura de cabeça para baixo e anda por baixo dela; nas quinas passa para as laterais e sobe até o topo. Pulo ou um novo toque em Chocar/Agachar a soltam.',
+      'Pulando com Cima segurado por baixo de uma plataforma flutuante, ela se pendura de cabeça para baixo e anda por baixo dela; nas quinas passa para as laterais e sobe até o topo. O Pulo a solta e ela volta a ficar de pé.',
+      'Nas plataformas flutuantes ela troca de lado: pulando segurando o lado contrário ao que olha, ela fica de cabeça para baixo debaixo da plataforma (ou volta para cima), e numa lateral pula para a lateral oposta. Paredes e chãos duros não deixam trocar.',
+      'Andando agachada até a ponta de uma plataforma, ela agarra a lateral em vez de cair; subindo pela lateral ela passa para cima da plataforma, e subindo por dentro de uma caixa fica pendurada debaixo do topo.',
+      'De cabeça para baixo, Cima a encolhe e Baixo estica a cabeça para o chão (os controles de olhar e agachar se invertem).',
     ] }, { title: 'Pátio', items: [
       'Novo botão com ícone de Sol no cabeçalho: abre as Configurações do Pátio atual, com largura limite (telas) e altura limite (do chão ao teto). Os valores são salvos junto com o Pátio e só quem pode editá-lo muda; a largura saiu do painel Câmera de Mira.',
       'Uma borda preta de 10 px marca os limites de todo Pátio e da tela do globo. A câmera para no teto do Pátio.',
