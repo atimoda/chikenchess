@@ -21,7 +21,7 @@ Etapa 1 — Pátio online
 1. **Supabase: economia** (feito: `202611070002_patio_lean_reads.sql`). Limpeza de não salvos no máximo 1x/dia; leitura de Pátio sem a lista de pessoas quando ela não mudou. Este plano.
 2. **Servidor de jogo** (feito: `server/`, migração `202611070003_patio_lobby_meta.sql`; nomes repetidos ganham número). Sala = Pátio, 13 conexões com 1–4 galinhas por pacote binário, estados atuais da galinha; entrada com conta (token conferido localmente, sem chamar o Supabase) ou visitante; matchmaking público e lista de lobbies com n/13; dono, remover, público/privado, Edit mode e repasse do chat; teste de carga 13×4. Fecha o #126.
 3. **Cliente no Pátio** (feito: `lib/chicken/online-room.ts`, `components/chicken/online-chickens.tsx`). Conexão e galinhas dos outros (interpolação, visual, cor, item na mão); painel Players online (n/13, limite de 4 locais, cor por navegador); switch online no portal, passador de lobby, link de convite; chat com histórico; contagem ao vivo nas listas Abrir.
-4. **Edit mode ao vivo.** Edições do layout passam pelo servidor para todos; só o dono grava no banco; o próximo dono assume o salvamento.
+4. **Edit mode ao vivo** (feito: mensagens `layout`/`saved` no servidor, `applyLiveLayout`/`saver` em `use-patio-lobby.ts`). Edições do layout passam pelo servidor para todos; só o dono grava no banco; o próximo dono assume o salvamento.
 5. **Deploy na Vultr.** Docker + HTTPS (Caddy), subdomínio `game.<domínio>`, deploy automático pelo GitHub, endereço do servidor no site, medição de ping.
 
 Etapa 2 — mundo compartilhado

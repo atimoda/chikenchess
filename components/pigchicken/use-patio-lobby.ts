@@ -21,14 +21,19 @@ export type PatioSaveState =
 
 const time = (iso: string | null) => (iso ? new Date(iso) : new Date()).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 
-export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId: string | null; isAccount: boolean; isAdmin: boolean; canEdit: boolean }) {
+// saver: this browser writes the Pátio to the database (always offline; online only the lobby owner's browser does,
+// so the browsers editing together never save over each other); onSaved: a save went through, at this revision
+export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = true, onSaved }: { userId: string | null; isAccount: boolean; isAdmin: boolean; canEdit: boolean; saver?: boolean; onSaved?: (revision: number) => void }) {
   const [patio, setPatio] = useState<PatioRecord | null>(null)
   const [remote, setRemote] = useState<PatioLobby | null>(null)
   const [save, setSave] = useState<PatioSaveState>({ kind: "idle", text: "" })
   const cur = useRef<PatioRecord | null>(null)
+  // the layout as the database last had it (JSON), so a change undone by hand is not saved again
+  const savedJson = useRef<string | null>(null)
+  const markSaved = (layout: PatioLayout | null | undefined) => { savedJson.current = layout ? JSON.stringify(layout) : null }
   const put = (next: PatioRecord) => { cur.current = next; setPatio(next) }
-  const ctx = useRef({ userId, isAccount, isAdmin, canEdit })
-  ctx.current = { userId, isAccount, isAdmin, canEdit }
+  const ctx = useRef({ userId, isAccount, isAdmin, canEdit, saver, onSaved })
+  ctx.current = { userId, isAccount, isAdmin, canEdit, saver, onSaved }
   const saveKind = useRef(save.kind)
   saveKind.current = save.kind
 
@@ -49,6 +54,23 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
     keepTimer.current = window.setTimeout(flushKeep, 600)
     if (saveKind.current === "saved") setSave({ kind: "idle", text: "" })
   }, [flushKeep])
+  // Edit mode live: another browser in the online lobby changed the layout. The saver's copy becomes dirty (its
+  // autosave takes it to the database); the others keep it in this browser only.
+  const applyLiveLayout = useCallback((layout: PatioLayout) => {
+    const p = cur.current
+    if (!p) return
+    put({ ...p, layout, edited: true, dirty: ctx.current.saver ? true : p.dirty })
+    pendingKeep.current = true
+    if (keepTimer.current) window.clearTimeout(keepTimer.current)
+    keepTimer.current = window.setTimeout(flushKeep, 600)
+  }, [flushKeep])
+  // the owner saved it: this copy now builds on that revision, and what it holds is saved
+  const adoptRevision = useCallback((revision: number) => {
+    const p = cur.current
+    if (!p || revision <= p.revision) return
+    put(keepPatio({ ...p, revision, dirty: false }))
+    markSaved(p.layout)
+  }, [])
   useEffect(() => {
     window.addEventListener("pagehide", flushKeep)
     return () => { window.removeEventListener("pagehide", flushKeep); flushKeep() }
@@ -61,6 +83,8 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
     const seq = ++loadSeq.current
     const local = loadPatio(id)
     put(local)
+    savedJson.current = null
+    if (!local.dirty && local.revision > 0) markSaved(local.layout)
     setRemote(null)
     setSave({ kind: "idle", text: "" })
     if (!patioOnlineAvailable()) return
@@ -90,6 +114,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
         revision: stale ? base.revision : row.revision, dirty: mine,
       }
       put(keepPatio(next))
+      if (!mine) markSaved(next.layout)
       setRemote(row)
       if (stale) setSave({ kind: "conflict", text: "Este Pátio foi salvo em outro lugar depois das suas mudanças neste navegador.", remote: row })
       if (ctx.current.isAccount && !played.current.has(row.id)) { played.current.add(row.id); playedPatioLobby(row.id).then(() => fetchPatioLobby(row.id, row.revision)).then(r => { if (r && cur.current?.dbId === r.id) setRemote(r) }).catch(() => {}) }
@@ -112,7 +137,13 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
     const p = cur.current
     if (!p || saving.current) return false
     if (!p.dirty && !(force && p.revision === 0)) { if (!silent) setSave({ kind: "saved", text: "Tudo salvo." }); return true }
-    if (!ctx.current.canEdit) return false
+    // changed and changed back: the database already has exactly this
+    if (p.dirty && p.revision > 0 && !force && revision === undefined && savedJson.current === JSON.stringify(p.layout)) {
+      put(keepPatio({ ...p, dirty: false }))
+      if (!silent) setSave({ kind: "saved", text: "Tudo salvo." })
+      return true
+    }
+    if (!ctx.current.canEdit || !ctx.current.saver) return false
     if (!patioOnlineAvailable() || !ctx.current.userId) {
       setSave({ kind: "local", text: patioOnlineAvailable() ? "Entre para salvar no servidor. Ficou salvo neste navegador." : "Sem servidor: ficou salvo neste navegador." })
       return false
@@ -132,13 +163,19 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
         creatorId: p.revision === 0 && p.id ? ctx.current.userId : latest.creatorId,
       })
       put(next)
+      markSaved(p.layout)
       setSave({ kind: "saved", text: `Salvo às ${time(res.updatedAt)}.` })
-      void refreshRemote()
+      ctx.current.onSaved?.(res.revision)
+      // the panels' data (who edited) is read again after a save by hand; the minute's autosave skips that read
+      if (!silent) void refreshRemote()
       return true
     } catch (e) {
       if (isPatioConflict(e)) {
         const row = p.dbId ? await fetchPatioLobby(p.dbId).catch(() => null) : null
         setSave({ kind: "conflict", text: patioErrorMessage(e), remote: row })
+      } else if (patioErrorMessage(e).includes("permissão para editar") && !ctx.current.isAdmin) {
+        // online, the lobby owner may edit a Pátio it cannot save (not its creator): the changes stay in the lobby
+        setSave({ kind: "local", text: "As mudanças valem neste lobby e ficam neste navegador. Só quem criou o Pátio (ou quem ele liberou) salva no servidor." })
       } else setSave({ kind: isPatioServerMissing(e) || isPatioOffline(e) ? "local" : "error", text: patioErrorMessage(e) })
       return false
     } finally {
@@ -149,7 +186,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
   // every minute while there are changes (not while a conflict waits for the player)
   useEffect(() => {
     const t = window.setInterval(() => {
-      if (cur.current?.dirty && saveKind.current !== "conflict" && saveKind.current !== "saving") void saveNow({ silent: true })
+      if (cur.current?.dirty && ctx.current.saver && saveKind.current !== "conflict" && saveKind.current !== "saving") void saveNow({ silent: true })
     }, AUTOSAVE_MS)
     return () => window.clearInterval(t)
   }, [saveNow])
@@ -161,7 +198,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
     if (!p) return
     const row = save.remote ?? (p.dbId ? await fetchPatioLobby(p.dbId).catch(() => null) : null)
     if (choice === "saved") {
-      if (row?.layout) put(keepPatio({ ...p, layout: row.layout, revision: row.revision, dirty: false, name: row.name, godparentId: row.godparentId }))
+      if (row?.layout) { put(keepPatio({ ...p, layout: row.layout, revision: row.revision, dirty: false, name: row.name, godparentId: row.godparentId })); markSaved(row.layout) }
       if (row) setRemote(row)
       setSave({ kind: "saved", text: "Abri a versão salva." })
       return
@@ -206,7 +243,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
   // leaving for another lobby: what is pending is saved first
   const switchTo = useCallback(async (id: string | null) => {
     flushKeep()
-    if (cur.current?.dirty && ctx.current.canEdit) await saveNow({ silent: true })
+    if (cur.current?.dirty && ctx.current.canEdit && ctx.current.saver) await saveNow({ silent: true })
     setLobbyInUrl(id)
     await load(id)
   }, [flushKeep, saveNow, load])
@@ -214,7 +251,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
   // a new Pátio of mine: a copy of the default one
   const startNew = useCallback(async (creatorId: string) => {
     flushKeep()
-    if (cur.current?.dirty && ctx.current.canEdit) await saveNow({ silent: true })
+    if (cur.current?.dirty && ctx.current.canEdit && ctx.current.saver) await saveNow({ silent: true })
     loadSeq.current++
     const next = newPatio(creatorId)
     setLobbyInUrl(next.id)
@@ -224,5 +261,5 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit }: { userId:
     return next.id
   }, [flushKeep, saveNow])
 
-  return { patio, remote, save, load, changeLayout, saveNow, resolveConflict, rename, favorite, switchTo, startNew, refreshRemote }
+  return { patio, remote, save, load, changeLayout, applyLiveLayout, adoptRevision, saveNow, resolveConflict, rename, favorite, switchTo, startNew, refreshRemote }
 }

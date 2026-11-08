@@ -21,7 +21,8 @@ import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
 import { OnlineChickens, netColor, useNet } from "./online-chickens"
-import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, sendNetProfile, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
+import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
+import { normalizeLayout, type PatioLayout } from "@/lib/pigchicken/layout"
 import { getOnlineClient } from "@/lib/online/client"
 import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, type ChickenPortalWorld } from "./chicken-portal"
@@ -47,7 +48,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { PatioEditor } from "@/components/pigchicken/patio-editor"
 import { deviceId, forgetPatio, lobbyFromUrl, onPatioOpenRequest, openPatioLobby } from "@/lib/pigchicken/patio-store"
-import { setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
+import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
 import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
 import { PatioOpenPanel, PatioPersonPanel, PatioSavePanel, type PatioPersonCard } from "@/components/pigchicken/patio-lobby-panels"
@@ -204,7 +205,12 @@ export function ChickenPatio() {
   const meId = online.user?.id ?? null
   const isAccount = !!online.user && !online.user.is_anonymous
   const access = usePatioEditAccess()
-  const pl = usePatioLobby({ userId: meId, isAccount, isAdmin, canEdit: access.canEdit })
+  // online, only the lobby owner's browser saves the Pátio to the database (the others edit live through it)
+  const net = useNet()
+  const netLive = lobby?.mode === "online" && net.status === "online" && !!net.info
+  const amOwner = netLive && net.info!.ownerPid === net.myPid
+  const amEditor = netLive && (amOwner || net.info!.editors.includes(net.myPid ?? -1))
+  const pl = usePatioLobby({ userId: meId, isAccount, isAdmin, canEdit: access.canEdit, saver: !netLive || amOwner, onSaved: rev => { if (getNetState().status === "online") sendNetSaved(rev) } })
   const patio = pl.patio
   useEffect(() => () => clearSceneryWind(), [patio?.id])
   useEffect(() => { void pl.load(lobbyFromUrl()) }, [])
@@ -218,7 +224,6 @@ export function ChickenPatio() {
   }, [patio?.id, creator, meId, isAdmin, editors, isDefaultLobby])
   // the Playgrounds lists count who is here: the local players for now (the online presence feeds it when it is on)
   // ---------- online (the game server, server/) ----------
-  const net = useNet()
   const mode = lobby?.mode ?? "local"
   const localCount = lobby ? localPlayers(lobby).length : 1
   const myLooks = useMemo(() => [draft.look, ...others.map(p => p.look ?? null)] as (Record<string, string> | null)[], [draft.look, others])
@@ -289,7 +294,35 @@ export function ChickenPatio() {
   useEffect(() => { setPatioLiveCounts({ [patio?.id ?? "default"]: playersHere }) }, [patio?.id, playersHere])
   // losing the permission (another Pátio, the owner changed it) closes the editor
   useEffect(() => { if (!access.canEdit) setEditorOn(false) }, [access.canEdit])
-  const changeLayout = pl.changeLayout
+  // Edit mode live: whoever may edit sends the layout to the lobby a moment after each change; the others' edits
+  // arrive here (and the owner's saves move everyone's revision along)
+  const sendTimer = useRef<number | null>(null)
+  const lastSent = useRef("")
+  const changeLayout = (layout: PatioLayout) => {
+    pl.changeLayout(layout)
+    if (!netLive || !access.canEdit) return
+    if (sendTimer.current) window.clearTimeout(sendTimer.current)
+    sendTimer.current = window.setTimeout(() => {
+      sendTimer.current = null
+      // a change undone before it left: nothing new to send
+      const json = JSON.stringify(layout)
+      if (json === lastSent.current) return
+      lastSent.current = json
+      sendNetLayout(layout)
+    }, 300)
+  }
+  const liveRef = useRef({ apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby })
+  liveRef.current = { apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby }
+  useEffect(() => {
+    const offLayout = onNetLayout(raw => { const layout = normalizeLayout(raw, liveRef.current.isDefault); if (layout) liveRef.current.apply(layout) })
+    const offSaved = onNetSaved(rev => liveRef.current.adopt(rev))
+    return () => { offLayout(); offSaved() }
+  }, [])
+  // online, the lobby decides who edits (the owner and whoever it allowed); the default Pátio stays the admin's
+  useEffect(() => {
+    setPatioEditAccess(netLive ? { lobbyId: patio?.id ?? null, mode: "online", canEdit: amEditor } : null)
+    return () => setPatioEditAccess(null)
+  }, [netLive, amEditor, patio?.id])
   // another lobby (from "Abrir" or the lobby panel's Próximo / Anterior): what is pending is saved, the editor closes
   const switchLobby = (id: string | null) => {
     setEditorOn(false)

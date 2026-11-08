@@ -12,7 +12,8 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS ?? '*').split(',').map(s => s.trim(
 const patio = defineRoom(PatioRoom).filterBy(['patioId']).sortBy({ createdAt: 1 })
 
 const server = defineServer({
-  transport: new WebSocketTransport({ pingInterval: 5000, pingMaxRetries: 3 }),
+  // up to 512 kB per message: a Pátio's layout (the database allows 400 kB) goes in one piece in Edit mode
+  transport: new WebSocketTransport({ pingInterval: 5000, pingMaxRetries: 3, maxPayload: 512 * 1024 }),
   rooms: { patio },
   express: app => {
     app.use((req, res, next) => {

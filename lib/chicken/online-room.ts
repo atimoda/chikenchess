@@ -23,6 +23,13 @@ export type NetLobby = { roomId: string; patioId: string; name: string | null; o
 export type RemoteChicken = { x: number; y: number; vx: number; vy: number; face: number; state: number; item: number; at: number }
 
 let state: NetState = { status: 'off', info: null, myPid: null, notice: null }
+// Edit mode live: layouts other browsers edited, and the database revision the owner saved
+type LayoutListener = (layout: unknown) => void
+type SavedListener = (revision: number) => void
+const layoutListeners = new Set<LayoutListener>()
+const savedListeners = new Set<SavedListener>()
+export function onNetLayout(fn: LayoutListener) { layoutListeners.add(fn); return () => { layoutListeners.delete(fn) } }
+export function onNetSaved(fn: SavedListener) { savedListeners.add(fn); return () => { savedListeners.delete(fn) } }
 let room: Room | null = null
 let seq = 0
 const listeners = new Set<() => void>()
@@ -96,6 +103,8 @@ function attach(r: Room) {
     const who = state.info?.players.find(p => p.pid === m.pid)
     receiveChickenChat({ player: netChatPlayer(m.pid), text: m.text, name: who?.name })
   })
+  r.onMessage('layout', (m: { layout: unknown }) => layoutListeners.forEach(fn => fn(m.layout)))
+  r.onMessage('saved', (m: { revision: number }) => savedListeners.forEach(fn => fn(m.revision)))
   r.onMessage('denied', (m: { reason: string }) => set({ notice: m.reason }))
   r.onMessage('kicked', (m: { reason: string }) => set({ notice: m.reason }))
   r.onLeave(() => {
@@ -126,6 +135,9 @@ export const kickNetPlayer = (pid: number) => room?.send('kick', { pid })
 export const setNetPublic = (on: boolean) => room?.send('visibility', { public: on })
 export const setNetEditor = (pid: number, on: boolean) => room?.send('editor', { pid, on })
 export const clearNetNotice = () => set({ notice: null })
+// Edit mode: the layout after an edit (owner or editor) and the revision the owner just saved
+export const sendNetLayout = (layout: unknown) => room?.send('layout', { layout })
+export const sendNetSaved = (revision: number) => room?.send('saved', { revision })
 
 const httpBase = () => GAME_SERVER_URL.replace(/^ws/, 'http')
 /** the public lobbies on the server, oldest first (empty when it cannot be reached) */

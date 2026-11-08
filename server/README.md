@@ -7,6 +7,7 @@ Servidor [Colyseus](https://colyseus.io) separado do site (Next.js), com a sala 
 - **Regras** (`src/rules.mjs`): dono = criador do Pátio presente, senão o navegador mais antigo; só o dono remove (nunca a si mesmo, nem criador/padrinho), abre/fecha e marca quem edita; quando o dono muda, a lista de editores zera. Uma cor por navegador (13). Chat até 140 caracteres, sempre da galinha primária.
 - **Identidade** (`src/auth.mjs`): com token do Supabase, a assinatura é conferida aqui (chaves públicas JWKS, buscadas uma vez por hora, ou `SUPABASE_JWT_SECRET`), sem chamar o Supabase a cada entrada. Sem token é visitante, só com o nome. Sessão anônima do Supabase conta como visitante.
 - **Pátio** (`src/patio-meta.mjs`): ao abrir a sala, lê nome, criador e padrinho por `patio_lobby_meta` (uma linha pequena, uma vez por sala). Estado da sala nunca vai para o banco.
+- **Edit mode ao vivo:** o dono e quem ele liberou mandam o layout inteiro (`layout`, até 400 kB; o transporte aceita 512 kB por mensagem); a sala guarda o último para quem entrar depois. O dono avisa a revisão que salvou no banco (`saved`).
 - Pacotes: `src/protocol.mjs`. Mensagens da sala: comentário no topo de `src/patio-room.mjs`.
 
 ```
