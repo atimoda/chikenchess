@@ -118,6 +118,8 @@ export function createCombat() {
   const inv: Owned[] = []
   let cur = 0
   let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
+  // The item that received the last held-fire frame. A newly equipped weapon sees a fresh trigger press.
+  let fireHeldItem: Owned | null = null
   // the item whose firing a Golpe interrupted while Atirar was held: it shoots again when the blow ends
   let fireResume: Owned | null = null
   let peck: Peck | null = null, peckPrep = 0, peckCool = 0
@@ -439,18 +441,18 @@ export function createCombat() {
   type Loadout = {
     peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
-    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
+    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   const save = (): Loadout => ({
-    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
+    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects,
   })
   const blank = (): Loadout => ({
-    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
+    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
     beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [],
   })
   function useLoadout(id: string) {
@@ -458,7 +460,7 @@ export function createCombat() {
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects } = l)
     active = id
   }
 
@@ -1250,6 +1252,14 @@ export function createCombat() {
       } else parryZones.delete(active)
       // Fire with an item shoots; Golpe continues to use the wing/item.
       const h = held()
+      if (input.fire && h && h !== fireHeldItem) {
+        const firingItem = items[h.item]
+        if (!firingItem.consumable && !firingItem.meleeOnly && firingItem.mag > 0) {
+          // Switching items while the trigger stays down acts like a new press for this weapon.
+          input = { ...input, firePressed: true }
+          cooldown = 0
+        }
+      }
       const canFire = body.state !== 'slide' || d.slideFire
       if (effects.length) { effects.forEach(e => { e.left -= dt }); effects = effects.filter(e => e.left > 0) }
       if (!h) {
@@ -1310,6 +1320,7 @@ export function createCombat() {
         }
       }
       prevFire = input.fire
+      fireHeldItem = input.fire ? h : null
 
       // throw: hold to charge, let go to throw what she holds; another item in the wing while charging
       // (switched, grabbed) calls the throw off completely, until the button is let go
@@ -1370,6 +1381,8 @@ export function createCombat() {
 
       // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
       hover = null; hoverOwned = null
+      const pickupReachX = (46 * body.scale + 10) * 1.15
+      const pickupReachY = 60 * body.scale + 20
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
         if (world) p.noPick = Math.max(0, p.noPick - dt)
@@ -1380,9 +1393,9 @@ export function createCombat() {
           if (top) { p.y = top.t; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
-        if (Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && canTake(p)) {
+        if (Math.abs(p.x - body.x) < pickupReachX && Math.abs(p.y - body.y) < pickupReachY && canTake(p)) {
           if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
-        } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < 46 * body.scale + 10 && Math.abs(p.y - body.y) < 60 * body.scale + 20 && inv.some(o => o.item === p.owned.item)) {
+        } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < pickupReachX && Math.abs(p.y - body.y) < pickupReachY && inv.some(o => o.item === p.owned.item)) {
           if (!hoverOwned || Math.abs(p.x - body.x) < Math.abs(hoverOwned.x - body.x)) hoverOwned = p
         }
       }

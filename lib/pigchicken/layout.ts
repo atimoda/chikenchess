@@ -20,10 +20,13 @@ import { VILLAGE_GROUND_ID, defaultSurface, normalizeSurface, polygonContains, s
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
-// Vila's fixed ground (`terrain`) into a ground element.
-export const LAYOUT_VERSION = 5
+// Vila's fixed ground (`terrain`) into a ground element. v6 seats the default portals on their starting platforms.
+export const LAYOUT_VERSION = 6
 // the widest world the Pátio offers (its width setting): the default layout covers it, a narrower world hides the rest
 export const LAYOUT_MAX_SCREENS = 8
+const FIRST_SCENE_PLATFORMS = SCENE_PLATFORMS[0]
+const TEMPLE_START_PLATFORM = FIRST_SCENE_PLATFORMS.find(p => p.x === 538)!
+const VILLAGE_START_PLATFORM = FIRST_SCENE_PLATFORMS.find(p => p.x === 1229)!
 const LEGACY_MAX_ELEMENTS = 1500
 // Reserve space to migrate both shortcut pairs and the Vila's ground without dropping existing elements.
 export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 5
@@ -171,16 +174,16 @@ function shortcutPortals(existing: LayoutElement[] = []): LayoutElement[] {
     return id
   }
   const d = ELEMENT_DEFS.portal
-  const portal = (id: string, pairId: string, cx: number, label: string, region?: LayoutElement['region']) => normalizeElement({
-    id, kind: 'portal', region, x: cx - d.w / 2, y: WORLD_GROUND_Y - d.h + 6,
+  const portal = (id: string, pairId: string, cx: number, label: string, region?: LayoutElement['region'], platform?: typeof FIRST_SCENE_PLATFORMS[number]) => normalizeElement({
+    id, kind: 'portal', region, x: cx - d.w / 2, y: platform ? WORLD_GROUND_Y - platform.bottom - platform.h - d.h + 6 : WORLD_GROUND_Y - d.h + 6,
     params: { portalPairId: pairId, portalLabel: label, portalInstruction: 'always' },
   })!
   const temple = reserveId('shortcut-temple')
   const village = reserveId('shortcut-village')
   return [
-    portal(temple, temple, 395, 'Templo do Gongo'),
+    portal(temple, temple, TEMPLE_START_PLATFORM.x + TEMPLE_START_PLATFORM.w / 2, 'Templo do Gongo', undefined, TEMPLE_START_PLATFORM),
     portal(reserveId('shortcut-temple-return'), temple, 125, 'Voltar ao início do Pátio', 'temple'),
-    portal(village, village, 620, 'Vila dos Telhados'),
+    portal(village, village, VILLAGE_START_PLATFORM.x + VILLAGE_START_PLATFORM.w / 2, 'Vila dos Telhados', undefined, VILLAGE_START_PLATFORM),
     portal(reserveId('shortcut-village-return'), village, 150, 'Voltar ao início do Pátio', 'village'),
   ]
 }
@@ -387,6 +390,22 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
     }
   }
   if (!hasStoredShortcuts) elements.push(...shortcutPortals(elements))
+  // Move only untouched default entrances from their old ground positions. Custom default-layout edits and
+  // every personal Patio keep their saved portal locations.
+  if (isDefault && typeof v === 'number' && v < 6) {
+    const portalSize = ELEMENT_DEFS.portal
+    const destinations = new Map([
+      ['shortcut-temple', { oldX: 395 - portalSize.w / 2, newX: TEMPLE_START_PLATFORM.x + (TEMPLE_START_PLATFORM.w - portalSize.w) / 2, y: WORLD_GROUND_Y - TEMPLE_START_PLATFORM.bottom - TEMPLE_START_PLATFORM.h - portalSize.h + 6 }],
+      ['shortcut-village', { oldX: 620 - portalSize.w / 2, newX: VILLAGE_START_PLATFORM.x + (VILLAGE_START_PLATFORM.w - portalSize.w) / 2, y: WORLD_GROUND_Y - VILLAGE_START_PLATFORM.bottom - VILLAGE_START_PLATFORM.h - portalSize.h + 6 }],
+    ])
+    for (const el of elements) {
+      const target = destinations.get(el.id)
+      if (el.kind === 'portal' && target && el.x === target.oldX && el.y === WORLD_GROUND_Y - portalSize.h + 6 && !el.region) {
+        el.x = target.newX
+        el.y = target.y
+      }
+    }
+  }
   // saved before v5: the Vila's fixed ground (with its edited ridge, `terrain`) becomes the first element, so it is
   // drawn and collides behind everything else in its layer, as before
   if (!(typeof v === 'number' && v >= 5)) {

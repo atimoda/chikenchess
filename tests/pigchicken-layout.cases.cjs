@@ -220,12 +220,37 @@ test('both default shortcuts resolve a partner and return to the start at differ
     const portals = L.elementsInWorld(layout, screens).filter(e => e.kind === 'portal')
     for (const [index, scene] of [[0, world.templeScene(screens)], [2, world.villageScene(screens)]]) {
       const entry = portals[index]
+      const platform = world.SCENE_PLATFORMS[0][index === 0 ? 2 : 3]
+      assert.equal(entry.x + entry.w / 2, platform.x + platform.w / 2)
+      assert.equal(entry.y + entry.h - 6, world.WORLD_GROUND_Y - platform.bottom - platform.h)
       const exit = L.portalPartner(entry, portals)
       assert.equal(Math.floor((exit.x + exit.w / 2) / world.SCENE_W), scene)
       assert.equal(L.portalPartner(exit, portals), entry)
       assert.equal(Math.floor(entry.x / world.SCENE_W), 0)
     }
   }
+})
+
+test('default shortcut portal migration moves only untouched entries onto their platforms', () => {
+  const current = L.defaultLayout()
+  const old = structuredClone(current)
+  old.v = 5
+  for (const [id, cx] of [['shortcut-temple', 395], ['shortcut-village', 620]]) {
+    const portal = old.elements.find(e => e.id === id)
+    portal.x = cx - portal.w / 2
+    portal.y = world.WORLD_GROUND_Y - portal.h + 6
+  }
+  const migrated = L.normalizeLayout(old, true)
+  for (const [id, platformIndex] of [['shortcut-temple', 2], ['shortcut-village', 3]]) {
+    const portal = migrated.elements.find(e => e.id === id)
+    const platform = world.SCENE_PLATFORMS[0][platformIndex]
+    assert.equal(portal.x + portal.w / 2, platform.x + platform.w / 2)
+    assert.equal(portal.y + portal.h - 6, world.WORLD_GROUND_Y - platform.bottom - platform.h)
+  }
+  const custom = structuredClone(old)
+  custom.elements.find(e => e.id === 'shortcut-temple').x += 1
+  const preserved = L.normalizeLayout(custom, true).elements.find(e => e.id === 'shortcut-temple')
+  assert.equal(preserved.x, custom.elements.find(e => e.id === 'shortcut-temple').x)
 })
 
 test('older layouts gain editable shortcuts once, preserving custom pairs and saved moves', () => {

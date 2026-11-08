@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
 import { GamePreferences } from "@/components/game-preferences"
-import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { SCENE_PLATFORMS, WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { BAR_GROUND_H, INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
@@ -63,8 +63,9 @@ import type { ChickenLook } from "@/lib/chicken/look-art"
 import { LobbySwitcher, LocalChickens, PlayersPanel, lookForNewPlayer, useInputDevices } from "./players-panel"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
-// the portal back to the globe: near the start of the Pátio, before the weapons' racks (world units)
-const PORTAL_X = 100, PORTAL_D = 150
+// The globe portal sits over the small platform at the far left of the first Patio scene.
+const PORTAL_PLATFORM = SCENE_PLATFORMS[0][1]
+const PORTAL_X = PORTAL_PLATFORM.x + PORTAL_PLATFORM.w / 2, PORTAL_GROUND_Y = WORLD_GROUND_Y - PORTAL_PLATFORM.bottom - PORTAL_PLATFORM.h, PORTAL_D = 150
 // she arrives (and starts) just to its right, clear of the ring
 const SPAWN_X = PORTAL_X + 110
 
@@ -123,7 +124,7 @@ export function ChickenPatio() {
   const chatPlayers = useMemo(() => ({ ...speakers, [LOCAL_CHAT_PLAYER]: engine }), [engine, speakers])
   const worldRef = useRef<HTMLDivElement>(null)
   const fgRef = useRef<HTMLDivElement>(null)
-  const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: WORLD_GROUND_Y, d: PORTAL_D }), [])
+  const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: PORTAL_GROUND_Y, d: PORTAL_D }), [])
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
   // the Sun button: the current Pátio's settings (its limits)
@@ -447,27 +448,6 @@ export function ChickenPatio() {
           <Save className="h-4 w-4" />
           {patio?.dirty && <span aria-hidden="true" className={cn("absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full", pl.save.kind === "conflict" || pl.save.kind === "error" ? "bg-[#ff8a7a]" : "bg-[#ffd166]")} />}
         </button>
-        <h1 className="hidden min-w-0 items-baseline gap-1.5 whitespace-nowrap font-mono text-sm font-bold sm:flex">
-          <span className="truncate" title={patioName}>{patioName}</span>
-          {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
-        </h1>
-        {/* the lobby switcher and the players, right after the Pátio's name */}
-        <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} onStatus={setToast} onSwitch={target => {
-          // the other lobby's Pátio opens, and its room is the one joined
-          const url = new URL(window.location.href)
-          url.searchParams.set("room", target.roomId)
-          window.history.replaceState(null, "", url)
-          void leavePatioOnline()
-          if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
-          else openPatioLobby(target.patioId === "default" ? null : target.patioId)
-        }} />
-        <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Users className="h-4 w-4" />
-          {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
-        </button>
-        {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
-        <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <ChickenChatButton open={chatOpen} onToggle={() => setChatOpen(v => !v)} />
         <div className="relative">
           <button
             type="button"
@@ -489,6 +469,27 @@ export function ChickenPatio() {
             </div>
           )}
         </div>
+        <h1 className="hidden min-w-0 items-baseline gap-1.5 whitespace-nowrap font-mono text-sm font-bold sm:flex">
+          <span className="truncate" title={patioName}>{patioName}</span>
+          {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
+        </h1>
+        {/* the lobby switcher and the players, right after the Pátio's name */}
+        <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} onStatus={setToast} onSwitch={target => {
+          // the other lobby's Pátio opens, and its room is the one joined
+          const url = new URL(window.location.href)
+          url.searchParams.set("room", target.roomId)
+          window.history.replaceState(null, "", url)
+          void leavePatioOnline()
+          if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
+          else openPatioLobby(target.patioId === "default" ? null : target.patioId)
+        }} />
+        {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
+        <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Users className="h-4 w-4" />
+          {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
+        </button>
+        <ChickenChatButton open={chatOpen} onToggle={() => setChatOpen(v => !v)} />
         <button type="button" aria-label="Configurações do Pátio" aria-pressed={settingsOpen} title="Configurações do Pátio" onClick={() => setSettingsOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", settingsOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Sun className="h-4 w-4" />
         </button>

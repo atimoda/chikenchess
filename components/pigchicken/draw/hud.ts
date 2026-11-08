@@ -19,9 +19,12 @@ export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: nu
   ctx.save()
   ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 3
   if (combat.reloading) ctx.globalAlpha = 0.55
+  const baseAlpha = ctx.globalAlpha
   // the faint aim line (the families that draw their own path skip it)
   if (showPath && !path && d.reticle !== "cone") {
-    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
+    const grad = ctx.createLinearGradient(origin.x, origin.y, rx, ry)
+    grad.addColorStop(0, "rgba(255,255,255,0.25)"); grad.addColorStop(1, "rgba(255,255,255,0)")
+    ctx.strokeStyle = grad; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6])
     line(origin.x, origin.y, rx, ry)
     ctx.setLineDash([])
   }
@@ -57,7 +60,11 @@ export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: nu
     ctx.globalAlpha = 1
   } else if (d.reticle === "laser") {
     // sniper: a thin laser from the muzzle to whatever it hits, and a circle with a cross that closes while still
-    if (showPath && end) { ctx.strokeStyle = "rgba(255,80,80,0.75)"; ctx.lineWidth = 1; line(origin.x, origin.y, end.x, end.y) }
+    if (showPath && end) {
+      const grad = ctx.createLinearGradient(origin.x, origin.y, end.x, end.y)
+      grad.addColorStop(0, "rgba(255,80,80,0.75)"); grad.addColorStop(1, "rgba(255,80,80,0)")
+      ctx.strokeStyle = grad; ctx.lineWidth = 1; line(origin.x, origin.y, end.x, end.y)
+    }
     ctx.strokeStyle = color; ctx.lineWidth = 1.5
     const r = 10 + gap
     ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke()
@@ -68,8 +75,22 @@ export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: nu
     ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5
     if (!showPath || !path || !end) { /* path hidden: only where it lands */ }
     else if (d.reticle === "grenade") {
-      path.forEach((p, i) => { if (i % 3 === 0) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fill() } })
-    } else { ctx.setLineDash([3, 5]); line(origin.x, origin.y, end.x, end.y); ctx.setLineDash([]) }
+      ctx.fillStyle = "#ffffff"
+      const totalPathLength = path.reduce((sum, point, index) => index ? sum + Math.hypot(point.x - path[index - 1].x, point.y - path[index - 1].y) : sum, 0)
+      let distance = 0
+      path.forEach((p, i) => {
+        if (i) distance += Math.hypot(p.x - path[i - 1].x, p.y - path[i - 1].y)
+        if (i % 3 === 0 || i === path.length - 1) {
+          ctx.globalAlpha = baseAlpha * 0.6 * (1 - distance / Math.max(1, totalPathLength))
+          ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fill()
+        }
+      })
+      ctx.globalAlpha = baseAlpha
+    } else {
+      const grad = ctx.createLinearGradient(origin.x, origin.y, end.x, end.y)
+      grad.addColorStop(0, "rgba(255,255,255,0.45)"); grad.addColorStop(1, "rgba(255,255,255,0)")
+      ctx.strokeStyle = grad; ctx.setLineDash([3, 5]); line(origin.x, origin.y, end.x, end.y); ctx.setLineDash([])
+    }
     // where it lands, with the blast's radius (per item: always, or only with the fire button held, …)
     if (showLand && end) {
       ctx.strokeStyle = color; ctx.lineWidth = 2
@@ -88,7 +109,10 @@ export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: nu
     const c = combat.fireCharge
     const n = Math.max(2, Math.round((path?.length ?? 0) * (0.25 + 0.75 * c)))
     if (showPath && path) {
-      ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4])
+      const tip = path[Math.min(n - 1, path.length - 1)]
+      const grad = ctx.createLinearGradient(origin.x, origin.y, tip.x, tip.y)
+      grad.addColorStop(0, "rgba(255,255,255,0.5)"); grad.addColorStop(1, "rgba(255,255,255,0)")
+      ctx.strokeStyle = grad; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4])
       ctx.beginPath(); path.slice(0, n).forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([])
     }
     const tip = showPath && path ? path[n - 1] : { x: rx, y: ry }
@@ -106,7 +130,7 @@ export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: nu
   ctx.restore()
 }
 
-// where a throw let go now would fly: a dotted arc, solid for its first half and fading out over the second
+// where a throw let go now would fly: a dotted arc that fades smoothly from the hand to full transparency at impact
 export function drawThrowPath(ctx: Ctx, pts: { x: number; y: number }[]) {
   if (pts.length < 2) return
   const len: number[] = [0]
@@ -116,11 +140,12 @@ export function drawThrowPath(ctx: Ctx, pts: { x: number; y: number }[]) {
   ctx.save()
   ctx.fillStyle = "#7bdff2"
   let j = 1
-  for (let at = 14; at < total; at += 14) {
+  for (let step = 1; step <= Math.ceil(total / 14); step++) {
+    const at = Math.min(step * 14, total)
     while (j < pts.length - 1 && len[j] < at) j++
     const a = pts[j - 1], b = pts[j], seg = len[j] - len[j - 1] || 1, u = (at - len[j - 1]) / seg
     const t = at / total
-    ctx.globalAlpha = 0.9 * (t < 0.5 ? 1 : Math.max(0, 1 - (t - 0.5) / 0.5))
+    ctx.globalAlpha = 0.9 * (1 - t)
     ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, 2.6, 0, Math.PI * 2); ctx.fill()
   }
   ctx.restore()
