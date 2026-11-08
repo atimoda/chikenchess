@@ -45,8 +45,7 @@ import { CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, openJuke
 import { drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
-import type { RidgePoint } from "@/lib/pigchicken/village"
-import { VillageBackdrop, VillageCollider } from "@/components/pigchicken/village-backdrop"
+import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_W, INV_STACK, invRowY, invRight, BAR, BAR_W, drawInventory, wheelGeom, drawWheel } from "@/components/pigchicken/draw/hud"
@@ -62,7 +61,7 @@ const SOURCE_LABEL: Record<AimSource, string> = {
 const DEFAULT_ELEMENTS = defaultLayout().elements
 const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
 // worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, terrain, worldTop = WORLD_TOP, groundHeight = 30 }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; terrain?: RidgePoint[]; worldTop?: number; groundHeight?: number }) {
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30 }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
   const templeLeft = templeScene(screens) * SCENE_W
@@ -89,7 +88,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
         </div>
       ))}
       <TempleBackdrop left={templeScene(screens) * SCENE_W} />
-      <VillageBackdrop left={villageLeft} ridge={terrain} />
+      <VillageBackdrop left={villageLeft} />
       {debug && (
         <div className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: templeScene(screens) * SCENE_W }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 1} · Templo do Gongo</span>
@@ -111,7 +110,6 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       <SceneryVisibilityStyles />
       <LayoutLayerView elements={shown} layer="back" editing={editing} />
       <div data-chicken-platforms className="absolute inset-0">
-        <VillageCollider left={villageLeft} ridge={terrain} />
         {TEMPLE_PLATFORMS.map((p, i) => {
           const x = templeLeft + p.x, y = WORLD_GROUND_Y - p.bottom - p.h
           return <div key={`tp-${i}`} data-chicken-id={`tp-${i}`} data-chicken-depth={TEMPLE_PLATFORM_DEPTH}

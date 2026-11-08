@@ -7,7 +7,8 @@
 // touch them in the air with no movement control held, and its underside is a ceiling she grabs rising into it
 // with Up held (she hangs upside down). The limits (screen sides and top, or the Pátio's world) are solid walls
 // and a solid ceiling she climbs by pushing into them, going round the corners; the ground sits `groundHeight` px
-// above the bottom of the viewport.
+// above the bottom of the viewport. A closed outline (`data-chicken-shape`) splits into floors, walls and ceilings by
+// how each edge faces; with `data-chicken-hard` ("Objeto duro") they are all solid and its walls stop her.
 import { requestGameFrame, cancelGameFrame } from '../game-frame'
 import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenLook } from './look-art'
@@ -18,7 +19,8 @@ import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier
 import { shockingAirLegPose } from './shocking-pose'
 import { magnetVector } from './analog-magnet'
 import { createThrowTransition } from './throw-transition'
-import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce, type PlatformOcclusion } from './platform-geometry'
+import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce, chickenPlatformShape, chickenPlatformHard, type PlatformOcclusion } from './platform-geometry'
+import { blockHardWalls, clipAboveGround, polygonContains, shapeEdges } from './hard-shapes'
 import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampoline'
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
@@ -89,7 +91,8 @@ export type ChickenEngine = {
 }
 
 // ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
-type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams; ceil?: boolean }
+// hardN: the outside of an "Objeto duro" edge (its walls stop her, its floors catch her feet)
+type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams; ceil?: boolean; hardN?: number[] }
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
@@ -599,7 +602,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       // rising into a ceiling: Up grabs it (she hangs upside down); the limits' ceiling stops her otherwise
       else if (S.vy < 0 && ceilingStep(prevY, U)) return
     }
+    const prevX = S.x
     S.x += S.vx * motionDt
+    hardStep(prevX)
     const margin = 40 * R.scale
     if (S.x < wallLo() + margin) { S.x = wallLo() + margin; S.vx = 0 }
     if (S.x > wallHi() - margin) { S.x = wallHi() - margin; S.vx = 0 }
@@ -675,17 +680,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- colliders ----------
   let SEGS: Seg[] = []
+  // the hard outlines near her (screen units), to lift her out when one ends up over her feet
+  let HARD_SHAPES: { id: string; poly: number[][] }[] = []
   function buildSegs() {
     const out: Seg[] = []
+    const hardShapes: typeof HARD_SHAPES = []
     let source: Element | undefined, mask: PlatformOcclusion | undefined
-    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams, ceil = false) => {
+    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams, ceil = false, top = false, hardN?: number[]) => {
       const len = Math.hypot(bx - ax, by - ay); if (len < 4) return
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
       const wall = climbable || ceil || (!floor && Math.min(a, 180 - a) > 45)
-      const topEdge = id.endsWith(':top')
+      const topEdge = top || id.endsWith(':top')
       const visible = mask && source && mask.clip(source, id, mask.depth, ax - mask.x, ay - mask.y, bx - mask.x, by - mask.y)
       if (!visible) {
-        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce, ...(ceil ? { ceil } : {}) })
+        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce, ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}) })
         return
       }
       const dx = bx - ax, dy = by - ay
@@ -695,7 +703,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         out.push({
           id: i === 0 ? id : `${id}~${i}`, ax: ax + dx * from, ay: ay + dy * from,
           bx: ax + dx * to, by: ay + dy * to, anchorX: ax, clipOffset: from * len, topEdge, len: partLen, ang: a, wall, solid, bounce,
-          ...(ceil ? { ceil } : {}),
+          ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}),
         })
       })
     }
@@ -712,6 +720,28 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const bounce = chickenPlatformBounce(e)
       if (bounce) {
         if (r.top < groundY - 4) add(id + ':bounce', r.left, r.top, r.right, r.top, false, true, false, bounce)
+        return
+      }
+      // a closed outline: floors along the edges facing up (named like a shaped floor's pieces, so walking goes on
+      // from one to the next), walls on the steep ones and ceilings under it; hard, all of them are solid
+      const shape = chickenPlatformShape(e)
+      if (shape) {
+        const hard = chickenPlatformHard(e)
+        if (hard) hardShapes.push({ id, poly: shape.map(([x, y]) => [r.left + x, r.top + y]) })
+        shapeEdges(shape).forEach(({ i, a, b, kind, n }) => {
+          const hn = hard ? n : undefined
+          const ax = r.left + a[0], ay = r.top + a[1], bx = r.left + b[0], by = r.top + b[1]
+          if (Math.min(ay, by) >= groundY - 4) return
+          if (kind === 'floor') add(`${id}:l${i}`, ax, ay, bx, by, hard, true, false, undefined, false, true, hn)
+          else if (kind === 'ceil') {
+            add(`${id}:u${i}`, ax, ay, bx, by, hard, false, false, undefined, true, false, hn)
+            // seen from inside, a floating box's bottom is a floor too
+            if (!hard) add(`${id}:b${i}`, ax, ay, bx, by, false, true)
+          } else {
+            const part = clipAboveGround([ax, ay], [bx, by], groundY)
+            if (part) add(`${id}:w${i}`, part[0][0], part[0][1], part[1][0], part[1][1], hard, false, true, undefined, false, false, hn)
+          }
+        })
         return
       }
       // a shaped floor (curved or sloped roofs): `data-chicken-line="x,y x,y …"` in the element's own pixels,
@@ -755,6 +785,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     add('screen:left', wallLo(), top, wallLo(), groundY, true); add('screen:right', wallHi(), top, wallHi(), groundY, true)
     add('screen:top', wallLo(), top, wallHi(), top, true, false, false, undefined, true)
     SEGS = out
+    HARD_SHAPES = hardShapes
   }
   // elements without an id get one, so standing on a box survives re-ordering of the DOM
   let autoId = 0
@@ -982,6 +1013,39 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.state = 'cling'
     updateFeet(dt, 'cling', speed)
     animate(dt, 'cling', false, speed)
+  }
+
+  // ---------- "Objeto duro": its walls stop her, and its floors catch her feet ----------
+  // After moving sideways (not clinging): a hard wall in front of her body above the knees stops her; then a hard
+  // floor up to knee height above her feet (a slope's foot, a low step, a corner she slid into) puts her on it.
+  function hardStep(prevX: number) {
+    const s = R.scale
+    const x = blockHardWalls(SEGS, prevX, S.x, S.y - HEAD_TOP * s, S.y - STEP_UP * s, 16 * s)
+    if (x !== null) { S.x = x; S.vx = 0 }
+    // an outline placed over her (the editor, a moved object): she climbs out onto its nearest floor above her feet
+    const feetY = S.y - 2
+    for (const { id, poly } of HARD_SHAPES) {
+      if (!polygonContains(poly, S.x, feetY)) continue
+      let exit: Seg | null = null, exitY = -Infinity
+      for (const sg of SEGS) {
+        if (!sg.hardN || sg.wall || !sg.id.startsWith(id + ':l')) continue
+        const fy = floorY(sg, S.x)
+        if (fy !== null && fy < feetY && fy > exitY) { exit = sg; exitY = fy }
+      }
+      if (exit) { S.cl = null; land(exitY, exit); return }
+    }
+    if (!S.grounded && S.vy < 0) return
+    let best: Seg | null = null, bestY = Infinity
+    for (const sg of SEGS) {
+      if (!sg.hardN || sg.wall) continue
+      const fy = floorY(sg, S.x)
+      if (fy === null || fy > S.y + 0.5 || fy < S.y - STEP_UP * s || fy >= groundY) continue
+      if (S.grounded && (sg.id === S.plat || fy >= S.y - 0.5)) continue
+      if (fy < bestY) { best = sg; bestY = fy }
+    }
+    if (!best) return
+    if (S.grounded) { S.y = bestY; S.plat = best.id; S.platAx = best.anchorX }
+    else land(bestY, best)
   }
 
   // ---------- step up: a platform edge touching her shin or foot while walking lifts her onto it ----------

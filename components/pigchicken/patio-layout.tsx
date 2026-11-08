@@ -4,7 +4,7 @@
 // invisible floors and walls the chicken's engine reads (`data-chicken-platforms`). The game's own things
 // (dummies, racks, buttons) are drawn on the game's canvas (parquinho.tsx) and only placed from here.
 import { memo, useEffect, useMemo, useRef } from "react"
-import { ELEMENT_DEFS, elementBounds, elementFloorLine, layoutCollisionDepth, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
+import { ELEMENT_DEFS, elementBounds, elementCorners, elementFloorLine, elementOutline, isHard, layoutCollisionDepth, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
 import { houseSurfaces, normalizeHouse } from "@/lib/pigchicken/houses"
 import { TRAMPOLINE_DEFAULTS, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
@@ -15,12 +15,14 @@ import { HouseArt } from "./house-art"
 import { CustomTreeArt, CustomTreeStyles } from "./tree-art"
 import { SceneryWindStyles } from "./scenery-wind-bend"
 import { LanesArt, ZoneArt } from "./sound-zone-art"
+import { SurfaceArt } from "./surface-art"
 
 // one element's art filling its box
 export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h">; worldX?: number; editing?: boolean }) {
   if (el.kind === "zone") return el.params.zone ? <ZoneArt zone={el.params.zone} /> : null
   if (el.kind === "lanes") return el.params.lanes ? <LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing={editing} /> : null
   if (el.kind === "house") return <HouseArt house={el.params.house ?? normalizeHouse(null)} />
+  if ((el.kind === "ground" || el.kind === "wall") && el.params.surface) return <SurfaceArt surface={el.params.surface} w={el.w} h={el.h} />
   if (el.kind === "tree" && el.params.tree) return <CustomTreeArt tree={el.params.tree} worldX={worldX} />
   if (el.kind === "trampoline") {
     const { strength } = el.params.trampoline ?? TRAMPOLINE_DEFAULTS
@@ -93,6 +95,20 @@ const TreeCollider = memo(function TreeCollider({ id, x, y, w, h, rot, tree, dep
     data-chicken-walls={walls || undefined} data-chicken-nearby className="absolute" />
 })
 
+// a closed outline (a Chão or Parede, or any "Objeto duro"): the engine reads its edges as floors (facing up),
+// walls (steep) and ceilings (facing down); `data-chicken-hard` makes all of them solid and blocks walking through
+const ShapeCollider = memo(function ShapeCollider({ id, outline, hard, depth }: { id: string; outline: [number, number][]; hard: boolean; depth: number }) {
+  const { box, shape } = useMemo(() => {
+    const xs = outline.map(p => p[0]), ys = outline.map(p => p[1])
+    const x = Math.min(...xs), y = Math.min(...ys)
+    return {
+      box: `${x},${y},${Math.max(...xs) - x},${Math.max(...ys) - y}`,
+      shape: outline.map(([px, py]) => `${(px - x).toFixed(2)},${(py - y).toFixed(2)}`).join(" "),
+    }
+  }, [outline])
+  return <div data-chicken-id={id} data-chicken-depth={depth} data-chicken-world-box={box} data-chicken-shape={shape} data-chicken-hard={hard || undefined} data-chicken-nearby className="absolute" />
+})
+
 // what she stands on: one invisible box per solid element (its turned bounds); a sloped one is a ramp, a one-way
 // floor along its upper edges. The ids stay the elements' own, so standing on one survives edits.
 export const LayoutColliders = memo(function LayoutColliders({ elements }: { elements: LayoutElement[] }) {
@@ -111,6 +127,8 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
             data-chicken-bounce={`${el.params.trampoline.strength},${el.params.trampoline.angle}`} data-chicken-nearby className="absolute" />
         }
         if (el.kind === "house" && el.params.house) return <HouseCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} house={el.params.house} depth={depth} />
+        const outline = elementOutline(el) ?? (isHard(el) ? elementCorners(el) : null)
+        if (outline) return <ShapeCollider key={el.id} id={el.id} outline={outline} hard={isHard(el)} depth={depth} />
         const b = elementBounds(el)
         const line = elementFloorLine(el)
         return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${b.x},${b.y},${b.w},${b.h}`} data-chicken-line={line ?? undefined} className="absolute" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />

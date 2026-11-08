@@ -198,7 +198,7 @@ test('duplicating a portal copies its entire pair into a new independent link, p
 test('the demo follows the Temple at every Parquinho width and upgrades a legacy default only once', () => {
   const raw = { v: 2, elements: [{ id: 'kept', kind: 'platform', x: 200 }] }
   const personal = L.normalizeLayout(raw)
-  assert.deepEqual(personal.elements.filter(e => e.kind !== 'portal').map(e => e.id), ['kept'])
+  assert.deepEqual(personal.elements.filter(e => e.kind !== 'portal').map(e => e.id), ['village-ground', 'kept'])
   const defaultPatio = L.normalizeLayout(raw, true)
   const demo = defaultPatio.elements.filter(e => e.kind === 'house')
   assert.ok(demo.length > 0)
@@ -232,8 +232,8 @@ test('older layouts gain editable shortcuts once, preserving custom pairs and sa
   const existing = L.createPortalPair(560, 280)
   existing.forEach(p => { p.params.portalPairId = 'shortcut-village' })
   const layout = L.normalizeLayout({ v: 3, elements: existing })
-  assert.equal(layout.elements.length, 6)
-  assert.equal(L.portalPartner(layout.elements[0], layout.elements).id, existing[1].id)
+  assert.equal(layout.elements.length, 7)
+  assert.equal(L.portalPartner(layout.elements.find(e => e.id === existing[0].id), layout.elements).id, existing[1].id)
   const worldView = L.elementsInWorld(layout, 4)
   const exit = worldView.find(p => p.id === 'shortcut-village-return')
   const entry = L.portalPartner(exit, worldView)
@@ -253,8 +253,9 @@ test('older layouts gain editable shortcuts once, preserving custom pairs and sa
 test('a full legacy layout keeps all its elements when shortcut pairs are added', () => {
   const old = { v: 3, elements: Array.from({ length: 1500 }, (_, i) => ({ id: `old-${i}`, kind: 'platform' })) }
   const current = L.normalizeLayout(old)
-  assert.equal(current.elements.length, 1504)
-  assert.equal(current.elements[1499].id, 'old-1499')
+  assert.equal(current.elements.length, 1505)
+  assert.equal(current.elements[0].id, 'village-ground')
+  assert.equal(current.elements[1500].id, 'old-1499')
   assert.equal(current.elements.filter(el => el.kind === 'portal').length, 4)
   assert.deepEqual(L.normalizeLayout(current), current)
 })
@@ -359,18 +360,98 @@ test('cubist terrace joins all four parapet corners as one-way floors when resiz
   }
 })
 
-test('the editable ridge survives a layout round trip and rejects non-walkable point order', () => {
+test('the old Chão da Vila becomes the first ground element, keeping an edited ridge, only once', () => {
+  const S = loadTs('lib/pigchicken/surfaces.ts')
   const V = loadTs('lib/pigchicken/village.ts')
-  const initial = V.VILLAGE_RIDGE
-  const split = V.splitRidgeSegment(initial, 0)
-  assert.equal(split.length, initial.length + 1)
-  assert.deepEqual(split[1], [367, 897])
-  const moved = V.moveRidgePoint(split, 1, 700, 650)
-  assert.deepEqual(moved[1], [432, 650])
-  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify({ ...L.defaultLayout(), terrain: moved }))).terrain, moved)
-  assert.equal(L.normalizeLayout({ v: 3, elements: [] }).terrain, undefined)
-  assert.equal(L.normalizeLayout({ v: 3, elements: [], terrain: [[24, 800], [20, 810]] }).terrain, undefined)
-  assert.equal(L.normalizeLayout({ v: 3, elements: [], terrain: [[0, 800], [100, 925]] }).terrain, undefined)
+  const ridge = [[300, 900], [700, 650], [1500, 700]]
+  const migrated = L.normalizeLayout({ v: 4, elements: [{ id: 'kept', kind: 'platform', x: 10 }], terrain: ridge })
+  assert.equal(migrated.terrain, undefined)
+  const [ground] = migrated.elements
+  assert.equal(ground.id, 'village-ground')
+  assert.equal(ground.kind, 'ground')
+  assert.equal(ground.region, 'village')
+  assert.equal(ground.hard, true)
+  assert.equal(ground.params.surface.style, 'village')
+  const outline = S.surfacePolygon(ground, ground.params.surface)
+  assert.deepEqual(outline.slice(0, 3).map(([x, y]) => [Math.round(x), Math.round(y)]), ridge)
+  assert.equal(Math.round(outline[3][1]), S.VILLAGE_ROCK_BOTTOM)
+  // saved again (v5) it is just an element: kept, moved or deleted like any other
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(migrated))), migrated)
+  const without = { ...migrated, elements: migrated.elements.slice(1) }
+  assert.deepEqual(L.normalizeLayout(without).elements.map(e => e.id), ['kept'])
+  // an invalid ridge falls back to the default slope
+  const fallback = L.normalizeLayout({ v: 3, elements: [], terrain: [[24, 800], [20, 810]] }).elements.find(e => e.kind === 'ground')
+  const def = S.surfacePolygon(fallback, fallback.params.surface)
+  assert.deepEqual(def.slice(0, V.VILLAGE_RIDGE.length).map(([x, y]) => [Math.round(x), Math.round(y)]), V.VILLAGE_RIDGE)
+  // the default Pátio draws it first, so the houses stand in front of it
+  assert.equal(L.defaultLayout().elements[0].id, 'village-ground')
+})
+
+test('grounds and walls: five biomes, three walls, hard by default and an outline that survives storage', () => {
+  const S = loadTs('lib/pigchicken/surfaces.ts')
+  assert.equal(S.GROUND_BIOMES.length, 5)
+  assert.equal(S.WALL_STYLES.length, 3)
+  for (const style of S.GROUND_BIOMES) {
+    const el = L.createElement('ground', 400, 600, { surface: S.defaultSurface('ground', style) })
+    assert.equal(el.params.surface.style, style)
+    assert.equal(el.hard, true)
+    assert.equal(el.solid, true)
+    assert.deepEqual(L.normalizeElement(JSON.parse(JSON.stringify(el))), el)
+  }
+  for (const style of S.WALL_STYLES) assert.equal(L.createElement('wall', 0, 0, { surface: { style } }).params.surface.style, style)
+  // a wrong style takes the kind's first one; a broken outline, the default one
+  assert.equal(L.normalizeElement({ kind: 'wall', params: { surface: { style: 'meadow' } } }).params.surface.style, 'brick')
+  assert.equal(L.normalizeElement({ kind: 'ground', params: { surface: { points: [[0, 0], [1, 1]] } } }).params.surface.points.length, 6)
+  // turned off, it stays off; platforms only keep "Objeto duro" when it is on
+  assert.equal(L.normalizeElement({ kind: 'ground', hard: false }).hard, false)
+  assert.equal('hard' in L.normalizeElement({ kind: 'platform' }), false)
+  assert.equal(L.normalizeElement({ kind: 'platform', hard: true }).hard, true)
+  assert.equal('hard' in L.normalizeElement({ kind: 'house', hard: true }), false)
+  // shots and notes meet only what is inside the outline (the default hill dips at its left top)
+  const hill = L.normalizeElement({ kind: 'ground', x: 0, y: 0, w: 100, h: 100, params: { surface: { style: 'meadow', points: [[0, 50], [100, 0], [100, 100], [0, 100]] } } })
+  const [box] = L.layoutBoxes([hill])
+  assert.equal(box.occludedAt(10, 10), true)
+  assert.equal(box.occludedAt(90, 10), false)
+  assert.equal(L.layoutFloorBelow([hill], 0, -50), 50)
+})
+
+test('editing an outline: insert on the nearest line, remove down to three, refit the box around it', () => {
+  const S = loadTs('lib/pigchicken/surfaces.ts')
+  const square = [[0, 0], [100, 0], [100, 100], [0, 100]]
+  const near = S.nearestSurfaceEdge(square, 50, -6)
+  assert.equal(near.edge, 0)
+  assert.deepEqual(near.point, [50, 0])
+  const added = S.insertSurfacePoint(square, near.edge, [50, -40])
+  assert.deepEqual(added[1], [50, -40])
+  const fit = S.fitSurface(added, 12, 24)
+  assert.deepEqual([fit.x, fit.y, fit.w, fit.h], [0, -40, 100, 140])
+  assert.deepEqual(fit.points[1], [50, 0])
+  assert.deepEqual(S.surfacePolygon(fit, fit).map(p => p.map(v => Math.round(v) + 0)), added)
+  const three = S.removeSurfacePoint(S.removeSurfacePoint(added, 1), 0)
+  assert.equal(three.length, 3)
+  assert.equal(S.removeSurfacePoint(three, 0), null)
+  assert.equal(S.removeSurfacePoint([[0, 0], [1, 0], [0, 1]], 0), null)
+  // the cap is drawn on the edges facing up, whichever way round the points go
+  assert.deepEqual(S.surfaceTopEdges(square), [[[0, 0], [100, 0]]])
+  assert.deepEqual(S.surfaceTopEdges([...square].reverse()), [[[100, 0], [0, 0]]])
+})
+
+test('a hard outline: floors, walls and ceilings by facing, and its walls stop the body sideways', () => {
+  const Hd = loadTs('lib/chicken/hard-shapes.ts')
+  const box = [[0, 0], [100, 0], [100, 50], [0, 50]]
+  const edges = Hd.shapeEdges(box)
+  assert.deepEqual(edges.map(e => e.kind), ['floor', 'wall', 'ceil', 'wall'])
+  assert.deepEqual(Hd.shapeEdges([...box].reverse()).map(e => e.kind).sort(), ['ceil', 'floor', 'wall', 'wall'])
+  assert.deepEqual(edges[1].n.map(v => Math.round(v) + 0), [1, 0])
+  assert.deepEqual(Hd.clipAboveGround([0, 0], [0, 100], 60), [[0, 0], [0, 60]])
+  assert.equal(Hd.clipAboveGround([0, 70], [0, 100], 60), null)
+  const segs = edges.filter(e => e.kind === 'wall').map(e => ({ ax: e.a[0], ay: e.a[1], bx: e.b[0], by: e.b[1], wall: true, hardN: e.n }))
+  // walking left into its right side stops at the radius; the body above the box passes
+  assert.equal(Hd.blockHardWalls(segs, 130, 90, 10, 40, 10), 110)
+  assert.equal(Hd.blockHardWalls(segs, 130, 90, -80, -10, 10), null)
+  // from the left too, and already inside the radius it is not pushed away
+  assert.equal(Hd.blockHardWalls(segs, -30, 20, 10, 40, 10), -10)
+  assert.equal(Hd.blockHardWalls(segs, 105, 80, 10, 40, 10), 105)
 })
 
 test('all tree styles produce bounded deterministic variation and round-trip with the layout', () => {

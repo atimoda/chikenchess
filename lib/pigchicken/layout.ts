@@ -15,16 +15,18 @@ import { HOUSE_SIZE, housePreset, houseRoof, houseWallPolygon, newHouseSeed, nor
 import { createCollisionOcclusion, type CollisionMask } from '../chicken/collision-occlusion'
 import { TREE_SIZE, newTreeSeed, normalizeTree, treePreset, treeSurfaces, type TreeParams, type TreePoint } from './trees'
 import { normalizeTrampoline, type TrampolineParams } from './trampoline'
-import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge, type RidgePoint } from './village'
+import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge } from './village'
+import { VILLAGE_GROUND_ID, defaultSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
-// v2 adds consumable racks, v3 adds houses and scene-local positions, and v4 stores shortcut portals.
-export const LAYOUT_VERSION = 4
+// v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
+// Vila's fixed ground (`terrain`) into a ground element.
+export const LAYOUT_VERSION = 5
 // the widest world the Pátio offers (its width setting): the default layout covers it, a narrower world hides the rest
 export const LAYOUT_MAX_SCREENS = 8
 const LEGACY_MAX_ELEMENTS = 1500
-// Reserve space to migrate both shortcut pairs without dropping existing elements.
-export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 4
+// Reserve space to migrate both shortcut pairs and the Vila's ground without dropping existing elements.
+export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 5
 
 // the layers, back to front. back: behind the platforms; scene: the platforms' own; behind: in front of the game's
 // things (dummies, racks, shots) but behind the characters; front: in front of the characters; frontGhost: in front,
@@ -42,7 +44,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'house', 'tree', 'trampoline', 'zone', 'lanes'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -59,6 +61,7 @@ export type ElementParams = {
   portalPairId?: string; portalLabel?: string; portalInstruction?: 'always' | 'hover'
   zone?: SoundZoneParams // Zona sonora
   lanes?: LanesParams // Faixas fixas
+  surface?: SurfaceParams // Chão (biome) and Parede (style): the outline's points
 }
 
 export type LayoutElement = {
@@ -71,6 +74,8 @@ export type LayoutElement = {
   // the notes bounce off it (the "Rebate notas" collision) and play through its chain, the taco's or as they are
   rebate?: SurfaceRebate
   occludesColliders?: boolean
+  // "Objeto duro": the characters cannot pass through it from any side (no one-way floors, no dropping through)
+  hard?: boolean
   // only shown in the editor mode (invisible walls and floors)
   hidden: boolean
   opacity: number
@@ -79,7 +84,7 @@ export type LayoutElement = {
   params: ElementParams
 }
 // settings: the Pátio's limits (width in scenes, height up to the ceiling), from the Sun button's panel
-export type PatioLayout = { v: number; elements: LayoutElement[]; terrain?: RidgePoint[]; settings?: PatioSettings }
+export type PatioLayout = { v: number; elements: LayoutElement[]; settings?: PatioSettings }
 
 export type ElementDef = {
   label: string; group: string
@@ -106,9 +111,16 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   portal: { label: 'Par de portais', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
   zone: { label: 'Zona sonora', group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
   lanes: { label: 'Faixas fixas', group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
+  ground: { label: 'Chão', group: 'Chãos e paredes', w: 640, h: 200, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 24 },
+  wall: { label: 'Parede', group: 'Chãos e paredes', w: 72, h: 320, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 12, minH: 24 },
 }
 // the music's elements: no collisions of their own (the zone is never drawn in the game)
 export const isMusicElement = (kind: ElementKind) => kind === 'zone' || kind === 'lanes'
+// Chãos e Paredes: shaped by their own points (lib/pigchicken/surfaces.ts)
+export const isSurfaceElement = (kind: ElementKind): kind is SurfaceKind => kind === 'ground' || kind === 'wall'
+// the elements whose collisions offer "Objeto duro" (on by default only on grounds and walls)
+export const HARD_KINDS: readonly ElementKind[] = ['platform', 'terrace', 'pillar', 'ground', 'wall']
+export const isHard = (el: Pick<LayoutElement, 'kind' | 'hard' | 'solid'>) => el.solid && HARD_KINDS.includes(el.kind) && !!el.hard
 
 const r1 = (v: number) => Math.round(v * 10) / 10
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
@@ -126,6 +138,7 @@ export function createElement(kind: ElementKind, cx: number, cy: number, params:
   return normalizeElement({
     id: newElementId(kind), kind, x: cx - d.w / 2, y: cy - d.h / 2, w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false,
     solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: p,
+    ...(isSurfaceElement(kind) ? { hard: true } : {}),
   })!
 }
 
@@ -139,6 +152,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'pine' || kind === 'blossom') return { seed: Math.floor(Math.random() * 2 ** 31), flip: Math.random() < 0.5 }
   if (kind === 'zone') return { zone: defaultSoundZone() }
   if (kind === 'lanes') return { lanes: defaultLanes() }
+  if (isSurfaceElement(kind)) return { surface: defaultSurface(kind) }
   return {}
 }
 
@@ -227,6 +241,12 @@ function consumableRacks(): LayoutElement[] {
   })
 }
 
+// the Vila's rocky slope (the old fixed "Chão da Vila"), from a saved ridge or the default one
+function villageGroundElement(ridge?: ReturnType<typeof normalizeVillageRidge>): LayoutElement {
+  const { surface, ...box } = villageGround(ridge)
+  return normalizeElement({ id: VILLAGE_GROUND_ID, kind: 'ground', region: 'village', ...box, hard: true, params: { surface } })!
+}
+
 function villageHouses(): LayoutElement[] {
   return VILLAGE_HOUSES.map(([x, bottom, w, h, palette, roof, floors], i) => normalizeElement({
     id: `village-house-${i}`, kind: 'house', region: 'village', x, y: bottom - h, w, h,
@@ -266,7 +286,7 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   HORDE_BUTTONS.forEach((id, i) => { const cx = SCENE_W * (1.06 + i * 0.09); out.push(base('button', `btn-${id}`, cx - 20, G - 46 - 40, 40, 40, { action: id })) })
   // the training dummies, each with its own tip
   ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach((f, i) => { const d = ELEMENT_DEFS.dummy; out.push(base('dummy', `dummy-${i}`, SCENE_W * f - d.w / 2, G - d.h, d.w, d.h, { message: dummyTip(i), maxHp: DUMMY_DEFAULTS.maxHp })) })
-  return { v: LAYOUT_VERSION, elements: [...out, ...villageHouses(), ...shortcutPortals()] }
+  return { v: LAYOUT_VERSION, elements: [villageGroundElement(), ...out, ...villageHouses(), ...shortcutPortals()] }
 }
 
 // ---------- cleaning what comes from storage, the database or another player ----------
@@ -310,6 +330,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.zone = normalizeSoundZone(p.zone)
   } else if (kind === 'lanes') {
     params.lanes = normalizeLanes(p.lanes)
+  } else if (isSurfaceElement(kind)) {
+    params.surface = normalizeSurface(kind, p.surface)
   }
   const music = isMusicElement(kind)
   const rebate = d.entity || music ? undefined : normalizeSurfaceRebate(e.rebate)
@@ -326,6 +348,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     notes: d.entity || music ? false : !!e.notes,
     ...(rebate ? { rebate } : {}),
     ...(!d.entity && !music && typeof e.occludesColliders === 'boolean' ? { occludesColliders: e.occludesColliders } : {}),
+    // kept when on, and always on grounds and walls (where it starts on)
+    ...(HARD_KINDS.includes(kind) && (isSurfaceElement(kind) || e.hard === true) ? { hard: typeof e.hard === 'boolean' ? e.hard : isSurfaceElement(kind) } : {}),
     hidden: kind === 'zone' ? true : d.entity ? false : !!e.hidden,
     opacity: r1(clamp(num(e.opacity, 1), 0.1, 1) * 100) / 100,
     ...(e.gravity === true ? { gravity: true } : {}),
@@ -363,9 +387,15 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
     }
   }
   if (!hasStoredShortcuts) elements.push(...shortcutPortals(elements))
-  const terrain = normalizeVillageRidge((raw as { terrain?: unknown }).terrain)
+  // saved before v5: the Vila's fixed ground (with its edited ridge, `terrain`) becomes the first element, so it is
+  // drawn and collides behind everything else in its layer, as before
+  if (!(typeof v === 'number' && v >= 5)) {
+    const ground = villageGroundElement(normalizeVillageRidge((raw as { terrain?: unknown }).terrain))
+    if (seen.has(ground.id)) ground.id = newElementId('ground')
+    elements.unshift(ground)
+  }
   const settings = normalizePatioSettings((raw as { settings?: unknown }).settings)
-  return { v: LAYOUT_VERSION, elements, ...(terrain ? { terrain } : {}), ...(settings ? { settings } : {}) }
+  return { v: LAYOUT_VERSION, elements, ...(settings ? { settings } : {}) }
 }
 
 // ---------- geometry: the turned box, its bounds and the floor of a sloped one ----------
@@ -395,13 +425,16 @@ export const layoutCollisionDepth = (el: LayoutElement, index: number) =>
 export const occludesColliders = (el: LayoutElement) =>
   !ELEMENT_DEFS[el.kind].entity && !isMusicElement(el.kind) && (el.occludesColliders ?? (el.kind === 'house'))
 
+// a shaped element's outline (Chão, Parede) in world units, else null
+export const elementOutline = (el: LayoutElement) => isSurfaceElement(el.kind) && el.params.surface ? surfacePolygon(el, el.params.surface) : null
+
 export function layoutCollisionMasks(elements: LayoutElement[]): CollisionMask[] {
   const masks: CollisionMask[] = []
   elements.forEach((el, index) => {
     if (!occludesColliders(el) || el.hidden || el.opacity < 1 || el.layer === 'frontGhost') return
     const polygon = el.params.house
       ? houseWallPolygon(el.params.house).map(([x, y]) => [el.x + x * el.w / 100, el.y + y * el.h / 100] as const)
-      : elementCorners(el)
+      : elementOutline(el) ?? elementCorners(el)
     masks.push({ depth: layoutCollisionDepth(el, index), polygon })
   })
   return masks
@@ -465,7 +498,10 @@ export function layoutBoxes(elements: LayoutElement[]): Box[] {
     const b = elementBounds(e)
     const box: Box = { l: b.x, t: b.y, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid, shots: e.shots, notes: e.notes }
     if (e.rebate) box.rebate = e.rebate
-    const occludedAt = occlusion?.forBox(layoutCollisionDepth(e, index), box)
+    const occluded = occlusion?.forBox(layoutCollisionDepth(e, index), box)
+    // a shaped one (Chão, Parede) only meets what is inside its outline
+    const outline = elementOutline(e)
+    const occludedAt = outline ? (x: number, y: number) => !polygonContains(outline, x, y) || !!occluded?.(x, y) : occluded
     if (occludedAt) box.occludedAt = occludedAt
     out.push(box)
   })
@@ -488,7 +524,9 @@ export const sameLayout = (a: PatioLayout | null, b: PatioLayout | null) => JSON
 function surfaceTop(el: LayoutElement, l: number, r: number): number {
   const b = elementBounds(el)
   const line = elementFloorLine(el)
-  const roof = el.kind === 'house' && el.params.house ? houseRoof(el.params.house).map(([x, y]) => [x * el.w / 100, y * el.h / 100]) : null
+  const outline = elementOutline(el)
+  const roof = el.kind === 'house' && el.params.house ? houseRoof(el.params.house).map(([x, y]) => [x * el.w / 100, y * el.h / 100])
+    : outline ? [...outline, outline[0]].map(([x, y]) => [x - b.x, y - b.y]) : null
   if (!line && !roof) return b.y
   const pts = (roof ?? line!.split(' ').map(p => p.split(',').map(Number))).map(([x, y]) => [b.x + x, b.y + y] as const)
   const xs = [l, r, ...pts.map(p => p[0]).filter(x => x > l && x < r)]
@@ -521,7 +559,7 @@ export function layoutFloorBelow(elements: LayoutElement[], x: number, y: number
     if (!el.solid || ELEMENT_DEFS[el.kind].entity) continue
     const b = elementBounds(el)
     if (x < b.x || x > b.x + b.w) continue
-    const top = el.kind === 'house' ? surfaceTop(el, x, x) : b.y
+    const top = el.kind === 'house' || isSurfaceElement(el.kind) ? surfaceTop(el, x, x) : b.y
     if (top >= y && top < floor) floor = top
   }
   return floor

@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.3.0',
     date: '08/11/2026',
-    title: 'Salto no ar, controles, atalhos do mapa e limites do Pátio',
+    title: 'Salto no ar, controles, atalhos do mapa, limites do Pátio e chãos e paredes no editor',
     groups: [{ title: 'Perfil', items: ['O saldo com o texto golden eggs sempre visível, os pontos com um ovo cinza, o rank e a campanha aparecem de forma compacta abaixo do código do perfil, antes do acesso à conta.', 'O link de download de backups de visitante foi removido do perfil.'] }, { title: 'Mapa', items: ['O pin compartilhado volta a destacar ao passar o mouse por qualquer época de uma cidade.'] }, { title: 'Lobby', items: ['Passe o mouse ou toque nos instrumentos da escalação para ouvir uma nota de cada peça.', 'Random mostra os kits de campanha disponíveis como atalhos para seleção; os participantes aparecem com avatar ao lado do nome.', 'Public e Private ficam no topo da sala, com o código no botão selecionado e os ícones de sair, atualizar e fechar lado a lado.', 'Sua sala aparece primeiro em verde no mapa e substitui o botão Create lobby enquanto estiver ocupada. O atalho do estúdio agora se chama Creative Mode.', 'Os atalhos de Lobby e Friends passam para o topo do mapa; Creative fica na coluna da direita, abaixo de Create lobby.', 'A escalação do kit começa aberta ao lado da imagem e do título, em duas colunas com ícones das peças; ela se expande e se retrai suavemente, respeitando movimento reduzido, e se adapta à largura da tela.'] }, { title: 'Galinha', items: [
       'Os ímãs de oito ângulos agora têm forças independentes para movimentação e mira. Zero desliga cada um, e a mira começa sem ímã.',
       'No salto carregado no ar, os joelhos dobram mais enquanto você segura e as pernas se abrem ao soltar. O ângulo máximo pode ser ajustado em Combinações.',
@@ -19,6 +19,10 @@ const RECENT = [
     ] }, { title: 'Pátio', items: [
       'Novo botão com ícone de Sol no cabeçalho: abre as Configurações do Pátio atual, com largura limite (telas) e altura limite (do chão ao teto). Os valores são salvos junto com o Pátio e só quem pode editá-lo muda; a largura saiu do painel Câmera de Mira.',
       'Uma borda preta de 10 px marca os limites de todo Pátio e da tela do globo. A câmera para no teto do Pátio.',
+      'Nova seção Chãos e paredes no Modo editor: 5 chãos (Rocha da Vila, Campo, Deserto, Neve e Vulcânico) e 3 paredes (Tijolos, Pedra e Madeira), que se selecionam, movem, redimensionam, duplicam e apagam como os outros objetos. Dois cliques escolhem o bioma ou o tipo de parede.',
+      'Com um chão ou parede selecionado, os pontos do contorno aparecem em volta do objeto inteiro, inclusive a parte de trás: clique numa linha da borda para criar um ponto, arraste para mover e dê dois cliques num ponto para removê-lo. O desenho e a colisão seguem o contorno.',
+      'Nova opção Objeto duro em Camada e colisões (ligada nos chãos e paredes, e disponível em plataformas, terraços e pilares): os bonecos não atravessam o objeto por baixo, pelos lados nem descendo por ele, sobem rampas e degraus baixos dele andando e escalam suas paredes.',
+      'O Chão da Vila virou um desses chãos, com a mesma encosta (inclusive a que você tinha editado), e o painel separado do Chão da Vila saiu.',
     ] }],
   },
   {
