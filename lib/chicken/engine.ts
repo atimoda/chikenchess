@@ -102,6 +102,10 @@ const LEG = { F: { hx: -14 }, B: { hx: -26 } } as const
 const LF = 30, LT = 32, LS = 40, HIP_Y = -88, FOOT_Y = -3, NECK_LEN = 56
 // from her feet to the top of her head (comb), in rig units: what bumps into a ceiling
 const HEAD_TOP = 200
+// how long after pressing a direction against her look Jump still switches sides (seconds)
+const SWITCH_GRACE = 0.18
+// a box collider's edges: `<element id>:<part>`, clipped pieces add `~n`
+const BOX_PART = /^(.*):(top|bottom|left|right|under|topBelow)(?:~\d+)?$/
 const PIV: Record<string, [number, number]> = {
   legF: [-14, -88], tibF: [-14, -58], shinF: [-14, -26], toeF: [-14, 14],
   legB: [-26, -88], tibB: [-26, -58], shinB: [-26, -26], toeB: [-26, 14],
@@ -439,8 +443,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (auto && !game.throwHeld) dir = Math.sign(goal!.x - S.x)
     buildSegs(); heldDir = dir
     S.clCool = Math.max(0, (S.clCool || 0) - dt); S.dropT = Math.max(0, (S.dropT || 0) - dt);
+    // a direction pressed against where she looks (on the screen): for a moment, Jump switches her to the other
+    // side of a floating collider instead of jumping
+    const nowS = performance.now() / 1000
+    if (inputDir !== 0 && inputDir !== S.lastInputDir) { S.turnDir = inputDir; S.turnFace = screenFace(); S.turnT = nowS }
+    S.lastInputDir = inputDir
+    const against = inputDir !== 0 && S.turnDir === inputDir && S.turnFace === -inputDir && nowS - S.turnT < SWITCH_GRACE
     if (S.held) { heldStep(dt); return }
-    if (S.cl) { clingStep(dt, dir, (U ? 1 : 0) - (D || C ? 1 : 0), jumpPressed, RUN, downPressed || crouchPressed); return }
+    if (S.cl) { clingStep(dt, dir, U, D || C, jumpPressed, RUN, against); return }
     // floating walls grab only while no movement control is held
     S.noGrab = Lh || Rh || U || Dk || C || J || RUN
     // standing on a floating edge: ride along when it moves, fall when walking off its end
@@ -452,6 +462,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         const next = SEGS.find(o => o !== sg && !o.wall && o.id.startsWith(base + ':l') && (() => { const y = floorY(o, S.x); return y !== null && Math.abs(y - S.y) < 10 })())
         if (next) { sg = next; fy = floorY(next, S.x); S.plat = next.id; S.platAx = next.anchorX }
       }
+      // crouched, walking off a floating edge grabs the side below it instead of falling
+      if (sg && fy === null && C && dir !== 0 && !sg.solid && grabEdgeSide(sg, dir, (U ? 1 : 0) - (D || C ? 1 : 0))) { clingPose(dt, U, D || C); return }
       if (!sg || fy === null) { S.grounded = false; S.plat = null; S.vy = 0; S.jumpIndex = 0 }
       else {
         const dx = sg.anchorX - S.platAx, dy = fy - S.y; S.platAx = sg.anchorX
@@ -530,6 +542,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     // Throw reduces motion without blocking movement input or facing.
     // secondary aim still has priority, including while brooding or sliding in Throw.
+    const face0 = S.face
     const facingDir = game.throwHeld ? inputDir : dir
     if ((!brooding && !S.sliding) || game.throwHeld) {
       if (facingDir !== 0) S.face = facingDir
@@ -544,6 +557,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (jumpPressed && plat && !plat.solid && (D || (C && dir === 0))) {
       S.dropId = plat.id; S.dropT = 0.3; S.grounded = false; S.plat = null; S.sliding = false
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
+    } else if (jumpPressed && plat && !plat.solid && !D && !C && against && hangUnder(plat, face0)) {
+      clingPose(dt, U, false); return
     } else if (jumpPressed) {
       const fromGround = S.grounded
       S.jumpIndex = S.grounded ? 0 : S.jumpIndex + 1
@@ -770,7 +785,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         })
         return
       }
-      if (r.top < groundY - 4) add(id + ':top', r.left, r.top, r.right, r.top)
+      if (r.top < groundY - 4) {
+        add(id + ':top', r.left, r.top, r.right, r.top)
+        // the top edge seen from inside the box (one-way, she gets in from below): a ceiling she can hang from
+        add(id + ':topBelow', r.left, r.top, r.right, r.top, false, false, false, undefined, true)
+      }
       if (r.bottom < groundY - 4) {
         add(id + ':bottom', r.left, r.bottom, r.right, r.bottom)
         // its underside: she hangs from it upside down (grabbed rising into it with Up, or round a side's corner)
@@ -850,7 +869,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const toward = Math.sign(dx) || 1
       if (sg.solid && !climbFromGround && !(dir === toward || (!S.grounded && S.vx * toward > 60))) continue
       attach(sg, wx, py)
-      if (climbFromGround) clingStep(frameDt, dir, 1, false, input('run'))
+      if (climbFromGround) clingStep(frameDt, dir, true, false, false, input('run'), false)
       return true
     }
     return false
@@ -914,14 +933,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (!atA && !atB) continue
       const far = atA ? [nx.bx, nx.by] : [nx.ax, nx.ay]
       const u2 = [(far[0] - end[0]) / nx.len, (far[1] - end[1]) / nx.len]
-      const turn = u2[0] * c.n[0] + u2[1] * c.n[1]
-      // inside corner: the new surface rises on her side; outside corner: it goes on behind the old one
-      const toward = turn > 0.1 ? [-out[0], -out[1]] : turn < -0.1 ? out : c.n
-      let n2 = [-u2[1], u2[0]]
-      if (n2[0] * toward[0] + n2[1] * toward[1] < 0) n2 = [u2[1], -u2[0]]
+      const n2 = cornerNormal(c.n, out, u2)
       const speed = Math.abs(S.vx)
       clingFrame(nx, n2, end[0], end[1])
       const next = S.cl, sign = atA ? 1 : -1
+      // climbing straight up into a ceiling she stops there, hanging under it; otherwise she keeps going
+      if (n2[1] > 0.7 && inKey.startsWith('0,')) { S.vx = 0; S.squash = 0.3; return true }
       next.carry = { key: inKey, sign }
       S.vx = sign * next.sigma * speed
       S.squash = 0.3
@@ -929,7 +946,82 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     return false
   }
-  function clingStep(dt: number, dir: number, vup: number, jumpPressed: boolean, RUN: boolean, dropPressed = false) {
+  // where she looks on the screen, sideways: standing (or on a wall) her facing, hanging upside down the opposite
+  function screenFace() { return S.cl && S.cl.n[1] > 0.7 ? -S.face : S.face }
+  // a box collider's part (its element id and which edge), and the piece of a part covering a point
+  function boxPart(id: string) {
+    const m = BOX_PART.exec(id)
+    return m ? { base: m[1], part: m[2] } : null
+  }
+  function partAt(base: string, part: string, x: number | null, y: number | null) {
+    return SEGS.find(o => (o.id === `${base}:${part}` || o.id.startsWith(`${base}:${part}~`)) &&
+      (x === null || (x >= Math.min(o.ax, o.bx) - 0.5 && x <= Math.max(o.ax, o.bx) + 0.5)) &&
+      (y === null || (y >= Math.min(o.ay, o.by) - 0.5 && y <= Math.max(o.ay, o.by) + 0.5))) ?? null
+  }
+  // the normal on a surface met at a corner: an inside corner (the new surface rises on her side) or an outside one
+  // (it goes on behind the old one); `n1` her old normal, `out` the way she was going, `u2` along the new surface
+  function cornerNormal(n1: number[], out: number[], u2: number[]) {
+    const turn = u2[0] * n1[0] + u2[1] * n1[1]
+    const toward = turn > 0.1 ? [-out[0], -out[1]] : turn < -0.1 ? out : n1
+    let n2 = [-u2[1], u2[0]]
+    if (n2[0] * toward[0] + n2[1] * toward[1] < 0) n2 = [u2[1], -u2[0]]
+    return n2
+  }
+  // standing on a floating box: hang upside down from its underside, right below (switching sides)
+  function hangUnder(plat: Seg, look: number) {
+    const bp = boxPart(plat.id)
+    if (!bp || bp.part !== 'top') return false
+    const under = partAt(bp.base, 'under', S.x, null)
+    if (!under) return false
+    clingFrame(under, [0, 1], S.x, under.ay)
+    S.face = -look
+    S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5; sfx('grab')
+    return true
+  }
+  // walking off the end of a floating floor crouched: the wall that starts at that end takes her, going down
+  function grabEdgeSide(sg: Seg, dir: number, vup: number) {
+    const ex = dir > 0 ? Math.max(sg.ax, sg.bx) : Math.min(sg.ax, sg.bx), ey = floorY(sg, ex)
+    if (ey === null) return false
+    for (const w of SEGS) {
+      if (!w.wall || w.ceil || w.bounce || w.solid) continue
+      const atA = Math.hypot(w.ax - ex, w.ay - ey) < 3, atB = !atA && Math.hypot(w.bx - ex, w.by - ey) < 3
+      if (!atA && !atB) continue
+      const far = atA ? [w.bx, w.by] : [w.ax, w.ay]
+      if (far[1] <= ey + 1) continue
+      const u2 = [(far[0] - ex) / w.len, (far[1] - ey) / w.len]
+      const speed = Math.abs(S.vx)
+      clingFrame(w, cornerNormal([0, -1], [dir, 0], u2), ex, ey)
+      const sign = atA ? 1 : -1
+      S.cl.carry = { key: `${dir},${vup}`, sign }
+      S.vx = sign * S.cl.sigma * speed
+      S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.4; sfx('grab')
+      return true
+    }
+    return false
+  }
+  // Jump against her look on a floating (not hard) collider: the other side of the same collider. Under a box she
+  // climbs onto its top; on a box's outer side she moves to its opposite side; elsewhere she crosses the line.
+  function switchSide(sg: Seg) {
+    if (sg.solid) return false
+    const c = S.cl, bp = boxPart(sg.id)
+    if (bp && (bp.part === 'under' || bp.part === 'topBelow')) {
+      const top = partAt(bp.base, 'top', c.px, null)
+      if (!top) return false
+      const look = screenFace()
+      standAt(c.px, floorY(top, c.px) as number, top, look)
+      return true
+    }
+    if (c.n[1] > 0.7) return false
+    if (bp && (bp.part === 'left' || bp.part === 'right') && (bp.part === 'left' ? c.n[0] < 0 : c.n[0] > 0)) {
+      const opp = partAt(bp.base, bp.part === 'left' ? 'right' : 'left', null, c.py)
+      if (!opp) return false
+      clingFrame(opp, [-c.n[0], -c.n[1]], opp.ax, c.py)
+    } else clingFrame(sg, [-c.n[0], -c.n[1]], c.px, c.py)
+    S.squash = 0.5; sfx('grab')
+    return true
+  }
+  function clingStep(dt: number, dir: number, U: boolean, Dn: boolean, jumpPressed: boolean, RUN: boolean, against: boolean) {
+    const vup = (U ? 1 : 0) - (Dn ? 1 : 0)
     const c = S.cl, sg = segById(c.id)
     if (!sg) { letGo(0, 0); return }
     const offset = sg.clipOffset ?? 0
@@ -939,9 +1031,17 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       return
     }
     const ux = (sg.bx - sg.ax) / sg.len, uy = (sg.by - sg.ay) / sg.len
-    // hanging upside down from a ceiling: Jump or a new press of Down / Crouch lets go and she falls upright
-    if (c.n[1] > 0.7 && (jumpPressed || dropPressed)) {
-      letGo(0, jumpPressed ? 120 : 40)
+    const hanging = c.n[1] > 0.7
+    // Jump against her look (or into the collider: Up under a ceiling, toward a wall) on a floating collider
+    // switches her to its other side
+    if (jumpPressed && (hanging ? against || U : dir !== 0 && dir * c.n[0] < 0) && switchSide(sg)) {
+      if (S.cl) clingPose(dt, U, Dn)
+      else { S.state = 'idle'; animate(dt, 'idle', false, 0) }
+      return
+    }
+    // hanging upside down from a ceiling: Jump lets go and she falls upright
+    if (hanging && jumpPressed) {
+      letGo(0, 120)
       if (Math.abs(S.vx) > 1) S.face = Math.sign(S.vx)
       S.state = 'jump'; animate(dt, 'jump', false, 0); return
     }
@@ -969,7 +1069,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (c.tapDir === dir && now - c.tapT < 0.3) {
         c.tapDir = 0
         if (dir * c.n[0] > 0.5) { letGo(c.n[0] * 90, 0); return }
-        if (!sg.solid && sg.ang >= 70 && sg.ang <= 110) { clingFrame(sg, [-c.n[0], -c.n[1]], c.px, c.py); S.squash = 0.5; animate(dt, 'cling', false, 0); return }
+        if (!sg.solid && sg.ang >= 70 && sg.ang <= 110 && switchSide(sg)) { animate(dt, 'cling', false, 0); return }
       } else { c.tapDir = dir; c.tapT = now }
     }
     c.lastDir = dir
@@ -978,11 +1078,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     let s = S.x * c.sigma - offset
     c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
     // climbing down onto a floor that meets the wall (never from a ceiling: the box's own bottom edge is there)
+    // (a floor level with the wall's top is the corner she just rounded, e.g. the box's top seen from inside)
     if (c.n[1] <= 0.7 && c.py > prevPy + 1e-6) {
+      const wallTop = Math.min(sg.ay, sg.by) + 2
       for (const f of SEGS) {
         if (f.wall) continue
         const ix = c.px + c.n[0] * 30 * R.scale, fy = floorY(f, ix)
-        if (fy !== null && prevPy < fy && c.py >= fy && fy <= groundY) { standAt(ix, fy, fy < groundY ? f : null, Math.sign(c.n[0]) || 1); return }
+        if (fy !== null && fy > wallTop && prevPy < fy && c.py >= fy && fy <= groundY) { standAt(ix, fy, fy < groundY ? f : null, Math.sign(c.n[0]) || 1); return }
       }
     }
     if (s < 0 || s > sg.len) {
@@ -991,10 +1093,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (upper) {
         // top end: climb over onto the floor behind it (a box's top edge), if there is one
         const ix = end[0] - c.n[0] * 26 * R.scale
-        const f = SEGS.find(f => !f.wall && floorY(f, ix) !== null && Math.abs((floorY(f, ix) as number) - end[1]) < 4)
+        let f = SEGS.find(f => !f.wall && floorY(f, ix) !== null && Math.abs((floorY(f, ix) as number) - end[1]) < 4)
+        // the wall's top can be hidden a little below its box's top (an object in front): its own top still counts
+        const bp = f ? null : boxPart(sg.id)
+        if (bp) {
+          const top = partAt(bp.base, 'top', ix, null), ty = top && floorY(top, ix)
+          if (top && ty !== null && ty <= end[1] + 4 && ty >= end[1] - 60 * R.scale) f = top
+        }
         if (f) { standAt(ix, floorY(f, ix) as number, f, -Math.sign(c.n[0]) || 1); return }
       }
-      if (end[1] < groundY - 3 && wrapCorner(sg, end, other, inKey)) { clingPose(dt); return }
+      if (end[1] < groundY - 3 && wrapCorner(sg, end, other, inKey)) { clingPose(dt, U, Dn); return }
       if (upper) {
         s = clamp(s, 0, sg.len); S.x = (s + offset) * c.sigma; S.vx = 0; c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
       } else if (end[1] >= groundY - 3) {
@@ -1002,17 +1110,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       } else if (c.n[1] > 0.7) { c.px = end[0]; c.py = end[1]; letGo(0, 0); return }
       else { fallFrom(end[0] + c.n[0] * 30 * R.scale, end[1], 0, 0); return }
     }
-    clingPose(dt)
+    clingPose(dt, U, Dn)
   }
-  function clingPose(dt: number) {
+  // Hanging upside down she walks, stands, crouches and looks like on the ground, with Up and Down swapped
+  // (Up pulls her in to the ceiling like crouching, Down stretches her head toward the ground like looking up)
+  function clingPose(dt: number, U = false, Dn = false) {
     const c = S.cl
     // the body leans down the slope; flat (a ceiling) it does not lean
     const sin = Math.sin(c.phi)
     c.tilt = Math.abs(sin) < 0.05 ? 0 : -Math.sign(S.face * sin) * R.clingTilt
     const speed = Math.abs(S.vx)
+    const hanging = c.n[1] > 0.7
+    const st = !hanging ? 'cling' : speed > 5 ? (speed > R.climbSpeed * 1.2 ? 'run' : 'walk') : U ? 'crouch' : Dn ? 'lookUp' : 'idle'
     S.state = 'cling'
-    updateFeet(dt, 'cling', speed)
-    animate(dt, 'cling', false, speed)
+    updateFeet(dt, st, speed)
+    animate(dt, st, st === 'lookUp', speed)
   }
 
   // ---------- "Objeto duro": its walls stop her, and its floors catch her feet ----------
