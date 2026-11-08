@@ -17,6 +17,7 @@ const RECENT = [
       'A galinha agora escala os quatro limites: subindo uma parede até o teto ela vira a quina e anda de cabeça para baixo por ele, e desce pela outra parede. No globo, os limites são as bordas da tela.',
       'Pulando com Cima segurado por baixo de uma plataforma flutuante, ela se pendura de cabeça para baixo e anda por baixo dela; nas quinas passa para as laterais e sobe até o topo. O Pulo a solta e ela volta a ficar de pé.',
       'Nas plataformas flutuantes ela troca de lado: pulando segurando o lado contrário ao que olha, ela fica de cabeça para baixo debaixo da plataforma (ou volta para cima), e numa lateral pula para a lateral oposta. Paredes e chãos duros não deixam trocar.',
+      'Invert vertical side on horizontal floating platforms: em pé numa plataforma flutuante, Agachar + Chocar + Pulo juntos (sem andar para os lados) a deixam de cabeça para baixo debaixo dela, em vez de cair. Só Agachar + Pulo ou só Chocar + Pulo continuam descendo pela plataforma.',
       'Andando agachada até a ponta de uma plataforma, ela agarra a lateral em vez de cair; subindo pela lateral ela passa para cima da plataforma, e subindo por dentro de uma caixa fica pendurada debaixo do topo.',
       'De cabeça para baixo, Cima a encolhe e Baixo estica a cabeça para o chão (os controles de olhar e agachar se invertem).',
     ] }, { title: 'Pátio', items: [

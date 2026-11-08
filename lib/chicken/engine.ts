@@ -421,7 +421,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     let airChargeMultiplier = 1
     let airShockReleased = false
     if (S.shocking && (!Dk || S.held || S.cl)) S.shocking = false
-    if (jumpPressed && D && !S.cl && !S.held) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
+    // standing on a floating floor, Crouch + Brood + Jump with no direction flips her under it (no shocking prep)
+    const flipPlat = S.grounded && S.plat && !S.held && !S.cl ? segById(S.plat) : null
+    const flipUnder = jumpPressed && Dk && C && Lh === Rh && !!flipPlat && !flipPlat.solid
+    if (jumpPressed && D && !S.cl && !S.held && !flipUnder) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
     if (S.shocking && !J) {
       if (Dk && !S.grounded) { airShockReleased = true; airChargeMultiplier = shockingAirMultiplier(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirMaxMultiplier) }
       S.shocking = false; jumpPressed = Dk
@@ -554,7 +557,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // on a floating floor, brood + jump drops through it; so does down (crouch) + jump with no sideways direction
     // held (with a direction it is the normal super jump up)
     const plat = S.grounded && S.plat ? segById(S.plat) : null
-    if (jumpPressed && plat && !plat.solid && (D || (C && dir === 0))) {
+    // ...but all three together (Crouch + Brood + Jump, no direction) flip her under it, upside down
+    if (flipUnder && jumpPressed && plat && !plat.solid && dir === 0 && hangUnder(plat, S.face)) {
+      clingPose(dt, U, false); return
+    } else if (jumpPressed && plat && !plat.solid && (D || (C && dir === 0))) {
       S.dropId = plat.id; S.dropT = 0.3; S.grounded = false; S.plat = null; S.sliding = false
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
     } else if (jumpPressed && plat && !plat.solid && !D && !C && against && hangUnder(plat, face0)) {
