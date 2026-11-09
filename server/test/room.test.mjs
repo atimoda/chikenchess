@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,6 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -126,5 +127,34 @@ test('Edit mode live: the owner and the editors it allows send the layout; newco
   const c = await browser({ patioId, name: 'Caio' })
   const late = await until(() => c.seen.layout[0])
   assert.deepEqual(late.layout, { elements: [{ id: 'x' }] })
+  for (const x of [a, b, c]) await x.room.leave()
+})
+
+test('shared world: the owner sends the enemies, hits and spawns go to the owner, shots to everyone else', async () => {
+  const patioId = '0f000000-0000-4000-8000-000000000004'
+  const a = await browser({ patioId, name: 'Dona' })
+  const b = await browser({ patioId, name: 'Bia' })
+  const c = await browser({ patioId, name: 'Caio' })
+  const foes = { fs: { 10000001: [0, 130, 1, 130, 80, 6, 70, 18, -1e9, -1e9] }, l: [[10001234, 0, 500, 200, 48, 40, 30, 30, 1, 'fly', 0.4, 0, 0, 0, '', 0, 0, { kind: 'alien', fid: 10000001, col: 0, row: 0, color: '#c77dff' }]] }
+  a.room.send('foes', foes)
+  assert.deepEqual((await until(() => b.seen.foes[0])).l, foes.l)
+  await until(() => c.seen.foes[0])
+  // only the owner's enemies count
+  b.room.send('foes', { fs: {}, l: [] })
+  const hit = { id: 10001234, d: 12, px: 40, x: 500, y: 180 }
+  b.room.send('hits', { list: [hit] })
+  const got = await until(() => a.seen.hits[0])
+  assert.deepEqual(got, { pid: b.seen.hello.pid, list: [hit] })
+  b.room.send('spawn', { spawn: { what: 'aliens', x: 300, y: 600, l: 0, r: 1280 } })
+  assert.equal((await until(() => a.seen.spawn[0])).spawn.what, 'aliens')
+  const shot = { k: 'b', i: 'pistol', x: 1, y: 2, vx: 900, vy: 0, sz: 4, dr: 0, rg: 900, fu: 0, bo: 0, ex: 0, pi: 0 }
+  c.room.send('shots', { list: [shot] })
+  assert.deepEqual((await until(() => a.seen.shots[0])).list, [shot])
+  await until(() => b.seen.shots[0])
+  await wait(150)
+  assert.equal(c.seen.shots.length, 0, 'the shooter does not get its own shots back')
+  assert.equal(a.seen.foes.length, 0, 'a follower cannot send enemies, nor the owner gets its own')
+  assert.equal(b.seen.foes.length, 1)
+  assert.equal(b.seen.hits.length + c.seen.hits.length + b.seen.spawn.length, 0)
   for (const x of [a, b, c]) await x.room.leave()
 })

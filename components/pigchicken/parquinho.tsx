@@ -16,6 +16,8 @@ import { cameraBounds, cameraStep, cameraXRange, leadStep } from "@/lib/pigchick
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, type Box, type Combat, type Effect } from "@/lib/pigchicken/combat"
+import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
+import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { INVENTORY_MAX, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
 import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
@@ -382,6 +384,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
     const combat = createCombat()
     combat.setItems(loadItems())
+    // online: the lobby's owner moves the enemies, the others mirror them; everyone's shots fly on every screen
+    const net = createNetWorldSync(combat)
     // instruments, the enemies' answers and the zone's ambience play on PigChicKen's own synth
     combat.setMusicOut({
       note: (voice, midi, at, dur, vel) => { playNote(voice, midi, { at, dur, vel }) },
@@ -762,20 +766,28 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the enemies move inside the scene she is in: the same for every screen size (and every player)
       const sceneL = Math.min(sceneAt(body.x), worldScenes(S.screens) - 1) * SCENE_W
       combat.setView(sceneL, sceneL + SCENE_W)
-      for (const request of trainingSpawns?.current.splice(0) ?? []) {
-        if (request.kind === 'alien') {
+      // enemies are made by the lobby's owner (online): here, or asked of it
+      const spawnEnemies = (s: NetSpawn) => {
+        if (net.follower) { net.requestSpawn(s); return }
+        const bounds = { l: s.l, r: s.r }
+        if (s.what === "aliens") combat.spawnAliens(G, s.x, bounds)
+        else if (s.what === "zombies") combat.spawnZombies(G, s.x, s.n ?? horde.zombies, bounds)
+        else if (s.what === "alien") {
           const species = CATALOG_SPECIES[Math.floor(Math.random() * CATALOG_SPECIES.length)]
           const variant = variantFor(catalog, undefined, species)
-          combat.addTrainingAlien(request.x, request.y, { ...variantSize(variant), hp: variant.hp, data: variantData(variant) })
-        } else combat.addTrainingZombie(request.x, request.y)
+          combat.addTrainingAlien(s.x, s.y, { ...variantSize(variant), hp: variant.hp, data: variantData(variant) })
+        } else combat.addTrainingZombie(s.x, s.y)
       }
+      const scene = { l: sceneL, r: sceneL + SCENE_W }
+      for (const asked of net.frame(now)) spawnEnemies(asked)
+      for (const request of trainingSpawns?.current.splice(0) ?? []) spawnEnemies({ what: request.kind === "alien" ? "alien" : "zombie", x: request.x, y: request.y, ...scene })
       let gongHit = false, resetHit = false, discHit = false
       combat.pressed.splice(0).forEach(id => {
         if (id === "gong") gongHit = true
         else if (id === "reset") resetHit = true
         else if (id === "jukebox") { jukeRing = 0; openJukebox() }
-        else if (id === "aliens") combat.spawnAliens(G, body.x)
-        else if (id === "zombies") combat.spawnZombies(G, body.x, horde.zombies)
+        else if (id === "aliens") spawnEnemies({ what: "aliens", x: body.x, y: body.y, ...scene })
+        else if (id === "zombies") spawnEnemies({ what: "zombies", x: body.x, y: body.y, n: horde.zombies, ...scene })
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
         else if (id === "pattern") horde.pattern = (horde.pattern + 1) % ALIEN_PATTERNS.length
       })
@@ -1080,6 +1092,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     return () => {
       headerObserver.disconnect()
       cancelGameFrame(raf)
+      net.dispose()
       unsub()
       unsubItems()
       unsubCatalog()

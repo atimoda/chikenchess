@@ -12,6 +12,7 @@ import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, typ
 import { INVENTORY_MAX, clampInventoryLimit, groupStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
+import { glideMirror, isSharedTarget, type NetHit, type NetShot } from './net-world'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
@@ -55,10 +56,11 @@ export type Bullet = {
   explodePush?: number // snapshot of the item's blast force when fired
   ghost?: boolean // goes through walls and floating platforms (instruments' notes)
   bounces?: number // times it bounced off a "Rebate notas" surface
+  remote?: boolean // another browser's shot (online): it flies and shows, never damages
 }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
-export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean }
+export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 // undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
 export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button' | 'undead'
@@ -72,6 +74,9 @@ export type Target = {
   // training dummies: their own params, the stage they are in, how long the tip bubble shows, the crack's jolt
   blast?: BlastMotion
   dummy?: DummyState
+  // online (lib/pigchicken/net-world.ts): its id in the lobby; mirror: the owner's enemy drawn here (not moved here),
+  // gliding to where the owner has it (netX, netY)
+  net?: number; mirror?: boolean; netX?: number; netY?: number
 }
 export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
 // how long the tip stays up after it is destroyed (and after each hit while wrecked)
@@ -207,6 +212,13 @@ export function createCombat() {
   const pendingUndead: Target[] = []
   let playing = false, undeadBorn = 0
   let zoneBirds: BirdId[] | null = null
+  // online: on a browser that is not the lobby's owner, hits on the owner's enemies (mirrors) are reported here
+  // instead of applied; the shots fired here wait in netShots for the sync to send them (only while online)
+  let reportHit: ((h: NetHit) => void) | null = null
+  let netOn = false
+  const netShots: NetShot[] = []
+  // the other browsers' chickens (world units): the zombies go for the nearest chicken, local or not
+  let netBodies: { x: number; y: number }[] = []
 
   const held = (): Owned | null => inv[cur] ?? null
   const ownGroup = (item: ItemId) => itemGroup(item, !!items[item]?.instrument)
@@ -230,6 +242,14 @@ export function createCombat() {
     if (t.deadT > 0 || damage <= 0) return
     // a button: any hit presses it
     if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
+    // the owner's enemy: it shows the hit here and the owner decides what it does
+    if (t.mirror && reportHit && t.net !== undefined) {
+      t.flash = 0.12
+      addText(x, y - 10, String(Math.round(damage)), t.kind === 'undead' ? '#c9ced6' : '#ffd166')
+      burst(x, y, 5, t.kind === 'zombie' ? '#7a9a3a' : t.kind === 'undead' ? '#9aa0a8' : '#ffd166', 160, 2)
+      reportHit({ id: t.net, d: damage, px: pushX, x, y })
+      return
+    }
     if (blocked(t, x, y)) return
     if (t.dummy) { hurtDummy(t, damage, pushX, x, y); return }
     if (t.kind === 'undead') { hurtUndead(t, damage, x, y); return }
@@ -329,6 +349,13 @@ export function createCombat() {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
     if (t.kind === 'undead' && (t.data as UndeadState).bird) return
+    if (t.mirror && reportHit && t.net !== undefined) {
+      t.flash = 0.12; t.tint = note.color
+      texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
+      burst(x, y, 4, note.color, 120, 3)
+      reportHit({ id: t.net, d: amount, px: pushX, x, y, n: { m: note.midi, c: note.color, s: note.sym, v: note.voice, w: note.wave }, st: stun })
+      return
+    }
     if (blocked(t, x, y)) return
     if (t.dummy) {
       t.flash = 0.12; t.vx += pushX * 0.3
@@ -604,7 +631,11 @@ export function createCombat() {
         let guard = 0
         while (!stepBullet(b, 1 / 240, ctx) && guard++ < 2000) { /* travel */ }
         tracers.push({ x1: mx, y1: my, x2: b.x, y2: b.y, life: 0.12 })
-      } else bullets.push(b)
+        if (netOn) netShots.push({ k: 't', i: b.item, x1: mx, y1: my, x2: b.x, y2: b.y })
+      } else {
+        bullets.push(b)
+        if (netOn) netShots.push(shotOf(b))
+      }
     }
     if (d.instrument) burst(mx, my, 2 + n, DEGREE_COLORS[music.degreeOf(notes[0]) % DEGREE_COLORS.length], 110, 3)
     else { burst(mx, my, 3 + n, '#fff3b0', 140, 2); sound('shot', h.item) }
@@ -614,6 +645,35 @@ export function createCombat() {
     if (h.ammo <= 0 && d.autoReload) startReload()
   }
 
+  // a bullet as it goes to the other browsers
+  const shotOf = (b: Bullet): NetShot => ({
+    k: 'b', i: b.item, x: b.x, y: b.y, vx: b.vx, vy: b.vy, sz: b.size, dr: b.drop, rg: b.range, fu: b.fuse, bo: b.bounce, ex: b.explode, ep: b.explodePush, pi: b.pierce,
+    ...(b.note ? { n: { m: b.note.midi, c: b.note.color, s: b.note.sym, w: b.note.wave, v: b.note.voice } } : {}), ...(b.ring ? { rn: b.ring } : {}), ...(b.ghost ? { gh: true } : {}),
+  })
+  // another browser's shots: they fly here too, only to be seen (and heard when they are in this scene)
+  function addRemoteShots(list: readonly NetShot[]) {
+    let heard = 0
+    for (const s of list) {
+      const d = items[s.i]
+      if (!d) continue
+      const x = s.k === 't' ? s.x1 : s.x
+      const near = x > view.l - 200 && x < view.r + 200
+      if (s.k === 't') { tracers.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, life: 0.12 }); burst(s.x2, s.y2, 4, '#fff3b0', 120, 2) }
+      else if (s.k === 'th') {
+        thrown.push({ x: s.x, y: s.y, vx: s.vx, vy: s.vy, spin: s.sp, angle: s.a, owned: fresh(s.i), damage: 0, hit: false, remote: true })
+      } else {
+        const note = s.n ? { midi: s.n.m, color: s.n.c, sym: s.n.s, wave: s.n.w, phase: rand(0, Math.PI * 2), voice: s.n.v as VoiceId } : undefined
+        bullets.push({
+          x: s.x, y: s.y, vx: s.vx, vy: s.vy, dist: 0, damage: 0, pierce: s.pi, hits: new Set(), size: s.sz, drop: s.dr, range: s.rg, item: s.i, t: 0,
+          explode: s.ex, explodeDamage: 0, explodePush: s.ep, fuse: s.fu, bounce: s.bo, note, ring: s.rn, ghost: s.gh, remote: true,
+        })
+        // its note, softer than one's own
+        if (note && near && heard < 4) out.note(note.voice, note.midi, 0, d.noteLen, 0.4)
+      }
+      if (near && heard++ < 4 && !d.instrument) sounds.push({ kind: s.k === 'th' ? 'throw' : 'shot', item: s.k === 'th' ? null : s.i })
+    }
+  }
+
   function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
     const strength = b ? b.explodePush ?? items[b.item].explodePush : 0
     blastActors.forEach(actor => {
@@ -621,7 +681,7 @@ export function createCombat() {
       if (push) actor.push(push.x, push.y)
     })
     targets.forEach(t => {
-      if (t.kind === 'button' || t.deadT > 0) return
+      if (t.kind === 'button' || t.deadT > 0 || (t.mirror && reportHit)) return
       const push = explosionImpulse(x, y, r, strength, { l: t.x - t.w / 2, r: t.x + t.w / 2, t: t.y - t.h, b: t.y })
       if (!push) return
       const m = t.blast ??= { x: 0, y: 0, vx: 0, vy: 0 }
@@ -631,6 +691,7 @@ export function createCombat() {
     booms.push({ x, y, r, life: 0.35 })
     sound('explode', null)
     burst(x, y, 26, '#ffb347', 380, 4); burst(x, y, 14, '#fff3b0', 220, 3)
+    if (b?.remote) return
     targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
@@ -646,8 +707,8 @@ export function createCombat() {
     booms.push({ x, y, r, life: 0.5, color: note.color })
     const chord = music.chord(true).map(m => m + 12 * Math.round((note.midi - 60) / 12))
     if (b.item === 'tambourine') out.drum('jingle', 0)
-    chord.forEach((m, i) => out.note(note.voice, m, i * 0.03, 0.5, 0.6))
-    targets.forEach(t => {
+    chord.forEach((m, i) => out.note(note.voice, m, i * 0.03, 0.5, b.remote ? 0.35 : 0.6))
+    if (!b.remote) targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
       const dist = Math.hypot(cx - x, cy - y)
@@ -660,7 +721,7 @@ export function createCombat() {
       bullets.push({
         x, y: y - 6, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, dist: 0, damage: Math.max(5, amount * 0.35), pierce: 0, hits: new Set(), size: 9, drop: 0, range: r * 1.6,
         item: b.item, t: 0, explode: 0, explodeDamage: 0, fuse: 0, bounce: 0,
-        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true,
+        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true, remote: b.remote,
       })
     }
   }
@@ -687,6 +748,12 @@ export function createCombat() {
         const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
         if (x >= l && x <= r && y >= top && y <= bot) {
           if (b.explode > 0 || dry) { b.x = x; b.y = y; return gone(x, y) }
+          // another browser's shot: it stops where it hit (that browser tells the owner what it did)
+          if (b.remote) {
+            b.hits.add(t.id)
+            if (b.hits.size > b.pierce) { b.x = x; b.y = y; burst(x, y, 4, b.note ? b.note.color : '#ffd166', 120, 2); return true }
+            break
+          }
           if (b.note) harmonize(t, b.damage, Math.sign(b.vx) * 40, x, y, b.note, items[b.item].stun)
           else hitTarget(t, b.damage, Math.sign(b.vx) * 40, x, y)
           b.hits.add(t.id)
@@ -1054,9 +1121,20 @@ export function createCombat() {
   }
   function stopBeam() { beamHeld?.stop(); beamHeld = null; beam = null }
 
-  const env = (groundY: number, playerX: number, playerY: number): EnemyEnv => ({
-    playerX, playerY, groundY, viewL: view.l, viewR: view.r,
-    onBite: t => { kills.bites++; addText(playerX, playerY - 150, 'mordida!', '#ff6b5b'); burst(playerX + (t.face > 0 ? -20 : 20), playerY - 80, 10, '#ff6b5b', 200, 3); sound('bite', null) },
+  const env = (groundY: number, playerX: number, playerY: number, bounds?: { l: number; r: number }): EnemyEnv => ({
+    playerX, playerY, groundY, viewL: bounds?.l ?? view.l, viewR: bounds?.r ?? view.r,
+    // online: the other browsers' chickens count too (the nearest one is chased)
+    nearest: netBodies.length ? (x: number, y: number) => {
+      let best = { x: playerX, y: playerY }, dist = Math.hypot(playerX - x, playerY - y)
+      for (const b of netBodies) { const d = Math.hypot(b.x - x, b.y - y); if (d < dist) { dist = d; best = b } }
+      return best
+    } : undefined,
+    onBite: (t, at) => {
+      const px = at?.x ?? playerX, py = at?.y ?? playerY
+      // the bitten one is this browser's chicken: it counts here
+      if (px === playerX && py === playerY) kills.bites++
+      addText(px, py - 150, 'mordida!', '#ff6b5b'); burst(px + (t.face > 0 ? -20 : 20), py - 80, 10, '#ff6b5b', 200, 3); sound('bite', null)
+    },
   })
 
   return {
@@ -1173,8 +1251,48 @@ export function createCombat() {
     // the part of the world on screen (enemies enter from its sides)
     setView(l: number, r: number) { view = { l, r } },
     pressed, kills,
-    spawnAliens(groundY: number, playerX: number) { spawnAlienRow(targets, env(groundY, playerX, 0)) },
-    spawnZombies(groundY: number, playerX: number, count: number) { spawnZombies(targets, env(groundY, playerX, 0), count) },
+    // bounds: the scene the horde is for (by default the one on screen here); the aliens keep to it
+    spawnAliens(groundY: number, playerX: number, bounds?: { l: number; r: number }) { spawnAlienRow(targets, env(groundY, playerX, 0, bounds)) },
+    spawnZombies(groundY: number, playerX: number, count: number, bounds?: { l: number; r: number }) { spawnZombies(targets, env(groundY, playerX, 0, bounds), count) },
+    // ---------- online (lib/pigchicken/net-world-sync.ts) ----------
+    // follower: report hits on the owner's enemies to fn instead of applying them (null: this browser decides)
+    setNetFollower(fn: ((h: NetHit) => void) | null) { reportHit = fn },
+    get netFollower() { return !!reportHit },
+    // while online, the shots fired here are kept for the sync to send (it empties the list)
+    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; netBodies = [] } },
+    netShots,
+    setNetBodies(list: { x: number; y: number }[]) { netBodies = list },
+    addRemoteShots,
+    // the owner applies another browser's hit on one of its enemies, as if it were its own
+    applyNetHit(h: NetHit) {
+      const t = targets.find(g => g.net === h.id && !g.mirror)
+      if (!t) return false
+      if (h.n) harmonize(t, h.d, h.px, h.x, h.y, { midi: h.n.m, color: h.n.c, sym: h.n.s, wave: h.n.w, phase: 0, voice: h.n.v as VoiceId }, h.st ?? 0)
+      else hitTarget(t, h.d, h.px, h.x, h.y)
+      return true
+    },
+    // what a follower plays on its own screen when the owner's enemy dies, turns into a bird / a person, comes back
+    netChange(t: Target, change: 'die' | 'convert' | 'zombieDie' | 'undeadDie' | 'bird') {
+      if (change === 'die') {
+        const color = (t.data as { color?: string } | undefined)?.color ?? '#ffffff'
+        burst(t.x, t.y - t.h / 2, 24, color, 260, 5); sound('alienDie', null)
+        playNotes(deathNotes(deathSoundsFor(t.data).physical, music.chord(true), music.secondsPerBeat()), 'chip')
+      } else if (change === 'convert') convert(t)
+      else if (change === 'zombieDie') sound('zombieDie', null)
+      else if (change === 'undeadDie') { burst(t.x, t.y - t.h / 2, 20, '#8d9096', 240, 4); sound('alienDie', null) }
+      else { burst(t.x, t.y - t.h / 2, 16, (t.data as UndeadState | undefined)?.eye ?? '#ffffff', 200, 4); addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6') }
+    },
+    // the owner's world becomes this browser's (it is the new owner): the mirrors move here from now on
+    adoptMirrors() { targets.forEach(t => { if (t.mirror) { t.mirror = false; t.netX = undefined; t.netY = undefined } }) },
+    // another browser became the owner: this browser's shared enemies become mirrors until its snapshot replaces them
+    yieldShared() {
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i]
+        if (!isSharedTarget(t)) continue
+        if (t.net !== undefined) t.mirror = true; else targets.splice(i, 1)
+      }
+      for (let i = pendingUndead.length - 1; i >= 0; i--) if (isSharedTarget(pendingUndead[i])) pendingUndead.splice(i, 1)
+    },
     clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
     addRack(x: number, item: ItemId, y?: number, respawnDelay?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay) }) },
@@ -1402,7 +1520,9 @@ export function createCombat() {
           const { vx, vy } = throwVelocity(throwAngle, p, body.vx)
           sound('throw', null)
           const throwFrom = opts.throwOrigin ?? origin
-          thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin: (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p), angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
+          const spin = (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p)
+          thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin, angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
+          if (netOn) netShots.push({ k: 'th', i: t.item, x: throwFrom.x, y: throwFrom.y, vx, vy, sp: spin, a: throwAngle })
           const thrownAt = cur
           removeHeld(); reloadT = 0
           // the next item in the wing: the one before the thrown one (the new first when it was the first; empty
@@ -1429,7 +1549,8 @@ export function createCombat() {
         if (!t.hit) for (const g of targets) {
           if (g.deadT > 0) continue
           if (Math.abs(t.x - g.x) < g.w / 2 + 10 && t.y > g.y - g.h && t.y < g.y) {
-            hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y); t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
+            if (!t.remote) hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y)
+            t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
         const top = boxes.find(b => b.solid !== false && crossesBoxTop(b, t.x, py, t.y))
@@ -1437,7 +1558,8 @@ export function createCombat() {
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
         const floor = top ? top.t : t.y >= groundY ? groundY : null
         if (floor !== null && t.vy > 0) {
-          pickups.push({ id: nextId++, owned: t.owned, x: t.x, y: floor, vy: 0, resting: true, noPick: 0.5 })
+          // another browser's throw: the item lands on that browser's floor, not here
+          if (!t.remote) pickups.push({ id: nextId++, owned: t.owned, x: t.x, y: floor, vy: 0, resting: true, noPick: 0.5 })
           burst(t.x, floor, 6, '#c9b48a', 120, 2)
           thrown.splice(i, 1)
         }
@@ -1504,18 +1626,20 @@ export function createCombat() {
 
       // targets: knockback, wobble, fall and come back
       // enemies move; the ones that finished dying leave
-      targets.forEach(t => { if (t.blast) { t.x -= t.blast.x; t.y -= t.blast.y } })
+      // the owner's enemies (online, another browser owns the lobby) only glide to where the owner has them
+      targets.forEach(t => { if (t.mirror) glideMirror(t, dt) })
+      targets.forEach(t => { if (t.blast && !t.mirror) { t.x -= t.blast.x; t.y -= t.blast.y } })
       const e = env(groundY, body.x, body.y)
-      stepFormations(targets, dt, e)
+      stepFormations(targets.some(t => t.mirror) ? targets.filter(t => !t.mirror) : targets, dt, e)
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
-        if ((t.kind === 'alien' || t.kind === 'zombie') && !stepEnemy(t, dt, e)) targets.splice(i, 1)
+        if ((t.kind === 'alien' || t.kind === 'zombie') && !t.mirror && !stepEnemy(t, dt, e)) targets.splice(i, 1)
       }
       // the undead: fall, lie, get up and wander, fly as birds (and whistle), leave once the music ends
       targets.push(...pendingUndead.splice(0))
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
-        if (t.kind !== 'undead') continue
+        if (t.kind !== 'undead' || t.mirror) continue
         const u = t.data as UndeadState
         t.animT += dt
         if (!stepUndead(t, u, dt, { boxes, groundY, viewL: view.l, viewR: view.r, playing, rand: Math.random })) { targets.splice(i, 1); continue }
@@ -1535,13 +1659,13 @@ export function createCombat() {
       })
 
       targets.forEach(t => {
-        if (!t.blast) return
+        if (!t.blast || t.mirror) return
         stepBlastMotion(t.blast, dt)
         t.x += t.blast.x; t.y += t.blast.y
       })
 
       // every target: the stillness of a note wears off; answers cool down
-      targets.forEach(t => { if (t.stun) t.stun = Math.max(0, t.stun - dt); if (t.answerCool) t.answerCool = Math.max(0, t.answerCool - dt) })
+      targets.forEach(t => { if (t.stun && !t.mirror) t.stun = Math.max(0, t.stun - dt); if (t.answerCool) t.answerCool = Math.max(0, t.answerCool - dt) })
       // converted enemies leave: birds flap up and away, people run off with little hops
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]
