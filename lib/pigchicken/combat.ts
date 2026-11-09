@@ -12,7 +12,7 @@ import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, typ
 import { INVENTORY_MAX, clampInventoryLimit, groupStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
-import { glideMirror, isSharedTarget, type NetHit, type NetShot } from './net-world'
+import { glideMirror, isSharedTarget, type NetAsk, type NetHit, type NetShot } from './net-world'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
@@ -77,6 +77,8 @@ export type Target = {
   // online (lib/pigchicken/net-world.ts): its id in the lobby; mirror: the owner's enemy drawn here (not moved here),
   // gliding to where the owner has it (netX, netY)
   net?: number; mirror?: boolean; netX?: number; netY?: number
+  // a training dummy of the layout: its element's id, the same in every browser of the lobby
+  netKey?: string
 }
 export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
 // how long the tip stays up after it is destroyed (and after each hit while wrecked)
@@ -94,7 +96,11 @@ export function combineEffects(list: readonly Effect[]): Effect | null {
   const last = list[list.length - 1]
   return { ...last, left: Math.max(...list.map(e => e.left)), total: Math.max(...list.map(e => e.total)), speed: list.reduce((k, e) => k * e.speed, 1), accel: list.reduce((k, e) => k * e.accel, 1) }
 }
-export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
+export type Pickup = {
+  id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number
+  // online: its id in the lobby; mirror: the owner's item drawn here (taking it asks the owner); rack: the rack it came from
+  net?: number; mirror?: boolean; netX?: number; netY?: number; rack?: string
+}
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 // a peck's defence: while the beak is out, damaging notes and projectiles in its cone vanish in a little cloud
 export type ParryZone = { x: number; y: number; angle: number; reach: number; arc: number }
@@ -173,7 +179,8 @@ export function createCombat() {
   let view = { l: 0, r: 1280 }
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
   // y: the floor the rack stands on (a platform's top), or the ground when unset
-  const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number }[] = []
+  // key: the same rack in every browser of the lobby (the layout element's id, or the temple's own)
+  const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; key?: string }[] = []
   let swing: Swing | null = null
   // the pecks defending right now (one per local player) and the little clouds of what they cancelled
   const parryZones = new Map<string, ParryZone>()
@@ -223,6 +230,15 @@ export function createCombat() {
   const netShots: NetShot[] = []
   // the other browsers' chickens (world units): the zombies go for the nearest chicken, local or not
   let netBodies: { x: number; y: number }[] = []
+  // online, not the owner: the items on the floor are the owner's; grabbing one and dropping one are asked of it
+  let netAsk: ((a: NetAsk) => void) | null = null
+  // items asked for and not answered yet (lobby id -> seconds left): not asked again meanwhile
+  const asked = new Map<number, number>()
+  // an item lands on the floor: here, or (not the owner) on the owner's floor
+  const floor = (p: Pickup) => {
+    if (!netAsk) { pickups.push(p); return }
+    netAsk({ k: 'drop', o: { item: p.owned.item, ammo: p.owned.ammo, durability: p.owned.durability }, x: p.x, y: p.y, vy: p.vy, r: p.resting ? 1 : 0, n: p.noPick })
+  }
 
   const held = (): Owned | null => inv[cur] ?? null
   const ownGroup = (item: ItemId) => itemGroup(item, !!items[item]?.instrument)
@@ -255,6 +271,16 @@ export function createCombat() {
       return
     }
     if (blocked(t, x, y)) return
+    // a dummy of the layout (online, not the owner): it shows the hit here and the owner keeps its life
+    if (t.dummy && reportHit && t.netKey) {
+      dummyJolt(t, pushX)
+      if (t.hp > 0) addText(x, y - 10, String(Math.round(damage)), '#ffd166')
+      burst(x, y, t.hp > 0 ? 5 : 4, t.hp > 0 ? '#ffd166' : '#8a7a5c', t.hp > 0 ? 160 : 120, 2)
+      if (t.hp <= 0 && t.dummy.params.message) t.dummy.tipT = Math.max(t.dummy.tipT, TIP_AGAIN)
+      answerDummy(t)
+      reportHit({ id: 0, k: t.netKey, d: damage, px: pushX, x, y })
+      return
+    }
     if (t.dummy) { hurtDummy(t, damage, pushX, x, y); return }
     if (t.kind === 'undead') { hurtUndead(t, damage, x, y); return }
     damage *= 1 - (t.shield ?? 0)
@@ -275,20 +301,25 @@ export function createCombat() {
   }
 
   // a training dummy takes a hit: it loses life and breaks a stage at a time; wrecked, it only rattles and shows its tip again
-  function hurtDummy(t: Target, damage: number, pushX: number, x: number, y: number) {
+  // quiet: another browser's hit (online): it already answered there
+  function hurtDummy(t: Target, damage: number, pushX: number, x: number, y: number, quiet = false) {
     const d = t.dummy!
-    t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * (d.stage === 0 ? 0.15 : 0.35); t.vx += pushX * (d.stage === 0 ? 0.3 : 1)
+    dummyJolt(t, pushX)
     if (t.hp <= 0) {
       burst(x, y, 4, '#8a7a5c', 120, 2)
       if (d.params.message) d.tipT = Math.max(d.tipT, TIP_AGAIN)
-      answerDummy(t)
+      if (!quiet) answerDummy(t)
       return
     }
     t.hp = Math.max(0, t.hp - damage)
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
     burst(x, y, 5, '#ffd166', 160, 2)
     setStage(t)
-    answerDummy(t)
+    if (!quiet) answerDummy(t)
+  }
+  function dummyJolt(t: Target, pushX: number) {
+    const d = t.dummy!
+    t.flash = 0.12; t.wobble = Math.sign(pushX || 1) * (d.stage === 0 ? 0.15 : 0.35); t.vx += pushX * (d.stage === 0 ? 0.3 : 1)
   }
 
   // notes mend a dummy: life comes back, and with it the stages (and its tune)
@@ -298,12 +329,14 @@ export function createCombat() {
     t.hp = Math.min(t.maxHp, t.hp + amount); t.tint = color
     if (t.hp > was && Math.random() < 0.5) sparks.push({ x: t.x + rand(-t.w / 2, t.w / 2), y: t.y - rand(t.h * 0.4, t.h), vx: rand(-30, 30), vy: rand(-90, -40), life: 0.5, max: 0.5, color: '#7bd88f', size: 3 })
     setStage(t)
-    if (was < t.maxHp && t.hp >= t.maxHp) {
-      conv.harmonized++
-      const top = t.y - t.h / 2
-      music.chord(true).forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
-      addText(t.x, t.y - t.h - 24, 'novinho!', '#7bd88f')
-    }
+    if (was < t.maxHp && t.hp >= t.maxHp) mended(t)
+  }
+  // fully mended: a little chord and the news
+  function mended(t: Target) {
+    conv.harmonized++
+    const top = t.y - t.h / 2
+    music.chord(true).forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
+    addText(t.x, t.y - t.h - 24, 'novinho!', '#7bd88f')
   }
 
   // the stage follows the life: breaking down cracks it (splinters, a jolt); mending it up chimes
@@ -365,7 +398,9 @@ export function createCombat() {
       t.flash = 0.12; t.vx += pushX * 0.3
       texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
       burst(x, y, 4, note.color, 120, 3)
-      mendDummy(t, amount, note.color); answerDummy(t)
+      if (reportHit && t.netKey) { t.tint = note.color; reportHit({ id: 0, k: t.netKey, d: amount, px: pushX, x, y, n: { m: note.midi, c: note.color, s: note.sym, v: note.voice, w: note.wave } }) }
+      else mendDummy(t, amount, note.color)
+      answerDummy(t)
       return
     }
     t.harmony = (t.harmony ?? 0) + amount; t.flash = 0.12; t.tint = note.color; t.vx += pushX * 0.3
@@ -507,7 +542,7 @@ export function createCombat() {
   }
 
   // One slot per type; consumables can top up their existing stack.
-  const canTake = (p: Pickup) => p.noPick <= 0 && (!inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
+  const canTake = (p: Pickup) => p.noPick <= 0 && !(p.net !== undefined && asked.has(p.net)) && (!inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
 
   // grab with room: the item goes into its group's place and she holds it (picking up is always the player's choice)
   function pickUp(p: Pickup) {
@@ -516,7 +551,7 @@ export function createCombat() {
     if (stack) {
       const amount = Math.min(p.owned.ammo, (CONSUMABLE_LIMITS[stack.item] ?? 0) - stack.ammo)
       stack.ammo += amount; p.owned.ammo -= amount
-      if (p.owned.ammo > 0) pickups.push(p)
+      if (p.owned.ammo > 0) floor(p)
       sound('equip', stack.item)
       addText(p.x, p.y - 30, `+${amount} ${items[stack.item].name}`, '#7bdff2')
       return true
@@ -525,7 +560,7 @@ export function createCombat() {
     stopBeam(); peck = null; peckPrep = 0
     const limit = CONSUMABLE_LIMITS[p.owned.item]
     if (limit && p.owned.ammo > limit) {
-      pickups.push({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
+      floor({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
       p.owned.ammo = limit
     }
     cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0
@@ -538,7 +573,7 @@ export function createCombat() {
   function swapIn(p: Pickup) {
     const old = held()
     stopBeam()
-    if (old) { pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 }); inv.splice(cur, 1) }
+    if (old) { floor({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 }); inv.splice(cur, 1) }
     cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
@@ -1113,7 +1148,11 @@ export function createCombat() {
       const note: NoteInfo = { midi, color, sym: '♩', wave: 0, phase: 0, voice: d.voice }
       // harmony flows while it plays; the target stays still; it answers every so often
       hit.stun = Math.max(hit.stun ?? 0, d.stun)
-      if (hit.dummy) { mendDummy(hit, d.damage * dt, color); answerDummy(hit) }
+      if (hit.dummy) {
+        if (reportHit && hit.netKey) { hit.tint = color; reportHit({ id: 0, k: hit.netKey, d: d.damage * dt, px: 0, x, y, n: { m: midi, c: color, s: '♩', v: d.voice, w: 0 } }) }
+        else mendDummy(hit, d.damage * dt, color)
+        answerDummy(hit)
+      }
       else hit.harmony = (hit.harmony ?? 0) + d.damage * dt
       hit.tint = color
       if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
@@ -1267,8 +1306,45 @@ export function createCombat() {
     netShots,
     setNetBodies(list: { x: number; y: number }[]) { netBodies = list },
     addRemoteShots,
+    // not the owner: grabs and drops go to the owner (null: this browser keeps its own floor)
+    setNetAsk(fn: ((a: NetAsk) => void) | null) { netAsk = fn; if (!fn) asked.clear() },
+    // the owner grants an item asked for here: it comes into that local player's inventory (or back to the floor)
+    netGive(player: string, owned: Owned, x: number, y: number, id?: number) {
+      if (id !== undefined) asked.delete(id)
+      const was = active
+      if (player !== active && loadouts.has(player)) useLoadout(player)
+      const g: Pickup = { id: nextId++, owned, x, y, vy: 0, resting: true, noPick: 0 }
+      if (!canTake(g)) floor(g)
+      else if (!pickUp(g)) { if (held()) swapIn(g); else floor(g) }
+      useLoadout(was)
+    },
+    // the owner: takes an item off its floor for another browser (null: gone, or not to be taken yet)
+    netTake(id: number) {
+      const i = pickups.findIndex(p => p.net === id && !p.mirror && p.noPick <= 0)
+      return i < 0 ? null : pickups.splice(i, 1)[0]
+    },
+    // the owner: an item another browser dropped lands on its floor
+    netDrop(owned: Owned, x: number, y: number, vy: number, resting: boolean, noPick: number) {
+      pickups.push({ id: nextId++, owned, x, y, vy, resting, noPick })
+    },
+    // not the owner: a layout dummy's life as the owner has it (its stage, cracks, tip and tune follow)
+    netDummy(key: string, hp: number) {
+      const t = targets.find(g => g.dummy && g.netKey === key)
+      if (!t || !Number.isFinite(hp)) return
+      const was = t.hp
+      t.hp = Math.max(0, Math.min(t.maxHp, hp))
+      if (t.hp === was) return
+      setStage(t)
+      if (was < t.maxHp && t.hp >= t.maxHp) mended(t)
+    },
     // the owner applies another browser's hit on one of its enemies, as if it were its own
     applyNetHit(h: NetHit) {
+      if (h.k) {
+        const t = targets.find(g => g.dummy && g.netKey === h.k)
+        if (!t) return false
+        if (h.n) { t.tint = h.n.c; mendDummy(t, h.d, h.n.c) } else hurtDummy(t, h.d, h.px, h.x, h.y, true)
+        return true
+      }
       const t = targets.find(g => g.net === h.id && !g.mirror)
       if (!t) return false
       if (h.n) harmonize(t, h.d, h.px, h.x, h.y, { midi: h.n.m, color: h.n.c, sym: h.n.s, wave: h.n.w, phase: 0, voice: h.n.v as VoiceId }, h.st ?? 0)
@@ -1287,7 +1363,16 @@ export function createCombat() {
       else { burst(t.x, t.y - t.h / 2, 16, (t.data as UndeadState | undefined)?.eye ?? '#ffffff', 200, 4); addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6') }
     },
     // the owner's world becomes this browser's (it is the new owner): the mirrors move here from now on
-    adoptMirrors() { targets.forEach(t => { if (t.mirror) { t.mirror = false; t.netX = undefined; t.netY = undefined } }) },
+    adoptMirrors() {
+      targets.forEach(t => { if (t.mirror) { t.mirror = false; t.netX = undefined; t.netY = undefined } })
+      // its items on the floor too, each rack's back with its rack
+      for (const p of pickups) {
+        if (!p.mirror) continue
+        p.mirror = false; p.netX = undefined; p.netY = undefined
+        const r = p.rack ? racks.find(k => k.key === p.rack) : undefined
+        if (r) { r.pickupId = p.id; r.spawnX = r.x; r.spawnY = r.y; r.t = 0 }
+      }
+    },
     // another browser became the owner: this browser's shared enemies become mirrors until its snapshot replaces them
     yieldShared() {
       for (let i = targets.length - 1; i >= 0; i--) {
@@ -1296,10 +1381,13 @@ export function createCombat() {
         if (t.net !== undefined) t.mirror = true; else targets.splice(i, 1)
       }
       for (let i = pendingUndead.length - 1; i >= 0; i--) if (isSharedTarget(pendingUndead[i])) pendingUndead.splice(i, 1)
+      // the floor is the owner's: this browser's items wait for its list, the racks stop filling
+      for (let i = pickups.length - 1; i >= 0; i--) if (!pickups[i].mirror) pickups.splice(i, 1)
+      racks.forEach(r => { r.pickupId = undefined; r.t = 0 })
     },
     clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
-    addRack(x: number, item: ItemId, y?: number, respawnDelay?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay) }) },
+    addRack(x: number, item: ItemId, y?: number, respawnDelay?: number, key?: string) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay), key }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
       const d = def()
@@ -1560,11 +1648,11 @@ export function createCombat() {
         const top = boxes.find(b => b.solid !== false && crossesBoxTop(b, t.x, py, t.y))
         const side = !top && inBox(t.x, t.y)
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
-        const floor = top ? top.t : t.y >= groundY ? groundY : null
-        if (floor !== null && t.vy > 0) {
+        const landY = top ? top.t : t.y >= groundY ? groundY : null
+        if (landY !== null && t.vy > 0) {
           // another browser's throw: the item lands on that browser's floor, not here
-          if (!t.remote) pickups.push({ id: nextId++, owned: t.owned, x: t.x, y: floor, vy: 0, resting: true, noPick: 0.5 })
-          burst(t.x, floor, 6, '#c9b48a', 120, 2)
+          if (!t.remote) floor({ id: nextId++, owned: t.owned, x: t.x, y: landY, vy: 0, resting: true, noPick: 0.5 })
+          burst(t.x, landY, 6, '#c9b48a', 120, 2)
           thrown.splice(i, 1)
         }
       }
@@ -1576,7 +1664,10 @@ export function createCombat() {
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
         if (world) p.noPick = Math.max(0, p.noPick - dt)
-        if (world && !p.resting) {
+        if (world && p.mirror) {
+          // the owner's item: it glides to where the owner has it
+          if (p.netX !== undefined && p.netY !== undefined) { const k = Math.min(1, dt * 12); p.x += (p.netX - p.x) * k; p.y += (p.netY - p.y) * k }
+        } else if (world && !p.resting) {
           const py = p.y
           p.vy += ITEM_GRAVITY * dt; p.y += p.vy * dt
           const top = boxes.find(b => b.solid !== false && crossesBoxTop(b, p.x, py, p.y))
@@ -1594,7 +1685,12 @@ export function createCombat() {
       // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
       if (!input.grabHeld) heldTaken.clear()
       const grabNow = !!input.grab || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
-      if (grabNow && hover && pickups.includes(hover) && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
+      if (grabNow && hover && hover.mirror && netAsk && hover.net !== undefined && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
+        // the owner's item: asked of it; it comes into the inventory when the owner grants it
+        netAsk({ k: 'take', id: hover.net, pl: active }); asked.set(hover.net, 1.5)
+        heldTaken.add(hover.id); hover = null
+      }
+      else if (grabNow && hover && pickups.includes(hover) && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId
         pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null
         heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
@@ -1605,9 +1701,11 @@ export function createCombat() {
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
       if (!world) return
+      for (const [id, left] of asked) if (left - dt <= 0) asked.delete(id); else asked.set(id, left - dt)
       // Each rack owns its pickup, so neighbouring racks and dropped copies
       // cannot suppress its refill. A partially collected stack still occupies it.
-      racks.forEach(r => {
+      // (online, not the owner: the owner's racks fill its floor)
+      if (!netAsk) racks.forEach(r => {
         if (r.pickupId !== undefined) {
           const active = pickups.find(p => p.id === r.pickupId)
           if (active) {

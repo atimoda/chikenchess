@@ -8,7 +8,7 @@ Servidor [Colyseus](https://colyseus.io) separado do site (Next.js), com a sala 
 - **Identidade** (`src/auth.mjs`): com token do Supabase, a assinatura é conferida aqui (chaves públicas JWKS, buscadas uma vez por hora, ou `SUPABASE_JWT_SECRET`), sem chamar o Supabase a cada entrada. Sem token é visitante, só com o nome. Sessão anônima do Supabase conta como visitante.
 - **Pátio** (`src/patio-meta.mjs`): ao abrir a sala, lê nome, criador e padrinho por `patio_lobby_meta` (uma linha pequena, uma vez por sala). Estado da sala nunca vai para o banco.
 - **Edit mode ao vivo:** o dono e quem ele liberou mandam o layout inteiro (`layout`, até 400 kB; o transporte aceita 512 kB por mensagem); a sala guarda o último para quem entrar depois. O dono avisa a revisão que salvou no banco (`saved`).
-- **Mundo compartilhado:** o navegador do dono simula os inimigos e manda `foes` (~10/s), repassado aos outros; `hits` e `spawn` de quem não é o dono vão só para o dono; `shots` de cada um vão para os demais. O servidor não simula nada: confere quem manda, quantidade, tamanho e ritmo, e repassa.
+- **Mundo compartilhado:** o navegador do dono simula os inimigos e manda `foes` (~10/s), repassado aos outros; `hits` e `spawn` de quem não é o dono vão só para o dono; `shots` de cada um vão para os demais. O dono também manda `world` (itens no chão, vida dos bonecos do layout, estado do Templo); `ask` de quem não é o dono (pegar, soltar, gongo, coração, ritmo) vai só para o dono, e `give` do dono vai só para o navegador indicado. O servidor não simula nada: confere quem manda, quantidade, tamanho e ritmo, e repassa.
 - Pacotes: `src/protocol.mjs`. Mensagens da sala: comentário no topo de `src/patio-room.mjs`.
 
 ```

@@ -8,13 +8,15 @@
 //   applies each hit as if it were its own (life, harmony, deaths, conversions);
 // - every browser sends the projectiles it fires ("shots"); the others fly a copy that only shows (bounces, bursts,
 //   explosion pushes on their own chickens) and never damages anything.
-// The temple's mini-game and the training dummies stay local to each browser.
+// - the owner also keeps the items on the floor, the layout's training dummies and the Templo do Gongo; the others
+//   draw its copies and ask it (lib/pigchicken/net-state.ts, net-temple.ts). The note stage (jukebox songs) stays local.
 import type { ItemId } from './items'
 import type { Target } from './combat'
 
-// a hit on a shared enemy, from the browser that shot it to the owner (id: the enemy's network id)
+// a hit on a shared enemy, from the browser that shot it to the owner (id: the enemy's network id; k instead: a
+// training dummy of the layout, by its element's id)
 export type NetHit = {
-  id: number; d: number; px: number; x: number; y: number
+  id: number; k?: string; d: number; px: number; x: number; y: number
   // notes (instruments) fill the harmony bar instead of hurting: the note and how long it stuns
   n?: { m: number; c: string; s: string; v: string; w: number }; st?: number
 }
@@ -24,6 +26,15 @@ export type NetShot =
   | { k: 'b'; i: ItemId; x: number; y: number; vx: number; vy: number; sz: number; dr: number; rg: number; fu: number; bo: number; ex: number; ep?: number; pi: number; n?: { m: number; c: string; s: string; w: number; v: string }; rn?: number; gh?: boolean }
   | { k: 't'; i: ItemId; x1: number; y1: number; x2: number; y2: number }
   | { k: 'th'; i: ItemId; x: number; y: number; vx: number; vy: number; sp: number; a: number }
+
+// what a browser that is not the owner asks of it: an item on the owner's floor (for one of its local players), an
+// item it dropped (o: the item; r: already resting; n: not to be taken for n s), and the temple's strikes
+export type NetAsk =
+  | { k: 'take'; id: number; pl: string }
+  | { k: 'drop'; o: { item: ItemId; ammo: number; durability: number }; x: number; y: number; vy: number; r: number; n: number }
+  | { k: 'gong' } | { k: 'reset' } | { k: 'start' }
+  | { k: 'judge'; g: 'perfect' | 'good' | 'miss' }
+  | { k: 'hurt'; x: number; y: number } | { k: 'parry'; x: number; y: number }
 
 // what spawns are asked of the owner (the horde buttons and the editor's training enemies), with the scene they are
 // for: the horde moves inside it whoever is watching
@@ -43,8 +54,8 @@ type AnyData = Record<string, unknown> & { kind?: string }
 
 const sharedLook = (data: unknown) => {
   const d = data as AnyData | undefined
-  // the horde's aliens; the training aliens (Catálogo species, with their variant); never the temple's own
-  return d?.kind === 'alien' || (d?.kind === 'temple' && 'variant' in d)
+  // the horde's aliens, the training aliens (Catálogo species) and the Templo do Gongo's; never the note stage's
+  return d?.kind === 'alien' || (d?.kind === 'temple' && !d.note)
 }
 
 /** an enemy the lobby shares (the owner moves it, the others mirror it) */
@@ -190,7 +201,8 @@ const LIMIT = 200_000
 export function cleanHit(h: unknown): NetHit | null {
   const o = h as NetHit | null
   if (!o || typeof o !== 'object' || ![o.id, o.d, o.px, o.x, o.y].every(num)) return null
-  const hit: NetHit = { id: o.id, d: Math.max(0, Math.min(5000, o.d)), px: Math.max(-2000, Math.min(2000, o.px)), x: o.x, y: o.y }
+  if (o.k !== undefined && (typeof o.k !== 'string' || !o.k || o.k.length > 64)) return null
+  const hit: NetHit = { id: o.id, ...(o.k ? { k: o.k } : {}), d: Math.max(0, Math.min(5000, o.d)), px: Math.max(-2000, Math.min(2000, o.px)), x: o.x, y: o.y }
   if (o.n && typeof o.n === 'object' && num(o.n.m) && num(o.n.w) && typeof o.n.c === 'string' && typeof o.n.s === 'string' && typeof o.n.v === 'string') {
     hit.n = { m: o.n.m, c: o.n.c.slice(0, 16), s: o.n.s.slice(0, 4), v: o.n.v.slice(0, 16), w: o.n.w }
     hit.st = num(o.st) ? Math.max(0, Math.min(10, o.st!)) : 0

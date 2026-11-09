@@ -38,6 +38,10 @@ export type NetWorldMsg =
   | { type: 'hits'; pid: number; list: unknown[] }
   | { type: 'spawn'; pid: number; spawn: unknown }
   | { type: 'shots'; pid: number; list: unknown[] }
+  // the owner's items on the floor, dummies and temple; what others ask of the owner; what the owner granted here
+  | { type: 'world'; state: Record<string, unknown> }
+  | { type: 'ask'; pid: number; list: unknown[] }
+  | { type: 'give'; list: unknown[] }
 type WorldListener = (m: NetWorldMsg) => void
 const worldListeners = new Set<WorldListener>()
 export function onNetWorld(fn: WorldListener) { worldListeners.add(fn); return () => { worldListeners.delete(fn) } }
@@ -121,6 +125,9 @@ function attach(r: Room) {
   r.onMessage('hits', (m: { pid: number; list: unknown[] }) => { if (Array.isArray(m?.list)) toWorld({ type: 'hits', pid: m.pid, list: m.list }) })
   r.onMessage('spawn', (m: { pid: number; spawn: unknown }) => toWorld({ type: 'spawn', pid: m?.pid, spawn: m?.spawn }))
   r.onMessage('shots', (m: { pid: number; list: unknown[] }) => { if (m?.pid !== state.myPid && Array.isArray(m?.list)) toWorld({ type: 'shots', pid: m.pid, list: m.list }) })
+  r.onMessage('world', (m: Record<string, unknown>) => { if (m && typeof m === 'object') toWorld({ type: 'world', state: m }) })
+  r.onMessage('ask', (m: { pid: number; list: unknown[] }) => { if (Array.isArray(m?.list)) toWorld({ type: 'ask', pid: m.pid, list: m.list }) })
+  r.onMessage('give', (m: { list: unknown[] }) => { if (Array.isArray(m?.list)) toWorld({ type: 'give', list: m.list }) })
   r.onMessage('denied', (m: { reason: string }) => set({ notice: m.reason }))
   r.onMessage('kicked', (m: { reason: string }) => set({ notice: m.reason }))
   r.onLeave(() => {
@@ -160,6 +167,9 @@ export const sendNetFoes = (foes: NetFoes) => live()?.send('foes', foes)
 export const sendNetHits = (list: NetHit[]) => live()?.send('hits', { list })
 export const sendNetSpawn = (spawn: NetSpawn) => live()?.send('spawn', { spawn })
 export const sendNetShots = (list: NetShot[]) => live()?.send('shots', { list })
+export const sendNetWorldState = (state: Record<string, unknown>) => live()?.send('world', state)
+export const sendNetAsk = (list: unknown[]) => live()?.send('ask', { list })
+export const sendNetGive = (pid: number, list: unknown[]) => live()?.send('give', { pid, list })
 
 const httpBase = () => GAME_SERVER_URL.replace(/^ws/, 'http')
 /** the public lobbies on the server, oldest first (empty when it cannot be reached) */

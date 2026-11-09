@@ -26,7 +26,7 @@ Etapa 1 — Pátio online
 
 Etapa 2 — mundo compartilhado
 
-6. **Inimigos, horda e bonecos de treino compartilhados** (feito em parte: `lib/pigchicken/net-world.ts`, `net-world-sync.ts`). O navegador do dono simula aliens, zumbis, aliens de treino e mortos-vivos e manda pelo servidor; quem atira informa o acerto e o dono aplica; quando o dono sai, o próximo assume o mundo sem reiniciar. Projéteis de todos aparecem em todos (só visual). Falta: bonecos de treino do layout, Templo/palco de notas, feixe e golpes alheios.
-7. **Itens no chão e coleta compartilhados.** Quem pegou o quê, inventários por player, checagens básicas contra trapaça.
+6. **Inimigos, horda e bonecos de treino compartilhados** (feito: `lib/pigchicken/net-world.ts`, `net-state.ts`, `net-temple.ts`, `net-world-sync.ts`). O navegador do dono simula aliens, zumbis, aliens de treino e mortos-vivos e manda pelo servidor; quem atira informa o acerto e o dono aplica; quando o dono sai, o próximo assume o mundo sem reiniciar. Projéteis de todos aparecem em todos (só visual). Bonecos de treino do layout com vida do dono; Templo do Gongo rodado pelo dono, com gongo, corações, combo e bombas para todos. Falta: palco de notas (músicas da jukebox, local), feixe e golpes alheios, pássaros que assobiam notas.
+7. **Itens no chão e coleta compartilhados** (feito: `lib/pigchicken/net-state.ts`). O chão é do dono; pegar pede ao dono, que concede a um só navegador (perto de uma galinha dele); soltar, arremessar e trocar põem o item no chão do dono; inventários continuam por player.
 
 Cada PR atualiza o arquivo de `docs/mechanics/` correspondente e a entrada diária do changelog quando muda algo perceptível.

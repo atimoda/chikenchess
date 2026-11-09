@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.5.0',
     date: '09/11/2026',
-    title: 'Inventário em grupos, arrastar itens e atalhos por grupo',
+    title: 'Inventário em grupos, atalhos por grupo e Pátio online compartilhado',
     groups: [
       { title: 'Pátio', items: [
         'O inventário comporta até 25 itens. O limite de cada Pátio fica em Configurações do Pátio → Limite do inventário (padrão 25); baixar o limite não tira itens de ninguém, só não deixa pegar novos.',
@@ -24,6 +24,9 @@ const RECENT = [
         'Aliens, zumbis, aliens de treino e os mortos-vivos que eles deixam agora são os mesmos para todo o lobby: o dono do lobby comanda os inimigos, e os acertos de qualquer player (tiros, notas, explosões, golpes e arremessos) valem para todos, inclusive matar, virar passarinho ou curar.',
         'Os botões SOLTAR ALIENS / SOLTAR ZUMBIS e os inimigos de treino do editor funcionam para qualquer player e aparecem para todos; os zumbis vão atrás da galinha mais próxima, de qualquer navegador.',
         'Os tiros, notas e itens arremessados dos outros players aparecem voando na sua tela; as explosões deles empurram a sua galinha. Quando o dono sai, o próximo continua com os mesmos inimigos.',
+        'Os itens no chão agora são os mesmos para todo o lobby: o que cai dos suportes, o que alguém solta ou arremessa e o que sobra de uma troca aparece para todos, e só quem pegar primeiro leva (o item vai para o inventário de quem pegou). Pegar de longe não vale.',
+        'Os bonecos de treino do Pátio têm a mesma vida para todo o lobby: quebram, mostram a dica e são consertados com notas igual em todas as telas, não importa quem acertou.',
+        'O Templo do Gongo virou partida do lobby inteiro: qualquer player bate no gongo e na pedra Recomeçar, todos veem as mesmas fases, aliens, bombas, pontos e corações, as bombas e os aliens acertam qualquer galinha, os acertos no ritmo de cada um somam no mesmo combo, e a fase só cai por saída quando ninguém fica no templo. As músicas da jukebox continuam só na tela de quem escolheu.',
       ] },
       { title: 'Galinha', items: [
         'Novos atalhos: Próximo instrumento (Tab, LB), Próxima arma (Q, RB) e Próximo utilitário (F, B) percorrem só aquele grupo, na ordem da barra, começando pelo primeiro quando o item da mão é de outro grupo. Próximo utilitário também passa pela casa vazia (mãos vazias). Próximo item e Item anterior continuam passando por todo o inventário pela rodinha do mouse e pelo teclado secundário (Del e \'); no teclado principal e no gamepad ficam sem atalho padrão.',

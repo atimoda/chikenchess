@@ -3,8 +3,10 @@
 // kind of alien and a new layer of music; clearing it shows the score and the gong starts the next one.
 //
 // Everything here is plain data stepped with dt and the conductor's beats, with a seeded random number: the same
-// state, inputs and beats give the same game, so it can later be run by a server and sent to every player
-// (the aliens' hit points live in the combat's targets, like every other enemy).
+// state, inputs and beats give the same game. Online, the lobby owner's browser runs it (step) and sends the state
+// (lib/pigchicken/net-temple.ts); the others follow it (follow): they move its bombs, feel them on their own
+// chickens and ask the owner for strikes, hurts and rhythm grades (the aliens' hit points live in the combat's
+// targets, shared like every other enemy).
 import { boxContains, type Box, type Target } from './combat'
 import type { Conductor } from './music'
 import { SCENE_W } from './world'
@@ -110,7 +112,12 @@ export type TempleIO = {
   sound: (s: TempleSound) => void
   // a peck defending where a bomb is cancels it (it vanishes in a little cloud)
   parry?: (x: number, y: number, r: number, color: string) => boolean
+  // online: the other browsers' chickens (world units); a stage goes on while any of them is in the temple, and
+  // the lanterns and the dragon go for any chicken inside
+  others?: { x: number; y: number }[]
 }
+// what a browser that follows the owner's temple tells it (lib/pigchicken/net-world.ts NetAsk)
+export type TempleAsk = { k: 'judge'; g: Judge['grade'] } | { k: 'hurt'; x: number; y: number } | { k: 'parry'; x: number; y: number }
 
 // the stage's mult: a long rhythm combo multiplies the points
 export const multOf = (combo: number) => 1 + Math.min(3, Math.floor(combo / 8))
@@ -252,8 +259,9 @@ export function createTemple(seed = 1) {
       s.welcomed = true
       banner('Templo do Gongo', `Bata ${GONG_FIRST} vezes no gongo (tiro ou golpe) para começar. Bata na jukebox, perto da pedra Recomeçar, para escolher outra música.`, '#ffd166', 6)
     }
-    // leaving in the middle of a stage cancels it
-    if (active && !io.inside) { s.outsideT += dt; if (s.outsideT > 2.5) { s.outsideT = 0; fail(io, 'Você saiu do templo.') } } else s.outsideT = 0
+    // leaving in the middle of a stage cancels it (online: when no chicken of the lobby is left inside)
+    const inScene = (b: { x: number }) => b.x >= L && b.x < L + SCENE_W
+    if (active && !io.inside && !io.others?.some(inScene)) { s.outsideT += dt; if (s.outsideT > 2.5) { s.outsideT = 0; fail(io, 'Você saiu do templo.') } } else s.outsideT = 0
 
     // the gong
     if (io.gongHit) {
@@ -320,6 +328,11 @@ export function createTemple(seed = 1) {
     }
     const beatPhase = io.music.beatPhase
     const playing = s.phase === 'playing'
+    // who the lanterns and the dragon go for: her, or (online) any chicken in the temple
+    const prey = () => {
+      const all = [io.body, ...(io.others ?? []).filter(inScene)]
+      return all.length > 1 ? all[Math.floor(rand() * all.length)] : io.body
+    }
 
     // ---------- the formation: it steps on the beat (on the eighths when few are left), down at the sides ----------
     const f = s.f
@@ -408,7 +421,8 @@ export function createTemple(seed = 1) {
       if (st.dragon && n % 2 === 0) {
         const h = s.aliens.find(a => a.sp === 'dragonHead')
         if (h) {
-          const dx = io.body.x - h.x, dy = io.body.y - 70 - h.y, len = Math.hypot(dx, dy) || 1, v = 340
+          const who = prey()
+          const dx = who.x - h.x, dy = who.y - 70 - h.y, len = Math.hypot(dx, dy) || 1, v = 340
           s.bombs.push({ x: h.x, y: h.y, vx: dx / len * v, vy: dy / len * v, kind: 'fire', t: 0 })
           io.sound({ kind: 'fire' })
         }
@@ -418,7 +432,7 @@ export function createTemple(seed = 1) {
         if (divers.length) {
           const a = divers[Math.floor(rand() * divers.length)]
           a.mode = 'dive'; a.u = 0; a.dur = io.music.secondsPerBeat() * 4
-          a.tx = Math.max(L + 80, Math.min(L + SCENE_W - 80, io.body.x)); a.side = rand() < 0.5 ? -1 : 1
+          a.tx = Math.max(L + 80, Math.min(L + SCENE_W - 80, prey().x)); a.side = rand() < 0.5 ? -1 : 1
           io.sound({ kind: 'dive' })
         }
       }
@@ -444,9 +458,91 @@ export function createTemple(seed = 1) {
     if (playing && s.aliens.length === 0) clear(io)
   }
 
+  // ---------- online ----------
+  // the owner: another browser's chicken was hit (a heart of the lobby's); its bomb is gone
+  function netHurt(io: TempleIO, x: number, y: number) {
+    dropBomb(x, y)
+    if (s.invuln > 0 || (s.phase !== 'playing' && s.phase !== 'intro')) return
+    s.hearts--; s.invuln = 1.4; s.combo = 0
+    io.fx.text(x, y - 170, '-♥', '#ff6b5b', 26)
+    io.sound({ kind: 'hurt' })
+    if (s.hearts <= 0) fail(io, 'Os aliens te derrubaram.')
+  }
+  // a bomb near (x, y) is gone (another browser's chicken took it, or pecked it away)
+  function dropBomb(x: number, y: number) {
+    let best = -1, dist = 60
+    s.bombs.forEach((b, i) => { const d = Math.hypot(b.x - x, b.y - y); if (d < dist) { dist = d; best = i } })
+    if (best >= 0) s.bombs.splice(best, 1)
+  }
+  // the owner: another browser's press of fire, judged on that browser's beat
+  function netJudge(grade: Judge['grade']) {
+    if (s.phase !== 'playing') return
+    if (grade === 'miss') s.combo = 0
+    else { s.combo++; if (grade === 'perfect') s.perfects++; s.bestCombo = Math.max(s.bestCombo, s.combo) }
+  }
+  function applyAsk(io: TempleIO, a: TempleAsk) {
+    if (a.k === 'judge') netJudge(a.g)
+    else if (a.k === 'hurt') netHurt(io, a.x, a.y)
+    else dropBomb(a.x, a.y)
+  }
+
+  // the others: the owner's state comes in (lib/pigchicken/net-temple.ts); here only what this browser sees and
+  // feels moves: its timers, the bombs on its own chicken, the aliens touching it, its presses on the beat
+  let ownInvuln = 0
+  function follow(dt: number, io: TempleIO, ask: (a: TempleAsk) => void) {
+    s.t += dt; s.gongRing += dt; s.resetRing += dt; s.hurtT += dt
+    s.invuln = Math.max(0, s.invuln - dt); ownInvuln = Math.max(0, ownInvuln - dt)
+    if (s.banner) { s.banner.t += dt; if (s.banner.t > s.banner.life) s.banner = null }
+    if (s.judge) { s.judge.t += dt; if (s.judge.t > 0.6) s.judge = null }
+    if (io.inside && !s.welcomed && s.phase === 'idle') {
+      s.welcomed = true
+      banner('Templo do Gongo', `Bata ${GONG_FIRST} vezes no gongo (tiro ou golpe) para começar. Bata na jukebox, perto da pedra Recomeçar, para escolher outra música.`, '#ffd166', 6)
+    }
+    const playing = s.phase === 'playing'
+    if (io.firePressed && playing && io.inside) {
+      const off = io.music.offBeat()
+      const grade: Judge['grade'] = off <= PERFECT ? 'perfect' : off <= GOOD ? 'good' : 'miss'
+      s.judge = { grade, t: 0 }
+      io.sound({ kind: 'judge', grade, midi: io.music.chord()[0] })
+      ask({ k: 'judge', g: grade })
+    }
+    const hurt = (x: number, y: number) => {
+      if (ownInvuln > 0 || s.invuln > 0) return
+      ownInvuln = 1.4; s.hurtT = 0
+      io.hurt(Math.sign(io.body.x - x) || 1)
+      io.fx.text(io.body.x, io.body.y - 170, '-♥', '#ff6b5b', 26)
+      io.fx.burst(io.body.x, io.body.y - 70, 14, '#ff6b5b', 240, 3)
+      io.sound({ kind: 'hurt' })
+      ask({ k: 'hurt', x, y })
+    }
+    if (s.phase !== 'playing' && s.phase !== 'intro') { s.bombs.length = 0; return }
+    for (let i = s.bombs.length - 1; i >= 0; i--) {
+      const b = s.bombs[i]
+      b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt
+      if (io.parry?.(b.x, b.y, BOMB_R, b.kind === 'fire' ? '#ffd2b8' : '#f4f1ea')) { ask({ k: 'parry', x: b.x, y: b.y }); s.bombs.splice(i, 1); continue }
+      const hitHer = Math.abs(b.x - io.body.x) < 26 * io.body.scale + 8 && b.y > io.body.y - 120 * io.body.scale && b.y < io.body.y
+      if (hitHer) hurt(b.x, b.y)
+      if (hitHer || io.boxes.some(q => boxContains(q, b.x, b.y)) || b.y >= io.groundY || b.t > 8) {
+        io.fx.burst(b.x, Math.min(b.y, io.groundY - 2), 8, b.kind === 'fire' ? '#ff6b35' : '#ff4d6d', 160, 3)
+        s.bombs.splice(i, 1)
+      }
+    }
+    if (!playing) return
+    const byId = new Map<number, Target>()
+    io.targets.forEach(t => { if (t.kind === 'alien') byId.set(t.id, t) })
+    for (const a of s.aliens) {
+      const t = byId.get(a.id), d = SPECIES[a.sp]
+      if (!t || t.deadT > 0) continue
+      const ax = t.x, ay = t.y - d.h / 2
+      if (Math.abs(ax - io.body.x) < d.w / 2 + 22 * io.body.scale && ay + d.h / 2 > io.body.y - 120 * io.body.scale && ay - d.h / 2 < io.body.y) hurt(ax, ay)
+    }
+  }
+
   return {
     state: s,
     step,
+    follow,
+    applyAsk,
     // the stage whose music plays: the one being played, the one just cleared (until the next starts) or none at rest
     get music() { return s.phase === 'idle' || s.phase === 'victory' ? null : STAGE_MUSIC[s.stage] },
     // the beats when bombs fall, for the pista

@@ -41,7 +41,7 @@ import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken
 import { needsTrajectory, patioPixelRatio, trajectoryVisible, zoomedView } from "@/lib/pigchicken/viewport"
 import { moveLiveCamera } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
-import { DISC_X, GONG_X, RESET_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
+import { DISC_X, GONG_FIRST, GONG_X, RESET_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { accuracy, createNoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
 import { JUKEBOX_H, JUKEBOX_W, drawNoteShots, drawNoteStageHud, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
@@ -392,9 +392,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       hold: (voice, midi) => playNote(voice, midi, { sustain: true, vel: 0.8 }),
       drum: (kind, at, vel) => playDrum(kind, at, vel ?? 1),
     })
-    // the temple's mini-game (its state is plain data, stepped with the beats: ready to be shared in multiplayer)
+    // the temple's mini-game (its state is plain data, stepped with the beats; online, the lobby's owner runs it)
     const temple = createTemple(Math.floor(Math.random() * 2 ** 31))
     templeDraw.temple = temple
+    net.setTemple(temple)
     // the note stage (the guitar hero mode): the jukebox by the reset stone picks the song, the gong plays it
     const stage = createNoteStage()
     // the aliens' catalogue (saved in this browser): the song's aliens take their variations from it
@@ -417,6 +418,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const templeSounds: TempleSound[] = []
     const stageSounds: NoteStageSound[] = []
     let templeShown = ""
+    // online, following the owner's temple: strikes of the gong toward this browser's own jukebox song
+    let songStrikes = 0
     // dev only: lets the test scripts reach the combat and the temple
     if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStage: stage, __chickenEngine: engine })
     const drone = createDrone()
@@ -441,7 +444,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // and the jukebox: strike it to pick a song
       combat.addButton(0, G - 4, "jukebox", JUKEBOX_W, JUKEBOX_H)
       jukebox = combat.targets[combat.targets.length - 1]
-      ;(["bat", "pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
+      ;(["bat", "pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id, undefined, undefined, `temple:${id}`); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
     const placeTemple = (screens: number) => {
@@ -884,17 +887,42 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       nowPlaying.id = stage.active ? stage.song.id : null
       nowPlaying.beat = stage.beatAt(combat.music.time, combat.music.secondsPerBeat())
       nowPlaying.draft = stage.state.draft
+      // online: the lobby's owner runs the temple (with the others' strikes); the others follow it and ask
+      const asks = net.follower ? null : net.takeTempleAsks()
+      const remoteStrike = !!asks && !stageOn && (asks.gong || asks.start)
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
-        gongHit, resetHit, firePressed: input.firePressed,
-        // a song picked: the gong's strikes start it (on the next frame, through the stage)
-        song: songPicked ? () => { playRequest = library.picked } : undefined, start: startCampaign, beats: events.filter(e => e.kind === "beat").map(e => e.n),
-        fx: { burst: combat.burst, text: combat.addText },
+        gongHit: gongHit || (remoteStrike && !!asks?.gong), resetHit: resetHit || (!!asks?.reset && !stageOn), firePressed: input.firePressed,
+        // a song picked: this browser's own gong strikes start it (on the next frame, through the stage)
+        song: songPicked && gongHit ? () => { playRequest = library.picked } : undefined, start: startCampaign || (remoteStrike && !!asks?.start), beats: events.filter(e => e.kind === "beat").map(e => e.n),
+        fx: {
+          burst: (x, y, n, color, speed, size) => { combat.burst(x, y, n, color, speed, size); net.templeEvent({ b: [x, y, n, color, speed, size] }) },
+          text: (x, y, text, color, size) => { combat.addText(x, y, text, color, size); net.templeEvent({ t: [x, y, text, color, size] }) },
+        },
         hurt: dir => engine.impulse(dir * 420, -380),
-        sound: e => templeSounds.push(e),
+        sound: e => { templeSounds.push(e); net.templeEvent({ s: e }) },
         parry: (x, y, r, color) => combat.parry(x, y, r, color),
+        others: net.bodies,
       }
-      temple.step(dt, io)
+      if (net.follower) {
+        // a song of this browser's jukebox: its own strikes start it (as many as the campaign asks)
+        if (gongHit && songPicked) {
+          songStrikes++
+          playTempleSound({ kind: "gong", hit: songStrikes, need: GONG_FIRST }, mixGain("effects"))
+          if (songStrikes >= GONG_FIRST) { songStrikes = 0; playRequest = library.picked }
+        } else if (gongHit) net.askTemple({ k: "gong" })
+        if (resetHit) net.askTemple({ k: "reset" })
+        if (startCampaign) net.askTemple({ k: "start" })
+        temple.follow(dt, { ...io, fx: { burst: combat.burst, text: combat.addText }, sound: e => templeSounds.push(e) }, a => net.askTemple(a))
+        for (const e of net.takeTempleEvents(() => combat.music.toGrid())) {
+          if ("s" in e) { if (inTemple) templeSounds.push(e.s) }
+          else if ("b" in e) combat.burst(...e.b)
+          else combat.addText(...e.t)
+        }
+      } else {
+        temple.step(dt, io)
+        asks?.list.forEach(a => temple.applyAsk(io, a))
+      }
       templeSounds.splice(0).forEach(e => playTempleSound(e, mixGain("effects")))
       const tp = temple.state.phase
       if (tp !== templeShown) { templeShown = tp; if (worldRef.current) worldRef.current.dataset.temple = tp }

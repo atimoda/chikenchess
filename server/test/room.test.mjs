@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], world: [], ask: [], give: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,7 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
-  for (const type of ['foes', 'hits', 'spawn', 'shots']) room.onMessage(type, m => seen[type].push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots', 'world', 'ask', 'give']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -156,5 +156,29 @@ test('shared world: the owner sends the enemies, hits and spawns go to the owner
   assert.equal(a.seen.foes.length, 0, 'a follower cannot send enemies, nor the owner gets its own')
   assert.equal(b.seen.foes.length, 1)
   assert.equal(b.seen.hits.length + c.seen.hits.length + b.seen.spawn.length, 0)
+  for (const x of [a, b, c]) await x.room.leave()
+})
+
+test('shared state: the owner sends items, dummies and the temple; asks go to the owner, gifts to one browser', async () => {
+  const patioId = '0f000000-0000-4000-8000-000000000005'
+  const a = await browser({ patioId, name: 'Dona' })
+  const b = await browser({ patioId, name: 'Bia' })
+  const c = await browser({ patioId, name: 'Caio' })
+  const world = { p: [[30000001, 'pistol', 12, 0, 500, 900, 1, 0, '']], d: [['dummy-1', 40]], tp: { ph: 'idle' }, junk: 1 }
+  a.room.send('world', world)
+  assert.deepEqual(await until(() => b.seen.world[0]), { p: world.p, d: world.d, tp: world.tp })
+  await until(() => c.seen.world[0])
+  b.room.send('world', { p: [] })
+  b.room.send('ask', { list: [{ k: 'take', id: 30000001, pl: 'p1' }] })
+  assert.deepEqual(await until(() => a.seen.ask[0]), { pid: b.seen.hello.pid, list: [{ k: 'take', id: 30000001, pl: 'p1' }] })
+  a.room.send('ask', { list: [{ k: 'gong' }] })
+  a.room.send('give', { pid: b.seen.hello.pid, list: [{ k: 'give', pl: 'p1' }] })
+  assert.deepEqual(await until(() => b.seen.give[0]), { list: [{ k: 'give', pl: 'p1' }] })
+  c.room.send('give', { pid: b.seen.hello.pid, list: [{ k: 'give' }] })
+  await wait(150)
+  assert.equal(c.seen.give.length, 0, 'only the one granted gets the gift')
+  assert.equal(b.seen.give.length, 1, 'only the owner gives')
+  assert.equal(a.seen.world.length + b.seen.world.length, 1, 'only the owner sends the state, to the others')
+  assert.equal(b.seen.ask.length + c.seen.ask.length + a.seen.ask.length, 1, 'asks go to the owner only, never from it')
   for (const x of [a, b, c]) await x.room.leave()
 })

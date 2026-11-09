@@ -8,6 +8,8 @@ const TICK_MS = 50 // 20 snapshots per second
 const LAYOUT_MAX = 400_000 // the database's own limit for a Pátio's layout
 // the shared world (the browser's lib/pigchicken/net-world.ts): enemies, hits, spawns and shots are relayed, not simulated
 const FOES_MAX = 400, FOES_BYTES = 120_000, HITS_MAX = 64, SHOTS_MAX = 32, WORLD_BYTES = 16_000
+// the rest of the owner's world (items on the floor, the layout's dummies, the temple) and what the others ask of it
+const STATE_BYTES = 60_000, ASK_MAX = 32, GIVE_MAX = 16, ASK_BYTES = 8_000
 const jsonSize = v => { try { return JSON.stringify(v).length } catch { return Infinity } }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
@@ -29,6 +31,9 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "hits"     { list }   not the owner: its hits on the owner's enemies; relayed to the owner only
 //   "spawn"    { spawn }  not the owner: a horde / training enemy asked of the owner; relayed to the owner only
 //   "shots"    { list }   the projectiles it fired; relayed to everyone else
+//   "world"    { p?, d?, tp?, te? }  owner only: items on the floor, dummies, the temple (~10/s); relayed to the rest
+//   "ask"      { list }   not the owner: grabs, drops and temple strikes asked of the owner; relayed to the owner only
+//   "give"     { pid, list }  owner only: what it granted to one browser (the items it grabbed); relayed to that one
 // Messages to the browser:
 //   "hello"    { pid, room }  right after joining
 //   "room"     the room info below, whenever it changes
@@ -42,6 +47,9 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "hits"     { pid, list }  (to the owner) another browser's hits
 //   "spawn"    { pid, spawn } (to the owner) what another browser asked to spawn
 //   "shots"    { pid, list }  another browser's projectiles
+//   "world"    { p?, d?, tp?, te? }  the owner's items on the floor, dummies and temple
+//   "ask"      { pid, list }  (to the owner) what another browser asked
+//   "give"     { list }  (from the owner) what this browser was granted
 export class PatioRoom extends Room {
   maxClients = MAX_BROWSERS
   players = new Map() // sessionId -> player
@@ -74,6 +82,9 @@ export class PatioRoom extends Room {
     this.onMessage('hits', (client, msg) => this.onHits(client, msg))
     this.onMessage('spawn', (client, msg) => this.onSpawn(client, msg))
     this.onMessage('shots', (client, msg) => this.onShots(client, msg))
+    this.onMessage('world', (client, msg) => this.onWorld(client, msg))
+    this.onMessage('ask', (client, msg) => this.onAsk(client, msg))
+    this.onMessage('give', (client, msg) => this.onGive(client, msg))
     this.setSimulationInterval(() => this.broadcastSnapshot(), TICK_MS)
   }
 
@@ -100,6 +111,7 @@ export class PatioRoom extends Room {
       state: new Map(), // slot -> latest chicken state
       sendOk: bucket(30, 40), chatOk: bucket(2, 4), profileOk: bucket(4, 8), layoutOk: bucket(4, 8),
       foesOk: bucket(15, 20), hitsOk: bucket(30, 60), spawnOk: bucket(2, 4), shotsOk: bucket(30, 40),
+      worldOk: bucket(15, 20), askOk: bucket(25, 40), giveOk: bucket(25, 40),
     }
     this.players.set(client.sessionId, p)
     this.settleOwner()
@@ -254,6 +266,27 @@ export class PatioRoom extends Room {
     const p = this.players.get(client.sessionId)
     if (!p || !p.shotsOk() || !Array.isArray(msg?.list) || !msg.list.length || msg.list.length > SHOTS_MAX || jsonSize(msg.list) > WORLD_BYTES) return
     this.broadcast('shots', { pid: p.pid, list: msg.list }, { except: client })
+  }
+
+  onWorld(client, msg) {
+    const p = this.players.get(client.sessionId)
+    if (!p || p.pid !== this.ownerPid || !p.worldOk() || !msg || typeof msg !== 'object' || Array.isArray(msg)) return
+    const out = {}
+    for (const k of ['p', 'd', 'tp', 'te']) if (msg[k] !== undefined) out[k] = msg[k]
+    if (!Object.keys(out).length || jsonSize(out) > STATE_BYTES) return
+    this.broadcast('world', out, { except: client })
+  }
+
+  onAsk(client, msg) {
+    const p = this.players.get(client.sessionId), owner = this.byPid(this.ownerPid)
+    if (!p || !owner || owner === p || !p.askOk() || !Array.isArray(msg?.list) || !msg.list.length || msg.list.length > ASK_MAX || jsonSize(msg.list) > ASK_BYTES) return
+    owner.client.send('ask', { pid: p.pid, list: msg.list })
+  }
+
+  onGive(client, msg) {
+    const p = this.players.get(client.sessionId), to = this.byPid(Number(msg?.pid))
+    if (!p || p.pid !== this.ownerPid || !to || to === p || !p.giveOk() || !Array.isArray(msg?.list) || !msg.list.length || msg.list.length > GIVE_MAX || jsonSize(msg.list) > ASK_BYTES) return
+    to.client.send('give', { list: msg.list })
   }
 
   // everyone's chickens to everyone: with 13 browsers × 4 chickens that is ~1.1 kB per tick; the same bytes go to

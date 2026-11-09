@@ -29,7 +29,7 @@ export function createLayoutSync(combat: Combat) {
         const item = el.params.item!
         if (!r || r.item !== item) {
           if (r) combat.racks.splice(combat.racks.indexOf(r), 1)
-          combat.addRack(cx, item, bottom, el.params.respawnDelay)
+          combat.addRack(cx, item, bottom, el.params.respawnDelay, el.id)
           r = combat.racks[combat.racks.length - 1]
           racks.set(el.id, r)
         }
@@ -47,6 +47,8 @@ export function createLayoutSync(combat: Combat) {
         if (!t) {
           const id = combat.addTarget(cx, bottom, params)
           t = combat.targets.find(g => g.id === id)!
+          // online: the same dummy in every browser of the lobby
+          t.netKey = el.id
           targets.set(el.id, t)
         } else if (lastParams.get(el.id) !== key) combat.setDummyParams(t.id, params)
         lastParams.set(el.id, key)
