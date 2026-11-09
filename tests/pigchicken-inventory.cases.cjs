@@ -224,6 +224,56 @@ test('a ground consumable tops up an existing stack even with all inventory slot
   assert.equal(c.pickups.length, 0)
 })
 
+test('melee picks up a new item into a free slot without equipping it', () => {
+  const c = createCombat()
+  c.give('pistol')
+  c.pickups.push({ id: 901, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { melee: true })
+  assert.deepEqual(names(c), ['flute', 'pistol', null])
+  assert.equal(c.current, 1)
+  assert.equal(c.held.item, 'pistol')
+  assert.equal(c.pickups.length, 0)
+})
+
+test('melee leaves a new item on the ground when there is no free slot', () => {
+  const c = createCombat()
+  c.setInventoryLimit(2)
+  c.give('flute'); c.give('pistol')
+  c.pickups.push({ id: 902, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { melee: true })
+  assert.deepEqual(names(c), ['flute', 'pistol'])
+  assert.equal(c.held.item, 'pistol')
+  assert.equal(c.pickups.length, 1)
+  assert.equal(c.pickups[0].id, 902)
+  step(c, { grab: true })
+  assert.equal(c.held.item, 'rifle')
+  assert.equal(c.pickups.some(p => p.owned.item === 'pistol'), true)
+})
+
+test('the melee hit area picks up a new item it touches beyond her body reach, without equipping it', () => {
+  const c = createCombat()
+  c.give('pistol')
+  c.pickups.push({ id: 903, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 100, y: 0, vy: 0, resting: true, noPick: 0 })
+  c.pickups.push({ id: 904, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: -100, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { melee: true })
+  assert.equal(c.pickups.length, 2, 'out of body reach: only the blow can take it')
+  for (let i = 0; i < 10; i++) step(c)
+  assert.deepEqual(names(c), ['flute', 'pistol', null])
+  assert.equal(c.held.item, 'pistol')
+  assert.deepEqual(c.pickups.map(p => p.id), [904], 'the item behind her, outside the arc, stays')
+})
+
+test('the melee hit area leaves the item on the floor when there is no free slot', () => {
+  const c = createCombat()
+  c.setInventoryLimit(1)
+  c.give('pistol')
+  c.pickups.push({ id: 905, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 100, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { melee: true })
+  for (let i = 0; i < 10; i++) step(c)
+  assert.deepEqual(names(c), ['pistol'])
+  assert.deepEqual(c.pickups.map(p => p.id), [905])
+})
+
 test('grenade-family items rest at the hand and proportional Fire uses Throw pullback', () => {
   const { heldItemPose } = loadTs('lib/pigchicken/held-pose.ts')
   for (const item of ['grenade', 'tambourine', 'bow', 'harp']) {

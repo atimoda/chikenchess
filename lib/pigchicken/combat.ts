@@ -124,6 +124,7 @@ export const SLOTS = INVENTORY_MAX
 const NO_SWITCH = { pick: 0, slot: 0, groupPick: null }
 const THROW_GRAVITY = 1500
 const ITEM_GRAVITY = 1800
+const SWING_PICKUP_R = 14 // an item on the floor, as a circle for the blow's hit area (px)
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const DEG = Math.PI / 180
@@ -515,8 +516,8 @@ export function createCombat() {
   // One slot per type; consumables can top up their existing stack.
   const canTake = (p: Pickup) => p.noPick <= 0 && (!inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
 
-  // grab with room: the item goes into its group's place and she holds it (picking up is always the player's choice)
-  function pickUp(p: Pickup) {
+  // Usar/Pegar equips a new item; Golpe can store it without changing the item she already holds.
+  function pickUp(p: Pickup, equip = true) {
     if (!canTake(p)) return false
     const stack = inv.find(o => o.item === p.owned.item)
     if (stack) {
@@ -528,13 +529,16 @@ export function createCombat() {
       return true
     }
     if (!room()) return false
-    stopBeam(); peck = null; peckPrep = 0
+    const wasHeld = held()
+    if (equip) { stopBeam(); peck = null; peckPrep = 0 }
     const limit = CONSUMABLE_LIMITS[p.owned.item]
     if (limit && p.owned.ammo > limit) {
       pickups.push({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
       p.owned.ammo = limit
     }
-    cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0
+    const added = takeIn(p.owned)
+    if (equip) { cur = added; reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0 }
+    else cur = wasHeld ? inv.indexOf(wasHeld) : inv.length
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
@@ -912,9 +916,22 @@ export function createCombat() {
     swingGap = 0
   }
 
+  // the blow's hit area also collects the new items on the floor it touches, like Golpe near her body: each one is
+  // stored in its group without changing the held item; with no room it stays on the floor (Golpe never swaps)
+  function collectInSwing(sw: Swing, origin: { x: number; y: number }) {
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const p = pickups[i]
+      if (!canTake(p) || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, p.x, p.y - SWING_PICKUP_R, SWING_PICKUP_R)) continue
+      pickups.splice(i, 1)
+      if (!pickUp(p, false)) pickups.splice(i, 0, p)
+      else if (hover === p) hover = null
+    }
+  }
+
   // the blow lands at the end of the preparação: everything in its arc is hit once
   function strike(sw: Swing, origin: { x: number; y: number }) {
     sw.hit = true
+    collectInSwing(sw, origin)
     if ((sw.item as Owned | null)?.item === 'passagua') {
       let caught = 0
       const caughtAt: { x: number; y: number }[] = []
@@ -1611,14 +1628,21 @@ export function createCombat() {
         }
       }
 
-      // the item she stands on is outlined; grab takes it into a free slot, or swaps it with the held one when full
+      // the offered item is outlined; Usar/Pegar takes it into a free slot, or swaps it with the held one when full
       // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
       if (!input.grabHeld) heldTaken.clear()
-      const grabNow = !!input.grab || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      const meleePickup = !!input.melee && !input.grab && !input.grabHeld && !!hover
+      const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       if (grabNow && hover && pickups.includes(hover) && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
-        const g = hover, firstNew = nextId
-        pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null
-        heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
+        const g = hover, firstNew = nextId, at = pickups.indexOf(g)
+        pickups.splice(at, 1)
+        const picked = pickUp(g, !meleePickup)
+        if (!picked && meleePickup) pickups.splice(at, 0, g)
+        else {
+          if (!picked) swapIn(g)
+          hover = null
+          heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
+        }
       }
       else if (input.grab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays)
