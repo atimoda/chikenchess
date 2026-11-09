@@ -1,11 +1,11 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { resolveAim } = loadTs('lib/pigchicken/aim.ts')
+const { resolveAim, keysAimFor } = loadTs('lib/pigchicken/aim.ts')
 const controls = loadTs('lib/chicken/controls.ts')
 const layout = loadTs('lib/chicken/touch-layout.ts')
 
-const base = { rightStick: null, mouse: null, touch: null, leftStick: null, keys: { x: 0, y: 0 }, origin: { x: 0, y: 0 }, face: 1, grounded: false, aimLock: false, aimMagnetDeg: 0 }
+const base = { rightStick: null, mouse: null, touch: null, leftStick: null, keys: { x: 0, y: 0 }, origin: { x: 0, y: 0 }, face: 1, aimMagnetDeg: 0 }
 
 test('the on-screen left stick aims at any angle, not only the 8 directions', () => {
   globalThis.window = { dispatchEvent() {} }
@@ -22,6 +22,35 @@ test('the on-screen left stick aims at any angle, not only the 8 directions', ()
   // the magnet still snaps when it is on
   const snapped = resolveAim({ ...base, leftStick: { x: Math.cos(.1), y: -Math.sin(.1), mag: 1 }, aimMagnetDeg: 12 })
   assert.ok(Math.abs(snapped.angle) < 1e-12)
+})
+
+test('the left stick aims in all 8 directions, down included, on the ground too', () => {
+  const s = Math.SQRT1_2
+  const dirs = [[1, 0], [s, s], [0, 1], [-s, s], [-1, 0], [-s, -s], [0, -1], [s, -s]]
+  for (const [x, y] of dirs) {
+    const aim = resolveAim({ ...base, leftStick: { x, y, mag: 1 } })
+    assert.equal(aim.source, 'leftStick')
+    assert.ok(Math.abs(aim.angle - Math.atan2(y, x)) < 1e-9, `${x},${y} got ${aim.angle}`)
+  }
+})
+
+test('the movement keys aim in the 8 directions, after the sticks and the mouse', () => {
+  for (const [x, y] of [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]) {
+    const aim = resolveAim({ ...base, keys: { x, y } })
+    assert.equal(aim.source, 'keys')
+    assert.ok(Math.abs(aim.angle - Math.atan2(y, x)) < 1e-9)
+  }
+  assert.equal(resolveAim({ ...base, keys: { x: 0, y: -1 }, leftStick: { x: 1, y: 0, mag: 1 } }).source, 'leftStick')
+  assert.equal(resolveAim({ ...base, keys: { x: 0, y: -1 }, mouse: { x: 50, y: 0 } }).source, 'mouse')
+  assert.equal(resolveAim({ ...base }).source, 'facing')
+})
+
+test('the movement keys aim only for a player without the mouse', () => {
+  assert.equal(keysAimFor(['kb1', 'kb2', 'mouse']), false)
+  assert.equal(keysAimFor(['kb1', 'mouse', 'pad0']), false)
+  assert.equal(keysAimFor(['kb2']), true)
+  assert.equal(keysAimFor(['kb1', 'kb2', 'pad0']), true)
+  assert.equal(keysAimFor(null), false)
 })
 
 test('dragging a touch control stays inside the screen', () => {
