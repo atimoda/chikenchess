@@ -28,8 +28,8 @@ const FIRST_SCENE_PLATFORMS = SCENE_PLATFORMS[0]
 const TEMPLE_START_PLATFORM = FIRST_SCENE_PLATFORMS.find(p => p.x === 538)!
 const VILLAGE_START_PLATFORM = FIRST_SCENE_PLATFORMS.find(p => p.x === 1229)!
 const LEGACY_MAX_ELEMENTS = 1500
-// Reserve space to migrate both shortcut pairs and the Vila's ground without dropping existing elements.
-export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 5
+// Reserve space to migrate both shortcut pairs, the Vila's ground and the entry portal without dropping elements.
+export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 6
 
 // the layers, back to front. back: behind the platforms; scene: the platforms' own; behind: in front of the game's
 // things (dummies, racks, shots) but behind the characters; front: in front of the characters; frontGhost: in front,
@@ -47,7 +47,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -112,6 +112,8 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   tree: { label: 'Árvore', group: 'Árvores', ...TREE_SIZE, layer: 'scene', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 100, minH: 100 },
   house: { label: 'Casa', group: 'Casas', ...HOUSE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 100 },
   portal: { label: 'Par de portais', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
+  // the lobby's entry (and way back to the globe): exactly one per Pátio, moved but never deleted or duplicated
+  entry: { label: 'Portal de entrada', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: 150, minH: 150 },
   zone: { label: 'Zona sonora', group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
   lanes: { label: 'Faixas fixas', group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
   ground: { label: 'Chão', group: 'Chãos e paredes', w: 640, h: 200, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 24 },
@@ -186,6 +188,26 @@ function shortcutPortals(existing: LayoutElement[] = []): LayoutElement[] {
     portal(village, village, VILLAGE_START_PLATFORM.x + VILLAGE_START_PLATFORM.w / 2, 'Vila dos Telhados', undefined, VILLAGE_START_PLATFORM),
     portal(reserveId('shortcut-village-return'), village, 150, 'Voltar ao início do Pátio', 'village'),
   ]
+}
+
+// The entry portal: where she arrives from the globe or another Pátio (and leaves to the globe). It starts over the
+// small platform at the far left of the first scene.
+export const ENTRY_PORTAL_ID = 'entry-portal'
+const ENTRY_PLATFORM = FIRST_SCENE_PLATFORMS[1]
+export function entryPortalElement(): LayoutElement {
+  const d = ELEMENT_DEFS.entry
+  return normalizeElement({
+    id: ENTRY_PORTAL_ID, kind: 'entry', x: ENTRY_PLATFORM.x + (ENTRY_PLATFORM.w - d.w) / 2,
+    y: WORLD_GROUND_Y - ENTRY_PLATFORM.bottom - ENTRY_PLATFORM.h - d.h + 6,
+  })!
+}
+// the entry portal in the world (elementsInWorld), or the default one when it lies past a narrower world's end
+export function entryPortalIn(shown: LayoutElement[]): LayoutElement {
+  return shown.find(e => e.kind === 'entry') ?? entryPortalElement()
+}
+// a Pátio with nothing in it but the entry portal
+export function emptyLayout(): PatioLayout {
+  return { v: LAYOUT_VERSION, elements: [entryPortalElement()] }
 }
 
 export function portalPartner(portal: LayoutElement, elements: LayoutElement[]) {
@@ -289,7 +311,7 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   HORDE_BUTTONS.forEach((id, i) => { const cx = SCENE_W * (1.06 + i * 0.09); out.push(base('button', `btn-${id}`, cx - 20, G - 46 - 40, 40, 40, { action: id })) })
   // the training dummies, each with its own tip
   ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach((f, i) => { const d = ELEMENT_DEFS.dummy; out.push(base('dummy', `dummy-${i}`, SCENE_W * f - d.w / 2, G - d.h, d.w, d.h, { message: dummyTip(i), maxHp: DUMMY_DEFAULTS.maxHp })) })
-  return { v: LAYOUT_VERSION, elements: [villageGroundElement(), ...out, ...villageHouses(), ...shortcutPortals()] }
+  return { v: LAYOUT_VERSION, elements: [villageGroundElement(), ...out, ...villageHouses(), ...shortcutPortals(), entryPortalElement()] }
 }
 
 // ---------- cleaning what comes from storage, the database or another player ----------
@@ -302,8 +324,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   if (!ELEMENT_KINDS.includes(kind)) return null
   const d = ELEMENT_DEFS[kind]
   const id = typeof e.id === 'string' && e.id.length > 0 && e.id.length <= 64 ? e.id : newElementId(kind)
-  const w = kind === 'portal' ? d.w : r1(clamp(num(e.w, d.w), d.minW, 20000))
-  const h = kind === 'portal' ? d.h : r1(clamp(num(e.h, d.h), d.minH, 6000))
+  const w = kind === 'portal' || kind === 'entry' ? d.w : r1(clamp(num(e.w, d.w), d.minW, 20000))
+  const h = kind === 'portal' || kind === 'entry' ? d.h : r1(clamp(num(e.h, d.h), d.minH, 6000))
   const rot = d.rotatable ? ((Math.round(num(e.rot, 0) / 45) * 45) % 360 + 360) % 360 : 0
   const layer = d.entity ? d.layer : LAYERS.includes(e.layer as LayoutLayer) ? (e.layer as LayoutLayer) : d.layer
   const p = (e.params && typeof e.params === 'object' ? e.params : {}) as Record<string, unknown>
@@ -371,6 +393,8 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
   for (const item of list.slice(0, hasStoredShortcuts ? LAYOUT_MAX_ELEMENTS : LEGACY_MAX_ELEMENTS)) {
     const el = normalizeElement(item)
     if (!el) continue
+    // one entry portal per Pátio: the first one stands
+    if (el.kind === 'entry' && elements.some(e => e.kind === 'entry')) continue
     if (seen.has(el.id)) el.id = newElementId(el.kind)
     seen.add(el.id)
     elements.push(el)
@@ -412,6 +436,12 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
     const ground = villageGroundElement(normalizeVillageRidge((raw as { terrain?: unknown }).terrain))
     if (seen.has(ground.id)) ground.id = newElementId('ground')
     elements.unshift(ground)
+  }
+  // saved before the entry portal was an element (or without it): it joins where it always stood
+  if (!elements.some(e => e.kind === 'entry')) {
+    const entry = entryPortalElement()
+    if (seen.has(entry.id)) entry.id = newElementId('entry')
+    elements.push(entry)
   }
   const settings = normalizePatioSettings((raw as { settings?: unknown }).settings)
   return { v: LAYOUT_VERSION, elements, ...(settings ? { settings } : {}) }

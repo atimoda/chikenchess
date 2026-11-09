@@ -216,7 +216,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   isAdmin: boolean
   isAccount: boolean
   onOpen: (id: string | null) => void
-  onNew: () => void
+  onNew: (empty?: boolean) => void
   onLogin: () => void
   onDeleted: (id: string) => void
   onClose: () => void
@@ -284,7 +284,10 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   return (
     <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(420, vw - 24) - 12), y: 64, w: Math.min(420, vw - 24), h: Math.min(640, vh - 80) })} className={panelCls}>
       <PanelHead title="Playgrounds" icon={<FolderOpen className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
-      <button type="button" onClick={onNew} className={cn(btn, "h-9 shrink-0 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio <span className="text-[10px] text-[#93a79a]">(cópia do padrão; você vira o criador)</span></button>
+      <div className="flex shrink-0 gap-2">
+        <button type="button" onClick={() => onNew(false)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
+        <button type="button" onClick={() => onNew(true)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio vazio</button>
+      </div>
 
       <Row
         title={def?.name ?? "Pátio padrão"} sub={def?.creatorName ? `de ${def.creatorName}` : undefined} current={currentId === null}

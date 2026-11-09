@@ -74,7 +74,8 @@ test('layouts from storage are cleaned: unknown kinds dropped, turns snapped, th
     { id: 'a', kind: 'dummy', x: 0, y: 0, w: 46, h: 112, rot: 90, layer: 'front', solid: true, params: { message: 'x'.repeat(400), maxHp: 99999 } },
     { id: 'r', kind: 'rack', params: { item: 'banana' } },
   ] })
-  assert.equal(lay.elements.length, 3)
+  assert.equal(lay.elements.length, 4)
+  assert.equal(lay.elements[3].kind, 'entry')
   const [p, d, r] = lay.elements
   assert.equal(p.rot, 45); assert.equal(p.layer, 'scene'); assert.equal(p.w, L.ELEMENT_DEFS.platform.minW); assert.equal(p.solid, false); assert.equal(p.notes, true); assert.equal(p.opacity, 1)
   assert.notEqual(d.id, 'a') // duplicate ids get a new one
@@ -198,7 +199,7 @@ test('duplicating a portal copies its entire pair into a new independent link, p
 test('the demo follows the Temple at every Parquinho width and upgrades a legacy default only once', () => {
   const raw = { v: 2, elements: [{ id: 'kept', kind: 'platform', x: 200 }] }
   const personal = L.normalizeLayout(raw)
-  assert.deepEqual(personal.elements.filter(e => e.kind !== 'portal').map(e => e.id), ['village-ground', 'kept'])
+  assert.deepEqual(personal.elements.filter(e => e.kind !== 'portal' && e.kind !== 'entry').map(e => e.id), ['village-ground', 'kept'])
   const defaultPatio = L.normalizeLayout(raw, true)
   const demo = defaultPatio.elements.filter(e => e.kind === 'house')
   assert.ok(demo.length > 0)
@@ -257,7 +258,7 @@ test('older layouts gain editable shortcuts once, preserving custom pairs and sa
   const existing = L.createPortalPair(560, 280)
   existing.forEach(p => { p.params.portalPairId = 'shortcut-village' })
   const layout = L.normalizeLayout({ v: 3, elements: existing })
-  assert.equal(layout.elements.length, 7)
+  assert.equal(layout.elements.length, 8)
   assert.equal(L.portalPartner(layout.elements.find(e => e.id === existing[0].id), layout.elements).id, existing[1].id)
   const worldView = L.elementsInWorld(layout, 4)
   const exit = worldView.find(p => p.id === 'shortcut-village-return')
@@ -278,7 +279,7 @@ test('older layouts gain editable shortcuts once, preserving custom pairs and sa
 test('a full legacy layout keeps all its elements when shortcut pairs are added', () => {
   const old = { v: 3, elements: Array.from({ length: 1500 }, (_, i) => ({ id: `old-${i}`, kind: 'platform' })) }
   const current = L.normalizeLayout(old)
-  assert.equal(current.elements.length, 1505)
+  assert.equal(current.elements.length, 1506)
   assert.equal(current.elements[0].id, 'village-ground')
   assert.equal(current.elements[1500].id, 'old-1499')
   assert.equal(current.elements.filter(el => el.kind === 'portal').length, 4)
@@ -403,7 +404,7 @@ test('the old Chão da Vila becomes the first ground element, keeping an edited 
   // saved again (v5) it is just an element: kept, moved or deleted like any other
   assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(migrated))), migrated)
   const without = { ...migrated, elements: migrated.elements.slice(1) }
-  assert.deepEqual(L.normalizeLayout(without).elements.map(e => e.id), ['kept'])
+  assert.deepEqual(L.normalizeLayout(without).elements.map(e => e.id), ['kept', 'entry-portal'])
   // an invalid ridge falls back to the default slope
   const fallback = L.normalizeLayout({ v: 3, elements: [], terrain: [[24, 800], [20, 810]] }).elements.find(e => e.kind === 'ground')
   const def = S.surfacePolygon(fallback, fallback.params.surface)
@@ -559,4 +560,30 @@ test('the Pátio settings (Sun panel) travel with the layout and are clamped', (
   // things may sit up to the tallest ceiling allowed
   const high = L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [{ id: 'p', kind: 'platform', x: 100, y: -6000, w: 200, h: 40, rot: 0, layer: 'scene' }] })
   assert.equal(high.elements[0].y, -6000)
+})
+
+test('every Pátio has exactly one entry portal: moved and kept, never duplicated, and alone in an empty Pátio', () => {
+  const def = L.defaultLayout()
+  const entries = def.elements.filter(e => e.kind === 'entry')
+  assert.equal(entries.length, 1)
+  const [entry] = entries
+  const platform = world.SCENE_PLATFORMS[0][1]
+  // where the globe portal always stood: centred over the small platform at the far left
+  assert.equal(entry.x + entry.w / 2, platform.x + platform.w / 2)
+  assert.equal(entry.y + entry.h - 6, world.WORLD_GROUND_Y - platform.bottom - platform.h)
+  assert.equal(entry.solid, false); assert.equal(entry.shots, false)
+  // a moved entry keeps its place; a second one is dropped; its size never changes
+  const moved = { ...entry, x: 900, y: 300, w: 999 }
+  const saved = L.normalizeLayout(JSON.parse(JSON.stringify({ v: L.LAYOUT_VERSION, elements: [moved, { ...entry, id: 'other' }] })))
+  const kept = saved.elements.filter(e => e.kind === 'entry')
+  assert.equal(kept.length, 1)
+  assert.equal(kept[0].x, 900); assert.equal(kept[0].y, 300); assert.equal(kept[0].w, 150)
+  assert.equal(L.entryPortalIn(L.elementsInWorld(saved, 4)).x, 900)
+  // past a narrower world's end, the game falls back to the default place
+  const far = L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [{ ...entry, x: world.SCENE_W * 6 }] })
+  assert.equal(L.entryPortalIn(L.elementsInWorld(far, 1)).x, entry.x)
+  // the empty Pátio: only the entry portal, and it stays that way through storage
+  const empty = L.emptyLayout()
+  assert.deepEqual(empty.elements.map(e => e.kind), ['entry'])
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(empty))), empty)
 })

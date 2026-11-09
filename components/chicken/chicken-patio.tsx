@@ -22,18 +22,18 @@ import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
 import { OnlineChickens, netColor, useNet } from "./online-chickens"
 import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
-import { elementsInWorld, normalizeLayout, type PatioLayout } from "@/lib/pigchicken/layout"
+import { elementsInWorld, entryPortalIn, normalizeLayout, type LayoutElement, type PatioLayout } from "@/lib/pigchicken/layout"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { getOnlineClient } from "@/lib/online/client"
 import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
-import { ChickenPortal, type ChickenPortalWorld } from "./chicken-portal"
+import { ChickenPortal, playPortalSound, type ChickenPortalWorld } from "./chicken-portal"
+import { portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { PatioPortals } from "@/components/pigchicken/patio-portals"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
 import { GamePreferences } from "@/components/game-preferences"
-import { SCENE_PLATFORMS, WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { BAR_GROUND_H, INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
@@ -66,11 +66,9 @@ import type { ChickenLook } from "@/lib/chicken/look-art"
 import { LobbySwitcher, LocalChickens, PlayersPanel, lookForNewPlayer, useInputDevices } from "./players-panel"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
-// The globe portal sits over the small platform at the far left of the first Patio scene.
-const PORTAL_PLATFORM = SCENE_PLATFORMS[0][1]
-const PORTAL_X = PORTAL_PLATFORM.x + PORTAL_PLATFORM.w / 2, PORTAL_GROUND_Y = WORLD_GROUND_Y - PORTAL_PLATFORM.bottom - PORTAL_PLATFORM.h, PORTAL_D = 150
-// she arrives (and starts) just to its right, clear of the ring
-const SPAWN_X = PORTAL_X + 110
+// The globe portal is the layout's entry portal (moved in the editor, never deleted); she starts just to its right,
+// clear of the ring
+const SPAWN_OFFSET = 110
 
 
 function readDraft(): ChickenConfig | null {
@@ -128,7 +126,6 @@ export function ChickenPatio() {
   const worldRef = useRef<HTMLDivElement>(null)
   const fgRef = useRef<HTMLDivElement>(null)
   const trainingSpawns = useRef<TrainingSpawnRequest[]>([])
-  const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: PORTAL_GROUND_Y, d: PORTAL_D }), [])
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
   // the Sun button: the current Pátio's settings (its limits)
@@ -334,6 +331,36 @@ export function ChickenPatio() {
     setPatioEditAccess(netLive ? { lobbyId: patio?.id ?? null, mode: "online", canEdit: amEditor } : null)
     return () => setPatioEditAccess(null)
   }, [netLive, amEditor, patio?.id])
+  // Switching Pátio: every local chicken is sucked into this Pátio's entry portal; once the other one is open (and
+  // drawn), they come out of its entry portal.
+  const entryRef = useRef<LayoutElement | null>(null)
+  const travelling = useRef(false)
+  const travel = async <T,>(go: () => Promise<T>): Promise<T> => {
+    const actors = () => [...(engine ? [engine] : []), ...extraEngines.current.values()]
+    const centre = () => {
+      const box = worldRef.current?.getBoundingClientRect(), el = entryRef.current
+      return box && el ? { x: box.left + el.x + el.w / 2, y: box.top + el.y + el.h / 2 } : null
+    }
+    const from = centre()
+    if (travelling.current || !from || !actors().length) return go()
+    travelling.current = true
+    try {
+      for (const a of actors()) { portalGate(a, "patio").block(); a.setPortalEntry({ ...from, durationMs: PORTAL_TRANSITION_MS }) }
+      playPortalSound("enter")
+      await new Promise(r => window.setTimeout(r, PORTAL_TRANSITION_MS))
+      const result = await go()
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      const to = centre() ?? from
+      for (const a of actors()) { portalGate(a, "patio").block(); a.arriveAtPortal({ ...to, durationMs: PORTAL_TRANSITION_MS }) }
+      playPortalSound("arrive")
+      return result
+    } catch (err) {
+      for (const a of actors()) a.setPortalEntry(null)
+      throw err
+    } finally {
+      travelling.current = false
+    }
+  }
   // another lobby (from "Abrir" or the lobby panel's Próximo / Anterior): what is pending is saved, the editor closes
   const switchLobby = (id: string | null) => {
     setEditorOn(false)
@@ -342,17 +369,18 @@ export function ChickenPatio() {
     setPerson(null)
     // the players' lobby is the Pátio open here
     setLobby(prev => (prev ? { ...prev, id: id ?? prev.id } : prev))
-    void pl.switchTo(id)
+    return travel(() => pl.switchTo(id))
   }
   const switchRef = useRef(switchLobby)
   switchRef.current = switchLobby
   useEffect(() => onPatioOpenRequest(id => switchRef.current(id)), [])
-  // a new Pátio of mine (a copy of the default one): I am its creator and may edit it
-  const startNewPatio = () => {
+  // a new Pátio of mine (a copy of the default one, or an empty one): I am its creator and may edit it
+  const startNewPatio = (empty = false) => {
+    setEditorOn(false)
     setEditHint(false)
     setOpenOpen(false)
     setPerson(null)
-    void pl.startNew(meId ?? deviceId()).then(id => {
+    void travel(() => pl.startNew(meId ?? deviceId(), empty)).then(id => {
       if (id) setLobby(prev => (prev ? { ...prev, id } : prev))
       setEditorOn(true)
     })
@@ -434,6 +462,10 @@ export function ChickenPatio() {
   const screens = patioScreens(patio?.layout.settings, pq.screens)
   const worldTop = patioWorldTop(patio?.layout.settings)
   const pqWorld = useMemo(() => ({ ...pq, screens }), [pq, screens])
+  // the entry portal (to the globe, and where she arrives) as the layout places it
+  const entry = useMemo(() => entryPortalIn(elementsInWorld(patio?.layout ?? { v: 0, elements: [] }, screens)), [patio?.layout, screens])
+  entryRef.current = entry
+  const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: entry.x + entry.w / 2, groundY: entry.y + entry.h - 6, d: entry.w }), [entry])
 
   return (
     <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]">
@@ -469,7 +501,7 @@ export function ChickenPatio() {
             <div role="dialog" aria-label="Sem permissão para editar" className="fixed right-3 top-14 z-[130] w-64 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-3 font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
               <p>{access.reason === "default" ? "Este é o Pátio padrão: só o admin edita." : access.reason === "notAllowed" ? "O dono deste Pátio não liberou a edição para você." : "Este Pátio não é seu."} Crie um Pátio seu (uma cópia do padrão) para editar.</p>
               <div className="mt-2 flex gap-2">
-                <button type="button" onClick={startNewPatio} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">Criar meu Pátio</button>
+                <button type="button" onClick={() => startNewPatio()} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">Criar meu Pátio</button>
                 <button type="button" onClick={() => setEditHint(false)} className="h-8 rounded-md border border-white/20 px-3">Fechar</button>
               </div>
             </div>
@@ -548,7 +580,7 @@ export function ChickenPatio() {
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editorOn} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} showScaleFan={patioLayers.layers.scale} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} showScaleFan={patioLayers.layers.scale} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
       {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}

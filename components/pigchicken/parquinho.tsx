@@ -188,6 +188,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
+  // where she starts (by the entry portal): read on the first frame, so a moved portal never restarts the loop
+  const spawnXRef = useRef(spawnX)
+  spawnXRef.current = spawnX
   // the scenes' own music, as this Pátio changed it
   const sceneZonesRef = useRef(sceneZones)
   sceneZonesRef.current = sceneZones
@@ -529,6 +532,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (!placed) {
         place()
         // she starts by the entrance portal (world x), not in the middle of the screen
+        const spawnX = spawnXRef.current
         if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getMotionState() }
       }
       if (templeFor !== S.screens) placeTemple(S.screens)
@@ -1191,7 +1195,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (worldRef.current) { worldRef.current.style.transform = ""; setPlatformWorldOffset(worldRef.current, 0, 0) }
       moveLiveCamera(0, 0, 1)
     }
-  }, [engine, worldRef, spawnX, fgRef])
+  }, [engine, worldRef, fgRef])
 
   return (
     <>

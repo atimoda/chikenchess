@@ -248,12 +248,13 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     await load(id)
   }, [flushKeep, saveNow, load])
 
-  // a new Pátio of mine: a copy of the default one
-  const startNew = useCallback(async (creatorId: string) => {
+  // a new Pátio of mine: a copy of the default one, or an empty one (kept here at once, so it reopens empty)
+  const startNew = useCallback(async (creatorId: string, empty = false) => {
     flushKeep()
     if (cur.current?.dirty && ctx.current.canEdit && ctx.current.saver) await saveNow({ silent: true })
     loadSeq.current++
-    const next = newPatio(creatorId)
+    const fresh = newPatio(creatorId, empty)
+    const next = empty ? keepPatio({ ...fresh, dirty: true }) : fresh
     setLobbyInUrl(next.id)
     put(next)
     setRemote(null)

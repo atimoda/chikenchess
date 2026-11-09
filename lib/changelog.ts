@@ -29,6 +29,9 @@ const RECENT = [
         'Camada Escalas (para testes): em volta de cada boneco com um instrumento, o leque da mira aparece dividido onde a nota muda, com o nome da nota e o grau na escala atual escritos pequenos em cada faixa.',
         'A zona de cada cena (Campo, Noite, Feira, Céu, Porão), que vale para a coluna inteira da cena, agora pode ser editada pelas tags da faixa do chão ou no painel Zona da cena; fica salva no Pátio.',
         'Paredes com vida: com Vida das paredes acima de 0, as notas quicam nas bordas da zona e cada quique tira 1 ponto. Quando a vida zera, a zona muda pelo padrão escolhido (Random, Tempo dobrado, Acelerando, Troca de levada, Sobe meio tom, Ciclo de quintas, Relativa, Homônima, Troca de modo, Próxima progressão, Retrógrada, Penta ↔ diatônica, Espelho, Contracanto, Oitava acima) e a vida enche de novo.',
+        'O portal de entrada do Pátio (o de volta ao globo) pode ser movido no Modo editor, mas não pode ser apagado nem duplicado. A chegada do globo e o início da galinha acompanham a nova posição.',
+        'Em Playgrounds, “+ Novo Pátio” virou “+ Novo Pátio padrão” (sem a instrução dentro do botão) e ganhou ao lado “+ Novo Pátio vazio”, que cria um Pátio só com o portal de entrada.',
+        'Ao trocar de Pátio, a galinha é sugada pelo portal de entrada do Pátio atual e sai pelo portal de entrada do Pátio novo.',
       ] },
       { title: 'Pátio online', items: [
         'Aliens, zumbis, aliens de treino e os mortos-vivos que eles deixam agora são os mesmos para todo o lobby: o dono do lobby comanda os inimigos, e os acertos de qualquer player (tiros, notas, explosões, golpes e arremessos) valem para todos, inclusive matar, virar passarinho ou curar.',

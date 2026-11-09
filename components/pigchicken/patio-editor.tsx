@@ -118,7 +118,9 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }, [commit])
   const remove = useCallback((id: string) => {
     const el = layoutRef.current.elements.find(e => e.id === id)
-    const partner = el ? portalPartner(el, layoutRef.current.elements) : null
+    // the entry portal moves but stays
+    if (!el || el.kind === 'entry') return
+    const partner = portalPartner(el, layoutRef.current.elements)
     if (partner?.locked) return
     commit({ ...layoutRef.current, elements: layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id) }); select(null)
   }, [commit, select])
@@ -131,6 +133,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     return true
   }, [commit, screens, select])
   const duplicate = useCallback((el: LayoutElement) => {
+    if (el.kind === 'entry') return
     if (el.kind === 'portal') {
       const elements = layoutRef.current.elements
       const source = elements.find(e => e.id === el.id)
@@ -344,7 +347,7 @@ const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp, edit }:
       data-sel={selected || undefined}
       data-locked={el.locked || undefined}
       aria-label={d.label}
-      className={cn("pointer-events-auto absolute touch-none", el.kind === "portal" && "z-[1]")}
+      className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry") && "z-[1]")}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
       onPointerMove={onMove}
@@ -409,6 +412,9 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
               <Pencil className="h-4 w-4" />
             </button>
           )}
+          {el.kind === "entry" ? (
+            <span className="whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-white/60">Pode mover; não apaga</span>
+          ) : <>
           <button type="button" className={TOOL} title="Duplicar (Ctrl+D)" aria-label="Duplicar" onClick={onDuplicate}><Copy className="h-4 w-4" /></button>
           <div className="relative">
             <button
@@ -430,6 +436,7 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
               </div>
             )}
           </div>
+          </>}
         </>
       )}
     </div>
