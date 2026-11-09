@@ -436,13 +436,16 @@ test('Próximo instrumento / arma / utilitário cycle their group in the bar ord
   // holding the bat (utilities): the instruments start at the first
   assert.deepEqual([seen(0), seen(0), seen(0)], ['flute', 'sax', 'flute'])
   assert.deepEqual([seen(1), seen(1), seen(1)], ['pistol', 'rifle', 'pistol'])
-  assert.deepEqual([seen(2), seen(2)], ['bat', 'bat'])
+  // the utilities pass by the empty slot (empty hands), then back to the first
+  assert.deepEqual([seen(2), seen(2), seen(2)], ['bat', null, 'bat'])
   step(c, { deselect: true }); assert.equal(seen(1), 'pistol')
+  // with empty hands, Próximo utilitário goes on to the first utility
+  step(c, { deselect: true }); assert.equal(seen(2), 'bat')
   // a group with nothing in it does nothing
   const d = createCombat(); d.give('flute')
   step(d, { groupPick: 1 }); assert.equal(d.held.item, 'flute')
   // dragged items belong to the group they were dropped in
-  step(c, { move: { from: 4, to: 0, after: false } })
+  step(c, { move: { from: 4, to: 0, after: false } }); step(c, { deselect: true })
   assert.deepEqual([seen(0), seen(0)], ['bat', 'flute'])
   // a press in the same frame as the next / previous item: those win (one switch per frame)
   step(c, { slot: 1 }); step(c, { pick: 1, groupPick: 2 }); assert.equal(c.held.item, 'flute')
