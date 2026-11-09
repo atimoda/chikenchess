@@ -24,7 +24,8 @@ const RECENT = [
       { title: 'Zonas sonoras', items: [
         'O rótulo de cada zona sonora virou uma fileira de tags, uma por parâmetro, mostrando só o valor: nome, tom, escala, acordes, balanço, andamento, progressão, cadeia, prioridade, troca a música, pássaros, vida das paredes, padrão de mudança e cor.',
         'No editor, clicar numa tag passa para o próximo valor sem abrir o painel; a progressão anda para trás numa lista de progressões populares e, da primeira, volta para a última. Andamento, prioridade e vida são sliders do tamanho da tag: arraste em qualquer ponto dela. Clicar no nome abre a configuração completa.',
-        'Dois olhos novos no cabeçalho do Pátio: um oculta o cenário de fundo e o outro mostra ou oculta as zonas musicais. Fora do editor as tags só informam os valores, sem fundo e sem clique.',
+        'Um olho novo no cabeçalho do Pátio abre o menu Camadas: Cenário de fundo, Zonas musicais e Escala da mira. Fora do editor as tags das zonas só informam os valores, sem fundo e sem clique.',
+        'Camada Escala da mira (para testes): em volta de cada boneco com um instrumento, o leque da mira aparece dividido onde a nota muda, com o nome da nota e o grau na escala atual escritos pequenos em cada faixa.',
         'A zona de cada cena (Campo, Noite, Feira, Céu, Porão), que vale para a coluna inteira da cena, agora pode ser editada pelas tags da faixa do chão ou no painel Zona da cena; fica salva no Pátio.',
         'Paredes com vida: com Vida das paredes acima de 0, as notas quicam nas bordas da zona e cada quique tira 1 ponto. Quando a vida zera, a zona muda pelo padrão escolhido (Random, Tempo dobrado, Acelerando, Troca de levada, Sobe meio tom, Ciclo de quintas, Relativa, Homônima, Troca de modo, Próxima progressão, Retrógrada, Penta ↔ diatônica, Espelho, Contracanto, Oitava acima) e a vida enche de novo.',
       ] },
